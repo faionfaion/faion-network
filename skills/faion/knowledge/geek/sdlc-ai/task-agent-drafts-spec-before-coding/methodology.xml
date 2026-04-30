@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-agent-drafts-spec-before-coding">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>AI coding agents must post a structured spec comment (current/desired/plan) on the ticket before touching any code. Implementation only begins after explicit human approval signal.</summary>
+    <tags>
+      <tag>task-lifecycle</tag>
+      <tag>spec</tag>
+      <tag>agent-workflow</tag>
+      <tag>approval-gate</tag>
+      <tag>tracker</tag>
+    </tags>
+    <category>task</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Agent Drafts Spec Before Coding</title>
+    <summary>When an AI coding agent is assigned a tracker ticket (Linear, Jira, GitHub, GitLab), its first action MUST be a "current state / desired state / proposed plan" comment posted back on the issue, not a code edit. The agent gathers the issue body plus linked context (Notion spec, Slack thread, prior similar issues, code-intel search) and emits a structured spec draft. Implementation only begins after a specialist signals approval — Linear thumbs-up emoji on the agent's comment, Jira /agent approve slash command, or an explicit agent:approved label transition. First-try-pass on coding (no spec gate) means the agent skipped the discovery step and is fabricating intent.</summary>
+    <why>
+      <p>April 2026 production data from Linear, Atlassian Rovo, GitHub Copilot Workspace, and GitLab Duo all converge on the same gate: agents that draft a spec comment first land mergeable PRs at materially higher rates than agents that jump to a diff. The mechanism is twofold — (a) the agent is forced to surface its interpretation of "done", which catches misreadings cheaply (a comment is rolled back with a reaction, a wrong PR costs a review cycle); (b) the spec doubles as a permanent audit artefact attached to the ticket, satisfying the same reviewability requirement that branch-protection rules enforce on the diff side. Linear's own engineering team and GitHub's Copilot Workspace both encode this as the first stage of their agent contract.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Ticket is assigned to an AI coding agent on Linear, Jira, GitHub, or GitLab as the primary owner of the work.</item>
+        <item>Issue has any non-trivial scope: feature work, multi-file bug fix, refactor, migration.</item>
+        <item>Team has at least one human reviewer who can react with a thumbs-up or run an approval slash command.</item>
+        <item>Workflow auto-closes the issue on PR merge (Fixes #N, Closes !N) — the spec comment becomes the linkable record of intent.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial tickets pre-flagged agent:auto-approve (typo fixes, dependency bumps, log-message tweaks) — gate cost exceeds risk.</item>
+        <item>Spike or research tickets where the desired state is itself the deliverable; the agent's job is to discover, not to commit code.</item>
+        <item>Hot-path incident response where a postmortem ticket is filed after the fact; spec drafting belongs to the retro, not the fix.</item>
+        <item>Single-author solo projects with no second human in the loop — the gate has no approver and the agent stalls.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="spec-comment-contract">
+      <rule testable="true">
+        <statement>On ticket assignment the agent MUST post exactly one comment containing the four sections in this order: Current State, Desired State, Proposed Plan (INVEST-decomposed steps), Open Questions. The comment MUST mention the issue creator. The agent MUST NOT touch the source tree until the approval gate fires; any pre-approval write to a tracked file fails the lint and the cycle aborts.</statement>
+        <rationale>Linear's own internal use of its agent and GitHub Copilot Workspace's spec→plan→diff→PR contract both treat the first-comment spec as the unit of human review; without it, reviewers must reconstruct intent from the diff, which is the exact cost the gate eliminates.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="markdown"><![CDATA[
+@reporter — drafted plan for review:
+
+**Current State.** `POST /api/orders` returns 200 even when `items=[]`; downstream invoice job crashes (LIN-4421).
+
+**Desired State.** Empty `items` returns 422 with `{"error":"items_required"}`; existing flows unchanged.
+
+**Proposed Plan.**
+1. Add `items: NonEmptyList` to `OrderRequestSchema` (1 file, ~3 lines).
+2. Map ValidationError to 422 in `orders/views.py`.
+3. Add regression test `test_order_empty_items_rejected`.
+
+**Open Questions.** Confirm 422 (vs 400) is the agreed status. Tag @api-owner if otherwise.
+        ]]></code>
+        <note>Each section short, plan steps small enough to be testable, mention forces the reporter to react.</note>
+      </example>
+      <example type="bad">
+        <code lang="markdown"><![CDATA[
+I'll fix the empty-items bug. Opening a PR shortly.
+        ]]></code>
+        <note>No current/desired split, no plan, no open question — reviewer cannot react with a thumbs-up because there is nothing to approve.</note>
+      </example>
+      <antipattern>
+        <description>Agent posts the spec comment AND opens a draft PR in the same turn.</description>
+        <reason>The PR consumes a review slot before the spec is approved; reviewers anchor on the diff and skip the cheap correction the comment was supposed to enable.</reason>
+      </antipattern>
+      <reference path="templates/spec-comment.md">Markdown skeleton the agent fills in.</reference>
+      <see-also>
+        <link href="https://linear.app/now/how-we-use-linear-agent-at-linear">Linear engineering: agent posts checkpoints + PR link as comments.</link>
+        <link href="https://githubnext.com/projects/copilot-workspace">GitHub Copilot Workspace four-stage gate: spec, plan, diff, PR.</link>
+      </see-also>
+    </section>
+
+    <section name="approval-gate-mechanics">
+      <rule testable="true">
+        <statement>The agent MUST treat the gate as cleared only when an approval event originates from an identity NOT matching ^(claude|copilot|devin|cursor|rovo|duo|bot)-.*$ and is one of: Linear :thumbsup: reaction on the agent's spec comment, Jira issue comment matching ^/agent\s+approve\b, or GitHub issue labelled agent:approved by a user with write access. Self-approval, agent-to-agent approval, and approval before the spec comment is posted MUST be rejected.</statement>
+        <rationale>Atlassian's "agents respect your permissions, project configurations, workflows, and audit trails" and GitHub's branch-protection-style separation of approver from author both encode the same invariant: an automated actor cannot satisfy a gate that exists to bound automation.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# templates/approval-gate.yaml (excerpt)
+approval:
+  linear:
+    event: reaction.added
+    on_comment: agent_spec_comment_id
+    emoji: thumbsup
+    actor_filter: human_only
+  jira:
+    event: comment.created
+    body_match: '^/agent\s+approve\b'
+    actor_filter: project_role_developer
+  github:
+    event: issue.labeled
+    label: agent:approved
+    actor_filter: write_permission
+        ]]></code>
+        <note>Each tracker maps to one event with an actor filter; the agent's proceed only fires on the union.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# polling loop with no actor filter
+if any(c.body.startswith("/agent approve") for c in issue.comments):
+    proceed_to_implementation()
+        ]]></code>
+        <note>A second agent (or the same agent on a stale comment) trips the gate; nothing prevents self-approval.</note>
+      </example>
+      <antipattern>
+        <description>Agent treats absence of dissent (no comments for N minutes) as implicit approval.</description>
+        <reason>"Silence = consent" reliably ships wrong-spec PRs when the reporter is asleep, on PTO, or in a different timezone; the gate must be an explicit positive signal.</reason>
+      </antipattern>
+      <reference path="templates/approval-gate.yaml">Per-tracker approval mapping consumed by the agent runtime.</reference>
+      <see-also>
+        <link href="https://linear.app/docs/agents-in-linear">Linear: agents as first-class assignees with comment-based handoff.</link>
+        <link href="https://www.atlassian.com/blog/announcements/ai-agents-in-jira">Atlassian: agents inherit Jira permissions, workflows, audit trails.</link>
+        <link href="https://github.com/orgs/community/discussions/190731">GitHub community: enforcing the link/label contract on agent PRs.</link>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/spec-comment.md" purpose="Markdown skeleton the agent fills in for the first ticket comment."/>
+      <template path="templates/approval-gate.yaml" purpose="Per-tracker config mapping the approval signal to the agent's proceed event."/>
+    </templates>
+  </content>
+</methodology>
