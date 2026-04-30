@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 - chore: migrate inc-runbook-as-markdown-tagged-steps, inc-tool-tier-approval-gate, kb-agents-md-context-pyramid to methodology.xml (feature-047 batch A3)
 - chore: migrate gov-sonarqube-ai-code-gate, inc-postmortem-auto-draft-no-publish, inc-read-only-investigation-default to methodology.xml (feature-047 batch A2)
 - chore: migrate kb-codebase-rag-symbol-chunked, kb-symbol-index-fresh-tags, kb-versioned-agent-memory-files to methodology.xml (feature-047 batch A4)
+- chore: migrate gov-approval-token-signed-jwt, gov-conventional-commits-enforced, gov-license-compliance-scan to methodology.xml (feature-047 batch A1)
 - chore: migrate nginx-reverse-proxy, ssl-tls-management, server-init-bootstrap to methodology.xml (feature-045 batch FU)
 - chore: migrate secrets-management, shell-productivity, ssh-hardening to methodology.xml (feature-045 batch FV)
 - chore: migrate product-discovery, product-launch, release-planning to methodology.xml (feature-045 batch FT)

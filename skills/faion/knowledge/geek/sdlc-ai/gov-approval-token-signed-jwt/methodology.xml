@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gov-approval-token-signed-jwt">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Deliver human approval for write/destructive agent actions as a cryptographically signed, scope-bound, single-use JWT, not a Slack reaction.</summary>
+    <tags>
+      <tag>governance</tag>
+      <tag>jwt</tag>
+      <tag>approval</tag>
+      <tag>audit</tag>
+      <tag>human-in-the-loop</tag>
+    </tags>
+    <category>gov</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Human Approval as a Signed, Scoped, Single-Use JWT</title>
+    <summary>Whenever an agent needs human approval for a write/destructive action (deploy, rollback, kubectl delete, secret rotation, money movement), the approval is delivered as a cryptographically signed JWT, not a Slack thumbs-up. The token carries sub (approver identity), scope (the exact tool + target tuple being approved), iat, a short exp (≤5 minutes), an aud for the calling agent, a jti for single-use, and the originating incident_id / task_id. The agent's tool layer verifies the signature, scope match, expiry, and replay flag at call time. Slack reactji can initiate the approval, but only the signed callback satisfies the gate.</summary>
+    <why>
+      <p>"Did Bob really approve this?" is unanswerable from a chat log: messages can be edited, channels are not signed, and reactji do not bind to a specific tool call. A signed token replaces social proof with cryptographic proof — the audit record is verifiable months later by replaying the signature against the public key. Microsoft's Agent Governance Toolkit (April 2026) and BeyondTrust's identity governance pattern converge on the same shape: scope-bound, time-boxed, single-use approval tokens are the only mechanism that survives both regulatory audit (EU AI Act, SOC2 CC6) and post-incident forensics. Without it, "agent abuse via social engineering of the chat channel" becomes a real attack surface.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any agent that can perform Tier 1+ (writes / destructive / money-moving) actions in production.</item>
+        <item>Incident-response agents that propose remediations a human must authorize before the agent executes them.</item>
+        <item>Deploy / rollback bots, kubectl operators, IAM-mutation agents, customer-data-export agents.</item>
+        <item>Regulated environments (EU AI Act enforcement Aug 2026, SOC2 / GDPR audited orgs) where approval evidence is non-optional.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure read-only agents — no write means no approval token is needed.</item>
+        <item>Tier 0 actions inside a sandboxed dev environment with no production blast radius.</item>
+        <item>Multi-step approvals with quorum and complex policy — escalate to a full IAM/policy engine (OPA, Cedar) instead of a hand-rolled JWT.</item>
+        <item>One-off scratch scripts that are never reused — bootstrap cost dominates.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="token-shape">
+      <p>An approval token is a short-lived, scope-bound, single-use signed JWT — not a Slack reaction.</p>
+      <p>The token must encode exactly enough information for the agent's tool layer to verify the human authorized this specific call, on this specific target, within this specific incident, and not at any other time.</p>
+
+      <rule testable="true">
+        <statement>An approval token MUST be a JWT (RS256 / EdDSA) with at minimum these claims: `iss` (approval service), `sub` (human approver identity from SSO/IdP), `aud` (agent identity), `iat`, `exp` (≤300 seconds from `iat`), `jti` (unique, recorded for replay protection), `scope` (object: `tool`, `target`, `args_hash`), `correlation_id` (incident or task ID). The agent's tool layer MUST verify signature, `aud` match, `exp` not passed, `jti` not seen before, `scope.tool` matches the call, `scope.target` matches the call, and `scope.args_hash` matches `sha256(canonical(args))`. Failing any check, the call MUST be refused and an audit record emitted.</statement>
+        <rationale>Short expiry plus single-use plus args-hash binding means a token leaked or socially harvested cannot be replayed against a different call — the cryptographic envelope is the audit evidence.</rationale>
+      </rule>
+
+      <example type="good" title="Valid approval JWT payload">
+        <code lang="json"><![CDATA[
+{
+  "iss": "approve.faion.net",
+  "sub": "ruslan@faion.net",
+  "aud": "agent-deploy",
+  "iat": 1714125600,
+  "exp": 1714125900,
+  "jti": "01HW8N3K5R9F4Q1Z6T0",
+  "scope": {
+    "tool":   "kubectl_apply",
+    "target": "namespace/billing-prod",
+    "args_hash": "sha256:b8c3e9..."
+  },
+  "correlation_id": "INC-2026-0418-007"
+}
+        ]]></code>
+        <note>5-minute window, scoped to the exact target, replay-blocked by jti, bound to the incident.</note>
+      </example>
+
+      <example type="bad" title="Slack reaction as approval">
+        <code lang="text"><![CDATA[
+slack-message: "+1" reaction by @bob on message
+        ]]></code>
+        <note>Not signed, not scoped, replayable forever, edits invisible — no audit value.</note>
+      </example>
+
+      <antipattern>
+        <description>Issuing a long-lived (24h+) token with `scope: "*"` to "make the on-call workflow easier".</description>
+        <reason>The first leaked or socially harvested token grants the agent unlimited writes for a day; the entire identity boundary collapses to one bearer string.</reason>
+      </antipattern>
+    </section>
+
+    <section name="issuance-and-verification">
+      <p>Slack reactji can prompt the approval but only the signed callback satisfies the gate; verification runs at every tool call, not at session start.</p>
+      <p>The chat surface is convenient and audit-poor. Use it to trigger the approval workflow but require the human to redeem an OAuth-style callback that issues the JWT signed by the approval service's KMS key.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST request approval via a workflow that posts a unique URL to a chat thread; the URL MUST require the approver's SSO/IdP login, MUST display the exact `tool`, `target`, and `args_hash` before signing, and MUST issue a JWT whose `sub` matches the SSO subject. The agent MUST present the JWT on the tool call; verification MUST happen at the policy enforcement point, NOT cached in the agent's memory. `jti` MUST be recorded in a tamper-evident store (signed append-only log or HSM-backed DB); replay attempts MUST be denied AND alerted. Approvals MUST NOT be self-issued by the agent's identity, and the approver's identity MUST NOT match `aud` (no self-approval). All denials and approvals MUST be retained per the org's compliance window.</statement>
+        <rationale>Chat surfaces are mutable and unsigned; SSO + KMS-signed callback turns a 3-second human action into a non-repudiable, auditable artifact that satisfies SOC2 CC6 and EU AI Act post-deployment monitoring.</rationale>
+      </rule>
+
+      <example type="good" title="Approval request with args hash binding">
+        <code lang="python"><![CDATA[
+def request_approval(tool, target, args):
+    args_hash = sha256(canonical_json(args))
+    url = approve_svc.start(tool, target, args_hash, ttl=300)
+    slack.post(channel=incident.channel,
+               text=f"Approve `{tool}` on `{target}`? {url}")
+    token = approve_svc.wait_for_callback(timeout=300)
+    return verify(token,
+                  audience=AGENT_ID,
+                  expected_scope={"tool": tool,
+                                  "target": target,
+                                  "args_hash": args_hash})
+        ]]></code>
+        <note>Args hash binds the token to the exact call; verification re-checks every claim at use time.</note>
+      </example>
+
+      <example type="bad" title="Boolean approval cached at session start">
+        <code lang="python"><![CDATA[
+# Cache approval at session start, reuse for any later tool call.
+if user_says_yes_in_slack:
+    approved = True
+# ...
+if approved:
+    kubectl_delete(target=any_target)
+        ]]></code>
+        <note>Boolean cache loses scope binding entirely; one approval becomes a session-wide write capability.</note>
+      </example>
+
+      <antipattern>
+        <description>The agent's own service account both issues and consumes the approval token.</description>
+        <reason>Self-approval erases the human-in-the-loop; an audit cannot distinguish autonomous action from approved action.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/approval-token.json" purpose="Decoded JWT payload showing the required claims."/>
+      <template path="templates/verify-token.py" purpose="Reference verifier: signature + scope + expiry + replay check."/>
+    </templates>
+
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7519"/>
+      <link href="https://techcommunity.microsoft.com/blog/linuxandopensourceblog/agent-governance-toolkit-architecture-deep-dive-policy-engines-trust-and-sre-for/4510105"/>
+      <link href="https://www.beyondtrust.com/blog/entry/ai-agent-identity-governance-least-privilege"/>
+      <link href="https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ai-agents/governance-security-across-organization"/>
+    </see-also>
+  </content>
+</methodology>
