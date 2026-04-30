@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate mr-codemod-refactor-agent, mr-error-tracker-draft-pr, mr-graph-vs-diff-reviewer to methodology.xml (feature-047 batch A9)
 - chore: migrate mr-renovate-ai-handoff, mr-slash-command-surface, pnpm-catalogs to methodology.xml (feature-047 batch A10)
 - chore: migrate lint-autofix-vs-flag-decision-rule, lint-megalinter-polyglot, lint-precommit-floor to methodology.xml (feature-047 batch A7)
 - chore: migrate lint-ruff-and-biome-as-default, lint-shellcheck-hadolint-iac-floor, lint-staged-only-not-whole-tree to methodology.xml (feature-047 batch A8)

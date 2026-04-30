@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mr-codemod-refactor-agent">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Use AST codemods for deterministic 95% of cross-cutting refactors; let LLM handle string templates, docs, fixtures; open one PR per logical group with idempotence gate in CI.</summary>
+    <tags>
+      <tag>codemod</tag>
+      <tag>refactor</tag>
+      <tag>ast</tag>
+      <tag>multi-agent</tag>
+      <tag>pull-request</tag>
+    </tags>
+    <category>mr</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Codemod-First Refactor Agent</title>
+    <summary>Cross-cutting refactors (Angular 17→20, AI SDK 5→6, rename User.email→User.contact) are codemods, not chat conversations. Use AST-aware tools (jscodeshift, ts-morph, libcst, semgrep, codemod.com / Hypermod) to do the deterministic 95% of edits, then let an LLM finish the long-tail (string templates, tests, docstrings, README snippets) that AST cannot reach. Open ONE PR per logical group of changes — not one per file. Multi-agent stacks (Architect → Migration → Validator) generate the PR with summary plus risk notes.</summary>
+    <why>
+      <p>LLMs alone produce inconsistent renames at 100+ call sites: variant casing slips through, string templates get rewritten incorrectly, and import paths drift. Codemods are deterministic on AST — the rename is exact and re-runnable. The remaining 5% (where AST has no signal) is exactly where an LLM is strong. Combining the two collapses a multi-day manual refactor into a reviewable single PR with codemod summary plus AI-written body, while keeping the AST log as audit. AI SDK 5→6, Angular major upgrades, and OpenAI's Agents SDK migration cookbook all ship as codemods specifically because the LLM-only path failed in their own evals.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Framework upgrades that ship breaking renames (Angular, React, Next.js, Vue, AI SDK).</item>
+        <item>API renames or deprecation removals across &gt;100 call-sites.</item>
+        <item>Lint-rule rollouts where every existing violation must be auto-fixed (TS strict mode flip, ESLint rule).</item>
+        <item>Schema migrations where the field rename touches code, tests, fixtures, and docs in lockstep.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Small renames (&lt;20 sites) — IDE rename refactor is faster and safer; codemod overhead is not justified.</item>
+        <item>Semantic refactors where the type signature stays but the BEHAVIOUR changes — codemods don't see behaviour.</item>
+        <item>Refactors that require staged rollout across multiple deploys — split into staged PRs first.</item>
+        <item>Generated code where the source-of-truth is not the file being changed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="codemod-first-llm-last">
+      <p>The deterministic 95% — call sites, imports, declarations — belongs to AST tools. The non-deterministic 5% — string templates, prose docs, snapshot tests — belongs to the LLM. Reverse the order and the LLM-only path slips on edge cases at scale.</p>
+
+      <rule testable="true">
+        <statement>For any cross-cutting refactor touching ≥20 call-sites, the agent MUST first run an AST codemod (jscodeshift, ts-morph, libcst, semgrep, codemod.com / Hypermod) and stage its output as a separate commit. The LLM tail-pass MUST run only after the codemod commit and MUST be limited to files the codemod could not safely edit (template literals, Markdown, comments, fixtures). The PR MUST contain ONE logical refactor; multiple unrelated renames MUST be split into separate PRs.</statement>
+        <rationale>codemod.com, Martin Fowler's "Codemods: API Refactoring Tooling", and Vercel's AI SDK 5→6 migration explicitly converged on this split because the LLM-only path produced inconsistent renames at scale. The "one logical group" rule keeps the diff reviewable and the codemod re-runnable.</rationale>
+      </rule>
+
+      <example type="good" title="Two-commit refactor PR">
+        <code lang="bash"><![CDATA[
+# Two-commit refactor PR
+git checkout -b refactor/user-email-to-contact
+npx codemod run rename-user-email-to-contact     # commit 1: deterministic
+git commit -am "codemod: rename user.email to user.contact"
+
+# LLM tail-pass: docs, fixtures, template literals only
+claude --instruction prompts/tail-pass.md --files 'docs/**/*.md' 'fixtures/**/*.json'
+git commit -am "tail: update docs+fixtures for user.contact"
+gh pr create --draft --title "refactor: User.email -> User.contact"
+        ]]></code>
+        <note>Codemod commit is reproducible; tail commit is small and reviewable.</note>
+      </example>
+
+      <example type="bad" title="Single LLM pass over the whole repo">
+        <code lang="bash"><![CDATA[
+# Single LLM pass over the whole repo
+claude --instruction "rename user.email to user.contact everywhere"
+git commit -am "wip: rename"
+        ]]></code>
+        <note>Misses three call-sites with `User.Email` (different casing); rewrites a JSON example incorrectly; no audit log.</note>
+      </example>
+
+      <antipattern>
+        <description>Bundling two unrelated framework upgrades into one PR because "they're both migrations".</description>
+        <reason>If one half regresses, the only revert path is the whole PR; you lose the bisect granularity that codemod-per-PR was designed to give.</reason>
+      </antipattern>
+
+      <reference path="templates/rename-property.ts">jscodeshift codemod for the canonical rename example.</reference>
+    </section>
+
+    <section name="three-role-split">
+      <p>One agent that "does the migration" produces unreliable output. Splitting into Architect (plans the rename and the codemod), Migration (writes the codemod and runs it), and Validator (re-runs codemod on the produced branch and asserts no diff) produces a verifiable pipeline.</p>
+
+      <rule testable="true">
+        <statement>Cross-cutting refactor PRs MUST be produced by a three-role pipeline: (a) Architect agent emits a written migration plan listing files to touch and out-of-scope items; (b) Migration agent writes a re-runnable codemod and runs it; (c) Validator agent re-runs the codemod on the produced branch and asserts `git diff --quiet`. The Validator MUST run inside CI, not only locally.</statement>
+        <rationale>The idempotence assertion (`re-run produces no diff`) catches every failure mode: a missed call-site, a wrong AST matcher, a hand-edit that broke determinism. Augment Code's multi-file refactor study and OpenAI's sandboxed migration cookbook both adopt this pipeline.</rationale>
+      </rule>
+
+      <example type="good" title="CI idempotence gate">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/refactor-validator.yml
+name: refactor-validator
+on:
+  pull_request:
+    paths: ['codemods/**', '**/*.ts', '**/*.tsx']
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx codemod run ${{ github.event.pull_request.head.ref }}
+      - run: |
+          if ! git diff --quiet; then
+            echo "Codemod is not idempotent — re-run produced changes"
+            git diff
+            exit 1
+          fi
+        ]]></code>
+        <note>Idempotence gate fails the PR if a re-run produces any diff.</note>
+      </example>
+
+      <example type="bad" title="No validator stage">
+        <code lang="bash"><![CDATA[
+# No validator stage; codemod ran once and was hand-edited
+gh pr create --title "refactor: rename"
+        ]]></code>
+        <note>No proof the codemod is re-runnable; future maintainers cannot reproduce the migration.</note>
+      </example>
+
+      <antipattern>
+        <description>Hand-editing files inside a codemod PR after the codemod ran.</description>
+        <reason>Breaks idempotence — a re-run regenerates the original; the manual edit is silently dropped on the next migration.</reason>
+      </antipattern>
+
+      <reference path="templates/migration-pr-body.md">PR body skeleton with codemod stats, risk, manual-touch list.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/rename-property.ts" purpose="jscodeshift codemod renaming user.email to user.contact repo-wide."/>
+      <template path="templates/migration-pr-body.md" purpose="PR body skeleton with codemod stats, risk, manual-touch list."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.codemod.com/changelog">codemod.com — npx codemod ai, MCP for AI assistants.</link>
+      <link href="https://martinfowler.com/articles/codemods-api-refactoring.html">Martin Fowler — Codemods for API refactoring.</link>
+      <link href="https://ai-sdk.dev/docs/migration-guides/migration-guide-6-0">Vercel AI SDK 5→6 — codemod-driven migration.</link>
+      <link href="https://developers.openai.com/cookbook/examples/agents_sdk/sandboxed-code-migration/sandboxed_code_migration_agent">OpenAI cookbook — sandboxed code migration agent.</link>
+      <link href="https://www.augmentcode.com/learn/automate-multi-file-code-refactoring-with-ai-agents-a-step-by-step-guide">Augment Code — multi-file refactor with AI agents.</link>
+    </see-also>
+  </content>
+</methodology>
