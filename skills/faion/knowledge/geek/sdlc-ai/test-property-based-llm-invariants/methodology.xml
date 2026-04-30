@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="test-property-based-llm-invariants">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Run an agent that proposes invariants (round-trip, idempotence, oracle-equivalence, metamorphic, monotonicity) and writes them as property-based tests before example-based tests.</summary>
+    <tags>
+      <tag>property-based-testing</tag>
+      <tag>llm-invariants</tag>
+      <tag>hypothesis</tag>
+      <tag>test-automation</tag>
+      <tag>sdlc-ai</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Property-Based Tests From LLM-Inferred Invariants</title>
+    <summary>For any pure function with a docstring, type signature, or one example call, run an agent that proposes invariants — round-trip, idempotence, oracle-equivalence, metamorphic, monotonicity — and writes them as @given Hypothesis (Python), fast-check (TS), or proptest (Rust) tests before writing example-based tests. The agent must justify each property from the source text and reject any property it cannot ground there. Anthropic's own red-team agent ran this loop on 100 popular Python packages (NumPy, SciPy, Pandas) and produced 984 bug reports across 786 modules with 56% true-bug rate on a manual sample (86% on top-ranked).</summary>
+    <why>
+      <p>LLMs are demonstrably better at inferring algebraic properties from a docstring than at inventing example-based tests — examples drift toward the implementation, properties drift toward the spec. Property-based runners then shrink failures to minimal counter-examples, producing a debug-friendly bug report instead of a long log of one-off cases. Combining the two — agent proposes properties, runner shrinks failures — closes a gap example-based tests structurally cannot: discovering edge cases the developer never considered.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pure logic: serialization, parsing, math, sorting, dedup, schema validators, anything with an inverse or algebraic property.</item>
+        <item>Code with a clear oracle (a slow reference implementation, a previous version, a spec equivalent).</item>
+        <item>Stateless API endpoints whose request/response can be modelled as types.</item>
+        <item>After example tests pass — properties find the cases the developer did not write.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Stateful side-effecting code without clear invariants (use stateful PBT only with care; see Hypothesis RuleBasedStateMachine).</item>
+        <item>UI rendering / "looks right" code — there is no algebraic property.</item>
+        <item>Code where the spec is "whatever the current output is" — properties become tautologies.</item>
+        <item>Tight CI windows where shrinking time exceeds the budget — gate properties on a nightly job instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="property-rubric">
+      <p>An open prompt ("write properties for this function") yields generic invariants the runner cannot shrink usefully. A closed rubric forces the agent to map the function to one of five named patterns — each with a known shape, easy to read, easy to review.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST classify each proposed property under exactly one of: `round-trip` (`f(g(x)) == x`), `idempotence` (`f(f(x)) == f(x)`), `oracle-equivalence` (`f(x) == oracle(x)`), `metamorphic` (`f(t(x))` relates to `f(x)` by some `R`), or `invariant-on-output` (`P(f(x))` holds for all valid `x`). Any property the agent cannot label MUST be rejected and not committed.</statement>
+        <rationale>A closed rubric (a) makes review tractable, (b) forces the agent to think about the function's algebraic structure rather than its current implementation, (c) matches the categories Hypothesis/fast-check/proptest already shrink against well.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+# class: round-trip
+@given(st.text())
+def test_quote_roundtrip(s):
+    assert unquote(quote(s)) == s
+
+# class: idempotence
+@given(st.text())
+def test_normalize_email_idempotent(e):
+    assert normalize(normalize(e)) == normalize(e)
+
+# class: invariant-on-output
+@given(st.lists(st.integers()))
+def test_sort_output_sorted(xs):
+    out = sort(xs)
+    assert all(out[i] <= out[i + 1] for i in range(len(out) - 1))
+      ]]></code>
+        <note>Each test names its class; reviewer sees the shape immediately.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# class: ??? (agent improvised)
+@given(st.text())
+def test_quote_works(s):
+    assert quote(s) is not None
+      ]]></code>
+        <note>Not a property — only checks the runner returns *something*.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent emits a "property" that asserts the same thing as an example test on random data.</description>
+        <reason>Without an algebraic relationship, random inputs add runtime cost without finding edge cases.</reason>
+      </antipattern>
+    </section>
+
+    <section name="source-grounded-rule">
+      <p>An ungrounded property reflects what the agent thinks the function should do, not what the spec says. Grounding each property in a quoted docstring fragment, a type signature, or an example call turns "agent confidently invents wrong invariants" (the most common failure mode at &gt;100k corpora) into "agent rejects properties it cannot justify" — exactly the behaviour the Anthropic study isolated as the difference between 56% and 86% true-bug rate.</p>
+
+      <rule testable="true">
+        <statement>Every committed property MUST carry a one-line comment of the form `# grounded: &lt;quoted source fragment&gt;` immediately above the `@given` (or `fc.assert` / `proptest!`) decorator. Properties with no quotable source MUST be deleted, not weakened. Code review MUST reject any property whose grounding comment does not appear in the source under test.</statement>
+        <rationale>The grounding comment makes review O(seconds) per property and turns the "specification gap" into a hard error: if the agent cannot quote a source line, the spec is silent on the invariant and the property is the agent's hallucination, not the function's contract.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+def normalize(email: str) -> str:
+    """Lowercase the local part, strip dots in gmail.com addresses,
+    and remove +tags. Idempotent."""
+
+# grounded: docstring "Idempotent."
+@given(st.emails())
+def test_normalize_idempotent(e):
+    assert normalize(normalize(e)) == normalize(e)
+      ]]></code>
+        <note>Comment quotes the docstring; reviewer can grep the source.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="python"><![CDATA[
+@given(st.emails())
+def test_normalize_lowercase_only(e):
+    # docstring does not say "always all lowercase";
+    # this is the agent's assumption.
+    assert normalize(e) == normalize(e).lower()
+      ]]></code>
+        <note>Ungrounded property; rejected at review.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent fixes a failing property by weakening the assertion until it passes.</description>
+        <reason>Weakening turns a real bug report into a tautology; the bug remains, the test goes silent.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/property-rubric.txt" purpose="Prompt fragment listing the 5 property classes and source-grounding rule."/>
+      <template path="templates/hypothesis-skeleton.py" purpose="Hypothesis test skeleton with the 5 canonical property classes wired up."/>
+    </templates>
+
+    <see-also>
+      <link href="https://red.anthropic.com/2026/property-based-testing/"/>
+      <link href="https://hypothesis.readthedocs.io/en/latest/ghostwriter.html"/>
+      <link href="https://arxiv.org/abs/2510.09907"/>
+    </see-also>
+  </content>
+</methodology>
