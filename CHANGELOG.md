@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate lang-php-phpstan9-psalm-taint, lang-ruby-sorbet-strict-floor, lang-swift-harmonize-arch-tests to methodology.xml (feature-047 batch A6)
 - chore: migrate lang-csharp-roslyn-analyzer-errors, lang-go-tygo-frontend-contract, lang-jvm-jreleaser-tag-release to methodology.xml (feature-047 batch A5)
 - chore: migrate inc-runbook-as-markdown-tagged-steps, inc-tool-tier-approval-gate, kb-agents-md-context-pyramid to methodology.xml (feature-047 batch A3)
 - chore: migrate gov-sonarqube-ai-code-gate, inc-postmortem-auto-draft-no-publish, inc-read-only-investigation-default to methodology.xml (feature-047 batch A2)

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lang-php-phpstan9-psalm-taint">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Run PHPStan level 9 and Psalm taint analysis in CI for every PHP project where AI agents author code; both must pass before merge.</summary>
+    <tags>
+      <tag>php</tag>
+      <tag>phpstan</tag>
+      <tag>psalm</tag>
+      <tag>static-analysis</tag>
+      <tag>taint-analysis</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>PHP Dual Gate: PHPStan Level 9 + Psalm Taint Analysis</title>
+    <summary>Run two static analyzers in CI for every PHP project where AI agents author code: PHPStan at level 9 (or 10 for libraries) for type strictness, and Psalm with --taint-analysis for inter-procedural data-flow checks (SQLi, XSS, command injection). Both must report green before merge.</summary>
+    <why>
+      <p>PHPStan and Psalm are complementary, not redundant: PHPStan is a strict type system, Psalm is a dataflow / taint engine. As of PHPStan 2.1.34 (early 2026), level 9 reflection-cache analysis is 25-40% faster, making the gate affordable on every PR. The combined floor encodes the "deploy LLM only where these two tools are silent" pattern referenced in 2026 PHP+AI literature: any LLM-suggested code that introduces mixed, untyped properties, or untracked-input to SQL/exec sinks fails before review. The result: agents produce smaller, more correct diffs because their iteration loop terminates only when both tools accept the change.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Symfony, Laravel, Drupal, or vanilla PHP services with agent contributors.</item>
+        <item>Projects with web-facing controllers, ORM query builders, file uploads, shell command construction.</item>
+        <item>Codebases ratcheting up type strictness (start L5, increment per release; pin L9 once green).</item>
+        <item>Library packages targeting Packagist — level 10 is feasible because there is no framework noise.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Greenfield prototypes under ~1 KLOC where the bootstrap cost dominates value.</item>
+        <item>Pure CLI scripts with no external input — Psalm's taint pass produces no signal.</item>
+        <item>Legacy codebases where setting L9 day one would mark thousands of files as failing — phase from L5 to L7 to L9 with the baseline file.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phpstan-level9">
+      <p>PHPStan level 9 (the strictest non-experimental level) requires every value's type to be known. mixed is rejected; arrays must declare their shape (array&lt;int, User&gt;, not array). The phpstan-baseline.neon file captures pre-existing failures so new code is held to the gate without rewriting history first.</p>
+
+      <rule testable="true">
+        <statement>CI MUST run vendor/bin/phpstan analyse --level=9 --memory-limit=1G on every PR; failures block merge. Pre-existing errors live in phpstan-baseline.neon (committed); new errors NEVER go into the baseline. Agents may not introduce mixed parameters, properties, or return types — annotate the actual type or return never.</statement>
+        <rationale>Level 9 turns LLM-friendly mixed returns (the lowest-effort plausible annotation) into compile-time failures, forcing agent output to converge on the actual type the code uses.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="php"><![CDATA[
+/**
+ * @param array<int, User> $users
+ * @return array<string, int>
+ */
+function indexByEmail(array $users): array
+{
+    $out = [];
+    foreach ($users as $u) {
+        $out[$u->email] = $u->id;
+    }
+    return $out;
+}
+        ]]></code>
+        <note>Array shapes declared; level 9 accepts.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="php"><![CDATA[
+/**
+ * @param mixed $users
+ * @return mixed
+ */
+function indexByEmail(mixed $users): mixed { /* ... */ }
+        ]]></code>
+        <note>Level 9 fails: every mixed is a missing type declaration.</note>
+      </example>
+
+      <antipattern>
+        <description>Developer fixes a level 9 failure by appending the new error to phpstan-baseline.neon.</description>
+        <reason>The baseline is for grandfathered code only; using it as an escape hatch for new errors converts the gate into a no-op within weeks.</reason>
+      </antipattern>
+
+      <reference path="templates/phpstan.neon">Reference config used by this rule.</reference>
+    </section>
+
+    <section name="psalm-taint">
+      <p>Psalm's --taint-analysis mode marks $_GET, $_POST, request bodies, and user-supplied path parts as tainted, then propagates taint through method calls. A taint reaching mysqli::query, exec, eval, unserialize, or HTML output without htmlspecialchars raises a TaintedSql/TaintedShell/TaintedHtml issue.</p>
+
+      <rule testable="true">
+        <statement>CI MUST run vendor/bin/psalm --taint-analysis --threads=4 on every PR; any taint issue blocks merge. Suppressing a taint (@psalm-taint-escape) is allowed ONLY when the call site applies a cited sanitizer, and the suppression line MUST include a comment naming the sanitizer (e.g. // taint-escape: htmlspecialchars).</statement>
+        <rationale>Type checkers cannot detect SQLi or XSS because the dangerous string is well-typed string; only data-flow analysis catches the pattern. Forcing a named-sanitizer comment on every escape makes the audit trail self-explanatory.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="php"><![CDATA[
+public function show(Request $req): Response
+{
+    $id = (int) $req->query->get('id');   // numeric cast = taint sink
+    $row = $this->db->fetchAssoc(
+        'SELECT * FROM users WHERE id = ?',
+        [$id]
+    );
+    return new Response((string) htmlspecialchars(json_encode($row)));
+}
+        ]]></code>
+        <note>Parameterized query + htmlspecialchars; Psalm reports clean.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="php"><![CDATA[
+public function show(Request $req): Response
+{
+    $id = $req->query->get('id');
+    $row = $this->db->fetchAssoc("SELECT * FROM users WHERE id = $id");
+    return new Response(json_encode($row));
+}
+        ]]></code>
+        <note>Tainted $id flows into raw SQL; Psalm raises TaintedSql.</note>
+      </example>
+
+      <antipattern>
+        <description>Wholesale @psalm-suppress TaintedSql annotations to silence the analyzer without a sanitizer.</description>
+        <reason>Suppressions disable the gate; the bug remains, the audit trail is empty. Require named-sanitizer comments and reject suppressions that lack one.</reason>
+      </antipattern>
+
+      <reference path="templates/psalm.xml">Psalm config used by this rule.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/phpstan.neon" purpose="Level 9 config with parallel runner and reflection cache enabled."/>
+      <template path="templates/psalm.xml" purpose="Psalm config with --taint-analysis defaults and standard plugin set."/>
+    </templates>
+
+    <see-also>
+      <link href="https://phpstan.org/config-reference">PHPStan config reference.</link>
+      <link href="https://phpstan.org/user-guide/rule-levels">PHPStan rule levels.</link>
+      <link href="https://psalm.dev/docs/security_analysis/">Psalm taint analysis documentation.</link>
+      <link href="https://appsecsanta.com/sast-tools/phpstan-vs-psalm">PHPStan vs Psalm comparison.</link>
+    </see-also>
+  </content>
+</methodology>
