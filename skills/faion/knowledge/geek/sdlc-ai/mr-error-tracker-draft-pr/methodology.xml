@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mr-error-tracker-draft-pr">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Error tracker (Sentry Seer/Autofix, Bugsink, Rollbar) opens a draft PR when event-count and fixability thresholds clear; PR is bidirectionally linked to the alert; CODEOWNERS gate blocks auto-merge.</summary>
+    <tags>
+      <tag>error-tracker</tag>
+      <tag>pull-request</tag>
+      <tag>sentry</tag>
+      <tag>draft-pr</tag>
+      <tag>codeowners</tag>
+    </tags>
+    <category>mr</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Error-Tracker to Draft-PR Pipeline</title>
+    <summary>When a production exception crosses a tunable event-count and fixability threshold inside an error tracker (Sentry Seer/Autofix, Bugsink, Rollbar, Starsling), a coding agent ingests the structured signal {stack_trace, breadcrumbs, distributed_trace, linked_repo, recent_diffs}, proposes a code patch plus a regression test, and opens a draft pull request that is bidirectionally linked to the alert. The PR is never auto-merged: the alert URL lives in the PR body, the alert page links back to the PR, and a human in CODEOWNERS clicks Merge after review. Sentry Seer is the canonical implementation, with min_events: 10 and min_fixability: 0.7 as the standard auto-run gate.</summary>
+    <why>
+      <p>A repeating production exception with a clean stack trace is the highest-signal input a coding agent can receive: the failure is reproducible, the file/line is already pinned, and the breadcrumbs disambiguate the call site. Letting the tracker open a draft PR collapses the "alert → triage → ticket → branch → fix → PR" chain into one artifact, while the draft state plus CODEOWNERS gate prevents the failure mode where bots ship unreviewed patches. The thresholds (events + fixability score) filter out one-off network blips that no patch can fix and concentrate agent tokens on the truly fixable. Sentry's published Seer/Autofix docs and changelog entries describe this exact pipeline as the production behavior since 2025; Bugsink and Starsling reproduce the pattern on self-hosted or third-party stacks.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Production runtime errors with a clean stack trace and source map (NullPointer, KeyError, IntegrityError, TypeError).</item>
+        <item>Repeatable exceptions whose first frame maps 1:1 to a code line in a linked repository.</item>
+        <item>Cross-service errors where a distributed trace already correlates the failure across BE+FE.</item>
+        <item>Repos where Sentry, Bugsink, or Rollbar is already wired and SCM Settings can list the GitHub/GitLab repo.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off errors below the event threshold (&lt; 10 events) — noisy, expensive, low fixability.</item>
+        <item>Errors with no stack trace (network timeout, OOM, kernel panic, SIGKILL) — the agent has nothing to anchor to.</item>
+        <item>Business-logic bugs where the "fix" is a product decision, not a code edit — agent will pattern-match the wrong shape.</item>
+        <item>Strict-compliance repos where draft PRs from bots are still treated as production code on import — escalate to human-only triage.</item>
+        <item>Solo or hackathon repos where the operational overhead exceeds the fix value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="two-gate-threshold">
+      <p>Sentry Seer ships with `min_events` (volume signal) and `min_fixability` (LLM-rated patchability) as separate dials. The volume gate filters one-offs; the fixability gate filters errors with no clean call-site (e.g., OOM, network reset). Either alone leaks: high volume + low fixability burns tokens on errors no agent can fix; high fixability + low volume opens PRs for irrelevant blips.</p>
+
+      <rule testable="true">
+        <statement>Configure auto-run with BOTH thresholds set: `min_events &gt;= 10` AND `min_fixability &gt;= 0.7`. Below either gate, the issue stays in tracker triage and is opened to an agent only via explicit `/autofix` slash command from a human. Disabling either threshold (`null`, `0`, `false`) MUST fail config validation.</statement>
+        <rationale>Sentry Seer's documented defaults; changelog and product docs describe this two-gate behaviour as the production-stable trigger that converted Autofix from preview to GA. Single-gate setups in third-party variants (Starsling) reverted to two gates after early-2026 token-cost incidents.</rationale>
+      </rule>
+
+      <example type="good" title="Both gates set with manual override">
+        <code lang="yaml"><![CDATA[
+seer:
+  autofix:
+    auto_run_threshold:
+      min_events: 10
+      min_fixability: 0.7
+    manual_trigger:
+      slash_command: "/autofix"
+      requires_human: true
+        ]]></code>
+        <note>Both gates set; humans can still force-trigger via slash command.</note>
+      </example>
+
+      <example type="bad" title="Single-gate config">
+        <code lang="yaml"><![CDATA[
+seer:
+  autofix:
+    auto_run_threshold:
+      min_events: 1   # any event opens a PR
+      # min_fixability omitted -> defaults to 0
+        ]]></code>
+        <note>Single-gate config; will open PRs for one-off network errors with no patch.</note>
+      </example>
+
+      <antipattern>
+        <description>"We will tune the threshold later — ship with `min_events: 1` for now."</description>
+        <reason>The first cohort of unfixable PRs poisons trust in the tool; teams disable Autofix entirely instead of raising the gate. Set both gates from day one.</reason>
+      </antipattern>
+
+      <reference path="templates/seer-org-config.yml">Sentry Seer org-level config with both gates wired.</reference>
+    </section>
+
+    <section name="pr-body-bidirectional-link">
+      <p>The PR body is the only place humans see the agent's reasoning. Without the alert backlink, reviewers cannot validate that the patch addresses THIS exception versus a near-duplicate. Without the test path, reviewers cannot tell whether the fix was actually verified. The bidirectional link (alert → PR and PR → alert) closes the audit loop expected by SOC2 and HIPAA reviewers.</p>
+
+      <rule testable="true">
+        <statement>The PR body MUST contain (a) the alert URL inside a `Sentry alert:` (or vendor equivalent) line, (b) a `Root cause` section of one to three sentences, (c) a `Test added:` line with the test file path, and (d) a reviewer checklist with at least one unchecked item ("I have validated the patch addresses the alert"). The tracker side MUST be configured to render the PR URL on the alert page (Seer SCM Settings, Rollbar PR webhook, Bugsink GitHub integration). A PR with any of (a)/(b)/(c) missing fails the policy check and must not be merged.</statement>
+        <rationale>Reviewers under load default to "merge if CI green"; the missing-context PR is exactly where unrelated patches sneak in. The alert backlink also protects against duplicate PRs from re-triggered agents on the same alert.</rationale>
+      </rule>
+
+      <example type="good" title="Complete PR body">
+        <code lang="markdown"><![CDATA[
+## Sentry alert
+https://sentry.io/organizations/acme/issues/9182/
+
+## Root cause
+`PaymentCreateView` did not handle the `Idempotency-Key` header
+when value contained leading whitespace; `str.strip()` was missing
+before the cache lookup, causing a `KeyError` on retry.
+
+## Test added
+`payments/tests/test_views.py::test_idempotency_key_strips_whitespace`
+
+## Reviewer checklist
+- [ ] I have validated the patch addresses the alert
+- [ ] CI is green on the regression test
+        ]]></code>
+        <note>All four required pieces present; reviewer can audit in 30 seconds.</note>
+      </example>
+
+      <example type="bad" title="Body with no context">
+        <code lang="markdown"><![CDATA[
+## Summary
+Fix KeyError in payments.
+
+(no alert URL, no test path, no checklist)
+        ]]></code>
+        <note>Indistinguishable from a manual fix; cannot be audited against the alert.</note>
+      </example>
+
+      <antipattern>
+        <description>The agent posts the alert URL as a comment after PR creation, "to keep the body clean".</description>
+        <reason>Comments are not preserved on squash-merge; the audit trail breaks at release time. The link MUST live in the PR body itself.</reason>
+      </antipattern>
+
+      <reference path="templates/pr-body.md">Reusable PR body skeleton with all four required sections.</reference>
+    </section>
+
+    <section name="draft-bot-identity-gate">
+      <p>Each layer is necessary on its own: draft state stops accidental clicks during triage; the dedicated bot identity makes audit logs filterable and lets branch-protection target bot-authored commits specifically; the CODEOWNERS rule forces human accountability on every patch. None of the three on its own is enough — bots have shipped self-approved PRs whenever any layer is missing.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST open the PR with `draft: true`. The author MUST be a dedicated identity (GitHub App preferred over PAT, or `seer-by-sentry[bot]` / `bugsink-bot` / equivalent) — never the human who installed the integration. The PR MUST carry the label `agent:&lt;tracker&gt;` (e.g., `agent:seer`, `agent:rollbar`). Branch protection MUST require at least one approving review from a CODEOWNERS-listed human on agent-authored commits, with `Require approval of the most recent reviewable push` enabled so any new commit by the agent re-triggers review. A merge by the bot identity MUST be denied by repository policy.</statement>
+        <rationale>GitHub does not provide first-class "bot-only path" branch protection; the combination of bypass-list (NOT containing the bot), `Require approval of most recent push`, and a label-aware policy bot (palantir/policy-bot or label-based-pr-policy-action) is the documented workaround. Microsoft's Azure governance pattern and igotasite4that's coding-agent security write-up converge on this exact triad.</rationale>
+      </rule>
+
+      <example type="good" title="Policy-bot config with label and CODEOWNERS">
+        <code lang="yaml"><![CDATA[
+# .github/policy-bot.yml
+policy:
+  approval:
+    - or:
+        - human review on agent PR
+rules:
+  - name: human review on agent PR
+    if:
+      has_author_in:
+        users: ["seer-by-sentry[bot]", "bugsink-bot", "rollbar-app[bot]"]
+      has_labels: ["agent:seer", "agent:bugsink", "agent:rollbar"]
+    requires:
+      count: 1
+      teams: ["acme/maintainers"]
+        ]]></code>
+        <note>Label + bot author + CODEOWNERS team form the deny-by-default gate.</note>
+      </example>
+
+      <example type="bad" title="Minimal branch protection with no bot detection">
+        <code lang="yaml"><![CDATA[
+# branch-protection: only required_approving_review_count: 1
+# (no bot detection, no label, no "most recent push" rule)
+required_approving_review_count: 1
+        ]]></code>
+        <note>Bot can be on the bypass list, or the agent's own +1 from a teammate counts.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent opens the PR as ready-for-review with `auto_merge: true` and "we trust CI to catch problems".</description>
+        <reason>CI confirms tests pass; it cannot judge whether the patch addresses the right alert or introduces a security regression. The draft state plus human review is the only place that judgement lives.</reason>
+      </antipattern>
+
+      <reference path="templates/seer-org-config.yml">Org config showing `pr_mode: draft` and required label.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/seer-org-config.yml" purpose="Sentry Seer auto_run config with thresholds, repo list, draft mode, body template."/>
+      <template path="templates/pr-body.md" purpose="Reusable PR body skeleton with alert link, root-cause section, test path, reviewer checklist."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.sentry.io/product/ai-in-sentry/seer/autofix/">Sentry Seer Autofix product docs.</link>
+      <link href="https://sentry.io/changelog/autofix-beta-now-available/">Autofix changelog (threshold defaults).</link>
+      <link href="https://blog.sentry.io/sentry-ai-debugger-autofix-superpower-traces/">Sentry blog: Autofix + distributed traces.</link>
+      <link href="https://www.bugsink.com/">Bugsink (Sentry-compatible self-hosted) — same DSN, same body convention.</link>
+      <link href="https://rollbar.com/">Rollbar MCP — exposes trace context to coding agents for PR bodies.</link>
+      <link href="https://github.com/palantir/policy-bot">palantir/policy-bot — label-aware merge policy.</link>
+      <link href="https://github.com/marketplace/actions/label-based-pr-policy-action">Label-based PR policy GitHub Action.</link>
+      <link href="https://github.com/orgs/community/discussions/172019">GitHub community discussion: Copilot agent + n+1 approvals.</link>
+      <link href="https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ai-agents/governance-security-across-organization">Microsoft Cloud Adoption Framework — AI agent governance.</link>
+      <link href="https://igotasite4that.com/blog/securing-ai-coding-agent-workflows/">Securing AI coding agent workflows (sandbox + review gates).</link>
+    </see-also>
+  </content>
+</methodology>
