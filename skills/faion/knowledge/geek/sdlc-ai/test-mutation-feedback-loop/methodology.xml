@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="test-mutation-feedback-loop">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Replace coverage gates with mutation testing scoped to changed files; feed surviving-mutants report back to the agent each iteration until score clears the threshold.</summary>
+    <tags>
+      <tag>mutation-testing</tag>
+      <tag>stryker</tag>
+      <tag>agent-feedback</tag>
+      <tag>ci-gate</tag>
+      <tag>test-quality</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Mutation Testing as the Agent Feedback Signal</title>
+    <summary>Coverage percent is a near-useless signal for AI-written tests — agents can hit 90% line coverage with assertions that never observe a mutation. Replace coverage gates with mutation testing (Stryker, mutmut, PIT) scoped to changed files, and feed the surviving-mutants report back into the agent's next iteration. The gate passes only when the mutation score on the diff clears a threshold (typical: 70 break / 80 high). Meta's ACH (FSE 2025) extended the pattern: an LLM both generates targeted mutants for a domain (privacy, compliance, payments) and writes the tests that kill them — 73% of ACH-suggested tests merged at Messenger and WhatsApp.</summary>
+    <why>
+      <p>Mutation testing measures whether tests actually detect behavior changes — the only "truth-bearing" signal cheap enough to put behind a CI gate. One DEV.to teardown reported "93% line coverage, 34% mutation score" on AI-written tests: the assertions existed but trivial mutants survived. Agents that consume the mutation report converge on stronger assertions because each surviving mutant is a concrete, reproducible failure — far better feedback than a coverage delta.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Critical business logic where a wrong answer is expensive: payments, auth, pricing, rules engines, tax/refund logic.</item>
+        <item>CI quality gates on PRs authored or co-authored by coding agents.</item>
+        <item>Retrofitting a test suite onto legacy code that has shipped without one.</item>
+        <item>Per-file gates on libraries where the public API surface is small and well bounded.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Slow test suites where mutation cost (N_mutants x test_time) makes CI unaffordable — fix the suite first.</item>
+        <item>Generated/serialization code where most mutants are equivalent (a + b vs b + a on a commutative op).</item>
+        <item>Greenfield prototypes still discovering the spec — the test set churns too fast to gate on.</item>
+        <item>UI/visual code where behavior is "looks right" rather than a checkable invariant.</item>
+      </list>
+    </when-not-to-use>
+    <section name="changed-file-gate">
+      <p>Full-suite mutation runs are too slow for per-PR CI. Configure the runner (Stryker, mutmut, PIT) with incremental mode and feed it only the files that changed in the PR. The CI fails when the score on the diff falls below the break threshold, regardless of overall project score.</p>
+      <rule testable="true">
+        <statement>CI MUST run mutation testing scoped to changed files on every agent-authored PR with break: 70, low: 60, high: 80 thresholds. The job MUST fail (non-zero exit) when the diff mutation score falls below break. Coverage percent alone MUST NOT be used as the merge gate when an LLM authored or modified the tests.</statement>
+        <rationale>Coverage measures execution; mutation measures detection. AI-written tests routinely show high coverage with low mutation score because assertions are weak ("not None", "len > 0"). Mutation surfaces every weak assertion as a concrete surviving mutant.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Stryker scoped to changed JS/TS files
+{ git diff --name-only -z origin/main -- 'src/**/*.ts' ;
+  git ls-files --others --exclude-standard -z -- 'src/**/*.ts' ; } \
+  | xargs -0 -I {} npx stryker run --mutate {}
+      ]]></code>
+        <note>Only changed files mutated; CI cost stays bounded.</note>
+      </example>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+# Coverage-only gate; AI agents cheat through it
+- run: pytest --cov=src --cov-fail-under=90
+      ]]></code>
+        <note>90% coverage with weak assertions still passes; mutants survive.</note>
+      </example>
+      <antipattern>
+        <description>Lowering the break threshold whenever a PR fails it.</description>
+        <reason>The threshold ratchet is the gate; relaxing it on red converts mutation testing into theatre.</reason>
+      </antipattern>
+    </section>
+    <section name="feedback-loop">
+      <p>A surviving mutant is the strongest possible feedback for an agent: a small, deterministic source diff that did not break a single test. Capture the mutation report (Stryker JSON, mutmut output, ACH report) and pass it to the next agent turn as context, asking the agent to add assertions that kill specific mutants — not to "improve coverage." Stop only when the score crosses the threshold or the agent declares an equivalent mutant with justification.</p>
+      <rule testable="true">
+        <statement>When mutation CI fails, the next agent turn MUST receive (a) the list of surviving mutants with file, line, mutator name, and original-vs-mutated source, and (b) the explicit instruction "add or strengthen assertions that detect each mutant; do not change source under test." The loop MUST terminate either by clearing the threshold or by the agent labelling each remaining mutant as equivalent with a one-line justification committed to mutants.equivalent.md.</statement>
+        <rationale>Without the structured surviving-mutants list, the agent re-runs coverage tactics that already failed. With it, the agent has unambiguous targets and converges in 1-3 iterations on real-world legacy retrofit benchmarks (Meta ACH: 73% merge rate at Messenger/WhatsApp).</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# After mutation CI fails:
+jq '.files | to_entries[] | .value.mutants[] | select(.status=="Survived")
+   | {file:.location.start.line, mutator:.mutatorName, replacement}' \
+   reports/mutation/mutation.json > surviving.json
+
+# Pass surviving.json to the agent as the next prompt context
+cat templates/mutation-prompt.txt surviving.json | claude -p
+      ]]></code>
+        <note>Structured input means the agent acts on rows, not vibes.</note>
+      </example>
+      <example type="bad">
+        <code lang="text"><![CDATA[
+Prompt: "Mutation testing failed, please improve test coverage."
+      ]]></code>
+        <note>Agent cannot tell which mutants survived; falls back to weak assertions.</note>
+      </example>
+      <antipattern>
+        <description>Marking every surviving mutant as equivalent without justification to make CI green.</description>
+        <reason>Equivalent-mutant claims must be auditable; an unreviewed equivalent.md is the same escape hatch as a coverage waiver.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/stryker.conf.json" purpose="Stryker config with break/high thresholds and incremental mode."/>
+      <template path="templates/mutation-prompt.txt" purpose="Prompt fragment that consumes a surviving-mutants list and asks for targeted assertions."/>
+    </templates>
+    <see-also>
+      <link href="https://testdouble.com/insights/keep-your-coding-agent-on-task-with-mutation-testing"/>
+      <link href="https://stryker-mutator.io/docs/stryker-js/configuration/"/>
+      <link href="https://engineering.fb.com/2025/09/30/security/llms-are-the-key-to-mutation-testing-and-better-compliance/"/>
+      <link href="https://arxiv.org/abs/2501.12862"/>
+    </see-also>
+  </content>
+</methodology>
