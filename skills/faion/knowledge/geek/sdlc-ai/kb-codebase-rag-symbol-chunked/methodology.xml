@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="kb-codebase-rag-symbol-chunked">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Chunk codebase RAG indexes by AST symbol (one chunk per function/class/method), key by SHA for incremental re-embedding, and expose retrieval via an MCP tool.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>codebase-indexing</tag>
+      <tag>symbol-chunking</tag>
+      <tag>mcp</tag>
+      <tag>vector-search</tag>
+    </tags>
+    <category>kb</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Codebase RAG with Symbol-Boundary Chunking</title>
+    <summary>When building a vector index for a coding agent, chunk by AST symbol — one chunk per top-level function, class, or method, padded with the file path, the enclosing class signature, and 1-2 sibling-doc-comments — instead of fixed character or line windows. Each chunk carries metadata {path, symbol, kind, signature, sha} and is keyed by sha:path:symbol so retrieval returns whole, compilable units, never half-functions. Re-embed only chunks whose sha changed; the index is rebuilt incrementally on every commit and consumed by the agent via an MCP "code search" tool, never by string-grepping the index.</summary>
+    <why>
+      <p>Fixed-size chunking (the default in most generic RAG starter kits) splits code mid-function and ranks a chunk that ends at line 47 of an 80-line method as the top hit; the agent then tries to use a half-function as ground truth. Symbol-boundary chunking matches how humans cite code: by function, by class, by method. Anthropic's claude-context reference, Cursor's 2025 indexing post, and Sourcegraph Cody's chunker all converge on this pattern. The metadata-rich chunks let the agent do hybrid search (vector recall + structured filter on kind=function AND path~auth/), which beats pure vector top-k by 30-50% on real "find the implementation" tasks.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Repos large enough that the agent cannot keep the whole tree in context (&gt;10k LOC).</item>
+        <item>Multi-language repos where one chunker (tree-sitter) covers everything.</item>
+        <item>Q&amp;A / "explain this codebase" agents that surface context to humans, not just to other agents.</item>
+        <item>Onboarding flows where the agent narrates "here's the auth pipeline" by stitching retrieved chunks.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Repos under ~5k LOC — full-tree context fits in a single Claude/GPT call.</item>
+        <item>Agents that exclusively edit code with a working LSP / symbol index — a vector index is duplicate work.</item>
+        <item>Compliance-restricted code where the embedding model would leak source to a third-party API.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="symbol-chunk-rule">
+      <p>A retrieval hit must be a unit the agent can quote, paste, or reason about as a whole. Symbol-boundary chunks satisfy that; fixed-window chunks do not.</p>
+
+      <rule testable="true">
+        <statement>The codebase RAG indexer MUST emit ONE chunk per top-level function, class, or method as parsed by tree-sitter (or equivalent AST tooling). Each chunk MUST carry the metadata record {path, symbol, kind, signature, start_line, end_line, sha} where sha is sha256(symbol_body_text). The chunk body MUST be padded with the file path, enclosing class signature (if any), and any preceding doc-comment block, but MUST NOT cross symbol boundaries. The index MUST reject and refuse to ingest any chunk that does not parse as a complete symbol per the language's tree-sitter grammar.</statement>
+        <rationale>Sub-symbol splits make the top hit unusable; cross-symbol windows make the top hit ambiguous. The SHA-keyed record turns "did this code change" into a constant-time check that drives incremental embedding. The signature-padding gives the embedding model the strongest cheap signal: a function called verify_jwt(token: str) -&gt; Claims is closer in vector space to "verify a token" than the body alone.</rationale>
+      </rule>
+
+      <example type="good" title="Well-formed symbol chunk record">
+        <code lang="python"><![CDATA[
+{
+  "path": "auth/jwt.py",
+  "symbol": "verify_jwt",
+  "kind": "function",
+  "signature": "def verify_jwt(token: str, *, jwks_url: str) -> Claims",
+  "start_line": 41,
+  "end_line": 78,
+  "sha": "9f3a...c1",
+  "body": "def verify_jwt(token: str, *, jwks_url: str) -> Claims:\n    \"\"\"Verify ...\"\"\"\n    ..."
+}
+        ]]></code>
+        <note>Compilable, quotable, citable. Top-1 retrieval gives the agent something it can paste verbatim.</note>
+      </example>
+
+      <example type="bad" title="Default 1024-char fixed window">
+        <code lang="python"><![CDATA[
+# Default 1024-char window
+chunk = source_text[offset:offset+1024]
+# Result: chunk ends mid-function, next chunk starts mid-function
+        ]]></code>
+        <note>The agent gets half a function and confidently asserts behaviour the missing half contradicts.</note>
+      </example>
+
+      <antipattern>
+        <description>Embedding raw 1024-char windows because the RAG starter kit defaults to it.</description>
+        <reason>The default exists to make demos work on arbitrary text; on code it actively misleads the agent and inflates retrieval cost (more chunks, lower per-chunk signal).</reason>
+      </antipattern>
+
+      <reference path="templates/chunk_schema.json">JSON-Schema for the metadata record.</reference>
+      <reference path="templates/treesitter_chunker.py">Reference chunker emitting one record per top-level symbol.</reference>
+    </section>
+
+    <section name="incremental-index-rule">
+      <p>Re-embedding the whole repo on every commit is wasteful and slow. The SHA-keyed record makes incremental rebuild trivial: list current symbols, intersect with the prior manifest, embed only deltas, soft-delete removed SHAs.</p>
+
+      <rule testable="true">
+        <statement>The indexer MUST maintain a manifest index/manifest.json listing every committed (path, symbol, sha) triple. On every commit, the indexer MUST: (a) re-extract symbols for files in the diff, (b) embed ONLY chunks whose sha is new, (c) remove chunks whose sha is no longer in the manifest, (d) append manifest.json to the commit. Retrieval MUST be exposed to agents as an MCP tool code_search(query, *, kind=None, path_glob=None, top_k=5) returning the metadata record + body; agents MUST NOT issue raw vector queries against the underlying store.</statement>
+        <rationale>Incremental rebuild keeps embed cost proportional to diff size, not repo size — required for any repo over ~50k LOC where full reindex is minutes-to-hours. The MCP tool abstraction lets the index swap (Qdrant → pgvector → Turbopuffer) without touching agent prompts, and the structured kind / path_glob filters give the agent the same hybrid-search win shown in Cursor's and Cody's published numbers (30-50% precision lift over pure top-k).</rationale>
+      </rule>
+
+      <example type="good" title="Manifest-based incremental rebuild">
+        <code lang="json"><![CDATA[
+// .index/manifest.json
+{
+  "embedding_model": "voyage-code-3",
+  "chunks": [
+    {"path": "auth/jwt.py", "symbol": "verify_jwt", "sha": "9f3ac1..."},
+    {"path": "auth/jwt.py", "symbol": "JWKS",       "sha": "12bb5e..."}
+  ]
+}
+        ]]></code>
+        <note>Manifest lets the next commit compute deltas in O(changed-files) without reading the vector store.</note>
+      </example>
+
+      <example type="bad" title="Full nuke-reindex on every commit">
+        <code lang="bash"><![CDATA[
+# CI step: nuke + reindex on every commit
+rm -rf .index/ && python rag/build_index.py
+        ]]></code>
+        <note>Re-embeds everything on every commit; minutes-to-hours of latency, embedding-cost bill scales with traffic, not change.</note>
+      </example>
+
+      <antipattern>
+        <description>Letting the agent issue raw vector queries against the store directly.</description>
+        <reason>Couples agent prompts to the vector backend; swapping engines (or upgrading the embedding model) becomes a multi-prompt rewrite. The MCP tool boundary keeps the agent contract stable.</reason>
+      </antipattern>
+
+      <reference path="templates/treesitter_chunker.py">Chunker emitting (path, symbol, sha) triples for the manifest.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/chunk_schema.json" purpose="JSON-Schema for the per-chunk metadata record."/>
+      <template path="templates/treesitter_chunker.py" purpose="Reference 60-line chunker that walks tree-sitter AST and emits one record per top-level symbol."/>
+    </templates>
+
+    <see-also>
+      <link href="https://github.com/zilliztech/claude-context">claude-context — Anthropic-aligned reference RAG indexer for codebases.</link>
+      <link href="https://www.cursor.com/blog/codebase-indexing">Cursor — symbol-boundary chunking write-up (2025).</link>
+      <link href="https://github.com/sourcegraph/cody/tree/main/agent">Sourcegraph Cody chunker — production AST-driven implementation.</link>
+      <link href="https://modelcontextprotocol.io/specification">MCP — the protocol for exposing code_search as a stable tool.</link>
+      <link href="https://docs.voyageai.com/docs/embeddings">Voyage voyage-code-3 — code-tuned embedding model commonly used here.</link>
+      <link href="https://qdrant.tech/articles/incremental-indexing/">Qdrant — incremental indexing patterns.</link>
+    </see-also>
+  </content>
+</methodology>

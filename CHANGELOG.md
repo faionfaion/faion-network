@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 - chore: migrate lang-csharp-roslyn-analyzer-errors, lang-go-tygo-frontend-contract, lang-jvm-jreleaser-tag-release to methodology.xml (feature-047 batch A5)
 - chore: migrate inc-runbook-as-markdown-tagged-steps, inc-tool-tier-approval-gate, kb-agents-md-context-pyramid to methodology.xml (feature-047 batch A3)
 - chore: migrate gov-sonarqube-ai-code-gate, inc-postmortem-auto-draft-no-publish, inc-read-only-investigation-default to methodology.xml (feature-047 batch A2)
+- chore: migrate kb-codebase-rag-symbol-chunked, kb-symbol-index-fresh-tags, kb-versioned-agent-memory-files to methodology.xml (feature-047 batch A4)
 - chore: migrate nginx-reverse-proxy, ssl-tls-management, server-init-bootstrap to methodology.xml (feature-045 batch FU)
 - chore: migrate secrets-management, shell-productivity, ssh-hardening to methodology.xml (feature-045 batch FV)
 - chore: migrate product-discovery, product-launch, release-planning to methodology.xml (feature-045 batch FT)
