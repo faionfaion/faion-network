@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lint-ruff-and-biome-as-default">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Use ruff as the sole Python linter+formatter and biome as the sole JS/TS linter+formatter; both are single Rust binaries with sub-100ms startup, replacing legacy tool chains.</summary>
+    <tags>
+      <tag>ruff</tag>
+      <tag>biome</tag>
+      <tag>linting</tag>
+      <tag>formatting</tag>
+      <tag>python</tag>
+    </tags>
+    <category>lint</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Ruff for Python and Biome for JS/TS as the Sole Linter+Formatter</title>
+    <summary>For new Python projects, ruff is the SOLE linter and formatter — it replaces black, flake8, isort, pyupgrade, autoflake and pydocstyle, ships 900+ rules, and runs 10–100x faster than the previous Python toolchain. For new JavaScript/TypeScript/JSX/CSS/GraphQL projects, biome is the SOLE linter and formatter — it replaces ESLint and Prettier with 491 rules and a single config file. Both tools have --fix / --write flags that AI agents call after every code edit.</summary>
+    <why>
+      <p>Both tools are single Rust binaries with no Node or Python plug-in chain — startup is sub-100ms even on cold cache, so they fit in pre-commit hooks and inside the agent's edit-test loop without slowing the inner cycle. Ruff covers 900+ rules including Django (DJ), bugbear (B), pyupgrade (UP), no-print (T20), pyflakes (F), pycodestyle (E/W), isort (I), simplify (SIM); biome v2 (Biotype, Feb 2026) added type-aware lints and multi-file project understanding and is in production at AWS, Google, Microsoft, Cloudflare, Coinbase, Discord, Slack and Vercel. Consolidating to one tool per language eliminates the "two formatters disagree" trap that produces no-op churn and confuses LLM agents during reflexion loops.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any new Python project — start with ruff in pyproject.toml, no other linter or formatter.</item>
+        <item>Any new JS/TS project — start with biome in biome.json, no ESLint, no Prettier.</item>
+        <item>Any agent-driven workflow where the inner loop is "edit → format → test"; both tools' speed makes the inner loop sub-second.</item>
+        <item>Any monorepo migrating off black/flake8/isort or ESLint/Prettier — migrate one package at a time.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Legacy projects with deeply customized ESLint plug-ins that have no biome equivalent yet — migrate incrementally rather than mid-sprint.</item>
+        <item>Projects that ship a public ESLint/Prettier config as a product (e.g., a shareable preset) — biome is not yet a drop-in replacement for that consumption pattern.</item>
+        <item>One-off scripts not part of a package; running a formatter on a single ad-hoc file is overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="single-tool-rule">
+      <rule testable="true">
+        <statement>For every Python source file, the agent MUST run `ruff check --fix` and then `ruff format` after each edit; for every JS/TS/JSX/TSX source file, the agent MUST run `biome check --write` after each edit. Repositories MUST NOT also configure black, flake8, isort, autoflake, pyupgrade, ESLint, or Prettier — these tools' configs (.flake8, .eslintrc, .prettierrc) MUST be removed when migrating.</statement>
+        <rationale>One canonical formatter per language gives the agent a fixed, sub-second autofix step; the formatter's output is the file's canonical form, so subsequent edits never trigger formatting churn. Both tools are single static Rust binaries with no plug-in resolution, which is why their cold-start beats the legacy chain by 10–100x and makes the inner loop reflexion-friendly.</rationale>
+      </rule>
+
+      <example type="good" title="Agent inner loop after editing a Python file">
+        <code lang="bash"><![CDATA[
+# agent inner loop after editing src/users.py
+$ uv run ruff check --fix src/users.py
+$ uv run ruff format src/users.py
+$ uv run pytest tests/test_users.py
+      ]]></code>
+        <note>One linter, one formatter, one test command — three deterministic calls, no negotiation between tools.</note>
+      </example>
+
+      <example type="bad" title="Legacy chain with multiple tools fighting">
+        <code lang="bash"><![CDATA[
+$ black src/users.py
+$ isort src/users.py
+$ flake8 src/users.py        # disagrees with black on line length
+$ ruff check src/users.py    # also installed
+      ]]></code>
+        <note>Four tools, two disagreements; the agent rewrites the same line three times across reflexion ticks.</note>
+      </example>
+
+      <antipattern>
+        <description>Keeping ESLint installed "for the team's existing rules" while adding biome on the side.</description>
+        <reason>The two formatters fight on quotes, semicolons, and trailing commas; the inner loop becomes "biome fixes, eslint un-fixes, repeat" and tests never get to run.</reason>
+      </antipattern>
+    </section>
+
+    <section name="config-co-location">
+      <rule testable="true">
+        <statement>Python projects MUST place all ruff configuration in `pyproject.toml` under the `[tool.ruff]` and `[tool.ruff.lint]` tables; the legacy files `.flake8`, `setup.cfg [flake8]`, `tox.ini [isort]`, `pyproject.toml [tool.black]`, `pyproject.toml [tool.isort]` MUST be removed during migration. JavaScript/TypeScript projects MUST place all biome configuration in `biome.json` (or `biome.jsonc`) at the project root with the `$schema` field set; `.eslintrc*`, `.prettierrc*`, and `.editorconfig` (for JS-only repos) MUST be removed.</statement>
+        <rationale>A single config file means the agent reads one place to know what rules apply. Stale `.eslintrc` next to `biome.json` confuses contributors and IDEs alike, leaks rules that biome does not honor, and breaks the determinism that the formatter's autofix loop depends on.</rationale>
+      </rule>
+
+      <example type="good" title="Single pyproject.toml ruff config">
+        <code lang="toml"><![CDATA[
+# pyproject.toml — entire ruff config in one place
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "DJ", "T20"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+      ]]></code>
+        <note>One file, one schema, one source of truth.</note>
+      </example>
+
+      <example type="bad" title="Split, partly stale Python config">
+        <code lang="text"><![CDATA[
+# repo with split, partly stale Python config
+.flake8                      # max-line-length = 88
+pyproject.toml               # [tool.black] line-length = 100
+pyproject.toml               # [tool.ruff] line-length = 120
+      ]]></code>
+        <note>Three line-length values active in the same repo; whichever tool runs last wins, and CI vs hooks disagree.</note>
+      </example>
+
+      <antipattern>
+        <description>Leaving the old `.eslintrc.js` "for the IDE" after switching the CLI/hooks to biome.</description>
+        <reason>VS Code's ESLint extension still applies the old rules on save while biome rewrites them on commit; the file ping-pongs and the diff is unreviewable.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/pyproject-ruff.toml" purpose="[tool.ruff] block with the rule groups faion-network enforces (E/W/F/I/B/C4/UP/SIM/DJ/T20)."/>
+      <template path="templates/biome.json" purpose="Strict biome config with linter and formatter both enabled and recommended ruleset on."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.astral.sh/ruff/">Ruff documentation — rules, configuration, formatter.</link>
+      <link href="https://biomejs.dev/">Biome documentation — single toolchain for the web.</link>
+      <link href="https://docs.astral.sh/ruff/configuration/">Ruff configuration reference.</link>
+    </see-also>
+  </content>
+</methodology>
