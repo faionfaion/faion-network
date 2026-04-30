@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tracker-ai-triage-classify-route">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Six-step AI triage agent: classify, severity+SLA, dedupe, label, route, assign — with blocker gate and single transparency comment per issue.</summary>
+    <tags>
+      <tag>triage</tag>
+      <tag>issue-tracker</tag>
+      <tag>ai-agent</tag>
+      <tag>classification</tag>
+      <tag>routing</tag>
+    </tags>
+    <category>tracker</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>AI Triage, Classify, and Route Inbound Issues</title>
+    <summary>Pipe every inbound bug or request through a six-step triage agent before any human picks it up: classify type (bug/story/epic/task/spike), score severity with an attached SLA timer (blocker/critical/major/minor), dedupe against the last 1000 issues by title+body cosine similarity, apply /area/*, /component/*, /lang/* labels, route to the CODEOWNERS-derived team, and assign to the least-loaded engineer on that team. Severity = blocker MUST require an on-call confirmation before the SLA timer arms; everything else is auto-routed. The agent emits a single comment listing every classification it applied so the assignee can dispute any field with one reaction.</summary>
+    <why>
+      <p>April 2026 reports from Linear's Triage Intelligence, Atlassian's AI Backlog, and bug-triage vendor case studies converge on the same finding: manual triage is the bottleneck above roughly 50 inbound issues per week, and bug-classification BERT-class models plus historical assignment data hit accuracy high enough to remove the manual step on everything except blockers. The mechanism is that classification, dedupe, and routing are independently cheap signals — running them all on the same input compresses minutes of human time per issue into seconds, and the single transparency comment lets the receiving engineer reject any field cheaper than re-triaging from scratch. Skipping the dedupe step is the most common failure mode and produces duplicate work the agent itself authored.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>High-volume inbound queues over ~50 issues per week where manual triage is the documented bottleneck.</item>
+        <item>Linear's Triage Intelligence or Jira's AI Backlog can be the drop-in implementation rather than a custom build.</item>
+        <item>Multi-team monorepos that already maintain CODEOWNERS — routing piggybacks on the same matrix.</item>
+        <item>Teams with at least three months of historical issue + assignment data so the routing model has a non-cold-start.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Small teams (under five engineers) where the cost of triage agent setup exceeds manual work.</item>
+        <item>Domains where misclassification has security or legal consequences without specialist review.</item>
+        <item>Cold-start projects: under three months of history yields routing accuracy too low to act on without human review.</item>
+        <item>Single-repo solo projects — every issue is self-routed by definition.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="six-step-pipeline">
+      <p>Order matters because each step's output narrows the input for the next. Dedupe before classify wastes a model call on duplicates; assign before route assigns to the wrong team.</p>
+
+      <rule testable="true">
+        <statement>The triage agent MUST execute exactly these six steps in this order on every inbound issue: (1) classify type ∈ {bug, story, epic, task, spike}, (2) score severity ∈ {blocker, critical, major, minor} and arm an SLA timer, (3) dedupe by cosine similarity over title+body against the last 1000 issues with a 0.92 threshold, (4) apply `/area/*`, `/component/*`, `/lang/*` labels, (5) route to the CODEOWNERS-derived team, (6) assign to the least-loaded engineer on that team. If severity resolves to blocker the SLA timer MUST NOT arm and MUST NOT assign until an on-call human confirms via slash command or `/agent confirm-blocker` reaction; only after confirmation does the pipeline complete. If dedupe fires (similarity ≥ 0.92), the agent MUST close the new issue as `duplicate-of: #N`, link both ways, and stop — no labels or assignment.</statement>
+        <rationale>April 2026 Linear/Jira/Bugpilot data show the duplicate rate on inbound queues sits around 15-25%; running classify before dedupe burns the most expensive model call on issues that should never reach a human. The blocker gate exists because misclassifying a non-blocker as blocker arms a paging SLA — a non-trivial operational cost that justifies one slash-command round trip with the on-call.</rationale>
+      </rule>
+
+      <example type="good" title="Correct six-step pipeline with blocker gate">
+        <code lang="yaml"><![CDATA[
+pipeline:
+  - classify:        { types: [bug, story, epic, task, spike] }
+  - severity:        { levels: [blocker, critical, major, minor], arm_sla: true }
+  - dedupe:          { window: 1000, threshold: 0.92, on_match: close_as_duplicate }
+  - label:           { schemes: ["/area/*", "/component/*", "/lang/*"] }
+  - route:           { source: CODEOWNERS }
+  - assign:          { policy: least_loaded }
+gates:
+  on_severity_blocker:
+    require: human_confirm
+    via: ["/agent confirm-blocker", "oncall_slash"]
+    block: [arm_sla, assign]
+        ]]></code>
+        <note>Six steps fixed-order; blocker gates the SLA arm and assign; dedupe short-circuits the rest.</note>
+      </example>
+
+      <example type="bad" title="Wrong order: dedupe too late, no blocker gate">
+        <code lang="yaml"><![CDATA[
+pipeline:
+  - classify
+  - assign:   { policy: round_robin }
+  - dedupe                                # too late: already assigned
+gates: {}                                  # no blocker gate, SLA auto-arms
+        ]]></code>
+        <note>Dedupe runs after assignment, so duplicates burn an engineer's time; no blocker gate, so any false-positive blocker pages the on-call.</note>
+      </example>
+
+      <antipattern>
+        <description>Skip dedupe entirely "because the team will catch duplicates manually".</description>
+        <reason>Inbound duplicate rate at scale is 15-25%; manual catch happens after the engineer has read the issue, defeating the cost saving the triage agent was supposed to deliver.</reason>
+      </antipattern>
+
+      <reference path="templates/triage-pipeline.yaml">Pipeline config with the six steps and gates.</reference>
+    </section>
+
+    <section name="transparency-comment">
+      <p>Splitting classification across multiple comments or burying it in the issue body makes disputes expensive: the assignee must reconstruct what the agent decided. One comment with one row per field collapses dispute cost to a single emoji on the wrong row.</p>
+
+      <rule testable="true">
+        <statement>After the pipeline completes (or short-circuits on dedupe), the agent MUST post exactly one comment containing a fixed table with one row per classification field: type, severity, dedupe-target (or `none`), labels, team, assignee, sla-deadline. Each row MUST be self-contained on a single line so the assignee can react with `:x:` to that line to dispute it. The agent MUST listen for `:x:` reactions on its own comment and, on receipt, revert the disputed field, requeue the affected step, and edit the same comment in place with the new value. Posting the classification across multiple comments or as part of the issue body is forbidden because it breaks the per-row dispute reaction.</statement>
+        <rationale>Linear and Jira both treat comment reactions as the cheapest reviewer signal. Forcing the dispute path through one comment with one row per field gives the assignee a near-zero-cost veto; otherwise the cost of correcting a wrong assignment exceeds the cost of doing the triage manually, and adoption fails. Editing the same comment in place preserves the audit chain.</rationale>
+      </rule>
+
+      <example type="good" title="Single comment with per-row dispute surface">
+        <code lang="markdown"><![CDATA[
+**Triage**
+
+| field | value |
+|---|---|
+| type | bug |
+| severity | major (sla 2026-04-29 17:00) |
+| dedupe-target | none |
+| labels | /area/api, /component/orders, /lang/python |
+| team | api-platform |
+| assignee | @anna |
+
+React `:x:` on a row to dispute that field.
+        ]]></code>
+        <note>One comment, one row per decision; `:x:` on `severity` reverts severity only.</note>
+      </example>
+
+      <example type="bad" title="Multiple comments — no per-row dispute surface">
+        <code lang="markdown"><![CDATA[
+Set type to bug.
+Set severity to major.
+Set labels to ...
+Assigned to @anna.
+        ]]></code>
+        <note>Four comments instead of one; each dispute requires a thread reply, not a reaction. Assignee gives up and re-triages by hand.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent posts the classification only in the issue body via edits, not as a comment.</description>
+        <reason>The body has no per-row reaction surface; the assignee can only dispute by replying with prose, which the agent cannot programmatically parse.</reason>
+      </antipattern>
+
+      <reference path="templates/triage-pipeline.yaml">Pipeline config emits one comment per issue.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/triage-pipeline.yaml" purpose="Pipeline config with the six steps, the blocker gate, and dedupe threshold."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.webelight.com/blog/bug-triage-agents-ai-github-jira-automation"/>
+      <link href="https://bugpilot.io/2026/01/28/automated-bug-triage-ai-prioritization-reporting-guide/"/>
+      <link href="https://lobehub.com/skills/lobbi-docs-claude-triage"/>
+    </see-also>
+  </content>
+</methodology>
