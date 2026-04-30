@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lang-swift-harmonize-arch-tests">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Encode Swift architecture rules as @Test/@Test cases using Harmonize on SwiftSyntax; pair with swift-format, SwiftLint, and ST-0021 interop so violations fail CI with readable test names.</summary>
+    <tags>
+      <tag>swift</tag>
+      <tag>harmonize</tag>
+      <tag>architecture-tests</tag>
+      <tag>swift-testing</tag>
+      <tag>swiftlint</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Swift Architecture as Tests via Harmonize + Swift Testing</title>
+    <summary>Encode Swift architecture rules (layer boundaries, no-import constraints, naming, protocol conformance) as actual @Test/#expect cases using Harmonize on top of SwiftSyntax, run alongside the rest of the suite via swift test / Xcode CI. Pair with swift-format, SwiftLint, and Swift Testing's interop with XCTest (ST-0021, accepted Mar 2026) so an agent's structurally wrong PR fails CI with a readable test name like ViewModels_must_not_import_UIKit_failed.</summary>
+    <why>
+      <p>SwiftLint is regex-based; swift-format only reshapes layout. Neither understands architectural intent like "ViewModels must not import UIKit", "Services must implement Sendable", or "Domain types must not depend on Network module". Harmonize parses the project with SwiftSyntax and exposes the AST as a query API; rules become test bodies. With Swift Testing now interoperating with XCTest under ST-0021, the architecture suite runs alongside unit tests in a single command (swift test or xcodebuild test). When an LLM agent generates a SwiftUI view that imports the wrong layer, the failing test name and location ride back through the agent's harness — the deterministic refusal channel Apple's agentic-coding write-up assumes.</p>
+      <p>Architecture-as-tests beats architecture-as-README because the agent's tool-use loop only reacts to executable failures — Harmonize gives Swift the equivalent of ArchUnit (Java) or Konsist (Kotlin), rules expressed as code that fails CI, not as prose that drifts. Xcode 26.3's agentic coding mode reads these signals natively.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multi-target Swift projects (SPM packages, Xcode workspaces with multiple frameworks).</item>
+        <item>iOS apps following Clean / hexagonal / TCA architecture where layer leaks are the dominant regression class.</item>
+        <item>Codebases where AI agents commit production code (Xcode 26.3 agentic mode, Cursor-Swift, Claude Code via SwiftAgents).</item>
+        <item>Greenfield Swift packages where pinning architecture early prevents drift cheaply.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-file SwiftUI playgrounds or tutorials.</item>
+        <item>Apps with one module and no internal layering — Harmonize adds overhead without preventing anything.</item>
+        <item>Pre-Swift-5.9 codebases where SwiftSyntax's stable macros / parser contract is missing.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="harmonize-arch-rules">
+      <p>Harmonize (perrystreetsoftware/Harmonize) parses the project with SwiftSyntax and gives a fluent API over declarations: imports, types, protocols, paths. Each architecture rule lives as a @Test (Swift Testing) or XCTestCase (XCTest), runs in the standard test phase, and shows up in CI/IDE the same way as unit tests.</p>
+
+      <rule testable="true">
+        <statement>Every Swift module with internal layering MUST ship a Tests/Architecture/ target containing at least one Harmonize test per layer boundary. CI MUST run swift test --filter Architecture (or include the target in the default scheme) on every PR; failures block merge. Agents are forbidden from suppressing a Harmonize test by adding the offending file to a Harmonize excludedPaths list — fix the import instead.</statement>
+        <rationale>Architecture in a README is invisible to an LLM iterating on a fix; an architecture test fails the agent's tool-use loop with a specific symbol and file, which is the only signal an autonomous agent reliably reacts to.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="swift"><![CDATA[
+import Testing
+import Harmonize
+
+@Suite("Architecture")
+struct LayerBoundaries {
+  @Test("Domain must not import UIKit")
+  func domainNoUIKit() {
+    Harmonize.productionCode()
+      .filesIn("Sources/Domain")
+      .imports()
+      .assertNoneMatch { $0.name == "UIKit" }
+  }
+
+  @Test("ViewModels must end with ViewModel")
+  func viewModelNaming() {
+    Harmonize.productionCode()
+      .filesIn("Sources/Presentation/ViewModels")
+      .classes()
+      .assertAllMatch { $0.name.hasSuffix("ViewModel") }
+  }
+}
+        ]]></code>
+        <note>Each rule is one @Test; failure name pinpoints the violated invariant.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="swift"><![CDATA[
+// Documented only in README; nothing enforces it
+// Architecture: Domain layer must not depend on UIKit.
+
+// In Sources/Domain/User.swift
+import UIKit  // agent added this; nothing fails
+struct User {
+  var avatar: UIImage?
+}
+        ]]></code>
+        <note>Without an executing rule, README intent is silently lost.</note>
+      </example>
+
+      <antipattern>
+        <description>Adding Sources/Domain/User.swift to Harmonize's excludedPaths to make the failing test green.</description>
+        <reason>Excludes are meant for generated code; using them as an agent escape hatch turns the architecture suite into a no-op file-by-file.</reason>
+      </antipattern>
+
+      <reference path="templates/Package.swift">SPM manifest wiring Harmonize as a test dependency.</reference>
+    </section>
+
+    <section name="swift-testing-floor">
+      <p>Apple ships swift-format in the Xcode 16+ toolchain. SwiftLint adds idiomatic rules. Swift Testing (@Test, #expect) is the new framework; ST-0021 (accepted March 2026) lets XCTest-based suites and @Test suites coexist in one process so migrations don't require a big-bang rewrite.</p>
+
+      <rule testable="true">
+        <statement>Every Swift project's CI MUST run, in order: swift-format lint --strict --recursive Sources Tests, swiftlint --strict, swift test (which executes Harmonize + unit + integration tests via the ST-0021 bridge). All four steps MUST be green for merge. Agents are forbidden from passing --quiet or removing --strict to silence findings.</statement>
+        <rationale>A single command shape (swift test) for both unit and architecture tests means the agent's loop has one signal to interpret; mixing xcodebuild and swift test introduces format differences that LLMs misparse.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# bin/check (run by pre-commit and CI)
+set -euo pipefail
+swift-format lint --strict --recursive Sources Tests
+swiftlint --strict
+swift test --enable-code-coverage
+        ]]></code>
+        <note>Same script local + CI; agent reproduces failures verbatim.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# CI pipeline that drops strictness to "unblock" an agent PR
+swift-format lint --recursive Sources Tests || true
+swiftlint || true
+swift test || true
+        ]]></code>
+        <note>Suppressing exit codes turns the floor into theatre.</note>
+      </example>
+
+      <antipattern>
+        <description>Migrating tests to Swift Testing piecemeal but disabling the XCTest target instead of using the ST-0021 interop, leaving entire legacy suites unrun.</description>
+        <reason>The interop is what makes incremental migration safe; turning off XCTest leaves a coverage gap exactly while the rewrite is in progress.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/Package.swift" purpose="SPM package adding Harmonize and Swift Testing as test deps."/>
+    </templates>
+
+    <see-also>
+      <link href="https://github.com/perrystreetsoftware/Harmonize">Harmonize source and docs.</link>
+      <link href="https://forums.swift.org/t/we-built-harmonize-a-modern-open-source-linter-for-swift-that-enforces-architecture-as-unit-tests/79508">Swift forums announcement of Harmonize.</link>
+      <link href="https://github.com/realm/SwiftLint">SwiftLint reference.</link>
+      <link href="https://forums.swift.org/t/accepted-st-0021-targeted-interoperability-between-swift-testing-and-xctest/85331">ST-0021: Swift Testing / XCTest interop.</link>
+      <link href="https://www.apple.com/newsroom/2026/02/xcode-26-point-3-unlocks-the-power-of-agentic-coding/">Xcode 26.3 agentic coding announcement.</link>
+    </see-also>
+  </content>
+</methodology>
