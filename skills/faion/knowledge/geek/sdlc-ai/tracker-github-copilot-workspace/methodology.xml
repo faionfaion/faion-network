@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tracker-github-copilot-workspace">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Drive GitHub ticket-to-PR through Copilot Workspace four gates: spec, plan, diff, PR — each human-editable, none skippable. Every PR carries a snapshot link and Closes #N.</summary>
+    <tags>
+      <tag>github-copilot</tag>
+      <tag>copilot-workspace</tag>
+      <tag>pull-request</tag>
+      <tag>agentic-pr</tag>
+      <tag>tracker</tag>
+    </tags>
+    <category>tracker</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>GitHub Copilot Workspace Four-Gate Pipeline</title>
+    <summary>Drive every GitHub-hosted ticket-to-PR through Copilot Workspace's four explicit gates: (1) AI generates a current-state plus desired-state spec from the issue, (2) AI generates a file-level plan, (3) AI generates the diff, (4) AI opens the PR. The human can edit at every stage, and skipping any gate is a hard refusal — agents that go straight from issue to diff are configured to abort. Every Workspace PR includes an auto-attached comment with a read-only Workspace snapshot link so reviewers can see the spec and plan that produced the diff, not just the diff itself.</summary>
+    <why>
+      <p>GitHub published the four-gate flow as the canonical pattern for agentic PRs and reported a roughly 30% "agentic PR fail-rate" in April 2026 when teams skipped the spec/plan gates. The mechanism is reviewability: the snapshot link gives the reviewer the agent's chain-of-thought as artefacts they can read and react to, not as logs they have to dig out. Empirically the spec gate catches misread requirements before any code is written (cheapest fix), and the plan gate catches wrong-file changes before the diff exists (next-cheapest). Both gates are gone if the agent runs end-to-end without surfacing intermediate artefacts.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>GitHub-hosted single-repo issues with well-scoped acceptance criteria.</item>
+        <item>Bug fixes and small-to-medium features where reviewers want to see the agent's reasoning, not just the patch.</item>
+        <item>Greenfield bootstrap tickets where the spec gate is the only chance to align on direction before scaffolding lands.</item>
+        <item>Teams that already enforce branch protection requiring `Closes #N` in PR body — the four-gate flow guarantees the link.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Multi-repo changes — Workspace is single-repo per session and the four-gate flow does not span repos.</item>
+        <item>SLA-critical paths where the documented ~30% agentic PR fail-rate is unacceptable; route those through human-led changes.</item>
+        <item>Teams that prefer the autonomous Copilot coding-agent flow (assign Copilot directly, no Workspace UI) — different contract.</item>
+        <item>Trivial typo fixes pre-flagged auto-merge; gate cost exceeds the risk and slows trivial flow.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="four-gate-contract">
+      <p>Each gate produces one artefact the human can edit in place before the next gate runs. The orchestrator refuses to advance if the previous artefact is missing or untouched-but-unapproved.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST produce four artefacts in strict order: (a) `spec.md` containing current-state and desired-state bullet lists, (b) `plan.md` listing per-file changes with line-range hints, (c) `diff.patch` containing the actual edit, (d) the PR. Each gate emits its artefact, waits for an explicit human "approve" event (UI button click in Workspace, or a `:white_check_mark:` reaction on the gate comment for headless runs), and only then advances. The agent MUST refuse to generate gate N+1 if gate N has no approval event in its journal; refusal lands as a comment "blocked at gate N" and the run aborts.</statement>
+        <rationale>GitHub's four-stage gate is the documented Copilot Workspace contract precisely so reviewers can edit the spec/plan cheaply before the diff exists. The ~30% agentic PR fail-rate reported in April 2026 concentrates in runs that skipped intermediate gates, because misread intent flows downstream and burns a review cycle on rework.</rationale>
+      </rule>
+
+      <example type="good" title="Four artefacts, four approvals, no skip path">
+        <code lang="yaml"><![CDATA[
+gates:
+  - id: spec
+    artefact: .copilot/spec.md
+    require_human_approve: true
+  - id: plan
+    artefact: .copilot/plan.md
+    require_human_approve: true
+  - id: diff
+    artefact: .copilot/diff.patch
+    require_human_approve: true
+  - id: pr
+    artefact: github.pull_request
+on_skip: refuse_and_comment "blocked at gate {{id}}"
+        ]]></code>
+        <note>Four artefacts, four approvals, no skip path.</note>
+      </example>
+
+      <example type="bad" title="Single-gate flow — agent emits PR with no spec or plan">
+        <code lang="yaml"><![CDATA[
+gates:
+  - id: pr
+    artefact: github.pull_request
+    body: "auto-generated by agent"
+        ]]></code>
+        <note>Single-gate flow — the agent emits a PR with no spec or plan, reviewers must reconstruct intent from the diff, fail-rate spikes.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent emits all four artefacts in a single comment to "save round-trips".</description>
+        <reason>Defeats the per-gate edit point; reviewers cannot edit the spec without also seeing the diff, so they anchor on the diff and skip the cheap spec correction.</reason>
+      </antipattern>
+
+      <reference path="templates/pr-template.md">PR body template with `Closes #N` and snapshot link slot.</reference>
+    </section>
+
+    <section name="snapshot-and-link">
+      <p>The PR body is the only place where reviewers and the tracker both see the agent's chain-of-thought. A missing snapshot link forces reviewers back into the diff; a missing `Closes #N` keyword leaves the issue open after merge.</p>
+
+      <rule testable="true">
+        <statement>Every agent-opened PR MUST include in its body (a) a single line matching `^(Closes|Fixes) #[0-9]+` referencing the source issue, and (b) a Workspace snapshot URL on the line `Workspace snapshot: https://github.com/copilot/spaces/&lt;id&gt;`. A repository CI check MUST grep both lines and fail the PR if either is missing. Editing the PR body to remove either line MUST re-trigger the failing check, blocking merge until restored. The agent MUST NOT edit the snapshot URL after open; if the spec or plan changes, it opens a fresh PR.</statement>
+        <rationale>April 2026 saw a documented GitHub bug where Copilot agent stripped the link text from the PR body; the closing keyword's absence left issues open across an entire org. Making both lines required and CI-enforced is the only way to guarantee the round-trip given that any tooling can mutate the body. Snapshot URL stability matters because reviewers cite it in their review comments — overwriting it invalidates that audit trail.</rationale>
+      </rule>
+
+      <example type="good" title="Closing keyword on own line, snapshot URL preserved">
+        <code lang="markdown"><![CDATA[
+Closes #4421
+
+## Summary
+Reject empty `items` on `POST /api/orders` with 422.
+
+## Workspace snapshot
+Workspace snapshot: https://github.com/copilot/spaces/abc123
+        ]]></code>
+        <note>Closing keyword on its own line, snapshot URL preserved, regex passes.</note>
+      </example>
+
+      <example type="bad" title="Missing closing keyword and snapshot URL">
+        <code lang="markdown"><![CDATA[
+## Summary
+Reject empty items on POST /api/orders.
+fixes the bug from issue 4421
+        ]]></code>
+        <note>"fixes the bug from issue 4421" does not match `^(Closes|Fixes) #[0-9]+`; merge leaves the issue open. No snapshot URL — reviewer cannot read the spec/plan.</note>
+      </example>
+
+      <antipattern>
+        <description>Snapshot URL placed inside an HTML comment so it does not render.</description>
+        <reason>Reviewers cannot click it; the audit trail is technically present but unusable, defeating the purpose of mandating the link.</reason>
+      </antipattern>
+
+      <reference path="templates/pr-template.md">PR body template with both required lines.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/pr-template.md" purpose="PR body template with Closes #N line and the Workspace snapshot link slot."/>
+    </templates>
+
+    <see-also>
+      <link href="https://githubnext.com/projects/copilot-workspace"/>
+      <link href="https://github.com/features/copilot/whats-new"/>
+      <link href="https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/make-changes-to-an-existing-pr"/>
+      <link href="https://github.com/orgs/community/discussions/190731"/>
+    </see-also>
+  </content>
+</methodology>
