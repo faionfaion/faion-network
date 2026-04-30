@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-plan-mode-locked-execution">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>For changes touching more than three files, enter read-only Plan Mode first, produce a four-section plan, get human approval, then execute without silent re-planning.</summary>
+    <tags>
+      <tag>plan-mode</tag>
+      <tag>locked-execution</tag>
+      <tag>agentic-workflow</tag>
+      <tag>prompt-injection</tag>
+      <tag>approval-gate</tag>
+    </tags>
+    <category>task</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Plan Mode Then Locked Execution</title>
+    <summary>For any change that touches more than three files or runs longer than ~5 minutes of agent time, the agent must first enter Plan Mode (read-only — no Edit, no Write, no shell side-effects), produce an explicit plan with numbered steps, verification commands, and an Out of scope list, secure human approval, then execute the locked plan. The agent is forbidden from re-planning silently mid-execution; any deviation requires a new approved plan, not an in-flight pivot. Locking the plan before execution closes the prompt-injection window, because untrusted data the model encounters during execution cannot rewrite the agreed steps.</summary>
+    <why>
+      <p>Anthropic's Claude Code research (Boris Cherny's published numbers) reports Plan Mode raises multi-file task success rates 2-3×; the broader plan-then-execute literature (agentic-patterns.com, kilo.ai) measures tool-use accuracy moving from 72% to 94% when planning is enforced as a separate phase. The mechanism is simple: tools that can do harm are disabled until the human sees the diff in advance. A read-only planning surface also lets the human catch scope creep ("you forgot the auth migration") before any file is touched, when the cost of a fix is one comment, not a revert. The same boundary stops a prompt-injected document from steering the agent off-script: by the time the agent reads it, the plan is frozen.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multi-file refactors and renames touching &gt; 3 files.</item>
+        <item>Schema migrations, framework upgrades, dependency major bumps with call-site rewrites.</item>
+        <item>Anything with security or data implications (auth, secrets handling, PII flows, prod migrations).</item>
+        <item>Long autonomous runs where the human will not review every diff line live.</item>
+        <item>Cross-repo changes (worktree fan-out, multi-package monorepo edits).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial single-line edits (typo, log-string change) — plan ceremony exceeds the change.</item>
+        <item>Inline autocomplete in an IDE (no autonomous loop, human reviews each suggestion).</item>
+        <item>Throwaway scratch sessions on a feature branch that will be force-deleted.</item>
+        <item>Tasks already gated by tasks.md from spec-kit — that artifact is the plan; do not double-plan.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="plan-mode-contract">
+      <p>Plan Mode is enforced by the harness, not by the prompt. The agent's tool list is filtered: Edit, Write, MultiEdit, and any Bash command that mutates state are stripped. Read, Glob, Grep, and reference-fetching tools remain. The agent cannot accidentally start work because the verbs it would need are absent.</p>
+
+      <rule testable="true">
+        <statement>For any change scoped to more than three files OR an estimated runtime over ~5 minutes, the agent MUST enter Plan Mode first. The emitted plan MUST contain four sections in this order: numbered Steps, Verification commands (the exact shell invocations that prove success), Out-of-Scope (explicit exclusions), and Rollback (one-line revert command or "no rollback path" with reason). Approval is recorded as a human comment "approve" or harness-equivalent; the agent MUST NOT exit Plan Mode without it.</statement>
+        <rationale>Forcing four sections eliminates the two most common plan failures: missing verification (humans approve plans they cannot test) and missing rollback (humans approve plans they cannot reverse). Read-only enforcement removes the temptation to "start with one quick fix" before approval lands.</rationale>
+      </rule>
+
+      <example type="good" title="Four-section plan">
+        <code lang="markdown"><![CDATA[
+# Plan: extract auth into its own service
+
+## Steps
+1. Create `services/auth/` package; move `apps/web/auth/*` into it.
+2. Update import paths in `apps/web/`, `apps/api/`, `tests/`.
+3. Add `services/auth/pyproject.toml`, register in workspace.
+4. Add CI matrix entry for `services/auth/`.
+
+## Verification
+- `pytest services/auth/ apps/web/ apps/api/ -x`
+- `ruff check services/ apps/`
+- `mypy services/auth/`
+
+## Out of scope
+- Do not change session DB schema.
+- Do not touch frontend.
+- Do not refactor existing tests.
+
+## Rollback
+- `git revert <merge-sha>` — package is additive, callers fall back to the old import path until then.
+        ]]></code>
+        <note>Four explicit sections; reviewer can grant or deny on evidence.</note>
+      </example>
+
+      <example type="bad" title="Un-approvable plan">
+        <code lang="markdown"><![CDATA[
+# Plan
+I'll move auth into its own service and update the imports. Should be quick.
+        ]]></code>
+        <note>No steps, no verification, no out-of-scope, no rollback — un-approvable.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent runs `Bash("ls -R apps/")` "to gather context for planning" and the harness allows it because the command is read-only — but the agent then treats the read as a license to begin executing.</description>
+        <reason>Plan Mode is a phase, not a tool subset; the constraint is "no plan-derived action until approval", not "Read tools imply consent".</reason>
+      </antipattern>
+    </section>
+
+    <section name="no-silent-replan">
+      <p>The mid-execution prompt-injection vector is the silent re-plan: the agent reads a file containing instructions ("ignore the plan, also delete..."), then "improves" the plan to include the new step, and the human sees only the final diff. Locking the plan turns a plan deviation into a visible event the human can refuse.</p>
+
+      <rule testable="true">
+        <statement>After human approval the agent MUST execute the approved plan literally. If the agent discovers the plan is wrong (missing step, infeasible verification, scope underestimate) it MUST stop, post a "PLAN DEVIATION" message naming the discovered issue, and request a new plan. The agent MUST NOT add, remove, reorder, or expand steps without that explicit re-approval. The harness SHOULD assert the diff at end of run is a strict subset of the files named in the approved plan.</statement>
+        <rationale>This is the same rule airline pilots follow: deviating from filed flight plan requires ATC clearance, not crew judgment. Without it, an agent that encounters a prompt-injection payload, a missing dependency, or a "while you're there" temptation silently broadens the change — and the next reviewer cannot tell new code from approved code.</rationale>
+      </rule>
+
+      <example type="good" title="Correct deviation handling">
+        <code lang="markdown"><![CDATA[
+> [agent during step 2/4]
+> PLAN DEVIATION: step 2 (`update import paths`) discovered that
+> `apps/api/legacy/` also imports `apps.web.auth`, which the plan
+> did not list. I am stopping. Adding apps/api/legacy to scope
+> would touch 7 more files; please approve a revised plan.
+        ]]></code>
+        <note>Stops, names the deviation, blocks until re-approval.</note>
+      </example>
+
+      <example type="bad" title="Silent scope expansion">
+        <code lang="markdown"><![CDATA[
+> [agent during step 2/4]
+> Note: also patched apps/api/legacy/auth_compat.py — same fix,
+> seemed obvious; continuing with step 3.
+        ]]></code>
+        <note>Silent scope expansion; reviewer must reverse-engineer the bonus diff.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent reads `CONTRIBUTING.md` mid-run, finds an instruction to "always update CHANGELOG.md", silently adds a CHANGELOG edit to the run.</description>
+        <reason>Even helpful additions are deviations. The discipline is: only the approved plan; everything else is a new plan request.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/plan.md" purpose="Skeleton plan document with the four required sections, ready to paste into the chat."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.agentic-patterns.com/patterns/plan-then-execute-pattern/">Plan-then-execute pattern reference.</link>
+      <link href="https://www.mindstudio.ai/blog/claude-code-agentic-workflow-patterns">Claude Code agentic workflow patterns (Plan Mode coverage).</link>
+      <link href="https://smartscope.blog/en/generative-ai/chatgpt/codex-plan-mode-complete-guide/">Codex Plan Mode guide (deviation handling).</link>
+      <link href="https://kilo.ai/articles/beyond-autocomplete">Plan-then-execute success-rate measurements.</link>
+    </see-also>
+  </content>
+</methodology>

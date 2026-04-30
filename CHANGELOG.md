@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate task-plan-mode-locked-execution, task-spec-kit-three-step, task-worktree-runtime-isolation to methodology.xml (feature-047 batch A13)
 - chore: migrate pyproject-single-source, sec-codeql-autofix-on-pr, sec-secrets-defense-in-depth to methodology.xml (feature-047 batch A11)
 - chore: migrate mr-codemod-refactor-agent, mr-error-tracker-draft-pr, mr-graph-vs-diff-reviewer to methodology.xml (feature-047 batch A9)
 - chore: migrate mr-renovate-ai-handoff, mr-slash-command-surface, pnpm-catalogs to methodology.xml (feature-047 batch A10)
