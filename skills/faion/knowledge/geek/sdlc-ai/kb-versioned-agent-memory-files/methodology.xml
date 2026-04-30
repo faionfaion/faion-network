@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="kb-versioned-agent-memory-files">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Persist agent memory as four committed Markdown files (decisions/patterns/mistakes/session) with append-only, citation-required entries and a session reset protocol.</summary>
+    <tags>
+      <tag>agent-memory</tag>
+      <tag>versioned-memory</tag>
+      <tag>decisions</tag>
+      <tag>patterns</tag>
+      <tag>session-state</tag>
+    </tags>
+    <category>kb</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Versioned Agent-Memory Files (decisions / patterns / mistakes)</title>
+    <summary>Persist long-term agent memory as four committed Markdown files in .aidocs/memory/ (or .product/memory/): decisions.md (key technical choices), patterns.md (proven implementations), mistakes.md (errors and the fix), and session.md (in-flight state). Every entry is appended (never edited or auto-overwritten by an LLM), every entry carries a date and a citation back to the commit, ticket, or transcript that produced it. Agents read the four files at session start; session.md is the only file that resets between sessions. The convention turns "agent memory" from a vendor-specific RAG black box into a reviewable, diff-able, code-reviewed artifact.</summary>
+    <why>
+      <p>Vendor "memory" features (ChatGPT memory, Cursor memories, Devin knowledge) are opaque, non-portable, and silently rewrite themselves; they fail the basic SDLC requirement that any artifact driving production behaviour be code-reviewed. Committing memory as plain Markdown solves all three: portable across agent kinds (Claude Code, Codex, Cursor, aider read the same files), reviewable in PR diffs, and stable across forks. The four-file split (decisions / patterns / mistakes / session) maps to the empirical question categories agents need at session start: "what was already decided", "what works here", "what to avoid", "where am I right now" — and prevents the single-file failure mode where everything becomes a 5000-line Notion-export blob.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Long-lived projects (&gt;3 months) where agent context resets every session and rebuilds from scratch.</item>
+        <item>Multi-agent setups (Claude Code + Codex + autoheal cron) that must share institutional knowledge.</item>
+        <item>Teams where a human reviewer should approve every change to "what the agent believes about this codebase".</item>
+        <item>Replacing vendor-specific memory features whose contents you cannot inspect or version.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-shot agent invocations or short-lived feature branches — the four-file overhead is wasted.</item>
+        <item>Highly volatile prototypes where today's "decision" is tomorrow's discard.</item>
+        <item>Non-deterministic transient state (queue depths, in-flight ticket IDs) — those belong in a runtime store, not in versioned memory.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="four-file-split-rule">
+      <p>Memory is institutional knowledge the agent re-loads on every session start. Splitting it by role lets the agent fetch only the relevant slice and lets reviewers focus on one shape of change at a time.</p>
+
+      <rule testable="true">
+        <statement>Every project using agent-memory MUST keep exactly four files at .aidocs/memory/ (or .product/memory/ per per-project convention): decisions.md, patterns.md, mistakes.md, session.md. Each entry MUST be a Markdown section starting with a date in YYYY-MM-DD form, a one-line title, and at least one citation — a commit SHA, ticket URL, PR URL, or transcript hash. LLM agents MUST append; they MUST NOT edit or delete prior entries. A pre-commit hook MUST reject any diff to .aidocs/memory/*.md (except session.md) that removes lines, and MUST require at least one citation token (commit:, ticket:, pr:, or transcript:) per added entry.</statement>
+        <rationale>Append-only turns memory into an audit log: any future agent or reviewer can trace why a belief exists. Citations forbid hallucinated lore — every claim points to a verifiable source. The split prevents one of the four roles from cannibalising the others (the typical failure mode where mistakes.md becomes a dumping ground for every observation).</rationale>
+      </rule>
+
+      <example type="good" title="Well-formed decision entry">
+        <code lang="markdown"><![CDATA[
+## 2026-04-26 — pin uv 0.4 floor
+**Decision.** Repo standardises on `uv >= 0.4`; CI installs from the lockfile only.
+**Why.** uv 0.3 lockfile format is incompatible; mixed envs caused 3 build breaks.
+**Citation.** commit:9f3ac1a · ticket:NERO-412
+        ]]></code>
+        <note>Dated, titled, cited, single role (decision). Future agents trust it because it points back to the originating commit and ticket.</note>
+      </example>
+
+      <example type="bad" title="Undated, uncited mixed-role notes">
+        <code lang="markdown"><![CDATA[
+## Notes
+- Probably should use uv now.
+- Don't forget the staging-DB password.
+- That auth bug we fixed once — try not to break it again.
+        ]]></code>
+        <note>No dates, no citations, mixed roles. Two months later no one can tell what is current, what was disproven, or what file would even own it.</note>
+      </example>
+
+      <antipattern>
+        <description>Letting an LLM "consolidate" or "summarise" the memory files automatically.</description>
+        <reason>The summary discards citations and rewrites prior entries with the model's current biases; the audit trail evaporates and reviewers cannot tell what was added vs invented.</reason>
+      </antipattern>
+
+      <reference path="templates/decisions.md">Skeleton with the required header schema.</reference>
+      <reference path="templates/mistakes.md">Skeleton for error-and-fix entries.</reference>
+    </section>
+
+    <section name="session-reset-rule">
+      <p>An agent always needs a scratchpad: which task it picked up, which step it is on, which files it has touched. That scratchpad is volatile by definition and would pollute the long-term files. session.md is the exception that proves the append-only rule.</p>
+
+      <rule testable="true">
+        <statement>.aidocs/memory/session.md MUST be the ONLY memory file an LLM agent rewrites. The agent MUST overwrite session.md with the current session's task, step, and modified-files list at every checkpoint. Pre-commit MUST allow non-additive diffs to session.md and MUST forbid them on decisions.md, patterns.md, and mistakes.md. At session end (success or abort), if any state in session.md should persist, the agent MUST promote it to one of the long-term files via append (with citation), not by leaving it in session.md.</statement>
+        <rationale>Without an explicit scratchpad agents either pollute long-term memory with per-task state or invent new files ad-hoc; both failure modes are documented in published Cursor and Aider postmortems. The promote-on-end rule keeps the boundary one-way: long-term files only grow, and the only way knowledge enters them is a deliberate, citation-bearing append.</rationale>
+      </rule>
+
+      <example type="good" title="Well-formed session.md with promote queue">
+        <code lang="markdown"><![CDATA[
+# session.md (volatile)
+## Active task
+NERO-412 — pin uv 0.4 across CI
+
+## Step
+3/5 — running `pre-commit run --all-files`
+
+## Files touched
+- pyproject.toml
+- .github/workflows/ci.yml
+
+## Promote at end
+- DECISION: pin uv >= 0.4 → decisions.md (cite commit + ticket).
+        ]]></code>
+        <note>Volatile state in session.md; explicit promote queue keeps long-term files clean.</note>
+      </example>
+
+      <example type="bad" title="Per-session scratchpad in long-term decisions file">
+        <code lang="markdown"><![CDATA[
+# decisions.md (after agent run)
+## 2026-04-26 — Working on NERO-412
+Currently editing pyproject.toml. Will commit shortly.
+        ]]></code>
+        <note>Per-session scratchpad written into the long-term decisions file. Two months later this is noise no reviewer can clean up safely.</note>
+      </example>
+
+      <antipattern>
+        <description>Skipping session.md entirely and dumping live state into patterns.md or mistakes.md.</description>
+        <reason>Pollutes the audit log, breaks the append-only invariant, and makes the long-term files untrustworthy for the next agent that loads them.</reason>
+      </antipattern>
+
+      <reference path="templates/session.md">Skeleton for the volatile scratchpad.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/decisions.md" purpose="Skeleton with one example entry and the required header schema."/>
+      <template path="templates/patterns.md" purpose="Skeleton for proven-implementation entries."/>
+      <template path="templates/mistakes.md" purpose="Skeleton for error-and-fix entries."/>
+      <template path="templates/session.md" purpose="Skeleton for in-flight state."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/memory">Claude Code memory — @-import semantics for .aidocs/memory/.</link>
+      <link href="https://github.blog/engineering/the-ai-memory-fallacy">GitHub Engineering — opaque agent memory as a review-coverage gap.</link>
+      <link href="https://aider.chat/docs/usage/conventions.html">aider conventions — explicit scratch vs persistent file separation.</link>
+      <link href="https://docs.cursor.com/context/memories">Cursor memories — comparison case showing why opaque memory is hard to migrate.</link>
+    </see-also>
+  </content>
+</methodology>
