@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lint-autofix-vs-flag-decision-rule">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Four-condition predicate for coding agents: auto-apply a linter fix only when syntactic, tool-provided, tests pass, and diff is small; otherwise flag for human review.</summary>
+    <tags>
+      <tag>lint</tag>
+      <tag>autofix</tag>
+      <tag>agent-policy</tag>
+      <tag>sast</tag>
+      <tag>security</tag>
+    </tags>
+    <category>lint</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Autofix-vs-Flag Decision Rule for Coding Agents</title>
+    <summary>A coding agent applies a linter or scanner autofix automatically if and only if all four of the following hold: (1) the fix is purely syntactic (formatter, import sort, type annotation, dead-code removal); (2) the tool ships an explicit --fix / --write / --autofix mechanism with a fix: block (ruff, biome, eslint --fix, semgrep --autofix where the rule has fix:, prettier); (3) the test suite still passes after the fix; (4) the diff is smaller than 50 lines or every change matches a single rule ID. Findings that fail any of those four — CodeQL alerts without a fix block, secrets, CVEs without a patch version, license conflicts, SonarQube cognitive-complexity hotspots — are FLAGGED, not auto-applied: the agent posts a PR suggestion or draft PR for human review and never lands the change in the same loop.</summary>
+    <why>
+      <p>This is the policy spine of every "agent green-locks the lint" workflow. Pure-syntax fixes are near-100% safe per BitsAI-Fix academic findings and the same conclusion is reached by Factory.ai's "lint green as merge gate" framing and DeepMind's CodeMender, which validates fixes by running tests before submitting. Anything semantic (security, license, design) needs verification and retry; making the agent treat both classes the same is the dominant cause of agents merging confident-looking but wrong patches. The four-condition gate gives the agent a deterministic predicate to evaluate per finding, removing creative judgment from the inner loop.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Always — this is the meta-rule that wraps every other lint/SAST/SCA methodology in this knowledge base.</item>
+        <item>Encoded in the agent's system prompt as a checklist: "for finding X, do conditions 1-4 hold? if yes autofix, else flag."</item>
+        <item>Encoded in the CI agent's logic: a fix that fails any condition becomes a draft-PR comment, not a commit.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Read-only audit runs (the agent is reporting, not fixing) — the gate is moot.</item>
+        <item>One-shot bulk migrations (e.g., codemod sweeps) where the rule is "all-or-nothing" by design — encode the all-or-nothing exception explicitly, do not let the four-condition rule fight the migration.</item>
+        <item>Stateful side effects outside the repository (rotating a secret, opening a JIRA ticket) — these are governed by approval-token and incident methodologies, not by autofix policy.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="four-condition-predicate">
+      <p>Each linter or scanner finding is evaluated against the predicate. The predicate is short, deterministic and fits in the agent's per-finding tool call; nothing in the rule depends on the agent's "judgment".</p>
+
+      <rule testable="true">
+        <statement>For each finding F surfaced by ruff, biome, eslint, prettier, semgrep, codeql, or any equivalent, the agent MUST auto-apply the autofix iff: (a) kind(F) ∈ {format, import-sort, type-annotation, dead-code, unused-import}; AND (b) tool(F) exposes --fix, --write or --autofix AND the rule for F carries a deterministic fix: block; AND (c) the test suite passes (exit 0) after the fix is applied; AND (d) len(diff) &lt; 50 lines OR every change in the diff carries the same rule ID. If any condition fails, the agent MUST flag the finding via a PR review comment or a draft-PR suggestion and MUST NOT land the change in the same commit.</statement>
+        <rationale>BitsAI-Fix and Factory.ai both confirm pure-syntax autofix is near-100% safe; CodeMender validates by running tests before submitting. The four-condition predicate aligns with that empirical floor and removes "the agent thought it was fine" from the failure modes.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+# pseudo-code: agent's per-finding loop
+def handle(finding):
+    if (finding.kind in SYNTACTIC
+        and finding.tool.has_fix(finding.rule_id)):
+        diff = finding.tool.fix(finding.path)
+        if run_tests().ok and (diff.lines < 50 or diff.single_rule_id):
+            stage(diff)
+            return "auto-applied"
+    return flag_for_human(finding)
+        ]]></code>
+        <note>Predicate is mechanical, deterministic, and matches the four conditions exactly.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="python"><![CDATA[
+def handle(finding):
+    # "agent decides" — apply or flag based on confidence score
+    if finding.confidence > 0.8:
+        finding.tool.fix(finding.path)
+        ]]></code>
+        <note>Confidence is not deterministic; the agent will land plausible-looking but wrong fixes for SAST or license findings.</note>
+      </example>
+
+      <antipattern>
+        <description>Letting the agent auto-apply any fix that "looks small" without running the tests after.</description>
+        <reason>Autofix can break runtime behaviour — e.g., noqa: F401 removed by --remove-unused-imports may turn out to be a side-effect import. Tests are the only guard.</reason>
+      </antipattern>
+    </section>
+
+    <section name="always-flag-classes">
+      <p>The four-condition predicate's "fail to flag" branch resolves to one of five canonical classes. Encoding the list as a closed enumeration prevents the agent from inventing new "I'll just patch this" categories.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST flag (PR review comment or draft PR, never an in-loop commit) any finding belonging to: (1) SAST findings (CodeQL, Semgrep without fix:, Snyk Code) — propose a patch as a suggestion, human reviews; (2) secrets (gitleaks, trufflehog) — ROTATE first via 1Password CLI or vault before any cleanup commit; (3) CVEs (Snyk, Dependabot, Trivy) with no patched version — human picks: replace dep, accept risk with sunset date, or defer; (4) license conflicts (FOSSA, licensee) — ALWAYS human escalation, never bypass; (5) SonarQube cognitive-complexity hotspots — propose refactor as draft PR, human approves.</statement>
+        <rationale>These five classes share a property: the cost of an incorrect autofix is non-local (security exposure, legal liability, dependency-chain breakage) and cannot be reverted by git revert cleanly. The five-class list mirrors faion-network's existing memory rules feedback_no_publish_without_image (always-human gate) and feedback_granular_commits (one logical change per commit), and it is the same boundary CodeMender, Snyk Agent Fix, and Sonar's MCP loop already enforce.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+# secret found by gitleaks pre-commit hook
+[gitleaks] AWS access key in src/cfg.py:14
+agent action: rotate via 1Password CLI; await new key; remove from working tree;
+              commit deletion with note "rotated <date>" and link to incident.
+        ]]></code>
+        <note>Rotate before cleanup — the leaked key is the threat, not the diff.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="text"><![CDATA[
+# same secret, but the agent silently strips it from the file
+agent action: ruff check --fix && git commit -m "chore: remove unused var"
+        ]]></code>
+        <note>The key is still live at AWS; the commit message lies about the change.</note>
+      </example>
+
+      <antipattern>
+        <description>Letting the agent auto-bump a dependency to "fix" a CVE when no patched version exists.</description>
+        <reason>The agent picks a pre-release or a fork without security review; the CVE is "closed" but the supply-chain risk is now larger.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/agent-policy.txt" purpose="Drop-in system-prompt block encoding the four conditions and the five flag classes."/>
+      <template path="templates/decision-table.md" purpose="Quick-reference decision table mapping (tool, finding kind) to (autofix, flag, escalate)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://factory.ai/news/using-linters-to-direct-agents">Factory.ai — lint-green-as-merge-gate.</link>
+      <link href="https://arxiv.org/html/2508.03487v1">BitsAI-Fix — empirical safety of syntactic autofix.</link>
+      <link href="https://deepmind.google/blog/introducing-codemender-an-ai-agent-for-code-security/">DeepMind CodeMender — validating fixes by running tests.</link>
+      <link href="https://snyk.io/solutions/secure-ai-generated-code/">Snyk — Agent Fix and the autofix-vs-flag boundary.</link>
+      <link href="https://docs.sonarsource.com/sonarqube-cloud/ai-capabilities/ai-code-assurance">Sonar AI Code Assurance — gate that flags rather than auto-fixes.</link>
+    </see-also>
+  </content>
+</methodology>
