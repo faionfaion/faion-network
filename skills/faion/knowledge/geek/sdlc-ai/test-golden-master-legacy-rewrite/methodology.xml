@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="test-golden-master-legacy-rewrite">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Capture legacy behaviour into a committed JSONL corpus before AI rewrites; replay byte-for-byte parity as the only green signal; approve row-by-row on divergence.</summary>
+    <tags>
+      <tag>golden-master</tag>
+      <tag>legacy-rewrite</tag>
+      <tag>corpus</tag>
+      <tag>snapshot-testing</tag>
+      <tag>agent-testing</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Golden-Master Corpus for AI-Driven Legacy Rewrites</title>
+    <summary>When you ask a coding agent to rewrite a 5000-line legacy module, you have no spec — you have current behaviour. Capture inputs and outputs of the current implementation from production traffic, fixtures, or a fuzzer into a committed corpus of (input, expected_output) pairs; the agent's rewrite passes only when it reproduces every pair, byte-for-byte, or each diff is explicitly approved row-by-row. This is the only test that scales to AI-driven rewrites of untested legacy: it is the spec the legacy never had, captured automatically, and it gives the agent a deterministic GREEN signal that does not depend on human ability to read the old code.</summary>
+    <why>
+      <p>Legacy code's "spec" is its observed behaviour, including its bugs. Hand-written unit tests around legacy ossify the developer's interpretation of behaviour, so they miss exactly the edge cases the agent will trip over. A golden-master corpus encodes behaviour empirically: capture once, replay forever. The diff workflow forces every behavioural change to be named — either an accepted bugfix or an unintended regression. Without it, agents tend to "tidy" semantics silently, and untested legacy leaves no way to catch the drift before production. The pattern predates LLMs (Michael Feathers, "Working Effectively with Legacy Code") but becomes load-bearing when the rewrite author is an agent with no domain memory.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Rewriting a legacy module/service with poor or no test coverage that an agent will touch.</item>
+        <item>Cross-language ports (Python to Rust, PHP to Go) where preserving exact output is the success criterion.</item>
+        <item>Library upgrades where vendor changelogs hint at behavioural shifts (date parsing, timezone, locale).</item>
+        <item>Any "I don't trust the existing tests but I do trust production" rewrite.</item>
+        <item>Refactoring a deterministic transformer (parser, formatter, exporter) under agent control.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Greenfield code with no prior behaviour to preserve — write unit tests against the spec instead.</item>
+        <item>Pervasive nondeterminism without normalization (timestamps, UUIDs, random IDs, ORDER BY-less queries).</item>
+        <item>Tiny modules under ~200 LOC where targeted unit tests are cheaper than capture infrastructure.</item>
+        <item>Stateful interactive flows (UI, multiplayer game tick) where I/O shape isn't a function of input alone.</item>
+      </list>
+    </when-not-to-use>
+    <section name="capture-corpus">
+      <p>The corpus is whatever lets the test reproduce the legacy's observed behaviour without invoking the legacy. For pure functions, wrap the entry point and record (input, output) pairs while replaying production logs, a fixture set, or a fuzzer. Normalize sources of nondeterminism (timestamps, UUIDs, random IDs, ORDER BY-less query results) before writing the pair, otherwise replay flickers and the gate becomes useless.</p>
+      <rule testable="true">
+        <statement>Before any agent touches the legacy module, capture at least 200 distinct (input, expected_output) pairs into a versioned JSONL corpus under tests/golden/. The capture script MUST normalize timestamps (frozen value), random IDs (deterministic seed or strip), and order-sensitive collections (sort by stable key). The corpus file MUST be committed and immutable; new pairs append, existing pairs MUST NOT be silently rewritten.</statement>
+        <rationale>Untested legacy has no other spec. Without a captured baseline, every agent rewrite is unverifiable. Without normalization, the replay test goes flaky and gets disabled — the worst possible outcome.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# capture_corpus.py — wraps legacy.process and writes pairs
+import json, pathlib, freezegun, random
+from legacy import process
+
+random.seed(42)
+OUT = pathlib.Path("tests/golden/corpus.jsonl")
+with freezegun.freeze_time("2026-01-01T00:00:00Z"), OUT.open("a") as f:
+    for case in load_production_inputs():
+        out = process(**case["input"])
+        out = normalize(out)         # sort keys, strip volatile IDs
+        f.write(json.dumps(
+            {"id": case["id"], "input": case["input"], "expected": out},
+            sort_keys=True) + "\n")
+      ]]></code>
+        <note>Frozen time + seeded RNG + normalized output produce a reproducible corpus.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# Capture without normalization or freezing
+out = process(**case["input"])  # contains datetime.utcnow() + uuid4()
+write({"input": case["input"], "expected": out})
+      ]]></code>
+        <note>Replay never matches because timestamps and UUIDs change every run.</note>
+      </example>
+      <antipattern>
+        <description>Editing existing rows in the corpus when the rewrite changes output.</description>
+        <reason>The corpus is the spec. Silent edits convert "rewrite parity check" into "rewrite is whatever the agent produced today" — the original goal is lost.</reason>
+      </antipattern>
+    </section>
+    <section name="replay-and-diff-gate">
+      <p>The corpus is a test. The rewrite passes only when every (input, expected) pair produces the expected output. A single divergence stops the agent's loop and prints the diff, the row id, and the case input. To accept an intentional behaviour change (bugfix), the developer must update the corpus row with a commit that names the change in the message — the diff is reviewed row-by-row, never wholesale.</p>
+      <rule testable="true">
+        <statement>The replay test MUST iterate the entire corpus and assert byte-for-byte parity (after the same normalization used at capture). On divergence the test MUST print case_id, input, and a unified diff of expected vs actual. CI MUST fail when any case diverges. Updating an expected value requires a separate commit whose message starts with golden: and explains the behaviour change; PR review checks each updated row.</statement>
+        <rationale>Bulk-accepting a corpus diff turns golden-master into a rubber-stamp. Per-row review keeps the cost of "I changed behaviour" visible to the human approver and forces the agent to surface its assumptions.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# tests/test_golden_master.py
+import json, pathlib, difflib, pytest
+from rewrite import process
+from corpus_normalize import normalize
+
+CORPUS = pathlib.Path("tests/golden/corpus.jsonl")
+
+@pytest.mark.parametrize("case",
+    [json.loads(l) for l in CORPUS.read_text().splitlines() if l.strip()],
+    ids=lambda c: c["id"])
+def test_golden(case):
+    actual = normalize(process(**case["input"]))
+    expected = case["expected"]
+    if actual != expected:
+        diff = "\n".join(difflib.unified_diff(
+            json.dumps(expected, indent=2, sort_keys=True).splitlines(),
+            json.dumps(actual,   indent=2, sort_keys=True).splitlines(),
+            lineterm=""))
+        pytest.fail(f"{case['id']} diverged:\n{diff}")
+      ]]></code>
+        <note>Per-case parametrization gives the agent precise failure ids to act on.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+def test_golden():
+    for line in CORPUS.read_text().splitlines():
+        case = json.loads(line)
+        if process(**case["input"]) != case["expected"]:
+            continue        # silently skip diffs
+      ]]></code>
+        <note>Silent skip = no gate; rewrite "passes" while quietly diverging.</note>
+      </example>
+      <antipattern>
+        <description>Letting the agent regenerate the corpus from its own rewrite ("update_expected=True").</description>
+        <reason>Self-pinning produces a green test on day one and zero protection against day-two regressions; the corpus must be captured against the legacy, not the candidate.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/golden_master_test.py" purpose="Pytest replay test asserting parity over a JSONL corpus."/>
+      <template path="templates/capture_corpus.py" purpose="Capture script that wraps the legacy callable, normalizes IDs/timestamps, writes JSONL."/>
+    </templates>
+    <see-also>
+      <link href="https://martinfowler.com/bliki/SnapshotTesting.html"/>
+      <link href="https://news.ycombinator.com/item?id=46205015"/>
+      <link href="https://martinfowler.com/articles/microservice-testing/#testing-component-out-of-process"/>
+      <link href="https://approvaltests.com/"/>
+    </see-also>
+  </content>
+</methodology>
