@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tracker-linear-agent-as-assignee">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Treat AI coding agents as first-class Linear assignees with their own identity; agent posts checkpoint comments and a final PR link on the issue while the human clears spec/approval gates and merges.</summary>
+    <tags>
+      <tag>linear</tag>
+      <tag>agent-assignee</tag>
+      <tag>mcp</tag>
+      <tag>audit-trail</tag>
+      <tag>checkpoint-comments</tag>
+    </tags>
+    <category>tracker</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Linear Agent as First-Class Assignee</title>
+    <summary>Treat AI coding agents (Cursor, Devin, Claude Code, Copilot) as first-class Linear assignees with their own user identity, not as a shared bot account. Assigning an issue to an agent triggers the delegation contract: the agent posts a task list, periodic checkpoints with elapsed time, and finally a PR link as comments back on the issue, while the human teammate remains the primary owner who clears spec/approval gates and merges. The integration runs over Linear's hosted MCP server (GA April 2026) so the agent inherits the user's project permissions and writes to the issue activity log under its own identity. The literal rule: every agent action against a Linear issue MUST be a comment, status change, or PR link tied to a real assignment event — never a silent background side-effect.</summary>
+    <why>
+      <p>Linear's own engineering team and the April 2026 product docs converge on the same loop: the issue is the durable artefact, the agent is a thread on the issue, and the human reviewer's first signal is the agent's checkpoint comment. This produces three measurable wins versus shared-bot patterns: (a) the audit trail attributes each action to the specific agent identity (not "system"), satisfying SOC2-style review; (b) the issue's "assignee" semantics extend cleanly — Linear's existing notification, SLA, and triage rules apply unchanged; (c) checkpoint comments give the human a cheap rollback handle (react with thumbs-down) before the agent burns a PR review cycle. The empirical anchor is Linear's published in-house workflow ("CX → Linear → Triage Intelligence → assigned coding agent → human merges") plus the Code Intelligence + repo MCP context surface that ships with the integration.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Self-contained engineering tickets with concrete acceptance criteria written in the Linear issue body.</item>
+        <item>Triage backlog with high-volume duplicate, label, or routing work where Linear's Triage Intelligence is the upstream stage.</item>
+        <item>Bug fixes scoped to a single repo where Code Intelligence + the repo's MCP server can supply enough context.</item>
+        <item>Teams already on Linear that want agent attribution in audit trails without standing up a separate identity service.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Ambiguous discovery tickets with no acceptance criteria — the agent has nothing to anchor its checkpoints on and will fabricate intent.</item>
+        <item>Cross-cutting refactors that touch architectural decisions or multiple repos — Linear-MCP is single-issue and single-repo per assignment.</item>
+        <item>Tickets requiring live user interviews or non-codebase context the agent cannot fetch through MCP — the gap surfaces only after the agent ships a wrong-spec PR.</item>
+        <item>Self-hosted-only environments — Linear's MCP and agent identity story is Linear-cloud only.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="assignment-contract">
+      <p>The agent treats Linear assignment as the entry event and emits checkpoint comments plus a final PR link, never silent side-effects, so the issue activity log is the single audit surface.</p>
+      <p>Linear emits an IssueAssigned webhook whenever an issue is assigned. The agent runtime must subscribe to that event and refuse to act on issues it learned about via any other channel — direct Slack DM, scraped backlog, manual operator nudge. This makes the issue's history table the only canonical record of agent activity.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST NOT begin work on a Linear issue unless it received the matching IssueAssigned webhook with assignee.id equal to its own Linear user id within the last poll window. The agent MUST post one checkpoint comment within two minutes of acceptance, additional checkpoints at every state transition (started, blocked, ready-for-review), and exactly one final comment containing the PR URL when it opens the PR. Background work without a corresponding comment fails the audit and the run aborts.</statement>
+        <rationale>Linear's product contract treats the assignee as the primary owner; the comment cadence makes the agent's work visible at the same surface humans use, so reviewers do not have to leave Linear to track progress and the activity log captures every state transition under the agent's own identity.</rationale>
+      </rule>
+
+      <example type="good" title="Full checkpoint trail with PR link">
+        <code lang="markdown"><![CDATA[
+[claude-engineer-bot · started · 0m]
+- read issue + linked spec
+- ran Code Intelligence search on `OrderRequestSchema`
+- identified files: `api/orders/views.py`, `schemas/orders.py`
+
+[claude-engineer-bot · in-progress · 7m]
+- ✅ added NonEmptyList constraint
+- ✅ test `test_order_empty_items_rejected` red
+- ⏳ wiring 422 ValidationError handler
+
+[claude-engineer-bot · ready-for-review · 12m]
+PR opened: https://github.com/org/repo/pull/4421
+Awaiting CODEOWNER thumbs-up before requesting merge.
+        ]]></code>
+        <note>Each transition is one comment; elapsed time is in the header so the reviewer can scan progress without expanding details.</note>
+      </example>
+
+      <example type="bad" title="Silent PR with no checkpoint trail">
+        <code lang="markdown"><![CDATA[
+PR opened: https://github.com/org/repo/pull/4421
+        ]]></code>
+        <note>No checkpoint trail — reviewer cannot tell what the agent investigated, how long it spent, or what was blocking; postmortem reconstruction is impossible.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent posts checkpoints into Slack instead of the Linear issue.</description>
+        <reason>Slack messages are not in the issue history, so audit and SLA tooling miss the activity; reviewers have to context-switch between two surfaces to track one piece of work.</reason>
+      </antipattern>
+    </section>
+
+    <section name="mcp-permission-inheritance">
+      <p>The agent connects to Linear's hosted MCP server using its own user OAuth token; it never re-uses the assignee's token and never holds a workspace-admin token, so its scope is bounded by the agent identity's role.</p>
+      <p>Each agent identity gets its own Linear user (e.g. claude-engineer-bot@example.com) with explicit role assignments per project. The MCP client authenticates with that user's OAuth token. Workspace admin tokens are forbidden — they erase the audit attribution that makes the assignee model worthwhile.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST connect to Linear MCP under its own bot-user OAuth token with role Member or below in every project it touches. The agent MUST be denied workspace-admin scope, MUST NOT use the human assignee's token, and MUST be removed from any project where its declared scope (see templates/agent-identity.yaml) does not list tracker.issue.comment and tracker.issue.update_status. Token issuance MUST log the (agent_id, project_id, scope) triple to the audit sink.</statement>
+        <rationale>Atlassian's "agents respect permissions, project configurations, workflows, and audit trails" articulates the invariant Linear also enforces: a runtime that can do more than its assignee can is a privilege-escalation primitive, and shared admin tokens defeat the per-action audit attribution that the agent-as-assignee model is built to provide.</rationale>
+      </rule>
+
+      <example type="good" title="Bounded scope per-agent identity">
+        <code lang="yaml"><![CDATA[
+# templates/agent-identity.yaml (excerpt)
+agent:
+  name: claude-engineer-bot
+  email: agents+claude-engineer@example.com
+  linear_user_id: usr_01HZ...
+  oauth_scopes:
+    - read
+    - write:issue.comment
+    - write:issue.status
+  prohibited_scopes:
+    - admin
+    - delete:issue
+    - delete:project
+projects:
+  - id: backend
+    role: member
+  - id: frontend
+    role: member
+audit_sink: s3://audit/linear-agents/
+        ]]></code>
+        <note>Bounded scope, no admin role, audit sink on every token mint.</note>
+      </example>
+
+      <example type="bad" title="Shared workspace-admin token">
+        <code lang="yaml"><![CDATA[
+agent:
+  name: shared-coding-bot
+  oauth_token: $LINEAR_WORKSPACE_ADMIN_TOKEN
+        ]]></code>
+        <note>Workspace-admin scope means every action attributes to "system"; one bot account collects the audit trail of every team using it, breaking SOC2-style review.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent reuses the human assignee's OAuth token to "act as the user".</description>
+        <reason>The activity log shows the human as the actor for agent edits, so reviewers cannot distinguish agent work from human work; the gate is invisible and the human is on the hook for the agent's mistakes.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/agent-identity.yaml" purpose="Linear user record + scope declaration for one agent (name, email, allowed actions, prohibited actions)."/>
+      <template path="templates/checkpoint-comment.md" purpose="Markdown skeleton the agent posts at each checkpoint (task list, elapsed time, next step, blockers)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://linear.app/now/how-we-use-linear-agent-at-linear"/>
+      <link href="https://linear.app/docs/agents-in-linear"/>
+      <link href="https://linear.app/changelog/2026-04-23-linear-agent-mcp-support"/>
+      <link href="https://linear.app/docs/mcp"/>
+      <link href="https://www.atlassian.com/blog/announcements/ai-agents-in-jira"/>
+    </see-also>
+  </content>
+</methodology>
