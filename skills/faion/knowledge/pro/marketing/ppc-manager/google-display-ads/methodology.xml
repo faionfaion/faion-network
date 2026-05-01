@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>marketing</group>
     <domain>ppc-manager</domain>
-    <summary>Python patterns for creating DISPLAY_NETWORK campaigns, adding contextual and audience targeting, building responsive display ads with required asset sets, and querying placement-level performance.</summary>
+    <summary>Python patterns to create DISPLAY_NETWORK campaigns, add contextual+audience targeting, build responsive display ads, and query placement performance.</summary>
     <tags>
       <tag>google-ads</tag>
       <tag>display</tag>
@@ -15,6 +15,13 @@
     <category>display</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
+    <updated>2026-05-01</updated>
+    <languages>
+      <language>python</language>
+    </languages>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
   </metadata>
 
   <content>
@@ -28,10 +35,11 @@
 
     <when-to-use>
       <list>
-        <item>Creating banner ad campaigns across Google Display Network</item>
+        <item>Creating banner ad campaigns across Google Display Network (GDN)</item>
         <item>Adding remarketing audiences or contextual keyword targeting to display ad groups</item>
-        <item>Uploading image assets and assembling responsive display ads</item>
+        <item>Uploading image assets and assembling responsive display ads (RDA)</item>
         <item>Reporting on which placements are driving impressions and conversions</item>
+        <item>Migrating legacy image ads to RDAs (Google sunsets uploaded display ads in favour of RDA)</item>
       </list>
     </when-to-use>
 
@@ -40,8 +48,29 @@
         <item>Search text ads — use google-search-ads methodology instead</item>
         <item>Performance Max campaigns — use google-pmax methodology instead</item>
         <item>Shopping product listing ads — use google-shopping-ads methodology instead</item>
+        <item>YouTube-only video campaigns — use google-video-ads methodology instead</item>
       </list>
     </when-not-to-use>
+
+    <section name="trigger-conditions">
+      <p>The agent should activate this methodology when ANY of the following signals appear in the task or codebase context.</p>
+      <list>
+        <item>Task text mentions: "display ads", "GDN", "responsive display", "banner campaign", "remarketing", "RDA"</item>
+        <item>Code references: <code lang="text"><![CDATA[AdvertisingChannelType.DISPLAY, ResponsiveDisplayAdInfo, AssetService, detail_placement_view, user_list]]></code></item>
+        <item>Existing campaign has <code lang="text"><![CDATA[advertising_channel_type == DISPLAY]]></code> and the agent is asked to modify targeting, creatives, or budget</item>
+        <item>A request for "display performance report" or "placement exclusions"</item>
+      </list>
+    </section>
+
+    <section name="prerequisites">
+      <checklist>
+        <check>google-ads &gt;= 24.0.0 SDK installed (<code lang="bash">pip show google-ads</code>)</check>
+        <check>OAuth refresh token + developer token loaded; <code lang="text">GOOGLE_ADS_CONFIGURATION_FILE_PATH</code> env var points to valid <code lang="text">google-ads.yaml</code></check>
+        <check>customer_id is the leaf account (10 digits, no dashes); login_customer_id is the MCC manager id if applicable</check>
+        <check>Conversion tracking already configured (otherwise display ROAS reporting is meaningless)</check>
+        <check>At least one existing user_list (for audience targeting) or topic/keyword inventory researched</check>
+      </checklist>
+    </section>
 
     <section name="network-settings-rules">
       <rule testable="true">
@@ -61,7 +90,8 @@
         <item>Contextual: target by keywords, topics, or specific placements (URLs/apps)</item>
         <item>Audience: target custom audiences, affinity segments, or in-market segments</item>
         <item>Demographics: age, gender, parental status, household income</item>
-        <item>Remarketing: show ads to previous site visitors based on behavior</item>
+        <item>Remarketing: show ads to previous site visitors based on behavior (user_list)</item>
+        <item>Customer Match: hashed email/phone uploads (SHA-256 of normalized lowercase value)</item>
       </list>
       <rule testable="true">
         <statement>Layer at most 2 targeting types per ad group for the initial campaign. Over-constraining with 3+ layers severely limits reach and makes it impossible to diagnose which layer is blocking delivery.</statement>
@@ -72,9 +102,23 @@
     <section name="ad-group-types">
       <list>
         <item>DISPLAY_STANDARD: standard display ads with targeting</item>
-        <item>DISPLAY_UPLOAD_ADS: custom uploaded image or HTML5 ads</item>
+        <item>DISPLAY_UPLOAD_ADS: custom uploaded image or HTML5 ads (legacy; prefer RDA)</item>
       </list>
     </section>
+
+    <how-to>
+      <step>1. Create a Campaign Budget. Set <code lang="text">delivery_method=STANDARD</code> for steady pacing or <code lang="text">ACCELERATED</code> only for short-burst tests.</step>
+      <step>2. Create a Display Campaign with <code lang="text">advertising_channel_type=DISPLAY</code>, <code lang="text">status=PAUSED</code> (always start paused), <code lang="text">manual_cpc</code> or <code lang="text">target_cpa</code> bidding, and the network_settings rules above.</step>
+      <step>3. Disable "Optimized targeting" via <code lang="text">campaign.optimized_targeting_enabled = False</code> when you need tight audience control.</step>
+      <step>4. Set frequency cap at the campaign level: 5 impressions / user / week (default starting point).</step>
+      <step>5. Create at least one Ad Group with <code lang="text">type=DISPLAY_STANDARD</code> and a default CPC bid.</step>
+      <step>6. Add criteria to the ad group: at most 2 of {audience, topic, keyword, placement}. Use <code lang="text">AdGroupCriterionService.mutate_ad_group_criteria</code>.</step>
+      <step>7. Upload image assets via <code lang="text">AssetService.mutate_assets</code> with raw binary bytes (not URLs). One mutate per batch of up to 10 images.</step>
+      <step>8. Assemble a ResponsiveDisplayAd referencing the asset resource_names. Provide max counts: 5 headlines, 1 long_headline, 5 descriptions, 1 business_name, 5+ marketing_images, 5 square_marketing_images, 1 logo.</step>
+      <step>9. Attach the ad to the ad group via <code lang="text">AdGroupAdService.mutate_ad_group_ads</code>.</step>
+      <step>10. Verify budget, network_settings, optimized_targeting, frequency_cap by reading the campaign back with a SearchStream query before flipping <code lang="text">status=ENABLED</code>.</step>
+      <step>11. Wait 24-48h, then run the placement performance query and add NEGATIVE placement criteria for any URL with &gt;100 impressions and 0 conversions.</step>
+    </how-to>
 
     <section name="contextual-keyword-targeting">
       <p>Keyword targeting on Display uses BROAD match type only — phrase and exact match do not apply to display targeting. Keywords are used to find contextually relevant pages, not to match search queries.</p>
@@ -93,7 +137,7 @@
     </section>
 
     <section name="audience-targeting">
-      <p>Audience targeting uses user_list resource names. Sources: Custom Audiences (website visitors), In-Market Segments (users actively researching a product category), Affinity Segments (users with demonstrated interests).</p>
+      <p>Audience targeting uses user_list resource names. Sources: Custom Audiences (website visitors), In-Market Segments (users actively researching a product category), Affinity Segments (users with demonstrated interests), Customer Match (hashed contact data uploads).</p>
     </section>
 
     <section name="asset-requirements">
@@ -105,9 +149,10 @@
         <item>Headlines: 1-5 required (max 30 chars each)</item>
         <item>Long headline: 1 required (max 90 chars)</item>
         <item>Descriptions: 1-5 required (max 90 chars each)</item>
-        <item>Business name: 1 required</item>
-        <item>Marketing images: 1-15 (at least 1 required)</item>
-        <item>Logo images: 0-5 optional</item>
+        <item>Business name: 1 required (max 25 chars)</item>
+        <item>Marketing images: 1-15 (1.91:1, min 600x314, recommend 1200x628)</item>
+        <item>Square marketing images: 1-15 (1:1, min 300x300, recommend 1200x1200)</item>
+        <item>Logo images: 0-5 optional (1:1 and/or 4:1, min 128x128 / 512x128)</item>
         <item>Final URL: required</item>
       </list>
     </section>
@@ -123,6 +168,104 @@
     <section name="performance-reporting">
       <p>Query detail_placement_view for placement-level performance. Filter by campaign.id and date range. Sort by metrics.impressions DESC to identify top and bottom-performing placements.</p>
     </section>
+
+    <commands>
+      <command name="install-sdk">pip install "google-ads&gt;=24.0.0"</command>
+      <command name="auth-check">python -c "from google.ads.googleads.client import GoogleAdsClient; c = GoogleAdsClient.load_from_storage(); print(c.login_customer_id)"</command>
+      <command name="list-campaigns">python -m scripts.list_campaigns --customer-id $GADS_CID --type DISPLAY</command>
+      <command name="placement-report">python -m scripts.placement_report --customer-id $GADS_CID --campaign-id $CID --since 7</command>
+      <command name="negative-placements">python -m scripts.add_negative_placements --customer-id $GADS_CID --campaign-id $CID --file ./exclusions.txt</command>
+    </commands>
+
+    <example type="good" title="Create a paused Display campaign">
+      <code lang="python"><![CDATA[
+from google.ads.googleads.client import GoogleAdsClient
+
+client = GoogleAdsClient.load_from_storage()
+svc = client.get_service("CampaignService")
+op = client.get_type("CampaignOperation")
+c = op.create
+c.name = "DSP-2026-Q2-RDA"
+c.advertising_channel_type = client.enums.AdvertisingChannelTypeEnum.DISPLAY
+c.status = client.enums.CampaignStatusEnum.PAUSED
+c.manual_cpc.enhanced_cpc_enabled = False
+c.campaign_budget = "customers/{cid}/campaignBudgets/{bid}".format(cid=CID, bid=BID)
+ns = c.network_settings
+ns.target_google_search = False
+ns.target_search_network = False
+ns.target_partner_search_network = False
+ns.target_content_network = True
+c.frequency_caps.append({
+    "key": {"level": client.enums.FrequencyCapLevelEnum.CAMPAIGN,
+            "event_type": client.enums.FrequencyCapEventTypeEnum.IMPRESSION,
+            "time_unit": client.enums.FrequencyCapTimeUnitEnum.WEEK,
+            "time_length": 1},
+    "cap": 5,
+})
+c.optimized_targeting_enabled = False
+resp = svc.mutate_campaigns(customer_id=CID, operations=[op])
+print(resp.results[0].resource_name)
+]]></code>
+    </example>
+
+    <example type="good" title="Upload an image asset (binary, not URL)">
+      <code lang="python"><![CDATA[
+import requests
+from google.ads.googleads.client import GoogleAdsClient
+
+client = GoogleAdsClient.load_from_storage()
+svc = client.get_service("AssetService")
+op = client.get_type("AssetOperation")
+a = op.create
+a.name = "marketing-image-1200x628-hero"
+a.type_ = client.enums.AssetTypeEnum.IMAGE
+a.image_asset.data = requests.get("https://cdn.example.com/hero.jpg", timeout=30).content
+resp = svc.mutate_assets(customer_id=CID, operations=[op])
+asset_resource_name = resp.results[0].resource_name
+]]></code>
+    </example>
+
+    <example type="good" title="Query placement performance (last 7 days)">
+      <code lang="python"><![CDATA[
+ga = client.get_service("GoogleAdsService")
+query = """
+SELECT
+  detail_placement_view.target_url,
+  detail_placement_view.placement_type,
+  metrics.impressions, metrics.clicks, metrics.cost_micros,
+  metrics.conversions, metrics.ctr
+FROM detail_placement_view
+WHERE segments.date DURING LAST_7_DAYS
+  AND campaign.id = {cid}
+ORDER BY metrics.cost_micros DESC
+LIMIT 500
+""".format(cid=CAMPAIGN_ID)
+for row in ga.search_stream(customer_id=CID, query=query):
+    for r in row.results:
+        ...  # collect rows for exclusion logic
+]]></code>
+    </example>
+
+    <prompt purpose="Generate RDA copy that fits Google character limits">
+<![CDATA[
+You are a Google Ads RDA copywriter. Produce a JSON object matching this schema:
+{
+  "headlines":        [string x 5],   # each <= 30 chars, no emoji, no exclamation spam
+  "long_headline":     string,         # <= 90 chars
+  "descriptions":     [string x 5],   # each <= 90 chars
+  "business_name":     string,         # <= 25 chars
+  "final_url":         string          # https URL
+}
+Constraints:
+- Do not include the brand name in every headline (Google penalizes repetition).
+- Each headline must stand alone (Google rotates them independently).
+- No discount/percentage claims unless explicitly provided in the brief.
+- All strings ASCII or single locale; no mixed-language pairs.
+Return ONLY valid JSON. If any string would exceed limits, truncate at a word boundary.
+Brief:
+<<<BRIEF>>>
+]]>
+    </prompt>
 
     <section name="where-it-fails-limitations">
       <list>
@@ -177,10 +320,40 @@
         <item>Set target_content_network = True and disable Search and Search Partner explicitly on Display campaigns; default settings can leak.</item>
         <item>Build placement-exclusion lists at the account level (shared library) so every Display campaign inherits them automatically.</item>
         <item>Use Customer Match and similar audiences for retargeting; raw cookie remarketing is degrading post-cookie deprecation.</item>
-        <item>Frequency cap (3–7 impressions per user per week) — Display without caps creates ad fatigue and brand annoyance fast.</item>
+        <item>Frequency cap (3-7 impressions per user per week) — Display without caps creates ad fatigue and brand annoyance fast.</item>
         <item>Monitor placement_type in reports separately for WEBSITE, MOBILE_APPLICATION, YOUTUBE_VIDEO; mobile-app inventory often dominates spend with poor conversions.</item>
       </list>
     </section>
+
+    <checklist>
+      <check>Campaign created with advertising_channel_type=DISPLAY and status=PAUSED</check>
+      <check>network_settings: search=False, search_partner=False, content=True (verify by reading back)</check>
+      <check>optimized_targeting_enabled=False unless explicitly approved by human</check>
+      <check>Frequency cap configured (5/user/week default)</check>
+      <check>Ad group has at most 2 targeting layers (audience+topic OR audience+placement)</check>
+      <check>All keyword criteria use BROAD match type</check>
+      <check>Image assets uploaded as binary bytes (requests.get(...).content), never URL strings</check>
+      <check>Image dimensions validated locally: 1.91:1 (≥600x314) and 1:1 (≥300x300) before AssetService call</check>
+      <check>RDA includes 5 headlines (≤30 chars), long_headline (≤90 chars), 5 descriptions (≤90 chars), business_name (≤25 chars)</check>
+      <check>Customer Match emails normalized: <code lang="python">hashlib.sha256(email.strip().lower().encode()).hexdigest()</code></check>
+      <check>Account-level negative placement list attached</check>
+      <check>Conversion tracking active and reported in metrics.conversions (NOT view_through_conversions)</check>
+      <check>Budget delta vs previous &lt; 25% OR explicit human approval recorded</check>
+    </checklist>
+
+    <verify>
+      <step>1. Read campaign back: <code lang="text">SELECT campaign.network_settings.target_google_search, campaign.network_settings.target_content_network, campaign.optimized_targeting_enabled, campaign.frequency_caps FROM campaign WHERE campaign.id = {id}</code> — assert search=False, content=True, optimized_targeting=False.</step>
+      <step>2. Validate RDA character limits locally before submit: <code lang="python">all(len(h) &lt;= 30 for h in headlines) and len(long_headline) &lt;= 90 and all(len(d) &lt;= 90 for d in descriptions) and len(business_name) &lt;= 25</code>.</step>
+      <step>3. Validate image dimensions and aspect ratio with Pillow before AssetService call: <code lang="python">w,h = Image.open(BytesIO(b)).size; assert abs(w/h - 1.91) &lt; 0.02 or abs(w/h - 1.0) &lt; 0.02</code>.</step>
+      <step>4. After 24h: query detail_placement_view; assert at least 100 impressions distributed across &gt;5 placements (otherwise targeting is over-constrained).</step>
+      <step>5. Diff preview before any mutate: print operation.update_mask paths and operation.create JSON; require human acknowledgement for budget mutations &gt;25%.</step>
+      <step>6. Confirm metrics.conversions is non-zero before scaling budget; never scale based on metrics.view_through_conversions.</step>
+      <step>7. Run weekly placement hygiene: any placement with cost_micros &gt; 1_000_000 (1 USD) and conversions == 0 over 7 days → add as negative placement criterion.</step>
+    </verify>
+
+    <warning>
+      <p>Never enable Optimized Targeting on a Display campaign that uses Customer Match remarketing. Google may expand to lookalike segments and bypass the curated list, producing irrelevant impressions billed at full CPC.</p>
+    </warning>
 
     <templates>
       <template path="templates/responsive-display-assets.py" purpose="Asset dict structure for responsive display ad creation"/>
@@ -193,6 +366,8 @@
       <link href="https://support.google.com/google-ads/answer/7005917"/>
       <link href="https://support.google.com/google-ads/answer/9120872"/>
       <link href="https://support.google.com/google-ads/answer/6379332"/>
+      <link href="https://developers.google.com/google-ads/api/docs/migration/responsive-display-ads"/>
+      <link href="https://developers.google.com/google-ads/api/fields/v17/detail_placement_view"/>
     </see-also>
   </content>
 </methodology>
