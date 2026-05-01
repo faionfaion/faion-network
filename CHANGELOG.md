@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: improve ai-governance-compliance methodology with concrete checklist + commands (agent-coverage)
 - chore: improve langchain-rag-pipeline methodology with concrete checklist + commands (agent-coverage)
 - chore: improve ai-agent-patterns methodology with concrete checklist + commands (agent-coverage)
 - chore: improve nodejs-express-fastify methodology with concrete checklist + commands (agent-coverage)
