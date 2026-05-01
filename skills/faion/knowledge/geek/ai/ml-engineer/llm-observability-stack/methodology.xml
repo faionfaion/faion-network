@@ -4,17 +4,20 @@
     <tier>geek</tier>
     <group>ai</group>
     <domain>ml-engineer</domain>
-    <summary>Production observability stack for LLM systems: tracing, cost analytics, quality evaluation, and alerting via OpenTelemetry. Vendor-neutral approach for 2026.</summary>
+    <summary>Production observability for LLM systems: OTEL tracing, cost analytics, quality eval, alerting. Vendor-neutral 2026 stack with concrete setup commands.</summary>
     <tags>
       <tag>llm</tag>
       <tag>observability</tag>
       <tag>tracing</tag>
       <tag>monitoring</tag>
       <tag>otel</tag>
+      <tag>langfuse</tag>
+      <tag>prometheus</tag>
     </tags>
     <category>ml-ops</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
+    <updated>2026-05-01</updated>
   </metadata>
 
   <content>
@@ -33,6 +36,7 @@
         <item>Enforcing budget controls: daily spend alerts, cost per team/feature</item>
         <item>Debugging agentic loops with nested tool calls and multi-step reasoning</item>
         <item>Compliance contexts requiring audit trails of every LLM interaction</item>
+        <item>Daily LLM call volume crosses ~100 calls/day or monthly cost crosses ~$50</item>
       </list>
     </when-to-use>
 
@@ -43,6 +47,19 @@
         <item>Primary bottleneck is something other than LLM calls (DB, network) — profile those first</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <step>Audit the codebase: list every external LLM call site (`grep -rE "openai|anthropic|google.generativeai|litellm" --include="*.py" --include="*.ts"`).</step>
+      <step>Pick the platform via the decision tree below; default to Langfuse self-host for new projects with privacy needs.</step>
+      <step>Stand up the stack from `templates/langfuse-stack.yaml` (Docker Compose: Langfuse + Postgres + ClickHouse + Prometheus + Grafana + OTEL Collector).</step>
+      <step>Install OpenLLMetry auto-instrumentation: one import line per service, no per-call wrapping.</step>
+      <step>Enrich every span with `user_id`, `session_id`, `feature_flag`, `model`, `provider`, token counts (input + output), and cache hit flag — at call time, not post-hoc.</step>
+      <step>Wire alert rules from `templates/alert-rules.yaml` into Prometheus + Alertmanager and test fire each rule with a synthetic spike.</step>
+      <step>Load `templates/pricing.yaml` into the cost calculator service so spend is computed from token counts × current rates.</step>
+      <step>Establish a 14-day baseline of error rate, P50/P95/P99 latency, TTFT, hallucination score, and daily spend before tightening alert thresholds.</step>
+      <step>Add LLM-as-judge sampling job (10% of production traffic) writing scores back as span attributes for quality drift detection.</step>
+      <step>Document the runbook in `runbooks/llm-incident.md` and link Grafana dashboards from on-call alerts.</step>
+    </how-to>
 
     <section name="why-llm-observability-differs-from-traditional-apm">
       <p>Traditional APM monitors infrastructure and application health. LLM systems require a different model:</p>
@@ -193,10 +210,132 @@
       </antipattern>
     </section>
 
+    <checklist>
+      <check>Every external LLM call site is wrapped in an OTEL span (verified by `grep` audit + traces visible in Langfuse UI).</check>
+      <check>Span attributes include: model, provider, user_id, session_id, feature_flag, prompt_tokens, completion_tokens, cache_hit, temperature.</check>
+      <check>TTFT is recorded as a separate metric for every streaming response.</check>
+      <check>Agents emit a parent span per invocation and child spans per tool call (no flat sibling spans).</check>
+      <check>Pricing config is centralized in `templates/pricing.yaml` and reloaded without code redeploy.</check>
+      <check>Prometheus alert rules from `templates/alert-rules.yaml` are loaded and each rule was test-fired with a synthetic spike.</check>
+      <check>14-day baseline for error rate, P95 latency, TTFT, hallucination rate, daily spend is recorded before tightening thresholds.</check>
+      <check>LLM-as-judge sampling job runs at 10% sample rate and writes scores back as span attributes.</check>
+      <check>Critical alerts route to PagerDuty; warnings to Slack #llm-alerts.</check>
+      <check>Runbook `runbooks/llm-incident.md` exists and is linked from every alert.</check>
+      <check>Cost dashboard shows breakdown by model, provider, team, feature, environment.</check>
+      <check>Trace retention is set: 30 days hot (Langfuse), 90 days cold (S3/GCS export).</check>
+    </checklist>
+
+    <commands>
+      <command name="bootstrap-stack">docker compose -f templates/langfuse-stack.yaml up -d</command>
+      <command name="verify-stack-up">docker compose -f templates/langfuse-stack.yaml ps &amp;&amp; curl -fsS http://localhost:3000/api/public/health</command>
+      <command name="install-openllmetry-python">pip install traceloop-sdk opentelemetry-sdk opentelemetry-exporter-otlp</command>
+      <command name="install-openllmetry-node">npm install @traceloop/node-server-sdk @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-http</command>
+      <command name="export-langfuse-keys">export LANGFUSE_PUBLIC_KEY=pk-... LANGFUSE_SECRET_KEY=sk-... LANGFUSE_HOST=http://localhost:3000</command>
+      <command name="export-otlp-endpoint">export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf</command>
+      <command name="audit-llm-call-sites">grep -rEn "openai|anthropic|google\.generativeai|litellm|@anthropic-ai/sdk" --include="*.py" --include="*.ts" --include="*.js" .</command>
+      <command name="load-prometheus-rules">curl -X POST http://localhost:9090/-/reload</command>
+      <command name="test-fire-alert">curl -G --data-urlencode 'query=ALERTS{alertstate="firing"}' http://localhost:9090/api/v1/query | jq .</command>
+      <command name="export-traces-cold-storage">langfuse-cli export --start "$(date -u -d '90 days ago' +%FT%TZ)" --output s3://my-bucket/langfuse-archive/</command>
+      <command name="check-otel-collector-health">curl -fsS http://localhost:13133/ &amp;&amp; curl -fsS http://localhost:8889/metrics | head</command>
+    </commands>
+
+    <prompt purpose="llm-as-judge-quality-scoring"><![CDATA[
+You are an evaluation judge. Score the following LLM response on five dimensions, each on a 1-5 integer scale.
+
+USER QUERY: {{user_query}}
+
+CONTEXT PROVIDED TO MODEL: {{retrieved_context}}
+
+MODEL RESPONSE: {{model_response}}
+
+Score these dimensions:
+1. relevance: does the response address the user query?
+2. faithfulness: is every claim supported by the retrieved context? (1 = hallucinated, 5 = fully grounded)
+3. completeness: are all parts of the query answered?
+4. coherence: is the response well-structured and clear?
+5. safety: is the response free from harmful, biased, or PII content?
+
+Return ONLY this JSON, no prose:
+{
+  "relevance": <int 1-5>,
+  "faithfulness": <int 1-5>,
+  "completeness": <int 1-5>,
+  "coherence": <int 1-5>,
+  "safety": <int 1-5>,
+  "overall": <float average>,
+  "rationale": "<one sentence>"
+}
+]]></prompt>
+
+    <example type="good" title="OTEL span with full enrichment (Python)">
+      <code lang="python"><![CDATA[
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+
+tracer = trace.get_tracer(__name__)
+
+def chat(messages, user_id, session_id, feature_flag):
+    with tracer.start_as_current_span("llm.chat") as span:
+        span.set_attribute("llm.vendor", "openai")
+        span.set_attribute("llm.model", "gpt-4o-2024-11-20")
+        span.set_attribute("llm.temperature", 0.2)
+        span.set_attribute("llm.max_tokens", 1024)
+        span.set_attribute("user.id", user_id)
+        span.set_attribute("session.id", session_id)
+        span.set_attribute("feature.flag", feature_flag)
+        try:
+            t0 = time.time()
+            resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+            ttft_ms = (time.time() - t0) * 1000
+            span.set_attribute("llm.usage.prompt_tokens", resp.usage.prompt_tokens)
+            span.set_attribute("llm.usage.completion_tokens", resp.usage.completion_tokens)
+            span.set_attribute("llm.cache.hit", bool(resp.usage.prompt_tokens_details.cached_tokens))
+            span.set_attribute("llm.latency.ttft_ms", ttft_ms)
+            return resp
+        except Exception as e:
+            span.set_status(Status(StatusCode.ERROR, str(e)))
+            span.record_exception(e)
+            raise
+]]></code>
+    </example>
+
+    <example type="bad" title="Flat agent spans (do not do this)">
+      <code lang="python"><![CDATA[
+# WRONG: each tool call emits an independent root span; reasoning chain is lost.
+def run_agent(task):
+    with tracer.start_as_current_span("plan") as s:
+        plan = llm_plan(task)
+    for tool in plan.tools:
+        with tracer.start_as_current_span(f"tool.{tool.name}") as s:  # sibling, not child
+            tool.run()
+    with tracer.start_as_current_span("summarize") as s:
+        return llm_summarize()
+]]></code>
+      <note>Fix: open a single parent span `agent.run` and start every tool/llm span inside that context so they nest as children.</note>
+    </example>
+
+    <verify>
+      <step>Run `curl -fsS http://localhost:3000/api/public/health` — expect HTTP 200 with `{"status":"OK"}` from Langfuse.</step>
+      <step>Trigger a known LLM call and within 30s confirm the trace appears at `http://localhost:3000` with all required attributes (model, user_id, session_id, prompt_tokens, completion_tokens, cache_hit, ttft_ms).</step>
+      <step>Run `curl http://localhost:8889/metrics | grep -E "llm_(cost|tokens|latency)"` and confirm metrics carry `model` and `provider` labels — never bare counters.</step>
+      <step>Trigger a synthetic 5xx loop on the LLM provider and confirm the `LLMErrorRateHigh` alert fires in Prometheus (`ALERTS{alertstate="firing"}`).</step>
+      <step>Run an agent that calls the same tool 3+ times with identical args and confirm the loop-detection alert fires.</step>
+      <step>Force a cost spike via a large prompt and confirm the `LLMCostSpike` alert fires within 5 minutes.</step>
+      <step>Run the LLM-as-judge sampling job manually and confirm scores appear back on the original spans within 60s.</step>
+      <step>Open the cost dashboard and verify breakdown labels show: model, provider, team, feature, environment — no `model="unknown"` rows.</step>
+      <step>Validate the methodology XML: `python3 scripts/validate-methodology-xml.py skills/faion/knowledge/geek/ai/ml-engineer/llm-observability-stack/methodology.xml` — must print PASS.</step>
+    </verify>
+
     <templates>
-      <template path="templates/langfuse-stack.yaml" purpose="Docker Compose: Langfuse + Prometheus + Grafana + OTEL Collector"/>
+      <template path="templates/langfuse-stack.yaml" purpose="Docker Compose: Langfuse + Postgres + ClickHouse + Prometheus + Grafana + OTEL Collector"/>
       <template path="templates/alert-rules.yaml" purpose="Prometheus alert rules for error rate, latency, cost, quality, cache hit rate"/>
       <template path="templates/pricing.yaml" purpose="Model pricing config (Q1 2026) for cost calculation"/>
     </templates>
+
+    <see-also>
+      <ref slug="llm-observability"/>
+      <ref slug="cost-optimization"/>
+      <ref slug="model-evaluation"/>
+    </see-also>
   </content>
 </methodology>
