@@ -7,31 +7,36 @@
     <summary>Production AWS service selection (serverless vs containers), hybrid architecture, event-driven patterns, and pre-deployment checklists.</summary>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
+    <updated>2026-05-01</updated>
     <tags>
       <tag>aws</tag>
       <tag>architecture</tag>
       <tag>serverless</tag>
       <tag>containers</tag>
       <tag>well-architected</tag>
+      <tag>terraform</tag>
+      <tag>eventbridge</tag>
     </tags>
   </metadata>
 
   <content>
     <title>AWS Architecture Services</title>
 
-    <summary>Production-ready patterns for AWS service selection, integration, and deployment. Covers the serverless vs containers decision, event-driven architecture with EventBridge, the AWS Well-Architected Framework six pillars, and Terraform configurations for EKS, RDS Aurora, ALB, S3+CloudFront, and API Gateway. 78% of teams now use hybrid architectures — the concrete rule is: choose Lambda for variable/spiky traffic under 15 minutes; choose containers for steady high-volume 24/7 workloads.</summary>
+    <summary>Production-ready patterns for AWS service selection, integration, and deployment. Covers serverless vs containers, EventBridge event-driven design, the Well-Architected six pillars, and Terraform configurations for EKS, RDS Aurora, ALB, S3+CloudFront, and API Gateway. The default rule: Lambda for variable/spiky traffic under 15 minutes; containers for steady high-volume 24/7 workloads; hybrid for everything in between.</summary>
 
     <why>
-      <p>Choosing the wrong compute service leads to wasted cost (over-provisioned containers) or reliability failures (Lambda timeouts on long-running jobs). Explicit decision criteria and production Terraform examples eliminate guesswork and encode security defaults (no public S3, encrypted RDS, KMS keys, multi-AZ).</p>
+      <p>Choosing the wrong compute service creates wasted cost (over-provisioned containers idling at 5% CPU) or reliability failures (Lambda timing out on a 20-minute report). Explicit decision criteria, production Terraform with hardcoded security defaults (no public S3, KMS encryption, multi-AZ, IAM authentication) and a pre-deployment checklist eliminate guesswork and make every change reviewable.</p>
     </why>
 
     <when-to-use>
       <list>
-        <item>Selecting compute service (Lambda vs ECS/EKS/Fargate) for a new workload</item>
+        <item>Selecting compute service (Lambda vs ECS Fargate vs EKS) for a new workload</item>
         <item>Designing event-driven architectures with EventBridge, SNS, SQS, or Step Functions</item>
         <item>Applying AWS Well-Architected Framework review to existing infrastructure</item>
         <item>Writing Terraform for EKS clusters, Aurora, ALB, CloudFront, or API Gateway</item>
-        <item>Performing cost optimization (Graviton, Spot, Reserved, Instance Scheduler)</item>
+        <item>Performing cost optimization (Graviton migration, Spot, Reserved, Instance Scheduler)</item>
+        <item>Reviewing a pull request that adds or modifies AWS infrastructure</item>
+        <item>Onboarding a new account and applying baseline tags, CloudTrail, and AWS Config</item>
       </list>
     </when-to-use>
 
@@ -41,28 +46,41 @@
         <item>Terraform syntax basics — use terraform-basics for HCL fundamentals</item>
         <item>VPC and networking design — use aws-networking for subnet, SG, and TGW patterns</item>
         <item>S3 bucket policies and lifecycle rules — use aws-s3-storage for storage-specific patterns</item>
+        <item>Lambda function packaging and cold start tuning — use aws-lambda</item>
+        <item>EC2 or ECS task definitions and capacity providers — use aws-ec2-ecs</item>
       </list>
     </when-not-to-use>
 
+    <how-to>
+      <step>Read the workload requirements: traffic shape (spiky vs steady), max execution time, GPU need, persistent connections, regulatory constraints. Write them down before opening the AWS console.</step>
+      <step>Apply the compute decision tree: if max-execution &gt; 15 min OR GPU OR websockets OR steady high-volume 24/7 then containers; otherwise default to Lambda.</step>
+      <step>Apply the orchestration choice: team has Kubernetes expertise and needs Helm or multi-cloud → EKS; otherwise → ECS Fargate.</step>
+      <step>Apply the integration pattern: cross-service routing → EventBridge custom bus; multi-step workflow with retries/compensation → Step Functions; async buffering single consumer → SQS; fan-out broadcast → SNS.</step>
+      <step>Apply the database choice: relational OLTP → Aurora (PostgreSQL preferred); key-value or document with predictable single-digit ms latency → DynamoDB; analytical → Redshift or Athena.</step>
+      <step>Generate Terraform from the templates in this folder and pin all defaults: KMS encryption, multi-AZ, private subnets, IAM authentication, deletion protection on prod, Graviton instances.</step>
+      <step>Run the pre-deployment checklist (below) and the verify section before plan/apply.</step>
+      <step>Run terraform fmt, terraform validate, tflint, and checkov; fix every finding before submitting the PR.</step>
+    </how-to>
+
     <section name="compute-decision">
       <rule testable="true">
-        <statement>Choose Lambda when traffic is variable or spiky, execution is under 15 minutes, cold start is acceptable, and GPU is not required.</statement>
+        <statement>Choose Lambda when traffic is variable or spiky, execution is under 15 minutes, cold start under 2 seconds is acceptable, and GPU is not required.</statement>
         <rationale>Lambda costs per invocation; idle time costs nothing. Containers cost per provisioned hour regardless of traffic.</rationale>
       </rule>
       <rule testable="true">
-        <statement>Choose containers (EKS/ECS/Fargate) for steady 24/7 workloads, long-running processes, GPU requirements, or when Kubernetes ecosystem is needed.</statement>
-        <rationale>Reserved container capacity is cheaper than Lambda at high sustained throughput. GPU workloads require EC2-backed compute.</rationale>
+        <statement>Choose containers (EKS or ECS Fargate) for steady 24/7 workloads above 1 million requests per day, long-running processes, GPU requirements, persistent websocket connections, or when the Kubernetes ecosystem is needed.</statement>
+        <rationale>Reserved container capacity is cheaper than Lambda at high sustained throughput. GPU workloads require EC2-backed compute. Lambda has a 15-minute hard timeout and no persistent connections.</rationale>
       </rule>
       <rule testable="true">
-        <statement>Default to a hybrid architecture: Lambda for event-driven and sporadic workloads, containers for always-on services.</statement>
-        <rationale>78% of engineering teams run hybrid architectures. The question is which workload belongs where, not a binary choice.</rationale>
+        <statement>Default to a hybrid architecture: Lambda for event-driven and sporadic workloads, containers for always-on services. Document the boundary in an architecture decision record.</statement>
+        <rationale>Most teams run hybrid architectures. The right question is which workload belongs where, not a binary choice.</rationale>
       </rule>
       <example type="good" title="E-commerce hybrid architecture">
-        <note>E-commerce: EKS for the main web API (steady traffic), Lambda for order notifications (spiky), Step Functions for payment workflow (stateful).</note>
+        <note>EKS for the main web API (steady traffic, websockets for live cart sync); Lambda for order notification webhooks (spiky traffic, &lt;30 second invocations); Step Functions for the multi-stage payment workflow (stateful with compensation on refund); SQS in front of order-processing Lambda for back-pressure.</note>
       </example>
       <antipattern>
-        <description>Running all workloads as Lambda including a websocket server or ML inference service.</description>
-        <reason>Lambda has a 15-minute timeout, no persistent connections, and no GPU support.</reason>
+        <description>Running all workloads as Lambda including a websocket server, ML inference at &gt;5GB model size, or a 20-minute nightly report.</description>
+        <reason>Lambda has a 15-minute timeout, no persistent connections, no GPU support, and a 10GB ephemeral storage cap.</reason>
       </antipattern>
     </section>
 
@@ -72,15 +90,15 @@
         <rationale>Fargate is fully managed; no patching, scaling, or capacity planning for nodes.</rationale>
       </rule>
       <rule testable="true">
-        <statement>Choose EKS when multi-cloud portability, Helm ecosystem, or advanced scheduling is required.</statement>
+        <statement>Choose EKS when multi-cloud portability, Helm ecosystem, GitOps with ArgoCD, or advanced scheduling is required.</statement>
         <rationale>EKS uses standard Kubernetes APIs, enabling migration to other clouds or on-prem clusters.</rationale>
       </rule>
     </section>
 
     <section name="database-selection">
       <rule testable="true">
-        <statement>Use RDS Aurora for relational OLTP workloads; use DynamoDB for key-value or document access patterns requiring single-digit millisecond latency at any scale.</statement>
-        <rationale>Aurora provides Aurora PostgreSQL compatibility with auto-scaling storage. DynamoDB avoids connection pooling limits at high concurrency.</rationale>
+        <statement>Use RDS Aurora PostgreSQL for relational OLTP; use DynamoDB for key-value or document access patterns requiring single-digit millisecond latency at any scale; use Redshift for analytical queries over &gt;1TB.</statement>
+        <rationale>Aurora provides storage auto-scaling and read replicas. DynamoDB avoids connection pooling limits at high concurrency. Redshift columnar storage is purpose-built for OLAP.</rationale>
       </rule>
     </section>
 
@@ -97,8 +115,8 @@
         <rationale>Skipping any pillar creates technical debt: missing Security leads to breaches; missing Cost Optimization leads to uncontrolled spend.</rationale>
       </rule>
       <rule testable="true">
-        <statement>Default to Graviton (ARM64) instances for all new compute resources; justify x86 explicitly.</statement>
-        <rationale>Graviton provides 20% lower cost and comparable or better performance for most workloads.</rationale>
+        <statement>Default to Graviton (ARM64) instances for all new compute resources; require an explicit comment to justify x86 usage.</statement>
+        <rationale>Graviton provides roughly 20% lower cost and comparable or better performance for most workloads.</rationale>
       </rule>
     </section>
 
@@ -171,14 +189,14 @@ resource "aws_cloudwatch_event_target" "notify" {
         <rationale>Single-instance Aurora has no automatic failover. Deletion protection prevents accidental data loss in production.</rationale>
       </rule>
       <rule testable="true">
-        <statement>Set backup retention to 30 days in production; enable Performance Insights and Enhanced Monitoring.</statement>
+        <statement>Set backup retention to 30 days in production; enable Performance Insights and Enhanced Monitoring with 60-second granularity.</statement>
         <rationale>30-day retention meets most compliance requirements. Performance Insights identifies slow queries proactively.</rationale>
       </rule>
     </section>
 
     <section name="alb-and-cloudfront">
       <rule testable="true">
-        <statement>Redirect HTTP port 80 to HTTPS 443 with SSL policy ELBSecurityPolicy-TLS13-1-2-2021-06; enable access logs to S3.</statement>
+        <statement>Redirect HTTP port 80 to HTTPS 443 with SSL policy ELBSecurityPolicy-TLS13-1-2-2021-06; enable access logs to S3 with 90-day lifecycle.</statement>
         <rationale>TLS 1.3 policy disables weak cipher suites. Access logs are required for security audits and debugging.</rationale>
       </rule>
       <rule testable="true">
@@ -189,7 +207,7 @@ resource "aws_cloudwatch_event_target" "notify" {
 
     <section name="security-and-cost">
       <rule testable="true">
-        <statement>Tag all resources with Project, Environment, Owner, and ManagedBy=terraform; enable CloudTrail and AWS Config.</statement>
+        <statement>Tag all resources with Project, Environment, Owner, and ManagedBy=terraform; enable CloudTrail (multi-region trail) and AWS Config in every account.</statement>
         <rationale>Tags enable cost allocation and compliance reporting. CloudTrail provides the audit trail required for SOC2/PCI.</rationale>
       </rule>
       <rule testable="true">
@@ -205,6 +223,99 @@ resource "aws_cloudwatch_event_target" "notify" {
         <reason>An AZ outage takes the entire workload offline. Multi-AZ is required for any SLA above 99.9%.</reason>
       </antipattern>
     </section>
+
+    <checklist>
+      <check>Workload requirements documented: traffic shape, max execution time, GPU/connection needs, regulatory constraints.</check>
+      <check>Compute service selected against the decision tree; choice recorded in an ADR or PR description.</check>
+      <check>Integration pattern selected (EventBridge / Step Functions / SQS / SNS) with a one-line justification.</check>
+      <check>All resources tagged with Project, Environment, Owner, ManagedBy=terraform.</check>
+      <check>All compute defaults to Graviton (ARM64) or contains an explicit x86 justification comment.</check>
+      <check>S3 buckets: Block Public Access enabled, default encryption SSE-KMS, versioning on for prod data buckets.</check>
+      <check>RDS / Aurora: Multi-AZ, KMS encryption, IAM auth enabled, deletion protection on prod, backup retention 30 days.</check>
+      <check>EKS: private subnets, IRSA, KMS secrets encryption, managed node groups, managed add-ons (CoreDNS, kube-proxy, VPC CNI, EBS CSI).</check>
+      <check>ALB: HTTP→HTTPS redirect, TLS 1.3 policy ELBSecurityPolicy-TLS13-1-2-2021-06, access logs to S3.</check>
+      <check>CloudFront: Origin Access Control (OAC), HTTP/2 + HTTP/3 enabled, custom error pages.</check>
+      <check>EventBridge: custom bus (not default), 30-day archive, DLQ + retry_policy on every target.</check>
+      <check>Lambda: timeout set to realistic value, reserved concurrency declared, DLQ on async invocations.</check>
+      <check>IAM: no wildcard (*) resource ARNs in production policies; least-privilege enforced.</check>
+      <check>CloudTrail multi-region trail, AWS Config recorder, GuardDuty enabled in every account.</check>
+      <check>Cost guardrails: Budgets alerting at 80% and 100%, Instance Scheduler for non-prod.</check>
+      <check>terraform fmt, terraform validate, tflint, and checkov all PASS with zero high/critical findings.</check>
+    </checklist>
+
+    <commands>
+      <command name="fmt">terraform fmt -recursive</command>
+      <command name="validate">terraform validate</command>
+      <command name="lint">tflint --recursive</command>
+      <command name="security-scan">checkov -d . --framework terraform --skip-check CKV_AWS_18</command>
+      <command name="plan">terraform plan -out=tfplan -var-file=env/prod.tfvars</command>
+      <command name="apply">terraform apply tfplan</command>
+      <command name="cost-estimate">infracost breakdown --path .</command>
+      <command name="audit-public-s3">aws s3api list-buckets --query "Buckets[].Name" --output text | xargs -n1 -I{} aws s3api get-bucket-policy-status --bucket {} 2&gt;/dev/null</command>
+      <command name="audit-public-sg">aws ec2 describe-security-groups --filters "Name=ip-permission.cidr,Values=0.0.0.0/0" --query "SecurityGroups[].GroupId"</command>
+      <command name="audit-unencrypted-rds">aws rds describe-db-instances --query "DBInstances[?StorageEncrypted==\`false\`].DBInstanceIdentifier"</command>
+      <command name="audit-trusted-advisor">aws support describe-trusted-advisor-checks --language en</command>
+      <command name="cost-by-service">aws ce get-cost-and-usage --time-period Start=$(date -u -d '30 days ago' +%Y-%m-%d),End=$(date -u +%Y-%m-%d) --granularity MONTHLY --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE</command>
+    </commands>
+
+    <prompt purpose="Generate the AWS architecture decision record for a new workload"><![CDATA[
+You are an AWS solutions architect. Produce a one-page Architecture Decision Record using ONLY the template below. Do not invent fields. Do not skip sections. If a field cannot be answered from the inputs, write "TBD — needs <specific input>".
+
+INPUTS:
+- workload_name: <name>
+- traffic_shape: <spiky | steady | hybrid>
+- peak_rps: <number>
+- max_execution_seconds: <number>
+- needs_gpu: <true | false>
+- needs_websockets: <true | false>
+- data_class: <public | internal | confidential | regulated>
+- region: <aws-region>
+- environment: <dev | staging | prod>
+
+TEMPLATE:
+# ADR — <workload_name>
+
+## Decision
+- Compute: <Lambda | ECS Fargate | EKS> because <reason citing decision tree>
+- Database: <Aurora PostgreSQL | DynamoDB | Redshift> because <reason>
+- Integration: <EventBridge | Step Functions | SQS | SNS> because <reason>
+- Defaults applied: Graviton, Multi-AZ, KMS, IAM auth, private subnets, OAC.
+
+## Well-Architected check
+- Operational Excellence: <one line>
+- Security: <one line>
+- Reliability: <one line>
+- Performance Efficiency: <one line>
+- Cost Optimization: <one line>
+- Sustainability: <one line>
+
+## Cost estimate (monthly, USD)
+- Compute: $<n>
+- Storage: $<n>
+- Data transfer: $<n>
+- Total: $<n>
+
+## Risks
+- <one line>
+- <one line>
+
+## Alternatives considered
+- <option>: rejected because <reason>
+]]></prompt>
+
+    <verify>
+      <step>Run terraform fmt -recursive and confirm no diffs remain (git diff --exit-code).</step>
+      <step>Run terraform validate in every module folder and confirm zero errors.</step>
+      <step>Run tflint --recursive and confirm zero findings.</step>
+      <step>Run checkov -d . --framework terraform and confirm zero high or critical findings; document any suppressions in checkov.yaml with a justification comment.</step>
+      <step>Run terraform plan and confirm the resource count matches the change description; no unexpected destroy operations on stateful resources (RDS, S3, DynamoDB).</step>
+      <step>Verify each item in the checklist above is satisfied; check off in the PR description.</step>
+      <step>Confirm all S3 buckets have Block Public Access enabled: aws s3api get-public-access-block --bucket &lt;name&gt; should return all four flags true.</step>
+      <step>Confirm RDS encryption: aws rds describe-db-instances --query "DBInstances[].[DBInstanceIdentifier,StorageEncrypted]" returns true for every prod instance.</step>
+      <step>Confirm EventBridge targets have DLQ: aws events list-targets-by-rule --rule &lt;name&gt; --query "Targets[].DeadLetterConfig.Arn" returns a non-null ARN for each.</step>
+      <step>Confirm CloudTrail multi-region trail is logging: aws cloudtrail describe-trails --query "trailList[?IsMultiRegionTrail==\`true\`].Name" returns at least one trail.</step>
+      <step>Run a synthetic load test or canary against the new endpoint and verify CloudWatch alarms fire as expected; resolve any noisy alarms before merge.</step>
+    </verify>
 
     <templates>
       <template path="templates/variables.tf" purpose="Common Terraform variables (project, environment, region, VPC CIDR, AZs)"/>
@@ -222,6 +333,7 @@ resource "aws_cloudwatch_event_target" "notify" {
       <link href="https://aws.amazon.com/lambda/"/>
       <link href="https://aws.amazon.com/rds/aurora/"/>
       <link href="https://aws.amazon.com/events/"/>
+      <link href="https://docs.aws.amazon.com/prescriptive-guidance/latest/saas-multitenant-api-access-control/welcome.html"/>
     </see-also>
   </content>
 </methodology>
