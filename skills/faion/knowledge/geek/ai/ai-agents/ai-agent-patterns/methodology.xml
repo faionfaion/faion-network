@@ -21,6 +21,7 @@
       <p>Simple prompt to response is insufficient for complex tasks. Agents that solve interesting problems require a structured control flow that allows reasoning, tool use, and iteration. Different task types benefit from different control patterns. Choosing the right pattern based on task structure is more impactful than upgrading the underlying model. An agent with no pattern (just chaining prompts) fails more often than a well-structured agent on a smaller model.</p>
     </why>
     <when-to-use>
+      <p>Apply this methodology the moment you start a new agent task and must decide between a single LLM call, a CoT prompt, a ReAct loop, or a Plan-and-Execute graph. Re-apply whenever an existing agent loops, hallucinates, or fails to use tools — pattern mismatch is the most common root cause.</p>
       <list>
         <item>Choosing a control flow pattern (CoT, ReAct, Plan-and-Execute) for a new agent task</item>
         <item>Explaining why a single prompt-response fails and what pattern would address the gap</item>
@@ -36,6 +37,16 @@
         <item>Hard real-time tasks where multi-iteration loops are too slow (under 500 milliseconds SLA)</item>
       </list>
     </when-not-to-use>
+    <how-to>
+      <step>1. Classify the task. Answer three questions in writing: (a) Does the task need external information not in the prompt? (b) Are there sequential subtasks with dependencies? (c) Is the answer derivable by pure reasoning over given context? Based on answers: pure reasoning → CoT; needs tools, ≤5 steps, simple → ReAct; needs tools, &gt;5 steps or branching → Plan-and-Execute.</step>
+      <step>2. Pick the pattern using the decision rule in step 1. Write the chosen pattern at the top of the implementation file as a comment so reviewers see the intent.</step>
+      <step>3. Pick the framework. Single agent + simple loop → raw anthropic SDK with tool_use. Stateful Plan-and-Execute or branching graphs → LangGraph. Multi-agent debate → AutoGen. Role-based crews → CrewAI. Strict OpenAI stack → OpenAI Agents SDK.</step>
+      <step>4. Define tools with strict JSON schemas. Each tool: name, one-sentence description, input schema with required fields, deterministic output (JSON, not prose).</step>
+      <step>5. Wire the loop with three guards: max_steps cap, loop-detection (break if last 3 (action,args) tuples are identical), and replan trigger (Plan-and-Execute only — call replan when any step status != "completed").</step>
+      <step>6. Add tracing. Either LangSmith or a manual log of (step_index, thought, action, args, observation, tokens_in, tokens_out) per iteration to a JSONL file.</step>
+      <step>7. Run on a 10-20 task benchmark with known answers before production. Measure success_rate, avg_steps, p95_tokens, loop_break_count.</step>
+      <step>8. Ship behind a feature flag. Compare metrics against the previous pattern for at least one full daily cycle before removing the flag.</step>
+    </how-to>
     <section name="Agent Design Patterns Overview">
       <p>The fundamental problem is that simple prompt to response is insufficient. Complex tasks require the model to reason about intermediate results, decide whether more information is needed, and iterate. Different agent patterns address different task requirements:</p>
       <list>
@@ -54,7 +65,7 @@
     </section>
     <section name="When Pattern Fails and Limitations">
       <p>Chain of Thought (CoT) degrades on tasks requiring factual recall; the model reasons confidently to wrong conclusions. If the model has never learned the answer during training, CoT cannot recover that knowledge.</p>
-      <p>ReAct (Reason + Act) loops can get stuck in circular Thought → Action → Observation cycles without progress if the tool returns ambiguous results. The agent may call the same tool twice with slightly different arguments, getting similar unhelpful results both times.</p>
+      <p>ReAct (Reason + Act) loops can get stuck in circular Thought, Action, Observation cycles without progress if the tool returns ambiguous results. The agent may call the same tool twice with slightly different arguments, getting similar unhelpful results both times.</p>
       <p>Plan-and-Execute breaks when the initial plan is wrong and the replanning step is not implemented. Agents proceed to execute an invalid plan to completion instead of stopping to revise the plan.</p>
       <p>Framework abstractions (LangGraph state machines, AutoGen conversations) add debugging complexity; errors manifest several layers below the business logic.</p>
       <p>Tool Use Pattern requires precise tool descriptions; vague descriptions cause the agent to select the wrong tool or pass malformed arguments.</p>
@@ -63,25 +74,65 @@
       <p>Use Claude Haiku to generate initial tool definitions from an API schema (mechanical transformation). Use Claude Sonnet to review agent reasoning chains (requires logic analysis across multiple steps). Use Claude Opus only when designing multi-agent orchestration where coordination patterns are genuinely complex. For production NERO pipelines, ReAct is the default pattern; Plan-and-Execute is used when a task has more than 5 sequential steps requiring inter-step dependencies.</p>
       <p>Model selection by task: Haiku for tool definition generation from API schemas (mechanical, no reasoning). Sonnet for reviewing agent reasoning chains (requires logic analysis). Opus for designing multi-agent orchestration (complex coordination).</p>
     </section>
+    <checklist>
+      <check>Task classified in writing: needs-tools (yes/no), step-count (n), branching (yes/no).</check>
+      <check>Pattern chosen by decision rule and recorded as a comment at the top of the agent file.</check>
+      <check>Framework chosen and pinned in requirements (e.g. langgraph==0.2.x).</check>
+      <check>Each tool has name, one-sentence description, JSON schema with required fields, and deterministic JSON output.</check>
+      <check>max_steps guard set (default 15) and triggers a controlled error, not a silent retry.</check>
+      <check>Loop-detection guard: break when the last 3 (action, args_hash) tuples are identical.</check>
+      <check>Plan-and-Execute only: replan node is wired and triggered on any step status != "completed".</check>
+      <check>Tracing wired (LangSmith run URL or JSONL log path) and verified to contain at least one full trace.</check>
+      <check>Benchmark of 10-20 known-answer tasks executed; success_rate, avg_steps, p95_tokens, loop_break_count recorded.</check>
+      <check>Multi-agent only: each agent has exactly one responsibility and a non-overlapping tool surface.</check>
+      <check>System prompt contains explicit "do not search the same query twice" rule when web_search is exposed.</check>
+    </checklist>
     <section name="Prompt Patterns for Agent Pattern Selection">
-      <code lang="xml"><![CDATA[<agent_pattern_selection>
-  <task>Gather competitor pricing data for 10 SaaS tools, synthesize into a comparison table</task>
+      <prompt purpose="pattern-selection"><![CDATA[<agent_pattern_selection>
+  <task>{{describe the user goal in one sentence}}</task>
   <constraints>
-    <tools_available>web_search, file_write</tools_available>
+    <tools_available>{{comma-separated tool names}}</tools_available>
     <max_steps>15</max_steps>
+    <latency_budget_seconds>{{int}}</latency_budget_seconds>
   </constraints>
   <candidate_patterns>CoT, ReAct, Plan-and-Execute</candidate_patterns>
-  <output>Selected pattern with rationale. If Plan-and-Execute: output initial plan as numbered steps.</output>
-</agent_pattern_selection>]]></code>
-      <p>For ReAct loops, use a system prompt that establishes the format:</p>
-      <code lang="xml"><![CDATA[<react_loop>
-  <system>You are a research agent. For each step, output:
-Thought: <reasoning>
-Action: <tool_name>(<args>)
-Then wait for Observation before continuing.
-Only output Final Answer when the task is complete.</system>
+  <decision_rules>
+    <rule>If task is pure reasoning over the prompt -> CoT.</rule>
+    <rule>If task needs tools and has <= 5 sequential steps -> ReAct.</rule>
+    <rule>If task has > 5 steps or branching dependencies -> Plan-and-Execute.</rule>
+  </decision_rules>
+  <output_format>JSON with keys: chosen_pattern, rationale, initial_plan (only if Plan-and-Execute, list of {id, action, depends_on}).</output_format>
+</agent_pattern_selection>]]></prompt>
+      <prompt purpose="react-system-prompt"><![CDATA[<react_loop>
+  <system>You are a research agent. For each iteration, output exactly:
+Thought: <one sentence reasoning>
+Action: <tool_name>(<json_args>)
+Then STOP and wait for an Observation message before continuing.
+Output Final Answer: <answer> only when the task is fully complete.
+
+Rules:
+- Never call the same tool with the same args twice.
+- Never invent Observation values; wait for the runtime to inject them.
+- If after 3 attempts you cannot make progress, output: Final Answer: BLOCKED <reason>.</system>
   <task>{{research_task}}</task>
-</react_loop>]]></code>
+</react_loop>]]></prompt>
+      <prompt purpose="plan-and-execute"><![CDATA[<plan_and_execute>
+  <system>You are a planning agent. Output a JSON plan first, then execute each step.
+
+Plan schema:
+{
+  "goal": string,
+  "steps": [
+    {"id": int, "action": string, "tool": string, "args": object, "depends_on": [int]}
+  ]
+}
+
+After each step, output:
+{"step_id": int, "status": "completed"|"failed", "result": any, "error": string|null}
+
+If any step fails, emit a "replan" event with the revised plan before continuing.</system>
+  <goal>{{goal}}</goal>
+</plan_and_execute>]]></prompt>
     </section>
     <section name="CLI Tools and Frameworks">
       <p>anthropic SDK provides core LLM calls for all patterns. langgraph is the state machine for Plan-and-Execute and complex ReAct with built-in persistence and graph visualization. autogen handles multi-agent conversation patterns where agents negotiate and debate. crewai provides role-based agent teams with built-in task prioritization. openai SDK is the OpenAI Agents SDK reference implementation. LangSmith is essential for pattern execution tracing and debugging. Modal provides sandboxed tool execution to prevent host contamination.</p>
@@ -93,6 +144,57 @@ Only output Final Answer when the task is complete.</system>
         <item>openai SDK — OpenAI Agents SDK (tool use pattern reference and official OpenAI implementation). pip install openai</item>
       </list>
     </section>
+    <commands>
+      <command name="install-anthropic">pip install --upgrade anthropic</command>
+      <command name="install-langgraph">pip install --upgrade "langgraph&gt;=0.2,&lt;0.3" langsmith</command>
+      <command name="install-crewai">pip install --upgrade crewai crewai-tools</command>
+      <command name="install-autogen">pip install --upgrade pyautogen</command>
+      <command name="enable-langsmith">export LANGCHAIN_TRACING_V2=true LANGCHAIN_API_KEY=$LANGSMITH_KEY LANGCHAIN_PROJECT=agent-patterns</command>
+      <command name="run-react-benchmark">python -m bench.run --pattern react --tasks bench/tasks.jsonl --max-steps 15 --out runs/react.jsonl</command>
+      <command name="run-plan-execute-benchmark">python -m bench.run --pattern plan-execute --tasks bench/tasks.jsonl --max-steps 25 --out runs/plan.jsonl</command>
+      <command name="grade-benchmark">python -m bench.grade runs/react.jsonl --gold bench/gold.jsonl --metrics success_rate,avg_steps,p95_tokens,loop_break_count</command>
+      <command name="detect-loops">jq -s 'group_by(.run_id) | map({run: .[0].run_id, repeats: ([.[] | .action] | group_by(.) | map(length) | max)}) | map(select(.repeats &gt; 2))' runs/react.jsonl</command>
+    </commands>
+    <example type="good" title="ReAct loop with anthropic SDK and guards">
+      <code lang="python"><![CDATA[import hashlib, json, anthropic
+client = anthropic.Anthropic()
+TOOLS = [{"name": "web_search", "description": "Search the public web. Returns top 5 results as JSON.", "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}]
+SYSTEM = "You are a research agent. Never call the same tool with the same args twice. After 15 iterations, return Final Answer: BLOCKED."
+
+def run(task: str, max_steps: int = 15):
+    history, seen = [{"role": "user", "content": task}], []
+    for step in range(max_steps):
+        resp = client.messages.create(model="claude-opus-4-7", system=SYSTEM, tools=TOOLS, messages=history, max_tokens=1024)
+        if resp.stop_reason == "end_turn":
+            return resp.content[-1].text
+        for block in resp.content:
+            if block.type == "tool_use":
+                key = hashlib.sha1(json.dumps([block.name, block.input], sort_keys=True).encode()).hexdigest()
+                if seen[-3:].count(key) >= 1 and len(seen) >= 3 and seen[-3:] == [key, key, key]:
+                    return "BLOCKED: loop detected"
+                seen.append(key)
+                obs = call_tool(block.name, block.input)
+                history += [{"role": "assistant", "content": resp.content}, {"role": "user", "content": [{"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(obs)}]}]
+    return "BLOCKED: max_steps"]]></code>
+      <note>Loop guard, max_steps cap, and deterministic JSON tool output are all visible in fewer than 25 lines. This is the minimal correct ReAct implementation.</note>
+    </example>
+    <example type="bad" title="ReAct without guards">
+      <code lang="python"><![CDATA[# DO NOT SHIP — no max_steps, no loop detection, free-text observations
+while True:
+    resp = client.messages.create(model="claude-opus-4-7", messages=history, tools=TOOLS)
+    for block in resp.content:
+        if block.type == "tool_use":
+            history.append({"role": "user", "content": str(call_tool(block.name, block.input))})]]></code>
+      <note>This loops forever on ambiguous tool output and burns the API budget within minutes.</note>
+    </example>
+    <verify>
+      <step>1. Run the chosen pattern on the 10-20 task benchmark: <code lang="bash"><![CDATA[python -m bench.run --pattern <chosen> --tasks bench/tasks.jsonl --out runs/<chosen>.jsonl]]></code></step>
+      <step>2. Grade results and assert thresholds: <code lang="bash"><![CDATA[python -m bench.grade runs/<chosen>.jsonl --gold bench/gold.jsonl --assert success_rate>=0.7 avg_steps<=10 p95_tokens<=20000 loop_break_count==0]]></code></step>
+      <step>3. Inspect at least one trace end-to-end in LangSmith (or the JSONL log) and confirm: thoughts are non-repetitive, tool args are well-formed JSON, observations are deterministic.</step>
+      <step>4. Run loop-detection over the run log and confirm zero (action, args) tuples repeat 3+ times: <code lang="bash"><![CDATA[jq -s 'group_by(.run_id) | map({run: .[0].run_id, repeats: ([.[] | .action] | group_by(.) | map(length) | max)}) | map(select(.repeats > 2))' runs/<chosen>.jsonl]]></code></step>
+      <step>5. Plan-and-Execute only: confirm at least one replan event fired in test runs where a step was forced to fail. If replan never fires, the trigger is wired wrong.</step>
+      <step>6. Token budget check: total tokens per task at p95 must be within the budget set in the task brief; if not, downgrade pattern or trim tools.</step>
+    </verify>
     <section name="Services and Observability Tools">
       <p>LangGraph is OSS and best for stateful Plan-and-Execute but has a steep learning curve. AutoGen is OSS (Microsoft) for multi-agent conversation with role specialization. CrewAI is OSS with a simpler API than AutoGen. OpenAI Agents SDK is official OpenAI but tightly coupled to OpenAI models. LangSmith is SaaS for pattern execution tracing and is essential for ReAct debugging. Modal is SaaS for sandboxed tool execution.</p>
       <list>
