@@ -4,9 +4,10 @@
     <tier>pro</tier>
     <group>infra</group>
     <domain>infrastructure-engineer</domain>
-    <summary>Production-ready GCP architectural patterns for GKE clusters, Cloud SQL, Cloud Storage with CDN, microservices on Cloud Run, and data pipelines (Dataflow + BigQuery).</summary>
+    <summary>Production-ready GCP patterns: regional GKE, Cloud SQL HA, Cloud Run with VPC egress, Pub/Sub DLQ, Dataflow+BigQuery. Concrete commands and verifications.</summary>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
+    <updated>2026-05-01</updated>
     <tags>
       <tag>gcp</tag>
       <tag>gke</tag>
@@ -19,44 +20,56 @@
   <content>
     <title>GCP Architecture Patterns</title>
 
-    <summary>Production-ready GCP architectural patterns for GKE clusters, Cloud SQL, Cloud Storage with CDN, microservices on Cloud Run, and data pipelines (Dataflow + BigQuery). The concrete rule is: always use regional GKE clusters with private nodes, Workload Identity, and managed Prometheus; always set Cloud SQL `availability_type = REGIONAL` with PITR for production; always use Spot VMs with taints for batch workloads.</summary>
+    <summary>Production-ready GCP architectural patterns for GKE clusters, Cloud SQL, Cloud Storage with CDN, microservices on Cloud Run, and data pipelines (Dataflow + BigQuery). Concrete rules: regional GKE with private nodes, Workload Identity, managed Prometheus; Cloud SQL `availability_type = REGIONAL` with PITR for production; Spot VMs with taints for batch.</summary>
 
     <why>
-      <p>GCP's defaults favor availability over security—public IPs, zonal databases, no Workload Identity. Following these patterns eliminates the most common production failures: single-AZ database outages, secret leaks via node metadata, and cold-start latency from under-sized node pools.</p>
+      <p>GCP defaults favor convenience over security and durability — public IPs on Cloud SQL, zonal databases, no Workload Identity, default node pools with metadata-server access. Following these patterns eliminates the most common production failures: single-AZ database outages, secret leaks via node metadata, cold-start storms from undersized pools, and silently stalled Pub/Sub subscriptions.</p>
     </why>
 
     <when-to-use>
       <list>
-        <item>Deploying production GKE clusters (regional, private, node pool strategy).</item>
+        <item>Provisioning a new production GKE cluster (regional, private, node-pool strategy).</item>
         <item>Setting up Cloud SQL PostgreSQL with HA, PITR, and read replicas.</item>
         <item>Implementing CDN for static assets via Cloud Storage + Global LB.</item>
         <item>Building microservices with Cloud Run, Pub/Sub, and Secret Manager.</item>
-        <item>Designing data pipelines (batch ETL or streaming with Dataflow + BigQuery).</item>
-        <item>Migrating from AWS to GCP equivalent services.</item>
+        <item>Designing data pipelines (batch ETL or streaming via Dataflow + BigQuery).</item>
+        <item>Migrating from AWS to GCP equivalent services (EKS→GKE, RDS→Cloud SQL, SQS→Pub/Sub).</item>
+        <item>Pre-deployment review of an existing GCP environment before a launch or audit.</item>
       </list>
     </when-to-use>
 
     <when-not-to-use>
       <list>
-        <item>GCP project hierarchy, IAM, and billing basics—use `gcp-arch-basics`.</item>
-        <item>GCP Compute Engine (VMs, instance groups)—use `gcp-compute`.</item>
-        <item>GCP networking (VPC, firewall, Cloud NAT)—use `gcp-networking`.</item>
-        <item>GCP Cloud Storage lifecycle and CMEK—use `gcp-storage`.</item>
-        <item>AWS architecture decisions—use `aws-architecture-services`.</item>
+        <item>GCP project hierarchy, IAM, and billing basics — use `gcp-arch-basics`.</item>
+        <item>GCP Compute Engine (VMs, instance groups) — use `gcp-compute`.</item>
+        <item>GCP networking (VPC, firewall, Cloud NAT) — use `gcp-networking`.</item>
+        <item>GCP Cloud Storage lifecycle and CMEK — use `gcp-storage`.</item>
+        <item>AWS architecture decisions — use `aws-architecture-services`.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <step>1. Inventory: list current projects, clusters, SQL instances, Cloud Run services, and Pub/Sub topics with the commands in the `commands` block below; capture output to `gcp-inventory.txt`.</step>
+      <step>2. Classify each workload: stateless HTTP → Cloud Run; long-lived stateful → GKE; batch ETL → Dataflow; pub/sub event → Pub/Sub + Cloud Run trigger.</step>
+      <step>3. For GKE: confirm `location` is a region (3+ zones), `release_channel = REGULAR`, Workload Identity enabled, default pool removed, Spot pools tainted.</step>
+      <step>4. For Cloud SQL: confirm `availability_type = REGIONAL`, `backup_configuration.point_in_time_recovery_enabled = true`, no public IP, `require_ssl = true`, deletion protection on.</step>
+      <step>5. For Cloud Run: confirm dedicated service account per service, VPC egress for private resources, ingress restricted (`internal-and-cloud-load-balancing` for internal APIs).</step>
+      <step>6. For Pub/Sub: confirm every subscription has `dead_letter_policy` with `max_delivery_attempts = 5` and a configured DLQ topic; alert on DLQ depth.</step>
+      <step>7. For BigQuery: confirm tables are partitioned and clustered, and queries against critical tables run inside a Reservation slot pool.</step>
+      <step>8. Apply changes via Terraform (preferred) or `gcloud`; never via Console for production. Run the verification block.</step>
+    </how-to>
 
     <section name="gke-cluster-patterns">
       <p>Regional cluster rules, node pool strategies, and security configuration for Workload Identity, Binary Authorization, and Shielded Nodes.</p>
 
       <rule testable="true">
         <statement>Deploy GKE Standard or Autopilot clusters as REGIONAL (not zonal) with a minimum of 3 zones for production; use Autopilot when teams want to avoid node management overhead.</statement>
-        <rationale>Zonal clusters are single points of failure—a zone outage takes the cluster control plane offline. Regional clusters survive individual zone failures with no downtime.</rationale>
+        <rationale>Zonal clusters are single points of failure — a zone outage takes the cluster control plane offline. Regional clusters survive individual zone failures with no downtime.</rationale>
       </rule>
 
       <rule testable="true">
         <statement>Use the REGULAR release channel for production clusters; avoid RAPID channel in production due to less-tested releases.</statement>
-        <rationale>REGULAR channel receives tested Kubernetes versions with a minimum 2-week bake period. RAPID receives new versions immediately with less production validation.</rationale>
+        <rationale>REGULAR receives Kubernetes versions with a minimum 2-week bake period. RAPID receives new versions immediately with less production validation.</rationale>
       </rule>
 
       <rule testable="true">
@@ -66,7 +79,7 @@
 
       <rule testable="true">
         <statement>Enable Binary Authorization with ATTESTOR_BASED policy; require vulnerability scan attestation from Container Analysis before deployment to production.</statement>
-        <rationale>Binary Authorization prevents unscanned or unsigned images from running in production, enforcing the supply chain security requirements for SOC2/PCI compliance.</rationale>
+        <rationale>Binary Authorization prevents unscanned or unsigned images from running in production, enforcing supply chain security for SOC2/PCI compliance.</rationale>
       </rule>
 
       <rule testable="true">
@@ -80,13 +93,13 @@
       </rule>
 
       <rule testable="true">
-        <statement>Configure Spot VM node pools with a Spot:OnDemand taint for fault-tolerant batch workloads; use resource quotas per namespace to prevent runaway autoscaling.</statement>
-        <rationale>Spot VMs cost 60-91% less than On-Demand but can be preempted with 30-second notice. Taints ensure only workloads designed for preemption land on Spot nodes.</rationale>
+        <statement>Configure Spot VM node pools with a `Spot:OnDemand` taint for fault-tolerant batch workloads; use ResourceQuotas per namespace to prevent runaway autoscaling.</statement>
+        <rationale>Spot VMs cost 60–91% less than On-Demand but can be preempted with 30-second notice. Taints ensure only workloads designed for preemption land on Spot nodes.</rationale>
       </rule>
 
       <antipattern>
         <description>Single-zone GKE clusters for production workloads.</description>
-        <reason>A zone outage takes the entire cluster offline—control plane and all worker nodes. Regional clusters survive zone failures with automatic rescheduling.</reason>
+        <reason>A zone outage takes the entire cluster offline — control plane and all worker nodes. Regional clusters survive zone failures with automatic rescheduling.</reason>
       </antipattern>
     </section>
 
@@ -94,18 +107,18 @@
       <p>Cloud SQL HA configuration, read replica patterns, AlloyDB vs Spanner decision, and backup rules.</p>
 
       <rule testable="true">
-        <statement>Always set availability_type = REGIONAL for production Cloud SQL instances; enable PITR (point-in-time recovery) with 30-day retention; disable public IP.</statement>
-        <rationale>ZONAL instances have no automatic failover—a zone outage requires manual intervention. REGIONAL provides automatic failover to a standby in a different zone within 60 seconds.</rationale>
+        <statement>Always set `availability_type = REGIONAL` for production Cloud SQL instances; enable PITR with 30-day retention; disable public IP.</statement>
+        <rationale>ZONAL instances have no automatic failover — a zone outage requires manual intervention. REGIONAL provides automatic failover to a standby in a different zone within 60 seconds.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Enable Query Insights and set logging flags: log_checkpoints, log_connections, log_disconnections, log_lock_waits for PostgreSQL; enable deletion protection on production instances.</statement>
-        <rationale>Query Insights identifies slow queries without performance overhead. Connection and lock logging provides the audit trail required for compliance. Deletion protection prevents accidental drops.</rationale>
+        <statement>Enable Query Insights and set logging flags `log_checkpoints`, `log_connections`, `log_disconnections`, `log_lock_waits` for PostgreSQL; enable deletion protection on production instances.</statement>
+        <rationale>Query Insights identifies slow queries with negligible overhead. Connection and lock logging provides the audit trail required for compliance. Deletion protection prevents accidental drops.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Configure SSL enforcement (require_ssl = true); use Private Service Connect for connections from GKE, never expose Cloud SQL via public IP.</statement>
-        <rationale>Public IP Cloud SQL instances are frequently found in security audits. Private connectivity eliminates the attack surface for credential stuffing and brute-force attacks.</rationale>
+        <statement>Enforce SSL (`require_ssl = true`); use Private Service Connect from GKE; never expose Cloud SQL via public IP.</statement>
+        <rationale>Public IP Cloud SQL instances are frequently flagged in security audits. Private connectivity eliminates the attack surface for credential stuffing and brute-force attacks.</rationale>
       </rule>
 
       <rule testable="true">
@@ -114,13 +127,13 @@
       </rule>
 
       <rule testable="true">
-        <statement>Use Cloud SQL PostgreSQL for standard OLTP workloads; use AlloyDB for PostgreSQL-compatible workloads requiring 2x+ query throughput; use Spanner for global multi-region consistency with 99.999% SLA.</statement>
-        <rationale>AlloyDB delivers 2x transactional and 100x analytical throughput over Cloud SQL via columnar engine. Spanner provides external consistency across regions at significantly higher cost.</rationale>
+        <statement>Use Cloud SQL PostgreSQL for standard OLTP; use AlloyDB for PostgreSQL-compatible workloads requiring 2x+ query throughput; use Spanner for global multi-region consistency with 99.999% SLA.</statement>
+        <rationale>AlloyDB delivers ~2x transactional and up to 100x analytical throughput over Cloud SQL via its columnar engine. Spanner provides external consistency across regions at significantly higher cost.</rationale>
       </rule>
 
       <antipattern>
-        <description>Cloud SQL with availability_type = ZONAL in production.</description>
-        <reason>ZONAL provides no automatic failover. A zone outage requires manual promotion of a replica, causing 5-30 minutes of downtime depending on replication lag.</reason>
+        <description>Cloud SQL with `availability_type = ZONAL` in production.</description>
+        <reason>ZONAL provides no automatic failover. A zone outage requires manual promotion of a replica, causing 5–30 minutes of downtime depending on replication lag.</reason>
       </antipattern>
     </section>
 
@@ -128,23 +141,23 @@
       <p>Cloud Run patterns, Pub/Sub with DLQ, Dataflow streaming, and BigQuery partitioning rules.</p>
 
       <rule testable="true">
-        <statement>Use Cloud Run for stateless HTTP workloads; bind each Cloud Run service to a dedicated service account with minimal IAM roles; set concurrency and CPU allocation based on workload type.</statement>
-        <rationale>Per-service accounts enable auditing of which service accessed which resource. Incorrect concurrency leads to cold start storms (too low) or memory exhaustion (too high).</rationale>
+        <statement>Use Cloud Run for stateless HTTP workloads; bind each service to a dedicated service account with minimal IAM roles; tune concurrency and CPU allocation per workload type.</statement>
+        <rationale>Per-service accounts enable auditing of which service touched which resource. Wrong concurrency causes either cold-start storms (too low) or memory exhaustion (too high).</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Enable VPC connector or Direct VPC egress for Cloud Run services that need to access Cloud SQL, Memorystore, or internal services; do not expose internal APIs via public Cloud Run URLs.</statement>
+        <statement>Enable VPC connector or Direct VPC egress for Cloud Run services that access Cloud SQL, Memorystore, or internal services; do not expose internal APIs via public Cloud Run URLs (set ingress to `internal-and-cloud-load-balancing`).</statement>
         <rationale>VPC egress routes Cloud Run traffic through the VPC, enabling access to private resources without public exposure or NAT gateway costs.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Configure a dead-letter topic on every Pub/Sub subscription with max_delivery_attempts = 5; use exactly-once delivery for financial and idempotency-critical workflows.</statement>
-        <rationale>Without a dead-letter topic, messages that fail processing are retried indefinitely, blocking the subscription and delaying subsequent messages. DLT enables failure inspection and replay.</rationale>
+        <statement>Configure a dead-letter topic on every Pub/Sub subscription with `max_delivery_attempts = 5`; use exactly-once delivery for financial and idempotency-critical workflows.</statement>
+        <rationale>Without a DLT, messages that fail processing are retried indefinitely, blocking the subscription and delaying subsequent messages. DLT enables failure inspection and replay.</rationale>
       </rule>
 
       <rule testable="true">
         <statement>Use Push subscriptions (Cloud Run, Cloud Functions) for event-driven workloads; use Pull subscriptions for batch consumers that need to control processing rate.</statement>
-        <rationale>Push subscriptions trigger immediately on message arrival. Pull subscriptions give consumers control over throughput and prevent overloading downstream systems.</rationale>
+        <rationale>Push triggers immediately on message arrival. Pull gives consumers backpressure control and prevents overloading downstream systems.</rationale>
       </rule>
     </section>
 
@@ -152,12 +165,12 @@
       <p>Dataflow and BigQuery patterns for efficient data pipelines and query optimization.</p>
 
       <rule testable="true">
-        <statement>Partition BigQuery tables on ingestion date or a high-cardinality timestamp field; cluster on the most common filter columns; use Reservations for critical queries.</statement>
-        <rationale>Partitioning reduces bytes scanned per query by 10-100x. Clustering further reduces data scanned within partitions. On-demand pricing without reservations can create unpredictable costs for large queries.</rationale>
+        <statement>Partition BigQuery tables on ingestion date or a high-cardinality timestamp; cluster on the most common filter columns; use Reservations for critical queries.</statement>
+        <rationale>Partitioning reduces bytes scanned per query by 10–100x. Clustering further reduces data scanned within partitions. On-demand pricing without reservations creates unpredictable costs for large queries.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Design Dataflow pipelines to be idempotent and restartable; use checkpointing for streaming pipelines; define watermarks for late-arriving data handling.</statement>
+        <statement>Design Dataflow pipelines to be idempotent and restartable; use checkpointing for streaming pipelines; define watermarks for late-arriving data.</statement>
         <rationale>Dataflow workers can fail and restart mid-job. Non-idempotent pipelines produce duplicate records on restart. Watermarks define when a window is considered complete.</rationale>
       </rule>
 
@@ -171,37 +184,160 @@
       <p>Cloud Storage with CDN for static assets and global load balancing patterns.</p>
 
       <rule testable="true">
-        <statement>Use Cloud Storage + Cloud CDN + Global HTTP(S) Load Balancer for static assets and public APIs. Configure caching headers (Cache-Control: public, max-age) to maximize CDN hit ratio. Use Cloud Armor at the load balancer edge for DDoS protection and WAF rules.</statement>
+        <statement>Use Cloud Storage + Cloud CDN + Global HTTP(S) Load Balancer for static assets and public APIs. Configure caching headers (`Cache-Control: public, max-age=...`) to maximize CDN hit ratio. Use Cloud Armor at the load balancer edge for DDoS protection and WAF rules.</statement>
         <rationale>CDN caches assets in 100+ edge locations, reducing latency for global users. Cloud Armor blocks attacks at the edge before they consume origin bandwidth.</rationale>
       </rule>
     </section>
 
+    <commands>
+      <command name="list-projects">gcloud projects list --format="value(projectId,name)"</command>
+      <command name="audit-gke-regional">gcloud container clusters list --format="table(name,location,releaseChannel.channel,workloadIdentityConfig.workloadPool,privateClusterConfig.enablePrivateNodes)"</command>
+      <command name="audit-cloudsql-ha">gcloud sql instances list --format="table(name,databaseVersion,settings.availabilityType,settings.backupConfiguration.pointInTimeRecoveryEnabled,settings.ipConfiguration.requireSsl,settings.deletionProtectionEnabled)"</command>
+      <command name="audit-cloud-run-sa">gcloud run services list --format="table(metadata.name,spec.template.spec.serviceAccountName,spec.template.metadata.annotations['run.googleapis.com/vpc-access-egress'],status.url)"</command>
+      <command name="audit-pubsub-dlq">gcloud pubsub subscriptions list --format="table(name,topic,deadLetterPolicy.deadLetterTopic,deadLetterPolicy.maxDeliveryAttempts)"</command>
+      <command name="audit-bq-partitioning">bq ls --format=json | jq -r '.[].tableReference.tableId' | xargs -I{} bq show --format=json {} | jq '{table:.tableReference.tableId,partitioning:.timePartitioning,clustering:.clustering}'</command>
+      <command name="create-regional-gke">gcloud container clusters create-auto prod-cluster --region=us-central1 --release-channel=regular --enable-private-nodes --enable-master-authorized-networks --workload-pool=$(gcloud config get-value project).svc.id.goog</command>
+      <command name="create-ha-cloudsql">gcloud sql instances create prod-pg --database-version=POSTGRES_16 --region=us-central1 --availability-type=REGIONAL --tier=db-custom-4-16384 --backup-start-time=02:00 --enable-point-in-time-recovery --no-assign-ip --deletion-protection</command>
+      <command name="enable-required-apis">gcloud services enable container.googleapis.com sqladmin.googleapis.com run.googleapis.com pubsub.googleapis.com bigquery.googleapis.com binaryauthorization.googleapis.com</command>
+    </commands>
+
+    <template path="terraform/gke-regional.tf" purpose="Reference Terraform for a regional Autopilot GKE cluster with Workload Identity, Binary Authorization, and Shielded Nodes.">
+      <code lang="hcl"><![CDATA[
+resource "google_container_cluster" "prod" {
+  name               = "prod-cluster"
+  location           = "us-central1"          # region, not zone
+  enable_autopilot   = true
+  release_channel { channel = "REGULAR" }
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+  }
+  workload_identity_config { workload_pool = "${var.project_id}.svc.id.goog" }
+  binary_authorization { evaluation_mode = "PROJECT_SINGLETON_POLICY_ENFORCE" }
+  network_policy { enabled = true }
+  datapath_provider = "ADVANCED_DATAPATH"     # Dataplane V2 (eBPF)
+  deletion_protection = true
+}
+]]></code>
+    </template>
+
+    <template path="terraform/cloudsql-ha.tf" purpose="Reference Terraform for a regional Cloud SQL Postgres with PITR and private IP.">
+      <code lang="hcl"><![CDATA[
+resource "google_sql_database_instance" "prod_pg" {
+  name             = "prod-pg"
+  region           = "us-central1"
+  database_version = "POSTGRES_16"
+  deletion_protection = true
+  settings {
+    tier              = "db-custom-4-16384"
+    availability_type = "REGIONAL"            # HA
+    backup_configuration {
+      enabled                        = true
+      point_in_time_recovery_enabled = true
+      start_time                     = "02:00"
+      transaction_log_retention_days = 7
+    }
+    ip_configuration {
+      ipv4_enabled    = false                  # no public IP
+      private_network = google_compute_network.vpc.id
+      require_ssl     = true
+    }
+    insights_config { query_insights_enabled = true }
+    database_flags { name = "log_lock_waits"   value = "on" }
+    database_flags { name = "log_connections"  value = "on" }
+  }
+}
+]]></code>
+    </template>
+
+    <template path="terraform/pubsub-with-dlq.tf" purpose="Reference Terraform for a Pub/Sub subscription with a dead-letter topic.">
+      <code lang="hcl"><![CDATA[
+resource "google_pubsub_topic"        "main" { name = "orders" }
+resource "google_pubsub_topic"        "dlq"  { name = "orders-dlq" }
+resource "google_pubsub_subscription" "main" {
+  name  = "orders-sub"
+  topic = google_pubsub_topic.main.id
+  ack_deadline_seconds = 30
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dlq.id
+    max_delivery_attempts = 5
+  }
+  retry_policy {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
+}
+]]></code>
+    </template>
+
+    <prompt purpose="Audit an existing GCP environment against this methodology and produce a remediation plan.">
+<![CDATA[
+You are a GCP infrastructure reviewer. The user will paste outputs from these commands:
+  gcloud container clusters list ...
+  gcloud sql instances list ...
+  gcloud run services list ...
+  gcloud pubsub subscriptions list ...
+
+For each finding, output a row in this exact table:
+
+| resource | rule violated | severity (P0/P1/P2) | fix command |
+
+Apply the rules from `gcp-arch-patterns`:
+  - GKE: regional, REGULAR channel, Workload Identity, private nodes, Shielded.
+  - Cloud SQL: REGIONAL, PITR, no public IP, require_ssl, deletion protection.
+  - Cloud Run: dedicated SA, VPC egress for internal APIs, ingress restricted.
+  - Pub/Sub: every subscription has a dead-letter topic with max_delivery_attempts=5.
+
+End with a "Top 3 P0 fixes" section containing literal `gcloud` commands.
+]]>
+    </prompt>
+
     <section name="pre-deployment-checklist">
       <checklist>
-        <item>GKE cluster is REGIONAL (3+ zones) with private nodes</item>
-        <item>Workload Identity enabled on all clusters</item>
-        <item>Binary Authorization configured with attestation</item>
-        <item>Shielded Nodes enabled on all pools</item>
-        <item>Cloud SQL instances are REGIONAL with PITR enabled</item>
-        <item>Cloud SQL has deletion protection enabled</item>
-        <item>Database connections use Private Service Connect</item>
-        <item>Query Insights enabled on production databases</item>
-        <item>Read replicas configured for DR</item>
-        <item>Cloud Run services use VPC egress for private access</item>
-        <item>Pub/Sub subscriptions have dead-letter topics</item>
-        <item>BigQuery tables are partitioned and clustered</item>
-        <item>Cloud CDN configured for static assets</item>
-        <item>Cloud Armor rules applied at load balancer</item>
-        <item>Spot VMs configured with taints for batch workloads</item>
-        <item>Resource quotas set per namespace</item>
+        <check>GKE cluster is REGIONAL (3+ zones) with private nodes</check>
+        <check>Workload Identity enabled on all clusters</check>
+        <check>Binary Authorization configured with attestation</check>
+        <check>Shielded Nodes enabled on all pools</check>
+        <check>Cloud SQL instances are REGIONAL with PITR enabled</check>
+        <check>Cloud SQL has deletion protection enabled</check>
+        <check>Database connections use Private Service Connect (no public IP)</check>
+        <check>Query Insights enabled on production databases</check>
+        <check>Read replicas configured for DR (cross-region if RPO &lt; 1h)</check>
+        <check>Cloud Run services use VPC egress for private access</check>
+        <check>Cloud Run ingress restricted for internal APIs</check>
+        <check>Each Cloud Run service has a dedicated service account</check>
+        <check>Pub/Sub subscriptions have dead-letter topics (max_delivery_attempts=5)</check>
+        <check>BigQuery tables are partitioned and clustered</check>
+        <check>Cloud CDN configured for static assets</check>
+        <check>Cloud Armor rules applied at load balancer</check>
+        <check>Spot VMs configured with `Spot:OnDemand` taints for batch workloads</check>
+        <check>ResourceQuotas set per namespace</check>
       </checklist>
     </section>
+
+    <verify>
+      <step>1. Run `gcloud container clusters list --format="value(location)"` — every production location MUST be a region (e.g. `us-central1`), never a zone (e.g. `us-central1-a`).</step>
+      <step>2. Run `gcloud container clusters describe &lt;name&gt; --region=&lt;r&gt; --format="value(workloadIdentityConfig.workloadPool)"` — output MUST be `&lt;project&gt;.svc.id.goog`, not empty.</step>
+      <step>3. Run `gcloud sql instances list --format="value(name,settings.availabilityType,settings.backupConfiguration.pointInTimeRecoveryEnabled)"` — every prod row MUST show `REGIONAL` and `True`.</step>
+      <step>4. Run `gcloud sql instances describe &lt;name&gt; --format="value(settings.ipConfiguration.ipv4Enabled,settings.ipConfiguration.requireSsl)"` — MUST be `False` and `True`.</step>
+      <step>5. Run `gcloud run services list --format="value(metadata.name,spec.template.spec.serviceAccountName)"` — no service may use the default Compute SA (`*-compute@developer.gserviceaccount.com`).</step>
+      <step>6. Run `gcloud pubsub subscriptions list --format="value(name,deadLetterPolicy.deadLetterTopic)"` — every prod subscription MUST have a non-empty DLT.</step>
+      <step>7. Run `bq query --use_legacy_sql=false 'SELECT table_name FROM \`region-us\`.INFORMATION_SCHEMA.TABLES WHERE table_schema="prod"'` then for each table check `timePartitioning` is non-null via `bq show --format=prettyjson`.</step>
+      <step>8. Confirm Cloud Armor policy is attached to the prod backend service: `gcloud compute backend-services describe &lt;name&gt; --global --format="value(securityPolicy)"` — MUST be non-empty.</step>
+      <step>9. Confirm Binary Authorization policy is `ENFORCED`: `gcloud container binauthz policy export | grep -E 'evaluationMode|enforcementMode'` — MUST show `REQUIRE_ATTESTATION` and `ENFORCED_BLOCK_AND_AUDIT_LOG`.</step>
+      <step>10. If any check fails, treat as P0 and remediate before continuing the deployment.</step>
+    </verify>
+
+    <warning>Never disable `deletion_protection` on production Cloud SQL or GKE without an explicit, time-boxed change ticket. Re-enable immediately after the operation.</warning>
 
     <see-also>
       <link href="https://cloud.google.com/kubernetes-engine/docs/best-practices"/>
       <link href="https://cloud.google.com/sql/docs/postgres/best-practices"/>
       <link href="https://cloud.google.com/run/docs/quickstarts"/>
       <link href="https://cloud.google.com/architecture/best-practices-gke"/>
+      <link href="https://cloud.google.com/pubsub/docs/handling-failures"/>
+      <link href="https://cloud.google.com/bigquery/docs/best-practices-performance-overview"/>
       <ref slug="gcp-arch-basics"/>
       <ref slug="gcp-networking"/>
       <ref slug="gcp-compute"/>
