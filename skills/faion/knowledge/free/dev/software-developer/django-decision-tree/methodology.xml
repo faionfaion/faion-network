@@ -32,7 +32,7 @@
 
     <when-to-use>
       <list>
-        <item>Deciding where to implement new functionality in a Django project</item>
+        <item>Before writing ANY new function in a Django project — run the decision tree first to choose the file</item>
         <item>Refactoring existing code into proper architectural layers</item>
         <item>Code review to verify correct module placement</item>
         <item>Onboarding agents or new developers to the project's architecture</item>
@@ -46,6 +46,18 @@
         <item>Trivial scripts or management commands with no reuse requirement</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <p>Walk this decision tree for every new function or class. Stop at the first rule that matches and place the code in the named directory. Do not skip steps; the order encodes the dependency direction.</p>
+      <step>Q1 — "Does it parse an HTTP request or build an HTTP response?" YES → views/. STOP. The body must contain only: serializer validation, one service call, response building.</step>
+      <step>Q2 — "Does it validate or shape input/output payloads (DRF serializer or Form)?" YES → serializers/ (or forms/). STOP. No service calls inside serializer methods.</step>
+      <step>Q3 — "Does it write to the database OR call a third-party API OR send email/SMS OR enqueue a job?" YES → services/{app}.py. STOP. Wrap multi-write functions in @transaction.atomic.</step>
+      <step>Q4 — "Is it a Celery task, scheduled job, or anything decorated with @shared_task / @app.task?" YES → tasks/{app}.py. STOP. The body must call exactly one service function (thin wrapper).</step>
+      <step>Q5 — "Is it a typed wrapper around a third-party SDK (Stripe, Twilio, OpenAI, S3) with retries / auth / error mapping?" YES → integrations/{vendor}.py. STOP. No app-specific business logic inside.</step>
+      <step>Q6 — "Does it define DB schema, fields, Meta, custom manager, or a model method that ONLY operates on `self`'s fields?" YES → models/{entity}.py. STOP. No multi-model orchestration.</step>
+      <step>Q7 — "Is it a pure function — same input always produces same output, no I/O, no DB, no clock, no randomness?" YES → utils/{topic}.py. STOP. Must be testable with `assert f(x) == y` and zero mocks.</step>
+      <step>Q8 — None of the above? You have a category mismatch. Re-read the function: it is probably hiding a side effect (default → services/) or you are conflating two concerns. Split it into one pure helper (utils/) and one orchestrator (services/).</step>
+    </how-to>
 
     <section name="placement-rules">
       <p>Every type of code has a single correct location, with clear responsibilities and dependencies. The tree is deterministic: given a requirement, the placement is unambiguous.</p>
@@ -94,11 +106,113 @@
       </list>
     </section>
 
-    <section name="correct-patterns">
-      <p>Exemplar code showing proper placement for common patterns.</p>
+    <checklist>
+      <check>Q1-Q8 decision tree run BEFORE writing code; chosen file recorded in commit message or PR description</check>
+      <check>No `Model.objects.` lookups in any module under views/, utils/, or serializers/ (`grep -RInE "\.objects\.(get|filter|create|update|delete|all|none)" apps/*/views/ apps/*/utils/ apps/*/serializers/` returns nothing)</check>
+      <check>No `from rest_framework` or `from django.http` imports in services/, utils/, tasks/, or integrations/</check>
+      <check>Every function in services/ that performs ≥2 DB writes is decorated with `@transaction.atomic`</check>
+      <check>Every function in tasks/ is exactly: `result = service_fn(...); return result` — no business logic in the task body</check>
+      <check>Every utils/ module imports only stdlib or other utils — `grep -RIn "^from apps\." apps/*/utils/` returns nothing</check>
+      <check>Every view method body fits in ≤25 lines (validate → call service → return Response)</check>
+      <check>Tests added: one unit test per pure util, one service test with mocked integrations, one view test with mocked service</check>
+      <check>Import-Linter contract added/updated in `pyproject.toml` enforcing the layering, and `lint-imports` passes</check>
+    </checklist>
 
-      <example type="good" title="Service with transaction and inter-service calls">
-        <code lang="python"><![CDATA[
+    <commands>
+      <command name="lint-imports">lint-imports --config pyproject.toml</command>
+      <command name="grep-orm-in-views">grep -RInE "\.objects\.(get|filter|create|update|delete|all|none)\b" apps/*/views/ apps/*/utils/ apps/*/serializers/ || echo "OK: no ORM leakage"</command>
+      <command name="grep-http-in-services">grep -RInE "from (rest_framework|django\.http)" apps/*/services/ apps/*/utils/ apps/*/tasks/ apps/*/integrations/ || echo "OK: no HTTP leakage"</command>
+      <command name="grep-services-in-utils">grep -RIn "^from apps\." apps/*/utils/ || echo "OK: utils are pure"</command>
+      <command name="grep-views-in-services">grep -RIn "from apps\..*\.views" apps/*/services/ apps/*/tasks/ apps/*/utils/ || echo "OK: no reverse dependency"</command>
+      <command name="ruff-check">ruff check apps/ --select=E,F,I,B,DJ,UP,SIM,T20</command>
+      <command name="run-tests">pytest apps/ -x --ff -q</command>
+      <command name="grep-non-atomic-multi-write">python -c "import ast,pathlib,sys; ok=True
+for p in pathlib.Path('apps').rglob('services/*.py'):
+    t=ast.parse(p.read_text())
+    for n in ast.walk(t):
+        if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)):
+            writes=sum(1 for x in ast.walk(n) if isinstance(x,ast.Attribute) and x.attr in {'create','save','update','delete','bulk_create','bulk_update'})
+            atomic=any('atomic' in ast.unparse(d) for d in n.decorator_list)
+            if writes>=2 and not atomic:
+                print(f'{p}:{n.lineno}:{n.name} has {writes} writes, no @transaction.atomic'); ok=False
+sys.exit(0 if ok else 1)"</command>
+    </commands>
+
+    <example type="good" title="Import-Linter contract enforcing the tree (pyproject.toml)">
+      <code lang="toml"><![CDATA[
+[tool.importlinter]
+root_packages = ["apps"]
+
+[[tool.importlinter.contracts]]
+name = "Django layered architecture"
+type = "layers"
+layers = [
+    "apps.*.views",
+    "apps.*.tasks",
+    "apps.*.services",
+    "apps.*.serializers",
+    "apps.*.integrations",
+    "apps.*.models",
+    "apps.*.utils",
+]
+ignore_imports = [
+    "apps.*.models -> django.*",
+]
+
+[[tool.importlinter.contracts]]
+name = "Utils stay pure"
+type = "forbidden"
+source_modules  = ["apps.*.utils"]
+forbidden_modules = [
+    "apps.*.views",
+    "apps.*.services",
+    "apps.*.tasks",
+    "apps.*.serializers",
+    "apps.*.integrations",
+    "apps.*.models",
+    "django.db",
+    "django.http",
+    "rest_framework",
+]
+      ]]></code>
+      <note>Run `pip install import-linter` then `lint-imports`. The first contract enforces the layer order; the second guarantees utils/ depends on nothing app- or framework-specific. Add `lint-imports` to pre-commit and CI.</note>
+    </example>
+
+    <prompt purpose="placement-classifier">
+<![CDATA[
+You are a Django code-placement classifier. Given a function name, signature, and a one-line description, output exactly one JSON object — no prose:
+
+{"layer": "<views|serializers|services|tasks|integrations|models|utils>",
+ "file": "apps/<app>/<layer>/<module>.py",
+ "decorators": ["@transaction.atomic" | "@shared_task" | ...],
+ "depends_on": ["<allowed-layer>", ...],
+ "rationale": "<≤20 words citing Q1–Q8>"}
+
+Rules (apply IN ORDER, stop at first match):
+Q1 parses HttpRequest or returns HttpResponse/Response → views
+Q2 is a Serializer/Form subclass or its method → serializers
+Q3 mutates DB OR calls external API OR sends mail OR enqueues task → services (wrap multi-write in @transaction.atomic)
+Q4 decorated with @shared_task / @app.task / scheduled → tasks (body = single service call)
+Q5 typed SDK wrapper for one vendor with retry/auth → integrations
+Q6 defines fields / Meta / manager / self-only method → models
+Q7 deterministic, no I/O, no clock, no DB → utils
+Q8 otherwise → services (default for hidden side effects)
+
+Forbidden dependencies:
+- views → models direct ORM (must go through services)
+- services → views (any import)
+- utils → anything outside stdlib + other utils
+- tasks → views
+
+Function:
+"""
+{{FUNCTION_SIGNATURE_AND_DESCRIPTION}}
+"""
+]]>
+    </prompt>
+
+    <example type="good" title="Service with transaction and inter-service calls">
+      <code lang="python"><![CDATA[
 # services/orders.py — DB writes with transaction
 from django.db import transaction
 from apps.inventory import services as inventory_services
@@ -117,12 +231,12 @@ def create_order(user, items, *, shipping_address):
         order.items.create(**item)
     order.calculate_total()
     return order
-        ]]></code>
-        <note>Service owns the transaction boundary (@transaction.atomic) and calls other services. No HTTP context, no request object. The function can be called from a view, a management command, or a Celery task.</note>
-      </example>
+      ]]></code>
+      <note>Service owns the transaction boundary (@transaction.atomic) and calls other services. No HTTP context, no request object. The function can be called from a view, a management command, or a Celery task.</note>
+    </example>
 
-      <example type="good" title="Pure function in utils">
-        <code lang="python"><![CDATA[
+    <example type="good" title="Pure function in utils">
+      <code lang="python"><![CDATA[
 # utils/pricing.py — pure function, no DB, no side effects
 from decimal import Decimal
 
@@ -136,12 +250,12 @@ def calculate_discount(subtotal, discount_percent, *, max_discount=None):
 # Test: trivial
 assert calculate_discount(Decimal('100'), 10) == Decimal('10.00')
 assert calculate_discount(Decimal('100'), 50, max_discount=Decimal('10')) == Decimal('10.00')
-        ]]></code>
-        <note>Pure function: same input always produces same output. Trivial to unit test. No mocks needed. No dependencies. Reusable from anywhere in the codebase.</note>
-      </example>
+      ]]></code>
+      <note>Pure function: same input always produces same output. Trivial to unit test. No mocks needed. No dependencies. Reusable from anywhere in the codebase.</note>
+    </example>
 
-      <example type="good" title="Thin view calling service">
-        <code lang="python"><![CDATA[
+    <example type="good" title="Thin view calling service">
+      <code lang="python"><![CDATA[
 # views/orders.py — HTTP handling
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -162,10 +276,9 @@ class CreateOrderView(APIView):
 
         # 3. Return response
         return Response(OrderSerializer(order).data, status=201)
-        ]]></code>
-        <note>22 lines: validate, call, return. No ORM calls in the view. No business logic. If order creation rules change, only the service changes; the view stays the same.</note>
-      </example>
-    </section>
+      ]]></code>
+      <note>22 lines: validate, call, return. No ORM calls in the view. No business logic. If order creation rules change, only the service changes; the view stays the same.</note>
+    </example>
 
     <section name="antipatterns">
       <p>Common placement mistakes that break testability and create circular imports.</p>
@@ -195,6 +308,18 @@ class CreateOrderView(APIView):
         <reason>Utils are pure helpers. If a util imports a service, it's no longer pure and loses testability. Break the util into smaller pure functions and have the service call them.</reason>
       </antipattern>
     </section>
+
+    <verify>
+      <step>1. Static layering — run `lint-imports --config pyproject.toml`. Exit code MUST be 0. Any contract violation is a hard failure; do NOT merge.</step>
+      <step>2. ORM leakage — run `grep -RInE "\.objects\.(get|filter|create|update|delete|all|none)\b" apps/*/views/ apps/*/utils/ apps/*/serializers/`. Expected output: empty.</step>
+      <step>3. HTTP leakage — run `grep -RInE "from (rest_framework|django\.http)" apps/*/services/ apps/*/utils/ apps/*/tasks/ apps/*/integrations/`. Expected output: empty.</step>
+      <step>4. Reverse dependency — run `grep -RIn "from apps\..*\.views" apps/*/services/ apps/*/tasks/ apps/*/utils/`. Expected output: empty.</step>
+      <step>5. Util purity — run `grep -RIn "^from apps\." apps/*/utils/`. Expected output: empty (utils import only stdlib or sibling utils).</step>
+      <step>6. Transaction boundaries — run the multi-write AST check command from the `commands` block. Exit code MUST be 0.</step>
+      <step>7. Linter — `ruff check apps/ --select=E,F,I,B,DJ,UP,SIM,T20` returns 0 issues.</step>
+      <step>8. Test pyramid — `pytest apps/ -x --ff -q` passes; coverage report shows utils/ at ≥95%, services/ at ≥80%, views/ at ≥60% line coverage.</step>
+      <step>9. Manual review — for each new function, confirm one Q1–Q8 answer is cited in the PR description; mismatches are blockers.</step>
+    </verify>
 
     <see-also>
       <link href="https://import-linter.readthedocs.io/"/>
