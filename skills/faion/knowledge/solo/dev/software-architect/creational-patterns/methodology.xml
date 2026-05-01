@@ -4,48 +4,243 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-architect</domain>
-    <summary>Object creation patterns (Factory, Builder, DI, Object Pool) that decouple creation from usage for testable, maintainable code.</summary>
+    <summary>Object creation patterns (Factory, Builder, DI, Object Pool, Prototype, Abstract Factory, Singleton) decoupling creation from usage for testable code.</summary>
     <tags>
       <tag>design-patterns</tag>
       <tag>creational</tag>
       <tag>factory</tag>
       <tag>builder</tag>
       <tag>dependency-injection</tag>
+      <tag>object-pool</tag>
+      <tag>prototype</tag>
+      <tag>singleton</tag>
     </tags>
     <difficulty>intermediate</difficulty>
     <created>2026-04-24</created>
+    <updated>2026-05-01</updated>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+      <language>go</language>
+    </languages>
   </metadata>
   <content>
     <title>Creational Design Patterns</title>
-    <summary>Object creation mechanisms that increase flexibility and reuse of existing code. Factory Method for runtime type selection, Builder for complex multi-step construction, Dependency Injection for loose coupling, Object Pool for expensive resource reuse, Prototype for cloning, Abstract Factory for product families, Singleton for process-global resources (use sparingly).</summary>
+    <summary>Object creation mechanisms that increase flexibility and reuse. Factory Method for runtime type selection, Builder for complex multi-step construction, Dependency Injection for loose coupling, Object Pool for expensive resource reuse, Prototype for cloning, Abstract Factory for product families, Singleton for process-global resources (use sparingly).</summary>
     <why>
-      <p>Choosing the right pattern directly affects testability and maintainability. Dependency Injection reduces maintenance bugs by 27% while Singleton makes testing 40% more complex. Each pattern solves a specific creation problem at different complexity levels.</p>
+      <p>Choosing the right creational pattern directly affects testability, maintainability and refactoring speed. Dependency Injection reduces maintenance bugs by ~27%, while overuse of Singleton makes testing ~40% harder due to hidden global state. Each pattern targets a specific creation problem at a different complexity level — picking the wrong one creates churn, picking the right one removes whole categories of bugs.</p>
     </why>
     <when-to-use>
       <list>
-        <item>Writing object-creation code where the type is decided at runtime or constructor has many optional params.</item>
-        <item>Refactoring code with duplicated instantiation chains or sprawling constructors.</item>
+        <item>Writing object-creation code where the concrete type is decided at runtime (e.g. payment provider by country, storage backend by config).</item>
+        <item>Constructor has 4+ parameters or many optional params — Builder beats telescoping constructors.</item>
+        <item>Refactoring code with duplicated `new X(...)` chains spread across modules — centralize via Factory.</item>
         <item>Reviewing legacy code for Singleton overuse and proposing DI migrations.</item>
         <item>Writing test fixtures and mocks — DI and Factory Method dramatically reduce test scaffolding.</item>
+        <item>Working with expensive-to-create resources (DB connections, HTTP clients, threads) — Object Pool.</item>
       </list>
     </when-to-use>
     <when-not-to-use>
       <list>
-        <item>Trivial constructors — `dataclass` / record / struct is enough.</item>
-        <item>Cross-cutting infra concerns where DI containers already exist (FastAPI, NestJS, Spring).</item>
+        <item>Trivial constructors with 1-3 params — `dataclass` / record / struct is enough.</item>
+        <item>Cross-cutting infra concerns where DI containers already exist (FastAPI Depends, NestJS providers, Spring beans).</item>
         <item>One-off scripts where pattern overhead exceeds the value.</item>
-        <item>High-performance hot paths where DI lookup cost matters.</item>
+        <item>High-performance hot paths where DI lookup cost matters (resolve once, hold reference).</item>
+        <item>Singleton for anything that holds mutable state, has dependencies, or differs between tests.</item>
       </list>
     </when-not-to-use>
     <section name="core-principle">
-      <rule testable="true">
-        <statement>Default to Dependency Injection for any component with dependencies. Never reach for Singleton unless the dependency is truly process-global and read-only.</statement>
-        <rationale>DI reduces maintenance bugs by 27%, improves testability (70% of high-performing teams use mocking), enables modularity, and accelerates refactoring. DI frameworks exist in every language.</rationale>
-      </rule>
+      <rules>
+        <rule testable="true">
+          <statement>Default to Dependency Injection for any component with dependencies. Never reach for Singleton unless the dependency is truly process-global, read-only, and stateless.</statement>
+          <rationale>DI reduces maintenance bugs by ~27%, improves testability (70% of high-performing teams rely on mocking), enables modularity, and accelerates refactoring. DI frameworks exist in every mainstream language.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Use Builder when a constructor has more than 3 parameters or any optional parameter, instead of overloading constructors or passing positional `None`/`null` placeholders.</statement>
+          <rationale>Telescoping constructors are unreadable and break call-site refactoring. Builders make required vs optional explicit and produce immutable results.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Use Factory Method when the concrete subclass to instantiate depends on runtime input (config, env, request payload). Do not litter `if/elif` constructor switches across business logic.</statement>
+          <rationale>Centralizing the switch in one factory keeps domain code closed against new variants and makes it possible to add a new variant by registering it once.</rationale>
+        </rule>
+      </rules>
     </section>
+    <section name="pattern-decision-tree">
+      <list>
+        <item>One concrete class, simple constructor → no pattern, plain constructor or `dataclass`.</item>
+        <item>One interface, several concrete impls chosen at runtime → Factory Method.</item>
+        <item>Several related families of products (e.g. UI kit per OS, DB driver per vendor) → Abstract Factory.</item>
+        <item>Complex object built step-by-step with optional fields → Builder.</item>
+        <item>Component needs collaborators it does not own → Dependency Injection (constructor injection preferred).</item>
+        <item>Expensive resource reused many times → Object Pool with explicit acquire/release.</item>
+        <item>Need many similar objects derived from a configured original → Prototype (clone).</item>
+        <item>Truly process-global, read-only, stateless utility → Singleton (last resort, prefer module-level immutable).</item>
+      </list>
+    </section>
+    <how-to>
+      <step>Identify the creation pain: count constructor params, count `if`/`switch` on type, list expensive-resource creations, list global state. Capture as a 5-line note in the file you are editing.</step>
+      <step>Match the pain to ONE pattern using the decision tree above. Write the choice + reason as an ADR-style 3-line comment at the top of the new factory/builder/container module.</step>
+      <step>Define the abstraction first: protocol/interface for the product, signature for `create(...)` or `build()`. Avoid leaking concrete types into callers.</step>
+      <step>Implement the chosen pattern in a single dedicated file (`factory.py`, `builder.ts`, `pool.go`). Keep it under 150 LOC; if longer, split product variants into one file each.</step>
+      <step>Wire callers: replace `new X(...)` with `factory.create(kind)` / `Builder().with_x(...).build()` / `container.resolve(IService)`. Use editor refactor "Find references" to ensure no direct constructor leak remains.</step>
+      <step>Add unit tests that swap implementations via the same abstraction (mock factory, fake DI container, stub product). Tests prove decoupling actually works.</step>
+      <step>For Object Pool: implement explicit `acquire`/`release`, set `min`/`max`/`idle_timeout`, add a healthcheck before handing out; never let the pool grow unbounded.</step>
+      <step>For Singleton: justify in a comment why it is not DI, mark fields immutable (`Final`, `readonly`, `const`), and provide a test-only `_reset_for_tests()` hook.</step>
+    </how-to>
+    <checklist>
+      <check>Pain identified and written down (params count, type-switch count, resource cost, global state).</check>
+      <check>Exactly ONE pattern selected from the decision tree; ADR-style note added at top of module.</check>
+      <check>Abstraction (protocol/interface) defined before implementation.</check>
+      <check>No `if isinstance` / `switch (type)` chains remaining in caller code after refactor.</check>
+      <check>No constructor of a concrete product called outside the factory/builder/container.</check>
+      <check>Builder produces immutable result; required fields validated in `build()`.</check>
+      <check>DI uses constructor injection; no service locator inside business logic.</check>
+      <check>Object Pool has bounded size, idle timeout, healthcheck, and explicit release in `finally`/`defer`/`using`.</check>
+      <check>Singleton (if used) is read-only, stateless, has `_reset_for_tests`, and a comment explaining why DI was rejected.</check>
+      <check>Unit tests substitute implementations via the abstraction (mock/fake/stub) without monkey-patching globals.</check>
+      <check>Linter passes (`ruff check . --fix` or `eslint --fix .`); type-checker passes (`mypy` / `tsc --noEmit`).</check>
+      <check>No new circular imports introduced (run `pydeps` or check IDE error panel).</check>
+    </checklist>
+    <commands>
+      <command name="ruff-lint-fix">ruff check . --fix &amp;&amp; ruff format .</command>
+      <command name="ruff-find-prints">ruff check . --select T20</command>
+      <command name="mypy-strict">mypy --strict src/</command>
+      <command name="ts-typecheck">npm run typecheck</command>
+      <command name="eslint-fix">npx eslint --fix "src/**/*.{ts,tsx}"</command>
+      <command name="go-vet">go vet ./... &amp;&amp; go test ./...</command>
+      <command name="pytest-pattern-tests">pytest tests/ -k "factory or builder or container or pool" -q</command>
+      <command name="find-singletons-py">grep -RnE "_instance\s*=\s*None|__new__|getInstance" --include="*.py" src/</command>
+      <command name="find-singletons-ts">grep -RnE "private static instance|getInstance\(\)" --include="*.ts" src/</command>
+      <command name="find-direct-constructors">grep -RnE "new [A-Z][A-Za-z0-9]+\(" --include="*.ts" src/ | grep -v "factory\|builder\|test"</command>
+      <command name="circular-import-check">python -c "import src" 2&gt;&amp;1 | grep -i "circular"</command>
+    </commands>
+    <example type="good" title="Factory Method (Python) — payment provider per country">
+      <code lang="python"><![CDATA[
+from typing import Protocol
+
+class PaymentProvider(Protocol):
+    def charge(self, amount_cents: int, currency: str) -> str: ...
+
+class StripeProvider:
+    def charge(self, amount_cents: int, currency: str) -> str: ...
+
+class LiqPayProvider:
+    def charge(self, amount_cents: int, currency: str) -> str: ...
+
+_REGISTRY: dict[str, type[PaymentProvider]] = {
+    "US": StripeProvider,
+    "UA": LiqPayProvider,
+}
+
+def make_payment_provider(country: str) -> PaymentProvider:
+    cls = _REGISTRY.get(country)
+    if cls is None:
+        raise ValueError(f"No provider for country={country}")
+    return cls()
+]]></code>
+      <note>Adding a new provider = one registry line, no caller change. Tests inject a `FakeProvider` by mutating a copy of the registry per-test.</note>
+    </example>
+    <example type="good" title="Builder (TypeScript) — query construction">
+      <code lang="typescript"><![CDATA[
+class QueryBuilder {
+  private parts: string[] = [];
+  private params: unknown[] = [];
+  select(cols: string[]): this { this.parts.push(`SELECT ${cols.join(",")}`); return this; }
+  from(table: string): this { this.parts.push(`FROM ${table}`); return this; }
+  where(clause: string, ...p: unknown[]): this { this.parts.push(`WHERE ${clause}`); this.params.push(...p); return this; }
+  build(): { sql: string; params: unknown[] } {
+    if (this.parts.length === 0) throw new Error("empty query");
+    return Object.freeze({ sql: this.parts.join(" "), params: this.params });
+  }
+}
+]]></code>
+    </example>
+    <example type="good" title="Dependency Injection (Python, FastAPI)">
+      <code lang="python"><![CDATA[
+from fastapi import Depends, FastAPI
+
+class UserRepo:
+    def get(self, id: int): ...
+
+def get_repo() -> UserRepo:
+    return UserRepo()
+
+app = FastAPI()
+
+@app.get("/users/{uid}")
+def read_user(uid: int, repo: UserRepo = Depends(get_repo)):
+    return repo.get(uid)
+
+# Tests override:
+# app.dependency_overrides[get_repo] = lambda: FakeRepo()
+]]></code>
+    </example>
+    <example type="bad" title="Singleton hiding state — anti-pattern">
+      <code lang="python"><![CDATA[
+class Config:
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.values = load_from_env()  # implicit IO at import time
+        return cls._instance
+
+# Problem: tests cannot reset; import-time IO; cannot run two configs in parallel.
+]]></code>
+    </example>
+    <antipattern>
+      <description>Service Locator inside business logic: `Container.resolve(EmailService)` called from a domain method.</description>
+      <reason>Hides dependencies, defeats DI, and turns tests back into integration tests. Inject through the constructor instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Builder that returns a mutable object with public setters after `build()`.</description>
+      <reason>Defeats the immutability guarantee. Either freeze the result or expose only getters.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Factory that takes the concrete class as an argument: `factory.create(StripeProvider)`.</description>
+      <reason>Caller already knows the concrete type — the factory adds zero value. Dispatch on a string/enum or inject the class once at config time.</reason>
+    </antipattern>
+    <template path="factory.py" purpose="Registry-based factory skeleton — copy and rename"/>
+    <prompt purpose="Pattern selection review">
+<![CDATA[
+You are reviewing a creational-pattern refactor.
+Inputs:
+  - the diff (paste below)
+  - the call sites grep output (paste below)
+
+Tasks:
+  1. State which creational pattern was applied and why (one sentence).
+  2. Verify the decision against this tree:
+       - one impl, simple ctor      → none
+       - runtime type selection     → Factory Method
+       - product families           → Abstract Factory
+       - >3 params or optional      → Builder
+       - external collaborators     → Dependency Injection
+       - expensive resource reuse   → Object Pool
+       - clone-from-original        → Prototype
+       - process-global read-only   → Singleton (last resort)
+  3. List every direct concrete constructor that still escapes the abstraction.
+  4. List every Singleton with mutable state or hidden IO.
+  5. Output a numbered FIX list (each item: file:line + concrete change).
+Reply only in markdown, no prose preface.
+]]>
+    </prompt>
+    <verify>
+      <step>Run the relevant lint/type commands from the `commands` block; all must exit 0.</step>
+      <step>Run pattern-focused tests: `pytest -k "factory or builder or container or pool"` (or jest equivalent). All must pass.</step>
+      <step>Grep for leaks: `find-direct-constructors` and `find-singletons-py` / `find-singletons-ts` must return zero unexpected matches outside factory/test files.</step>
+      <step>Confirm the decision note (ADR-style 3 lines) exists at the top of the new pattern module.</step>
+      <step>Confirm at least one test substitutes the implementation through the abstraction (mock/fake/stub) without monkey-patching globals.</step>
+      <step>For Object Pool: stress-test acquire/release for `2 * max_size` iterations and assert no leak (final pool size == max_size, idle workers reaped).</step>
+      <step>For Singleton: assert `_reset_for_tests()` exists and is called between unit tests via fixture.</step>
+      <step>Update CHANGELOG.md `[Unreleased]` with a one-line entry describing the refactor.</step>
+    </verify>
+    <warning>Do not introduce a DI container into a project that does not have one; constructor injection by hand is enough for solo-tier projects. A container is justified only when 10+ services share a graph.</warning>
     <see-also>
       <link href="https://refactoring.guru/design-patterns/creational-patterns"/>
       <link href="https://fastapi.tiangolo.com/tutorial/dependencies/"/>
+      <link href="https://martinfowler.com/articles/injection.html"/>
+      <link href="https://12factor.net/config"/>
     </see-also>
   </content>
 </methodology>
