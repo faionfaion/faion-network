@@ -218,21 +218,40 @@ def cmd_pick(skip: int = 0, size: int = BATCH_SIZE, out_path: str | None = None)
 
 def cmd_update(json_path: str) -> None:
     data = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    phase, _, csv_path = _phase_and_pending()
-    if phase == "done":
-        sys.stdout.write("update: nothing pending\n")
-        return
-    rows = _load_csv(csv_path)
-    fields = list(rows[0].keys()) if rows else []
-    updated = 0
-    for r in rows:
-        key = _row_key(r, phase)
-        if key in data and not r.get("description", "").strip():
-            desc = data[key].strip().replace("\r\n", " ").replace("\n", " ")
-            r["description"] = desc
-            updated += 1
-    _write_csv(csv_path, rows, fields)
-    sys.stdout.write(f"update: phase={phase} updated={updated}/{len(data)}\n")
+    domain_data = {k: v for k, v in data.items() if k.count("|") == 2}
+    method_data = {k: v for k, v in data.items() if k.count("|") == 3}
+    total_updated = 0
+
+    if domain_data and DOMAINS_CSV.exists():
+        rows = _load_csv(DOMAINS_CSV)
+        fields = list(rows[0].keys()) if rows else []
+        n = 0
+        for r in rows:
+            key = _row_key(r, "domains")
+            if key in domain_data and not r.get("description", "").strip():
+                desc = domain_data[key].strip().replace("\r\n", " ").replace("\n", " ")
+                r["description"] = desc
+                n += 1
+        _write_csv(DOMAINS_CSV, rows, fields)
+        total_updated += n
+        sys.stdout.write(f"update domains: {n}/{len(domain_data)}\n")
+
+    if method_data and METHODS_CSV.exists():
+        rows = _load_csv(METHODS_CSV)
+        fields = list(rows[0].keys()) if rows else []
+        n = 0
+        for r in rows:
+            key = _row_key(r, "methodologies")
+            if key in method_data and not r.get("description", "").strip():
+                desc = method_data[key].strip().replace("\r\n", " ").replace("\n", " ")
+                r["description"] = desc
+                n += 1
+        _write_csv(METHODS_CSV, rows, fields)
+        total_updated += n
+        sys.stdout.write(f"update methods: {n}/{len(method_data)}\n")
+
+    if total_updated == 0:
+        sys.stdout.write("update: nothing applied\n")
 
 
 def cmd_render() -> None:
