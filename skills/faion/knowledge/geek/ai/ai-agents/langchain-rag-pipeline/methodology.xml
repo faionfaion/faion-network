@@ -38,6 +38,7 @@
     </why>
 
     <when-to-use>
+      <p>Apply this methodology when the agent must build a question-answering system over a private corpus that exceeds the model context window, AND provider/vectorstore swap-ability is a real requirement.</p>
       <list>
         <item>Building LLM applications that must answer questions from a private document corpus.</item>
         <item>Rapid prototyping of RAG pipelines where provider flexibility (OpenAI, Anthropic) is required without rewriting the retrieval chain.</item>
@@ -54,6 +55,24 @@
         <item>Projects with strict latency SLAs where LCEL's serialization overhead matters.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <p>Execute these steps in order. Do not skip stages — each later stage depends on artifacts produced earlier.</p>
+      <step>Install pinned dependencies (see commands block) and confirm Python ≥3.10. Set <code lang="bash"><![CDATA[OPENAI_API_KEY]]></code> in the environment.</step>
+      <step>Choose loaders matching the source: <code lang="text"><![CDATA[TextLoader]]></code> for plain text, <code lang="text"><![CDATA[PyPDFLoader]]></code> for PDF, <code lang="text"><![CDATA[WebBaseLoader]]></code> for HTML, <code lang="text"><![CDATA[DirectoryLoader]]></code> for batch ingestion. Wrap imports in try/except ImportError.</step>
+      <step>Configure <code lang="text"><![CDATA[RecursiveCharacterTextSplitter]]></code> with <code lang="text"><![CDATA[chunk_size=1000]]></code> and <code lang="text"><![CDATA[chunk_overlap=200]]></code> as defaults; tune only after measuring retrieval recall.</step>
+      <step>Pick an embeddings model (<code lang="text"><![CDATA[text-embedding-3-small]]></code> for cost; <code lang="text"><![CDATA[text-embedding-3-large]]></code> for quality) and persist the vectorstore on disk with <code lang="text"><![CDATA[persist_directory]]></code> so re-runs do not re-embed.</step>
+      <step>Build the LCEL chain: parallel dict {<code lang="text"><![CDATA[context]]></code>: retriever | format_docs, <code lang="text"><![CDATA[question]]></code>: RunnablePassthrough()} | prompt | llm | StrOutputParser().</step>
+      <step>Smoke-test with at least 3 questions whose answers exist verbatim in the corpus, then run the verify checklist below.</step>
+    </how-to>
+
+    <commands>
+      <command name="install"><![CDATA[pip install "langchain==0.3.*" "langchain-openai==0.2.*" "langchain-community==0.3.*" "langchain-text-splitters==0.3.*" "langchain-chroma==0.1.*" "chromadb>=0.5,<0.6" pypdf]]></command>
+      <command name="env-check"><![CDATA[python -c "import langchain, langchain_openai, langchain_chroma; print(langchain.__version__)"]]></command>
+      <command name="set-key"><![CDATA[export OPENAI_API_KEY="sk-..."]]></command>
+      <command name="run-pipeline"><![CDATA[python rag_pipeline.py]]></command>
+      <command name="inspect-store"><![CDATA[python -c "from langchain_chroma import Chroma; from langchain_openai import OpenAIEmbeddings; vs=Chroma(persist_directory='./chroma_db', embedding_function=OpenAIEmbeddings(model='text-embedding-3-small')); print(vs._collection.count())"]]></command>
+    </commands>
 
     <section name="document-loading">
       <p>LangChain ships loaders for text files, PDFs, web pages, and entire directories. The DirectoryLoader accepts a glob pattern and a loader class, applying it uniformly across all matched files.</p>
@@ -120,7 +139,7 @@ for i, split in enumerate(splits):
       <example type="good" title="Embedding documents into Chroma">
         <code lang="python"><![CDATA[
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -130,7 +149,11 @@ documents = [
     Document(page_content="LCEL is the expression language for chains", metadata={"source": "docs"}),
 ]
 
-vectorstore = Chroma.from_documents(documents, embeddings)
+vectorstore = Chroma.from_documents(
+    documents=documents,
+    embedding=embeddings,
+    persist_directory="./chroma_db",
+)
 
 # Retrieve top-3 most similar chunks
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
@@ -184,10 +207,53 @@ answer = rag_chain.invoke("What is LangChain?")
       </antipattern>
     </section>
 
+    <section name="prompt-template">
+      <p>This is the canonical grounded-generation prompt. Copy it verbatim, then tighten constraints for your domain.</p>
+      <prompt purpose="rag-grounded-answer"><![CDATA[
+You are a precise assistant. Answer ONLY using the context below.
+If the context does not contain the answer, reply exactly: "I don't know based on the provided context."
+Do not invent facts. Quote relevant phrases when helpful.
+
+Context:
+{context}
+
+Question: {question}
+
+Answer:
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Pinned LangChain versions (0.3.x family) are installed and import without errors.</check>
+      <check>Loaders chosen match the corpus type; ImportError guards in place for langchain-community loaders.</check>
+      <check>Splitter uses chunk_size=1000 and chunk_overlap≥200 (or documented justification for other values).</check>
+      <check>Each chunk carries metadata {source, chunk_id} for downstream filtering and citation.</check>
+      <check>Vectorstore uses persist_directory so the embed step is not repeated on each run.</check>
+      <check>Retriever k value is set explicitly via search_kwargs (default k=3 for prototyping, k=5-8 for production).</check>
+      <check>format_docs helper is present and called via the retriever | format_docs pipe before the prompt.</check>
+      <check>LCEL chain ends with StrOutputParser() (or a structured parser) — never returns a raw AIMessage to callers.</check>
+      <check>Smoke test with 3+ ground-truth questions returns answers grounded in retrieved context.</check>
+      <check>Refusal behavior validated: ask a question whose answer is NOT in the corpus and confirm the model returns the configured refusal string.</check>
+    </checklist>
+
+    <verify>
+      <step>Run <code lang="bash"><![CDATA[python -c "from langchain_chroma import Chroma; from langchain_openai import OpenAIEmbeddings; vs=Chroma(persist_directory='./chroma_db', embedding_function=OpenAIEmbeddings(model='text-embedding-3-small')); print('chunks:', vs._collection.count())"]]></code> and confirm chunk count is &gt;0 and roughly matches expected (corpus_chars / chunk_size).</step>
+      <step>Invoke the retriever directly: <code lang="python"><![CDATA[for d in retriever.invoke("known fact from corpus"): print(d.metadata.get("source"), d.page_content[:120])]]></code>. The top-1 hit must come from the document containing that fact.</step>
+      <step>Invoke the full chain on a positive question and assert the answer contains a phrase from the retrieved context (substring overlap &gt;0).</step>
+      <step>Invoke the full chain on an out-of-corpus question and assert the answer matches the refusal string defined in the prompt template.</step>
+      <step>Inspect intermediate steps with <code lang="python"><![CDATA[rag_chain.invoke("...", config={"callbacks": [ConsoleCallbackHandler()]})]]></code> (or LangSmith) and confirm the prompt rendered with a string context, not a Python list repr.</step>
+      <step>Confirm latency budget: time the chain end-to-end; if &gt;3s p50 and that violates SLA, tune k, switch embeddings, or consider dropping LangChain (see when-not-to-use).</step>
+    </verify>
+
+    <warning>
+      <p>langchain-community is community-maintained. Loaders and integrations there can break across minor versions. Pin transitive deps and add an integration test that loads one document of each source type used in production.</p>
+    </warning>
+
     <see-also>
       <ref slug="langchain-chains"/>
       <ref slug="langchain-production-patterns"/>
       <link href="https://python.langchain.com/docs/expression_language/"/>
+      <link href="https://python.langchain.com/docs/tutorials/rag/"/>
       <link href="https://docs.trychroma.com/"/>
     </see-also>
   </content>
