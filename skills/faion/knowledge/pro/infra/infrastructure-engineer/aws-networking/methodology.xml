@@ -4,16 +4,19 @@
     <tier>pro</tier>
     <group>infra</group>
     <domain>infrastructure-engineer</domain>
-    <summary>VPC architecture, subnet segmentation, security groups, NACLs, Transit Gateway, and VPC endpoints for AWS with multi-AZ design and Zero-Trust security principles.</summary>
+    <summary>VPC, subnets, security groups, NACLs, Transit Gateway, VPC endpoints — concrete checklists, Terraform templates, AWS CLI verifications for autonomous agents.</summary>
     <category>cloud</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-26</created>
+    <updated>2026-05-01</updated>
     <tags>
       <tag>networking</tag>
       <tag>vpc</tag>
       <tag>aws</tag>
       <tag>security-groups</tag>
       <tag>transit-gateway</tag>
+      <tag>vpc-endpoints</tag>
+      <tag>zero-trust</tag>
     </tags>
     <tools>
       <tool>claude-code</tool>
@@ -27,47 +30,89 @@
   <content>
     <title>AWS Networking: VPC Architecture, Security Controls, and Connectivity Patterns</title>
 
-    <summary>VPC architecture, subnet segmentation, security groups, NACLs, Transit Gateway, and VPC endpoints for AWS. The concrete rule is: always deploy across 3 AZs with public/private/data subnet tiers; never use 0.0.0.0/0 in security group ingress rules except on ALB port 80/443; use VPC endpoints for S3/DynamoDB/Secrets Manager to eliminate NAT Gateway costs and keep traffic on AWS backbone.</summary>
+    <summary>VPC architecture, subnet segmentation, security groups, NACLs, Transit Gateway, and VPC endpoints for AWS. Concrete rule: always deploy across 3 AZs with public/private/data subnet tiers; never use 0.0.0.0/0 in security group ingress except on ALB ports 80/443; use VPC endpoints for S3/DynamoDB/Secrets Manager/SSM/ECR to eliminate NAT Gateway data charges and keep traffic on the AWS backbone.</summary>
 
     <why>
-      <p>Single-AZ deployments fail entirely during AZ outages. Overly permissive security groups (0.0.0.0/0) are the most common cause of data breaches in AWS. Data transfer through NAT Gateways to AWS services is expensive and unnecessary — VPC endpoints provide private connectivity at no data transfer cost.</p>
+      <p>Single-AZ deployments fail entirely during AZ outages. Overly permissive security groups (0.0.0.0/0) are the most common cause of data breaches in AWS. Data transfer through NAT Gateways to AWS services is expensive and unnecessary — VPC endpoints provide private connectivity at no data transfer cost. Without VPC Flow Logs, post-incident forensics are impossible. Without IPAM, multi-account CIDR collisions block all peering and Transit Gateway attachments.</p>
     </why>
 
     <when-to-use>
       <list>
         <item>Designing a new VPC with subnet segmentation (public/private/data tiers)</item>
         <item>Selecting connectivity pattern: VPC Peering vs Transit Gateway vs VPC Lattice</item>
-        <item>Auditing security group rules for least-privilege compliance</item>
-        <item>Setting up VPC endpoints (Gateway for S3/DynamoDB, Interface for other services)</item>
-        <item>Configuring Transit Gateway for multi-VPC or hybrid on-prem connectivity</item>
+        <item>Auditing existing security group rules for least-privilege compliance</item>
+        <item>Setting up VPC endpoints (Gateway for S3/DynamoDB, Interface for service APIs)</item>
+        <item>Configuring Transit Gateway for multi-VPC or hybrid on-prem connectivity (Direct Connect / Site-to-Site VPN)</item>
         <item>Enabling VPC Flow Logs and GuardDuty for network visibility</item>
+        <item>Reviewing NAT Gateway architecture for cost or HA failure modes</item>
+        <item>Migrating from VPC Peering mesh to Transit Gateway hub-and-spoke</item>
       </list>
     </when-to-use>
 
     <when-not-to-use>
       <list>
         <item>GCP networking (VPC, Cloud NAT, firewall rules) — use gcp-networking</item>
-        <item>ALB/NLB configuration and target groups — use aws-architecture-services</item>
-        <item>Route53 DNS design — not covered here; use AWS Route53 documentation directly</item>
-        <item>Security group rules for specific services (EKS, RDS) — covered in service-specific methodologies</item>
+        <item>ALB/NLB target group configuration — use aws-architecture-services</item>
+        <item>Route53 DNS design — out of scope; consult AWS Route53 documentation directly</item>
+        <item>Service-specific security groups (EKS pod SG, RDS) — covered in service methodologies</item>
+        <item>Edge networking (CloudFront, Global Accelerator) — separate methodology</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <p>Sequential workflow for designing or auditing a production VPC. Run steps in order; each step has a verification command in the verify section.</p>
+
+      <step>1. Allocate CIDR via IPAM. Reserve a /16 for the VPC; subdivide into nine /20 subnets (three tiers x three AZs). Confirm no overlap with on-prem networks or peered VPCs.</step>
+      <step>2. Create the VPC with DNS hostnames and DNS resolution enabled. Enable IPv6 if dual-stack is required.</step>
+      <step>3. Create three public subnets (one per AZ), three private subnets, three data subnets. Tag tier=public/private/data.</step>
+      <step>4. Attach an Internet Gateway. Create a public route table with default route to IGW; associate all three public subnets.</step>
+      <step>5. Provision one NAT Gateway per AZ (never share a NAT GW across AZs). Create three private route tables, each with a default route to its AZ-local NAT GW; associate matching private subnets.</step>
+      <step>6. Create a data route table with no default route (only local). Associate all three data subnets.</step>
+      <step>7. Create Gateway VPC endpoints for S3 and DynamoDB and associate with all private and data route tables (free, eliminates NAT charges for those flows).</step>
+      <step>8. Create Interface VPC endpoints (with private DNS enabled) for: ssm, ssmmessages, ec2messages (Session Manager), ecr.api, ecr.dkr (image pulls), logs (CloudWatch Logs), secretsmanager, sts, monitoring. Attach an endpoint security group allowing 443 from VPC CIDR only.</step>
+      <step>9. Create per-tier security groups: alb-sg (ingress 80/443 from 0.0.0.0/0), app-sg (ingress from alb-sg only), data-sg (ingress from app-sg only). Reference by SG ID, never CIDR. Add a description to every rule.</step>
+      <step>10. Enable VPC Flow Logs at the VPC level. Send to CloudWatch Logs (real-time queries) or S3 (cheap long-term retention 30-90 days). Use the all-traffic format with custom fields including pkt-srcaddr and pkt-dstaddr.</step>
+      <step>11. Enable GuardDuty in every region; enable VPC Flow Log analysis, S3 Protection, EKS Audit, and Malware Protection. Wire findings to Security Hub and EventBridge.</step>
+      <step>12. For multi-VPC: prefer Transit Gateway with segmented route tables (prod-rt, nonprod-rt). Disable DefaultRouteTableAssociation and DefaultRouteTablePropagation. Use blackhole routes for deprecated CIDRs.</step>
+      <step>13. Document every CIDR allocation in IPAM with environment, owner, and purpose tags. Reserve at least one expansion /20 inside the /16 for future subnets.</step>
+      <step>14. Run the verify section. All checks must return success before declaring the VPC production-ready.</step>
+    </how-to>
+
+    <checklist>
+      <check>VPC CIDR is /16 and registered in AWS IPAM with no overlap warnings</check>
+      <check>Three public, three private, three data subnets exist (one per AZ)</check>
+      <check>Each AZ has its own NAT Gateway (count NAT GWs == count AZs in use)</check>
+      <check>Data route tables have NO default route (0.0.0.0/0 absent)</check>
+      <check>S3 and DynamoDB Gateway endpoints associated with private and data route tables</check>
+      <check>Interface endpoints created for ssm, ssmmessages, ec2messages, ecr.api, ecr.dkr, logs, secretsmanager, sts</check>
+      <check>Private DNS enabled on every Interface endpoint</check>
+      <check>No security group ingress rule uses 0.0.0.0/0 except ALB-SG on ports 80/443</check>
+      <check>App-tier and data-tier SGs reference upstream SG ID (not CIDR)</check>
+      <check>Every SG rule has a non-empty description</check>
+      <check>SG names follow convention: {env}-{app}-{tier}-sg (e.g. prod-api-app-sg)</check>
+      <check>Default NACL untouched OR custom NACL includes ephemeral egress 1024-65535</check>
+      <check>VPC Flow Logs enabled at VPC level, retention 30-90 days</check>
+      <check>GuardDuty enabled in all regions with VPC Flow Log analysis on</check>
+      <check>For Transit Gateway: DefaultRouteTableAssociation and DefaultRouteTablePropagation are disabled</check>
+      <check>For Transit Gateway: prod and nonprod attachments are in separate route tables</check>
+      <check>AWS Config rules enabled: vpc-sg-open-only-to-authorized-ports, vpc-flow-logs-enabled, restricted-ssh, restricted-common-ports</check>
+    </checklist>
 
     <section name="subnet-architecture">
       <p>3-tier subnet architecture, CIDR planning, multi-AZ rules, and best practices for VPC design.</p>
 
       <rule testable="true">
-        <statement>Deploy every production VPC across 3 Availability Zones with three subnet tiers: public (ALB, NAT Gateway), private (application), and data (RDS, ElastiCache); use /24 subnets per tier per AZ.</statement>
-        <rationale>Three tiers enforce network segmentation — data subnets have no route to the internet, only from private subnets. Three AZs survive a single AZ outage with automatic failover.</rationale>
+        <statement>Deploy every production VPC across 3 Availability Zones with three subnet tiers: public (ALB, NAT Gateway), private (application), and data (RDS, ElastiCache); use /20 subnets per tier per AZ inside a /16 VPC.</statement>
+        <rationale>Three tiers enforce network segmentation — data subnets have no route to the internet, only from private subnets. Three AZs survive a single AZ outage with automatic failover. /20 yields 4091 usable IPs per subnet, sufficient for most enterprise workloads with headroom.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Use /16 VPC CIDR for production to allow future growth; plan CIDR ranges to avoid overlap with on-premises networks or peered VPCs; use IPAM for multi-account environments.</statement>
-        <rationale>VPC CIDR cannot be changed after creation without recreation. /16 provides 65,536 addresses. Overlapping CIDRs block VPC peering and Transit Gateway attachment.</rationale>
+        <statement>Use /16 VPC CIDR for production to allow future growth; plan CIDR ranges to avoid overlap with on-premises networks or peered VPCs; use AWS IPAM for multi-account environments.</statement>
+        <rationale>VPC CIDR cannot be changed after creation without recreation. /16 provides 65,536 addresses. Overlapping CIDRs block VPC peering and Transit Gateway attachment. IPAM provides real-time overlap detection across an Organization.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Keep main route table with no routes except local; use explicit subnet associations for public, private, and data route tables; deploy a NAT Gateway per AZ (not shared).</statement>
+        <statement>Keep main route table with no routes except local; use explicit subnet associations for public, private, and data route tables; deploy a NAT Gateway per AZ (never shared across AZs).</statement>
         <rationale>A shared NAT Gateway is a single point of failure — if that AZ goes down, all private subnets in other AZs lose internet access. Per-AZ NAT Gateways maintain egress during zone failures.</rationale>
       </rule>
     </section>
@@ -76,13 +121,13 @@
       <p>Zero-Trust security principles for security groups, VPC endpoints, and network access control.</p>
 
       <rule testable="true">
-        <statement>Allow 0.0.0.0/0 inbound only on ALB ports 80/443; all other security group ingress rules must reference specific CIDRs or security group IDs; audit monthly via AWS Config.</statement>
+        <statement>Allow 0.0.0.0/0 inbound only on ALB ports 80/443; all other security group ingress rules must reference specific CIDRs or security group IDs; audit monthly via AWS Config rule vpc-sg-open-only-to-authorized-ports.</statement>
         <rationale>Every open inbound rule is an attack surface. Security groups are the primary perimeter control — overly permissive rules are the most common cause of AWS breaches according to AWS security reports.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Use Gateway VPC endpoints for S3 and DynamoDB (free); use Interface endpoints for Secrets Manager, SSM, ECR, CloudWatch Logs, and STS to keep AWS service traffic on the AWS backbone.</statement>
-        <rationale>Without VPC endpoints, traffic to AWS services leaves the VPC via NAT Gateway, incurring data processing charges ($0.045/GB). Endpoints eliminate this cost and keep traffic private.</rationale>
+        <statement>Use Gateway VPC endpoints for S3 and DynamoDB (free); use Interface endpoints for Secrets Manager, SSM, ECR, CloudWatch Logs, STS, and Monitoring to keep AWS service traffic on the AWS backbone.</statement>
+        <rationale>Without VPC endpoints, traffic to AWS services leaves the VPC via NAT Gateway, incurring data processing charges (USD 0.045/GB). Endpoints eliminate this cost and keep traffic private. Interface endpoints cost ~USD 7.20/month per AZ but break even quickly above ~160 GB egress.</rationale>
       </rule>
     </section>
 
@@ -90,8 +135,8 @@
       <p>VPC Flow Logs for forensic analysis and network incident investigation.</p>
 
       <rule testable="true">
-        <statement>Enable VPC Flow Logs on all VPCs; send to CloudWatch Logs for real-time query or S3 for cost-optimized long-term storage; configure 30-90 day retention.</statement>
-        <rationale>Flow Logs are the primary forensic tool for network incidents. Without them, there is no record of which IPs communicated with which resources, making incident investigation impossible.</rationale>
+        <statement>Enable VPC Flow Logs on all VPCs; send to CloudWatch Logs for real-time query or S3 for cost-optimized long-term storage; configure 30-90 day retention; use the v5 format with pkt-srcaddr and pkt-dstaddr custom fields.</statement>
+        <rationale>Flow Logs are the primary forensic tool for network incidents. Without them, there is no record of which IPs communicated with which resources, making incident investigation impossible. Custom fields capture original packet addresses before NAT/proxy translation.</rationale>
       </rule>
 
       <antipattern title="Single NAT Gateway shared across AZs">
@@ -110,7 +155,7 @@
 
       <rule testable="true">
         <statement>Add a description to every security group rule; name security groups with the convention {env}-{app}-{tier}-sg; schedule monthly audits via AWS Config rule vpc-sg-open-only-to-authorized-ports.</statement>
-        <rationale>Descriptions make audit reviews actionable — reviewers can understand intent without reverse-engineering from context. AWS Config automates compliance monitoring and alerts on rule violations.</rationale>
+        <rationale>Descriptions make audit reviews actionable — reviewers understand intent without reverse-engineering from context. AWS Config automates compliance monitoring and alerts on rule violations.</rationale>
       </rule>
     </section>
 
@@ -127,13 +172,13 @@
       <p>VPC Endpoints for private connectivity to AWS services and cost optimization.</p>
 
       <rule testable="true">
-        <statement>Create Gateway endpoints for S3 and DynamoDB in all private route tables; create Interface endpoints for Secrets Manager, SSM (3 endpoints: ssm, ssmmessages, ec2messages), ECR (dkr and api), and CloudWatch Logs.</statement>
+        <statement>Create Gateway endpoints for S3 and DynamoDB in all private route tables; create Interface endpoints for Secrets Manager, SSM (3 endpoints: ssm, ssmmessages, ec2messages), ECR (dkr and api), CloudWatch Logs, and STS.</statement>
         <rationale>Gateway endpoints are free and eliminate all NAT Gateway charges for S3/DynamoDB traffic. SSM Session Manager requires 3 specific Interface endpoints to work — missing any one prevents connections.</rationale>
       </rule>
 
       <rule testable="true">
         <statement>Attach endpoint policies to Interface endpoints restricting access to specific resources and principals; enable private DNS on all Interface endpoints.</statement>
-        <rationale>Without endpoint policies, any principal in the VPC can use the endpoint to access any resource of that service type. Private DNS ensures existing SDK code automatically routes through the endpoint.</rationale>
+        <rationale>Without endpoint policies, any principal in the VPC can use the endpoint to access any resource of that service type. Private DNS ensures existing SDK code automatically routes through the endpoint without code changes.</rationale>
       </rule>
     </section>
 
@@ -156,7 +201,7 @@
 
       <rule testable="true">
         <statement>Use VPC Peering for 2-3 VPCs in the same region; use Transit Gateway for 4+ VPCs, cross-region connectivity, or hybrid on-premises connectivity via Direct Connect or VPN.</statement>
-        <rationale>VPC Peering is simpler and has no per-hour attachment cost — ideal for small deployments. Transit Gateway uses a hub-and-spoke model that scales to thousands of attachments without N×(N-1)/2 peering connections.</rationale>
+        <rationale>VPC Peering is simpler and has no per-hour attachment cost — ideal for small deployments. Transit Gateway uses a hub-and-spoke model that scales to thousands of attachments without N x (N-1)/2 peering connections.</rationale>
       </rule>
 
       <rule testable="true">
@@ -192,5 +237,264 @@
         <reason>VPC Peering is point-to-point only. Traffic cannot pass through a peered VPC to reach a third VPC. Transit Gateway or VPC Lattice is required for hub-and-spoke topologies.</reason>
       </antipattern>
     </section>
+
+    <commands>
+      <command name="list-vpcs">aws ec2 describe-vpcs --query 'Vpcs[].{Id:VpcId,Cidr:CidrBlock,Default:IsDefault,Tags:Tags}' --output table</command>
+      <command name="check-flow-logs">aws ec2 describe-flow-logs --filter Name=resource-id,Values=vpc-XXXX --query 'FlowLogs[].{Status:FlowLogStatus,Dest:LogDestinationType,Format:LogFormat}'</command>
+      <command name="enable-flow-logs">aws ec2 create-flow-logs --resource-type VPC --resource-ids vpc-XXXX --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name /aws/vpc/flowlogs --deliver-logs-permission-arn arn:aws:iam::ACCOUNT:role/flowlogsRole</command>
+      <command name="find-open-sgs">aws ec2 describe-security-groups --filters Name=ip-permission.cidr,Values=0.0.0.0/0 --query 'SecurityGroups[].{Id:GroupId,Name:GroupName,Vpc:VpcId}' --output table</command>
+      <command name="find-22-open">aws ec2 describe-security-groups --filters Name=ip-permission.from-port,Values=22 Name=ip-permission.cidr,Values=0.0.0.0/0 --query 'SecurityGroups[].GroupId'</command>
+      <command name="list-nat-gateways">aws ec2 describe-nat-gateways --query 'NatGateways[?State==`available`].{Id:NatGatewayId,Subnet:SubnetId,Vpc:VpcId,AZ:AvailabilityZone}' --output table</command>
+      <command name="list-vpc-endpoints">aws ec2 describe-vpc-endpoints --query 'VpcEndpoints[].{Service:ServiceName,Type:VpcEndpointType,State:State,DnsEnabled:PrivateDnsEnabled}' --output table</command>
+      <command name="check-required-endpoints">for s in s3 dynamodb ssm ssmmessages ec2messages ecr.api ecr.dkr logs secretsmanager sts; do echo -n "$s: "; aws ec2 describe-vpc-endpoints --filters Name=service-name,Values=com.amazonaws.$(aws configure get region).$s --query 'length(VpcEndpoints)' --output text; done</command>
+      <command name="describe-tgw-rt">aws ec2 describe-transit-gateways --query 'TransitGateways[].{Id:TransitGatewayId,DefaultAssoc:Options.DefaultRouteTableAssociation,DefaultProp:Options.DefaultRouteTablePropagation}' --output table</command>
+      <command name="config-rule-sg">aws configservice put-config-rule --config-rule '{"ConfigRuleName":"vpc-sg-open-only-to-authorized-ports","Source":{"Owner":"AWS","SourceIdentifier":"VPC_SG_OPEN_ONLY_TO_AUTHORIZED_PORTS"},"InputParameters":"{\"authorizedTcpPorts\":\"80,443\"}"}'</command>
+      <command name="enable-guardduty">aws guardduty create-detector --enable --finding-publishing-frequency FIFTEEN_MINUTES --data-sources S3Logs={Enable=true},Kubernetes={AuditLogs={Enable=true}},MalwareProtection={ScanEc2InstanceWithFindings={EbsVolumes=true}}</command>
+      <command name="ipam-overlap-check">aws ec2 get-ipam-address-history --cidr 10.0.0.0/16 --ipam-scope-id ipam-scope-XXXX</command>
+    </commands>
+
+    <template path="vpc-3az-3tier.tf" purpose="Reference Terraform: 3-AZ 3-tier VPC with NAT-per-AZ, Gateway+Interface endpoints, Flow Logs, tier security groups">
+<![CDATA[
+# vpc-3az-3tier.tf — paste into a Terraform module
+
+variable "name"        { type = string }                     # e.g. "prod-platform"
+variable "vpc_cidr"    { type = string  default = "10.0.0.0/16" }
+variable "azs"         { type = list(string) }               # e.g. ["us-east-1a","us-east-1b","us-east-1c"]
+variable "region"      { type = string }
+
+locals {
+  public_cidrs  = [for i,_ in var.azs : cidrsubnet(var.vpc_cidr, 4, i)]      # /20
+  private_cidrs = [for i,_ in var.azs : cidrsubnet(var.vpc_cidr, 4, i + 3)]
+  data_cidrs    = [for i,_ in var.azs : cidrsubnet(var.vpc_cidr, 4, i + 6)]
+}
+
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+  tags = { Name = var.name }
+}
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.this.id
+  tags   = { Name = "${var.name}-igw" }
+}
+
+resource "aws_subnet" "public"  {
+  count             = length(var.azs)
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = local.public_cidrs[count.index]
+  availability_zone = var.azs[count.index]
+  map_public_ip_on_launch = true
+  tags = { Name = "${var.name}-public-${var.azs[count.index]}", tier = "public" }
+}
+resource "aws_subnet" "private" {
+  count             = length(var.azs)
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = local.private_cidrs[count.index]
+  availability_zone = var.azs[count.index]
+  tags = { Name = "${var.name}-private-${var.azs[count.index]}", tier = "private" }
+}
+resource "aws_subnet" "data" {
+  count             = length(var.azs)
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = local.data_cidrs[count.index]
+  availability_zone = var.azs[count.index]
+  tags = { Name = "${var.name}-data-${var.azs[count.index]}", tier = "data" }
+}
+
+# One NAT GW per AZ — never share
+resource "aws_eip"         "nat" { count = length(var.azs)  domain = "vpc" }
+resource "aws_nat_gateway" "nat" {
+  count         = length(var.azs)
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+  tags = { Name = "${var.name}-nat-${var.azs[count.index]}" }
+  depends_on = [aws_internet_gateway.igw]
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+  route { cidr_block = "0.0.0.0/0"  gateway_id = aws_internet_gateway.igw.id }
+  tags = { Name = "${var.name}-rt-public" }
+}
+resource "aws_route_table_association" "public" {
+  count = length(var.azs)  subnet_id = aws_subnet.public[count.index].id  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table" "private" {
+  count  = length(var.azs)
+  vpc_id = aws_vpc.this.id
+  route { cidr_block = "0.0.0.0/0"  nat_gateway_id = aws_nat_gateway.nat[count.index].id }
+  tags = { Name = "${var.name}-rt-private-${var.azs[count.index]}" }
+}
+resource "aws_route_table_association" "private" {
+  count = length(var.azs)  subnet_id = aws_subnet.private[count.index].id  route_table_id = aws_route_table.private[count.index].id
+}
+
+# Data tier — no default route
+resource "aws_route_table" "data" {
+  vpc_id = aws_vpc.this.id
+  tags = { Name = "${var.name}-rt-data" }
+}
+resource "aws_route_table_association" "data" {
+  count = length(var.azs)  subnet_id = aws_subnet.data[count.index].id  route_table_id = aws_route_table.data.id
+}
+
+# Gateway endpoints — free, must be wired to private + data RTs
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id          = aws_vpc.this.id
+  service_name    = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids = concat(aws_route_table.private[*].id, [aws_route_table.data.id])
+}
+resource "aws_vpc_endpoint" "dynamodb" {
+  vpc_id          = aws_vpc.this.id
+  service_name    = "com.amazonaws.${var.region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids = concat(aws_route_table.private[*].id, [aws_route_table.data.id])
+}
+
+# Endpoint SG — 443 from VPC CIDR only
+resource "aws_security_group" "endpoints" {
+  name        = "${var.name}-endpoints-sg"
+  description = "Interface VPC endpoint SG"
+  vpc_id      = aws_vpc.this.id
+  ingress { from_port = 443  to_port = 443  protocol = "tcp"  cidr_blocks = [var.vpc_cidr]
+            description = "HTTPS from VPC for AWS service endpoints" }
+  egress  { from_port = 0    to_port = 0    protocol = "-1"   cidr_blocks = ["0.0.0.0/0"]
+            description = "Allow all egress" }
+}
+
+# Interface endpoints — minimum required set
+locals {
+  interface_services = ["ssm","ssmmessages","ec2messages","ecr.api","ecr.dkr","logs","secretsmanager","sts","monitoring"]
+}
+resource "aws_vpc_endpoint" "interfaces" {
+  for_each            = toset(local.interface_services)
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${var.region}.${each.value}"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.endpoints.id]
+  private_dns_enabled = true
+}
+
+# Per-tier security groups — references only, never CIDR
+resource "aws_security_group" "alb" {
+  name        = "${var.name}-alb-sg"
+  description = "ALB SG — public 80/443"
+  vpc_id      = aws_vpc.this.id
+  ingress { from_port=80  to_port=80  protocol="tcp" cidr_blocks=["0.0.0.0/0"] description="HTTP from internet"  }
+  ingress { from_port=443 to_port=443 protocol="tcp" cidr_blocks=["0.0.0.0/0"] description="HTTPS from internet" }
+  egress  { from_port=0   to_port=0   protocol="-1"  cidr_blocks=["0.0.0.0/0"] description="Allow all egress" }
+}
+resource "aws_security_group" "app" {
+  name        = "${var.name}-app-sg"
+  description = "App SG — only from ALB"
+  vpc_id      = aws_vpc.this.id
+  ingress { from_port=8080 to_port=8080 protocol="tcp" security_groups=[aws_security_group.alb.id] description="App from ALB" }
+  egress  { from_port=0    to_port=0    protocol="-1"  cidr_blocks=["0.0.0.0/0"] description="Egress to internet/services" }
+}
+resource "aws_security_group" "data" {
+  name        = "${var.name}-data-sg"
+  description = "Data SG — only from app"
+  vpc_id      = aws_vpc.this.id
+  ingress { from_port=5432 to_port=5432 protocol="tcp" security_groups=[aws_security_group.app.id] description="Postgres from app" }
+}
+
+# Flow Logs — VPC-scope, ALL, CW Logs, v5 with custom fields
+resource "aws_cloudwatch_log_group" "flow" { name = "/aws/vpc/${var.name}/flow" retention_in_days = 90 }
+resource "aws_iam_role" "flow" {
+  name = "${var.name}-flow-logs"
+  assume_role_policy = jsonencode({Version="2012-10-17", Statement=[{Effect="Allow", Principal={Service="vpc-flow-logs.amazonaws.com"}, Action="sts:AssumeRole"}]})
+}
+resource "aws_iam_role_policy" "flow" {
+  role   = aws_iam_role.flow.id
+  policy = jsonencode({Version="2012-10-17", Statement=[{Effect="Allow", Action=["logs:CreateLogStream","logs:PutLogEvents","logs:DescribeLogGroups","logs:DescribeLogStreams"], Resource="*"}]})
+}
+resource "aws_flow_log" "vpc" {
+  vpc_id          = aws_vpc.this.id
+  traffic_type    = "ALL"
+  log_destination = aws_cloudwatch_log_group.flow.arn
+  iam_role_arn    = aws_iam_role.flow.arn
+  log_format      = "$${version} $${account-id} $${interface-id} $${srcaddr} $${dstaddr} $${srcport} $${dstport} $${protocol} $${packets} $${bytes} $${start} $${end} $${action} $${log-status} $${pkt-srcaddr} $${pkt-dstaddr}"
+}
+]]>
+    </template>
+
+    <prompt purpose="security-group-audit">
+<![CDATA[
+You are auditing AWS security groups in account {ACCOUNT_ID} region {REGION}.
+
+INPUT: full output of `aws ec2 describe-security-groups --query 'SecurityGroups[]'` (JSON).
+
+For each security group:
+1. Flag every ingress rule with CidrIp == 0.0.0.0/0 unless ALL conditions hold:
+   - GroupName matches *-alb-sg pattern
+   - FromPort/ToPort is 80 or 443
+2. Flag every rule missing a Description.
+3. Flag rules where UserIdGroupPairs is empty AND CidrIp is /32 (likely should reference SG ID).
+4. Flag rules where IpProtocol is "-1" (all protocols) on ingress.
+5. Verify SG name matches convention `{env}-{app}-{tier}-sg`.
+
+Output JSON:
+{
+  "findings": [
+    {"severity":"HIGH|MED|LOW", "sg_id":"sg-XXX", "sg_name":"...", "rule":"<port/proto/source>", "issue":"<short>", "remediation":"<concrete fix>"}
+  ],
+  "summary": {"high":N,"med":N,"low":N,"total_sgs":N}
+}
+
+After producing JSON, emit AWS CLI revoke commands for HIGH findings as a fenced bash block.
+]]>
+    </prompt>
+
+    <prompt purpose="vpc-design-review">
+<![CDATA[
+You are reviewing a Terraform plan for an AWS VPC.
+
+INPUT: terraform plan output (text).
+
+Verify these invariants and report PASS/FAIL with evidence (resource address):
+- [ ] aws_vpc cidr_block is /16
+- [ ] aws_vpc.enable_dns_hostnames = true
+- [ ] aws_subnet count by tier: public=3, private=3, data=3 (one per AZ)
+- [ ] aws_nat_gateway count == public subnet count (no shared NAT)
+- [ ] data route table has no 0.0.0.0/0 route
+- [ ] aws_vpc_endpoint type=Gateway exists for s3 AND dynamodb
+- [ ] aws_vpc_endpoint type=Interface exists for: ssm, ssmmessages, ec2messages, ecr.api, ecr.dkr, logs, secretsmanager, sts
+- [ ] every Interface endpoint has private_dns_enabled = true
+- [ ] aws_flow_log resource exists with traffic_type = "ALL"
+- [ ] no aws_security_group_rule with cidr_blocks ["0.0.0.0/0"] on ingress except port 80 or 443
+
+Output a markdown table | invariant | status | resource | evidence | and a final verdict line: VERDICT: PASS or VERDICT: FAIL.
+]]>
+    </prompt>
+
+    <verify>
+      <step>1. Subnet tiers — run: `aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID --query 'Subnets[].{AZ:AvailabilityZone,Tier:Tags[?Key==`tier`]|[0].Value}' --output table`. Expect 3 rows for each tier (public/private/data).</step>
+      <step>2. NAT redundancy — run: `aws ec2 describe-nat-gateways --filter Name=vpc-id,Values=$VPC_ID --query 'NatGateways[?State==`available`] | length(@)'`. Expect value equal to number of AZs in use.</step>
+      <step>3. Data tier isolation — run: `aws ec2 describe-route-tables --filters Name=vpc-id,Values=$VPC_ID Name=tag:Name,Values=*rt-data* --query 'RouteTables[].Routes[?DestinationCidrBlock==`0.0.0.0/0`]'`. Expect empty array.</step>
+      <step>4. Gateway endpoints — run: `aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=$VPC_ID Name=vpc-endpoint-type,Values=Gateway --query 'VpcEndpoints[].ServiceName'`. Expect both `*.s3` and `*.dynamodb` present.</step>
+      <step>5. Interface endpoints — run the `check-required-endpoints` command in the commands block. Expect every line to print `1`.</step>
+      <step>6. Private DNS on interface endpoints — run: `aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=$VPC_ID Name=vpc-endpoint-type,Values=Interface --query 'VpcEndpoints[?PrivateDnsEnabled==`false`]'`. Expect empty array.</step>
+      <step>7. SG open-port audit — run the `find-open-sgs` command. Each result must be an ALB SG with only port 80/443 open. Run `find-22-open` — expect empty result.</step>
+      <step>8. SG description coverage — run: `aws ec2 describe-security-groups --filters Name=vpc-id,Values=$VPC_ID --query 'SecurityGroups[].IpPermissions[?!Description].UserIdGroupPairs'`. Expect empty.</step>
+      <step>9. Flow Logs — run: `aws ec2 describe-flow-logs --filter Name=resource-id,Values=$VPC_ID --query 'FlowLogs[?FlowLogStatus==`ACTIVE`] | length(@)'`. Expect at least 1.</step>
+      <step>10. GuardDuty enabled — run: `aws guardduty list-detectors --query 'DetectorIds | length(@)'`. Expect 1 (or more) per region.</step>
+      <step>11. AWS Config compliance — run: `aws configservice get-compliance-details-by-config-rule --config-rule-name vpc-sg-open-only-to-authorized-ports --compliance-types NON_COMPLIANT --query 'EvaluationResults | length(@)'`. Expect 0.</step>
+      <step>12. Transit Gateway segmentation (if multi-VPC) — run: `aws ec2 describe-transit-gateways --query 'TransitGateways[].Options.{DA:DefaultRouteTableAssociation,DP:DefaultRouteTablePropagation}'`. Both fields must be `disable`.</step>
+      <step>13. IPAM overlap — run: `aws ec2 get-ipam-discovered-resource-cidrs --ipam-resource-discovery-id $RD_ID --resource-region $REGION --query 'IpamDiscoveredResourceCidrs[?OverlapStatus==`overlapping`]'`. Expect empty array.</step>
+      <step>14. Run the `vpc-design-review` prompt against `terraform plan` output. Verdict must be PASS before merging the IaC change.</step>
+    </verify>
+
+    <warning>
+      <p>Never relax the data-tier no-default-route invariant for "convenience" SSH or package installs. Use SSM Session Manager via the SSM Interface endpoints instead. Once a data subnet has 0.0.0.0/0 it is no longer a data subnet and the audit must be reopened.</p>
+    </warning>
+
+    <note>
+      <p>Cost note: nine Interface endpoints across three AZs cost approximately USD 200/month. They typically pay for themselves in a single environment beyond ~5 TB/month of NAT-bound AWS service traffic. Budget alert thresholds: investigate when NAT data processing spend exceeds USD 300/month — that is the inflection point at which more endpoints become cheaper than NAT.</p>
+    </note>
   </content>
 </methodology>

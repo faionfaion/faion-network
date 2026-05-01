@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: aws-networking (sufficient for autonomous agents)
 - Improve methodology: aws-architecture-services (sufficient for autonomous agents)
 - Improve methodology: finops-framework (sufficient for autonomous agents)
 - Improve methodology: container-orchestration (sufficient for autonomous agents)
