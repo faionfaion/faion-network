@@ -22,9 +22,9 @@
     </why>
     <when-to-use>
       <list>
-        <item>Routing a coarse task ("implement a Django service", "scaffold a Go API") to the correct sibling folder.</item>
-        <item>Building a multi-step plan that requires knowing the canonical order: Python to JS/TS to backend to DevOps to docs.</item>
-        <item>Auditing which methodology slugs exist before dispatching parallel subagents.</item>
+        <item>The user gives a coarse task ("implement a Django service", "scaffold a Go API", "write tests for X") and you have not yet selected a sibling methodology folder.</item>
+        <item>You need the canonical execution order for a multi-language task: Python to JS/TS to backend to DevOps to docs.</item>
+        <item>You need to verify which methodology slugs actually exist before dispatching parallel subagents.</item>
       </list>
     </when-to-use>
     <when-not-to-use>
@@ -34,6 +34,9 @@
         <item>Citing it as the source of any rule — cite the sibling folder instead.</item>
       </list>
     </when-not-to-use>
+    <section name="trigger">
+      <p>Apply this index at the very start of any software-developer task, immediately after parsing the user's intent and before you write a single line of code or open a sibling methodology. One pass through the routing table per task; never quote stubs.</p>
+    </section>
     <section name="dispatcher-and-routing">
       <p>This methodologies/ directory is not a single methodology — it is the legacy umbrella index for the software-developer skill, listing 68 patterns across Python, JS/TS, backend languages, DevOps, and documentation. Most of those patterns now live as their own siblings under free/dev/software-developer/slug/ and are individually enriched. This page is the agent's lookup table: pick the right sibling, do not implement directly from this index.</p>
       <rule>
@@ -57,8 +60,54 @@
         <item>DevOps, Docker, K8s, Terraform, CI/CD → pro/infra/ siblings (out of scope here)</item>
       </list>
     </section>
+    <section name="checklist">
+      <p>Run this checklist literally for every task that hits the software-developer skill. Each step has a verification point — do not skip ahead.</p>
+      <list>
+        <item>1. PARSE — read the user's task; extract language, framework, and primary verb (scaffold, fix, refactor, test, document).</item>
+        <item>2. ENUMERATE — list real siblings: `ls skills/faion/knowledge/free/dev/software-developer/`. Use this output as ground truth, not the historical "68 methodologies" headline.</item>
+        <item>3. MATCH — apply the routing-table mapping above; output top 3 candidate sibling slugs with H/M/L confidence and a one-line rationale each.</item>
+        <item>4. STUB-CHECK — for each candidate, run `wc -l skills/faion/knowledge/free/dev/software-developer/&lt;slug&gt;/AGENTS.md`. If any candidate's AGENTS.md is &lt;30 lines, mark it stub-only and pick a non-stub alternative.</item>
+        <item>5. LOAD — Read the chosen sibling's AGENTS.md (and methodology.xml if present). Do NOT implement before this Read returns.</item>
+        <item>6. AGENT-VERIFY — if you plan to delegate, confirm the agent exists: `ls agents/ skills/*/agents/ 2&gt;/dev/null | grep -E '^(faion-sdd-executor-agent|nero-sdd-executor-agent|password-scrubber-agent)\.md$'`. If your target name is missing, fall back to faion-sdd-executor-agent.</item>
+        <item>7. SDD-FRAME — open or update the SDD lifecycle file (`.aidocs/backlog/ → todo/ → in-progress/ → done/`); never start coding without a feature dir.</item>
+        <item>8. EXECUTE — implement under the sibling's checklist, not this index's stubs.</item>
+        <item>9. VERIFY — run sibling-specific tests + the universal post-flight: `ruff check .` (Python) or `npm run typecheck &amp;&amp; npm run lint` (TS). Update CHANGELOG.md under `## [Unreleased]`.</item>
+        <item>10. CITE — in the PR/commit body, cite the sibling slug path, never this index.</item>
+      </list>
+    </section>
     <section name="canonical-ordering-for-cross-cutting-tasks">
       <p>When a task spans multiple domains, apply siblings in this order: Python ecosystem to JS/TS to other backends to DevOps to docs. This is a sequencing guide, not a priority ranking.</p>
+    </section>
+    <section name="commands">
+      <p>Concrete shell commands the agent can copy-paste at each routing step. All paths are relative to the repo root.</p>
+      <list>
+        <item>List real siblings (ground truth): `ls -1 skills/faion/knowledge/free/dev/software-developer/ | sort`</item>
+        <item>Search the index for a keyword: `rg -n -S "django|python|async" skills/faion/knowledge/free/dev/software-developer/methodologies/methodology.xml`</item>
+        <item>Locate a sibling by slug: `fd -t d "django-coding-standards" skills/faion/knowledge/free/dev/software-developer/`</item>
+        <item>Detect stub-only siblings (AGENTS.md &lt;30 lines): `for d in skills/faion/knowledge/free/dev/software-developer/*/; do n=$(wc -l &lt; "$d/AGENTS.md" 2&gt;/dev/null || echo 0); [ "$n" -lt 30 ] &amp;&amp; echo "STUB: $d ($n lines)"; done`</item>
+        <item>Verify an agent exists before delegating: `ls agents/ skills/*/agents/ 2&gt;/dev/null | grep -F "${AGENT}.md" || echo "MISSING — fall back to faion-sdd-executor-agent"`</item>
+        <item>Find recently added stubs: `git log --diff-filter=A --since="90 days ago" -- 'skills/faion/knowledge/free/dev/software-developer/*/AGENTS.md'`</item>
+        <item>Validate this file after editing: `python3 scripts/validate-methodology-xml.py skills/faion/knowledge/free/dev/software-developer/methodologies/methodology.xml`</item>
+      </list>
+    </section>
+    <section name="dispatch-prompt-template">
+      <p>Copy-paste prompt for the routing pass. Fill `&lt;USER_TASK&gt;` and feed to a router agent (or run inline). Output is JSON; reject any other shape.</p>
+      <list>
+        <item>SYSTEM: You are a methodology router for the faion software-developer skill. You never implement code. You only route.</item>
+        <item>USER: Task = `&lt;USER_TASK&gt;`. Steps: (1) read `skills/faion/knowledge/free/dev/software-developer/methodologies/methodology.xml`; (2) list candidate sibling slugs from `ls skills/faion/knowledge/free/dev/software-developer/`; (3) map task keywords to siblings via the routing-table section; (4) return JSON `{"candidates":[{"slug":"...","confidence":"H|M|L","rationale":"...","stub_only":true|false}], "order":["slug1","slug2"], "fallback_agent":"faion-sdd-executor-agent"}`.</item>
+        <item>RULES: never quote stubs from the index; never invent slugs not present in `ls`; mark `stub_only=true` if `wc -l &lt;slug&gt;/AGENTS.md` returns &lt;30; if zero non-stub candidates exist, set `candidates=[]` and `escalate=true`.</item>
+      </list>
+    </section>
+    <section name="verification">
+      <p>How the agent confirms the routing pass succeeded before any code is written.</p>
+      <list>
+        <item>Routing JSON parses with `jq` and contains at least one candidate with `stub_only=false`, OR `escalate=true` is set.</item>
+        <item>Each `slug` returned matches an entry in `ls skills/faion/knowledge/free/dev/software-developer/` (no hallucinated slugs).</item>
+        <item>Sibling AGENTS.md was opened with the Read tool in the same session — verify by checking the conversation tool log.</item>
+        <item>If delegation is planned, the chosen agent name appears in `ls agents/ skills/*/agents/`; otherwise the plan falls back to `faion-sdd-executor-agent`.</item>
+        <item>`python3 scripts/validate-methodology-xml.py skills/faion/knowledge/free/dev/software-developer/methodologies/methodology.xml` exits 0 after any edit to this index.</item>
+        <item>The PR/commit body cites a sibling slug path (e.g., `free/dev/software-developer/django-coding-standards/`) and never `methodologies/methodology.xml` as the source of any rule.</item>
+      </list>
     </section>
     <section name="where-it-fails-limitations">
       <p>Stale fragments: Many entries are 5-line skeletons; the real depth is in sibling folders. An agent that only reads this index produces shallow output.</p>

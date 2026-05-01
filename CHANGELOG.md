@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: improve methodologies methodology with concrete checklist + commands (agent-coverage)
 - chore: improve files-reference methodology with concrete checklist + commands (agent-coverage)
 - chore: improve django-decision-tree methodology with concrete checklist + commands (agent-coverage)
 - chore: fill remaining catalog descriptions (452 entries: 1 domain + 451 methodologies); catalog.py update now handles mixed domain/method JSON inputs
