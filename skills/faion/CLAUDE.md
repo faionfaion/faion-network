@@ -28,6 +28,12 @@ Tier gating: free reads `free/`; solo reads `free/ + solo/`; pro reads `free/ + 
 
 **Full routing:** [SKILL.md](SKILL.md) · **Tier manifest:** [../tier-manifest.json](../tier-manifest.json)
 
+## Workflows
+
+End-to-end orchestration patterns live alongside `knowledge/` under [workflows/](workflows/AGENTS.md). Each workflow is a methodology folder (`AGENTS.md` + `content/*.xml` + optional `templates/`). Current workflows:
+
+- `workflows/sdd-batch-orchestrator/` — multi-feature SDD batch (study → clarify → plan → wave-execute → verify → review → fix → visual-deliver → close), fronted by versioned prompt files.
+
 ---
 
 *Faion Network v4.1*

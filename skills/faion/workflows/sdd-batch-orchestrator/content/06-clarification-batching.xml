@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-clarification-batching" title="Batching open questions across features">
+  <summary>Open questions surfaced by per-feature INTAKE analyzers are aggregated, deduplicated, and presented to the user as one coherent batch via `AskUserQuestion`, not as N fragmented prompts.</summary>
+
+  <section title="Why batch">
+    <rule>
+      <statement>The clarification collector MUST aggregate questions across all analyzers before any `AskUserQuestion` call.</statement>
+      <rationale>Asking the user ten times in a row destroys flow and produces inconsistent answers (the user forgets earlier choices). One coherent batch lets the user see all trade-offs at once and answer in a connected way.</rationale>
+    </rule>
+  </section>
+
+  <section title="Collector workflow">
+    <list>
+      <item>Read every analyzer's open-questions list from `.aidocs/&lt;project&gt;/in-progress/&lt;batch-id&gt;/intake/&lt;feature-id&gt;.md`.</item>
+      <item>Deduplicate — if N features ask the same scope question, merge into one with the affected feature IDs listed.</item>
+      <item>Group by theme: scope, target environment, data-vs-code path, hand-off to another team / SDD project, content-tier classification (free / solo / pro / geek for knowledge methodologies).</item>
+      <item>Order by criticality — blockers first; without an answer the orchestrator cannot proceed.</item>
+      <item>Cap each `AskUserQuestion` call to four questions; split into multiple sequential calls if needed.</item>
+      <item>Each option must be a concrete labelled choice with a short Ukrainian description, not free-text.</item>
+    </list>
+  </section>
+
+  <section title="What NOT to ask">
+    <antipattern>
+      <description>Asking the user a question whose answer can be derived by reading the codebase, running `git log`, or running a small probe (e.g. "which file owns X?" — `grep` it).</description>
+      <reason>It signals the orchestrator did not investigate. Investigate first; ask only when investigation cannot resolve the choice.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Asking trivial yes/no questions individually instead of merging similar ones across features.</description>
+      <reason>The user reads each prompt linearly; many trivial prompts dilute attention from the actually-hard decisions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Re-asking a question the user already answered in `AGENTS.md`, `CLAUDE.md`, or a memory file under `~/.claude/projects/-home-nero-workspace/memory/`.</description>
+      <reason>Durable instructions are durable. Re-asking erodes trust and adds noise. Treat them as authoritative until the user revises them.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Persistence">
+    <p>Answers are written to a per-feature `clarifications.md` inside that feature's folder. The PLAN subagent reads this file in its workflow so the human's decisions become part of the SDD record and survive across runs. The collector also appends a `clarifications-summary.md` to the batch's `in-progress/&lt;batch-id&gt;/` folder so the run log can be replayed.</p>
+  </section>
+</text>

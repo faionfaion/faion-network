@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add `skills/faion/workflows/sdd-batch-orchestrator/` — faion-network adaptation of the batch orchestrator proposal (12 phases, prompt-file convention, worktree+flock parallelism, verify-review-fix loop with surface-specific verifiers, focused recapture, tg-send/SDD delivery, quota gating); 10 semantic-XML content files + 4 templates; introduces `skills/faion/workflows/` as the home for end-to-end orchestration patterns
 - docs: add `.aidocs/proposal/sdd-batch-orchestrator/` — abstract description of the SDD batch orchestrator pattern (12 phases, prompt-file convention, wave parallelism, verify-review-fix loop, focused recapture); semantic-XML content + reusable templates (prompt skeleton, playbook skeleton, dispatch message, focused-screenshot.py)
 - Improve methodology: trade-off-quality-attributes (sufficient for autonomous agents)
 - Improve methodology: database-selection (sufficient for autonomous agents)

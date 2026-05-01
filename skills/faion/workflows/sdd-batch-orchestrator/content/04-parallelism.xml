@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-parallelism" title="Wave parallelism, worktree isolation, merge serialization">
+  <summary>The orchestrator groups features into execution waves based on file overlap, runs each wave in isolated `git worktree` checkouts, and serializes merges back into the default branch with `flock` so concurrent agents never corrupt the index.</summary>
+
+  <section title="Wave admission rules">
+    <p>Two features may run in the same wave if any of the following holds:</p>
+    <list>
+      <item>They live in different repositories (e.g. one in `faion-network/`, one in `faion-net-fe/`).</item>
+      <item>They live in the same repository but touch disjoint files.</item>
+      <item>They live in the same repository and same file, but at non-overlapping line ranges, AND the orchestrator accepts a possible rebase between them.</item>
+    </list>
+    <p>Otherwise the features go in sequential waves. When in doubt, default to a separate worktree per feature.</p>
+    <p>Pool size is bounded by quota: read `/tmp/claude-session-state.json`'s `rate_limits.five_hour.used_percentage`. Stop adding agents to the wave when the projected wave consumption would push the meter past the user-set threshold (default 50%).</p>
+  </section>
+
+  <section title="Worktree pattern">
+    <rule>
+      <statement>Every parallel executor subagent works inside its own `git worktree add &lt;isolated path&gt; -b &lt;feature branch&gt; &lt;default branch&gt;` and removes the worktree after merging back.</statement>
+      <rationale>The main working tree often carries uncommitted local-only state (preview data, lock files like `scheduled_tasks.lock`, dev toggles). Concurrent agents touching it would corrupt each other. Worktrees give each agent a clean, branch-scoped checkout sharing the same `.git/` for cheap branching.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+REPO=/home/nero/workspace/projects/faion-net/faion-network
+FEATURE=F-073-go-error-handling
+WT=/tmp/wt-${FEATURE}
+
+git -C "$REPO" worktree add "$WT" -b feature/${FEATURE} main
+cd "$WT"
+# ... edit, run validators, commit on feature branch ...
+flock /tmp/faion-network-merge.lock bash -c '
+  cd "'$REPO'" \
+    && git fetch origin main \
+    && git rebase origin/main feature/'$FEATURE' \
+    && git checkout main \
+    && git merge --ff-only feature/'$FEATURE'
+'
+git -C "$REPO" worktree remove "$WT"
+git -C "$REPO" branch -d feature/${FEATURE}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Merge serialization">
+    <rule>
+      <statement>The merge step MUST be wrapped in `flock /tmp/faion-network-merge.lock` (or the playbook-specific lock file). A subagent that cannot acquire the lock waits — it does not skip the merge and it does not race on `git checkout main`.</statement>
+      <rationale>Even with worktrees, the merge target (`main` / `master`) is a single ref. Two concurrent fast-forward merges race on `.git/HEAD`; one silently loses. `flock` makes the critical section observable and bounded.</rationale>
+    </rule>
+  </section>
+
+  <section title="Conflict handling">
+    <rule>
+      <statement>An executor that hits a merge or rebase conflict MUST stop, list conflict files plus both sides' SDD intent (read each side's `spec.md` / `design.md`), and return control to the orchestrator. The resolver subagent (`prompts/06-merge-resolver.md`) is then dispatched.</statement>
+      <rationale>Auto-resolving with `--ours` / `--theirs` silently destroys one side. Conflict resolution is its own phase with its own prompt file, not a side effect of execution.</rationale>
+    </rule>
+  </section>
+
+  <section title="Resolver behaviour">
+    <list>
+      <item>Reads both features' `spec.md` and `design.md` to understand the current and other side's intent.</item>
+      <item>Reads `git log` and `git show` for the conflicting file to confirm the diff.</item>
+      <item>Combines both intents at the line level, with a documented decision per file in the resolver's report.</item>
+      <item>Special-cases append-only files (`CHANGELOG.md`, `MAP.md`, `methodologies-index/methodology.xml`) by keeping entries from both sides under `## [Unreleased]` (or the equivalent heading).</item>
+    </list>
+  </section>
+</text>

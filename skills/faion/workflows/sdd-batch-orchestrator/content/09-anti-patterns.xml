@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="09-anti-patterns" title="Anti-patterns to avoid">
+  <summary>Failure modes observed across faion-network batches; avoid each by following the cited rule.</summary>
+
+  <section title="Orchestration smell">
+    <antipattern>
+      <description>Long inline prompt text in the orchestrator's `Agent` spawn message instead of a path to a `prompts/*.md` file.</description>
+      <reason>Behaviour drifts run-to-run, prompts cannot be reviewed or diffed, and parallel spawns desynchronize.</reason>
+    </antipattern>
+    <antipattern>
+      <description>One subagent doing two phases at once (e.g., executing AND capturing AND delivering).</description>
+      <reason>Concerns blur, errors in one phase mask another, and re-runs become impossible. Keep one phase per prompt file.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Skipping the clarification batch and asking the user a fresh question every time something is uncertain.</description>
+      <reason>The user's attention is finite. Fragmenting questions degrades answer quality and erodes trust in the orchestrator's planning.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Ignoring the quota gate after a few successful dispatches because "we're moving fast."</description>
+      <reason>A long batch without quota gating starves later batches in the same 5-hour window. The cost is paid by the next session, not this one.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Execution smell">
+    <antipattern>
+      <description>Running multiple parallel executors against the main working tree instead of isolated worktrees.</description>
+      <reason>Concurrent edits race on uncommitted local state (`scheduled_tasks.lock`, `.aidocs/catalog/improve-*.txt`) and on `.git/index`. Worktrees are cheap; use them.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Auto-resolving a merge conflict with `--ours` or `--theirs`.</description>
+      <reason>Silently destroys one side's intent. Use the resolver subagent which reads both sides' SDD specs and combines them.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bypassing a failing pre-commit hook with `--no-verify` (especially the `CHANGELOG.md` check).</description>
+      <reason>The hook exists because the project decided that check is mandatory. Fix the underlying issue (add the changelog entry, fix the lint error) and re-commit.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Amending a commit after a hook failure instead of creating a new one.</description>
+      <reason>If the hook failed, the commit did not happen — `--amend` then mutates the previous commit, often destroying earlier work. Always create a new commit.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Merging feature branches into `main` without `flock` serialization.</description>
+      <reason>Two concurrent fast-forward merges race on `.git/HEAD`; one silently loses. The merge step is the only single-threaded part of the wave — wrap it.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Delivery smell">
+    <antipattern>
+      <description>Full-page 4000-px-tall screenshots delivered through Telegram.</description>
+      <reason>Telegram downscales the image; text becomes unreadable and the bug area is a needle in a haystack.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Captions like `&lt;feature-id&gt; before` and `&lt;feature-id&gt; after`.</description>
+      <reason>They convey nothing the file name does not already convey. Captions must explain the bug or the fix in plain Ukrainian.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Pretending a defensive fix has a visible diff by inventing fixture data without disclosing it.</description>
+      <reason>The reviewer is being shown evidence under false pretences. State explicitly when a fix is defensive and any data was simulated.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Confirmation smell">
+    <antipattern>
+      <description>Pushing or deploying because the user authorized it once in a previous run.</description>
+      <reason>Authorization is per-run, per-target. A blanket "yes" yesterday is not consent today. Re-confirm via `AskUserQuestion`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Committing local-only state (`scheduled_tasks.lock`, `.aidocs/catalog/improve-queue.txt`, `/tmp/...`) by using `git add -A`.</description>
+      <reason>Stage explicit paths. Bulk staging is the leading cause of secret leaks and noisy diffs in this repo.</reason>
+    </antipattern>
+  </section>
+</text>

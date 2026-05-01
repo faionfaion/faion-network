@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-defaults-constraints" title="Defaults and constraints applied to all subagents">
+  <summary>A small, strict set of defaults applies to every subagent so no single phase can leak destructive or out-of-band side effects, and so commits pass the project's pre-commit hooks on the first try.</summary>
+
+  <section title="Hard prohibitions">
+    <list>
+      <item>No remote `git push` without an explicit user instruction in the run.</item>
+      <item>No skipping git hooks (`--no-verify`, `--no-gpg-sign`). When a hook fails, fix the underlying issue and re-commit. NEVER amend; create a new commit.</item>
+      <item>No bulk `git add -A` / `git add .` — stage explicit paths. Bulk staging silently picks up local-only state (e.g. `scheduled_tasks.lock`, `.aidocs/catalog/improve-*.txt`) and secrets.</item>
+      <item>No commits to local-only files (preview data, dev toggles, environment overrides) unless the feature spec explicitly requires it.</item>
+      <item>No destructive operations against shared environments (DB writes, DAG triggers, schema changes, deploys, `git reset --hard`, force pushes) without explicit user authorization.</item>
+      <item>No `Co-Authored-By: Claude` trailer, no emojis in commit messages.</item>
+    </list>
+  </section>
+
+  <section title="Required positives">
+    <list>
+      <item>Move the feature folder through the SDD lifecycle: `todo/ → in-progress/ → done/`.</item>
+      <item>Move each `TASK_*.md` through the same lifecycle inside the feature folder.</item>
+      <item>Append a CHANGELOG entry under `## [Unreleased]` for every commit. The repo's pre-commit hook blocks commits without one.</item>
+      <item>Commit-title convention: 50 characters max, `&lt;type&gt;: &lt;short description&gt;` where type is `feat | fix | chore | refactor | docs | improve | test`. Optional body in present tense.</item>
+      <item>Run the appropriate auto-fix linter before staging: `ruff check . --fix &amp;&amp; ruff format .` (Python), `npm run lint:fix &amp;&amp; npm run format` (TS/JS).</item>
+    </list>
+  </section>
+
+  <section title="Sensitive operations require confirmation">
+    <p>Operations that change shared state must round-trip through the user before execution. The orchestrator confirms via `AskUserQuestion`; the deployer subagent additionally verifies a confirmation token that the orchestrator threads through.</p>
+    <list>
+      <item>Pushing any branch to `origin/main` or `origin/master`.</item>
+      <item>Running any `deploy-gh.sh`, `deploy-fe-*.sh`, `deploy-be.sh`, `deploy-storybook.sh`, `deploy-roadmap.sh`.</item>
+      <item>Running data-mutating jobs (DAG triggers, content reimports, batch updates) on `nero-prod` or `faion-net`.</item>
+      <item>Sending TG messages via `tg-send` to non-test channels.</item>
+      <item>Posting comments to GitHub issues / PRs.</item>
+    </list>
+  </section>
+
+  <section title="Environment disambiguation">
+    <rule>
+      <statement>If a target environment label is ambiguous (e.g. the user says "api" but `api.faion.net` and `api-dev.faion.net` both exist), the orchestrator MUST confirm the exact target with `AskUserQuestion` before any deploy or destructive op.</statement>
+      <rationale>Wrong-environment deploys are silent until they cause incidents. A two-second confirmation is always cheaper than a rollback. Same applies to ambiguous repos: monorepo `faionfaion/faion-net` (branch `master`) vs nested `faion-net-be` (branch `main`).</rationale>
+    </rule>
+  </section>
+
+  <section title="Quota gating">
+    <rule>
+      <statement>Between subagent dispatches, the orchestrator MUST read `/tmp/claude-session-state.json` and abort the wave when `rate_limits.five_hour.used_percentage` ≥ user-set threshold (default 50%) or `rate_limits.seven_day.used_percentage` ≥ 80%.</statement>
+      <rationale>Burning quota inside a single batch starves later batches in the same 5-hour window. Pause via `ScheduleWakeup` and resume at quota reset; do not amplify the cost of a long batch by ignoring its rate.</rationale>
+    </rule>
+  </section>
+</text>

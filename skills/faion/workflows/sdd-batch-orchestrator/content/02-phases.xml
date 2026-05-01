@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-phases" title="The twelve phases">
+  <summary>The orchestrator runs a fixed sequence of phases, each fronted by exactly one prompt file. Phases may be skipped if a playbook says so, but their order is invariant.</summary>
+
+  <section title="Phase list">
+    <list>
+      <item>1. INTAKE — analyzers read each feature folder under `.aidocs/&lt;project&gt;/todo/&lt;feature-id&gt;/` and produce a structured report with open questions.</item>
+      <item>2. CLARIFY — open questions are deduplicated and asked of the user via batched `AskUserQuestion` calls in Ukrainian.</item>
+      <item>3. PLAN — one planning subagent per feature writes/updates the SDD artifact set (`spec.md`, `design.md`, `test-plan.md`, `implementation-plan.md`, atomic `TASK_*.md`).</item>
+      <item>4. PARALLELIZE — the orchestrator inspects file overlap and groups features into execution waves.</item>
+      <item>5. BASELINE — for visual fixes, capture a focused before-screenshot of the bug area with a red CSS outline.</item>
+      <item>6. EXECUTE — wave-scoped subagents apply the fix in isolated worktrees and merge into the local default branch (no remote push).</item>
+      <item>7. RESOLVE — when waves conflict, a dedicated resolver subagent reads both sides' SDD intent and combines them.</item>
+      <item>8. VERIFY — build, type-check, lint, unit tests, e2e tests, and `validate-methodology-xml.py` run against the merged result.</item>
+      <item>9. REVIEW — an independent reviewer reads each feature's diff against its `spec.md` / `design.md` and returns PASS / FAIL-WITH-NITS / FAIL.</item>
+      <item>10. FIX — review blockers are addressed by a fix-applier subagent, then VERIFY and REVIEW are repeated (hard cap on iterations).</item>
+      <item>11. RECAPTURE — focused after-screenshot with a green outline; before+after pair delivered out-of-band with explanatory captions.</item>
+      <item>12. DELIVER — feature folder moved `in-progress/ → done/`, commits pushed and artifacts deployed only after explicit user confirmation.</item>
+    </list>
+  </section>
+
+  <section title="Prompt file map">
+    <p>Each phase has exactly one prompt file. Naming uses a numeric prefix so the directory listing reads as the phase order. Prompt files live next to the orchestrator's runtime root (typically `.aidocs/orchestrator/prompts/` or a per-batch `prompts/` folder); this methodology only ships the skeleton — see `templates/prompt-skeleton.md`.</p>
+    <list>
+      <item>`prompts/01-intake-analyzer.md` — INTAKE</item>
+      <item>`prompts/02-clarification-collector.md` — CLARIFY</item>
+      <item>`prompts/03-sdd-planner.md` — PLAN</item>
+      <item>`prompts/04-baseline-capturer.md` — BASELINE</item>
+      <item>`prompts/05-task-executor.md` — EXECUTE</item>
+      <item>`prompts/06-merge-resolver.md` — RESOLVE</item>
+      <item>`prompts/07-build-verifier.md` — VERIFY (build + lint + unit + xml-validate)</item>
+      <item>`prompts/08-e2e-tester.md` — VERIFY (end-to-end / Playwright)</item>
+      <item>`prompts/09-code-reviewer.md` — REVIEW</item>
+      <item>`prompts/10-fix-applier.md` — FIX</item>
+      <item>`prompts/11-recapture-and-deliver.md` — RECAPTURE</item>
+      <item>`prompts/12-deployer.md` — DELIVER</item>
+    </list>
+    <reference path="templates/prompt-skeleton.md">Skeleton each prompt file must follow.</reference>
+  </section>
+
+  <section title="Skipping phases">
+    <p>A playbook may declare phases that do not apply. Examples:</p>
+    <list>
+      <item>Knowledge methodology batch — skip BASELINE / RECAPTURE; VERIFY runs only `validate-methodology-xml.py`.</item>
+      <item>Backend ETL fix — skip BASELINE / RECAPTURE; VERIFY adds DAG smoke checks.</item>
+      <item>Storybook story addition — skip BASELINE (no "before" exists for new stories); RECAPTURE is the only visual proof.</item>
+    </list>
+    <p>The orchestrator still walks the phase list in order — it simply dispatches no subagent for a skipped phase and records the skip in its run log under `.aidocs/&lt;project&gt;/in-progress/&lt;batch-id&gt;/run-log.md`.</p>
+  </section>
+</text>

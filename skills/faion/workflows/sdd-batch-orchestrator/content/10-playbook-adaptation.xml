@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="10-playbook-adaptation" title="Adapting the pattern per delivery surface">
+  <summary>The phase sequence and prompt files are stable; per-surface differences (verify command, e2e tooling, deploy mechanism, parallelism heuristics) are encoded in playbooks under `playbooks/` and in reference docs under `reference/`.</summary>
+
+  <section title="Playbook scope">
+    <p>A playbook is a short Markdown file recording the per-surface choices for each phase: which build command verifies, which test runner exercises end-to-end, which deploy script runs, which files are typically touched together (informing the wave planner). It does NOT redefine the phase order or the prompt-file contracts.</p>
+    <reference path="templates/playbook-skeleton.md">Skeleton showing the canonical playbook shape.</reference>
+  </section>
+
+  <section title="Surfaces in faion-network">
+    <list>
+      <item>`faion-net-be/` — Django backend; verify with `ruff` + `pytest` + Django check; deploy via `deploy-be.sh` (api.faion.net or api-dev.faion.net — disambiguate).</item>
+      <item>`faion-net-fe/` — Gatsby frontend (faion.net + dev.faion.net); verify with `npm run typecheck &amp;&amp; npm run lint &amp;&amp; npm run build`; deploy via `deploy-fe-dev.sh` or `deploy-fe-prod.sh`.</item>
+      <item>`faion-net-e2e/` — Playwright suite; verify with `npm run test`; no deploy.</item>
+      <item>`faion-network/` (this repo) — knowledge methodologies and skills; verify with `validate-methodology-xml.py`; no deploy (loaded via `~/workspace/.claude` symlink).</item>
+      <item>`faion-network-storybook/` — component library; verify with `npm run build-storybook`; deploy via `deploy-storybook.sh`.</item>
+      <item>`mediamanager_fe/`, `neromedia-faion-net/gatsby/`, `pashtelka-faion-net/gatsby/`, `longlife-faion-net/gatsby/` — Gatsby content surfaces; per-pipeline `deploy-gh.sh`.</item>
+      <item>`mediamanager_be/`, `neromedia-faion-net/`, content pipelines — Python jobs; verify with `ruff` + smoke run on a fixture; deploy via systemd reload on `nero-prod`.</item>
+    </list>
+  </section>
+
+  <section title="Common adaptation axes">
+    <list>
+      <item>Build / verify command per surface (see list above).</item>
+      <item>End-to-end runner: Playwright for UI, request runner / `pytest` for API, fixture-driven smoke for ETL.</item>
+      <item>Deploy mechanism: `deploy-*.sh` script per surface; `op-unlock` is required first when secrets are needed.</item>
+      <item>Local environment: `.env` files, hosts entries for `*.faion.net`, Docker compose for `searxng` / `n8n`.</item>
+      <item>Code-style focus areas in review (Django anti-patterns, Gatsby SSR pitfalls, Playwright flake patterns, methodology XML closed-tag glossary).</item>
+    </list>
+  </section>
+
+  <section title="Reference docs">
+    <p>Cross-cutting knowledge that more than one playbook needs goes under `reference/`:</p>
+    <list>
+      <item>`reference/git-conventions.md` — branch flow per repo, 50-char title, CHANGELOG `[Unreleased]`, no `--no-verify`, no `Co-Authored-By`, no emojis.</item>
+      <item>`reference/sdd-conventions.md` — `.aidocs/` lifecycle, document types (`spec.md`, `design.md`, `test-plan.md`, `implementation-plan.md`), token estimates instead of time.</item>
+      <item>`reference/delivery-channel.md` — Telegram via `tg-send`, chat IDs, message format limits.</item>
+      <item>`reference/screenshot-strategy.md` — focused capture, outline colours, viewport, headless fallback.</item>
+      <item>`reference/quota-gate.md` — `/tmp/claude-session-state.json` schema, default 50% threshold, hop pattern via `ScheduleWakeup`.</item>
+    </list>
+  </section>
+
+  <section title="When a new playbook is justified">
+    <list>
+      <item>A new delivery surface enters the workflow (new repo, new artifact type).</item>
+      <item>An existing playbook would need more than two phase-specific overrides — split instead of bloating.</item>
+      <item>A new domain has materially different verify/test/deploy mechanics.</item>
+    </list>
+    <p>If only one or two phases differ, prefer a small note in the existing playbook over a new file.</p>
+  </section>
+</text>

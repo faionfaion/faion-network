@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="07-verify-review-fix-loop" title="Verify-review-fix iteration with hard cap">
+  <summary>After execution merges, the orchestrator runs a bounded loop: build/test verifier → independent reviewer → fix-applier on blockers, repeating until the reviewer returns clean or the iteration cap forces escalation.</summary>
+
+  <section title="Loop steps">
+    <list>
+      <item>VERIFY: build, type-check, lint, unit tests, smoke checks, and (for knowledge methodologies) `python3 scripts/validate-methodology-xml.py &lt;path&gt;`.</item>
+      <item>VERIFY (e2e): Playwright when the feature's `test-plan.md` calls for it (`faion-net-e2e/`, storybook visual regression).</item>
+      <item>REVIEW: an independent reviewer subagent reads the diff against `spec.md` / `design.md` / `test-plan.md` and returns a verdict.</item>
+      <item>FIX: if the verdict has blockers, the fix-applier addresses each one inside the same worktree, then the loop restarts at VERIFY.</item>
+    </list>
+  </section>
+
+  <section title="Verify command matrix (per surface)">
+    <list>
+      <item>Knowledge methodology (`skills/faion/knowledge/...`): `python3 scripts/validate-methodology-xml.py &lt;path&gt;` PASS, plus pre-commit `CHANGELOG.md` check.</item>
+      <item>Backend (`faion-net-be/`): `ruff check . --fix &amp;&amp; ruff format .`, `pytest`, Django system check.</item>
+      <item>Frontend (`faion-net-fe/`, `mediamanager_fe/`, gatsby pipelines): `npm run typecheck`, `npm run lint`, `npm run build`.</item>
+      <item>E2E (`faion-net-e2e/`): `npm run test` (Playwright suite scoped to the feature's test plan).</item>
+      <item>Storybook (`faion-network-storybook/`): `npm run build-storybook` and visual regression where configured.</item>
+      <item>DAG / pipeline (`dag/` style projects): `ruff check . --fix`, `pytest`, smoke run on a fixture dataset.</item>
+    </list>
+  </section>
+
+  <section title="Reviewer verdict shape">
+    <list>
+      <item>PASS — proceed to delivery.</item>
+      <item>FAIL-WITH-NITS — only nice-to-have items; orchestrator may accept and proceed (records the nits as TODOs in the feature's `done/` move).</item>
+      <item>FAIL — at least one blocker; loop continues.</item>
+    </list>
+  </section>
+
+  <section title="Independence">
+    <rule>
+      <statement>The reviewer subagent MUST be a separate `Agent` spawn from the executor. It receives only the spec/design/test-plan and the diff, never the executor's reasoning.</statement>
+      <rationale>An author rarely catches their own structural mistakes. Independence is what makes the review a meaningful check, not a rubber stamp.</rationale>
+    </rule>
+  </section>
+
+  <section title="Termination">
+    <rule>
+      <statement>The verify-review-fix loop MUST terminate at three iterations. After three, the orchestrator stops and asks the user how to proceed via `AskUserQuestion`.</statement>
+      <rationale>An infinite loop hides a real disagreement between the spec and the implementation. After three rounds, escalation to a human is cheaper than another machine round-trip.</rationale>
+    </rule>
+  </section>
+
+  <section title="Fix-applier scope">
+    <list>
+      <item>Addresses blocker findings only. Nice-to-haves are deferred unless the orchestrator explicitly asks.</item>
+      <item>One commit per logical group (security findings together, code-quality findings together).</item>
+      <item>Must not refactor unrelated code while fixing — scope creep invalidates the review.</item>
+      <item>If a haiku-driven attempt fails the same review twice, the orchestrator MUST retry with `model: sonnet` before escalating.</item>
+    </list>
+  </section>
+</text>

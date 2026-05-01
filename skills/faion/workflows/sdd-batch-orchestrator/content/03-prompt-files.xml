@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-prompt-files" title="Subagent prompt file structure and dispatch">
+  <summary>Every prompt file under `prompts/` follows the same shape so the orchestrator can dispatch subagents uniformly via the `Agent` tool, and the user can audit prompts in version control.</summary>
+
+  <section title="Required sections in a prompt file">
+    <list>
+      <item>Title and one-paragraph mission statement.</item>
+      <item>`Inputs` — the parameter block the orchestrator must pass.</item>
+      <item>`Pre-flight` — env vars, state assumptions, reference files to read first.</item>
+      <item>`Workflow` — numbered steps, concrete enough to execute without further clarification.</item>
+      <item>`Constraints` — explicit do-not list (no push, no `--no-verify`, no out-of-scope edits).</item>
+      <item>`Output` — what the subagent returns (report shape, files written, exit codes, last-line marker).</item>
+      <item>`Done condition` — observable check that lets the orchestrator decide success vs failure.</item>
+    </list>
+    <reference path="templates/prompt-skeleton.md">Skeleton in the exact required shape.</reference>
+  </section>
+
+  <section title="Dispatch via the Agent tool">
+    <p>The orchestrator's spawn message is short: it points the subagent at a prompt file and supplies the per-run parameters. The subagent reads the file with its own Read tool — no inline instruction text, no embedded prose copy.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Read /home/nero/workspace/projects/faion-net/faion-network/.aidocs/orchestrator/prompts/05-task-executor.md
+and execute it with these inputs:
+
+  feature_folder: /home/nero/workspace/projects/faion-net/faion-network/.aidocs/agent-methodologies/in-progress/F-073-go-error-handling
+  repo_path:      /home/nero/workspace/projects/faion-net/faion-network
+  default_branch: main
+  worktree_root:  /tmp/wt-F-073-go-error-handling
+  merge_lock:     /tmp/faion-network-merge.lock
+
+Return the report shape declared in the prompt file's Output section.
+Last line of your final message MUST be: done=<feature_id> commit=<short-sha>
+]]></code>
+    </example>
+    <reference path="templates/orchestrator-dispatch.txt">Reusable dispatch-message template.</reference>
+  </section>
+
+  <section title="Agent tool parameter conventions">
+    <list>
+      <item>`subagent_type`: `general-purpose` (default), `faion-sdd-executor-agent` (for SDD task execution with built-in lifecycle moves), or `nero-sdd-executor-agent` (NERO-specific).</item>
+      <item>`model`: `opus` for planning / review / merge resolution; `sonnet` for execution (or recovery retry after a haiku failure); `haiku` for high-volume mechanical edits.</item>
+      <item>`isolation`: `worktree` for any phase that writes (EXECUTE, FIX, RECAPTURE). Read-only phases (INTAKE, REVIEW, VERIFY) run in the main tree.</item>
+      <item>`run_in_background`: `true` for parallel waves; the orchestrator uses task notifications to drive the next step.</item>
+    </list>
+  </section>
+
+  <section title="Self-containment rule">
+    <rule>
+      <statement>A prompt file MUST NOT depend on conversation context outside its `Inputs` block. Every fact the subagent needs is either inline, in an explicitly referenced file, or computable from the inputs.</statement>
+      <rationale>The subagent has no access to the parent transcript. Any implicit dependency is silent corruption waiting to happen.</rationale>
+    </rule>
+  </section>
+
+  <section title="Idempotency">
+    <p>Read-only subagents (analyzer, reviewer, verifier) MUST be safely re-runnable. Write-side subagents (executor, fix-applier, deployer) are not idempotent and MUST detect partial state — an existing worktree at `worktree_root`, a feature already moved past `in-progress/`, an unmerged feature branch — and refuse rather than silently double-applying.</p>
+  </section>
+</text>
