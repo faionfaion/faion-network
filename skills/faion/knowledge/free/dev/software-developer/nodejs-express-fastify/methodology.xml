@@ -18,9 +18,11 @@
   <content>
     <title>Express / Fastify Patterns</title>
     <summary>A methodology for building production Node.js HTTP APIs with Express or Fastify: structured middleware stack (helmet, cors, rate-limit, pino), centralized error handler, schema-validated routes (Zod for Express, TypeBox for Fastify), JWT auth decorator, and graceful shutdown on SIGTERM/SIGINT. Choose Express for ecosystem breadth; Fastify for high-throughput TypeScript-first JSON APIs.</summary>
+
     <why>
       <p>Express's implicit middleware order and lack of built-in validation cause silent security gaps and inconsistent error shapes. Fastify's plugin encapsulation and schema-first design prevent these but introduce non-obvious scoping rules. Both frameworks require a deliberate middleware stack to be production-safe — missing any one piece (rate-limit, error handler, graceful shutdown) creates either reliability or security issues that only manifest under load or during deploys.</p>
     </why>
+
     <when-to-use>
       <list>
         <item>Bootstrapping a Node.js HTTP API needing a known-good middleware stack.</item>
@@ -30,6 +32,7 @@
         <item>Designing route, error-handler, and auth boundaries an agent can extend safely.</item>
       </list>
     </when-to-use>
+
     <when-not-to-use>
       <list>
         <item>Heavy realtime / streaming workloads — uWebSockets or Go service is cheaper.</item>
@@ -39,6 +42,19 @@
         <item>Python or Go shops without Node expertise — unnecessary runtime to operate.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <p>Apply this 9-step pipeline to every new Node HTTP API or to harden an existing one. Stop at any step that is already done; never skip a step. The order matters — security middleware before parsing, validation before handlers, graceful shutdown last.</p>
+      <step>S1 — Pick the framework. Default to Fastify for new TypeScript JSON APIs (>10k req/s ceiling, TypeBox = types + validation + OpenAPI). Pick Express only when the team must reuse passport strategies, legacy middleware, or an existing Express codebase. Record the choice in `.aidocs/decisions/YYYY-MM-DD-framework.md`.</step>
+      <step>S2 — Scaffold the project layout. Create `src/{app.ts,server.ts,routes/,middleware/,services/,schemas/,plugins/}`, `tests/`, `Dockerfile`, `.env.example`. Pin Node ≥20 LTS in `package.json#engines`. Pin Fastify ecosystem versions exactly (no `^`) — `@fastify/*` minor releases occasionally rename hooks.</step>
+      <step>S3 — Validate config at startup. Build a Zod schema for `process.env` (PORT, NODE_ENV, DATABASE_URL, JWT_SECRET ≥32 chars, CORS_ORIGINS). Call `EnvSchema.parse(process.env)` before constructing the app. Crash fast on missing/weak config — never default a JWT secret.</step>
+      <step>S4 — Wire the middleware stack in this exact order (Express): `trust proxy` → `helmet` → `cors` → `compression` → `express.json({ limit })` → `pino-http` (with redact) → `rate-limit` → routes → `notFoundHandler` → `errorHandler` last. For Fastify: register `@fastify/helmet`, `@fastify/cors`, `@fastify/compress`, `@fastify/rate-limit`, `@fastify/sensible`; set `requestIdHeader: 'x-request-id'`; use the built-in error handler with custom mapping.</step>
+      <step>S5 — Define schemas at module scope, never inside the handler. Use Zod for Express (`CreateUserSchema = z.object({...})`); use TypeBox for Fastify (`Type.Object({...})`). Reject any handler PR that accepts `req.body` without parsing it through a schema first.</step>
+      <step>S6 — Centralize errors. Create `AppError` base class with subclasses (`ValidationError`, `NotFoundError`, `UnauthorizedError`, `ForbiddenError`, `ConflictError`). One handler maps them to `{ error: { code, message, details? } }`. In Express 4, wrap async handlers with `asyncHandler(fn)` or import `express-async-errors` once at top of `app.ts`. In Fastify, throw `app.httpErrors.*` from `@fastify/sensible`.</step>
+      <step>S7 — Encapsulate auth. Fastify: register the auth plugin with `fastify-plugin` (fp) wrapper so `app.authenticate` is visible to sibling routes. Express: build an `authenticate` middleware that extracts `Bearer TOKEN`, verifies, and attaches `req.user`. Forbid bypasses gated only by `NODE_ENV` — agents leak these to prod.</step>
+      <step>S8 — Implement graceful shutdown. Listen for SIGTERM and SIGINT. Sequence: stop accepting new connections (`server.close()` / `app.close()`) → drain in-flight (await close callback) → close DB pools, Redis, queues → `process.exit(0)`. Add a 30s safety timeout that calls `process.exit(1)` if drain hangs.</step>
+      <step>S9 — Add tests + benchmarks + observability. Vitest + supertest (Express) or `app.inject()` (Fastify) for routes. Run `autocannon -c 100 -d 30 http://localhost:3000/health` to validate the perf floor. Wire OpenTelemetry or Sentry; emit one structured log per request with reqId and userId.</step>
+    </how-to>
 
     <section name="middleware-order-express">
       <rule>
@@ -87,9 +103,58 @@
       </rule>
     </section>
 
+    <checklist>
+      <check>Framework choice recorded in `.aidocs/decisions/` with rationale (Express ecosystem vs Fastify perf/TS).</check>
+      <check>`package.json#engines.node` pinned to `&gt;=20 &lt;23`; Fastify-ecosystem deps pinned exactly (no `^` or `~`).</check>
+      <check>Env validated at startup with Zod; missing/weak vars crash the process before `app.listen` is called.</check>
+      <check>JWT_SECRET is ≥32 chars or RS256 with KMS-backed keys; `grep -RIn "JWT_SECRET" src/ tests/ | grep -v process.env` returns nothing.</check>
+      <check>helmet, cors (explicit origin list, never `*` with `credentials: true`), rate-limit, pino-http (with redact list), compression all registered before routes.</check>
+      <check>Error handler is the LAST middleware in Express (`app.use(errorHandler)` after all routes); registered via `setErrorHandler` in Fastify.</check>
+      <check>Every route handler references a schema. `grep -RIn "\.\(get\|post\|put\|patch\|delete\)\(" src/routes/` shows a `schema:` (Fastify) or `validate(...)` (Express+Zod) within 600 chars of the verb call.</check>
+      <check>No `res.status(...).json(...)` for error shapes inside any handler — all errors flow to the central handler via `next(err)` or `throw`.</check>
+      <check>Express async handlers either use `express-async-errors` (top-of-app import) or `asyncHandler(fn)` wrapper; no bare `async (req, res) => ...` without one.</check>
+      <check>Fastify auth/decorator plugins wrapped with `fastify-plugin` (fp) — `grep -RIn "decorate\(" src/plugins/` files all `import fp from 'fastify-plugin'`.</check>
+      <check>SIGTERM and SIGINT handlers call `server.close()` (Express) or `app.close()` (Fastify), drain DB pools, then `process.exit(0)`; 30s timeout calls `process.exit(1)` as fallback.</check>
+      <check>`trust proxy` set to `1` (or proxy depth) when behind nginx/ALB; otherwise `req.ip` and rate-limit see the proxy IP.</check>
+      <check>Pino redact list covers `req.headers.authorization`, `req.headers.cookie`, `req.body.password`, `req.body.token`.</check>
+      <check>CORS `origin` is an explicit array or function, never `'*'` together with `credentials: true`.</check>
+      <check>Hardcoded ports/URLs forbidden — `grep -RIn "localhost:[0-9]" src/` and `grep -RIn "= '3000'" src/` return nothing in route or app code.</check>
+      <check>`tests/` covers: 200 happy path, 400 schema rejection, 401 missing/invalid token, 403 forbidden role, 500 mapped to error shape, graceful-shutdown does not 502 in-flight.</check>
+      <check>`autocannon -c 100 -d 30 http://localhost:PORT/health` reports zero non-2xx and ≥5k req/s on a single core.</check>
+      <check>OpenAPI generated for Fastify via `@fastify/swagger` and committed; `swagger-cli validate openapi.json` passes.</check>
+    </checklist>
+
+    <commands>
+      <command name="install-fastify-stack">pnpm add fastify @fastify/helmet @fastify/cors @fastify/rate-limit @fastify/sensible @fastify/swagger @fastify/swagger-ui @fastify/jwt @sinclair/typebox fastify-plugin pino pino-pretty</command>
+      <command name="install-express-stack">pnpm add express helmet cors compression express-rate-limit pino pino-http zod express-async-errors jsonwebtoken &amp;&amp; pnpm add -D @types/express @types/cors @types/compression @types/jsonwebtoken</command>
+      <command name="install-dev-tools">pnpm add -D typescript tsx tsup vitest supertest @vitest/coverage-v8 autocannon eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-security eslint-plugin-n</command>
+      <command name="audit-routes">bash skills/faion/knowledge/free/dev/software-developer/nodejs-express-fastify/templates/audit-routes.sh src/routes</command>
+      <command name="grep-error-leaks">grep -RInE "res\.status\([0-9]+\)\.json\(\s*\{\s*(error|message)" src/routes/ src/controllers/ &amp;&amp; echo "FAIL: per-handler error shape" || echo "OK: errors centralized"</command>
+      <command name="grep-cors-wildcard">grep -RInE "origin:\s*['\"]\*['\"].*credentials.*true|credentials:\s*true.*origin:\s*['\"]\*['\"]" src/ &amp;&amp; echo "FAIL: cors wildcard + credentials" || echo "OK"</command>
+      <command name="grep-missing-fp">node -e "const fs=require('fs'),p=require('path'); const dir='src/plugins'; if(!fs.existsSync(dir))process.exit(0); for(const f of fs.readdirSync(dir).filter(x=>/\.ts$/.test(x))){const s=fs.readFileSync(p.join(dir,f),'utf8'); if(/decorate\(/.test(s) &amp;&amp; !/fastify-plugin/.test(s)){console.error('FAIL',f,'decorates without fp wrapper');process.exit(1)}} console.log('OK: all plugins use fp')"</command>
+      <command name="grep-async-no-wrap">grep -RInE "app\.(get|post|put|patch|delete)\([^)]*async" src/routes/ | grep -v "asyncHandler\|express-async-errors" &amp;&amp; echo "WARN: bare async handlers, ensure express-async-errors imported in app.ts" || echo "OK"</command>
+      <command name="grep-jwt-secret-literal">grep -RInE "(jwt\.sign|jwt\.verify)\(.*['\"][A-Za-z0-9]{1,31}['\"]" src/ &amp;&amp; echo "FAIL: weak/literal JWT secret" || echo "OK"</command>
+      <command name="bench">npx autocannon -c 100 -d 30 -p 10 http://localhost:3000/health</command>
+      <command name="run-tests">pnpm vitest run --coverage</command>
+      <command name="typecheck">pnpm tsc --noEmit</command>
+      <command name="lint">pnpm eslint src tests --max-warnings 0</command>
+      <command name="docker-sigterm-test">docker run --rm -d --name api-shutdown-test myapi:latest &amp;&amp; sleep 2 &amp;&amp; docker stop --time=30 api-shutdown-test &amp;&amp; docker logs api-shutdown-test | grep -E "SIGTERM received|HTTP server closed" || echo "FAIL: graceful shutdown not logged"</command>
+    </commands>
+
     <section name="express-application-setup">
       <example type="good" title="Express application setup">
         <code lang="typescript"><![CDATA[
+import 'express-async-errors';            // must be first import in entry
+import express, { Express } from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import compression from 'compression';
+import pinoHttp from 'pino-http';
+import rateLimit from 'express-rate-limit';
+import { router } from './routes';
+import { errorHandler, notFoundHandler } from './middleware/errors';
+import { config } from './config';
+
 export function createApp(): Express {
   const app = express();
   app.set('trust proxy', 1);
@@ -97,7 +162,12 @@ export function createApp(): Express {
   app.use(cors({ origin: config.corsOrigins, credentials: true }));
   app.use(compression());
   app.use(express.json({ limit: '10kb' }));
-  app.use(pinoHttp({ logger: config.logger }));
+  app.use(pinoHttp({
+    logger: config.logger,
+    redact: ['req.headers.authorization', 'req.headers.cookie',
+             'req.body.password', 'req.body.token'],
+    genReqId: (req) => req.headers['x-request-id'] as string ?? crypto.randomUUID(),
+  }));
   app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true }));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/api/v1', router);
@@ -106,41 +176,66 @@ export function createApp(): Express {
   return app;
 }
 ]]></code>
-        <note>Middleware order is explicit. errorHandler registered last. Rate-limit after logging.</note>
+        <note>Middleware order is explicit. errorHandler registered last. Rate-limit after logging. `express-async-errors` imported at the very top so async-rejection propagation is in effect for every subsequent file.</note>
       </example>
     </section>
 
     <section name="express-graceful-shutdown">
       <example type="good" title="Express graceful shutdown">
         <code lang="typescript"><![CDATA[
-function shutdown(signal: string) {
+import { createApp } from './app';
+import { config, logger, db, redis } from './config';
+
+const app = createApp();
+const server = app.listen(config.port, () => logger.info({ port: config.port }, 'listening'));
+
+async function shutdown(signal: string) {
   logger.info(`${signal} received`);
-  server.close(() => {
+  server.close(async () => {
     logger.info('HTTP server closed');
+    try {
+      await db.end();
+      await redis.quit();
+    } catch (err) {
+      logger.error({ err }, 'shutdown error');
+    }
     process.exit(0);
   });
-  setTimeout(() => process.exit(1), 30000);
+  setTimeout(() => {
+    logger.error('shutdown timeout, forcing exit');
+    process.exit(1);
+  }, 30_000).unref();
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 ]]></code>
-        <note>Forced exit after 30 seconds prevents hanging if connections don't drain.</note>
+        <note>Forced exit after 30 seconds prevents hanging if connections don't drain. `.unref()` so the timer itself does not keep the event loop alive.</note>
       </example>
     </section>
 
     <section name="fastify-typebox-route">
       <example type="good" title="Fastify TypeBox route">
         <code lang="typescript"><![CDATA[
+import { Type, Static } from '@sinclair/typebox';
+import type { FastifyPluginAsync } from 'fastify';
+
 const CreateUserSchema = Type.Object({
   email: Type.String({ format: 'email' }),
   name: Type.String({ minLength: 1, maxLength: 100 }),
   password: Type.String({ minLength: 8 }),
 });
 
+const UserSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+  email: Type.String(),
+  name: Type.String(),
+});
+
 export const userRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Body: Static<typeof CreateUserSchema> }>(
     '/',
     {
+      preHandler: [app.authenticate],
       schema: {
         body: CreateUserSchema,
         response: { 201: Type.Object({ data: UserSchema }) },
@@ -154,7 +249,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   );
 };
 ]]></code>
-        <note>TypeBox schema is the source of truth for both runtime validation and TypeScript types. Handler is thin: bind → service → return.</note>
+        <note>TypeBox schema is the source of truth for both runtime validation and TypeScript types. Handler is thin: bind → service → return. Schemas are defined at module scope, not inside the handler — Fastify compiles them once at startup.</note>
       </example>
     </section>
 
@@ -163,6 +258,15 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
         <code lang="typescript"><![CDATA[
 // plugins/auth.ts — must use fastify-plugin to escape encapsulation
 import fp from 'fastify-plugin';
+import jwt from 'jsonwebtoken';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: (request: FastifyRequest) => Promise<void>;
+  }
+  interface FastifyRequest { user?: { userId: string; email: string }; }
+}
 
 const authPlugin: FastifyPluginAsync = async (app) => {
   app.decorate('authenticate', async (request: FastifyRequest) => {
@@ -179,9 +283,107 @@ const authPlugin: FastifyPluginAsync = async (app) => {
 };
 export default fp(authPlugin, { name: 'auth' });
 ]]></code>
-        <note>fp() wrapper is mandatory for the decorator to be visible to routes registered in sibling plugins.</note>
+        <note>fp() wrapper is mandatory for the decorator to be visible to routes registered in sibling plugins. Without it, `app.authenticate` is `undefined` outside this plugin's scope and the failure is silent at registration time.</note>
       </example>
     </section>
+
+    <section name="centralized-error-handler">
+      <example type="good" title="Express centralized error handler with AppError hierarchy">
+        <code lang="typescript"><![CDATA[
+// middleware/errors.ts
+import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { ZodError } from 'zod';
+
+export class AppError extends Error {
+  constructor(public code: string, message: string, public status = 500, public details?: unknown) {
+    super(message);
+  }
+}
+export class ValidationError  extends AppError { constructor(d?: unknown){super('VALIDATION', 'Invalid input', 400, d)} }
+export class NotFoundError    extends AppError { constructor(m='Not found'){super('NOT_FOUND', m, 404)} }
+export class UnauthorizedError extends AppError { constructor(m='Unauthorized'){super('UNAUTHORIZED', m, 401)} }
+
+export const notFoundHandler: RequestHandler = (_req, _res, next) =>
+  next(new NotFoundError());
+
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+  if (err instanceof ZodError)
+    err = new ValidationError(err.flatten());
+  if (!(err instanceof AppError))
+    err = new AppError('INTERNAL', 'Internal server error', 500);
+  req.log?.error({ err, reqId: req.id }, err.message);
+  res.status(err.status).json({
+    error: { code: err.code, message: err.message, details: err.details },
+  });
+};
+]]></code>
+        <note>One handler, one shape. Zod errors are mapped to ValidationError automatically, so route handlers can call `Schema.parse(req.body)` and let the rejection propagate via express-async-errors.</note>
+      </example>
+    </section>
+
+    <verify>
+      <step>V1 — `pnpm tsc --noEmit` passes with no errors.</step>
+      <step>V2 — `pnpm eslint src tests --max-warnings 0` passes.</step>
+      <step>V3 — `pnpm vitest run --coverage` shows ≥80% line coverage on `src/routes/` and `src/services/`; tests cover at minimum: 200 happy path, 400 schema rejection, 401 missing/invalid token, 500 mapped error shape.</step>
+      <step>V4 — `bash templates/audit-routes.sh src/routes` exits 0; every verb has a schema, mutating verbs have auth/preHandler, file references error wiring.</step>
+      <step>V5 — All `grep-*` commands in `&lt;commands&gt;` print only `OK:`; none print `FAIL:` or match anti-patterns.</step>
+      <step>V6 — `npx autocannon -c 100 -d 30 http://localhost:3000/health` shows zero non-2xx and ≥5k req/s on a single core; latency p99 &lt;50ms.</step>
+      <step>V7 — Graceful shutdown: start the process, send SIGTERM, send a request mid-shutdown — the request must complete with 200 and the next must get connection-refused. Verify via `docker stop --time=30 &lt;container&gt;` and check logs for `HTTP server closed` before exit.</step>
+      <step>V8 — Inspect a structured log line: it MUST contain `reqId`, `userId` (when authenticated), `method`, `url`, `statusCode`, `responseTime`. Authorization headers and password fields MUST NOT appear.</step>
+      <step>V9 — For Fastify only: `node -e "const f=require('fastify')(); f.register(require('./dist/plugins/auth')); f.ready().then(()=>console.log(typeof f.authenticate))"` prints `function`. If it prints `undefined`, the plugin is missing the `fp` wrapper.</step>
+      <step>V10 — OpenAPI: `swagger-cli validate openapi.json` passes; the spec covers every public route.</step>
+    </verify>
+
+    <prompt purpose="route-builder-agent">
+<![CDATA[
+You are a Node.js HTTP route-builder agent. Generate a single resource route module.
+
+Inputs:
+- framework: "fastify" | "express"
+- resource_name: <kebab-case singular>
+- operations: list of {verb, path, auth_required, body_schema, response_schema}
+- service_module: path to the service module that already exists
+
+Hard rules:
+1. Schemas MUST be declared at module scope (TypeBox for Fastify, Zod for Express). Never inside the handler.
+2. Every mutating verb (POST/PUT/PATCH/DELETE) MUST have auth: `preHandler: [app.authenticate]` (Fastify) or `authenticate` middleware (Express).
+3. Errors MUST propagate via `throw app.httpErrors.*` (Fastify) or `next(err)` / `throw` with express-async-errors (Express). NEVER `res.status(...).json({ error })` inside the handler.
+4. Handler body is thin: validate (auto via schema) → call service → return result. Max 15 lines per handler.
+5. Output exactly one TypeScript file. No prose, no markdown, no triple-backtick fences.
+6. Include `import` statements; assume `service_module` exports its functions named `<verb><Resource>`.
+7. For Fastify: export a `FastifyPluginAsync`. Do NOT wrap with `fp` (routes are encapsulated by design).
+8. For Express: export a `Router`. Wrap async with `asyncHandler` only if `express-async-errors` is not the team default.
+
+Output format: a single .ts file body, ready to drop into src/routes/<resource_name>.ts.
+]]>
+    </prompt>
+
+    <prompt purpose="audit-existing-route">
+<![CDATA[
+You are reviewing one Node HTTP route file for production readiness. Output a JSON object — no prose:
+
+{
+  "framework": "express|fastify|unknown",
+  "issues": [
+    {"severity": "error|warning", "rule": "<short slug>", "line": <int>, "fix": "<imperative one-liner>"}
+  ],
+  "ok": <bool>     // true iff no errors
+}
+
+Rules to check (severity error unless noted):
+- E-SCHEMA      : every verb call has a `schema:` (Fastify) or zod `parse`/`safeParse` (Express)
+- E-AUTH        : POST/PUT/PATCH/DELETE has preHandler/authenticate
+- E-ERROR-LEAK  : no `res.status(>=400).json({ error })` inside handler — must propagate
+- E-ASYNC-WRAP  : async Express handlers either inside express-async-errors scope or wrapped
+- E-FP-MISSING  : Fastify plugin uses `decorate()` but is NOT wrapped with fp()  (warning if file is in routes/, error if in plugins/)
+- E-CORS-STAR   : cors origin: '*' with credentials:true
+- E-JWT-LITERAL : jwt.sign / jwt.verify with a literal string secret
+- W-SCHEMA-INLINE: schema object literal is INSIDE the handler registration (warning, perf)
+- W-RES-STATUS  : res.status used after `next(err)` was called (warning, dead code)
+
+Output JSON only, sorted by line number.
+]]>
+    </prompt>
 
     <section name="antipatterns">
       <antipattern>

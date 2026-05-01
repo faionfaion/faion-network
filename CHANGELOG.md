@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: improve nodejs-express-fastify methodology with concrete checklist + commands (agent-coverage)
 - chore: improve methodologies methodology with concrete checklist + commands (agent-coverage)
 - chore: improve files-reference methodology with concrete checklist + commands (agent-coverage)
 - chore: improve django-decision-tree methodology with concrete checklist + commands (agent-coverage)
