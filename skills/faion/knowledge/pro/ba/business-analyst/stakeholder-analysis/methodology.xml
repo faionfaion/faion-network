@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ba</group>
     <domain>business-analyst</domain>
-    <summary>Identifies parties, maps them on a 2x2 influence-vs-impact matrix, documents needs and concerns, plans engagement per quadrant. Register stored as YAML in git; diffs become the relationship history.</summary>
+    <summary>Identify parties, map them on a 2x2 influence-vs-impact matrix, plan engagement per quadrant. Register stored as YAML in git; diffs become relationship history.</summary>
     <tags>
       <tag>stakeholder-management</tag>
       <tag>engagement</tag>
@@ -14,6 +14,7 @@
     </tags>
     <difficulty>intermediate</difficulty>
     <created>2026-04-26</created>
+    <updated>2026-05-01</updated>
   </metadata>
 
   <content>
@@ -32,6 +33,7 @@
         <item>Regulated programs (HIPAA, GDPR, SOX, MDR) — the regulator is a mandatory stakeholder</item>
         <item>M&amp;A and reorg work where the political map is unstable; rerun the matrix every 2-4 weeks</item>
         <item>Pre-RFP/vendor-selection work where the buying committee has hidden influencers (security, procurement, legal)</item>
+        <item>Triggered automatically when CHANGELOG or `stakeholders/register.yaml` has not been touched for 90 days on an active initiative</item>
       </list>
     </when-to-use>
 
@@ -43,6 +45,15 @@
         <item>One-off bug fixes or hotfixes — the stakeholder map will be stale before the deploy completes</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <step>Step 1 — Seed inputs. Collect three artifacts before touching the register: (a) machine-readable org chart export (CSV with `name,title,manager,department`), (b) project charter or kickoff transcript, (c) any prior `stakeholders/register.yaml`. Refuse to proceed if (a) is missing — without it the agent will hallucinate names.</step>
+      <step>Step 2 — Identify. For every named or implied party in the inputs, draft a register entry with eight-category classification (Customer, EndUser, Sponsor, DomainSME, ImplementationSME, Tester, Regulator, Supplier). Run the hidden-stakeholders sweep: legal, infosec, procurement, works council/union, accessibility, downstream API consumers. Anything not in the org chart goes to `suggested_to_verify:`, never to the register.</step>
+      <step>Step 3 — Score influence and impact on a H/M/L scale; pick the quadrant. Apply Mitchell-Agle-Wood salience overlay (power × legitimacy × urgency) for politically sensitive initiatives and flag definitive stakeholders (all three) for daily attention.</step>
+      <step>Step 4 — Capture attitude with evidence. Set `attitude` to `+|0|-|unknown` and require an `evidence:` array (quote, transcript line, ticket URL). Without evidence, attitude defaults to `unknown`, NEVER to `0`. Triangulate any `+` or `-` against at least one behavioural signal (meeting attendance, Slack response time, sponsor escalations, ticket comments).</step>
+      <step>Step 5 — Plan engagement using the quadrant defaults: HH = weekly 1:1, HL = biweekly summary, LH = monthly digest, LL = release-only. Override only with explicit `override_reason:`.</step>
+      <step>Step 6 — Commit a patch (≤5 changed entries per commit) to `stakeholders/register.yaml` with a one-line rationale, raise an MR, and request CODEOWNERS sponsor approval for any attitude transition out of `unknown` or for any new entry.</step>
+    </how-to>
 
     <section name="identification">
       <rule>
@@ -114,6 +125,40 @@
       </rule>
     </section>
 
+    <section name="register-template">
+      <p>Lift this YAML directly into `stakeholders/register.yaml`. Field order is significant for diff readability.</p>
+      <example type="good" title="register.yaml — single entry">
+        <code lang="yaml"><![CDATA[# stakeholders/register.yaml
+version: 1
+updated: 2026-05-01
+owner: ba@example.com
+entries:
+  - id: S-01
+    name: "Jane Doe"
+    role: "VP Engineering"
+    category: Sponsor          # Customer|EndUser|Sponsor|DomainSME|ImplementationSME|Tester|Regulator|Supplier
+    influence: H               # H|M|L
+    impact: H                  # H|M|L
+    quadrant: ManageClosely    # ManageClosely|KeepSatisfied|KeepInformed|Monitor
+    attitude: unknown          # +|0|-|unknown   (default: unknown)
+    evidence: []               # required for + or -; list of quotes/links
+    salience:                  # Mitchell-Agle-Wood, optional
+      power: true
+      legitimacy: true
+      urgency: false
+    engagement:
+      cadence: "weekly 1:1"
+      channel: "in-person"
+      next_touch: 2026-05-08
+    needs: []
+    concerns: []
+    last_reviewed: 2026-05-01
+suggested_to_verify:
+  - name: "<Legal counsel — name TBC>"
+    reason: "GDPR Art. 9 review needed"]]></code>
+      </example>
+    </section>
+
     <section name="prompt-patterns">
       <example type="good" title="Discovery prompt">
         <note>Constrains to real org chart entries, flags unknown attitudes, and surfaces hidden stakeholders as suggestions rather than entries.</note>
@@ -141,7 +186,52 @@ Quadrant mapping: HH=Manage Closely (weekly 1:1),
 HL=Keep Satisfied (biweekly summary), LH=Keep Informed (monthly digest),
 LL=Monitor (release notes only). Override only with explicit rationale.]]></code>
       </example>
+      <example type="good" title="Diff-review prompt (human-in-the-loop)">
+        <note>Forces the agent to summarise risk before the BA approves the patch.</note>
+        <code lang="text"><![CDATA[You are reviewing a stakeholder register diff. For every changed entry,
+output: id, change_type (added|removed|attitude|quadrant|engagement),
+risk_level (low|medium|high), one-sentence justification.
+Block the merge with status=NEEDS_HUMAN if any high-risk change has no
+linked evidence or no sponsor sign-off.]]></code>
+      </example>
     </section>
+
+    <commands>
+      <command name="bootstrap">mkdir -p stakeholders &amp;&amp; touch stakeholders/register.yaml</command>
+      <command name="lint-yaml">python3 -c "import yaml,sys; yaml.safe_load(open('stakeholders/register.yaml'))" &amp;&amp; echo OK</command>
+      <command name="quadrant-counts">python3 -c "import yaml; r=yaml.safe_load(open('stakeholders/register.yaml')); from collections import Counter; print(Counter(e['quadrant'] for e in r['entries']))"</command>
+      <command name="missing-evidence">python3 -c "import yaml; r=yaml.safe_load(open('stakeholders/register.yaml')); [print(e['id']) for e in r['entries'] if e['attitude'] in ['+','-'] and not e.get('evidence')]"</command>
+      <command name="staleness">git log -1 --format=%cs -- stakeholders/register.yaml</command>
+      <command name="diff-history">git log --oneline -- stakeholders/register.yaml | head -20</command>
+      <command name="render-matrix">python3 templates/stakeholder-matrix.py stakeholders/register.yaml &gt; docs/stakeholder-matrix.mmd</command>
+      <command name="commit-patch">git add stakeholders/register.yaml &amp;&amp; git commit -m "stakeholders: update S-01 attitude unknown→+ (evidence: kickoff transcript L42)"</command>
+    </commands>
+
+    <checklist>
+      <check>Org chart export (CSV) is on disk and referenced by the agent prompt.</check>
+      <check>Every entry has a unique id of the form `S-NN`.</check>
+      <check>Every entry has `category`, `influence`, `impact`, `quadrant`, `attitude`, `last_reviewed`.</check>
+      <check>No entry has `attitude` of `+` or `-` without a non-empty `evidence` array.</check>
+      <check>No entry was invented — every name appears in the source org chart, transcript, or charter.</check>
+      <check>Hidden-stakeholder sweep ran: legal, infosec, procurement, works council, accessibility, downstream API consumers — each is either entered or in `suggested_to_verify`.</check>
+      <check>Quadrant cadence matches the default unless `override_reason` is set.</check>
+      <check>Salience overlay computed for any politically sensitive initiative.</check>
+      <check>Patch contains ≤5 changed entries (bulk reclassification is forbidden).</check>
+      <check>Sponsor (CODEOWNERS) approved any attitude transition out of `unknown`.</check>
+      <check>`last_reviewed` ≤ 90 days for steady-state initiatives, ≤ 28 days for M&amp;A/reorg.</check>
+      <check>Confidentiality: register file is not exposed in any public artifact, README, or wiki.</check>
+    </checklist>
+
+    <verify>
+      <step>Run `python3 -c "import yaml; yaml.safe_load(open('stakeholders/register.yaml'))"` — must exit 0. Any YAML error blocks the merge.</step>
+      <step>Run the `missing-evidence` command above — output must be empty (no `+`/`-` attitudes without evidence).</step>
+      <step>Run the `quadrant-counts` command and inspect the distribution; if &gt;70% of stakeholders fall into one quadrant, the matrix has degenerated and scoring should be revisited.</step>
+      <step>Run `git diff --stat stakeholders/register.yaml` — must show ≤5 entries changed in this commit; if more, split into multiple commits.</step>
+      <step>Run `git log -1 --format=%cs -- stakeholders/register.yaml`; confirm freshness against the cadence rule (90/28 days).</step>
+      <step>Generate the Mermaid quadrant chart with `templates/stakeholder-matrix.py` and visually confirm there are no unlabeled or duplicate names.</step>
+      <step>For any new entry or attitude transition, confirm the MR carries an approving review from a CODEOWNERS sponsor.</step>
+      <step>Grep the repo for accidental leakage: `git grep -nE "attitude:\s*[+-]"` outside `stakeholders/` must return zero matches.</step>
+    </verify>
 
     <section name="ai-gotchas">
       <antipattern>
