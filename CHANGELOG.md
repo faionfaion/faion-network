@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: figma-vs-adobe-strategy-2026 (sufficient for autonomous agents)
 - Improve methodology: ai-spatial-computing (sufficient for autonomous agents)
 - Improve methodology: llm-observability-stack (sufficient for autonomous agents)
 - chore: improve ai-governance-compliance methodology with concrete checklist + commands (agent-coverage)
