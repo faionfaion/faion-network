@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: seven-performance-domains (sufficient for autonomous agents)
 - Improve methodology: google-display-ads (sufficient for autonomous agents)
 - Improve methodology: gcp-arch-patterns (sufficient for autonomous agents)
 - Improve methodology: aws-networking (sufficient for autonomous agents)
