@@ -4,55 +4,188 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-architect</domain>
-    <summary>Three-level data modeling (conceptual, logical, physical) across paradigms with normalization and advanced patterns.</summary>
+    <summary>Three-level data modeling (conceptual/logical/physical) with paradigm selection, normalization, indexing, partitioning, and verification.</summary>
     <tags>
       <tag>data-modeling</tag>
       <tag>database-design</tag>
       <tag>schema-design</tag>
       <tag>normalization</tag>
       <tag>paradigm-selection</tag>
+      <tag>indexing</tag>
+      <tag>partitioning</tag>
     </tags>
     <difficulty>advanced</difficulty>
     <created>2026-04-26</created>
+    <updated>2026-05-01</updated>
   </metadata>
   <content>
     <title>Data Modeling</title>
-    <summary>Data modeling at three levels: conceptual (entities and relationships in business terms), logical (normalized attributes, keys, cardinality — technology-agnostic), and physical (tables, data types, indexes for a specific engine). Always progress conceptual → logical → physical; skipping logical leads to unmaintainable schemas.</summary>
+    <summary>Build any persistent schema in three sequential passes: conceptual (entities/relationships in business terms) → logical (attributes, keys, cardinality, normalized to 3NF, technology-agnostic) → physical (tables, exact data types, indexes, partitions, engine-specific constraints). Skipping the logical pass is the dominant cause of unmaintainable schemas and expensive migrations.</summary>
     <why>
-      <p>Access patterns and data structure determine the correct database paradigm. Poor physical modeling — wrong data types, missing indexes, no partitioning — is the most common source of production performance failures. Database migrations cost 3-6 months and incur 20-30% code rewrites.</p>
+      <p>Access patterns and data structure determine the correct database paradigm. Poor physical modeling — wrong data types, missing indexes, no partitioning, no normalization — is the most common source of production performance failures. A botched paradigm choice or schema cost organisations 3-6 months of migration work and 20-30% application code rewrites; correct three-level modeling up front avoids that re-work entirely.</p>
     </why>
     <when-to-use>
       <list>
-        <item>Designing any new persistent data layer (greenfield or migration).</item>
-        <item>Choosing between database paradigms (relational, document, wide-column, graph, time-series).</item>
-        <item>Normalizing an existing schema with update anomalies or data duplication.</item>
-        <item>Adding index strategy or partitioning plan before a table grows beyond 10M rows.</item>
+        <item>Designing any new persistent data layer (greenfield service, new bounded context, or migration from legacy).</item>
+        <item>Choosing between database paradigms (relational, document, wide-column, key-value, graph, time-series, vector, search).</item>
+        <item>Normalizing an existing schema that exhibits update anomalies, JSON-blob misuse, or column duplication.</item>
+        <item>Adding an index strategy or partitioning plan before a table grows beyond ~10M rows or ~10 GB.</item>
+        <item>Refactoring a schema before introducing a write-heavy feature (events, audit logs, telemetry).</item>
+        <item>Performing an Architecture Decision Record (ADR) for storage choice or denormalization.</item>
       </list>
     </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototypes whose data will not be migrated to production — pick any paradigm and move on.</item>
+        <item>Read-only analytical sandboxes already covered by a star/snowflake schema in a warehouse.</item>
+        <item>Pure caching layers (Redis, Memcached) where the source of truth lives elsewhere.</item>
+      </list>
+    </when-not-to-use>
+    <how-to>
+      <step>Pass 1 — Conceptual. List the 5-15 core entities in business language. Draw relationships with cardinality (1:1, 1:N, M:N) and label each relationship verb-first ("Customer PLACES Order"). Output: a single Mermaid ER diagram or a bullet list. No attributes, no types, no keys.</step>
+      <step>Pass 2 — Logical. For every entity add attributes, primary key, foreign keys, candidate keys, nullability, and unique constraints. Normalize to 3NF (atomic values, no partial dependencies, no transitive dependencies). Document the top 10 access patterns ("look up order by customer_id and date range") — these drive the physical pass. Still technology-agnostic; no engine-specific types.</step>
+      <step>Pass 3 — Physical. Pick the engine, then translate every logical attribute to a concrete data type (e.g. <code>BIGINT</code>, <code>UUID</code>, <code>TIMESTAMPTZ</code>, <code>JSONB</code>). Add indexes for each access pattern (B-tree, GIN, hash, composite). Decide partitioning strategy if expected size &gt; 10M rows. Add audit columns (<code>created_at</code>, <code>updated_at</code>), soft-delete column if needed, and engine-specific constraints (CHECK, EXCLUDE, generated columns).</step>
+      <step>Select paradigm using the decision rules in <code>section paradigm-selection</code> below. If unsure, default to PostgreSQL — it covers relational + JSONB + full-text + vector via extensions and is the safest choice for solo builders.</step>
+      <step>Apply the access-pattern verification: for every top-10 query, write the SQL/CQL/aggregation against the schema and run <code>EXPLAIN</code>. Every query must be index-backed. If a query requires a sequential scan, add or restructure indexes before declaring the schema done.</step>
+      <step>Write the migration as a single forward-only DDL file under <code>migrations/</code> with a timestamped name (e.g. <code>20260501_120000_create_orders.sql</code>). Never edit a committed migration; always add a new one.</step>
+      <step>Capture the decision in an ADR linking back to access patterns, paradigm trade-offs, and rejected alternatives.</step>
+    </how-to>
     <section name="three-levels">
-      <rule testable="true">
-        <statement>Conceptual: entity names only, high-level relationships, stakeholder communication. Logical: attributes, primary/foreign keys, cardinality, normalization to 3NF. Physical: table/column names, exact data types, indexes, partitioning, engine-specific constraints.</statement>
-      </rule>
+      <rules>
+        <rule testable="true">
+          <statement>Produce conceptual, logical, and physical artefacts in that order. Conceptual: entity names + relationships only. Logical: attributes, primary/foreign keys, cardinality, 3NF. Physical: tables, exact data types, indexes, partitioning, engine-specific constraints.</statement>
+          <rationale>Skipping logical produces tables that mirror screen layouts and break under the second feature.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Every physical schema MUST list its top 10 access patterns and prove each one is index-backed via <code>EXPLAIN</code> before code is written against it.</statement>
+          <rationale>Indexes designed after queries arrive are 5-10x more expensive to add under load.</rationale>
+        </rule>
+      </rules>
     </section>
     <section name="paradigm-selection">
-      <rule testable="true">
-        <statement>Relational for structured data, complex relationships, ACID required. Document for flexible schema, hierarchical data. Key-Value for extreme performance, simple lookups. Wide-Column for high write throughput, time-series. Graph for highly connected data. Time-Series for timestamped data points, aggregation.</statement>
-      </rule>
+      <rules>
+        <rule testable="true">
+          <statement>Choose Relational (PostgreSQL) for structured data with complex relationships, transactions, and ACID guarantees. Choose Document (MongoDB) for flexible schema, hierarchical data, and aggregate-oriented access. Choose Key-Value (Redis, DynamoDB) for extreme low-latency simple lookups. Choose Wide-Column (Cassandra, ScyllaDB) for high write throughput and predictable partition-key access. Choose Graph (Neo4j) for highly connected data with multi-hop traversals. Choose Time-Series (TimescaleDB, InfluxDB, ClickHouse) for timestamped data points and time-window aggregation. Choose Vector (pgvector, Qdrant, Weaviate) for similarity search on embeddings. Choose Search (Elasticsearch, Meilisearch) for full-text and faceted queries.</statement>
+          <rationale>Each engine optimises a specific access pattern; mismatched paradigm choice forces application-side workarounds that cost 20-30% of code volume.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Default to PostgreSQL when in doubt. It covers relational, JSONB documents, full-text search, vector (pgvector), and time-series (TimescaleDB) within a single operational footprint.</statement>
+          <rationale>Solo builders cannot afford to operate four engines; PostgreSQL collapses the surface area while staying fast enough for most workloads to 100M rows.</rationale>
+        </rule>
+      </rules>
     </section>
     <section name="normalization">
-      <rule testable="true">
-        <statement>1NF: atomic column values, no repeating groups. 2NF: 1NF + no partial dependencies. 3NF: 2NF + no transitive dependencies. BCNF: every determinant is a candidate key (rarely required).</statement>
-        <rationale>3NF eliminates data duplication and update anomalies. Over-normalization beyond 3NF creates excessive joins without practical benefits.</rationale>
-      </rule>
+      <rules>
+        <rule testable="true">
+          <statement>1NF: atomic column values, no repeating groups. 2NF: 1NF + no partial dependencies on the primary key. 3NF: 2NF + no transitive dependencies (non-key column depends only on the primary key). BCNF: every determinant is a candidate key — apply only when 3NF still has anomalies.</statement>
+          <rationale>3NF eliminates duplication and update anomalies. Over-normalising past 3NF generates excessive joins without practical benefit; deliberate denormalisation past 3NF is a paradigm choice (e.g. wide-column, document) not a default.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Denormalise only when an <code>EXPLAIN</code>-measured access pattern requires it. Document the denormalisation in an ADR with the access pattern, the read/write ratio, and the consistency mechanism (trigger, materialised view, application-side dual-write).</statement>
+          <rationale>Undocumented denormalisation rots silently — readers add it, writers forget the second copy, data drifts.</rationale>
+        </rule>
+      </rules>
     </section>
-    <templates>
-      <template path="templates/pg-standard-table.sql" purpose="PostgreSQL standard table with UUID PK, audit columns, soft delete."/>
-      <template path="templates/mongo-schema.js" purpose="MongoDB document schema template with embedded vs referenced patterns."/>
-      <template path="templates/cassandra-table.cql" purpose="Cassandra table template with partition key, clustering columns."/>
-    </templates>
+    <section name="indexing-and-partitioning">
+      <rules>
+        <rule testable="true">
+          <statement>Index every foreign key column and every column that appears in a WHERE/JOIN/ORDER BY of a top-10 access pattern. Composite indexes follow the equality-then-range column order. Use partial indexes for sparse predicates (e.g. <code>WHERE deleted_at IS NULL</code>).</statement>
+          <rationale>Foreign keys without indexes cause N+1 lookups and table-level locks during cascading deletes.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Plan partitioning before a table is expected to exceed 10M rows or 10 GB. Use range partitioning for time-series, hash for high-cardinality writes, list for small enumerated tenants.</statement>
+          <rationale>Re-partitioning a populated table requires downtime or complex zero-downtime migration tooling; plan it once at design time.</rationale>
+        </rule>
+      </rules>
+    </section>
+    <checklist>
+      <check>Conceptual diagram produced, reviewed with at least one stakeholder, every entity has a one-line definition.</check>
+      <check>Logical model has primary key, foreign keys, nullability, unique constraints for every attribute.</check>
+      <check>Schema is in 3NF; any deviation is documented in an ADR.</check>
+      <check>Top 10 access patterns are listed with frequency, latency target, and read/write ratio.</check>
+      <check>Every top-10 access pattern has been run through <code>EXPLAIN</code> against a sample schema and is index-backed.</check>
+      <check>Data types match domain semantics (e.g. <code>UUID</code> for IDs, <code>TIMESTAMPTZ</code> not <code>TIMESTAMP</code>, <code>NUMERIC(p,s)</code> for money never <code>FLOAT</code>).</check>
+      <check>Audit columns present: <code>created_at</code>, <code>updated_at</code>, optional <code>deleted_at</code> (soft delete) or <code>created_by</code>/<code>updated_by</code>.</check>
+      <check>Foreign keys defined with explicit <code>ON DELETE</code> and <code>ON UPDATE</code> behaviour.</check>
+      <check>Partitioning strategy decided for any table expected to exceed 10M rows or 10 GB.</check>
+      <check>Migration file is forward-only, timestamped, and idempotent where the engine supports it.</check>
+      <check>Paradigm choice captured in an ADR with at least two rejected alternatives.</check>
+      <check>Templates under <code>templates/</code> referenced or copied so the agent does not reinvent boilerplate.</check>
+    </checklist>
+    <commands>
+      <command name="postgres-explain">EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT ... ;</command>
+      <command name="postgres-list-indexes">SELECT schemaname, tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY tablename, indexname;</command>
+      <command name="postgres-table-bloat">SELECT relname, n_live_tup, n_dead_tup, last_autovacuum FROM pg_stat_user_tables ORDER BY n_dead_tup DESC LIMIT 20;</command>
+      <command name="mongo-explain">db.collection.find({...}).explain("executionStats")</command>
+      <command name="cassandra-tracing">TRACING ON; SELECT ... ; TRACING OFF;</command>
+      <command name="size-estimate">SELECT pg_size_pretty(pg_total_relation_size('schema.table'));</command>
+    </commands>
+    <prompt purpose="conceptual-pass"><![CDATA[
+You are the data architect. Given the feature description below, produce a CONCEPTUAL data model only. Output:
+1. A bullet list of 5-15 core entities, each with a one-line definition.
+2. A Mermaid `erDiagram` block showing relationships with cardinality and a verb-first label on every relationship.
+3. NO attributes, NO data types, NO keys, NO indexes. Resist the urge — those come in pass 2 and 3.
+
+Feature description: <<<PASTE>>>
+]]></prompt>
+    <prompt purpose="logical-pass"><![CDATA[
+Given this conceptual model, produce a LOGICAL data model. For every entity:
+- Attributes with semantic type (text/integer/boolean/date/decimal/uuid), nullable yes/no, unique yes/no.
+- Primary key, foreign keys with referenced entity.
+- Cardinality on each relationship.
+- Normalization level (must be 3NF unless explicitly justified).
+
+Then list the top 10 ACCESS PATTERNS as: `<verb> <entity> by <key> [filter] [sort] — <reads/sec target> <p95 latency target>`.
+
+Conceptual model: <<<PASTE>>>
+]]></prompt>
+    <prompt purpose="physical-pass"><![CDATA[
+Translate this logical model into a PHYSICAL schema for <ENGINE: postgres|mongo|cassandra|other>. Produce:
+- DDL with exact data types (UUID, TIMESTAMPTZ, NUMERIC(p,s), JSONB, etc.).
+- Indexes — one per access pattern, composite where order matters, partial where predicate is sparse.
+- Partitioning if any table exceeds 10M rows / 10 GB; specify strategy (range/hash/list) and key.
+- Audit columns (created_at, updated_at, optional deleted_at).
+- Constraints: NOT NULL, UNIQUE, CHECK, FOREIGN KEY with ON DELETE/ON UPDATE.
+- A `migrations/<timestamp>_<name>.sql` filename suggestion.
+
+For every access pattern, append the EXPLAIN-equivalent query and assert which index it must hit. Flag any sequential scan as a defect.
+
+Logical model + access patterns: <<<PASTE>>>
+]]></prompt>
+    <template path="templates/pg-standard-table.sql" purpose="PostgreSQL standard table with UUID PK, audit columns, soft delete."/>
+    <template path="templates/pg-junction-table.sql" purpose="PostgreSQL M:N junction table template."/>
+    <template path="templates/mongo-schema.js" purpose="MongoDB document schema template with embedded vs referenced patterns."/>
+    <template path="templates/cassandra-table.cql" purpose="Cassandra table template with partition key, clustering columns, TWCS hint."/>
+    <template path="templates/scd-type2.sql" purpose="Slowly-Changing-Dimension Type 2 historical tracking pattern."/>
+    <template path="templates/data-vault-hub.sql" purpose="Data Vault hub/link/satellite for auditable warehouse modelling."/>
+    <verify>
+      <step>Run <code>python3 scripts/validate-methodology-xml.py skills/faion/knowledge/solo/dev/software-architect/data-modeling/methodology.xml</code> — must report PASS.</step>
+      <step>Generate the schema DDL from the templates, apply against a scratch database, then for each top-10 access pattern run the engine's EXPLAIN command (see <code>commands</code> above). Confirm every plan uses an Index Scan / Index Only Scan / Bitmap Index Scan — never a Seq Scan over a large table.</step>
+      <step>Insert ~10k synthetic rows and re-run EXPLAIN ANALYZE. Confirm p95 latency aligns with the access-pattern target. If it does not, revisit indexing or partitioning before merging.</step>
+      <step>Open the ADR and confirm: paradigm decision recorded, rejected alternatives listed, denormalisations (if any) justified by an access pattern, and a roll-back plan documented.</step>
+      <step>Run a normalization audit: search for repeating groups (column suffixes <code>_1</code>, <code>_2</code>), comma-separated lists in text columns, and JSON blobs that hold relational data. Each finding must be either fixed or explicitly waived in the ADR.</step>
+      <step>Confirm the migration file is forward-only and timestamp-prefixed. Confirm no pre-existing committed migration was edited.</step>
+    </verify>
+    <warning>Never store money as <code>FLOAT</code> or <code>DOUBLE</code>; use <code>NUMERIC(p, s)</code> (PostgreSQL) or <code>Decimal128</code> (MongoDB). Never store timestamps without time-zone awareness — use <code>TIMESTAMPTZ</code>, not <code>TIMESTAMP</code>.</warning>
+    <warning>Never edit a committed migration. Always add a new forward migration; the historical chain must remain reproducible on every environment.</warning>
+    <antipattern>
+      <description>Skipping the logical pass and writing physical DDL directly from screen mock-ups.</description>
+      <reason>Produces tables that mirror UI layouts, embed presentation concerns, and break the moment a second feature reads the same data.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using a JSON/JSONB column to store data with relational structure ("just put it in JSON for flexibility").</description>
+      <reason>Defeats indexing, foreign keys, and constraints; performance and integrity collapse beyond ~100k rows.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Designing indexes after the application is in production.</description>
+      <reason>Adding indexes under load requires <code>CREATE INDEX CONCURRENTLY</code>, careful timing, and often a maintenance window; cost is 5-10x higher than designing indexes alongside the schema.</reason>
+    </antipattern>
     <see-also>
       <link href="https://en.wikipedia.org/wiki/Database_normalization"/>
       <link href="https://www.postgresql.org/docs/current/ddl.html"/>
+      <link href="https://use-the-index-luke.com/"/>
+      <link href="https://docs.mongodb.com/manual/data-modeling/"/>
+      <link href="https://docs.datastax.com/en/cql-oss/3.x/cql/cql_using/useCreateTableTOC.html"/>
     </see-also>
   </content>
 </methodology>
