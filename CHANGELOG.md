@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: container-orchestration (sufficient for autonomous agents)
 - Improve methodology: cloud-architecture (sufficient for autonomous agents)
 - Improve methodology: stakeholder-analysis (sufficient for autonomous agents)
 - Improve methodology: modern-ba-framework (sufficient for autonomous agents)

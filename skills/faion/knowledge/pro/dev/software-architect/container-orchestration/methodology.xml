@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>dev</group>
     <domain>software-architect</domain>
-    <summary>Kubernetes architecture patterns, pod design, deployment strategies, autoscaling, persistent storage, RBAC, and security best practices for production workloads.</summary>
+    <summary>Kubernetes patterns: pod design, deployments, autoscaling, storage, RBAC, security. Concrete WHEN triggers, checklists, kubectl commands, manifests, verify steps.</summary>
     <tags>
       <tag>kubernetes</tag>
       <tag>container</tag>
@@ -18,6 +18,7 @@
     <category>architecture</category>
     <difficulty>advanced</difficulty>
     <created>2026-04-26</created>
+    <updated>2026-05-01</updated>
   </metadata>
   <content>
     <title>Container Orchestration</title>
@@ -27,21 +28,56 @@
     </why>
     <when-to-use>
       <list>
-        <item>Deploying a new service to a Kubernetes cluster (select pod pattern, set probes, set resource limits)</item>
-        <item>Choosing a deployment strategy for a high-risk release (canary vs blue-green)</item>
-        <item>Configuring autoscaling for queue-backed or event-driven workloads (KEDA)</item>
-        <item>Hardening a Kubernetes workload: RBAC, network policies, pod security standards</item>
-        <item>Migrating Docker Compose to Kubernetes manifests</item>
+        <item>Authoring or reviewing a Deployment / StatefulSet / DaemonSet manifest before merge — apply the pre-merge checklist below.</item>
+        <item>Deploying a new service to a Kubernetes cluster (select pod pattern, set probes, set resource limits).</item>
+        <item>Choosing a deployment strategy for a high-risk release (canary vs blue-green) — use the decision tree in the deployment-strategies section.</item>
+        <item>Configuring autoscaling for queue-backed or event-driven workloads — use KEDA flowchart.</item>
+        <item>Hardening a Kubernetes workload: RBAC, network policies, pod security standards (PSS).</item>
+        <item>Migrating Docker Compose to Kubernetes manifests — run `kompose convert` then apply this methodology over the output.</item>
+        <item>Investigating an incident: OOMKilled pod, CrashLoopBackOff, ImagePullBackOff, traffic hitting unready pod — use the verify section as a triage runbook.</item>
       </list>
     </when-to-use>
     <when-not-to-use>
       <list>
-        <item>Single-VM or bare-metal deployment without container runtime — use systemd/supervisor instead</item>
-        <item>Serverless function with sub-second invocation pattern — K8s cold-start overhead is not justified</item>
-        <item>Development environment where Docker Compose is sufficient — K8s adds operational overhead with no benefit</item>
-        <item>Stateful workloads requiring POSIX file locking across nodes — ReadWriteMany volumes add complexity</item>
+        <item>Single-VM or bare-metal deployment without container runtime — use systemd/supervisor instead.</item>
+        <item>Serverless function with sub-second invocation pattern — K8s cold-start overhead is not justified.</item>
+        <item>Development environment where Docker Compose is sufficient — K8s adds operational overhead with no benefit.</item>
+        <item>Stateful workloads requiring POSIX file locking across nodes — ReadWriteMany volumes add complexity.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <step>Identify the workload class: stateless service (Deployment), leader-elected stateful (StatefulSet), per-node agent (DaemonSet), or batch (Job/CronJob).</step>
+      <step>Pick the pod pattern: single-container default; sidecar for log/proxy/secret injection; ambassador for external-service hiding; adapter for output normalisation; init containers for startup dependencies.</step>
+      <step>Set BOTH `resources.requests` and `resources.limits` for every container — copy the deployment.yaml template and edit values measured from staging load tests (use `kubectl top pod` for baselines).</step>
+      <step>Add liveness, readiness, and startup probes — never skip readiness; it gates Service traffic. Use startup probe for slow-starting JVM/Python apps to avoid premature liveness kills.</step>
+      <step>Choose a deployment strategy: rolling (default), blue-green (instant rollback), canary (gradual + metric gating), or recreate (incompatible schema).</step>
+      <step>Choose an autoscaler: HPA for CPU/memory of always-on services, KEDA for queue-backed / scale-to-zero, VPA only for right-sizing in non-prod or with `updateMode: Off`.</step>
+      <step>Create a dedicated ServiceAccount; bind the smallest viable Role; never use the namespace default SA.</step>
+      <step>Apply the Pod Security Standard `restricted` label to the namespace; ensure the pod runs as non-root with read-only root filesystem and drops ALL capabilities.</step>
+      <step>Add a NetworkPolicy: default deny ingress + egress; allowlist only the required peers and ports.</step>
+      <step>Wire secrets via External Secrets Operator, Sealed Secrets, or Vault Agent — never bake into image, never commit raw Secret manifests.</step>
+      <step>Validate the manifest with `kubeconform` and `kube-score`, scan the image with `trivy image`, then `kubectl apply --server-side --dry-run=server` before merge.</step>
+      <step>After rollout, run the verify procedure in the verify section.</step>
+    </how-to>
+
+    <checklist>
+      <check>Container has both `resources.requests.cpu/memory` and `resources.limits.cpu/memory` set.</check>
+      <check>`livenessProbe`, `readinessProbe`, and (if startup &gt; 5s) `startupProbe` are defined with realistic thresholds.</check>
+      <check>`securityContext.runAsNonRoot: true`, `runAsUser` &gt;= 1000, `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`.</check>
+      <check>Image is pinned by digest (`@sha256:...`), not just a tag; pulled from an allowlisted registry.</check>
+      <check>`automountServiceAccountToken` set explicitly (`false` unless API access is needed).</check>
+      <check>Dedicated ServiceAccount referenced — NOT `default`.</check>
+      <check>NetworkPolicy exists for the workload's labels (default-deny + allowlist).</check>
+      <check>`PodDisruptionBudget` defined for any workload with `replicas &gt;= 2` (`minAvailable: 1` or `maxUnavailable: 1`).</check>
+      <check>`topologySpreadConstraints` or anti-affinity spreads replicas across zones/nodes.</check>
+      <check>`terminationGracePeriodSeconds` matches the longest in-flight request the app may handle (default 30 is often too short).</check>
+      <check>HPA min/max replicas set; or KEDA ScaledObject configured with cooldown.</check>
+      <check>`spec.strategy` (RollingUpdate/Recreate) explicit with `maxSurge` + `maxUnavailable`.</check>
+      <check>Manifest passes `kubeconform -strict -summary` and `kube-score score --output-format ci`.</check>
+      <check>Image scanned by `trivy image --severity HIGH,CRITICAL --exit-code 1`.</check>
+      <check>Namespace labelled `pod-security.kubernetes.io/enforce: restricted` (or `baseline` with documented exception).</check>
+    </checklist>
 
     <section name="kubernetes-architecture">
       <p>Control plane components: API Server (front door for all cluster operations, validates and processes requests), etcd (distributed key-value store for cluster state), Scheduler (assigns pods to nodes based on resources, affinity, taints), Controller Manager (runs replication/node/endpoint/service-account controllers), Cloud Controller (integrates with cloud provider APIs).</p>
@@ -132,17 +168,177 @@
       <p>Storage best practices: use dynamic provisioning over static PersistentVolumes; set volumeBindingMode: WaitForFirstConsumer for multi-zone clusters to avoid cross-zone volume attachment; enable allowVolumeExpansion on StorageClass; use VolumeSnapshots for backup; use Velero for disaster recovery of persistent volumes.</p>
     </section>
 
-    <templates>
-      <template path="templates/deployment.yaml" purpose="Production Deployment with liveness/readiness/startup probes, resource limits, non-root security context"/>
-      <template path="templates/hpa.yaml" purpose="HPA with CPU + custom metric (requests_per_second) targets"/>
-      <template path="templates/keda-scaledobject.yaml" purpose="KEDA ScaledObject for Kafka consumer lag scaling with scale-to-zero"/>
-    </templates>
+    <commands>
+      <command name="dry-run-server">kubectl apply -f deployment.yaml --server-side --dry-run=server</command>
+      <command name="schema-validate">kubeconform -strict -summary -schema-location default deployment.yaml</command>
+      <command name="static-score">kube-score score --output-format ci deployment.yaml</command>
+      <command name="image-scan">trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/org/app@sha256:DIGEST</command>
+      <command name="image-sign">cosign sign --key cosign.key ghcr.io/org/app@sha256:DIGEST</command>
+      <command name="image-verify">cosign verify --key cosign.pub ghcr.io/org/app@sha256:DIGEST</command>
+      <command name="pss-label">kubectl label namespace prod pod-security.kubernetes.io/enforce=restricted --overwrite</command>
+      <command name="rollout-status">kubectl rollout status deploy/myapp -n prod --timeout=5m</command>
+      <command name="rollout-undo">kubectl rollout undo deploy/myapp -n prod</command>
+      <command name="probe-debug">kubectl get pod -n prod -l app=myapp -o jsonpath='{.items[*].status.containerStatuses[*].state}'</command>
+      <command name="resource-actuals">kubectl top pod -n prod -l app=myapp --containers</command>
+      <command name="netpol-test">kubectl exec -n prod deploy/myapp -- nc -vz postgres.db 5432</command>
+      <command name="events-tail">kubectl get events -n prod --sort-by=.lastTimestamp | tail -30</command>
+      <command name="hpa-status">kubectl get hpa -n prod -o wide &amp;&amp; kubectl describe hpa myapp -n prod</command>
+      <command name="keda-status">kubectl get scaledobject -n prod &amp;&amp; kubectl describe scaledobject myapp -n prod</command>
+      <command name="rbac-check">kubectl auth can-i --list --as=system:serviceaccount:prod:myapp -n prod</command>
+      <command name="kompose-import">kompose convert -f docker-compose.yaml -o k8s/</command>
+    </commands>
+
+    <template path="templates/deployment.yaml" purpose="Production Deployment with liveness/readiness/startup probes, resource limits, non-root securityContext, drop ALL capabilities, dedicated ServiceAccount."/>
+    <template path="templates/hpa.yaml" purpose="HPA v2 with CPU + custom (requests_per_second) metrics, min/max replicas, scale-down stabilization window."/>
+    <template path="templates/keda-scaledobject.yaml" purpose="KEDA ScaledObject for Kafka consumer lag scaling with scale-to-zero and cooldown."/>
+
+    <example type="good" title="Deployment skeleton (paste and edit)">
+      <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: prod
+  labels: { app: myapp, tier: backend }
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 25%, maxUnavailable: 0 }
+  selector: { matchLabels: { app: myapp } }
+  template:
+    metadata:
+      labels: { app: myapp, tier: backend }
+    spec:
+      serviceAccountName: myapp
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: myapp } }
+      containers:
+        - name: app
+          image: ghcr.io/org/myapp@sha256:REPLACE_WITH_DIGEST
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "512Mi" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop: { exec: { command: ["/bin/sh","-c","sleep 15"] } }
+]]></code>
+    </example>
+
+    <example type="good" title="NetworkPolicy default-deny + allowlist">
+      <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: prod }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: myapp-allow, namespace: prod }
+spec:
+  podSelector: { matchLabels: { app: myapp } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: ingress-nginx } }
+      ports: [{ port: 8080, protocol: TCP }]
+  egress:
+    - to:
+        - podSelector: { matchLabels: { app: postgres } }
+      ports: [{ port: 5432, protocol: TCP }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } } }]
+      ports: [{ port: 53, protocol: UDP }]
+]]></code>
+    </example>
+
+    <example type="bad" title="Anti-pattern: missing requests + privileged container">
+      <code lang="yaml"><![CDATA[
+# DO NOT COPY — every line below is wrong.
+spec:
+  containers:
+    - name: app
+      image: myapp:latest          # mutable tag, no digest
+      # no resources => BestEffort, evicted first under pressure
+      securityContext:
+        privileged: true           # full host access
+        runAsUser: 0               # root
+      # no probes => kube-proxy routes traffic before app is ready
+]]></code>
+    </example>
+
+    <prompt purpose="Manifest review prompt for an LLM reviewer"><![CDATA[
+You are reviewing a Kubernetes manifest. For each container, verify:
+1. resources.requests AND resources.limits are set for cpu and memory.
+2. livenessProbe, readinessProbe, and (if startup>5s) startupProbe are present with sane thresholds.
+3. securityContext has runAsNonRoot:true, readOnlyRootFilesystem:true, allowPrivilegeEscalation:false, capabilities.drop:[ALL].
+4. image is pinned by @sha256 digest from an allowlisted registry.
+5. serviceAccountName is set and is NOT "default".
+6. automountServiceAccountToken is explicit.
+7. PodDisruptionBudget exists when replicas>=2.
+8. NetworkPolicy targeting these labels exists (default-deny + allowlist).
+9. spec.strategy is explicit with maxSurge/maxUnavailable.
+10. Namespace has pod-security.kubernetes.io/enforce=restricted.
+
+Output: a markdown table with columns | Check | Status (PASS/FAIL/N/A) | Evidence (file:line) | Fix |.
+End with a single line: VERDICT: APPROVE or REQUEST_CHANGES.
+]]></prompt>
+
+    <verify>
+      <step>Run `kubectl rollout status deploy/&lt;name&gt; -n &lt;ns&gt; --timeout=5m`; non-zero exit means rollout stalled — `kubectl describe` the new ReplicaSet for the cause.</step>
+      <step>Run `kubectl get pods -n &lt;ns&gt; -l app=&lt;name&gt;`; every pod must be `Running` with `READY n/n` and zero `RESTARTS` after warm-up.</step>
+      <step>Confirm probes: `kubectl describe pod &lt;pod&gt;` shows `Liveness/Readiness/Startup` lines with `success`; `Events` tab shows no `Unhealthy` warnings.</step>
+      <step>Confirm QoS class: `kubectl get pod &lt;pod&gt; -o jsonpath='{.status.qosClass}'` should print `Guaranteed` or `Burstable`, never `BestEffort`.</step>
+      <step>Confirm SA + RBAC: `kubectl auth can-i --list --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;` shows only the verbs you intended.</step>
+      <step>Confirm NetworkPolicy: from another pod, `kubectl exec ... -- nc -vz &lt;svc&gt; &lt;port&gt;` succeeds for allowed peers and times out for denied peers.</step>
+      <step>Confirm autoscaler: `kubectl get hpa -n &lt;ns&gt;` shows non-`unknown` `TARGETS`; for KEDA `kubectl get scaledobject -n &lt;ns&gt;` shows `READY=True`, `ACTIVE=True/False` matching queue depth.</step>
+      <step>Confirm storage: `kubectl get pvc -n &lt;ns&gt;` all `Bound`; `kubectl describe pvc` shows the expected `StorageClass` and `accessModes`.</step>
+      <step>Confirm image provenance: `cosign verify --key cosign.pub &lt;image@digest&gt;` exits 0; `trivy image --severity HIGH,CRITICAL --exit-code 1 &lt;image&gt;` exits 0.</step>
+      <step>Confirm PSS: `kubectl get ns &lt;ns&gt; -o jsonpath='{.metadata.labels}'` includes `pod-security.kubernetes.io/enforce=restricted` (or documented exception).</step>
+      <step>Burn-in: drive realistic load for at least one HPA cooldown window; assert error rate &lt; SLO and p99 latency &lt; budget; no `OOMKilled` in `kubectl get events`.</step>
+      <step>If anything fails: `kubectl rollout undo deploy/&lt;name&gt; -n &lt;ns&gt;` immediately, then triage from `kubectl describe` + `kubectl logs --previous`.</step>
+    </verify>
+
+    <warning>
+      <p>`latest` tag and unpinned digests defeat reproducibility and signature verification. Always pin by `@sha256:...`. Never run with `privileged: true`, `hostNetwork: true`, `hostPID: true`, or `hostPath` volumes outside of a documented system-component exception. Never set CPU `limits` lower than `requests` — that violates the QoS contract and will throttle even when capacity exists.</p>
+    </warning>
 
     <see-also>
       <link href="https://kubernetes.io/docs/concepts/architecture/"/>
       <link href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"/>
       <link href="https://kubernetes.io/docs/concepts/configuration/overview/"/>
+      <link href="https://kubernetes.io/docs/concepts/security/pod-security-standards/"/>
       <link href="https://keda.sh/"/>
+      <link href="https://argoproj.github.io/argo-rollouts/"/>
+      <link href="https://external-secrets.io/"/>
     </see-also>
   </content>
 </methodology>
