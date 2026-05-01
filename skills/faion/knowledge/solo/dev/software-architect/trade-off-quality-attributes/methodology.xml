@@ -4,7 +4,7 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-architect</domain>
-    <summary>Quality attribute conflicts (ISO 25010), architecture style trade-offs, CAP theorem, and communication pattern trade-offs for informed architecture decisions.</summary>
+    <summary>ISO 25010 conflict pairs, CAP, architecture style and communication trade-offs with concrete checklist, commands, ADR template and verify steps.</summary>
     <tags>
       <tag>quality-attributes</tag>
       <tag>iso-25010</tag>
@@ -15,6 +15,7 @@
     <category>architecture</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-27</created>
+    <updated>2026-05-01</updated>
     <related>
       <ref slug="trade-off-decision-methods"/>
       <ref slug="trade-off-decision-matrix"/>
@@ -26,19 +27,21 @@
   <content>
     <title>Quality Attribute Trade-offs in Architecture</title>
 
-    <summary>Quality attributes often conflict: improving one typically degrades another. This methodology covers the ISO 25010 model, common attribute conflict pairs, architecture style trade-offs (monolith vs microservices), CAP theorem data trade-offs, and communication pattern trade-offs as the factual basis for any trade-off decision.</summary>
+    <summary>Quality attributes often conflict: improving one typically degrades another. This methodology covers the ISO 25010 model, common attribute conflict pairs, architecture style trade-offs (monolith vs microservices), CAP theorem data trade-offs, and communication pattern trade-offs as the factual basis for any trade-off decision. Includes a strict trigger list, a step-by-step how-to, a copy-paste ADR template, lift-and-paste prompts and a verify checklist.</summary>
 
     <why>
       <p>Every architecture choice involves sacrificing one quality to gain another. Without a shared model of which attributes conflict and why, teams make decisions based on gut feel or fashion (cargo-culting). The ISO 25010 quality model provides a systematic vocabulary for quality requirements. CAP theorem and architecture style trade-off tables provide empirically grounded reference points that prevent reinventing these trade-offs from scratch on each project.</p>
     </why>
 
     <when-to-use>
+      <p>Trigger this methodology automatically when ANY of the following appear in the current task:</p>
       <list>
-        <item>When building quality attribute scenarios for ATAM or decision matrices — to identify which pairs are in tension.</item>
-        <item>When evaluating architecture style options (monolith, microservices, serverless, event-driven).</item>
-        <item>When selecting a data storage strategy and consistency requirements must be weighed against availability.</item>
-        <item>When designing communication patterns between services (sync vs async vs event-driven).</item>
-        <item>When writing the "Consequences" section of an ADR — to enumerate explicit gain/loss pairs.</item>
+        <item>Building quality attribute scenarios for ATAM or filling a decision matrix — to identify which pairs are in tension.</item>
+        <item>Evaluating architecture style options (monolith, modular monolith, microservices, serverless, event-driven).</item>
+        <item>Selecting a data storage strategy where consistency must be weighed against availability or partition tolerance.</item>
+        <item>Designing service-to-service communication (sync REST/gRPC vs async queues vs event-driven brokers).</item>
+        <item>Writing the "Consequences" section of an ADR — to enumerate explicit gain/loss pairs.</item>
+        <item>Reviewing a proposed change whose description contains any of: "scale", "low latency", "always available", "encrypt", "decouple", "extract service", "introduce queue", "switch DB", "rewrite", "cold start".</item>
       </list>
     </when-to-use>
 
@@ -46,8 +49,23 @@
       <list>
         <item>As a substitute for context-specific analysis — these tables are starting points, not verdicts. Your system's actual trade-offs may differ.</item>
         <item>When a single quality attribute clearly dominates all others for your use case — simplify instead of balancing a full ISO 25010 analysis.</item>
+        <item>For pure code-style or formatting decisions with no runtime quality impact.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <p>Apply the following ordered steps. Do not skip steps; each produces an artifact consumed by the next.</p>
+      <step>Identify the decision under analysis. Write a single-sentence statement: "We must decide whether to X instead of Y." Capture context: team size, traffic, compliance, time horizon.</step>
+      <step>Enumerate the affected ISO 25010 characteristics from the eight listed in the iso-25010 section. Mark each as Primary (must improve), Secondary (acceptable to maintain), or Sacrificial (acceptable to degrade).</step>
+      <step>Cross-reference the common-conflicts list. For every Primary attribute, list which Secondary or Sacrificial attributes it typically degrades and by approximately how much (qualitative: small/medium/large, or quantitative if data exists).</step>
+      <step>If the decision involves architecture style, fill the architecture-style scoring table from the template using the architecture-style-tradeoffs section as inputs.</step>
+      <step>If the decision involves a database or distributed data store, classify each candidate as CP, AP, or hybrid using the cap-theorem section. Reject AP for financial ledgers and CP for high-write social feeds without explicit justification.</step>
+      <step>If the decision involves service communication, classify each option as Sync, Async, or Event-driven and copy the impact row from the communication-pattern-tradeoffs example into the ADR.</step>
+      <step>Run the llm-prompt below against the populated context to surface trade-offs the human reviewer may have missed. Treat its output as a critique, not a verdict.</step>
+      <step>Fill the consequences-template with explicit gain/loss pairs. Every Primary attribute must have at least one Sacrificial counterpart named.</step>
+      <step>Run the verify checklist. If any item fails, return to the relevant step.</step>
+      <step>Commit the ADR. Re-link from spec.md, design.md, or implementation-plan.md depending on SDD lifecycle stage.</step>
+    </how-to>
 
     <section name="iso-25010">
       <p>ISO 25010 Product Quality Model defines eight top-level quality characteristics, each with sub-characteristics:</p>
@@ -165,6 +183,91 @@ Implementation requirements from trade-off:
       </example>
     </section>
 
+    <section name="checklist-tradeoff-analysis">
+      <p>Run this checklist for every non-trivial architectural decision. Each item must be ticked or explicitly waived in the ADR.</p>
+      <checklist>
+        <check>Decision statement is a single sentence that names exactly one alternative being chosen and one being rejected.</check>
+        <check>Affected ISO 25010 characteristics are tagged Primary / Secondary / Sacrificial.</check>
+        <check>For every Primary attribute, at least one Sacrificial attribute is named (no "everything wins" claims).</check>
+        <check>If distributed data is involved, CAP class (CP / AP / Hybrid) is stated for every storage component.</check>
+        <check>If services communicate, every link is classified as Sync / Async / Event-driven with reason.</check>
+        <check>Quantitative thresholds are present where measurable (p95 latency, RPO, RTO, error budget, $/month).</check>
+        <check>Mitigations are listed for each Sacrificial attribute (e.g. "eventual consistency mitigated by idempotent handlers + DLQ").</check>
+        <check>An exit criterion is defined: under what observable condition would we revisit and possibly reverse the decision.</check>
+        <check>The decision is recorded as an ADR file under the project's adr/ directory and linked from spec.md or design.md.</check>
+        <check>The "Consequences" section enumerates explicit gain/loss pairs as required by the rule in common-conflicts.</check>
+      </checklist>
+    </section>
+
+    <section name="commands">
+      <p>Concrete commands the agent can execute to support trade-off analysis. Substitute project paths as needed.</p>
+      <commands>
+        <command name="list-existing-adrs">find . -type f \( -path "*/adr/*.md" -o -path "*/adrs/*.md" -o -path "*/decisions/*.md" \) | sort</command>
+        <command name="grep-quality-attributes">grep -RInE "scalab|availab|consisten|latenc|throughput|maintainab|portabil|secur" --include="*.md" docs/ adr/ 2>/dev/null</command>
+        <command name="new-adr-from-template">cp templates/adr-tradeoff-template.md adr/ADR-$(date +%Y%m%d)-SLUG.md</command>
+        <command name="lint-adr-has-consequences">grep -L "## Consequences" adr/*.md || echo "all ADRs contain Consequences"</command>
+        <command name="lint-adr-mentions-cap">grep -RIL "CP\|AP\|CAP" adr/*.md | xargs -I{} echo "MISSING CAP classification: {}"</command>
+        <command name="check-tradeoff-pairs">grep -E "Get:|Lose:|Gain:|Sacrifice:" adr/*.md | sort | uniq -c</command>
+      </commands>
+    </section>
+
+    <section name="adr-template">
+      <p>Copy this verbatim into a new ADR file and fill the placeholders. The headings are mandatory.</p>
+      <template path="templates/adr-tradeoff-template.md" purpose="ADR with explicit quality attribute trade-offs"/>
+      <code lang="markdown"><![CDATA[# ADR-NNNN: <decision title>
+
+Status: Proposed | Accepted | Superseded by ADR-MMMM
+Date: YYYY-MM-DD
+Deciders: <names or roles>
+
+## Context
+<1-3 paragraphs: business goal, system state, forcing functions, constraints (team size, traffic, compliance, deadline)>
+
+## Decision
+We will <chosen option> instead of <rejected option(s)>.
+
+## Quality Attribute Impact (ISO 25010)
+| Attribute              | Role        | Direction | Magnitude | Notes / Quantitative target          |
+|------------------------|-------------|-----------|-----------|--------------------------------------|
+| Performance Efficiency | Primary     | improves  | medium    | p95 < 200 ms at 1k RPS               |
+| Reliability            | Primary     | improves  | large     | 99.95% monthly availability          |
+| Maintainability        | Sacrificial | degrades  | medium    | +1 service to operate                |
+| Security               | Secondary   | unchanged | -         | No new exposed surface               |
+| Portability            | Sacrificial | degrades  | small     | Couples to broker X                  |
+
+## CAP Classification (if applicable)
+- Storage A: CP (PostgreSQL primary)  — required for ledger correctness
+- Storage B: AP (Redis cache)         — staleness ≤ 30s acceptable
+
+## Communication Patterns
+- Edge → API: Sync REST  (low complexity, browser compatible)
+- API → Worker: Async Kafka (decoupling, resilience to spikes)
+
+## Considered Alternatives
+1. <alt 1> — rejected because <quality attribute impact>.
+2. <alt 2> — rejected because <quality attribute impact>.
+
+## Consequences
+Gain:
+- <gain 1 tied to a Primary attribute>
+- <gain 2>
+
+Lose:
+- <loss 1 tied to a Sacrificial attribute>
+- <loss 2>
+
+Mitigations:
+- <mitigation for each loss>
+
+## Exit Criterion
+Revisit this decision when <observable condition>, e.g. "p95 latency > 500ms for 7 consecutive days" or "team size > 25".
+
+## Links
+- spec.md#requirement-id
+- design.md#component-id
+- runbook.md#component-id]]></code>
+    </section>
+
     <section name="llm-prompt">
       <prompt purpose="quality attribute trade-off analysis">
 <![CDATA[Analyze quality attribute trade-offs for [architectural decision].
@@ -186,6 +289,63 @@ Focus especially on:
 
 Conclude with: Is this trade-off profile acceptable for a [type of system]?]]>
       </prompt>
+
+      <prompt purpose="adr critique against trade-off rules">
+<![CDATA[You are a software architect reviewing the ADR pasted below.
+Apply the trade-off-quality-attributes methodology strictly.
+
+Check and report PASS/FAIL for each item:
+1. Decision statement names one chosen and one rejected option.
+2. ISO 25010 attributes are tagged Primary / Secondary / Sacrificial.
+3. Every Primary attribute has at least one named Sacrificial counterpart.
+4. CAP classification (CP / AP / Hybrid) is stated for any distributed storage.
+5. Each service-to-service link is labeled Sync / Async / Event-driven.
+6. Quantitative thresholds (p95, RPO, RTO, error budget, $/mo) appear where measurable.
+7. Mitigations are listed for every Sacrificial attribute.
+8. An exit criterion (reversal condition) is present.
+9. Consequences section enumerates explicit Gain/Lose pairs.
+
+For every FAIL, propose the smallest concrete edit that fixes it.
+
+ADR:
+<<<
+[paste ADR markdown here]
+>>>]]>
+      </prompt>
+    </section>
+
+    <section name="verify">
+      <p>Apply this verify procedure before marking the trade-off analysis as done.</p>
+      <verify>
+        <step>Open the ADR. Confirm headings: Context, Decision, Quality Attribute Impact, Considered Alternatives, Consequences, Exit Criterion. Missing heading → fix.</step>
+        <step>Run grep -E "Gain:|Lose:" &lt;adr-file&gt; — both substrings must appear at least once. If not, the rule in common-conflicts is violated; rewrite Consequences.</step>
+        <step>For every Primary row in the Quality Attribute Impact table, find at least one Sacrificial row in the same table. If none, ask: "What am I really sacrificing?" and add the missing row.</step>
+        <step>For each storage component, confirm a CAP label exists. If missing, add CP/AP/Hybrid + one-line justification.</step>
+        <step>For each service link, confirm Sync/Async/Event-driven label and one-line reason.</step>
+        <step>Run the adr-critique LLM prompt above; resolve every FAIL.</step>
+        <step>Confirm the exit criterion is observable (a metric, threshold, or event), not subjective ("when it feels slow" → not acceptable).</step>
+        <step>Link the ADR from spec.md, design.md, or implementation-plan.md depending on SDD lifecycle stage; commit the ADR and the link in the same change.</step>
+      </verify>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>"Everything wins" ADRs that claim a decision improves all quality attributes with no sacrifice.</description>
+        <reason>Hidden sacrifices surface as production incidents the team did not anticipate. Force the author to name a Sacrificial attribute.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Choosing AP storage for a financial ledger to "stay available".</description>
+        <reason>Eventual consistency on money-movement causes data loss on partition recovery. Use CP and a queue for back-pressure instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adopting microservices for a 5-engineer team to "scale later".</description>
+        <reason>Operational overhead degrades Maintainability and team velocity before any scale benefit materializes. Start with a Modular Monolith.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using full async/event-driven communication everywhere by default.</description>
+        <reason>Eventual consistency and complex tracing impose a Maintainability tax that is unjustified for low-traffic synchronous flows.</reason>
+      </antipattern>
+      <warning>Trade-off tables are reference points, not verdicts. A wrong default applied without context is worse than no default at all.</warning>
     </section>
 
     <see-also>
