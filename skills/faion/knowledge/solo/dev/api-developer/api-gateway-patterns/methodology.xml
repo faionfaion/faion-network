@@ -4,24 +4,194 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>api-developer</domain>
-    <summary>Single ingress handling routing, TLS, auth, rate limiting, CORS, and observability for multi-service backends via declarative GitOps config, stateless design, and per-route timeouts.</summary>
-    <tags><tag>api-gateway</tag><tag>routing</tag><tag>microservices</tag><tag>kong</tag><tag>nginx</tag></tags>
+    <summary>Single ingress for routing, TLS, auth, rate-limit, CORS, observability across services. GitOps-driven, stateless, per-route timeouts, Redis-backed counters.</summary>
+    <tags><tag>api-gateway</tag><tag>routing</tag><tag>microservices</tag><tag>kong</tag><tag>nginx</tag><tag>bff</tag><tag>rate-limiting</tag><tag>jwt</tag></tags>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
+    <updated>2026-05-01</updated>
+    <tools><tool>claude-code</tool></tools>
+    <languages><language>python</language><language>typescript</language><language>go</language></languages>
+    <frameworks><framework>kong</framework><framework>nginx</framework><framework>envoy</framework></frameworks>
   </metadata>
   <content>
     <title>API Gateway Patterns</title>
-    <summary>Centralizing cross-cutting concerns at the gateway removes the need for every service to reimplement JWT validation, rate limits, and CORS headers. GitOps of gateway config (decK sync, terraform apply) prevents config drift that causes silent production incidents. Stateless gateways scale horizontally; stateful ones create sticky-session failures.</summary>
-    <why><p>An API gateway is a single ingress that handles routing, TLS termination, authentication, rate limiting, CORS, request transformation, and observability for multiple backend services. Centralizing cross-cutting concerns at the gateway removes the need for every service to reimplement JWT validation, rate limits, and CORS headers. GitOps of gateway config (decK sync, terraform apply) prevents config drift that causes silent production incidents. Stateless gateways scale horizontally; stateful ones create sticky-session failures.</p></why>
-    <when-to-use><list><item>Multi-service backends needing one stable public URL regardless of internal topology</item><item>Mobile + Web + Partner clients with different payload shapes (BFF pattern)</item><item>Enforcing org-wide policies (mTLS, JWT, audit logging) without per-service duplication</item><item>Strangler-fig migrations routing legacy paths to old service, new paths to new service</item></list></when-to-use>
-    <when-not-to-use><list><item>Single-service apps where Nginx + app middleware suffice — full gateway is operational overhead</item><item>Latency-critical hot paths (real-time bidding, HFT) — prefer sidecar/mesh direct path</item><item>Greenfield prototypes — start with a reverse proxy, add gateway when second service ships</item><item>Pure static asset delivery (CDN handles routing, caching, TLS)</item></list></when-not-to-use>
-    <section name="core-functions"><p>The gateway handles: routing (direct requests to the correct upstream service), load balancing (distribute traffic across service instances with weights), authentication (validate JWT signatures, expiry, audience before proxying), rate limiting (protect services from overload; use Redis-backed counters in multi-replica deployments), CORS (centralized preflight handling so services don't duplicate it), request transformation (inject X-Request-ID, strip downstream Authorization if needed), SSL/TLS termination (handle HTTPS at the edge; re-encrypt to backends for sensitive routes), and observability (emit Prometheus metrics + structured access logs with traceparent propagation).</p><list><item>Routing — direct requests to the correct upstream service</item><item>Load balancing — distribute traffic across service instances with weights</item><item>Authentication — validate JWT signatures, expiry, audience before proxying</item><item>Rate limiting — protect services from overload; use Redis-backed counters in multi-replica deployments</item><item>CORS — centralized preflight handling so services don't duplicate it</item><item>Request transformation — inject X-Request-ID, strip downstream Authorization if needed</item><item>SSL/TLS termination — handle HTTPS at the edge; re-encrypt to backends for sensitive routes</item><item>Observability — emit Prometheus metrics + structured access logs with traceparent propagation</item></list></section>
-    <section name="bff-composition-pattern"><p>In BFF (Backend for Frontend) handlers that fan out to multiple upstream services, use asyncio.gather with per-call timeouts and circuit breakers. Never run upstream calls serially. Serial calls multiply latency: 3 × 500ms = 1500ms. asyncio.gather runs them concurrently; per-call timeout bounds the worst case.</p><rule><statement>In BFF (Backend for Frontend) handlers that fan out to multiple upstream services, use asyncio.gather with per-call timeouts and circuit breakers. Never run upstream calls serially.</statement><rationale>Serial calls multiply latency: 3 × 500ms = 1500ms. asyncio.gather runs them concurrently; per-call timeout bounds the worst case.</rationale></rule></section>
-    <section name="product-selection"><rule><statement>Choose Kong + decK for self-hosted multi-service production workloads. Use Nginx as a simpler gateway for 1–2 services. Use AWS API Gateway only when already in the AWS ecosystem and Lambda/VPC integration is needed.</statement><rationale>Kong has a plugin ecosystem and declarative GitOps via decK. Nginx suffices for simple reverse-proxy use cases without plugin overhead.</rationale></rule></section>
-    <section name="configuration-discipline"><rule><statement>All gateway config must be declarative and version-controlled in the repo. No UI-driven edits. Apply via decK sync, terraform apply, or serverless deploy.</statement><rationale>Manual UI edits diverge from git state; the next deploy overwrites them silently, causing incidents.</rationale></rule><rule><statement>Never store secrets inline in gateway YAML. Reference vault paths (Kong vault refs, AWS Secrets Manager ARNs, or environment variable refs).</statement><rationale>Inline secrets committed to git are irrevocable; even after removal, git history retains them.</rationale></rule></section>
-    <section name="policy-rules"><p>Every public route must carry: auth plugin (jwt/oauth), rate-limiting (Redis-backed), CORS, X-Request-ID injection, and observability (Prometheus/access log). Gateway validates JWT signature and expiry only. Fine-grained authorization (scope, role, resource ownership) stays in the service. Set explicit connect_timeout, read_timeout, and write_timeout for every upstream route. Gateway timeout must be greater than expected service p99 + jitter.</p><rule><statement>Every public route must carry: auth plugin (jwt/oauth), rate-limiting (Redis-backed), CORS, X-Request-ID injection, and observability (Prometheus/access log).</statement><rationale>Missing rate-limiting on one public route is the DoS entry point attackers find first.</rationale></rule><rule><statement>Gateway validates JWT signature and expiry only. Fine-grained authorization (scope, role, resource ownership) stays in the service.</statement><rationale>Duplicating fine-grained auth in the gateway creates divergent logic that disagreements cause security gaps.</rationale></rule><rule><statement>Set explicit connect_timeout, read_timeout, and write_timeout for every upstream route. Gateway timeout must be greater than expected service p99 + jitter.</statement><rationale>Missing timeouts lead to hung connections and gateway thread starvation under slow upstreams.</rationale></rule></section>
-    <antipattern><description>Rate-limiting plugin configured with in-memory policy in a multi-replica gateway deployment.</description><reason>Each replica tracks its own counter; effective limit = N × configured limit. Always use Redis policy for shared state.</reason></antipattern>
-    <templates><template path="templates/kong.yml" purpose="Kong declarative config: services, routes, JWT + rate-limit + CORS plugins, request-id injection"/><template path="templates/nginx-gateway.conf" purpose="Nginx reverse proxy with upstream weighting, rate limiting, CORS, health check"/><template path="templates/kong-policy-guard.sh" purpose="CI script: fails if any public route is missing auth + rate-limit + CORS plugins"/></templates>
-    <see-also><link href="https://docs.konghq.com/gateway/"/><link href="https://docs.konghq.com/deck/"/><link href="https://docs.aws.amazon.com/apigateway/"/><link href="https://www.envoyproxy.io/docs/envoy/latest/"/><link href="https://nginx.org/en/docs/"/><link href="https://microservices.io/patterns/apigateway.html"/></see-also>
+    <summary>Centralize cross-cutting concerns (TLS, JWT, rate-limit, CORS, observability) at one declarative ingress. GitOps-managed, stateless, Redis-backed limiters, explicit per-route timeouts, BFF fan-out via concurrent calls.</summary>
+    <why><p>An API gateway is a single ingress that handles routing, TLS termination, authentication, rate limiting, CORS, request transformation, and observability for multiple backend services. Centralizing these removes the need for every service to reimplement JWT validation, rate limits, and CORS headers. GitOps of gateway config (decK sync, terraform apply) prevents config drift that causes silent production incidents. Stateless gateways scale horizontally; stateful ones create sticky-session failures. In multi-replica deployments, in-memory rate-limit counters break the contract — each replica counts independently and the effective limit becomes N times the configured value.</p></why>
+    <when-to-use>
+      <list>
+        <item>Multi-service backends needing one stable public URL regardless of internal topology</item>
+        <item>Mobile + Web + Partner clients with different payload shapes (BFF pattern)</item>
+        <item>Enforcing org-wide policies (mTLS, JWT, audit logging) without per-service duplication</item>
+        <item>Strangler-fig migrations routing legacy paths to old service, new paths to new service</item>
+        <item>You need centralized observability (one Prometheus scrape target, one access-log sink) for traffic across many services</item>
+        <item>You are exposing two or more internal services to the public internet and want a uniform TLS + auth surface</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-service apps where Nginx + app middleware suffice — full gateway is operational overhead</item>
+        <item>Latency-critical hot paths (real-time bidding, HFT) — prefer sidecar/mesh direct path</item>
+        <item>Greenfield prototypes — start with a reverse proxy, add gateway when second service ships</item>
+        <item>Pure static asset delivery (CDN handles routing, caching, TLS)</item>
+        <item>Internal service-to-service mesh — use a service mesh (Istio, Linkerd) instead of an ingress gateway</item>
+      </list>
+    </when-not-to-use>
+    <section name="core-functions">
+      <p>The gateway handles the following concerns. Each must be configured for every public route — never partially.</p>
+      <list>
+        <item>Routing — direct requests to the correct upstream service by host + path + method</item>
+        <item>Load balancing — distribute traffic across service instances with weights and health checks</item>
+        <item>Authentication — validate JWT signatures, expiry, audience, issuer before proxying</item>
+        <item>Rate limiting — protect services from overload; use Redis-backed counters in multi-replica deployments</item>
+        <item>CORS — centralized preflight handling so services don't duplicate it</item>
+        <item>Request transformation — inject X-Request-ID, strip downstream Authorization if needed, rewrite paths</item>
+        <item>SSL/TLS termination — handle HTTPS at the edge; re-encrypt to backends for sensitive routes</item>
+        <item>Observability — emit Prometheus metrics + structured access logs with traceparent propagation</item>
+      </list>
+    </section>
+    <section name="bff-composition-pattern">
+      <p>In BFF (Backend for Frontend) handlers that fan out to multiple upstream services, run upstream calls concurrently with per-call timeouts and circuit breakers. Serial calls multiply latency: 3 × 500ms = 1500ms. Concurrent calls bound the worst case to the slowest upstream + jitter.</p>
+      <rule>
+        <statement>BFF handlers MUST fan out concurrently (asyncio.gather, Promise.all, errgroup). Each upstream call MUST have an explicit per-call timeout strictly less than the gateway route timeout.</statement>
+        <rationale>Serial fan-out multiplies p99 latency by N. Missing per-call timeout causes the slowest upstream to block all parallel siblings until the outer timeout fires.</rationale>
+      </rule>
+    </section>
+    <section name="product-selection">
+      <rule>
+        <statement>Choose Kong + decK for self-hosted multi-service production. Use Nginx for 1–2 services. Use AWS API Gateway only when already in AWS and Lambda/VPC integration is needed. Use Envoy when you need fine-grained traffic shaping (mirroring, weighted canary, gRPC transcoding).</statement>
+        <rationale>Kong has a plugin ecosystem and declarative GitOps via decK. Nginx suffices for simple reverse-proxy use cases without plugin overhead. Envoy excels at L7 traffic management but has steeper config complexity.</rationale>
+      </rule>
+    </section>
+    <section name="configuration-discipline">
+      <rule>
+        <statement>All gateway config MUST be declarative and version-controlled in the repo. No UI-driven edits. Apply via decK sync, terraform apply, or serverless deploy in CI only.</statement>
+        <rationale>Manual UI edits diverge from git state; the next deploy overwrites them silently, causing incidents.</rationale>
+      </rule>
+      <rule>
+        <statement>Never store secrets inline in gateway YAML. Reference vault paths (Kong vault refs, AWS Secrets Manager ARNs, or environment variable refs).</statement>
+        <rationale>Inline secrets committed to git are irrevocable; even after removal, git history retains them.</rationale>
+      </rule>
+    </section>
+    <section name="policy-rules">
+      <rule>
+        <statement>Every public route MUST carry: auth plugin (jwt/oauth), rate-limiting (Redis-backed), CORS, X-Request-ID injection, and observability (Prometheus/access log).</statement>
+        <rationale>Missing rate-limiting on one public route is the DoS entry point attackers find first.</rationale>
+      </rule>
+      <rule>
+        <statement>Gateway validates JWT signature, expiry, issuer, and audience only. Fine-grained authorization (scope, role, resource ownership) stays in the service.</statement>
+        <rationale>Duplicating fine-grained auth in the gateway creates divergent logic; disagreements cause security gaps.</rationale>
+      </rule>
+      <rule>
+        <statement>Set explicit connect_timeout, read_timeout, and write_timeout for every upstream route. Gateway timeout MUST be greater than expected service p99 + jitter.</statement>
+        <rationale>Missing timeouts lead to hung connections and gateway worker starvation under slow upstreams.</rationale>
+      </rule>
+    </section>
+    <antipattern>
+      <description>Rate-limiting plugin configured with `policy: local` (in-memory) in a multi-replica gateway deployment.</description>
+      <reason>Each replica tracks its own counter; effective limit = N × configured limit. Always use `policy: redis` for shared state.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Gateway re-implementing fine-grained authorization (resource ownership, RBAC at row level).</description>
+      <reason>The gateway lacks domain knowledge of the resource. Logic duplication drifts from the service and creates security gaps. Keep fine-grained auth in the service.</reason>
+    </antipattern>
+    <antipattern>
+      <description>UI-driven config edits that bypass GitOps.</description>
+      <reason>Next decK sync silently reverts the change. Production behavior diverges from git head, making incident debugging impossible.</reason>
+    </antipattern>
+    <how-to>
+      <step>1. Inventory every public route. List host, path, method, upstream service, expected p99, and auth model. Output → `routes.csv` checked into the repo.</step>
+      <step>2. Pick the gateway product per the selection rule above. Add `kong.yml` (or `nginx-gateway.conf`) under `gateway/` in the repo.</step>
+      <step>3. For every route in `routes.csv`, add: service block, route block, jwt plugin, rate-limiting plugin (`policy: redis`), cors plugin, request-transformer (X-Request-ID), prometheus plugin, file-log/http-log plugin.</step>
+      <step>4. Set explicit `connect_timeout`, `read_timeout`, `write_timeout` for every upstream service. Compute as `service_p99_ms + 1000` (jitter buffer).</step>
+      <step>5. Replace any inline secret with a vault reference (`{vault://my-vault/jwt-secret}` for Kong; `${SECRET}` for Nginx via env). Commit nothing that looks like a real key.</step>
+      <step>6. Add `kong-policy-guard.sh` (or equivalent) to CI. It MUST fail the build if any public route is missing auth, rate-limit, or CORS plugins.</step>
+      <step>7. Validate config locally with `deck file validate` (Kong) or `nginx -t` (Nginx). Diff against current state with `deck diff`. Apply with `deck sync` only from CI.</step>
+      <step>8. Smoke-test each route: 200 with valid JWT, 401 without, 429 after limit exceeded, 504 if upstream times out, OPTIONS preflight succeeds.</step>
+      <step>9. Confirm Prometheus metrics scrape (`/metrics`) returns `kong_http_status`, `kong_latency`, `kong_bandwidth` series for the new route.</step>
+      <step>10. Add a runbook entry mapping each route to its alert (5xx rate, p99 latency, 429 spike) in Grafana/Alertmanager.</step>
+    </how-to>
+    <checklist>
+      <check>routes.csv lists every public route with host, path, method, upstream, p99, auth model</check>
+      <check>Gateway config is one declarative file (kong.yml / nginx-gateway.conf), version-controlled</check>
+      <check>Every public route has: jwt OR oauth2 plugin, rate-limiting (policy=redis), cors, request-transformer adding X-Request-ID, prometheus, structured access log</check>
+      <check>No inline secrets — all references go through vault or environment variables</check>
+      <check>Per-route connect_timeout/read_timeout/write_timeout are set explicitly and greater than service p99</check>
+      <check>Rate-limit plugin uses `policy: redis` (NOT local) and points at a reachable Redis</check>
+      <check>BFF handlers fan out concurrently with per-call timeouts shorter than route timeout</check>
+      <check>CI pipeline runs policy-guard script and fails on any unprotected public route</check>
+      <check>`deck diff` is empty against production after deploy (no drift)</check>
+      <check>Smoke tests cover 200/401/429/504/CORS-preflight for every route</check>
+      <check>Prometheus is scraping gateway `/metrics`; alerts wired for 5xx, p99, 429</check>
+      <check>Gateway pods/replicas are stateless — no on-disk state, restartable without warmup</check>
+      <check>All proto/http2/grpc routes have explicit upstream protocol set (`protocol: grpc` or http2)</check>
+    </checklist>
+    <commands>
+      <command name="install-deck">curl -sL https://github.com/Kong/deck/releases/latest/download/deck_linux_amd64.tar.gz | tar -xz -C /usr/local/bin deck</command>
+      <command name="validate-kong-config">deck file validate --state gateway/kong.yml</command>
+      <command name="diff-against-prod">deck gateway diff --state gateway/kong.yml --kong-addr "$KONG_ADMIN_URL" --headers "Kong-Admin-Token:$KONG_TOKEN"</command>
+      <command name="apply-config">deck gateway sync --state gateway/kong.yml --kong-addr "$KONG_ADMIN_URL" --headers "Kong-Admin-Token:$KONG_TOKEN"</command>
+      <command name="dump-current-prod-state">deck gateway dump --kong-addr "$KONG_ADMIN_URL" --headers "Kong-Admin-Token:$KONG_TOKEN" -o gateway/kong.current.yml</command>
+      <command name="lint-nginx-config">nginx -t -c $(pwd)/gateway/nginx-gateway.conf</command>
+      <command name="reload-nginx">nginx -s reload</command>
+      <command name="run-policy-guard">bash templates/kong-policy-guard.sh gateway/kong.yml</command>
+      <command name="smoke-401">curl -sS -o /dev/null -w '%{http_code}\n' https://api.example.com/v1/users</command>
+      <command name="smoke-200">curl -sS -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $JWT" https://api.example.com/v1/users</command>
+      <command name="smoke-rate-limit">for i in $(seq 1 200); do curl -sS -o /dev/null -w '%{http_code} ' -H "Authorization: Bearer $JWT" https://api.example.com/v1/users; done | tr ' ' '\n' | sort | uniq -c</command>
+      <command name="smoke-cors-preflight">curl -sS -i -X OPTIONS -H 'Origin: https://app.example.com' -H 'Access-Control-Request-Method: GET' https://api.example.com/v1/users</command>
+      <command name="check-prometheus-metrics">curl -sS https://gateway.example.com/metrics | grep -E '^kong_http_status|^kong_latency'</command>
+    </commands>
+    <templates>
+      <template path="templates/kong.yml" purpose="Kong declarative config: services, routes, JWT + rate-limit (redis) + CORS + request-id + prometheus plugins"/>
+      <template path="templates/nginx-gateway.conf" purpose="Nginx reverse proxy with upstream weighting, limit_req_zone, CORS, health check, structured logging"/>
+      <template path="templates/kong-policy-guard.sh" purpose="CI script: parses kong.yml and fails if any route under /public/ is missing jwt + rate-limit + cors plugins"/>
+    </templates>
+    <prompt purpose="agent-instruction-add-new-route"><![CDATA[
+ROLE: API gateway operator following api-gateway-patterns methodology.
+
+INPUT:
+  - method: <GET|POST|PUT|PATCH|DELETE>
+  - host: <api.example.com>
+  - path: </v1/...>
+  - upstream_service: <name + url>
+  - service_p99_ms: <number>
+  - auth_model: <jwt|oauth2|public-readonly>
+
+TASK:
+1. Append a service+route block to gateway/kong.yml.
+2. Attach plugins in this order (mandatory): jwt OR oauth2; rate-limiting (policy=redis, redis_host from env); cors; request-transformer (add X-Request-ID); prometheus; file-log.
+3. Set connect_timeout=2000, read_timeout=service_p99_ms+1000, write_timeout=service_p99_ms+1000.
+4. Reference all secrets via {vault://...} — never inline.
+5. Update routes.csv with the new entry.
+6. Add CHANGELOG entry under [Unreleased]: "feat(gateway): add route <method> <path>".
+7. Run `deck file validate` and `bash templates/kong-policy-guard.sh gateway/kong.yml`. Fix and rerun until both pass.
+8. Open PR with title "gateway: add <method> <path>" and the CHANGELOG diff.
+
+OUTPUT (structured):
+{
+  "files_changed": [...],
+  "validation": {"deck_validate": "pass|fail", "policy_guard": "pass|fail"},
+  "smoke_plan": ["curl 200 with JWT", "curl 401 without JWT", "curl 429 after burst", "OPTIONS preflight"]
+}
+    ]]></prompt>
+    <verify>
+      <step>Run `deck file validate --state gateway/kong.yml` — exit code MUST be 0.</step>
+      <step>Run `bash templates/kong-policy-guard.sh gateway/kong.yml` — exit code MUST be 0; script lists no unprotected routes.</step>
+      <step>Run `deck gateway diff` against staging — diff MUST match the intended PR diff exactly (no surprise mutations).</step>
+      <step>Smoke each new/changed route: 200 with valid JWT, 401 without JWT, 429 after exceeding rate-limit window, OPTIONS preflight returns 204 with `Access-Control-Allow-Origin`.</step>
+      <step>Inspect `/metrics` — series `kong_http_status` for the new route with code 200 increments and `kong_latency_bucket` has samples.</step>
+      <step>Tail access logs — every request carries an `X-Request-ID`; logs are JSON; `traceparent` is forwarded to upstream.</step>
+      <step>Trigger an upstream slowdown (e.g., toxiproxy) and confirm gateway returns 504 within `read_timeout + 100ms`, not hangs.</step>
+      <step>Restart any single gateway replica during traffic — error rate MUST stay below 0.1% (proves stateless).</step>
+      <step>After deploy, `deck gateway diff` against production MUST be empty (no drift between git and prod).</step>
+    </verify>
+    <warning>If `deck sync` is ever run from a developer laptop, treat it as a production incident — config bypassed CI review and policy guard. Roll back via `deck sync` from the last green CI build and audit history.</warning>
+    <see-also>
+      <link href="https://docs.konghq.com/gateway/"/>
+      <link href="https://docs.konghq.com/deck/"/>
+      <link href="https://docs.aws.amazon.com/apigateway/"/>
+      <link href="https://www.envoyproxy.io/docs/envoy/latest/"/>
+      <link href="https://nginx.org/en/docs/"/>
+      <link href="https://microservices.io/patterns/apigateway.html"/>
+    </see-also>
   </content>
 </methodology>

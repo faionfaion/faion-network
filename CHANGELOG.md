@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: api-gateway-patterns (sufficient for autonomous agents)
 - Improve methodology: spatial-computing-overview (sufficient for autonomous agents)
 - Improve methodology: methodologies-index (sufficient for autonomous agents)
 - Improve methodology: methodologies-detail (sufficient for autonomous agents)
