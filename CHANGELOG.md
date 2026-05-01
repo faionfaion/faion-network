@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: modern-ba-framework (sufficient for autonomous agents)
 - Improve methodology: ba-strategic-partnership (sufficient for autonomous agents)
 - Improve methodology: business-analyst/ba-trends-summary (sufficient for autonomous agents)
 - Improve methodology: figma-vs-adobe-strategy-2026 (sufficient for autonomous agents)

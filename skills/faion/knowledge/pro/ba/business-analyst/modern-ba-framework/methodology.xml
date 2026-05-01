@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ba</group>
     <domain>business-analyst</domain>
-    <summary>Meta-framework applying BAKOK KAs to modern contexts (agile, AI/ML, cloud, platform, process-mining). Produces ba-approach.json routing per KA with perspective declaration and human sign-off gate.</summary>
+    <summary>Meta-framework routing BABOK KAs to modern delivery (agile, AI/ML, cloud, BPM). Emits ba-approach.json with perspective, KA-to-methodology map, model tiers, and PO sign-off gate.</summary>
     <tags>
       <tag>babok</tag>
       <tag>ba-framework</tag>
@@ -14,6 +14,7 @@
     </tags>
     <difficulty>advanced</difficulty>
     <created>2026-04-27</created>
+    <updated>2026-05-01</updated>
   </metadata>
   <content>
     <title>Modern BA Framework: BABOK for Agile, AI/ML, Cloud, and Platform Delivery</title>
@@ -28,6 +29,7 @@
         <item>Certification-aligned skill assessment: scoring a team against BABOK certifications and SFIA v9.</item>
         <item>Multi-perspective discovery: work spanning Agile + BI + Business Architecture simultaneously.</item>
         <item>Model selection routing: assigning haiku/sonnet/opus per task type (format → haiku, AC → sonnet, gap analysis → opus).</item>
+        <item>Trigger phrases from the user: "design a BA approach", "how should we run BA on this", "modernize our BA process", "set up BA for an AI project", "competency gap analysis".</item>
       </list>
     </when-to-use>
     <when-not-to-use>
@@ -120,6 +122,115 @@
         <item>BPMN / process modeling → opus (architecture and complex modeling decisions).</item>
       </list>
     </section>
+    <how-to>
+      <p>Apply the framework in this exact order. Each step has a defined input, output artifact, and verification anchor.</p>
+      <step>Confirm trigger fits when-to-use. If the task is already scoped to a single KA (e.g. "write acceptance criteria"), STOP and load the matching sibling methodology directly.</step>
+      <step>Resolve feature slug: read repo context for the active feature folder under .aidocs/ or .product/. If none, ask the user for one, then create .aidocs/&lt;feature-slug&gt;/.</step>
+      <step>Run templates/ba-approach-init.sh &lt;feature-slug&gt; to scaffold .aidocs/&lt;feature-slug&gt;/ba-approach.json from templates/ba-approach.json.</step>
+      <step>Gather planner inputs: project-brief (1-paragraph problem statement), stakeholder-list (roles, not names where possible), repo-tree (top 2 levels), existing-tickets (Jira/Linear/GitHub Issues sample of 10).</step>
+      <step>Run the Planner Pass prompt (see prompt block) with model=opus. Constrain output to the JSON schema in section agentic-workflow. Save to .aidocs/&lt;feature-slug&gt;/ba-approach.json.</step>
+      <step>For every INCLUDE'd KA, list at least one sibling methodology slug under skills/faion/knowledge/pro/ba/business-analyst/. If a KA has zero matches, mark it SKIP with rationale instead of leaving it empty.</step>
+      <step>Lock model_routing per task using the table in section model-routing-per-task. No "auto" values.</step>
+      <step>Run the Competency-Gap Pass prompt with team roster + skill self-assessments as input. Save to .aidocs/&lt;feature-slug&gt;/competency-gap.md. Run password-scrubber-agent before persisting if names are present.</step>
+      <step>Validate ba-approach.json with the verify section commands. Fix all issues before requesting sign-off.</step>
+      <step>Request human PO sign-off by writing approval_status="pending" and emitting a one-page summary. WAIT. Do not proceed to execution while approval_status != "approved".</step>
+      <step>On approval, dispatch the executor pass: one subagent per INCLUDE'd KA, loading the chosen sibling methodology files as context.</step>
+      <step>Re-run the Planner Pass on every sprint boundary or whenever stakeholders, perspective, or delivery model changes. Diff old vs new ba-approach.json and surface drift to the PO.</step>
+    </how-to>
+    <checklist>
+      <check>Feature slug exists under .aidocs/ and is kebab-case.</check>
+      <check>ba-approach.json exists at .aidocs/&lt;feature-slug&gt;/ba-approach.json.</check>
+      <check>perspectives[] has 1-3 entries from the closed list (Agile, BI, IT, BizArch, BPM, Data-Product, AI-Product).</check>
+      <check>Each of the six BABOK KAs is present in knowledge_areas with include=true|false.</check>
+      <check>Every include=true KA has at least one entry in methodologies[] and a one-sentence rationale.</check>
+      <check>Every include=false KA has a one-sentence rationale explaining why it is skipped.</check>
+      <check>model_routing maps each task type (format, ac, validate, gap, bpmn) to one of haiku|sonnet|opus — no "auto" or empty values.</check>
+      <check>competencies_needed[] is populated and references the six categories (Analytical, Behavioral, BizKnowledge, Communication, Interaction, ToolsTech).</check>
+      <check>approval_status is one of pending|approved|rejected.</check>
+      <check>JSON parses with jq and matches schema with yq eval validation.</check>
+      <check>No invented IIBA clause numbers or BABOK section IDs without a citation file path.</check>
+      <check>Names of individuals removed from competency-gap.md or run through password-scrubber-agent first.</check>
+      <check>Every methodology slug listed under a KA actually resolves to an existing folder under skills/faion/knowledge/pro/ba/.</check>
+    </checklist>
+    <prompt purpose="planner-pass"><![CDATA[
+You are a BA Planner. Read the inputs below and emit ba-approach.json
+that conforms to the schema in <schema/>. Do not execute BA work — route only.
+
+<inputs>
+  <project-brief>{{ PROJECT_BRIEF }}</project-brief>
+  <stakeholder-list>{{ STAKEHOLDERS }}</stakeholder-list>
+  <repo-tree>{{ REPO_TREE_TWO_LEVELS }}</repo-tree>
+  <existing-tickets>{{ TICKETS_JSON }}</existing-tickets>
+</inputs>
+
+<rules>
+  - Pick 1-3 perspectives from: Agile, BI, IT, BizArch, BPM, Data-Product, AI-Product.
+  - For each of the six BABOK KAs decide INCLUDE or SKIP with a one-sentence rationale.
+  - For each INCLUDE'd KA name 1-2 sibling methodology slugs under
+    skills/faion/knowledge/pro/ba/business-analyst/. Verify each slug exists.
+  - Lock model_routing: format=haiku, ac=sonnet, validate=sonnet, gap=opus, bpmn=opus.
+  - Set approval_status="pending". Halt for human PO sign-off after emitting JSON.
+  - Cite IIBA references by file path only (cached BABOK ToC). Do not invent clause numbers.
+</rules>
+
+<schema>
+{
+  "feature_slug": "<kebab-case>",
+  "perspectives": ["..."],
+  "knowledge_areas": {
+    "ba_planning":            {"include": true, "methodologies": ["..."], "rationale": "..."},
+    "elicitation":            {"include": true, "methodologies": ["..."], "rationale": "..."},
+    "requirements_lifecycle": {"include": true, "methodologies": ["..."], "rationale": "..."},
+    "strategy_analysis":      {"include": true, "methodologies": ["..."], "rationale": "..."},
+    "requirements_analysis":  {"include": true, "methodologies": ["..."], "rationale": "..."},
+    "solution_evaluation":    {"include": true, "methodologies": ["..."], "rationale": "..."}
+  },
+  "competencies_needed": ["analytical","behavioral","biz_knowledge","communication","interaction","tools_tech"],
+  "model_routing": {"format":"haiku","ac":"sonnet","validate":"sonnet","gap":"opus","bpmn":"opus"},
+  "approval_status": "pending",
+  "approver": null,
+  "approved_at": null
+}
+</schema>
+
+Output: a single JSON object, no prose around it.
+]]></prompt>
+    <prompt purpose="competency-gap-pass"><![CDATA[
+You are a BA Competency Auditor. Score the team against BABOK + SFIA v9.
+Inputs: team-roster (roles only), skill-self-assessments, ba-approach.json.
+
+For each competency category (Analytical, Behavioral, BizKnowledge, Communication,
+Interaction, ToolsTech): record Have / Need / Gap on a 0-5 scale.
+Map each Gap to ECBA/CCBA/CBAP/AAC/CBDA/CPOA training tracks AND to an SFIA v9 level.
+Cross-reference PMI-PBA, BCS, Scrum.org product-owner tracks before recommending.
+Emit competency-gap.md with sections: Summary, Per-Category Table, Ranked Recommendations.
+Strip individual names. If names appear in input, refuse and request anonymized roster.
+]]></prompt>
+    <commands>
+      <command name="scaffold">bash templates/ba-approach-init.sh &lt;feature-slug&gt;</command>
+      <command name="parse-check">jq . .aidocs/&lt;feature-slug&gt;/ba-approach.json &gt; /dev/null</command>
+      <command name="schema-keys">jq -e '.feature_slug and .perspectives and .knowledge_areas and .model_routing and .approval_status' .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="all-kas-present">jq -e '.knowledge_areas | keys == ["ba_planning","elicitation","requirements_analysis","requirements_lifecycle","solution_evaluation","strategy_analysis"]' .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="every-included-has-methodology">jq -e '[.knowledge_areas[] | select(.include==true) | (.methodologies | length &gt; 0)] | all' .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="model-routing-locked">jq -e '.model_routing | (.format=="haiku" and .ac=="sonnet" and .validate=="sonnet" and .gap=="opus" and .bpmn=="opus")' .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="perspectives-bounded">jq -e '.perspectives | length &gt; 0 and length &lt;= 3' .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="approval-status-valid">jq -e '.approval_status | IN("pending","approved","rejected")' .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="render-for-review">glow .aidocs/&lt;feature-slug&gt;/ba-approach.md</command>
+      <command name="diff-drift">git diff HEAD~1 -- .aidocs/&lt;feature-slug&gt;/ba-approach.json</command>
+      <command name="resolve-methodology-slugs">jq -r '.knowledge_areas[].methodologies[]?' .aidocs/&lt;feature-slug&gt;/ba-approach.json | xargs -I{} test -d skills/faion/knowledge/pro/ba/business-analyst/{}</command>
+    </commands>
+    <verify>
+      <step>Run command "parse-check" — must exit 0; otherwise the JSON is malformed.</step>
+      <step>Run command "schema-keys" — must exit 0; missing required top-level keys is a hard fail.</step>
+      <step>Run command "all-kas-present" — all six BABOK KAs must be keys in knowledge_areas.</step>
+      <step>Run command "every-included-has-methodology" — no INCLUDE'd KA may have an empty methodologies[].</step>
+      <step>Run command "model-routing-locked" — model_routing values must match the locked table exactly.</step>
+      <step>Run command "perspectives-bounded" — perspectives must contain 1 to 3 entries.</step>
+      <step>Run command "approval-status-valid" — approval_status must be pending|approved|rejected.</step>
+      <step>Run command "resolve-methodology-slugs" — every named slug must resolve to an existing folder.</step>
+      <step>Grep competency-gap.md for typical first/last name patterns; refuse to commit if any match.</step>
+      <step>If approval_status != "approved", refuse to dispatch the executor pass.</step>
+    </verify>
     <section name="antipatterns">
       <antipattern>
         <description>Using the modern BA framework as a deliverable producer rather than a router.</description>
@@ -133,13 +244,21 @@
         <description>Auto-execution from planner to executor without human sign-off on the BA approach.</description>
         <reason>Perspective bias introduced in the planner (e.g., defaulting to Agile for a BPM initiative) propagates through the entire pipeline and produces misaligned artifacts that cannot be corrected without starting over.</reason>
       </antipattern>
+      <antipattern>
+        <description>Cost-driven downgrade of model_routing at runtime (opus → sonnet for gap analysis).</description>
+        <reason>The savings are marginal compared to the rework cost when gap analysis quality degrades. Lock model selection in the JSON and reject runtime overrides.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Persisting competency-gap.md with individual names attached to gap scores.</description>
+        <reason>The artifact contains performance-grade signals about specific people; storing it outside a private repo without scrubbing creates HR and GDPR exposure.</reason>
+      </antipattern>
     </section>
     <section name="where-it-fails-limitations">
-      <p>Not executable. README is descriptive (tables of "modern application"); there are no procedures, inputs, outputs, or acceptance tests. An agent applying it without sibling methodologies produces hand-wavy plans.</p>
-      <p>Empty companion files. checklist.md, templates.md, examples.md, llm-prompts.md are empty in this repo — the agent cannot draw structured prompts/templates from the methodology itself; it must synthesize from siblings.</p>
-      <p>Static perspective list. Five BABOK perspectives miss data-product, AI-product-ownership, and platform-engineering perspectives now common in 2025-2026. The agent must extend the table or risk routing AI/ML work into a stale Agile/BI bucket.</p>
+      <p>Not executable on its own. Without sibling methodologies wired in, the framework is descriptive only and an agent applying it produces hand-wavy plans.</p>
+      <p>Companion files can drift. checklist, templates, examples, and prompts must stay in sync with the JSON schema; treat schema changes as breaking and bump the version field.</p>
+      <p>Static perspective list. Five BABOK perspectives miss data-product, AI-product, and platform-engineering perspectives now common in 2025-2026. The agent must extend the table or risk routing AI/ML work into a stale Agile/BI bucket.</p>
       <p>Certification-to-real-skill drift. ECBA/CCBA/CBAP signal coverage, not capability with LLMs, RAG, prompt design, or evals. Do not treat the cert table as a hiring filter for AI-era BA.</p>
-      <p>No KPI surface. Framework gives no measurable output — easy to declare "modernized" without proving anything changed in cycle time, defect rate, or stakeholder NPS.</p>
+      <p>No KPI surface. Framework gives no measurable output by itself — pair it with an SLO doc that tracks cycle time, defect rate, and stakeholder NPS to prove modernization actually moved a number.</p>
       <p>Recency risk. "BA Standard (2025)" wording will go stale; the agent must check current IIBA publications before quoting versions to humans.</p>
     </section>
     <section name="best-practices">
@@ -148,7 +267,7 @@
         <item>Force perspective declaration up front. Default-Agile routing hides BizArch and BPM concerns until late.</item>
         <item>Persist the approach under .aidocs/feature-slug/ and diff it sprint-over-sprint to catch silent scope shifts.</item>
         <item>Map every INCLUDE'd KA to at least one executable sibling methodology — a KA without a methodology is theatre.</item>
-        <item>Score competencies against SFIA v9 and certification curricula separately; certs ≠ skills.</item>
+        <item>Score competencies against SFIA v9 and certification curricula separately; certs do not equal skills.</item>
         <item>Re-run the planner whenever stakeholders, perspective, or delivery model changes (e.g., team adopts SAFe, or product pivots to data-product).</item>
         <item>Cache IIBA PDFs locally; the agent must not invent BABOK clause numbers under hallucination pressure.</item>
       </list>
@@ -156,7 +275,7 @@
     <section name="agentic-workflow-details">
       <p>Run a planner-style subagent that takes a work brief + repo context and emits a BA Approach JSON. The planner does not execute BA work — it routes. A second pass (executor) loads each chosen sibling methodology (stakeholder-analysis, requirements-validation, etc.) and runs the actual analysis. State lives in .aidocs/feature-slug/ba-approach.md and is re-read on every sprint or milestone for drift detection. Human PO/BA approves the approach before any execution starts; otherwise the agent will self-justify a default plan.</p>
       <p>Recommended subagents: faion-brainstorm (diverge across perspectives before converging), faion-feature-executor (consumes the BA Approach plan and runs each KA's chosen methodology in order with quality gates), faion-sdd-executor-agent (wraps BA approach inside SDD feature so requirements get traced into code), faion-improver (periodic audit of BA Approach drift), General Task subagent (one per KA with KA's sibling methodology files as context).</p>
-      <p>Prompt pattern — Planner pass inputs: project-brief, stakeholder-list, repo-tree, existing-tickets. Pick 1-3 BABOK perspectives (Agile, BI, IT, BizArch, BPM, +Data-Product, +AI-Product). For each KA decide INCLUDE/SKIP with one-sentence rationale. For each INCLUDE'd KA name 1-2 sibling methodologies. Emit JSON to .aidocs/feature-slug/ba-approach.json. Halt for human PO sign-off. Competency-gap pass inputs team roster + skill self-assessments, BA approach JSON. For each competency (Analytical, Behavioral, BizKnowledge, Communication, Interaction, Tools&amp;Tech) score Have / Need / Gap. Map gaps to ECBA/CCBA/CBAP/AAC/CBDA/CPOA training tracks and SFIA v9 levels. Emit competency-gap.md with ranked hiring/training recommendations.</p>
+      <p>Prompt pattern — Planner pass inputs: project-brief, stakeholder-list, repo-tree, existing-tickets. Pick 1-3 BABOK perspectives (Agile, BI, IT, BizArch, BPM, +Data-Product, +AI-Product). For each KA decide INCLUDE/SKIP with one-sentence rationale. For each INCLUDE'd KA name 1-2 sibling methodologies. Emit JSON to .aidocs/feature-slug/ba-approach.json. Halt for human PO sign-off. Competency-gap pass inputs team roster + skill self-assessments, BA approach JSON. For each competency (Analytical, Behavioral, BizKnowledge, Communication, Interaction, ToolsTech) score Have / Need / Gap. Map gaps to ECBA/CCBA/CBAP/AAC/CBDA/CPOA training tracks and SFIA v9 levels. Emit competency-gap.md with ranked hiring/training recommendations.</p>
     </section>
     <section name="cli-tools-and-services">
       <p>CLI tools: iiba-bakok (fetch from IIBA member portal for authoritative BABOK/BA Standard text), acli/jira-cli (pull tickets to feed planner with real project context), gh + gh project (read GitHub Issues/Projects v2 backlog as input), glow/mdcat (render BA Approach markdown for human review), mermaid-cli (render KA dependency/perspective diagrams from generated mermaid), pandoc (convert ba-approach.md to DOCX/PDF for non-technical stakeholders), yq/jq (validate/transform BA Approach JSON in CI), pre-commit (reject commits to .aidocs/feature-slug/ lacking required KA sections), sfia-mapper (map competencies to SFIA v9 levels).</p>
@@ -166,7 +285,7 @@
       <list>
         <item>LLMs over-fit to the Agile perspective. Force a structured perspective-selection step or you'll never see BizArch / BPM picks.</item>
         <item>The model often confabulates IIBA version numbers. Pin a fact-source file (cached BABOK ToC + BA Standard ToC) and require citations.</item>
-        <item>Agent Selection table in README is advisory. Cost regressions happen when the planner downgrades opus → sonnet for "gap analysis"; lock model per task in the JSON.</item>
+        <item>Agent Selection table in README is advisory. Cost regressions happen when the planner downgrades opus to sonnet for "gap analysis"; lock model per task in the JSON.</item>
         <item>Human-in-the-loop checkpoint is mandatory between planner and executor. Auto-execution skips the only place a real PO/BA can correct perspective bias.</item>
         <item>Competency-gap output is sensitive PII when it names individuals. Run password-scrubber-agent and remove names before persisting outside private repos.</item>
         <item>Do not let the agent edit the README's tables; it tends to "modernize" them every run, churning git history. Confine edits to agent-integration.md and .aidocs/feature-slug/.</item>
