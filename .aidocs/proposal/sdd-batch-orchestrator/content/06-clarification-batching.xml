@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-clarification-batching" title="Batching open questions across tickets">
+  <summary>Open questions surfaced by per-ticket analyzers are aggregated, deduplicated, and presented to the user as one coherent batch instead of N fragmented prompts.</summary>
+
+  <section title="Why batch">
+    <rule>
+      <statement>The clarification collector MUST aggregate questions across all analyzers before any `AskUserQuestion` call.</statement>
+      <rationale>Asking the user ten times in a row destroys flow and produces inconsistent answers (the user forgets earlier choices). One coherent batch lets the user see all trade-offs at once and answer in a connected way.</rationale>
+    </rule>
+  </section>
+
+  <section title="Collector workflow">
+    <list>
+      <item>Read every analyzer's open-questions list.</item>
+      <item>Deduplicate — if N tickets ask the same scope question, merge into one.</item>
+      <item>Group by theme: scope, environment, data-vs-code path, hand-off to another team.</item>
+      <item>Order by criticality — blocker questions first; without an answer the orchestrator cannot proceed.</item>
+      <item>Cap each `AskUserQuestion` call to four questions to leave headroom under the system limit; split into multiple sequential calls if needed.</item>
+      <item>Each option must be a concrete labelled choice with a short description, not free-text.</item>
+    </list>
+  </section>
+
+  <section title="What NOT to ask">
+    <antipattern>
+      <description>Asking the user a question whose answer can be derived by reading the codebase or running a small probe.</description>
+      <reason>It signals the orchestrator did not investigate. Investigate first; ask only when investigation cannot resolve the choice.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Asking trivial yes/no questions individually instead of merging similar ones.</description>
+      <reason>The user reads each prompt linearly; many trivial prompts dilute attention from the actually-hard decisions.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Persistence">
+    <p>Answers are written to a per-ticket `clarifications.md` inside that ticket's feature folder. The planner subagent reads this file in its workflow so the human's decisions become part of the SDD record and survive across runs.</p>
+  </section>
+</text>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="07-verify-review-fix-loop" title="Verify-review-fix iteration with hard cap">
+  <summary>After execution merges, the orchestrator runs a bounded loop: build/test verifier → independent reviewer → fix-applier on blockers, repeating until the reviewer returns clean or the iteration cap forces escalation.</summary>
+
+  <section title="Loop steps">
+    <list>
+      <item>VERIFY: build, type-check, lint, unit tests, expected-output existence, smoke checks.</item>
+      <item>VERIFY (e2e): UI / API end-to-end tests when the feature's test plan calls for them.</item>
+      <item>REVIEW: an independent reviewer reads the diff against the spec/design/test-plan and returns a verdict.</item>
+      <item>FIX: if the verdict has blockers, the fix-applier addresses each one, then the loop restarts at VERIFY.</item>
+    </list>
+  </section>
+
+  <section title="Reviewer verdict shape">
+    <list>
+      <item>PASS — proceed to delivery.</item>
+      <item>FAIL-WITH-NITS — only nice-to-have items; orchestrator may accept and proceed.</item>
+      <item>FAIL — at least one blocker; loop continues.</item>
+    </list>
+  </section>
+
+  <section title="Independence">
+    <rule>
+      <statement>The reviewer subagent MUST be a separate spawn from the executor — it should not see the executor's reasoning, only the spec and the diff.</statement>
+      <rationale>An author rarely catches their own structural mistakes. Independence is what makes the review a meaningful check, not a rubber stamp.</rationale>
+    </rule>
+  </section>
+
+  <section title="Termination">
+    <rule>
+      <statement>The verify-review-fix loop MUST terminate at three iterations. After three, the orchestrator stops and asks the user how to proceed.</statement>
+      <rationale>An infinite loop hides a real disagreement between the spec and the implementation. After three rounds, escalation to a human is cheaper than another machine round-trip.</rationale>
+    </rule>
+  </section>
+
+  <section title="Fix-applier scope">
+    <list>
+      <item>Addresses blocker findings only. Nice-to-haves are deferred unless the orchestrator explicitly asks.</item>
+      <item>One commit per logical group (security findings together, code-quality findings together).</item>
+      <item>Must not refactor unrelated code while fixing — scope creep invalidates the review.</item>
+    </list>
+  </section>
+</text>

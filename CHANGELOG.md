@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- docs: add `.aidocs/proposal/sdd-batch-orchestrator/` — abstract description of the SDD batch orchestrator pattern (12 phases, prompt-file convention, wave parallelism, verify-review-fix loop, focused recapture); semantic-XML content + reusable templates (prompt skeleton, playbook skeleton, dispatch message, focused-screenshot.py)
 - Improve methodology: trade-off-quality-attributes (sufficient for autonomous agents)
 - Improve methodology: database-selection (sufficient for autonomous agents)
 - Improve methodology: data-modeling (sufficient for autonomous agents)

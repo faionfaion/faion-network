@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-defaults-constraints" title="Defaults and constraints applied to all subagents">
+  <summary>A small, strict set of defaults applies to every subagent so that no single phase can leak destructive or out-of-band side effects.</summary>
+
+  <section title="Hard prohibitions">
+    <list>
+      <item>No remote `git push` without an explicit user instruction in the run.</item>
+      <item>No skipping git hooks (`--no-verify`, `--no-gpg-sign`). When a hook fails, fix the underlying issue and re-commit.</item>
+      <item>No bulk `git add -A` / `git add .` — stage explicit paths. Bulk staging silently picks up local-only state and secrets.</item>
+      <item>No commits to local-only files (preview data, dev toggles, environment overrides) unless the feature spec explicitly requires it.</item>
+      <item>No destructive operations against shared environments (DB writes, queue triggers, schema changes) without explicit user authorization.</item>
+    </list>
+  </section>
+
+  <section title="Required positives">
+    <list>
+      <item>Move the feature folder through the SDD lifecycle: `todo/ → in-progress/ → done/`.</item>
+      <item>Move each task file through the same lifecycle inside the feature folder.</item>
+      <item>Update an append-only release notes / changelog file per commit when the project requires one (pre-commit hook usually enforces this).</item>
+      <item>Use a 50-character commit-title convention with a stable prefix shape (`<ticket-id>: <short>` or `<type>: <short>`). The exact convention is documented in `reference/git-conventions.md`.</item>
+    </list>
+  </section>
+
+  <section title="Sensitive operations require confirmation">
+    <p>Operations that change shared state must round-trip through the user before execution. The orchestrator confirms via the `AskUserQuestion` primitive; the deployer subagent additionally verifies a confirmation token that the orchestrator threads through.</p>
+    <list>
+      <item>Pushing any branch to a remote.</item>
+      <item>Deploying artifacts to any non-local environment.</item>
+      <item>Running data-mutating jobs (DAG triggers, reimports, batch updates).</item>
+      <item>Updating tracker statuses to states that imply downstream notifications.</item>
+    </list>
+  </section>
+
+  <section title="Environment disambiguation">
+    <rule>
+      <statement>If a target environment label is ambiguous (e.g., the user says "qa" but two qa flavours exist), the orchestrator MUST confirm the exact target with `AskUserQuestion` before any deploy or destructive op.</statement>
+      <rationale>Wrong-environment deploys are silent until they cause incidents. A two-second confirmation is always cheaper than a rollback.</rationale>
+    </rule>
+  </section>
+</text>

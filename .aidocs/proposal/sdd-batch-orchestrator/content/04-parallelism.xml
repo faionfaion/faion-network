@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-parallelism" title="Wave parallelism and worktree isolation">
+  <summary>The orchestrator groups tickets into execution waves based on file overlap, and runs each wave in isolated git worktrees so concurrent edits never collide on the main working tree.</summary>
+
+  <section title="Wave admission rules">
+    <p>Two tickets may run in the same wave if any of the following holds:</p>
+    <list>
+      <item>They live in different repositories.</item>
+      <item>They live in the same repository but touch disjoint files.</item>
+      <item>They live in the same repository and same file, but at non-overlapping line ranges, AND the orchestrator accepts a possible rebase between them.</item>
+    </list>
+    <p>Otherwise the tickets are placed in sequential waves. When in doubt, default to a separate worktree per ticket.</p>
+  </section>
+
+  <section title="Worktree pattern">
+    <rule>
+      <statement>Every parallel executor subagent works inside its own `git worktree add <isolated path> -b <feature branch> <default branch>` and removes the worktree after merging back.</statement>
+      <rationale>The main working tree often carries uncommitted local-only state (preview data, dev toggles). Concurrent agents touching it would corrupt each other. Worktrees give each agent a clean, branch-scoped checkout sharing the same `.git/` for cheap branching.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+git -C <repo> worktree add /tmp/wt-<ticket-id> -b feature-<ticket-id>-<slug> <default-branch>
+cd /tmp/wt-<ticket-id>
+# work, commit on feature branch
+cd <repo> && git checkout <default-branch> && git merge feature-<ticket-id>-<slug> --no-edit
+git worktree remove /tmp/wt-<ticket-id>
+git branch -d feature-<ticket-id>-<slug>
+]]></code>
+    </example>
+  </section>
+
+  <section title="Conflict handling">
+    <rule>
+      <statement>An executor that hits a merge or rebase conflict MUST stop, list conflict files plus both sides' intent, and return control to the orchestrator. The resolver subagent is then dispatched.</statement>
+      <rationale>Auto-resolving with `--ours` / `--theirs` silently destroys one side. Conflict resolution is its own task with its own prompt file, not a side effect of execution.</rationale>
+    </rule>
+  </section>
+
+  <section title="Resolver behaviour">
+    <list>
+      <item>Reads the feature spec/design to understand the current change's intent.</item>
+      <item>Reads `git log` and `git show` for the conflicting file to understand the other side's intent.</item>
+      <item>Combines both intents at the line level, with a documented decision per file.</item>
+      <item>Special-cases append-only files (release notes, changelogs, indexes) by keeping entries from both sides under the same heading.</item>
+    </list>
+  </section>
+</text>

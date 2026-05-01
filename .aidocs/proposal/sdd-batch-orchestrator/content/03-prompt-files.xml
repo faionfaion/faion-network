@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-prompt-files" title="Subagent prompt file structure">
+  <summary>Every prompt file under `prompts/` follows the same shape so the orchestrator can dispatch subagents uniformly and the user can audit prompts in version control.</summary>
+
+  <section title="Required sections">
+    <list>
+      <item>Title and one-paragraph mission statement.</item>
+      <item>`Inputs` — the parameter block the orchestrator must pass.</item>
+      <item>`Workflow` — numbered steps, concrete enough to execute without further clarification.</item>
+      <item>`Constraints` — explicit do-not list (no push, no destructive writes, no out-of-scope edits).</item>
+      <item>`Output` — what the subagent returns to the orchestrator (report shape, files written, exit codes).</item>
+      <item>`Done condition` — observable check that lets the orchestrator decide success vs failure.</item>
+    </list>
+    <reference path="templates/prompt-skeleton.md">Skeleton in the exact required shape.</reference>
+  </section>
+
+  <section title="Spawn message format">
+    <p>The orchestrator's spawn message is small: it tells the subagent which file to read and supplies the per-run parameters. The subagent reads the file with its own Read tool — no inline instruction text.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Read <abs path>/prompts/05-task-executor.md and execute it with these inputs:
+
+  feature_folder: <abs path>/<sdd>/features/todo/<slug>/
+  repo_path:      <abs path>/<repo>
+  default_branch: <branch>
+  worktree_root:  /tmp/wt-<ticket-id>
+]]></code>
+    </example>
+    <reference path="templates/orchestrator-dispatch.txt">Reusable dispatch-message template.</reference>
+  </section>
+
+  <section title="Self-containment rule">
+    <rule>
+      <statement>A prompt file MUST NOT depend on conversation context outside its `Inputs` block. Every fact the subagent needs is either inline, in an explicitly referenced file, or computable from the inputs.</statement>
+      <rationale>The subagent has no access to the parent transcript. Any implicit dependency is silent corruption waiting to happen.</rationale>
+    </rule>
+  </section>
+
+  <section title="Idempotency where reasonable">
+    <p>Read-only subagents (analyzer, reviewer, verifier) MUST be safely re-runnable. Write-side subagents (executor, fix-applier, deployer) are not idempotent and MUST detect and refuse a partial-state re-run rather than silently double-applying.</p>
+  </section>
+</text>
