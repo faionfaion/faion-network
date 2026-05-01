@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>infra</group>
     <domain>cicd-engineer</domain>
-    <summary>FinOps cultural practice that brings financial accountability to cloud spending via cross-functional INFORM → OPTIMIZE → OPERATE phases; market context, team structure, and tool landscape.</summary>
+    <summary>FinOps cultural practice for cloud financial accountability via INFORM, OPTIMIZE, OPERATE phases. Concrete triggers, checklists, commands, templates.</summary>
     <tags>
       <tag>finops</tag>
       <tag>cloud-cost</tag>
@@ -15,6 +15,7 @@
     <category>finops</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-27</created>
+    <updated>2026-05-01</updated>
     <related>
       <ref slug="finops-cost-visibility"/>
       <ref slug="finops-governance"/>
@@ -41,6 +42,8 @@
         <item>Pre-IPO or due-diligence phase requiring credible unit economics ($/customer, $/transaction, $/inference).</item>
         <item>Reserved Instance or Savings Plan renewal approaching — need data-driven commitment sizing.</item>
         <item>Kubernetes cluster shared across teams where pods are unaccounted.</item>
+        <item>CFO or board flagged cloud cost as a top-3 P&amp;L concern.</item>
+        <item>Untagged spend exceeds 20% of bill — allocation impossible without remediation.</item>
       </list>
     </when-to-use>
 
@@ -56,32 +59,94 @@
     <section name="market-context">
       <p>Market context (2025-2026):</p>
       <list>
-        <item>Annual cloud spending: $723.4B (2025)</item>
-        <item>Average waste: 32% of budget</item>
-        <item>Budget overrun: 17% average</item>
-        <item>FinOps adoption growth: 46% YoY</item>
-        <item>Enterprises with FinOps teams: 70%</item>
-        <item>Organizations "highly efficient": only 23%</item>
+        <item>Annual cloud spending: $723.4B (2025).</item>
+        <item>Average waste: 32% of budget.</item>
+        <item>Budget overrun: 17% average.</item>
+        <item>FinOps adoption growth: 46% YoY.</item>
+        <item>Enterprises with FinOps teams: 70%.</item>
+        <item>Organizations "highly efficient": only 23%.</item>
+        <item>FOCUS specification (FinOps Open Cost &amp; Usage Specification) v1.1 became the de-facto billing schema in 2025; AWS, Azure, GCP, OCI all export FOCUS-compliant CUR.</item>
       </list>
     </section>
 
     <section name="phases">
-      <p>The FinOps framework operates in three sequential but overlapping phases:</p>
+      <p>The FinOps framework operates in three sequential but overlapping phases. Always sequence INFORM → OPTIMIZE → OPERATE; skipping INFORM means optimizing blind.</p>
 
       <rule>
-        <statement>Phase 1 — INFORM: Create visibility into cloud spending through billing data ingestion, resource tagging and cost allocation, real-time dashboards, and showback/chargeback reports. Success criterion: 95%+ allocation accuracy, all stakeholders see costs in real-time.</statement>
+        <statement>Phase 1 — INFORM: ingest billing data (CUR/FOCUS export), enforce resource tagging with policy-as-code, build real-time dashboards, ship showback reports per team. Exit gate: 95%+ tag-allocation accuracy and every team lead sees their weekly spend.</statement>
         <rationale>Without visibility, optimization is guesswork. Tagging hygiene is the foundation; without 95%+ tag coverage FinOps reports are estimates dressed as facts.</rationale>
       </rule>
 
       <rule>
-        <statement>Phase 2 — OPTIMIZE: Improve efficiency through rightsizing compute instances, eliminating idle resources, commitment discounts (Reserved Instances, Savings Plans), storage lifecycle optimization, and spot instance utilization. Target: 20-30% measurable cost reduction.</statement>
+        <statement>Phase 2 — OPTIMIZE: rightsize compute (Densify/Compute Optimizer), kill idle resources (CloudCustodian), commit to savings (RIs/SPs at 70-80% coverage), tier storage with lifecycle policies, run non-critical workloads on spot. Exit gate: 20-30% measurable cost reduction within 90 days.</statement>
         <rationale>Optimization without visibility produces waste: teams optimize the wrong resources or over-commit on reservations. Always sequence INFORM before OPTIMIZE.</rationale>
       </rule>
 
       <rule>
-        <statement>Phase 3 — OPERATE: Establish continuous improvement through automated policies and guardrails, budget alerts and anomaly detection, cost metrics in CI/CD pipelines, regular FinOps reviews, and cost-aware architecture decisions.</statement>
+        <statement>Phase 3 — OPERATE: codify guardrails (Service Control Policies, OPA), wire anomaly detection (Cost Explorer Anomalies, CloudZero), gate IaC PRs with Infracost, run weekly anomaly review and monthly cost review. Exit gate: zero untagged resources merge to main, anomaly MTTR &lt; 24h.</statement>
         <rationale>One-time optimization degrades over time as teams ship new workloads. Governance automates the feedback loop so cost hygiene is self-sustaining.</rationale>
       </rule>
+    </section>
+
+    <section name="how-to-apply">
+      <how-to>
+        <step>Step 0 — Confirm scope. Pull last 90 days of consolidated billing. If monthly run-rate &lt; $5k and growth &lt; 20% MoM, stop and revisit in 6 months. Otherwise continue.</step>
+        <step>Step 1 — Stand up data plane. Enable FOCUS-compliant Cost &amp; Usage Reports to S3/GCS/Azure storage. Wire to a BigQuery / Athena / Snowflake table partitioned by date. Verify rows for the last 7 days exist.</step>
+        <step>Step 2 — Define tag taxonomy. Mandate exactly five tags: env, team, service, cost-center, owner. Document allowed values in a `tags.yaml`. Reject all other shapes.</step>
+        <step>Step 3 — Backfill tags. Generate an untagged-resource report; assign to resource owners with a 14-day deadline. Track coverage daily until ≥95%.</step>
+        <step>Step 4 — Publish first showback. Build per-team dashboards (cost, top-5 services, trend vs last month). Email weekly. No chargeback yet — trust first.</step>
+        <step>Step 5 — Run the first optimization sprint. Pick the top-3 spenders; for each: rightsize, terminate idle, evaluate commitment coverage. Target a 10% reduction in week one.</step>
+        <step>Step 6 — Form the FinOps team. Engineering lead + Finance partner + Product PM + executive sponsor. Schedule weekly 30-min sync, monthly 60-min review, quarterly commitment council.</step>
+        <step>Step 7 — Codify guardrails. Add Infracost to all IaC PRs. Add OPA policies to deny untagged resources. Add budget alerts at 50/80/100/120% of monthly forecast.</step>
+        <step>Step 8 — Move to chargeback (only when teams trust the data). Map cost-centers to GL codes, run a parallel month, then flip the switch.</step>
+        <step>Step 9 — Define unit economics. Pick one north-star metric (cost per active user, cost per 1k API calls, cost per inference). Publish weekly.</step>
+        <step>Step 10 — Continuous improve. Quarterly: review commitment coverage, retire stale tools, refresh training, update tag taxonomy, audit anomaly MTTR.</step>
+      </how-to>
+    </section>
+
+    <section name="checklist-inform">
+      <checklist>
+        <check>FOCUS-format CUR/billing export enabled and landing in object storage daily.</check>
+        <check>Billing data queryable in a warehouse (Athena/BigQuery/Snowflake).</check>
+        <check>Tag taxonomy documented (env, team, service, cost-center, owner) with allowed values.</check>
+        <check>Tag-policy-as-code deployed (AWS Tag Policies, Azure Policy, GCP Org Policy).</check>
+        <check>Untagged-resource report runs daily and sends to owners.</check>
+        <check>Tag coverage ≥95% measured by cost (not just resource count).</check>
+        <check>Per-team dashboard exists and is read by the team lead each week.</check>
+        <check>Showback email shipped weekly for at least 4 consecutive weeks.</check>
+        <check>Top-10 cost SKUs identified per team.</check>
+        <check>Budget alerts wired at 50/80/100/120% with explicit owners.</check>
+      </checklist>
+    </section>
+
+    <section name="checklist-optimize">
+      <checklist>
+        <check>Rightsizing recommendations pulled (AWS Compute Optimizer / Azure Advisor / GCP Recommender).</check>
+        <check>Idle-resource scan run (unattached EBS, idle ELBs, stopped-but-billed RDS, orphan IPs).</check>
+        <check>Non-prod auto-stop schedule deployed (nights + weekends).</check>
+        <check>Commitment coverage ≥70% on steady-state compute (RI/SP/CUD).</check>
+        <check>Storage lifecycle policies move cold data to IA/Glacier/Archive after 30/90 days.</check>
+        <check>Spot/preemptible used for batch, dev, CI, stateless web tier where possible.</check>
+        <check>Kubernetes: HPA + VPA + Cluster Autoscaler / Karpenter enabled.</check>
+        <check>Egress fees inspected; cross-region/cross-AZ traffic minimized.</check>
+        <check>NAT gateway alternatives evaluated (VPC endpoints for S3/DynamoDB).</check>
+        <check>Database tier optimized (Aurora I/O-Optimized vs Standard, Reserved capacity, read-replica fan-out).</check>
+      </checklist>
+    </section>
+
+    <section name="checklist-operate">
+      <checklist>
+        <check>Anomaly detection enabled with Slack/email alerts &lt; 30 min lag.</check>
+        <check>Anomaly MTTR (mean time to resolve / explain) &lt; 24h.</check>
+        <check>Infracost (or equivalent) gates every IaC PR with cost diff comment.</check>
+        <check>OPA / Sentinel / Service Control Policies block untagged or oversize resources.</check>
+        <check>Monthly FinOps review held; minutes published; actions tracked to closure.</check>
+        <check>Quarterly commitment optimization session with Finance present.</check>
+        <check>Unit economics dashboard published (cost per X, $/1k requests).</check>
+        <check>FinOps maturity self-assessment (Crawl/Walk/Run) reviewed twice a year.</check>
+        <check>Onboarding doc for new engineers covers tag rules and cost ownership.</check>
+        <check>Annual tool review — keep, replace, or consolidate.</check>
+      </checklist>
     </section>
 
     <section name="team-structure">
@@ -118,11 +183,181 @@
         <item>Waste Percentage — unused/idle resources; target: below 10%.</item>
         <item>Cost Allocation Accuracy — tagged resources; target: above 95%.</item>
         <item>Savings Plan Coverage — committed usage; target: 70-80%.</item>
+        <item>Effective Savings Rate (ESR) — discount earned vs on-demand list; target: above 25%.</item>
+        <item>Anomaly MTTD/MTTR — detect under 30 min, explain under 24h.</item>
       </list>
     </section>
 
+    <section name="commands-aws">
+      <commands>
+        <command name="enable-cur-focus">aws cur put-report-definition --report-definition file://cur-focus.json</command>
+        <command name="list-untagged-ec2">aws ec2 describe-instances --query "Reservations[].Instances[?!not_null(Tags[?Key=='cost-center'].Value)].[InstanceId,State.Name]" --output table</command>
+        <command name="rightsize-recommendations">aws compute-optimizer get-ec2-instance-recommendations --max-results 50</command>
+        <command name="cost-explorer-monthly">aws ce get-cost-and-usage --time-period Start=2026-04-01,End=2026-05-01 --granularity MONTHLY --metrics UnblendedCost --group-by Type=TAG,Key=team</command>
+        <command name="anomalies-last-30d">aws ce get-anomalies --date-interval StartDate=2026-04-01,EndDate=2026-05-01</command>
+        <command name="savings-plans-coverage">aws ce get-savings-plans-coverage --time-period Start=2026-04-01,End=2026-05-01 --granularity MONTHLY</command>
+        <command name="ri-utilization">aws ce get-reservation-utilization --time-period Start=2026-04-01,End=2026-05-01</command>
+      </commands>
+    </section>
+
+    <section name="commands-gcp-azure">
+      <commands>
+        <command name="gcp-billing-export">bq query --use_legacy_sql=false 'SELECT service.description, SUM(cost) AS spend FROM `proj.billing.gcp_billing_export_v1_*` WHERE _PARTITIONDATE &gt;= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) GROUP BY 1 ORDER BY 2 DESC LIMIT 10'</command>
+        <command name="gcp-recommender-rightsize">gcloud recommender recommendations list --recommender=google.compute.instance.MachineTypeRecommender --location=us-central1-a --project=PROJECT_ID</command>
+        <command name="azure-cost-mgmt-query">az costmanagement query --type ActualCost --timeframe MonthToDate --scope "/subscriptions/SUBSCRIPTION_ID" --dataset-aggregation '{"totalCost":{"name":"Cost","function":"Sum"}}' --dataset-grouping name=ResourceGroup type=Dimension</command>
+        <command name="azure-advisor-cost">az advisor recommendation list --category Cost --output table</command>
+      </commands>
+    </section>
+
+    <section name="commands-kubernetes">
+      <commands>
+        <command name="opencost-install">helm install opencost opencost/opencost --namespace opencost --create-namespace</command>
+        <command name="kubecost-allocation">kubectl exec -n kubecost deployment/kubecost-cost-analyzer -- curl -s 'http://localhost:9090/model/allocation?window=7d&amp;aggregate=namespace'</command>
+        <command name="vpa-recommendations">kubectl get vpa -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.recommendation.containerRecommendations[*].target}{"\n"}{end}'</command>
+        <command name="orphan-pvcs">kubectl get pvc -A -o json | jq -r '.items[] | select(.status.phase=="Bound") | select(([.metadata.ownerReferences[]?.kind] | inside(["StatefulSet"])) | not) | "\(.metadata.namespace)/\(.metadata.name)"'</command>
+      </commands>
+    </section>
+
+    <section name="commands-iac-gates">
+      <commands>
+        <command name="infracost-breakdown">infracost breakdown --path=. --format=json --out-file=infracost.json</command>
+        <command name="infracost-pr-comment">infracost comment github --path=infracost.json --repo=$GITHUB_REPOSITORY --pull-request=$PR_NUMBER --behavior=update</command>
+        <command name="opa-eval-tags">conftest test main.tf --policy policy/tags.rego</command>
+        <command name="cloud-custodian-stop-untagged">custodian run -s out policy-stop-untagged.yml</command>
+      </commands>
+    </section>
+
+    <section name="template-tag-policy">
+      <template path="templates/tags.yaml" purpose="Tag taxonomy reference"/>
+      <example type="good" title="Mandatory tag taxonomy (tags.yaml)">
+        <code lang="yaml"><![CDATA[
+required_tags:
+  env:           [prod, staging, dev, sandbox]
+  team:          [platform, growth, data, ai, sre]
+  service:       string  # snake_case service name
+  cost-center:   regex   # ^CC-[0-9]{4}$
+  owner:         email   # must be valid corporate email
+
+policy:
+  enforcement: deny-on-create
+  grace_period_days: 7
+  exempt_namespaces: [kube-system, default]
+  notify_channel: "#finops-alerts"
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-opa-policy">
+      <example type="good" title="OPA Rego — deny untagged resources">
+        <code lang="rego"><![CDATA[
+package tags
+
+required := {"env", "team", "service", "cost-center", "owner"}
+
+deny[msg] {
+  resource := input.resource_changes[_]
+  resource.change.actions[_] == "create"
+  tags := object.get(resource.change.after, "tags", {})
+  missing := required - {k | tags[k]}
+  count(missing) > 0
+  msg := sprintf("%s missing required tags: %v", [resource.address, missing])
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-infracost-ci">
+      <example type="good" title="GitHub Actions — Infracost PR gate">
+        <code lang="yaml"><![CDATA[
+name: infracost
+on:
+  pull_request:
+    paths: ['infra/**', '**/*.tf']
+jobs:
+  cost-diff:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: ${{ github.event.pull_request.base.ref }} }
+      - uses: infracost/actions/setup@v3
+        with: { api-key: ${{ secrets.INFRACOST_API_KEY }} }
+      - run: infracost breakdown --path=infra --format=json --out-file=/tmp/base.json
+      - uses: actions/checkout@v4
+      - run: infracost diff --path=infra --compare-to=/tmp/base.json --format=json --out-file=/tmp/diff.json
+      - run: infracost comment github --path=/tmp/diff.json --repo=${{ github.repository }} --pull-request=${{ github.event.pull_request.number }} --github-token=${{ secrets.GITHUB_TOKEN }} --behavior=update
+      - name: fail on >10% increase
+        run: |
+          delta=$(jq '.diffTotalMonthlyCost | tonumber' /tmp/diff.json)
+          base=$(jq '.pastTotalMonthlyCost | tonumber' /tmp/diff.json)
+          awk -v d="$delta" -v b="$base" 'BEGIN { if (b>0 && d/b > 0.10) exit 1 }'
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-monthly-review">
+      <example type="good" title="Monthly FinOps review agenda (paste into doc)">
+        <code lang="markdown"><![CDATA[
+# FinOps Monthly Review — YYYY-MM
+
+## 1. Spend snapshot
+- Total spend MTD: $___ (vs forecast $___, variance ±__%)
+- Top 5 services by spend
+- Top 5 movers (delta vs last month)
+
+## 2. Anomalies
+- New anomalies this month: count, root cause, status
+- Outstanding anomalies (>7 days unresolved)
+
+## 3. Allocation
+- Tag coverage by cost: __% (target 95%)
+- Untagged spend owners + remediation deadline
+
+## 4. Optimization
+- Wins shipped (rightsizing, idle kill, lifecycle): $ saved
+- Backlog: top 3 next bets, owners, due dates
+
+## 5. Commitments
+- RI/SP coverage: __% (target 70-80%)
+- Utilization: __%
+- Renewals/adjustments next 90 days
+
+## 6. Unit economics
+- Cost per active user: $___ (trend)
+- Cost per 1k API calls: $___ (trend)
+
+## 7. Action items
+- [ ] Owner — Action — Due
+]]></code>
+      </example>
+    </section>
+
+    <section name="prompt-finops-audit">
+      <prompt purpose="LLM-assisted FinOps audit of a cloud account"><![CDATA[
+You are a FinOps analyst. Audit the cloud account described below and produce a prioritized action plan.
+
+INPUTS:
+- Last 30 days of FOCUS-format billing (CSV attached)
+- Tag taxonomy (tags.yaml attached)
+- Current commitments (RI/SP/CUD list attached)
+
+TASKS:
+1. Compute tag coverage by cost. Flag any tag with <95% coverage.
+2. Identify top-10 cost SKUs and classify each as: rightsize / idle / commit / lifecycle / OK.
+3. Estimate $ savings per recommendation with a confidence score (low/med/high).
+4. Detect anomalies (>3 sigma vs 30-day rolling mean) and propose probable causes.
+5. Score commitment coverage; recommend buys/sells if outside 70-80% band.
+6. Produce a 90-day plan in three buckets: INFORM gaps, OPTIMIZE quick wins, OPERATE guardrails.
+
+OUTPUT:
+- Markdown report with sections: Executive summary, Findings, Recommendations (table: action, owner_role, est_savings_monthly, confidence), 90-day plan.
+- Cite the SKU/account/region for every recommendation.
+- Do NOT invent numbers — if data is missing, list it under "Data gaps".
+]]></prompt>
+    </section>
+
     <section name="provider-tools">
-      <p>Native cloud provider tools (2025):</p>
+      <p>Native cloud provider tools (2025-2026):</p>
       <list>
         <item>AWS: Cost Optimization Hub + Amazon Q — AI-powered recommendations, savings estimates.</item>
         <item>Google Cloud: FinOps Hub 2.0 + Gemini Cloud Assist — utilization insights, AI anomaly detection.</item>
@@ -134,13 +369,14 @@
       <list>
         <item>CloudZero — AI cost analytics, unit economics.</item>
         <item>Spot.io — spot instance management.</item>
-        <item>Kubecost / OpenCost — Kubernetes cost monitoring (OpenCost is CNCF).</item>
+        <item>Kubecost / OpenCost — Kubernetes cost monitoring (OpenCost is CNCF graduated).</item>
         <item>Apptio Cloudability — multi-cloud FinOps, showback/chargeback.</item>
         <item>Densify — ML-powered rightsizing.</item>
         <item>ProsperOps — automated commitment management (RIs/SPs).</item>
         <item>Vantage — multi-cloud reports and alerts.</item>
         <item>Infracost — IaC PR cost gates (OSS).</item>
         <item>CloudHealth — governance and optimization.</item>
+        <item>Cloud Custodian — policy-as-code remediation (OSS).</item>
       </list>
     </section>
 
@@ -150,6 +386,7 @@
         <item>FinOps Certified Practitioner — foundation certification.</item>
         <item>FinOps Certified Professional — advanced certification.</item>
         <item>FinOps for AI — specialized certification, launched 2025.</item>
+        <item>FOCUS Certified — billing-schema specialization, 2026.</item>
       </list>
     </section>
 
@@ -160,8 +397,24 @@
         <item>AI tools managing 80%+ of real-time pricing decisions by 2027.</item>
         <item>Predictive modeling reduces overspend by 40% by 2026.</item>
         <item>Global savings potential: $100B/year.</item>
+        <item>FOCUS becomes the universal billing schema; vendor-specific CUR formats deprecate by 2027.</item>
       </list>
     </section>
+
+    <verify>
+      <step>Run the INFORM checklist; every box must be ticked. Tag coverage by cost ≥95% verified by a SQL query against the warehouse.</step>
+      <step>Run the OPTIMIZE checklist; top-3 cost SKUs each have a documented decision (rightsize / commit / leave) with $ impact.</step>
+      <step>Run the OPERATE checklist; create a synthetic untagged resource via Terraform and confirm the OPA gate blocks the PR.</step>
+      <step>Confirm Infracost CI job posts a cost-diff comment on a test PR and fails when delta exceeds the threshold.</step>
+      <step>Trigger a synthetic anomaly (spin up an oversized instance for 2h) and confirm an alert fires within 30 min.</step>
+      <step>Hold one full monthly review using the template; minutes are stored, action items have owners and due dates.</step>
+      <step>Compute Effective Savings Rate (ESR) from the latest billing export — value &gt; 25% confirms commitments are productive.</step>
+      <step>Survey three engineers from different teams: each must name their team's monthly spend within 10% accuracy. If not, INFORM phase failed.</step>
+    </verify>
+
+    <warning>Do not roll out chargeback before showback has run for at least 8 weeks and tag coverage is stable above 95%. Premature chargeback erodes trust and produces gaming behavior (engineers hide costs in shared accounts).</warning>
+
+    <warning>Never optimize commitments (RI/SP) above 90% coverage — you lose elasticity and end up paying for unused capacity. Sweet spot is 70-80%.</warning>
 
     <see-also>
       <link href="https://www.finops.org/"/>
