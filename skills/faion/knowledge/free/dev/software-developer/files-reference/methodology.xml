@@ -18,27 +18,82 @@
   <content>
     <title>Software Developer Files Reference</title>
 
-    <summary>A catalog index of all methodology files in the `software-developer` skill, grouped by language and domain (Python, Django, JavaScript/TypeScript, Go, Rust, Ruby, PHP, Java, C#, API Design, Testing, Frontend, Architecture, Database, Infrastructure, Dev Practices). Used as a routing map to find the right methodology subfolder by topic. The list predates the folder restructure and may be stale — always verify existence with a filesystem lookup before loading a path.</summary>
+    <summary>Catalog index of all methodology folders in the `software-developer` skill, grouped by language and domain (Python, Django, JavaScript/TypeScript, Go, Rust, Ruby, PHP, Java, C#, API Design, Testing, Frontend, Architecture, Dev Practices). Used as a routing map: agent reads the topical section, picks the slug, then resolves the actual `[slug]/methodology.xml` path via `Glob`. The list predates the unified-XML restructure and may be stale — always verify existence with a filesystem lookup before loading a path.</summary>
 
     <why>
-      <p>The `software-developer` skill contains 200+ methodology entries across many languages. A grouped catalog lets an agent identify the topical group (e.g. "Go") in one read, then resolve the actual subfolder path via `Glob`, rather than scanning the entire tree. Faster routing, lower context cost.</p>
+      <p>The `software-developer` skill contains 200+ methodology entries across many languages. A grouped catalog lets an agent identify the topical section (e.g. "Go") in one read, then resolve the actual subfolder path via `Glob`, rather than scanning the entire tree. Faster routing, lower context cost, fewer hallucinated paths.</p>
     </why>
 
     <when-to-use>
+      <p>Apply this catalog when an agent inside the `software-developer` orchestrator needs to map a free-text task ("Set up pytest fixtures", "Write a Gin handler") to a single methodology folder before loading content. Use only as a first-pass routing index — never as final source-of-truth.</p>
       <list>
-        <item>Routing step inside `software-developer` orchestrator: determining which subfolder covers a given task topic.</item>
+        <item>Routing step inside `software-developer` orchestrator: pick the topical section, then the slug.</item>
         <item>Building a documentation index or sidebar from the canonical catalog.</item>
-        <item>Validating that referenced methodology folders exist before dispatching a task.</item>
+        <item>Validating that referenced methodology folders exist before dispatching a task to a sub-agent.</item>
       </list>
     </when-to-use>
 
     <when-not-to-use>
       <list>
-        <item>As a semantic search tool ("how do I handle errors?") — the list is name-based; use `Grep` over actual AGENTS.md files.</item>
-        <item>As an authoritative tier map — some files listed under `free/` cover topics that belong logically to other tiers; trust the directory tree.</item>
-        <item>Dumping the full catalog into context — it is too large (200+ entries); filter to the relevant topical section only.</item>
+        <item>As a semantic search tool ("how do I handle errors?") — the list is name-based; use `Grep` over actual `methodology.xml` bodies.</item>
+        <item>As an authoritative tier map — some entries listed here belong logically to other tiers; trust the directory tree at `skills/faion/knowledge/&lt;tier&gt;/&lt;group&gt;/&lt;domain&gt;/&lt;slug&gt;/`.</item>
+        <item>Dumping the full catalog into a sub-agent prompt — it is too large; filter to one topical section only.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <step>1. Read this file once and locate the topical `&lt;section&gt;` whose name matches the task language or area (e.g. `python`, `go`, `testing`).</step>
+      <step>2. From the matching section, pick at most one or two slugs whose name best fits the task verb + noun.</step>
+      <step>3. Resolve each candidate path with `Glob 'skills/faion/knowledge/**/{slug}/methodology.xml'`. If the unified file is missing, fall back to `Glob 'skills/faion/knowledge/**/{slug}/README.md'`.</step>
+      <step>4. If neither exists, run `Grep -ri "&lt;title&gt;.*{slug-keyword}" skills/faion/knowledge` to discover the renamed folder. Never invent a path.</step>
+      <step>5. Read only the resolved file. Pass the absolute path (not the catalog snippet) to the downstream agent.</step>
+      <step>6. If the user asked for "all X methodologies", list resolved paths only — never paste catalog rows that failed step 3.</step>
+    </how-to>
+
+    <checklist>
+      <check>Picked exactly one topical section (not the whole catalog).</check>
+      <check>Each candidate slug came verbatim from this file (no invented suffixes).</check>
+      <check>Each path was verified with `Glob` or `ls` before loading.</check>
+      <check>Missing paths reported as "not found" — never fabricated.</check>
+      <check>Final agent prompt contains resolved absolute paths, not catalog text.</check>
+      <check>No edits made to this catalog from an automated step (human-only).</check>
+    </checklist>
+
+    <commands>
+      <command name="resolve-slug">Glob skills/faion/knowledge/**/django-pytest/methodology.xml</command>
+      <command name="resolve-fallback">Glob skills/faion/knowledge/**/django-pytest/README.md</command>
+      <command name="search-by-keyword">grep -ril "pytest" /home/nero/workspace/projects/faion-net/faion-network/skills/faion/knowledge/free/dev/software-developer/</command>
+      <command name="audit-catalog">python3 scripts/validate-methodology-xml.py skills/faion/knowledge/free/dev/software-developer/files-reference/methodology.xml</command>
+      <command name="list-section">awk '/&lt;section name="go"&gt;/,/&lt;\/section&gt;/' skills/faion/knowledge/free/dev/software-developer/files-reference/methodology.xml</command>
+    </commands>
+
+    <prompt purpose="route-task-to-methodology"><![CDATA[
+You are the routing step for the software-developer skill.
+
+INPUT:
+  task = "<one-line task description from the user>"
+
+CATALOG:
+  <paste only the matching <section> block from files-reference/methodology.xml>
+
+INSTRUCTIONS:
+1. From CATALOG, pick at most TWO slugs whose name best matches the task verb + noun.
+2. For each picked slug, return:
+     - slug
+     - candidate_path = "skills/faion/knowledge/free/dev/software-developer/<slug>/methodology.xml"
+     - confidence = high|medium|low
+3. Do NOT load or summarize file contents. Do NOT invent slugs.
+4. Output strict JSON:
+     { "candidates": [ { "slug": "...", "candidate_path": "...", "confidence": "..." } ] }
+5. The orchestrator will Glob each candidate_path before loading.
+]]></prompt>
+
+    <verify>
+      <step>1. Run the validator: `python3 scripts/validate-methodology-xml.py skills/faion/knowledge/free/dev/software-developer/files-reference/methodology.xml`. Expect `PASS` and exit code 0.</step>
+      <step>2. Spot-check three random slugs from different sections with `Glob skills/faion/knowledge/**/{slug}/methodology.xml`. Each should resolve to exactly one path or be reported as missing.</step>
+      <step>3. Confirm the agent's downstream prompt contains absolute resolved paths, not raw catalog rows.</step>
+      <step>4. If &gt;20% of spot-checked slugs are missing, file an issue under `.aidocs/backlog/` for a catalog refresh — do not auto-edit.</step>
+    </verify>
 
     <section name="python">
       <list>
@@ -171,12 +226,12 @@
     </section>
 
     <section name="usage-pattern">
-      <p>Treat this catalog as a read-only routing index at agent runtime — do not have agents append to it; updates must come from a human-driven restructure pass. When adding a new methodology folder, also add a row here in the matching topical section so future routing finds it. Prefer `[slug]/methodology.xml` lookups over flat-file lookups; the migration to unified files is the long-term direction. For routing prompts, include only the topical headings (## Python, ## Django, ...) — the full table costs context for little gain.</p>
-      <p>Agent workflow for routing: Step 1 read skills/faion/knowledge/free/dev/software-developer/files-reference/README.md and identify the topical group (Python / Django / Go / ...); Step 2 Glob skills/faion/knowledge/free/dev/software-developer/[slug]/methodology.xml; Step 3 if missing, fall back to Grep across methodology files for the slug; never quote the catalog wholesale into the prompt — only the resolved path. Audit task: walk every link in files-reference. For each path: check existence (as unified methodology.xml). Output a table of {referenced_path, resolved_path, status}. Do not fix anything — report only.</p>
+      <p>Treat this catalog as a read-only routing index at agent runtime — do not have agents append to it; updates must come from a human-driven restructure pass. When adding a new methodology folder, also add a row here in the matching topical section so future routing finds it. Prefer `[slug]/methodology.xml` lookups over flat-file lookups; the migration to unified files is the long-term direction. For routing prompts, include only the topical section the task hits — the full catalog costs context for little gain.</p>
+      <p>Agent workflow for routing: Step 1 read this `files-reference/methodology.xml` and identify the topical group (Python / Django / Go / ...); Step 2 `Glob skills/faion/knowledge/**/&lt;slug&gt;/methodology.xml`; Step 3 if missing, fall back to `Grep` across methodology files for the slug; never quote the catalog wholesale into the prompt — only the resolved path. Audit task: walk every link in this catalog. For each path: check existence (as unified `methodology.xml`). Output a table of `{referenced_path, resolved_path, status}`. Do not fix anything — report only.</p>
     </section>
 
     <section name="agent-gotchas">
-      <p>The list is name-based; methodology files are now unified XML not flat Markdown. Don't promise a user based on old line counts from this index. Don't auto-Read every file the user asks about based on this index alone — many entries may be missing. Always Glob first to verify presence. An agent asked to "list all Go files" will paste this section verbatim; remind it to verify existence to avoid hallucinated capabilities. LLMs sometimes "fix" broken links by inventing nearby paths. Add a human-in-loop checkpoint before any commit that mutates this file. This index is purely a catalog, not a methodology — agents looking for checklist content or templates will find empty boilerplate here; route them to the actual methodology folder instead.</p>
+      <p>The list is name-based; methodology files are now unified XML, not flat Markdown. Don't promise a user based on old line counts from this index. Don't auto-Read every file the user asks about based on this index alone — many entries may be missing. Always `Glob` first to verify presence. An agent asked to "list all Go files" will paste this section verbatim; remind it to verify existence to avoid hallucinated capabilities. LLMs sometimes "fix" broken links by inventing nearby paths. Add a human-in-loop checkpoint before any commit that mutates this file. This index is purely a catalog, not a methodology — agents looking for checklist content or templates will find empty boilerplate here; route them to the actual methodology folder instead.</p>
     </section>
 
     <see-also>
