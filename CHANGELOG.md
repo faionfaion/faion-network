@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: ai-spatial-computing (sufficient for autonomous agents)
 - Improve methodology: llm-observability-stack (sufficient for autonomous agents)
 - chore: improve ai-governance-compliance methodology with concrete checklist + commands (agent-coverage)
 - chore: improve langchain-rag-pipeline methodology with concrete checklist + commands (agent-coverage)
