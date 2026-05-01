@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Improve methodology: database-selection (sufficient for autonomous agents)
 - Improve methodology: data-modeling (sufficient for autonomous agents)
 - Improve methodology: creational-patterns (sufficient for autonomous agents)
 - Improve methodology: continuous-delivery (sufficient for autonomous agents)

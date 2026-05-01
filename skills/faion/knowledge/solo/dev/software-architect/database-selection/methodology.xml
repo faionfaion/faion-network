@@ -4,7 +4,7 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-architect</domain>
-    <summary>Comprehensive database selection using CAP theorem, PACELC, paradigm analysis, and polyglot persistence patterns across 100+ databases.</summary>
+    <summary>Pick a database via CAP/PACELC, paradigm fit, workload sizing, and ADR. Concrete decision tree, checklist, prompts, and verify steps.</summary>
     <tags>
       <tag>database</tag>
       <tag>architecture</tag>
@@ -14,34 +14,156 @@
     </tags>
     <difficulty>advanced</difficulty>
     <created>2026-04-24</created>
+    <updated>2026-05-01</updated>
   </metadata>
   <content>
     <title>Database Selection Guide</title>
-    <summary>Comprehensive framework for choosing the right database among 100+ options. Relational databases for ACID transactions. NewSQL for distributed SQL. Document databases for flexible schema. Key-value stores for caching. Time-series databases for metrics. Graph databases for relationships. Vector databases for embeddings. Search engines for full-text search.</summary>
+    <summary>Framework for choosing among 100+ databases. Relational for ACID. NewSQL for distributed SQL. Document for flexible schema. KV for cache. Time-series for metrics. Graph for relationships. Vector for embeddings. Search for full-text.</summary>
     <why>
-      <p>Database selection is the single most impactful architecture decision. The wrong choice locks you into technology for years. Database migrations cost 3-6 months and risk data corruption. CAP theorem constrains all distributed databases: Consistency+Partition Tolerance, Availability+Partition Tolerance, or Consistency+Availability.</p>
+      <p>Database selection is the single most impactful architecture decision. The wrong choice locks you into technology for years. Migrations cost months and risk data corruption. CAP theorem constrains every distributed database; PACELC adds the latency-vs-consistency trade-off when no partition exists. Choose deliberately, document the decision in an ADR, and validate with a load test before committing.</p>
     </why>
     <when-to-use>
       <list>
         <item>Designing any new persistent data layer (greenfield or migration).</item>
-        <item>Choosing between database paradigms (relational, document, wide-column, graph, time-series).</item>
-        <item>Normalizing an existing schema with update anomalies or data duplication.</item>
+        <item>Choosing between paradigms: relational, document, wide-column, graph, time-series, vector, search.</item>
+        <item>Normalizing an existing schema with update anomalies, hotspots, or data duplication.</item>
         <item>Modeling polyglot persistence: assigning each data domain to its optimal store.</item>
+        <item>Reviewing a system that misses latency, throughput, or consistency SLOs.</item>
       </list>
     </when-to-use>
-    <section name="paradigms">
+    <when-not-to-use>
+      <list>
+        <item>Existing database meets SLOs and team has operational expertise — do not swap.</item>
+        <item>Prototype with &lt;1k rows and no production traffic — default to PostgreSQL, decide later.</item>
+        <item>Pure cache or session store — go straight to Redis without full selection cycle.</item>
+      </list>
+    </when-not-to-use>
+    <how-to>
+      <step>Capture workload: read/write ratio, peak QPS, dataset size in 12 months, p95 latency target, durability tier (lossless vs best-effort), consistency need (strong, bounded staleness, eventual).</step>
+      <step>Map the dominant access pattern to a paradigm using the decision tree in section <code>paradigm-tree</code>.</step>
+      <step>Apply CAP and PACELC: pick CP, AP, or CA; pick PC or PA for the no-partition case. Record the choice in the ADR.</step>
+      <step>Shortlist 2-3 concrete engines per paradigm. Score each on the matrix in section <code>scoring-matrix</code>.</step>
+      <step>Build a one-day spike: load 10% of expected dataset, run the three hottest queries, measure p95 latency and write throughput.</step>
+      <step>Run the verification checklist. If any check fails, return to step 4 with the next engine on the shortlist.</step>
+      <step>Write the ADR using the template in section <code>adr-template</code>. Commit it next to the schema.</step>
+    </how-to>
+    <section name="paradigm-tree">
       <rule testable="true">
-        <statement>Relational (PostgreSQL, MySQL) for ACID transactions. NewSQL (CockroachDB, TiDB, Spanner) for distributed SQL. Document (MongoDB, DynamoDB) for flexible schema. Key-Value (Redis, Memcached) for caching. Time-Series (TimescaleDB, InfluxDB) for metrics. Graph (Neo4j, Neptune) for relationships. Vector (Qdrant, Weaviate, Pinecone) for embeddings. Search (Elasticsearch, Meilisearch) for full-text search.</statement>
+        <statement>Relational (PostgreSQL, MySQL) for ACID transactions and relational integrity. NewSQL (CockroachDB, TiDB, Spanner, YugabyteDB) for horizontally scaled SQL with strong consistency. Document (MongoDB, DynamoDB, Couchbase) for nested or evolving schema. Key-Value (Redis, Memcached, Valkey) for cache, sessions, leaderboards. Time-Series (TimescaleDB, InfluxDB, ClickHouse, QuestDB) for metrics, telemetry, append-heavy workloads. Graph (Neo4j, Neptune, ArangoDB) for many-hop relationship queries. Vector (Qdrant, Weaviate, Pinecone, pgvector) for embedding similarity search. Search (Elasticsearch, OpenSearch, Meilisearch, Typesense) for full-text and faceted retrieval.</statement>
+        <rationale>Each paradigm is optimized for one access pattern. Forcing a paradigm onto the wrong workload causes 10x cost or 10x latency.</rationale>
       </rule>
     </section>
-    <section name="cap-theorem">
+    <section name="cap-pacelc">
       <rule testable="true">
-        <statement>CP (Consistency + Partition Tolerance) — use when data accuracy matters (finance, banking). AP (Availability + Partition Tolerance) — use when always online matters (social media, streaming). CA (Consistency + Availability) — use when single region, network partitions unlikely.</statement>
+        <statement>CP (Consistency + Partition Tolerance) — finance, ledgers, inventory. AP (Availability + Partition Tolerance) — social feeds, streaming, telemetry. CA (Consistency + Availability) — single-region OLTP where partitions are rare. PACELC: when no Partition, choose PC (latency cost for consistency, e.g. Spanner) or PA (lower latency, eventual consistency, e.g. Cassandra/DynamoDB default).</statement>
+        <rationale>CAP forces a choice during a network partition; PACELC forces a choice during normal operation. Both shape the user-visible failure mode.</rationale>
       </rule>
     </section>
+    <section name="scoring-matrix">
+      <p>Score each shortlisted engine 1-5 against these axes, weight by your priorities, sum.</p>
+      <list>
+        <item>Workload fit: matches dominant query pattern.</item>
+        <item>Scale headroom: handles 10x dataset and 10x QPS without re-architecture.</item>
+        <item>Consistency model: matches CAP/PACELC choice.</item>
+        <item>Operational maturity: managed offering, backup, PITR, observability.</item>
+        <item>Ecosystem: drivers, ORMs, migration tools in your language.</item>
+        <item>Total cost: license, hosting, ops headcount over 3 years.</item>
+        <item>Team skill: existing in-house experience.</item>
+      </list>
+    </section>
+    <commands>
+      <command name="postgres-spike">docker run -d --name pg-spike -e POSTGRES_PASSWORD=spike -p 5432:5432 postgres:16</command>
+      <command name="mongo-spike">docker run -d --name mongo-spike -p 27017:27017 mongo:7</command>
+      <command name="redis-spike">docker run -d --name redis-spike -p 6379:6379 redis:7-alpine</command>
+      <command name="qdrant-spike">docker run -d --name qdrant-spike -p 6333:6333 qdrant/qdrant:latest</command>
+      <command name="clickhouse-spike">docker run -d --name ch-spike -p 8123:8123 -p 9000:9000 clickhouse/clickhouse-server:latest</command>
+      <command name="pg-bench">pgbench -i -s 10 -h localhost -U postgres &amp;&amp; pgbench -c 50 -j 4 -t 1000 -h localhost -U postgres</command>
+      <command name="mongo-bench">mongosh --eval "db.bench.insertMany(Array.from({length:100000},(_,i)=&gt;({i,t:new Date()})))"</command>
+      <command name="redis-bench">redis-benchmark -t set,get -n 100000 -q -h localhost</command>
+      <command name="ch-bench">clickhouse-benchmark --concurrency 8 --iterations 1000 &lt; queries.sql</command>
+    </commands>
+    <prompt purpose="paradigm-pick"><![CDATA[
+You are a database selection assistant. Given the workload spec below, output:
+1) The paradigm (relational | newsql | document | kv | timeseries | graph | vector | search) and why.
+2) Top 3 candidate engines, ranked, with one-line trade-off each.
+3) CAP class (CP | AP | CA) and PACELC class (PC | PA).
+4) Three concrete risks for the top pick.
+5) The single load-test query that would invalidate the pick if it misses p95.
+
+Workload spec:
+- Domain:
+- Read QPS (peak):
+- Write QPS (peak):
+- Dataset size (12mo):
+- p95 latency budget:
+- Consistency need (strong | bounded | eventual):
+- Durability tier (lossless | best-effort):
+- Multi-region required (yes | no):
+- Team SQL/NoSQL skill:
+]]></prompt>
+    <section name="adr-template">
+      <example type="good" title="ADR-000X: Database Selection">
+        <code lang="markdown"><![CDATA[
+# ADR-000X: <Domain> data store
+
+## Status
+Proposed | Accepted | Superseded by ADR-YYYY
+
+## Context
+- Workload: read QPS, write QPS, dataset size, latency budget.
+- Consistency: strong | bounded | eventual.
+- CAP class: CP | AP | CA. PACELC: PC | PA.
+- Constraints: language, hosting, compliance, team skill.
+
+## Options considered
+| Engine | Paradigm | Pros | Cons | Score |
+|--------|----------|------|------|-------|
+| A      |          |      |      |       |
+| B      |          |      |      |       |
+| C      |          |      |      |       |
+
+## Decision
+We choose <engine> because <reason tied to workload>.
+
+## Consequences
+- Positive: ...
+- Negative: ...
+- Migration cost if reversed: ...
+
+## Validation
+- Spike results: <p95 latency, throughput numbers>
+- Hottest query plan attached.
+]]></code>
+      </example>
+    </section>
+    <checklist>
+      <check>Workload spec captured: QPS read/write, dataset size in 12mo, p95 target, consistency tier, durability tier.</check>
+      <check>Paradigm chosen via decision tree and matches the dominant access pattern.</check>
+      <check>CAP class and PACELC class explicitly recorded in the ADR.</check>
+      <check>At least 3 engines scored on the 7-axis matrix; weights sum to 1.0.</check>
+      <check>Spike loaded ≥10% of projected dataset and ran the 3 hottest queries.</check>
+      <check>Measured p95 latency ≤ budget under expected concurrency.</check>
+      <check>Backup, PITR, restore-time, and disaster-recovery story documented.</check>
+      <check>Cost projected for 3 years (license + hosting + ops) within budget.</check>
+      <check>Schema migration tool exists and is wired into CI.</check>
+      <check>Observability hooks (slow-query log, query metrics, replication lag) enabled.</check>
+      <check>ADR file committed in repo next to schema or infra code.</check>
+    </checklist>
+    <verify>
+      <step>Re-run the load test at projected 12-month scale; confirm p95 still under budget.</step>
+      <step>Inject a network partition (chaos test) and confirm failure mode matches the declared CAP class.</step>
+      <step>Restore from a fresh backup into a clean instance; record actual RTO and compare to target.</step>
+      <step>Run the EXPLAIN/PROFILE plan for each hot query; verify it uses the expected index or sharding key.</step>
+      <step>Confirm the ADR has Status=Accepted, was reviewed by at least one peer, and is linked from the project README.</step>
+    </verify>
+    <warning>Do not rely on benchmark blogs from vendors. Always run a spike on YOUR data shape and YOUR query mix. Vendor benchmarks optimize the vendor.</warning>
     <see-also>
       <link href="https://db-engines.com/en/ranking"/>
       <link href="https://en.wikipedia.org/wiki/CAP_theorem"/>
+      <link href="https://en.wikipedia.org/wiki/PACELC_theorem"/>
+      <ref slug="data-modeling"/>
+      <ref slug="trade-off-analysis"/>
+      <ref slug="architecture-decision-records"/>
     </see-also>
   </content>
 </methodology>
