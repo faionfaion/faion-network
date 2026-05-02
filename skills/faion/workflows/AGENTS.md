@@ -4,12 +4,16 @@ End-to-end orchestration patterns for multi-step delivery inside one Claude Code
 
 ## How to Use
 
-1. Read this file to pick the workflow that matches the user's ask.
-2. Read the workflow's `AGENTS.md` (under 80 lines) to confirm fit.
+1. **Match by trigger.** Read `catalog.json` for the machine-readable trigger map (`triggers` field per workflow). Or scan the Index table below.
+2. Read the workflow's `AGENTS.md` (≤80 lines) to confirm fit.
 3. Load the specific `content/*.xml` files relevant to the current phase.
 4. Use templates verbatim where the workflow references them.
 
 A workflow is **the orchestration shape**, not a script. The orchestrator is always Claude in the active session; subagents are spawned via the `Agent` tool with paths to versioned prompt files.
+
+## Catalog
+
+`catalog.json` (this folder) is the machine-readable index — slug → metadata (status, version, summary, triggers, phases, content_files, agents_lines, notes). Use it for routing decisions instead of free-text search.
 
 ## Index
 

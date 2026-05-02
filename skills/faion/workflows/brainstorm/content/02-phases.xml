@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-phases" title="The five phases">
+  <summary>Brainstorm runs five phases in fixed order: Phase 0 CONSENT GATE, Phase 1 DIVERGE (10 research agents), Phase 2 CONVERGE (synthesis), Phase 3 REVIEW (8 adversarial reviewers), Phase 4 FINALIZE. Phase 0 is the only conditional phase; it is skipped only when the user explicitly asked for a brainstorm or already approved one in this session.</summary>
+
+  <section title="Phase 0: CONSENT GATE">
+    <p>The consent gate is the most load-bearing phase: brainstorm is expensive (18+ subagents, hundreds of recommendations) and the orchestrator's auto-routing is allowed to over-trigger. Phase 0 prevents that.</p>
+
+    <rule>
+      <statement>If the user's most recent message does NOT contain an explicit brainstorm trigger word AND no prior message in this session approved a brainstorm, the orchestrator MUST stop before Phase 1 and call AskUserQuestion.</statement>
+      <rationale>Auto-routed brainstorm without consent burns the user's trust and quota on output they did not ask for. Explicit triggers: &quot;brainstorm&quot;, &quot;10 ideas&quot;, &quot;audit&quot;, &quot;diverge-converge&quot;, &quot;what could we improve&quot;, &quot;give me options&quot;, &quot;список ідей&quot;, &quot;аудит&quot;, &quot;що покращити&quot;.</rationale>
+    </rule>
+
+    <rule>
+      <statement>The AskUserQuestion payload MUST present exactly two options: &quot;Run brainstorm&quot; (10 research + 8 review agents, full diverge-converge-review) and &quot;Short answer&quot; (2-3 sentence direct recommendation, no agents).</statement>
+      <rationale>Two clear options collapse the decision; more options invite indecision. The cost figure (10+8 agents) is shown so the user understands the magnitude.</rationale>
+    </rule>
+
+    <rule>
+      <statement>On &quot;Short answer&quot; the orchestrator MUST exit the workflow and answer inline. On &quot;Run brainstorm&quot; it proceeds to Phase 1 and records the approval for the rest of the session.</statement>
+      <rationale>Recording the approval prevents re-asking on every follow-up turn within the same brainstorm. Exiting cleanly on &quot;Short answer&quot; avoids half-state.</rationale>
+    </rule>
+
+    <p>Skip Phase 0 only when one of these is true: the current message contains an explicit trigger word, OR the session already saw a &quot;Run brainstorm&quot; approval, OR the workflow is invoked programmatically by another workflow that has its own consent contract.</p>
+  </section>
+
+  <section title="Phase 1: DIVERGE (research agents)">
+    <rule>
+      <statement>Launch exactly N=10 research subagents with distinct personas, capped at 3 in parallel.</statement>
+      <rationale>10 is the empirical sweet spot — fewer than 8 underfits coverage, more than 12 hits diminishing returns. Parallel limit of 3 keeps quota usage predictable and respects the session quota gate.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Each research agent MUST receive a distinct persona drawn from one strategy (by domain, by Six Thinking Hats, or by lens) and MUST produce exactly 30 recommendations in `state -&gt; problem -&gt; solution -&gt; impact` shape.</statement>
+      <rationale>30 is a forcing function: it pushes agents past the obvious top 5 into the long tail where novel ideas live. Distinct personas force independent search; identical personas yield identical lists (groupthink). The four-field schema makes downstream deduplication mechanical.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Research agents MUST run independently — no cross-pollination, no shared scratchpad, no awareness of other agents' output.</statement>
+      <rationale>Cross-pollination during diverge causes anchoring on whichever agent finishes first. Independence is the entire point of multi-agent diverge.</rationale>
+    </rule>
+
+    <p>Persona assignment strategies are documented in `03-personas.xml`. Anti-patterns (identical prompts, too many agents, missing persona differentiation) are documented in `05-anti-patterns.xml`.</p>
+  </section>
+
+  <section title="Phase 2: CONVERGE (synthesis)">
+    <rule>
+      <statement>The synthesis pass is a single subagent (or the orchestrator itself if context budget allows) that performs four steps: deduplicate by clustering similar recommendations, count consensus (how many of the 10 agents independently surfaced each cluster), rank by composite impact (cost / effort / risk / user-impact), and emit priority tiers (This Week / Month / Quarter / Backlog).</statement>
+      <rationale>Without consensus counting, the highest-quantity agent wins by volume rather than signal. Tiering by horizon forces the synthesis to address actionability, not just impact.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Consensus count MUST be reported as an integer in [1, 10] for every surviving recommendation.</statement>
+      <rationale>The reviewer phase uses consensus count as one input to re-tiering. It must be auditable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Phase 3: REVIEW (adversarial reviewers)">
+    <rule>
+      <statement>Launch exactly M=8 reviewer subagents in parallel-capped waves of 3, each assigned exactly one attack vector from the required list.</statement>
+      <rationale>One vector per reviewer prevents the &quot;polite generalist&quot; failure mode where every reviewer waters down their critique. The eight required vectors cover the canonical failure modes: feasibility, security, architecture, solo-dev DX, cost-benefit, missing perspectives, domain depth, prioritization synthesis.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Reviewer prompts MUST be adversarial: the reviewer is told to find what is wrong, not to confirm what is right.</statement>
+      <rationale>&quot;Review this&quot; is rubber-stamping. &quot;Attack this from vector X&quot; surfaces actual blockers. The eight vectors are listed in `04-reviewer-roles.xml`.</rationale>
+    </rule>
+
+    <p>Required reviewer roles and their one-line attack vectors are enumerated in `04-reviewer-roles.xml`. Optional roles (e.g. accessibility, regulatory, performance) may be added when the domain warrants.</p>
+  </section>
+
+  <section title="Phase 4: FINALIZE">
+    <rule>
+      <statement>Re-tier every recommendation per reviewer consensus: a recommendation that survived 8/10 research agents but was attacked by 5/8 reviewers MUST drop a tier or move to backlog with explicit &quot;why defer&quot; rationale.</statement>
+      <rationale>Without re-tiering, reviewer feedback is decorative. Re-tiering makes it load-bearing.</rationale>
+    </rule>
+
+    <rule>
+      <statement>The final output MUST include: re-tiered priority list, adjusted effort estimates, devil's-advocate items the reviewers flagged but the user should still see, cost projection if relevant, and explicit &quot;why defer&quot; for every backlog item.</statement>
+      <rationale>The user needs to see what was rejected and why, not just what survived. &quot;Why defer&quot; is the artifact that prevents re-litigating the same idea next quarter.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Self-evaluation pass MUST be appended: Coverage (all perspectives covered?), Novelty (any surprising recs?), Actionability (executable now?), Bias (groupthink? infrastructure-bias?), User focus (≥20% user-facing?).</statement>
+      <rationale>Self-evaluation is a cheap groupthink detector. If novelty is low and bias is &quot;infrastructure-only&quot;, the persona assignment failed and the next brainstorm should adjust.</rationale>
+    </rule>
+  </section>
+
+  <section title="Configuration defaults">
+    <list>
+      <item>research_agents: 10 (10-12 optimal, never &lt;8 or &gt;12).</item>
+      <item>review_agents: 8 (6-10 viable, never &lt;6).</item>
+      <item>parallel_limit: 3 (concurrency cap respected by both diverge and review).</item>
+      <item>recs_per_agent: 30 (hard requirement, forcing function).</item>
+    </list>
+  </section>
+</text>

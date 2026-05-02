@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<decisions>
+  <decision date="2026-05-02" topic="research-agent-count">
+    <chose>N=10 research agents (range 10-12, hard floor 8, hard ceiling 12).</chose>
+    <rejected>N=5 (cheaper but underfits coverage, consensus counting becomes weak); N=20 (diminishing returns, synthesis-pass complexity blows up).</rejected>
+    <rationale>Empirical sweet spot from MultiColleagues (ECIS 2025) and internal runs: 10 agents with distinct personas cover the search space without saturating the synthesis pass. Below 8, consensus counting loses statistical bite (a 2/5 majority is noise). Above 12, marginal new ideas drop to near-zero while cost rises linearly — and the synthesis pass starts dropping low-consensus items anyway.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="reviewer-agent-count">
+    <chose>M=8 reviewer agents, one attack vector each (range 6-10).</chose>
+    <rejected>M=1 generalist reviewer (rubber-stamping risk); M=3 reviewers covering 3 vectors each (vector mixing collapses critique sharpness); M=20 single-vector reviewers (cost without marginal critique value).</rejected>
+    <rationale>Eight is the count of canonical attack vectors that surface different failure modes (feasibility, security, architecture, DX, cost-benefit, missing perspectives, domain depth, prioritization). One vector per reviewer keeps each critique sharp. Below 6 vectors, coverage gaps appear. Above 10, vectors start overlapping and reviewers produce redundant critiques.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="parallel-limit">
+    <chose>parallel_limit=3 for both diverge and review phases.</chose>
+    <rejected>parallel_limit=10 (run all agents at once — saturates session quota in one shot, no chance to abort early); parallel_limit=1 (sequential — slow and defeats the parallelism premise).</rejected>
+    <rationale>Three concurrent subagents respects the session quota gate (`/tmp/claude-session-state.json`) while still delivering meaningful parallelism. The orchestrator can dispatch a wave of 3, check quota, dispatch the next wave. A higher limit makes early abort impossible if the first 3 reveal a misconfigured persona set.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="consent-gate">
+    <chose>Mandatory Phase 0 AskUserQuestion gate when the user did not explicitly request a brainstorm.</chose>
+    <rejected>Always run brainstorm when triggered (no gate — risk of over-triggering and burning user quota); always ask (annoying when the user explicitly typed &quot;brainstorm&quot;).</rejected>
+    <rationale>The umbrella `/faion` skill auto-routes to brainstorm on weak signals (&quot;ideas&quot;, &quot;options&quot;, &quot;improve&quot;). Without a gate, the orchestrator runs 18 subagents the user did not approve. The gate skips itself when the user typed an explicit trigger word, so the friction is zero in the common case and a single AskUserQuestion in the over-trigger case.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="distinct-personas-required">
+    <chose>Distinct, specific personas for every research agent (one of three documented strategies: by domain, Six Thinking Hats, or by lens).</chose>
+    <rejected>Same prompt for all agents (cheaper, simpler — but collapses 10 agents into 1 effectively, kills the diverge premise); free-form &quot;come up with your own perspective&quot; (agents converge on similar perspectives without explicit assignment).</rejected>
+    <rationale>The whole reason multi-agent brainstorm beats single-pass is that distinct personas force independent search. Without explicit persona assignment, LLM agents converge on the same plausible answer (anchoring). Specificity matters too: &quot;senior engineer&quot; is generic and yields generic ideas; &quot;Django ORM specialist who has debugged N+1 in production&quot; biases the search toward specific ideas only that persona would surface.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="adversarial-reviewers">
+    <chose>Reviewer prompts framed adversarially (find what breaks, find hidden costs, find missing perspectives).</chose>
+    <rejected>Collaborative review (&quot;evaluate and improve these recommendations&quot;) — produces rubber-stamping and decorative LGTM comments.</rejected>
+    <rationale>Adversarial framing produces actionable critique that drives the Phase 4 re-tiering. Collaborative framing produces output the synthesis cannot use to change tier assignments — the review phase becomes decorative. The cost of the review phase is only justified if the output drives tier moves; adversarial framing is what guarantees that.</rationale>
+  </decision>
+</decisions>

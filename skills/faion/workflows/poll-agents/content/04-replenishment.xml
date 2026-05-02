@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-replenishment" title="Two-signal replenishment, quota gating, retry policy">
+  <summary>Pool refills via two complementary signals: cron tick (keepalive, drain detection, post-compact recovery) and completion handler (real-time replacement). Either alone is fragile; together they tolerate idle parents, lost notifications, and crashes. A strict 15-in-flight cap is enforced one-per-completion after the initial pool is seeded. Quota is checked between every spawn; failed batches retry with sonnet (not haiku).</summary>
+
+  <section title="Two-signal pattern">
+    <rule>
+      <statement>The pool MUST be refilled by both a periodic cron tick AND a per-completion handler. Neither signal alone is sufficient.</statement>
+      <rationale>Cron alone wastes time — between ticks, freed slots sit idle, throughput drops to `pool_size / tick_interval` instead of being agent-bound. Completion alone is fragile — if the parent crashes, is `/compact`-ed, or misses a `task-notification` (it happens), the pool drains permanently and the queue stalls. Cron tick covers gaps, completion handler covers steady-state throughput.</rationale>
+    </rule>
+
+    <list>
+      <item>Cron tick role: keepalive (pool stays full when parent is idle), drain detection (terminates the loop when queue empty + zero active), recovery (re-syncs after `/compact` by reading `QUEUE.txt + DONE.txt` afresh).</item>
+      <item>Completion handler role: real-time replacement (slot frees, next batch pops, replacement dispatches within seconds), one-per-completion strictly (avoids bursty over-commit).</item>
+    </list>
+  </section>
+
+  <section title="Strict in-flight cap">
+    <rule>
+      <statement>Once the initial pool is seeded, replacement MUST be one-per-completion — never batched, never &gt;1 per signal. The total in-flight count MUST NOT exceed the configured cap (default 15).</statement>
+      <rationale>Bursty replacement (e.g., "completion fired, dispatch 3 to be safe") exceeds the cap, blows past quota, and creates head-of-line stalls when the burst's slowest agent gates the next signal. One-per-completion produces smooth back-pressure: the pool's effective parallelism equals the quota-bounded steady state, not a sawtooth.</rationale>
+    </rule>
+    <p>The cap value is a tuning knob. Feature-045 used 9 (Sonnet). Feature-048 used a strict 15 across 4 waves. Above ~15 the diminishing returns from extra parallelism are dominated by quota throttling and merge-lock contention.</p>
+  </section>
+
+  <section title="Quota gate">
+    <rule>
+      <statement>Between every spawn the parent MUST read `/tmp/claude-session-state.json` `rate_limits.five_hour.used_percentage` and pause dispatch if the projected wave consumption would push the meter past the user-set threshold (default 50%).</statement>
+      <rationale>A long pool run can starve later sessions in the same 5-hour window. Reading the meter is one file read; not reading it pays the cost on the next session, not this one. The threshold is conservative because subagent token use is bursty and not perfectly predictable from queue length alone.</rationale>
+    </rule>
+  </section>
+
+  <section title="Failed-batch retry">
+    <rule>
+      <statement>When a batch fails (subagent returns error, hook fails, merge conflict, or "out of extra usage"), re-queue the failed paths to the head of `QUEUE.txt` and retry the same paths with `model: "sonnet"` — not `haiku`.</statement>
+      <rationale>Empirical lesson from feature-045: pool batches that fail on haiku recover reliably on sonnet, while haiku-on-haiku retries loop on the same failure mode (typically misread file format or truncated output). Sonnet's larger context and stronger instruction-following close the gap. Opus is overkill for the recovery and burns quota that the pool needs for forward progress.</rationale>
+    </rule>
+  </section>
+
+  <section title="Quota-exhaustion stop">
+    <p>If 3 or more batches in a window return "out of extra usage" / "quota" errors, the parent halts the cron, restores those batches to the head of `QUEUE.txt`, and alerts the user with the resume-time hint from the error message (e.g. "9:30am UTC"). Silent retry wastes the recovery quota window — the user must see the resume time.</p>
+    <p>On quota error the parent always checks `date -u` first: the reset may have already passed before it was about to park the loop, in which case the loop resumes immediately rather than scheduling a wakeup that never fires.</p>
+  </section>
+</text>

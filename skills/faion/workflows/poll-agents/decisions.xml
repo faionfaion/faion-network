@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<decisions>
+  <decision date="2026-04-15" topic="pool-size-cap">
+    <chose>Strict in-flight cap of 15 (default 9 for Sonnet, hard 15 ceiling)</chose>
+    <rejected>Unbounded pool sized to queue length, or dynamic cap that grows with successful completions</rejected>
+    <rationale>Empirical sweet spot from feature-045 (1142 methodologies) and feature-048 (120 playbooks). Above ~15 the diminishing returns from extra parallelism are dominated by quota throttling and merge-lock contention; below ~9 the parent's per-tick fixed cost becomes a noticeable share of throughput. 15 is the ceiling where the merge `flock` queue length stays bounded and the 5-hour quota window covers a full drain.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="worktree-isolation">
+    <chose>Every subagent runs inside its own `git worktree` checkout, with `flock`-serialized fast-forward merge into `main`</chose>
+    <rejected>Subagents share the main working tree; coordinate via in-process locking</rejected>
+    <rationale>Subagents writing to a shared working tree race on `.git/index` and on uncommitted local-only files (lock files, preview data, dev toggles). They also race on `git checkout main` during merge. Worktrees give each agent a clean branch-scoped checkout sharing the same `.git/` for cheap branching; `flock` serializes the only single-threaded part (the ref update on `main`). The cost of worktree create/remove is amortized across batch_size paths.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="on-disk-state">
+    <chose>Pool state lives in `QUEUE.txt` + `DONE.txt` (+ optional `ACTIVE.txt`); recovery reads files plus `git log`, never trusts conversation memory</chose>
+    <rejected>In-memory bookkeeping in the parent's conversation, with disk dump only at terminal drain</rejected>
+    <rationale>Parent context is volatile: `/compact` truncates it, full session restart wipes it, cron ticks can fire after the parent has forgotten agent IDs. With on-disk state the cron tick is mechanical (read files, count active, dispatch to refill). Without it, a single compaction loses hours of progress and the pool restarts from scratch. The cost of `head/tail/mv` per pop is negligible against the agent's work time.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="two-replenishment-signals">
+    <chose>Both cron tick (every 5 min) and per-completion handler refill the pool</chose>
+    <rejected>Cron-only (simpler) or completion-only (lower latency)</rejected>
+    <rationale>Cron alone wastes time — between ticks freed slots sit idle, throughput drops to `pool_size / tick_interval` instead of being agent-bound. Completion alone is fragile — the parent crashing, being `/compact`-ed, or missing a `task-notification` permanently drains the pool. Together: completion handler covers steady-state throughput, cron tick covers gaps and triggers terminal drain. Each individually has a single-point-of-failure mode the other compensates for.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="one-per-completion-replacement">
+    <chose>After initial pool seeded, replacement is strictly one agent per completion signal — never batched</chose>
+    <rejected>Batched dispatch ("two completions arrived close together, send three replacements to keep pipeline full")</rejected>
+    <rationale>Bursty replacement makes the in-flight count oscillate above and below the cap. Above the cap trips the quota gate (halting the pool prematurely) and exceeds the merge-lock throughput (head-of-line stall on `flock`). Below the cap leaves slots idle. One-per-completion produces smooth back-pressure: in-flight count stays at or just below the cap, agent throughput equals quota-bounded steady state, and the merge lock queue length stays bounded.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="retry-with-sonnet">
+    <chose>Failed batches re-queue to head of `QUEUE.txt` and retry with `model: "sonnet"` regardless of original model</chose>
+    <rejected>Retry on the same model (haiku-on-haiku); escalate to opus on failure</rejected>
+    <rationale>Lesson from feature-045: haiku-on-haiku retries loop on the same failure mode (typically misread file format or truncated output) and exhaust the haiku quota without progress. Sonnet's larger context and stronger instruction-following close the gap reliably. Opus is overkill for recovery and burns the quota the pool needs for forward progress on the rest of the queue. Sonnet is the correct floor.</rationale>
+  </decision>
+</decisions>

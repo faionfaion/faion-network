@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-phases" title="The eight phases">
+  <summary>Phase 0 always runs first. Phases 1-7 are optional extensions selected by user intent. Phase 3.5 is a mandatory user-approval gate before any change is applied — even CRITICAL findings cannot bypass it.</summary>
+
+  <section title="Phase 0 — Session Review (ALWAYS FIRST)">
+    <p>Trigger: every invocation, regardless of user intent. Cannot be skipped.</p>
+    <p>What it does: re-reads the current conversation context and extracts (1) what was built/changed, (2) what broke or was a wrong assumption, (3) recurring patterns that worked, (4) surprising findings, (5) what future sessions should know.</p>
+    <p>Output: appended `PAT-NNN` entries to `.aidocs/memory/patterns.md`, appended `ERR-NNN` entries to `.aidocs/memory/mistakes.md`, optional `DEC-NNN` entries to `.aidocs/memory/decisions.md`. `session.md` is overwritten with current-session state.</p>
+  </section>
+
+  <section title="Phase 1 — Investigate (optional, system audit)">
+    <p>Trigger: user asks "audit X", "find issues", "what can be improved", or extends Phase 0 with a system scope.</p>
+    <p>What it does: dispatches parallel agents across orthogonal categories — configs, security posture, performance, developer-experience, documentation drift. Each returns a findings list with priorities CRITICAL / HIGH / MEDIUM / LOW.</p>
+    <p>Output: consolidated findings list, ready for classification in Phase 2.</p>
+  </section>
+
+  <section title="Phase 2 — Classify and Prioritize">
+    <p>Trigger: Phase 1 produced findings, or Phase 0 surfaced multiple actionable items.</p>
+    <p>What it does: groups findings by priority and scope. System scope (config edits, infra tweaks) routes directly to Phase 4. Project scope (code changes, architectural shifts) routes to Phase 4b for SDD planning instead of direct apply.</p>
+    <p>Output: two lists — "apply-direct" (System) and "SDD-track" (Project).</p>
+  </section>
+
+  <section title="Phase 3 — Brainstorm (optional)">
+    <p>Trigger: user asks "brainstorm improvements" or Phase 0/1 produced ambiguous goals needing diverge-converge.</p>
+    <p>What it does: delegates to the sibling `../brainstorm/` workflow, passing session context plus any Phase 1 findings as input. Skipped when Phase 0 already produced clear actions.</p>
+    <p>Output: ranked option set ready for Phase 3.5 user approval.</p>
+  </section>
+
+  <section title="Phase 3.5 — User Approval (MANDATORY before any change)">
+    <rule>
+      <statement>The orchestrator MUST run Phase 3.5 before Phase 4 for every proposed change, even CRITICAL-priority findings. The user is asked via `AskUserQuestion` with 2-3 options per change and explicit trade-offs. Single-option prompts are forbidden.</statement>
+      <rationale>Auto-applying CRITICAL findings is the historical failure mode this gate prevents. CRITICAL means "high impact" — it does not mean "skip consent." The user is the security boundary; the orchestrator is not authorized to act unilaterally.</rationale>
+    </rule>
+    <p>What it does: for each improvement, presents the problem, the risk of inaction, 2-3 options with trade-offs, and asks which to apply. Related changes are grouped into one prompt; orthogonal categories are split across prompts.</p>
+    <p>Output: per-change verdict — `apply` / `skip` / `defer`.</p>
+  </section>
+
+  <section title="Phase 4 — Apply Fixes">
+    <p>Trigger: Phase 3.5 returned at least one `apply` verdict.</p>
+    <p>What it does: applies only approved improvements. Parallel agents handle orthogonal categories (configs / docs / new files). Rules: read current file before editing, never restart prod services without a second confirmation, back up system configs before modifying.</p>
+    <p>Output: changes on disk, ready for Phase 5 logging.</p>
+  </section>
+
+  <section title="Phase 4b — SDD Tasks for Project Improvements">
+    <p>Trigger: Phase 2 routed findings to SDD-track (code or architecture changes).</p>
+    <p>What it does: creates `.aidocs/improvements/AI-NNN-*.md` improvement tickets, or full `.aidocs/backlog/feature-NNN-*/` folders if the user wants a complete SDD spec. Routes through `knowledge/solo/sdd/sdd-planning/` if a planning pass is needed.</p>
+    <p>Output: tracked SDD artifacts; no code is written in this phase.</p>
+  </section>
+
+  <section title="Phase 5 — Log">
+    <p>Trigger: Phase 4 or Phase 4b produced artifacts.</p>
+    <p>What it does: writes `## YYYY-MM-DD — Title` block to `{project}/operations/improvement-log.md` (project-local) and to `~/.claude/projects/{project}/memory/` (cross-session). Block contains `### Changes`, `### Patterns Learned`, `### Skills Created` subsections.</p>
+    <p>Output: dated log entry; updated cross-session memory.</p>
+  </section>
+
+  <section title="Phase 6 — Commit">
+    <p>Trigger: user says "commit improvements" or Phase 5 produced staged changes ready to land.</p>
+    <p>What it does: stages only relevant files (no `git add -A`), writes a descriptive `type: short` commit message, updates CHANGELOG.md under `## [Unreleased]`, never pushes without explicit user confirmation.</p>
+    <p>Output: local commit; push is a separate user-gated step.</p>
+  </section>
+
+  <section title="Phase 7 — Skill Creation">
+    <p>Trigger: user says "make a skill from this" AND the session produced reusable domain knowledge that meets the reusable-knowledge bar (see `decisions.xml`).</p>
+    <p>What it does: creates a methodology folder under `../../knowledge/&lt;tier&gt;/&lt;group&gt;/&lt;name&gt;/` with the 5-file pattern (README.md, checklist.md, templates.md, examples.md, llm-prompts.md), per `docs/skill-authoring.md`.</p>
+    <p>Output: new methodology folder; CHANGELOG entry; tier-manifest update if applicable.</p>
+  </section>
+</text>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<decisions>
+  <decision date="2026-04-15" topic="centralized-media-manager">
+    <chose>Centralised media-manager service owns cron, monitoring, and operator commands for all outlets.</chose>
+    <rejected>Per-outlet cron entries added directly to the host crontab during phase 4.</rejected>
+    <rationale>Four production outlets running per-outlet cron drifted in timing, masked failures, and double-published when restarts overlapped. A single control plane gives one /status surface, one morning briefing, and one place to swap credentials. The cost is one extra registration step in phase 6, paid back the first time an outlet misbehaves.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="static-site-stack">
+    <chose>Gatsby 5 static site for every outlet site.</chose>
+    <rejected>WordPress, Ghost, or a custom Next.js renderer.</rejected>
+    <rationale>Markdown-driven content matches what the pipeline emits, build-and-rsync deploy is a one-line script, and Gatsby has zero runtime cost on the host. WordPress would need a database, plugin updates, and admin hardening; Next.js SSR would force us to keep a Node process alive per outlet. Gatsby plus nginx static serving is the cheapest fit for the workload.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="agent-sdk-not-raw-api">
+    <chose>Claude Agent SDK with two presets (structured_query and agent_query) for all LLM calls.</chose>
+    <rejected>Raw HTTP calls to the Anthropic API with hand-rolled retry, JSON repair, and tool wiring.</rejected>
+    <rationale>Structured_query needs zero tools and JSON output; agent_query needs WebSearch, WebFetch, Read, Glob. Building these from raw API calls re-implements permission_mode, allowed_tools, max_turns, and isolated cwd for every project. The SDK gives one wrapper, two presets, and consistent behaviour across outlets. The only cost is a sdk.py wrapper, paid once per outlet.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="jinja2-prompts">
+    <chose>Jinja2 templates rendering the system / ===SPLIT=== / task envelope for every prompt.</chose>
+    <rejected>Hardcoded f-string prompts inline in stage code.</rejected>
+    <rationale>Prompts are versioned artifacts that get reviewed, diffed, and improved over time. F-strings inside stage files mix logic with copy, hide drift in code reviews, and make voice-guide tweaks invisible. Jinja2 templates with shared _partials/ (voice_guide, anti_slop, image_style) let one edit propagate across all stages. The split marker keeps system and user prompts in one file without losing the boundary.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="review-loop-min-one-revision">
+    <chose>Review loop runs at least one revision cycle even when the first verdict is approved.</chose>
+    <rejected>Exit on first approved verdict (would let the reviewer rubber-stamp first drafts).</rejected>
+    <rationale>Empirically the reviewer subagent approves first drafts that the same model would clearly improve on a second pass — the model is biased toward "looks fine" early in the loop. Forcing one revision before exit costs one extra structured_query and consistently upgrades quality. Hard cap stays at three cycles to bound cost.</rationale>
+  </decision>
+
+  <decision date="2026-04-15" topic="tg-text-link-not-button">
+    <chose>Append the article link as inline HTML anchor text inside the Telegram caption, prefix an invisible-link non-breaking space for OG preview.</chose>
+    <rejected>Use a Telegram inline keyboard button below the post.</rejected>
+    <rationale>Inline keyboard buttons suppress the OG preview entirely, which kills click-through and wastes the generated image. The text-link plus invisible-NBSP-prefix trick keeps the large OG preview above the caption while still giving readers a tappable link. The invisible character must be U+00A0 (NBSP) — U+200B (zero-width space) is stripped by some clients and breaks the preview.</rationale>
+  </decision>
+</decisions>

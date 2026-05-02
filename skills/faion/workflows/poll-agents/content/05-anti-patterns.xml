@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-anti-patterns" title="Anti-patterns to avoid">
+  <summary>Failure modes observed across faion-network pool runs. Each violation breaks one of the load-bearing properties (parent isolation, atomic state, real-time replenishment, smooth back-pressure, restartability).</summary>
+
+  <section title="Parent boundary violations">
+    <rule>
+      <statement>The parent MUST NOT do writes, edits, commits, or merges. It only pops the queue, dispatches subagents, records DONE, and pulls/pushes the bare repo.</statement>
+      <rationale>If the parent edits files, the worktree-isolation abstraction collapses: parallel subagents race on the parent's working tree, the parent's context inflates with file content, and recovery from `/compact` is no longer mechanical. The hard rule is the only thing that keeps throughput agent-bound instead of parent-bound.</rationale>
+    </rule>
+  </section>
+
+  <section title="Concurrency hazards">
+    <rule>
+      <statement>Concurrent merges into `main` MUST be serialized with `flock /tmp/&lt;repo-slug&gt;-merge.lock`. Push contention on shared remotes (e.g. CHANGELOG conflicts) MUST be wrapped in the same lock.</statement>
+      <rationale>Two ff-only merges race on `.git/HEAD`; one silently loses. Even with worktrees, the merge target is a single ref. `flock` makes the critical section observable and bounded; without it, the queue appears to drain but commits silently disappear.</rationale>
+    </rule>
+  </section>
+
+  <section title="Replenishment smell">
+    <rule>
+      <statement>The parent MUST react to `task-notification` events for replenishment. Polling `ACTIVE.txt` or sleeping in a tight loop instead of using the completion handler is forbidden.</statement>
+      <rationale>Polling burns parent tokens proportionally to wall-clock time, not to work done; the completion handler is a free signal the harness already emits. Polling also lags the real-time replacement by the poll interval, lowering effective parallelism.</rationale>
+    </rule>
+  </section>
+
+  <section title="State smell">
+    <rule>
+      <statement>Pool state MUST live on disk (`QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt`). In-memory bookkeeping that depends on the parent's conversation context is forbidden.</statement>
+      <rationale>The parent's context is volatile: `/compact` truncates it, session restart wipes it, the cron tick can fire after the parent has lost agent IDs. Without disk state, a single compaction wipes hours of progress and the pool restarts from scratch.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pool-sizing smell">
+    <rule>
+      <statement>Initial pool size MUST equal N. Seeding more than N agents up-front (`N + buffer`) to "pre-fill the pipeline" is forbidden.</statement>
+      <rationale>Over-commit at startup pushes the in-flight count past the cap, which then either trips the quota gate (halting the entire pool prematurely) or stalls the merge lock (serializing what should be parallel work). The correct cap is the steady-state target — initial dispatch hits exactly that, no more.</rationale>
+    </rule>
+  </section>
+
+  <section title="Replacement smell">
+    <rule>
+      <statement>Replacement on completion MUST be one-per-completion. Batched dispatch (e.g. "two completions arrived close together, dispatch three replacements") is forbidden once the initial pool is seeded.</statement>
+      <rationale>Bursty replacement defeats the smooth back-pressure the pool depends on: instead of a constant N agents in flight, the in-flight count oscillates above and below the cap, which trips the quota gate, exceeds the merge-lock throughput, and causes head-of-line stalls when the burst's slowest agent gates the next signal.</rationale>
+    </rule>
+  </section>
+</text>

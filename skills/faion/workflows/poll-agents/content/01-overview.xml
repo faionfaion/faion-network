@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-overview" title="Overview and core principle">
+  <summary>Self-replenishing pool of N background subagents draining a queue of independent task batches. The parent thread does only orchestration; every write, commit, and merge happens inside isolated worktree subagents. The pool stays full via two complementary signals: a cron tick that tops up after parent idleness, and a completion handler that pops the next batch the moment a slot frees.</summary>
+
+  <section title="Core principle">
+    <rule>
+      <statement>The parent thread MUST NOT do research, edits, writes, commits, or merges. It pops paths off `QUEUE.txt`, dispatches background `Agent` subagents in worktree isolation, records outcomes to `DONE.txt`, pulls and pushes the bare repo, and deletes the cron once the queue drains.</statement>
+      <rationale>Subagents in fresh `git worktree` checkouts cannot corrupt one another. The moment the parent starts editing files itself, the abstraction collapses: parallelism degrades to one batch at a time, the parent's context window inflates, and recovery from `/compact` or session restart breaks. This is the load-bearing rule — if the parent is editing, stop and re-delegate.</rationale>
+    </rule>
+  </section>
+
+  <section title="Role split">
+    <p>The parent owns coordination only. Background subagents own all real work behind the dispatch boundary.</p>
+    <list>
+      <item>Parent: pop queue, dispatch agents, record DONE, pull/push the bare repo, restore failed batches on quota exhaustion, delete the cron when complete.</item>
+      <item>Subagents (one per batch): read the committed `BRIEF.md`, perform research and writes inside their own worktree, commit with `flock`-serialized fast-forward merge into `main`.</item>
+      <item>On-disk state: `QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt` carry truth that survives session restart and `/compact`.</item>
+    </list>
+  </section>
+
+  <section title="Battle-tested examples">
+    <p>The pattern is the explicit successor to manual queue-draining loops in faion-network.</p>
+    <list>
+      <item>Feature-045 — methodology XML migration: ~140 batches of 8 paths each (1142 methodology directories enriched with `agent-integration.md`). Pool size 9 on Sonnet, batch size 8, cron tick every 5 minutes.</item>
+      <item>Feature-048 — tier playbooks: 120 playbook scaffolds across 4 waves, strict 15-in-flight cap. One-per-completion replacement after the initial pool was established to avoid bursty over-commit.</item>
+    </list>
+  </section>
+
+  <section title="Language convention">
+    <rule>
+      <statement>User-facing one-line status updates use Ukrainian. `BRIEF.md`, dispatch prompts, commit messages, on-disk state file contents, and CHANGELOG entries use English.</statement>
+      <rationale>Subagent prompts in English save roughly 30% of dispatch tokens and make `git log` greppable. User-facing reports stay polite by speaking the user's language.</rationale>
+    </rule>
+  </section>
+</text>

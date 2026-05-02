@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-scaffold-structure" title="Scaffold project structure and key patterns">
+  <summary>Canonical directory tree the scaffolding phase emits, plus the three load-bearing code patterns every outlet uses: SDK options split (structured vs agent), prompt split convention, and review loop.</summary>
+
+  <section title="Top-level directories">
+    <p>Every outlet has the same first-level layout under workspace/projects/&lt;outlet&gt;/.</p>
+    <list>
+      <item>CLAUDE.md — always points at AGENTS.md.</item>
+      <item>AGENTS.md — project overview for agents.</item>
+      <item>pipeline/ — Python pipeline package (the core engine).</item>
+      <item>admin/ — optional Flask admin panel for review-mode outlets.</item>
+      <item>gatsby/ — static site source (Gatsby 5).</item>
+      <item>scripts/ — shell entry points for cron and manual operations.</item>
+      <item>content/ — markdown articles consumed by Gatsby.</item>
+      <item>state/ — runtime artifacts (plans, teasers, runs, logs, summaries.json, editor_notes.md).</item>
+      <item>tests/ — pytest suite.</item>
+    </list>
+  </section>
+
+  <section title="pipeline/ subtree">
+    <p>The Python package layout is identical across outlets so muscle memory transfers.</p>
+    <list>
+      <item>__init__.py, __main__.py — module entry (python3 -m pipeline).</item>
+      <item>cli.py — argument parsing and mode dispatch.</item>
+      <item>config.py — all configuration constants.</item>
+      <item>context.py — PipelineContext dataclass passed between stages.</item>
+      <item>sdk.py — Claude Agent SDK wrapper exposing structured_query and agent_query.</item>
+      <item>json_repair.py — defensive JSON parsing.</item>
+      <item>feeds.py — RSS feed fetcher (when sources include RSS).</item>
+      <item>image_gen.py — OpenAI image generation wrapper.</item>
+      <item>telegram.py — Telegram Bot API wrapper.</item>
+      <item>run_report.py — execution reporting.</item>
+      <item>exceptions.py — custom exception types.</item>
+      <item>schemas/ — JSON schema per stage (editorial_plan, generation, review, tg_post, digest).</item>
+      <item>prompts/ — Jinja2 builder plus templates/ folder; templates use the system / split / task convention.</item>
+      <item>stages/ — one file per stage, numbered s0_, s1_, ... matching the chosen complexity level.</item>
+      <item>modes/ — generate (morning batch), publish (mechanical Telegram publish), digest (evening digest).</item>
+    </list>
+  </section>
+
+  <section title="gatsby/ subtree">
+    <p>Static site identical across outlets except for theme and content.</p>
+    <list>
+      <item>gatsby-config.js, gatsby-node.js, package.json.</item>
+      <item>src/pages/index.js — home.</item>
+      <item>src/templates/article.js — article page rendered from markdown.</item>
+      <item>src/components/layout.js, seo.js — layout and SEO head.</item>
+      <item>src/styles/global.css — theme.</item>
+      <item>deploy.sh — SSH deploy script.</item>
+      <item>static/images/ — generated images served as static assets.</item>
+    </list>
+  </section>
+
+  <section title="admin/ subtree">
+    <p>Present only when automation level is "Generate plus review before publish".</p>
+    <list>
+      <item>app.py — Flask admin panel with login, queue view, approve/reject actions.</item>
+    </list>
+  </section>
+
+  <section title="scripts/ subtree">
+    <p>Shell entry points used by media-manager cron jobs and manual operators.</p>
+    <list>
+      <item>run-pipeline.sh — cron entry point that activates venv and dispatches modes.</item>
+      <item>send_post.py — direct Telegram sender used by the publish mode.</item>
+      <item>manage_state.py — clear, inspect, and rebuild state files.</item>
+    </list>
+  </section>
+
+  <section title="state/ subtree">
+    <p>Runtime artifacts. Never committed in full; the structure is committed empty.</p>
+    <list>
+      <item>plans/ — daily editorial plans (one JSON per day).</item>
+      <item>teasers/ — pre-generated Telegram captions waiting to publish.</item>
+      <item>runs/ — pipeline run reports.</item>
+      <item>logs/ — pipeline logs.</item>
+      <item>summaries.json — article index used for deduplication.</item>
+      <item>editor_notes.md — operator wishes injected into the next plan.</item>
+    </list>
+  </section>
+
+  <section title="SDK pattern">
+    <p>Two ClaudeAgentOptions presets, both with permission_mode bypassPermissions.</p>
+    <list>
+      <item>structured_query — no tools, JSON output. Disables Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch, Agent, TodoWrite, TodoRead. max_turns 1. cwd /tmp so the project CLAUDE.md does not load.</item>
+      <item>agent_query — with tools, free-text output. Allows WebSearch, WebFetch, Read, Glob. cwd is the project root.</item>
+    </list>
+  </section>
+
+  <section title="Prompt split convention">
+    <p>Every Jinja2 prompt template emits one rendered string with a literal split marker. The SDK wrapper splits on the marker, treats the first half as the system prompt, the second half as the user prompt.</p>
+    <list>
+      <item>Top half: a system tag carrying role, rules, and context.</item>
+      <item>Marker: the literal token ===SPLIT=== on its own line.</item>
+      <item>Bottom half: a task tag carrying specific instructions, data, and the JSON schema.</item>
+    </list>
+  </section>
+
+  <section title="Review loop pattern">
+    <p>Every Standard or Full pipeline runs a bounded review loop with a minimum-one-revision rule.</p>
+    <list>
+      <item>The loop iterates up to MAX_REVIEW_CYCLES (typically 3).</item>
+      <item>Each iteration runs structured_query against review_schema; if approved AND at least one revision has already happened, the loop exits.</item>
+      <item>Otherwise structured_query runs revise_schema and replaces ctx.article with the revised text.</item>
+      <item>The minimum-one-revision rule prevents the reviewer from rubber-stamping the first draft.</item>
+    </list>
+  </section>
+
+  <section title="Batch generation pattern">
+    <p>The generate mode runs editorial planning once, then iterates per-topic.</p>
+    <list>
+      <item>editorial_plan returns ten to twelve topics for the day.</item>
+      <item>collect loads RSS items and the existing slug list.</item>
+      <item>For each topic: skip if already written, otherwise research, generate, review_loop, tg_caption, image, save, mark_written.</item>
+      <item>Single deploy at the end after all articles land in content/.</item>
+    </list>
+  </section>
+
+  <section title="Telegram text-link pattern">
+    <p>Captions append the link as inline HTML, never as an inline keyboard button. An invisible-link prefix forces the OG preview to load above the caption.</p>
+    <list>
+      <item>Caption body ends with an HTML anchor labelled with a forward arrow.</item>
+      <item>An invisible non-breaking-space link is prepended for OG preview.</item>
+      <item>Telegram payload uses parse_mode HTML and link_preview_options with prefer_large_media true and show_above_text true.</item>
+    </list>
+  </section>
+</text>

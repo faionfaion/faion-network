@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-phases" title="Pool lifecycle phases">
+  <summary>Four phases drive the pool from cold start to terminal drain. Phases 1 and 4 are one-shot bookends; phases 2 and 3 form the steady-state loop, where 3a (cron tick) and 3b (completion handler) run continuously until the queue empties.</summary>
+
+  <section title="Phase 1 — Initialize state">
+    <p>One-time setup before any subagent is dispatched.</p>
+    <list>
+      <item>Build `QUEUE.txt`: one absolute target path (or batch slug) per line, ordered by intended dispatch order.</item>
+      <item>Create empty `DONE.txt`. Each completed batch appends a last-line marker `done=&lt;slug&gt; commit=&lt;sha&gt;`.</item>
+      <item>Optional `ACTIVE.txt` records currently in-flight batch slugs, one per line; it lets a recovering parent reconstruct the pool after session restart without re-reading `git log`.</item>
+      <item>Write and commit `BRIEF.md` (the single source of truth handed to each subagent: read-files, work skeleton, commit style, merge policy).</item>
+      <item>`.gitignore` `QUEUE.txt`, `DONE.txt`, `ACTIVE.txt`, and any `.claude/worktrees/` path used for isolation.</item>
+      <item>Schedule the cron tick (e.g. `/loop 5m &lt;tick-prompt&gt;`). The tick prompt is the verbatim instruction block the parent re-enters every interval.</item>
+    </list>
+  </section>
+
+  <section title="Phase 2 — Initial dispatch">
+    <p>Fill the pool to N in one burst. Reads the first N batches off `QUEUE.txt`, pops them atomically, and dispatches one background `Agent` per batch in worktree isolation. The parent emits one summary line for the user (`Pool=N: K batches dispatched. Queue=M done=0.`) and then yields.</p>
+    <p>The pool size N is bounded by quota: read `/tmp/claude-session-state.json` `rate_limits.five_hour.used_percentage` and stop adding agents when projected wave consumption would push the meter past the user-set threshold.</p>
+  </section>
+
+  <section title="Phase 3 — Steady-state loop">
+    <p>The pool stays full through two complementary replenishment signals. Either signal alone is insufficient; both together are resilient.</p>
+
+    <section title="3a — Cron tick (every 5 min)">
+      <list>
+        <item>`cd &lt;repo-root&gt;`, `git pull --ff-only origin main`.</item>
+        <item>Count active background agents (via system reminders or by reading `ACTIVE.txt`).</item>
+        <item>If `active &lt; N` AND `QUEUE.txt` non-empty, pop `(N - active) * batch_size` lines and dispatch enough replacements to refill the pool.</item>
+        <item>`git push origin main` and emit one summary line: `Tick: pool=N queue=M done=K`.</item>
+      </list>
+      <p>The tick is the keepalive — it covers the case where the parent is idle, lost a completion notification, or has been compacted. It also detects drain (queue empty AND zero active) and triggers terminal teardown.</p>
+    </section>
+
+    <section title="3b — Completion handler (per task-notification)">
+      <list>
+        <item>`cd &lt;repo-root&gt;`, `git pull --ff-only origin main`.</item>
+        <item>Append `done=&lt;slug&gt; commit=&lt;sha&gt;` to `DONE.txt`; remove the slug from `ACTIVE.txt` if maintained.</item>
+        <item>Pop next `batch_size` lines off `QUEUE.txt` and dispatch one replacement.</item>
+        <item>Emit one summary line: `Pool=N: &lt;prev-id&gt; done, replacement &lt;new-id&gt; dispatched. Queue=M done=K`.</item>
+      </list>
+      <p>The completion handler is the real-time replacement — it keeps the pool full between cron ticks. Strictly one-per-completion (not batched) once the initial pool has been seeded, so back-pressure stays smooth instead of bursty.</p>
+    </section>
+  </section>
+
+  <section title="Phase 4 — Drain and terminate">
+    <p>When `QUEUE.txt` is empty AND no active agents remain, the parent runs the terminal sequence.</p>
+    <list>
+      <item>`git push origin main` to publish the final merges.</item>
+      <item>`CronDelete &lt;tick-id&gt;` to stop the keepalive.</item>
+      <item>Emit one final summary: `Done: K batches × &lt;batch_size&gt; paths = N enriched. M skipped.`</item>
+      <item>If termination was triggered by quota exhaustion (3+ "out of extra usage" failures), restore the failed batches to the head of `QUEUE.txt`, delete the cron, and alert the user with the resume-time hint from the error.</item>
+    </list>
+  </section>
+</text>

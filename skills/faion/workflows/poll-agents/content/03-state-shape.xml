@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-state-shape" title="On-disk state and atomic operations">
+  <summary>The pool's truth lives on disk, not in the parent's conversation context. Three plain-text files (`QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt`) plus the committed `BRIEF.md` survive `/compact`, full session restart, and parent crashes. Atomic pop semantics rely on `head` plus an `mv` rename, never in-place edits without a backing file.</summary>
+
+  <section title="State files">
+    <list>
+      <item>`QUEUE.txt` — pending batches, one per line. Each line is the unit a single subagent consumes (one absolute path, or a batch slug that the subagent expands via `BRIEF.md`). Gitignored.</item>
+      <item>`DONE.txt` — completed batches. Each line is tab-separated (`&lt;path&gt;\tOK\t&lt;iso-date&gt;`), or carries the canonical last-line marker `done=&lt;slug&gt; commit=&lt;sha&gt;` per batch. Gitignored.</item>
+      <item>`ACTIVE.txt` (optional) — currently in-flight batch slugs, one per line. Cleared on successful completion. Gitignored. Useful when subagent IDs are not stably retrievable across `/compact`.</item>
+      <item>`BRIEF.md` — committed; the single source of truth for what each subagent should do (read-files, work skeleton, file format, commit style, merge policy, hard rules).</item>
+    </list>
+  </section>
+
+  <section title="Atomic pop pattern">
+    <p>The parent must pop the next batch in a way that never leaves `QUEUE.txt` in a half-written state, even if interrupted mid-step. The canonical pattern uses `head`, `tail`, and `mv` — never edit `QUEUE.txt` in place.</p>
+    <p>Pop pattern: `head -N QUEUE.txt &gt; /tmp/initial.txt &amp;&amp; tail -n +$((N+1)) QUEUE.txt &gt; QUEUE.new &amp;&amp; mv QUEUE.new QUEUE.txt`.</p>
+    <p>The rename of `QUEUE.new` over `QUEUE.txt` is atomic on a POSIX filesystem; the file is either fully old or fully new, never truncated. Older docs use `sed -i '1,Nd' QUEUE.txt` — that is one syscall in practice but does an in-place truncate-then-rewrite which can lose lines on crash. Prefer the `mv` form.</p>
+  </section>
+
+  <section title="Why on-disk state, not in-memory">
+    <rule>
+      <statement>Pool state MUST live on disk. The parent thread MUST be restartable from `QUEUE.txt + DONE.txt + git log` without any conversation-context dependency.</statement>
+      <rationale>The parent's conversation context is volatile — `/compact` truncates it, full session restart wipes it, the cron tick can fire after the parent has lost agent IDs. Disk state survives all three. The cron tick's first action is always to read `QUEUE.txt` and decide what to dispatch — it never trusts in-memory bookkeeping.</rationale>
+    </rule>
+  </section>
+
+  <section title="Append patterns">
+    <list>
+      <item>`DONE.txt` append after each completion — use `&gt;&gt; DONE.txt` from a single shell line; concurrent append to a regular file is safe under POSIX `O_APPEND` semantics and the parent is single-threaded for record-keeping.</item>
+      <item>`ACTIVE.txt` add on dispatch, remove on completion — use the same `head/tail/mv` pattern as `QUEUE.txt` to avoid in-place edits.</item>
+      <item>Never `git add` any of `QUEUE.txt`, `DONE.txt`, `ACTIVE.txt` — they are runtime state, not source.</item>
+    </list>
+  </section>
+
+  <section title="Recovery flow">
+    <p>After `/compact` or session restart the parent re-enters the tick handler. Recovery is mechanical: read `QUEUE.txt`, read `DONE.txt`, read `git log` for recently merged feature branches, count system-reminder lines for active background agents, and resume dispatching to refill the pool. No agent IDs are remembered across sessions; the disk state is sufficient.</p>
+  </section>
+</text>
