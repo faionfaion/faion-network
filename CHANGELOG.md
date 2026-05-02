@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/rag-pipelines/rag-chunking-benchmark
 - add: tier-playbook geek/ai-agents/react-loop-production
 - add: tier-playbook geek/rag-pipelines/rag-hybrid-search-bm25-vector
 - docs: feature-048 wave 4 dispatch rules
