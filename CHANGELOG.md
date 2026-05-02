@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/ai-agents/react-loop-production
 - add: tier-playbook geek/rag-pipelines/rag-hybrid-search-bm25-vector
 - docs: feature-048 wave 4 dispatch rules
 - feat: feature-048 wave 3 closeout — Pro tier complete (30/30 pass validator); group AGENTS.md/CLAUDE.md added for team-management, hr-ops, business-analysis; 5 orphan worktree commits restored (caching-strategy, scoping-workshop, hiring-funnel, terraform-iac, onboarding-30-60-90)
