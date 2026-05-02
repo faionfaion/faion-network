@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- docs: add `.aidocs/conventions/workflows/` — authoritative spec for workflow + playbook entity types (workflow-spec.md, playbook-spec.md, AGENTS.md); locks in workflow-spec (folder shape, phase quad-block schema, tool allowlist, idempotency classes, output-contract grammar, three-axis SemVer, drift sentinels, decisions log, optional cross-cutting methodology refs, anti-patterns, inline template) and playbook-spec (Diátaxis how-to, front-matter schema, surface choices table, mandatory `## Methodologies` table linking to `skills/faion/knowledge/`, MAY/MAY-NOT override lists, worked-example requirement, drift sentinels, anti-patterns, inline template); synthesized from 6-agent diverge + 2-reviewer converge via /faion-brainstorm
 - add: github-repo-bootstrap methodology (new)
 - add: cloudflare-pages-github methodology (new)
 - add: cloudflare-domain-dns methodology (new)
