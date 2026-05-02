@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/marketing-fundamentals/landing-page-essentials
 - add: tier-playbook free/tech-setup/git-branching-basics
 - add: tier-playbook free/business-discovery/niche-selection-framework
 - add: tier-playbook free/dev-fundamentals/python-package-manager
