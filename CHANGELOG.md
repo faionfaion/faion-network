@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/dev-fundamentals/write-good-readme
 - add: tier-playbook free/dev-fundamentals/testing-intro-python
 - add: tier-playbook free/mvp-essentials/mvp-launch-checklist
 - add: tier-playbook free/cost-free-stack/free-auth-supabase
