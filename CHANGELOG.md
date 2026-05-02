@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- docs: feature-048 wave 3 dispatch rules
 - add: tier-playbook solo/product-ops/solo-metrics-tracking
 - add: tier-playbook solo/seo-essentials/on-page-seo
 - add: tier-playbook solo/product-planning/weekly-review-solo
