@@ -4,10 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/product-planning/weekly-review-solo
 - add: tier-playbook solo/solo-ops-finance/runway-calc
-- add: tier-playbook solo/product-planning/weekly-review-solo
 - add: tier-playbook solo/automation/pre-commit-hooks
-- add: tier-playbook solo/product-planning/weekly-review-solo
 - add: tier-playbook solo/sdd-workflow/spec-to-code-pipeline
 - add: tier-playbook solo/comms-stakeholder/client-email-templates
 - add: tier-playbook solo/sdd-workflow/scope-cutting
