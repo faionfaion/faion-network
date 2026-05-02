@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - add: tier-playbook free/cost-free-stack/free-auth-supabase
 - add: tier-playbook free/marketing-fundamentals/landing-page-essentials
 - add: tier-playbook free/tech-setup/git-branching-basics
+- add: tier-playbook free/business-discovery/is-this-a-real-problem
 - add: tier-playbook free/business-discovery/niche-selection-framework
 - add: tier-playbook free/dev-fundamentals/python-package-manager
 - add: tier-playbook free/dev-fundamentals/dotenv-secrets-management
