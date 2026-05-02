@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/seo-essentials/technical-seo-audit
 - add: tier-playbook solo/api-design/api-key-auth
 - add: tier-playbook solo/content-marketing/newsletter-setup
 - add: tier-playbook solo/sdd-workflow/sdd-for-solos
