@@ -8,6 +8,7 @@
     <category>roadmap</category>
     <difficulty>advanced</difficulty>
     <created>2026-04-29</created>
+    <updated>2026-05-01</updated>
     <tags>
       <tag>outcome</tag>
       <tag>roadmap</tag>
@@ -26,7 +27,7 @@
     <summary>Decompose a top-line business goal into 2-4 product outcomes, each with a leading indicator measurable within 4 weeks, a confidence level (low/med/high) backed by evidence, and 2-3 candidate experiments. Maintain one source-of-truth roadmap, then generate four audience views from it: theme-based (customers, no dates), outcome-metric (board, quarterly targets), outcome-plus-options (engineering, sprint-level when known), and problem-solution (sales, only confirmed items get timing). Confidence inflation — defaulting to "medium" without evidence — is the primary failure mode.</summary>
 
     <why>
-      <p>Stakeholders who demand feature timelines despite an outcome-first culture are solving a communication problem, not a roadmap-format problem. Audience-tailored views from a single source of truth provide the narrative each audience needs without creating four diverging documents. Breaking a business goal into product outcomes with leading indicators is the highest-leverage PM skill for 2026: it forces explicit evidence requirements and surfaced "what we still need to learn" before committing to solutions.</p>
+      <p>Stakeholders who demand feature timelines despite an outcome-first culture are solving a communication problem, not a roadmap-format problem. Audience-tailored views from a single source of truth provide the narrative each audience needs without creating four diverging documents. Breaking a business goal into product outcomes with leading indicators is the highest-leverage PM skill for 2026: it forces explicit evidence requirements and surfaces "what we still need to learn" before committing to solutions.</p>
     </why>
 
     <when-to-use>
@@ -35,6 +36,7 @@
         <item>Translating a top-line business goal into a tree of product outcomes with leading indicators.</item>
         <item>Quarterly re-planning where confidence levels shift and the same roadmap must be presented to different audiences.</item>
         <item>A PM transitioning from feature owner to "architect of impact" who needs scaffolding for the new role.</item>
+        <item>Trigger phrase: agent or human says "we need a roadmap that says when feature X ships" while leadership has formally adopted outcome-based planning.</item>
       </list>
     </when-to-use>
 
@@ -46,6 +48,16 @@
         <item>Org with no metrics infrastructure — you cannot operate confidence levels without measurement.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <step>Collect inputs. Gather the single business goal (one sentence with a number and a date), the named audiences (default: customers, board, engineering, sales), the metrics layer access (warehouse, BI URL, query language), and the kill-criteria appetite (how much movement counts as "moving"). If any input is missing, stop and ask the human PM.</step>
+      <step>Draft the outcome tree. Decompose the goal into exactly 2-4 product outcomes. For each outcome write: outcome statement (in user-impact voice, not feature voice), leading indicator (must be observable inside 4 weeks), evidence-we-have (link to query/dashboard or "TO BE INSTRUMENTED"), what-we-still-need-to-learn, 2-3 candidate experiments, confidence level (low/medium/high) with mandatory evidence pointer, and a kill criterion ("if X does not move by Y by date Z, drop this outcome"). Save to source-of-truth file (`roadmap.yaml`).</step>
+      <step>Validate the outcome tree against the schema and the cap rules. Run `python templates/validate-outcome-tree.py roadmap.yaml`. Fix every reported issue before generating any audience view.</step>
+      <step>Generate four audience views from the source-of-truth file. Use the audience-rewriter prompt below. Save outputs as `views/customers.md`, `views/board.md`, `views/engineering.md`, `views/sales.md`. Never edit a view directly; always regenerate from the source.</step>
+      <step>Run the view-drift diff. Diff each view against the source and flag any line in a view without a source-of-truth row id. Fail the build if drift exists.</step>
+      <step>Schedule cadence. Weekly: leading-indicator monitor pulls metrics and proposes promote/demote/replace per outcome. Quarterly: re-decompose the entire goal tree from scratch. Re-version the roadmap (bump SemVer minor) only on real signal — a sustained metric move greater than 10% of the kill threshold for two consecutive weeks.</step>
+      <step>Hand off. Human PM signs off on outcome decomposition before any audience view is published. Customer-facing view requires human edit before publication to strip jargon. Sales view publishes only items with confidence=high.</step>
+    </how-to>
 
     <section name="outcome-decomposition-rules">
       <rule testable="true">
@@ -81,7 +93,7 @@
       </rule>
 
       <rule testable="true">
-        <statement>Sales view is the only view that mentions specific solutions, and only for items at high confidence. This is the anti-overcommitment rule; the other three views must not name solutions for items below high confidence.</statement>
+        <statement>Sales view is the only view that mentions specific solutions, and only for items at high confidence. The other three views must not name solutions for items below high confidence.</statement>
         <rationale>Sales commitment to a specific feature creates a contractual obligation in customer minds. Naming solutions only for high-confidence items limits the blast radius of delivery misses.</rationale>
       </rule>
     </section>
@@ -164,6 +176,122 @@
         <item>Do not let the agent rewrite the roadmap on every metric blip. Cadence: weekly metric monitor, quarterly re-decomposition, only re-version on real signal.</item>
       </list>
     </section>
+
+    <section name="source-of-truth-schema">
+      <p>The source-of-truth roadmap is one YAML file (`roadmap.yaml`) with stable row ids. All audience views must trace each printed line back to a row id. The schema below is the minimum every row must satisfy; the validator script enforces it.</p>
+      <code lang="yaml"><![CDATA[
+goal:
+  statement: "Reduce 90-day churn from 18% to 12% by Q4 2026"
+  metric: "churn_rate_d90"
+  current: 0.18
+  target: 0.12
+  due: "2026-12-31"
+
+outcomes:
+  - id: O1
+    statement: "New users reach the 'aha' moment within first session"
+    leading_indicator:
+      name: "first_session_aha_pct"
+      observable_within_days: 28
+      query_url: "https://metabase.example.com/question/142"
+      current: 0.34
+      target: 0.55
+    confidence: medium
+    evidence_we_have:
+      - "Funnel data shows 34% reach feature X in session 1 (q142)"
+    what_we_still_need_to_learn:
+      - "Whether tooltip variant lifts feature-X first-touch"
+    candidate_experiments:
+      - id: O1.E1
+        title: "Inline tooltip on first empty state"
+        status: "candidate"
+      - id: O1.E2
+        title: "Sample-data prefill for new accounts"
+        status: "candidate"
+    kill_criterion: "If first_session_aha_pct does not exceed 0.40 by 2026-06-30, drop O1"
+]]></code>
+    </section>
+
+    <commands>
+      <command name="validate-tree">python skills/faion/knowledge/solo/product/product-manager/outcome-based-roadmaps-advanced/templates/validate-outcome-tree.py path/to/roadmap.yaml</command>
+      <command name="render-tree-diagram">mermaid-cli -i outcome-tree.mmd -o outcome-tree.svg</command>
+      <command name="generate-views">python tools/render_views.py --source roadmap.yaml --out views/</command>
+      <command name="diff-view-drift">python tools/view_drift.py --source roadmap.yaml --views views/ --fail-on-drift</command>
+      <command name="weekly-monitor">python tools/leading_indicator_monitor.py --source roadmap.yaml --threshold 0.10 --notify pm@example.com</command>
+      <command name="bump-version">git tag -a roadmap-v$(date +%Y.%m).$(git rev-list --count HEAD) -m "real-signal re-version"</command>
+    </commands>
+
+    <prompt purpose="outcome-decomposition (Opus)"><![CDATA[
+You are an outcome-decomposition agent. Decompose ONE business goal into 2-4 product outcomes.
+
+INPUTS
+- business_goal: <one sentence with metric + target + date>
+- current_metrics: <list of accessible metrics with query URLs>
+- evidence_pool: <links to past experiment results, surveys, dashboards>
+
+HARD RULES
+- Exactly 2-4 outcomes. Refuse to output 1 or 5+; ask the user to collapse or focus.
+- Each outcome MUST have:
+  * statement in user-impact voice (NOT feature voice)
+  * leading_indicator with observable_within_days <= 28
+  * evidence_we_have (1+ items, each with a real URL or "TO BE INSTRUMENTED")
+  * what_we_still_need_to_learn (1+ items)
+  * 2-3 candidate_experiments tagged status="candidate"
+  * confidence in {low, medium, high}; high requires shipped data; medium requires
+    "some data or reasonable analogue"; low is hypothesis only
+  * kill_criterion (specific metric, threshold, date)
+- Add an explicit "we_dont_know" branch if evidence is weak.
+- Output STRICT YAML matching the source-of-truth schema. No prose outside YAML.
+]]></prompt>
+
+    <prompt purpose="audience-rewriter (Sonnet)"><![CDATA[
+You are an audience-rewriter. Read roadmap.yaml and produce four files:
+
+views/customers.md  — theme-level only; no dates closer than current quarter; no
+                      internal metric names; no solution names; >= 2 quarters
+                      stay theme-level (e.g. "better collaboration").
+views/board.md      — outcome-metric table: outcome | metric | current | target |
+                      due | confidence. Lead each section with the METRIC, not
+                      the activity list.
+views/engineering.md — outcome + options menu + sprint window when an experiment
+                       has status=committed; status=candidate items show NO date.
+views/sales.md      — problem-solution view. Mention a specific solution ONLY
+                      when its parent outcome confidence == "high" AND the
+                      experiment status == "committed". Otherwise refer to the
+                      outcome theme only.
+
+Every printed line MUST end with a hidden HTML comment <!-- src:<row_id> -->
+referencing the source-of-truth row. Lines without a row id will be flagged
+and rejected by the drift-checker. Do not invent rows.
+]]></prompt>
+
+    <checklist>
+      <check>Goal is one sentence with a number and a date.</check>
+      <check>Outcome count is 2, 3, or 4 — never 1 or 5+.</check>
+      <check>Every outcome's leading indicator has observable_within_days within 28 days.</check>
+      <check>Every confidence value cites a query URL, dashboard, or explicit "TO BE INSTRUMENTED".</check>
+      <check>Every outcome has 2-3 candidate experiments at status=candidate.</check>
+      <check>Every outcome has a kill_criterion with metric, threshold, and date.</check>
+      <check>Source-of-truth file (roadmap.yaml) exists and validates against schema.</check>
+      <check>All four views regenerate from source; no view edited by hand.</check>
+      <check>view_drift.py reports zero drift before publication.</check>
+      <check>Customer view contains no internal metric names and no specific solution names.</check>
+      <check>Sales view names a solution only when parent outcome confidence == high AND experiment status == committed.</check>
+      <check>Board view leads with metric movement, not feature names.</check>
+      <check>Human PM has signed off on the outcome decomposition before any view is published.</check>
+      <check>Customer view has been human-edited before publication.</check>
+      <check>Weekly leading-indicator monitor is scheduled and routes promote/demote/replace proposals to PM.</check>
+    </checklist>
+
+    <verify>
+      <step>Run `python templates/validate-outcome-tree.py roadmap.yaml`. Expect exit 0 and zero violations on cap (2-4), evidence presence, confidence-evidence pairing, and 2-3 experiments per outcome.</step>
+      <step>Run the drift-checker `python tools/view_drift.py --source roadmap.yaml --views views/ --fail-on-drift`. Expect exit 0. Any flagged line means an audience view drifted from source — regenerate, do not patch.</step>
+      <step>Confirm the customer view contains zero occurrences of internal metric names: `grep -nE 'first_session_aha_pct|churn_rate_d90' views/customers.md` must return empty.</step>
+      <step>Confirm the sales view names solutions only for confidence=high committed items. Cross-check against `roadmap.yaml` with `python tools/check_sales_view_solutions.py views/sales.md roadmap.yaml`.</step>
+      <step>Confirm cadence is wired: `crontab -l | grep leading_indicator_monitor` returns a weekly entry, and a quarterly re-decomposition reminder exists in the team calendar.</step>
+      <step>Confirm a human-PM sign-off marker exists: `roadmap.yaml` has `signed_off_by:` field with a name and an ISO date within the last 90 days.</step>
+      <step>Success criteria for the methodology output: validator PASS, drift PASS, audience boundaries PASS, sign-off present, cadence scheduled. If any of the five fails, the methodology has not been applied — block publication.</step>
+    </verify>
 
     <templates>
       <template path="templates/validate-outcome-tree.py" purpose="Python validator: fails outcomes missing leading indicators, high confidence without evidence, or fewer than 2 experiments."/>
