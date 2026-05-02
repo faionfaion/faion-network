@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- improve: key-trends-summary — methodology rewritten for autonomous agent application
 - improve: release-planning — methodology rewritten for autonomous agent application
 - improve: mlp-planning — methodology rewritten for autonomous agent application
 - improve: minimum-product-frameworks — methodology rewritten for autonomous agent application
