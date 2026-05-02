@@ -28,16 +28,17 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 
 ## Quick Start
 
+The recommended install path is as a **Claude Code plugin** — keeps your `~/.claude/` clean, supports versioning, and namespaces all skills under `/faion-network:*`.
+
 ```bash
-# 1. Clone the repository
-git clone https://github.com/faionfaion/faion-network.git ~/.claude
+# Inside Claude Code:
+/plugin install faionfaion/faion-network
 
-# 2. Run Claude Code
-claude
-
-# 3. Invoke the knowledge umbrella:
-/faion
+# Or from the official marketplace once published:
+/plugin install faion-network@<marketplace>
 ```
+
+After installing, the umbrella retrieval skill is available as `/faion-network:faion` (or just `/faion` if no conflict).
 
 ---
 
@@ -49,7 +50,26 @@ claude
 - **Node.js** 18+ (for frontend development)
 - **Python** 3.11+ (for Django/FastAPI projects)
 
-### Fresh Installation
+### Option 1: Plugin (recommended)
+
+```bash
+/plugin install faionfaion/faion-network
+/plugin enable faion-network
+```
+
+Plugin assets register automatically:
+
+| Asset | Location in repo | Plugin invocation |
+|-------|------------------|-------------------|
+| Umbrella retrieval skill | `skills/faion/SKILL.md` | `/faion-network:faion` |
+| Applied skills | `skills/faion-*/` | `/faion-network:<skill>` |
+| Subagents | `agents/*.md` | auto-discovered |
+| Hooks | `hooks/hooks.json` (UserPromptSubmit, SessionStart) | auto-wired |
+| Tier playbooks | `skills/faion/playbooks/<tier>/<group>/<slug>/` | read on demand |
+
+Update with `/plugin update faion-network`. Disable with `/plugin disable faion-network`.
+
+### Option 2: Direct clone (legacy `~/.claude` install)
 
 ```bash
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
@@ -59,7 +79,9 @@ ls ~/.claude/skills       # faion, faion-brainstorm, faion-feature-executor, ...
 ls ~/.claude/skills/faion/knowledge/   # free/ solo/ pro/ geek/
 ```
 
-### Merge into Existing Setup
+This mode keeps `/faion` as a top-level command and is what existing users have. Hooks are wired manually via `~/.claude/settings.json`.
+
+### Option 3: Merge into Existing Setup
 
 ```bash
 cp -r ~/.claude ~/.claude.backup
