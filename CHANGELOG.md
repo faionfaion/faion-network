@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/client-engagement/statement-of-work
 - add: tier-playbook pro/product-management/prd-template
 - add: tier-playbook pro/paid-acquisition/ltv-cac-attribution
 - add: tier-playbook pro/client-engagement/scope-creep-management
@@ -11,7 +12,6 @@ All notable changes to this project will be documented in this file.
 - add: tier-playbook pro/team-management/first-hire-developer
 - add: tier-playbook pro/devops-cicd/production-cicd-pipeline
 - add: tier-playbook pro/paid-acquisition/google-ads-first-campaign
-
 - docs: feature-048 wave 3 dispatch rules
 - add: tier-playbook solo/product-ops/solo-metrics-tracking
 - add: tier-playbook solo/seo-essentials/on-page-seo
