@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - add: tier-playbook solo/comms-stakeholder/client-email-templates
+- add: tier-playbook solo/sdd-workflow/scope-cutting
 - add: tier-playbook solo/ui-design/design-tokens-minimal
 - add: tier-playbook solo/product-ops/backlog-hygiene
 - add: tier-playbook solo/automation/env-management-secrets
