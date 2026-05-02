@@ -4,8 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- add: tier-playbook solo/sdd-workflow/writing-first-spec
-- add: tier-playbook solo/server-craft/vps-first-deploy
+- add: tier-playbook solo/launch-operations/pricing-experiments
 - add: tier-playbook solo/launch-operations/customer-onboarding-email
 - add: tier-playbook solo/product-planning/roadmap-for-one-person
 - docs: feature-048 wave 2 dispatch rules
