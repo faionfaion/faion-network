@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- improve: prototyping — methodology rewritten for autonomous agent application
 - improve: competitive-analysis — methodology rewritten for autonomous agent application
 - improve: key-trends-summary — methodology rewritten for autonomous agent application
 - improve: release-planning — methodology rewritten for autonomous agent application
