@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: feature-048 COMPLETE — all 4 waves shipped (free 30 + solo 30 + pro 30 + geek 30 = 120 playbooks); 100% validator pass; cross-tier slug uniqueness enforced; all groups have AGENTS.md/CLAUDE.md; orphan worktree commits restored (3 geek + 5 pro + 4 solo + 1 free)
+- feat: feature-048 wave 4 closeout — Geek tier complete (30/30); group AGENTS.md/CLAUDE.md added for mcp-protocol; orphan worktree commits restored for llm-as-judge-harness, when-to-fine-tune-vs-prompt, retrieval-evaluation-ragas
 - add: tier-playbook geek/fine-tuning/lora-basics-dataset-prep
 - add: tier-playbook geek/ai-product-positioning/trust-ux-citations
 - add: tier-playbook geek/ai-consultancy-ops/ai-audit-checklist
