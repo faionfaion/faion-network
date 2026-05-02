@@ -4,8 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- add: tier-playbook pro/hr-ops/hiring-funnel
-- add: tier-playbook pro/infra-engineering/terraform-iac
+- add: tier-playbook pro/market-research/positioning-workshop
 - add: tier-playbook pro/client-engagement/discovery-call-structure
 - add: tier-playbook pro/devops-cicd/deploy-blue-green-canary
 - add: tier-playbook pro/backend-systems/db-scaling-read-replicas
