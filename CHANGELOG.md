@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/product-management/prd-template
 - add: tier-playbook pro/paid-acquisition/ltv-cac-attribution
 - add: tier-playbook pro/client-engagement/scope-creep-management
 - add: tier-playbook pro/delivery-ops/capacity-planning
