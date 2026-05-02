@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="github-repo-bootstrap">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>devtools-developer</domain>
+    <summary>Bootstrap a new GitHub repo with sensible defaults: visibility, license, branch protection, CI, Dependabot, templates, secrets, squash-only merges. gh CLI primary.</summary>
+    <tags>
+      <tag>github</tag>
+      <tag>repo</tag>
+      <tag>bootstrap</tag>
+      <tag>gh-cli</tag>
+      <tag>branch-protection</tag>
+      <tag>dependabot</tag>
+      <tag>codeowners</tag>
+      <tag>ci</tag>
+    </tags>
+    <category>devops</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-05-02</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <see-also>
+      <ref slug="cloudflare-pages-github"/>
+      <ref slug="git-server-workflow"/>
+      <ref slug="deploy-scripts"/>
+    </see-also>
+  </metadata>
+  <content>
+    <title>GitHub Repo Bootstrap with gh CLI</title>
+    <summary>Create a new GitHub repository and configure it with production-grade defaults in one go: visibility, license, .gitignore, README, branch protection on the default branch, CI workflow stub, Dependabot, issue and PR templates, CODEOWNERS, secrets, and squash-only merges with linear history. The gh CLI is the primary tool; the Web UI is documented as fallback.</summary>
+    <why>
+      <p>Repositories created without explicit configuration default to permissive settings: direct push to main is allowed, merge commits and rebase merges are mixed in, branches linger after merge, and there is no CI gate. These defaults compound across a fleet of repos and force expensive remediation later. Bootstrapping every repo from a single recipe encodes one team standard, removes drift between repos, and makes future audits trivial. The gh CLI lets the entire bootstrap run as a scripted, idempotent sequence rather than 20 clicks across the Web UI.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting a brand-new project that will be shared with collaborators or shipped publicly.</item>
+        <item>Splitting a directory out of a monorepo into its own GitHub repo.</item>
+        <item>Handing a project off to a team and needing branch protection plus CODEOWNERS from day one.</item>
+        <item>Releasing an open-source project and needing license, README, issue templates, and Dependabot before the first announcement.</item>
+        <item>Standardizing existing repos with the same baseline configuration as part of a tooling sweep.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway scratch repos that will never accept a PR — use `gh repo create --private --no-source` and stop there.</item>
+        <item>Ephemeral demo repos generated for a single live presentation; the bootstrap overhead exceeds their lifespan.</item>
+        <item>Forks where the upstream already enforces every rule you would set; configure only the deltas you need.</item>
+      </list>
+    </when-not-to-use>
+    <how-to>
+      <step>Authenticate the gh CLI with `gh auth login`. Pick HTTPS or SSH; enable Git credential helper. Verify with `gh auth status` and confirm the account has 2FA enabled.</step>
+      <step>Decide visibility (public or private), license (MIT, Apache-2.0, GPL-3.0, AGPL-3.0, or none), default `.gitignore` template (Node, Python, Go, Rust, etc.), and primary language. Pick the default branch name (`main`) and the merge model (squash-only, linear history).</step>
+      <step>Create the repo with `gh repo create owner/name --public --license MIT --gitignore Node --add-readme --description "one-line tagline"`. The `--add-readme` flag scaffolds an initial README so the default branch is born populated.</step>
+      <step>Clone locally: `gh repo clone owner/name` and `cd name`. Confirm the default branch is `main` with `git symbolic-ref refs/remotes/origin/HEAD`.</step>
+      <step>Add or upgrade README (see `generate-readme` prompt below), expand `.gitignore` to cover OS files (`.DS_Store`, `Thumbs.db`) and IDE files (`.idea/`, `.vscode/`), drop a `LICENSE` file if not auto-created, and add `CODEOWNERS` under `.github/CODEOWNERS` for sensitive paths (deploy scripts, infra, secrets configs).</step>
+      <step>Drop CI, Dependabot, and templates: copy `templates/ci-stub.yml` to `.github/workflows/ci.yml`, `templates/dependabot.yml` to `.github/dependabot.yml`, and create `.github/ISSUE_TEMPLATE/bug_report.md`, `.github/ISSUE_TEMPLATE/feature_request.md`, `.github/PULL_REQUEST_TEMPLATE.md`. Commit everything: `git add . &amp;&amp; git commit -m "chore: bootstrap repo configuration"`. Push with `git push origin main`.</step>
+      <step>Configure repo-level settings via the API to lock in squash-only merges, auto-delete merged branches, and disable wikis or projects you do not use: `gh api repos/:owner/:repo --method PATCH -f delete_branch_on_merge=true -f allow_squash_merge=true -f allow_merge_commit=false -f allow_rebase_merge=false -f allow_auto_merge=true`. Then `gh repo edit --enable-issues --enable-projects=false --enable-wiki=false`.</step>
+      <step>Enable branch protection on `main` with the JSON payload from `templates/branch-protection.json`: `gh api repos/:owner/:repo/branches/main/protection --method PUT --input templates/branch-protection.json`. This requires PR + 1 review + linear history + status checks (`ci / test`, `ci / lint`) + conversation resolution.</step>
+      <step>Add repository Secrets and Variables for CI: `gh secret set NPM_TOKEN --body "$(op read 'op://...')"` for sensitive tokens, `gh variable set DEPLOY_ENV --body "production"` for non-sensitive config. Reference them in workflows as `${{ secrets.NPM_TOKEN }}` and `${{ vars.DEPLOY_ENV }}`.</step>
+      <step>Seed labels with consistent colors: `gh label create bug --color FF0000 --description "Something is broken"`, `gh label create enhancement --color 84B6EB`, `gh label create documentation --color 0075CA`, `gh label create dependencies --color 0366D6`. These match the labels used by Dependabot.</step>
+      <step>Verify: open the repo in the browser via `gh repo view --web`, confirm the Settings → Branches page shows the protection rule, push a throwaway branch and try to force-merge it without a PR — the push to `main` must be rejected.</step>
+    </how-to>
+    <commands>
+      <command name="auth-login">gh auth login</command>
+      <command name="auth-status">gh auth status</command>
+      <command name="create-repo">gh repo create owner/name --public --license MIT --gitignore Node --add-readme --description "tagline"</command>
+      <command name="clone-repo">gh repo clone owner/name</command>
+      <command name="patch-merge-settings">gh api repos/:owner/:repo --method PATCH -f delete_branch_on_merge=true -f allow_squash_merge=true -f allow_merge_commit=false -f allow_rebase_merge=false -f allow_auto_merge=true</command>
+      <command name="enable-protection">gh api repos/:owner/:repo/branches/main/protection --method PUT --input templates/branch-protection.json</command>
+      <command name="set-secret">gh secret set NPM_TOKEN --body "value-from-1password"</command>
+      <command name="set-variable">gh variable set DEPLOY_ENV --body "production"</command>
+      <command name="repo-edit">gh repo edit --enable-issues --enable-projects=false --enable-wiki=false</command>
+      <command name="create-label">gh label create bug --color FF0000 --description "Something is broken"</command>
+      <command name="view-repo">gh repo view owner/name --json visibility,licenseInfo,defaultBranchRef,deleteBranchOnMerge,allowSquashMerge,allowMergeCommit,allowRebaseMerge</command>
+      <command name="list-workflows">gh workflow list</command>
+    </commands>
+    <templates>
+      <template path="templates/branch-protection.json" purpose="Branch protection payload: require PR, 1 approving review, linear history, conversation resolution, status checks ci/test and ci/lint."/>
+      <template path="templates/dependabot.yml" purpose="Dependabot config for weekly Node and GitHub Actions updates with grouped dev/prod dependencies."/>
+      <template path="templates/ci-stub.yml" purpose="CI workflow stub at .github/workflows/ci.yml: checkout, setup-node, lint, test on push to main and PRs."/>
+    </templates>
+    <prompt purpose="generate-readme"><![CDATA[
+You are bootstrapping the README.md for a brand-new GitHub repository.
+
+INPUT:
+- project_name: <kebab-case>
+- tagline: <one short sentence, ≤80 chars>
+- tech_stack: <list, e.g. ["Node 20", "TypeScript", "Vitest"]>
+- license: <SPDX id, e.g. "MIT">
+- owner: <github org or user>
+
+OUTPUT:
+A README.md skeleton with these sections, in this order:
+
+1. Title (H1) = project_name
+2. Tagline (italic, single line)
+3. Badges row: build status, npm or PyPI version (if applicable), license, last commit
+   Use shields.io URL pattern:
+   - https://img.shields.io/github/actions/workflow/status/{owner}/{project_name}/ci.yml
+   - https://img.shields.io/github/license/{owner}/{project_name}
+   - https://img.shields.io/github/last-commit/{owner}/{project_name}
+4. ## Overview — 2-4 sentences expanding the tagline
+5. ## Install — copy-pasteable install command for the chosen stack
+6. ## Usage — minimal hello-world snippet, fenced code block with correct language
+7. ## Development — clone, install dev deps, run tests, run lint
+8. ## Contributing — link to CONTRIBUTING.md (or a 2-line stub if absent)
+9. ## License — license name plus link to LICENSE file
+
+CONSTRAINTS:
+- No emojis. No ASCII art.
+- All headings use Markdown ATX style (#, ##).
+- Code fences carry a language identifier matching tech_stack.
+- Links are absolute, not bare URLs.
+- Do NOT invent install commands; pick from {npm install, pip install, go install, cargo install} based on tech_stack.
+]]></prompt>
+    <checklist>
+      <check>GitHub account has 2FA enabled (Settings → Password and authentication).</check>
+      <check>gh CLI authenticated and `gh auth status` shows the right account; SSH or HTTPS chosen and Git credential helper configured.</check>
+      <check>Visibility (public vs private) matches stakeholder intent and any commercial constraints.</check>
+      <check>License chosen matches intent: MIT for permissive, Apache-2.0 for patent grant, AGPL-3.0 for SaaS copyleft, none for proprietary.</check>
+      <check>.gitignore covers OS files (.DS_Store, Thumbs.db), IDE files (.idea/, .vscode/), and language artifacts (node_modules/, dist/, __pycache__/, .venv/).</check>
+      <check>README has Title, Tagline, Overview, Install, Usage, Development, License sections.</check>
+      <check>Branch protection enabled on default branch with PR required and at least 1 approving review.</check>
+      <check>Required status checks listed (e.g. `ci / test`, `ci / lint`) and matching the workflow job names.</check>
+      <check>Linear history enforced; force pushes and deletions disabled on protected branches.</check>
+      <check>CODEOWNERS file present at `.github/CODEOWNERS` for sensitive paths (deploy/, infra/, .github/workflows/).</check>
+      <check>Repo Secrets configured for any tokens; secrets stored in Secrets, not Variables; Variables hold non-sensitive config only.</check>
+      <check>Dependabot enabled via `.github/dependabot.yml` for at least one ecosystem plus github-actions weekly.</check>
+      <check>Issue templates exist under `.github/ISSUE_TEMPLATE/` (bug_report.md, feature_request.md).</check>
+      <check>Pull request template at `.github/PULL_REQUEST_TEMPLATE.md`.</check>
+      <check>Merge model: squash enabled, merge commit and rebase merge disabled; delete-branch-on-merge enabled; auto-merge enabled.</check>
+    </checklist>
+    <verify>
+      <step>`gh repo view owner/name --json visibility,licenseInfo,defaultBranchRef,deleteBranchOnMerge,allowSquashMerge,allowMergeCommit,allowRebaseMerge` returns the expected JSON: visibility matches intent, licenseInfo non-null, defaultBranchRef.name is `main`, squash-only merges true.</step>
+      <step>`gh api repos/:owner/:repo/branches/main/protection` returns the protection payload with required_pull_request_reviews.required_approving_review_count >= 1, required_linear_history true, required_status_checks.contexts including ci/test and ci/lint.</step>
+      <step>`gh repo clone owner/name /tmp/check &amp;&amp; ls -la /tmp/check/.github` shows workflows/, ISSUE_TEMPLATE/, PULL_REQUEST_TEMPLATE.md, dependabot.yml, CODEOWNERS.</step>
+      <step>Create a branch, push it, open a PR via `gh pr create`, then attempt `git push origin main` directly — the direct push must be rejected by the protection rule.</step>
+      <step>Open the repo Insights → Dependency graph → Dependabot tab and confirm Dependabot is configured and the first scan has run.</step>
+      <step>`gh workflow list` returns the ci workflow; trigger it via `gh workflow run ci.yml --ref main` (or via a PR) and confirm the run succeeds.</step>
+    </verify>
+    <example type="good" title="Public OSS bootstrap with one command, then locked down">
+      <code lang="bash"><![CDATA[gh repo create faionfaion/foo \
+  --public \
+  --license MIT \
+  --gitignore Node \
+  --add-readme \
+  --description "small utility for X"
+
+gh repo clone faionfaion/foo && cd foo
+cp ../templates/ci-stub.yml .github/workflows/ci.yml
+cp ../templates/dependabot.yml .github/dependabot.yml
+git add . && git commit -m "chore: bootstrap" && git push
+
+gh api repos/faionfaion/foo --method PATCH \
+  -f delete_branch_on_merge=true \
+  -f allow_squash_merge=true \
+  -f allow_merge_commit=false \
+  -f allow_rebase_merge=false
+
+gh api repos/faionfaion/foo/branches/main/protection \
+  --method PUT --input ../templates/branch-protection.json]]></code>
+      <note>Single shell session, fully reproducible, idempotent on rerun.</note>
+    </example>
+    <example type="bad" title="Web UI repo creation skipping protection">
+      <code lang="text"><![CDATA[1. New → Repository on github.com
+2. Pick name, click Create
+3. Start coding on main
+4. (no branch protection, no CI, no Dependabot)
+5. Direct push to main on day three by a junior contributor wipes a release tag.]]></code>
+      <note>Direct push to main is allowed because protection was never configured. The bootstrap script would have prevented this.</note>
+    </example>
+    <warning>NEVER commit `.env`, API keys, OAuth client secrets, or private SSH keys. Use `gh secret set` and reference via `${{ secrets.NAME }}` inside workflows. Add `.env` and `*.pem` to `.gitignore` BEFORE the first commit. If a secret is committed by accident, rotate it immediately at the provider AND scrub history with `git filter-repo` — deleting the file in a new commit does NOT remove it from history.</warning>
+    <antipattern>
+      <description>Enabling all three merge styles (merge commit + squash + rebase) at once and leaving "delete branch on merge" off.</description>
+      <reason>Mixed merge styles produce non-linear history that breaks `git bisect`, confuses release-note tooling that walks first-parent, and makes squash-based PR titles inconsistent with the actual commits on main. Stale branches accumulate and slow down `gh pr list` and IDE branch pickers. Pick squash-only with linear history; let CI tooling and `git log --oneline` rely on a clean line of commits.</reason>
+    </antipattern>
+    <see-also>
+      <ref slug="cloudflare-pages-github"/>
+      <ref slug="git-server-workflow"/>
+      <ref slug="deploy-scripts"/>
+      <link href="https://cli.github.com/manual/"/>
+      <link href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches"/>
+    </see-also>
+  </content>
+</methodology>
