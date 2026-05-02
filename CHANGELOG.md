@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- docs: feature-048 wave 4 dispatch rules
 - feat: feature-048 wave 3 closeout — Pro tier complete (30/30 pass validator); group AGENTS.md/CLAUDE.md added for team-management, hr-ops, business-analysis; 5 orphan worktree commits restored (caching-strategy, scoping-workshop, hiring-funnel, terraform-iac, onboarding-30-60-90)
 - add: tier-playbook pro/market-research/positioning-workshop
 - add: tier-playbook pro/client-engagement/discovery-call-structure
