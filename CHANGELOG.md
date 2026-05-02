@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/hosting-infra/buy-domain-namecheap-cloudflare
 - add: tier-playbook free/dev-fundamentals/python-first-project
 - add: tier-playbook free/tech-setup/github-account-and-first-repo
 - docs: feature-048 wave 1 dispatch rules
