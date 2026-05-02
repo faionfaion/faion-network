@@ -7,6 +7,7 @@ How-to guides for indie hackers keeping their product backlog healthy and action
 | Slug | Goal |
 |------|------|
 | `backlog-hygiene` | Weekly 30-min triage: close stale features, merge duplicates, archive superseded work |
+| `rice-ice-prioritization` | Score backlog with ICE/RICE, write assumptions, pick top 2 for next sprint |
 
 ## Authoring
 
