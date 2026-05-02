@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<decisions>
+  <decision date="2026-05-02" topic="phase-count">
+    <chose>12 phases with separate INTAKE, CLARIFY, PLAN, PARALLELIZE, BASELINE, EXECUTE, RESOLVE, VERIFY, REVIEW, FIX, RECAPTURE, DELIVER.</chose>
+    <rejected>9-phase variant collapsing CLARIFY into PLAN (planner improvises questions inline) and merging RECAPTURE into DELIVER (one combined "ship it" step).</rejected>
+    <rationale>CLARIFY needs an `AskUserQuestion` boundary the planner cannot cross alone — folding it into PLAN blocks parallel waves because each planner stops to wait for human input. Splitting BASELINE / RECAPTURE from EXECUTE / DELIVER keeps the visual-evidence pair atomic across the fix loop: the same outline color and viewport shape are reused for the after-screenshot, which a single combined phase would obscure. Twelve phases let each prompt file own one verb and one verdict.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="versioned-prompt-files">
+    <chose>Every phase fronts exactly one versioned prompt file under `prompts/NN-&lt;phase&gt;.md`; the orchestrator dispatches by `Agent({prompt: read(prompts/05-task-executor.md) + parameter block})`.</chose>
+    <rejected>Inline orchestrator-typed prompts ("just write the prompt in the spawn call"); per-batch ad-hoc prompts living only in the run log; one mega-prompt covering all 12 phases switched by a `phase=` parameter.</rejected>
+    <rationale>Multi-feature batches drift when the orchestrator improvises long prompts each time — instructions evolve, drift becomes invisible, and parallelism collapses to "one feature at a time, manually narrated." Versioned files give each phase a deterministic capability the orchestrator composes. They also pin behaviour to a SHA so post-mortems can reproduce a run, and they keep prompt diffs reviewable in code review instead of buried in chat history. A single mega-prompt loses both per-phase verdicts (`done=`, `verdict=`) and the ability to swap one phase's prompt without touching others.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="worktree-isolated-waves">
+    <chose>Every parallel executor runs in its own `git worktree add &lt;isolated path&gt; -b feature/&lt;id&gt; &lt;default-branch&gt;` and removes the worktree after merging.</chose>
+    <rejected>Single shared working tree with serialized executors (no parallelism gain); per-executor full clones (3-5x disk cost, no shared `.git/`); branch-only isolation in the main tree (concurrent agents corrupt each other's index and dev-toggle files).</rejected>
+    <rationale>The main working tree carries uncommitted local-only state — preview data, `scheduled_tasks.lock`, dev toggles, the user's WIP. Concurrent agents touching it would corrupt each other and lose the user's work. Worktrees give each agent a clean, branch-scoped checkout sharing the same `.git/` for cheap branching. They also let the orchestrator run validators inside the worktree before merging — a failed verify aborts at the worktree boundary without ever touching main.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="flock-serialized-merge">
+    <chose>Wave merges into the default branch are serialized with `flock /tmp/faion-network-merge.lock` wrapping `fetch + rebase + ff-only merge`.</chose>
+    <rejected>Optimistic concurrent merges with retry on push failure (race conditions corrupt the index, especially mid-rebase); a dedicated merge-coordinator subagent (extra hop without solving the index-corruption root cause); push-only-from-worktrees (loses the local-merge invariant, requires remote round-trip per merge).</rejected>
+    <rationale>Two simultaneous `git checkout main + merge` calls in the same `.git/` corrupt the index even when the merges themselves are conflict-free. `flock` is the cheapest correctness primitive: it serializes the index-mutating section only, not the long-running compute (validators, tests, builds) inside the worktree. The lock file is named per-repo (`/tmp/faion-network-merge.lock`) so different repositories merge in parallel.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="hard-capped-review-fix-loop">
+    <chose>VERIFY → REVIEW → FIX iterates with a hard cap (default 3); on cap-hit the feature is parked back in `todo/` with a written escalation note rather than looping further.</chose>
+    <rejected>Unbounded loop until PASS (burns quota and produces "polishing" diffs that obscure the original intent); single-pass review with no fix loop (drops every nit and forces the human reviewer to babysit); auto-merge on FAIL-WITH-NITS (silently lowers the quality bar).</rejected>
+    <rationale>A quality gate without a hard cap becomes an infinite-cost search. Three iterations cover the common cases (typo, missing test, lint nit) without letting a wedged feature consume the whole batch's quota budget. The escalation back to `todo/` preserves the SDD artifacts intact so the next session resumes from a known good baseline instead of a half-fixed branch.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="visual-deliver-phase">
+    <chose>BASELINE captures a focused before-screenshot with red CSS outline; RECAPTURE captures a matching after-screenshot with green outline; the pair is delivered out-of-band (`tg-send --photo` or PR description) with an explanatory caption.</chose>
+    <rejected>PR description text only ("changed button color from blue to green") — readers cannot scan; full-page screenshots without focus outline (the eye cannot find the changed region in a 4000px image); recording a video walkthrough (heavy, hard to embed in async review).</rejected>
+    <rationale>Visual changes on a faion-network-hosted surface need evidence the human reviewer can scan in seconds. A focused outlined screenshot makes the diff legible without scrolling. The same viewport, selector, and outline-injection script run in BASELINE and RECAPTURE so the pair is directly comparable. For non-visual phases (knowledge methodology batch, backend ETL fix) the playbook declares both phases as skip — the orchestrator records the skip and continues.</rationale>
+  </decision>
+
+  <decision date="2026-05-02" topic="per-surface-playbook-adaptation">
+    <chose>Each delivery surface (faion-net-fe, faion-network knowledge, storybook, mediamanager-fe, ETL) ships a `playbooks/&lt;surface&gt;.md` declaring skipped phases, surface-specific verifiers, and surface-specific delivery channels — the workflow's phase order is invariant.</chose>
+    <rejected>One-size-fits-all workflow (BASELINE / RECAPTURE forced even for knowledge XML batches that have no visual surface — wastes a subagent and produces empty artifacts); per-surface forks of the entire workflow (drift across forks, every fix has to be applied in five places); inlining surface logic into the orchestrator (orchestrator size explodes, behaviour becomes opaque).</rejected>
+    <rationale>The phase order encodes the universal SDD shape (intake → plan → execute → verify → deliver). Surface-specific behaviour is variation in *which* validator runs, *which* channel ships the artifact, and *which* phases are inert — not variation in the order. Playbooks adapt; they never restructure (anti-pattern §14.1). This keeps the orchestrator's routing logic small while letting new surfaces onboard with one new file.</rationale>
+  </decision>
+</decisions>
