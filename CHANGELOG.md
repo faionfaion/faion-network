@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/devops-cicd/production-cicd-pipeline
 - add: tier-playbook pro/paid-acquisition/google-ads-first-campaign
 
 - docs: feature-048 wave 3 dispatch rules
