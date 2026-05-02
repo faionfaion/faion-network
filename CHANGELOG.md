@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/mcp-protocol/mcp-claude-code-integration
 - add: tier-playbook geek/evaluation/behavioral-evals-adversarial
 - add: tier-playbook geek/claude-code-skills/claude-code-subagents-slash
 - add: tier-playbook geek/rag-pipelines/rag-reranking
