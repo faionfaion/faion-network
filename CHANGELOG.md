@@ -4,15 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-<<<<<<< HEAD
+- add: tier-playbook geek/ai-consultancy-ops/ai-audit-checklist
 - add: tier-playbook geek/ai-agents/agent-debugging-observability
-=======
-<<<<<<< HEAD
->>>>>>> 29e8a293c (add: tier-playbook geek/multimodal/ocr-pipeline-vision-llm)
 - add: tier-playbook geek/cost-optimization/prompt-caching-strategy
-=======
 - add: tier-playbook geek/multimodal/ocr-pipeline-vision-llm
->>>>>>> 9839fd7ec (add: tier-playbook geek/multimodal/ocr-pipeline-vision-llm)
 - add: tier-playbook geek/mcp-protocol/mcp-claude-code-integration
 - add: tier-playbook geek/evaluation/behavioral-evals-adversarial
 - add: tier-playbook geek/claude-code-skills/claude-code-subagents-slash
