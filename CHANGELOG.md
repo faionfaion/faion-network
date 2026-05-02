@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/delivery-ops/capacity-planning
 - add: tier-playbook pro/team-management/first-hire-developer
 - add: tier-playbook pro/devops-cicd/production-cicd-pipeline
 - add: tier-playbook pro/paid-acquisition/google-ads-first-campaign
