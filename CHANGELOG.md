@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/tech-setup/vscode-first-project-setup
 - add: tier-playbook free/cost-free-stack/free-analytics-posthog
 - add: tier-playbook free/marketing-fundamentals/first-10-customers
 - add: tier-playbook free/hosting-infra/deploy-to-vercel-free
