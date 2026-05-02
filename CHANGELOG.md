@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/devops-cicd/docker-for-prod
 - add: tier-playbook pro/product-management/okrs-team-level
 - add: tier-playbook pro/hr-ops/technical-interview-process
 - add: tier-playbook pro/market-research/positioning-workshop
