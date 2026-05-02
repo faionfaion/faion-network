@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/automation/env-management-secrets
 - add: tier-playbook solo/launch-operations/churn-intervention
 - add: tier-playbook solo/launch-operations/payment-flow
 - add: tier-playbook solo/automation/github-actions-cicd
