@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/ai-agents/agent-debugging-observability
 - add: tier-playbook geek/cost-optimization/prompt-caching-strategy
 - add: tier-playbook geek/mcp-protocol/mcp-claude-code-integration
 - add: tier-playbook geek/evaluation/behavioral-evals-adversarial
