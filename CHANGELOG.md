@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- improve: topical-authority — methodology rewritten for autonomous agent application
 - improve: seo — methodology rewritten for autonomous agent application
 - improve: go-error-handling-patterns — methodology rewritten for autonomous agent application
 - feat: add `skills/faion/workflows/sdd-batch-orchestrator/` — faion-network adaptation of the batch orchestrator proposal (12 phases, prompt-file convention, worktree+flock parallelism, verify-review-fix loop with surface-specific verifiers, focused recapture, tg-send/SDD delivery, quota gating); 10 semantic-XML content files + 4 templates; introduces `skills/faion/workflows/` as the home for end-to-end orchestration patterns
