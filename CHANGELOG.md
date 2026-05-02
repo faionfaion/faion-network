@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/seo-essentials/on-page-seo
 - add: tier-playbook solo/product-planning/weekly-review-solo
 - add: tier-playbook solo/solo-ops-finance/runway-calc
 - add: tier-playbook solo/automation/pre-commit-hooks
