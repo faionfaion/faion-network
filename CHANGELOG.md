@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/llm-integration/structured-output-json-schema
 - add: tier-playbook geek/llm-integration/llm-fallback-chains
 - add: tier-playbook geek/ai-agents/agent-memory-architecture
 - add: tier-playbook geek/ai-safety/pii-redaction-pipeline
