@@ -53,7 +53,7 @@ treated as the rubric, not the answer — the answer is regenerated each cycle.
 
 - `faion-research-agent` (mode `trend`) — owns the monthly pulse: WebSearch + RSS pulls + scoring against rubric. Output: dated snapshot + JSON sidecar.
 - `faion-sdd-executor-agent` (in this repo: `agents/faion-sdd-executor-agent.md`) — picks up the diff-driven SDD ticket and updates `roadmap.md` / strategy docs.
-- `faion-brainstorm` skill — invoke when a trend bucket flips, to generate 5+ concrete product/process responses before committing.
+- `brainstorm` skill — invoke when a trend bucket flips, to generate 5+ concrete product/process responses before committing.
 - `product-manager` (knowledge skill `pro/product/product-manager`) — consumes the snapshot to update OKRs and feature priorities.
 - `gtm-strategist` (knowledge skill `pro/marketing/gtm-strategist`) — consumes consumer-trends section for messaging changes.
 

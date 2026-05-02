@@ -39,5 +39,5 @@ A workflow is **the orchestration shape**, not a script. The orchestrator is alw
 
 - `docs/skill-authoring.md` — folder shape, token budgets, anti-patterns.
 - `skills/faion/knowledge/geek/ai/llm-integration/semantic-xml-content/` — semantic XML convention.
-- `skills/faion-sdd-execution/` — quality gates and review loop primitives.
-- `skills/faion-feature-executor/` — sequential SDD task execution baseline.
+- `skills/faion:sdd-execution/` — quality gates and review loop primitives.
+- `skills/faion:feature-executor/` — sequential SDD task execution baseline.

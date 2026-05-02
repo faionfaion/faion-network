@@ -35,7 +35,7 @@
 | faion-communicator | 14 | 1 | Low |
 | faion-hr-recruiter | 15 | 1 | Low |
 | faion-claude-code | 9 | 2 | High |
-| faion-feature-executor | 4 | 1 | Medium |
+| feature-executor | 4 | 1 | Medium |
 | faion-net (orchestrator) | 23 | 2 | High |
 
 ---
@@ -1057,7 +1057,7 @@
 
 ---
 
-## 18. faion-feature-executor (1 article)
+## 18. feature-executor (1 article)
 
 ### FE-001: Task Execution with Quality Gates
 

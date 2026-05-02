@@ -430,7 +430,7 @@ Code review: PASSED"
 ### Example 1: Execute Auth Feature
 
 ```
-User: /faion-feature-executor cashflow-planner 01-auth
+User: /faion:feature-executor cashflow-planner 01-auth
 Skill: Loading context...
 - Constitution: cashflow-planner (Django 5.x, pytest, 80% coverage)
 - Feature: 01-auth (4 tasks in todo/)
@@ -469,7 +469,7 @@ Feature completed:
 ### Example 2: Resume Partial Execution
 
 ```
-User: /faion-feature-executor faion-net 02-landing-page
+User: /faion:feature-executor faion-net 02-landing-page
 
 Skill: Found 1 task in in-progress/, 3 in todo/
 Resuming from TASK_002...
@@ -485,7 +485,7 @@ Continuing with remaining tasks...
 
 ---
 
-*faion-feature-executor/execution-workflow.md*
+*feature-executor/execution-workflow.md*
 
 ## Agent Selection
 

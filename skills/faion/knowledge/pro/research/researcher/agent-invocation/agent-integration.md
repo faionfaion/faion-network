@@ -14,7 +14,7 @@ Reference: `README.md` in this folder. This file covers how to drive the
 
 - One-off factual lookup (a single TAM number, a single competitor URL) — call `WebSearch` directly; spinning up a research subagent costs 10x more tokens.
 - Internal codebase research — use `Grep`/`Glob`/`Agent` instead. The research agent is tuned for external web sources, not source code.
-- Ideation that is purely creative (brand voice, copy variants) — use `faion-brainstorm` (diverge/converge/review) instead of `mode: ideas`.
+- Ideation that is purely creative (brand voice, copy variants) — use `brainstorm` (diverge/converge/review) instead of `mode: ideas`.
 - The user's project already has fresh `market-research.md` / `competitive-analysis.md`. Re-running burns budget; read existing files first.
 
 ## Where it fails / limitations
@@ -138,7 +138,7 @@ echo "OK research package → $OUT_DIR"
 - Pin a model per mode in the agent file frontmatter: `haiku` for `ideas`/`names`/`domain-check`, `sonnet` for `pains`/`personas`/`competitors`/`validate`, `opus` for `market`/`niche`/`pricing` (matches the agent-selection table in README.md).
 - Run `pains` BEFORE `validate`. Validation without a pain inventory becomes self-confirmation. README's example sequences this correctly; preserve order.
 - For `names` mode, generate 20 and let `faion-domain-checker-agent` filter to 5. Generating 5 directly yields zero survivors ~70% of the time.
-- Every mode's output file MUST start with a 1-line provenance header: `<!-- generated: faion-research-agent mode=market on 2026-04-24 -->`. Lets `faion-improver` audit staleness later.
+- Every mode's output file MUST start with a 1-line provenance header: `<!-- generated: faion-research-agent mode=market on 2026-04-24 -->`. Lets `improver` audit staleness later.
 - Keep `WebFetch` in the allowed-tools list — `WebSearch` alone returns snippets, and modes like `competitors` need full pricing pages.
 
 ## AI-agent gotchas

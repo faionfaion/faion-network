@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- refactor: plugin rename to `faion` + drop `faion-` prefix from applied skills. Plugin manifest `name: faion-network` → `faion` (v1.1.0). Renamed skill folders: `faion-brainstorm` → `brainstorm`, `faion-feature-executor` → `feature-executor`, `faion-improver` → `improver`, `faion-sdd-execution` → `sdd-execution`, `faion-media-ops` → `media-ops`, `faion-poll-agents` → `poll-agents`. SKILL.md frontmatter `name:` fields updated; bulk reference rewrites across 199 files (skills/, agents/, hooks/, knowledge XML, docs, README). Invocation now `/faion:<skill>` (or unprefixed when no conflict). `media-ops` SKILL.md normalized (lowercase `skill.md` → `SKILL.md`, frontmatter added). Frozen `.aidocs/done/` and `.aidocs/feature-04*` left as-is for historical accuracy.
+- chore: remove `hooks/auto-update.sh` — plugins use `/plugin update faion`, the bespoke fetch hook is obsolete. Removed from `hooks/hooks.json` and deleted the script.
 - feat: package faion-network as Claude Code plugin — added `.claude-plugin/plugin.json` manifest (name: faion-network, v1.0.0), `hooks/hooks.json` wiring existing scripts to UserPromptSubmit + SessionStart events via `${CLAUDE_PLUGIN_ROOT}`, README plugin install section. Direct clone (`~/.claude` symlink) install path preserved.
 - chore: feature-048 lifecycle in-progress → done
 - feat: feature-048 COMPLETE — all 4 waves shipped (free 30 + solo 30 + pro 30 + geek 30 = 120 playbooks); 100% validator pass; cross-tier slug uniqueness enforced; all groups have AGENTS.md/CLAUDE.md; orphan worktree commits restored (3 geek + 5 pro + 4 solo + 1 free)

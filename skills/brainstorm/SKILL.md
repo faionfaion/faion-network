@@ -1,11 +1,11 @@
 ---
-name: faion-brainstorm
+name: brainstorm
 description: "Multi-agent brainstorming: structured diverge-converge-review cycles for technical and product ideation."
 tier: free
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, WebSearch, WebFetch, AskUserQuestion
 ---
-> **Entry point:** `/faion-brainstorm` — invoke directly.
+> **Entry point:** `/faion:brainstorm` — invoke directly.
 
 # Multi-Agent Brainstorm Skill
 
@@ -116,9 +116,9 @@ Incorporate reviewer feedback into final document:
 ## Usage Examples
 
 ```
-/faion-brainstorm How to improve our deployment pipeline?
-/faion-brainstorm 10 recommendations for reducing LLM costs
-/faion-brainstorm Technical audit of the authentication system
+/faion:brainstorm How to improve our deployment pipeline?
+/faion:brainstorm 10 recommendations for reducing LLM costs
+/faion:brainstorm Technical audit of the authentication system
 ```
 
 ## Evidence Base

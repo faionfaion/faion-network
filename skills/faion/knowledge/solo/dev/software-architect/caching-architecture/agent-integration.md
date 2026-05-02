@@ -24,9 +24,9 @@
 Use a designer agent to map cache layers (CDN → gateway → app → DB) and pick a pattern per data type, a code-author agent to wire the chosen client (Redis/Memcached/Varnish/CDN), and a critic agent to attack invalidation, stampedes, and consistency. Always gather two metrics before/after: cache hit ratio and p95 latency on the cached path. Run a "negative test" subagent that intentionally writes-then-reads to surface stale data.
 
 ### Recommended subagents
-- `faion-brainstorm` — diverge over cache placement and pattern choice (cache-aside vs read-through vs write-through vs write-behind).
-- `faion-sdd-execution` — produce spec/design including invalidation events and TTL policy, with explicit test cases for staleness.
-- `faion-improver` — post-deploy audit of hit ratio, eviction rate, p99 tail.
+- `brainstorm` — diverge over cache placement and pattern choice (cache-aside vs read-through vs write-through vs write-behind).
+- `sdd-execution` — produce spec/design including invalidation events and TTL policy, with explicit test cases for staleness.
+- `improver` — post-deploy audit of hit ratio, eviction rate, p99 tail.
 
 ### Prompt pattern
 ```

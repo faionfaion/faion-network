@@ -25,7 +25,7 @@ A reporting agent runs on a cron (daily/weekly): pulls Insights via API → join
 
 ### Recommended subagents
 - `faion-ads-agent` — Insights API pulls, breakdown queries, report formatting.
-- `faion-improver` — closes the loop: symptom → diagnosis → action plan.
+- `improver` — closes the loop: symptom → diagnosis → action plan.
 - `faion-sdd-executor-agent` — gates auto-actions behind plan/approve/apply when spend > threshold.
 
 ### Prompt pattern

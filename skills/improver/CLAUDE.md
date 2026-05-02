@@ -1,4 +1,4 @@
-# faion-improver
+# improver
 
 **Session-first** continuous improvement. Analyzes the current session's experience BEFORE doing anything else: what was built, what broke, what patterns emerged. Then optionally extends to system audit.
 
@@ -43,6 +43,6 @@ Phase 1-7: (optional, when requested)
 
 ## Related Skills
 
-- `faion-brainstorm` (multi-agent brainstorming)
-- `faion-sdd-execution` (quality gates, reflexion learning)
+- `brainstorm` (multi-agent brainstorming)
+- `sdd-execution` (quality gates, reflexion learning)
 - `faion/knowledge/solo/infra/server-craft/` (server config/tuning)

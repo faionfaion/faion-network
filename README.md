@@ -28,17 +28,14 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 
 ## Quick Start
 
-The recommended install path is as a **Claude Code plugin** — keeps your `~/.claude/` clean, supports versioning, and namespaces all skills under `/faion-network:*`.
+The recommended install path is as a **Claude Code plugin** named `faion` — keeps your `~/.claude/` clean, supports versioning, and namespaces all applied skills under `/faion:<skill>`.
 
 ```bash
 # Inside Claude Code:
 /plugin install faionfaion/faion-network
-
-# Or from the official marketplace once published:
-/plugin install faion-network@<marketplace>
 ```
 
-After installing, the umbrella retrieval skill is available as `/faion-network:faion` (or just `/faion` if no conflict).
+After installing, the umbrella retrieval skill is available as `/faion` (or `/faion:faion` explicit), applied skills as `/faion:brainstorm`, `/faion:feature-executor`, `/faion:improver`, `/faion:sdd-execution`, `/faion:media-ops`, `/faion:poll-agents`.
 
 ---
 
@@ -54,20 +51,20 @@ After installing, the umbrella retrieval skill is available as `/faion-network:f
 
 ```bash
 /plugin install faionfaion/faion-network
-/plugin enable faion-network
+/plugin enable faion
 ```
 
 Plugin assets register automatically:
 
 | Asset | Location in repo | Plugin invocation |
 |-------|------------------|-------------------|
-| Umbrella retrieval skill | `skills/faion/SKILL.md` | `/faion-network:faion` |
-| Applied skills | `skills/faion-*/` | `/faion-network:<skill>` |
+| Umbrella retrieval skill | `skills/faion/SKILL.md` | `/faion` (or `/faion:faion`) |
+| Applied skills | `skills/<slug>/` | `/faion:<slug>` |
 | Subagents | `agents/*.md` | auto-discovered |
-| Hooks | `hooks/hooks.json` (UserPromptSubmit, SessionStart) | auto-wired |
+| Hooks | `hooks/hooks.json` (UserPromptSubmit) | auto-wired |
 | Tier playbooks | `skills/faion/playbooks/<tier>/<group>/<slug>/` | read on demand |
 
-Update with `/plugin update faion-network`. Disable with `/plugin disable faion-network`.
+Update with `/plugin update faion`. Disable with `/plugin disable faion`. Plugin name (`faion`) ≠ git repo name (`faion-network`) — install URL points to the repo, plugin namespace stays short.
 
 ### Option 2: Direct clone (legacy `~/.claude` install)
 
@@ -75,7 +72,7 @@ Update with `/plugin update faion-network`. Disable with `/plugin disable faion-
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
 # Verify
-ls ~/.claude/skills       # faion, faion-brainstorm, faion-feature-executor, ...
+ls ~/.claude/skills       # faion, brainstorm, feature-executor, improver, sdd-execution, media-ops, poll-agents
 ls ~/.claude/skills/faion/knowledge/   # free/ solo/ pro/ geek/
 ```
 
@@ -87,7 +84,7 @@ This mode keeps `/faion` as a top-level command and is what existing users have.
 cp -r ~/.claude ~/.claude.backup
 git clone https://github.com/faionfaion/faion-network.git temp
 cp -r temp/skills/* ~/.claude/skills/
-cp -r temp/agents/faion-* ~/.claude/agents/ 2>/dev/null || true
+cp -r temp/agents/* ~/.claude/agents/ 2>/dev/null || true
 rm -rf temp
 ```
 
@@ -143,7 +140,7 @@ Full tier map: [faion/SKILL.md](skills/faion/SKILL.md). Authoritative path list:
 Read `knowledge/solo/sdd/sdd/` and `knowledge/solo/sdd/sdd-planning/` for specs, designs, implementation plans. Then:
 
 ```bash
-/faion-feature-executor {project} {feature}
+/faion:feature-executor {project} {feature}
 ```
 
 Sequential task execution with test runs, coverage checks, and code review cycles.
@@ -151,7 +148,7 @@ Sequential task execution with test runs, coverage checks, and code review cycle
 ### Multi-Agent Brainstorm
 
 ```bash
-/faion-brainstorm How to improve our deployment pipeline?
+/faion:brainstorm How to improve our deployment pipeline?
 ```
 
 Diverge (10 research agents) → Converge (synthesis) → Review (8 adversarial reviewers) → Finalize.
@@ -159,7 +156,7 @@ Diverge (10 research agents) → Converge (synthesis) → Review (8 adversarial 
 ### Session Improvement
 
 ```bash
-/faion-improver
+/faion:improver
 ```
 
 Capture patterns, mistakes, and decisions from the current session into `.aidocs/memory/`.
@@ -178,11 +175,11 @@ skills/
 │       ├── solo/         (13)  frontend, API, architect, automation, server-craft, SDD, product planning/ops, UI, content, SEO, comms
 │       ├── pro/          (24)  backend systems/enterprise, DevOps/CI-CD/infra, PM, product-manager, BA, UX research, growth/GTM/PPC/SMM/CRO, research, HR
 │       └── geek/          (7)  ML engineer, AI agents, RAG, ML ops, multimodal AI, LLM integration, Claude Code
-├── faion-brainstorm/                  # Multi-agent diverge/converge/review
-├── faion-sdd-execution/               # Quality gates, reflexion learning
-├── faion-feature-executor/            # Sequential SDD task execution
-├── faion-improver/                    # Session-based audit/improve loop
-└── faion-media-ops/                   # Media pipeline templates
+├── brainstorm/                  # Multi-agent diverge/converge/review
+├── sdd-execution/               # Quality gates, reflexion learning
+├── feature-executor/            # Sequential SDD task execution
+├── improver/                    # Session-based audit/improve loop
+└── media-ops/                   # Media pipeline templates
 ```
 
 Each methodology = 5-file pattern: `README.md`, `checklist.md`, `templates.md`, `examples.md`, `llm-prompts.md`.
@@ -197,7 +194,7 @@ Each methodology = 5-file pattern: `README.md`, `checklist.md`, `templates.md`, 
 Error: Skill 'faion-*' not found
 ```
 
-Only top-level skills are invocable: `faion`, `faion-brainstorm`, `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`, `faion-media-ops`.
+Only top-level skills are invocable: `faion`, `brainstorm`, `feature-executor`, `improver`, `sdd-execution`, `media-ops`.
 
 Domain knowledge is NOT invocable as sub-skills — load via Read. Knowledge paths are tier-prefixed:
 

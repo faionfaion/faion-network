@@ -1,4 +1,4 @@
-# faion-sdd-execution Sub-Skill
+# sdd-execution Sub-Skill
 
 **SDD Execution Phase: Quality Gates, Reflexion Learning, Pattern Memory, Code Review.**
 
@@ -6,7 +6,7 @@
 
 ## Entry Point
 
-Invoked directly as `/faion-sdd-execution`, or referenced from SDD knowledge at [faion/knowledge/solo/sdd/sdd/](../faion/knowledge/solo/sdd/sdd/).
+Invoked directly as `/faion:sdd-execution`, or referenced from SDD knowledge at [faion/knowledge/solo/sdd/sdd/](../faion/knowledge/solo/sdd/sdd/).
 
 ---
 
@@ -89,5 +89,5 @@ spec  execute gates  learn
 
 ---
 
-*faion-sdd-execution v1.0*
+*sdd-execution v1.0*
 *20 methodologies for execution, quality, and learning*

@@ -5,7 +5,7 @@
 ### Input
 
 ```
-/faion-feature-executor cashflow-planner 01-auth
+/faion:feature-executor cashflow-planner 01-auth
 ```
 
 ### Context Loaded
@@ -76,7 +76,7 @@ Feature completed:
 ### Input
 
 ```
-/faion-feature-executor faion-net 02-landing-page
+/faion:feature-executor faion-net 02-landing-page
 ```
 
 ### State Found
@@ -129,7 +129,7 @@ Feature completed:
 ### Input
 
 ```
-/faion-feature-executor payment-service 03-webhooks
+/faion:feature-executor payment-service 03-webhooks
 ```
 
 ### Execution with Failure
@@ -171,7 +171,7 @@ Feature completed: 3/3 tasks
 ### Input
 
 ```
-/faion-feature-executor mobile-app 04-notifications
+/faion:feature-executor mobile-app 04-notifications
 ```
 
 ### Execution with Partial Failure
@@ -224,7 +224,7 @@ TASK-002-notification-service ━━━━━━━━━━ EXECUTING
 ### Input
 
 ```
-/faion-feature-executor blog-platform 05-editor
+/faion:feature-executor blog-platform 05-editor
 ```
 
 ### Multiple Review Iterations
@@ -258,7 +258,7 @@ Final Status: PASSED (4 iterations)
 ### Input
 
 ```
-/faion-feature-executor ecommerce 06-checkout
+/faion:feature-executor ecommerce 06-checkout
 ```
 
 ### Task Dependency Handling
@@ -296,7 +296,7 @@ Feature completed: 6/6 tasks (dependency-ordered)
 ### Input
 
 ```
-/faion-feature-executor api-service 07-analytics
+/faion:feature-executor api-service 07-analytics
 ```
 
 ### All Tasks Already Done

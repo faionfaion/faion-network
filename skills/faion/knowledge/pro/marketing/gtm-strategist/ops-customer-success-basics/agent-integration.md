@@ -27,7 +27,7 @@ Run a continuous CS agent: ingests product-event stream (Mixpanel/Amplitude/Segm
 ### Recommended subagents
 - `faion-growth-agent` (source README) — owns CS playbook construction and at-risk triage.
 - `faion-content-agent` — drafts the lifecycle emails, success guides, knowledge-base entries.
-- `faion-improver` — quarterly: review which playbook actions actually moved retention and prune ineffective touchpoints.
+- `improver` — quarterly: review which playbook actions actually moved retention and prune ineffective touchpoints.
 - General-purpose Claude subagent — converts raw event logs to per-customer narrative summaries for human CSM review.
 
 ### Prompt pattern

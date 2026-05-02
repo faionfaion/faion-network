@@ -33,7 +33,7 @@ Drive Python work as: classify task → pick sub-topic → load only the relevan
 - `faion-test-agent` — Owns pytest fixtures, mocking, parametrize, coverage runs.
 - `faion-devtools-developer` (sibling skill) — Owns pre-commit, lint config, Poetry/uv migration.
 - `faion-software-architect` (sibling) — Owns Django-vs-FastAPI choice and async/sync boundary decisions.
-- `faion-sdd-execution` — Wraps the whole loop in spec → impl → test → review when the task is non-trivial.
+- `sdd-execution` — Wraps the whole loop in spec → impl → test → review when the task is non-trivial.
 
 ### Prompt pattern
 Sub-topic dispatch:

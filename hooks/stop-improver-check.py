@@ -2,7 +2,7 @@
 """UserPromptSubmit hook: inject improver suggestion when session is mature.
 
 Fires on every user message. When >25% context used (~200KB transcript),
-adds a soft suggestion to ask user about running /faion-improver
+adds a soft suggestion to ask user about running /faion:improver
 at the next logical stopping point.
 """
 import json
@@ -50,15 +50,15 @@ def main():
     result = {
         "additionalContext": (
             f"<user-prompt-submit-hook>"
-            f"[faion-improver session check] "
+            f"[improver session check] "
             f"Session context: ~{transcript_kb:.0f}KB, {subagent_count} subagent outputs. "
             f"Context usage >25%. "
             f"ACTION REQUIRED: If the user's message completes a logical unit of work "
             f"(task done, feature implemented, question answered), you MUST use AskUserQuestion "
             f"to ask: 'Session has significant context (~{transcript_kb:.0f}KB). "
-            f"Run /faion-improver to capture patterns and mistakes?' "
+            f"Run /faion:improver to capture patterns and mistakes?' "
             f"If user confirms → use EnterPlanMode, then plan the improvement session "
-            f"following the faion-improver skill workflow (Phase 0: Session Review). "
+            f"following the improver skill workflow (Phase 0: Session Review). "
             f"If user declines → continue normally. "
             f"Do NOT ask if you already asked in this conversation. "
             f"Do NOT ask if the user is in the middle of active work."

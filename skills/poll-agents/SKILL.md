@@ -1,12 +1,12 @@
 ---
-name: faion-poll-agents
+name: poll-agents
 description: "Self-replenishing background-agent pool: dispatch N parallel worktree subagents on a queue of batched tasks, replace on completion, persist state to disk, drive via cron tick + completion handler."
 tier: free
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion
 ---
 
-> **Entry point:** `/faion-poll-agents` — invoke directly, or compose from `/loop` + `/schedule` for the cron tick.
+> **Entry point:** `/faion:poll-agents` — invoke directly, or compose from `/loop` + `/schedule` for the cron tick.
 
 # Self-Replenishing Agent Pool
 
@@ -181,7 +181,7 @@ For pool work, `general-purpose` is almost always right because the BRIEF carrie
 
 - **`/loop <interval>`** drives the tick handler.
 - **`/schedule`** for cron-style remote agents (when session might close).
-- **`faion-brainstorm`** uses a *different* pool pattern (10 + 8 agents in two phases, no replenishment) — `faion-poll-agents` is for steady-state, brainstorm is for burst.
+- **`brainstorm`** uses a *different* pool pattern (10 + 8 agents in two phases, no replenishment) — `poll-agents` is for steady-state, brainstorm is for burst.
 - **`faion`** is the canonical example: 1142 methodology directories, batch=8, pool=9, model=sonnet.
 
 ## Minimal example: tick prompt template

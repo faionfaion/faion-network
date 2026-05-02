@@ -1,5 +1,5 @@
 ---
-name: faion-improver
+name: improver
 description: "Session-based continuous improvement: investigate system, find gaps, brainstorm, apply fixes, log improvements, commit, create skills from experience. 5 methodologies."
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate, TaskList, AskUserQuestion, Skill
@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdat
 
 Turns the current session's experience into persistent knowledge. **First priority: analyze what happened THIS session** — what was built, what broke, what patterns emerged. Then optionally investigate broader system state.
 
-**Entry point:** `/faion-improver` (invoked directly)
+**Entry point:** `/faion:improver` (invoked directly)
 
 ---
 
@@ -76,7 +76,7 @@ This distinction is important: system improvements are applied in the current se
 
 ### Phase 3: Brainstorm
 
-Run `Skill(faion-brainstorm)` with:
+Run `Skill(faion:brainstorm)` with:
 - Session context (what was done, what was learned)
 - Investigation findings
 - Questions about reusability, patterns, new skills
@@ -193,7 +193,7 @@ If the session produced enough domain knowledge:
 
 | User Intent | Phase |
 |-------------|-------|
-| `/faion-improver` (no args) | Phase 0 (Session Review) — analyze current session |
+| `/faion:improver` (no args) | Phase 0 (Session Review) — analyze current session |
 | "What did we learn?" / "що ми зробили?" | Phase 0 (Session Review) |
 | "Audit this server" / "find issues" | Phase 0 + 1 (Session Review + Investigate) |
 | "What can be improved?" | Phase 0 + 1 + 2 (Session + Investigate + Classify) |
@@ -222,7 +222,7 @@ If the session produced enough domain knowledge:
 
 ## Integration Points
 
-- **faion-brainstorm**: Multi-agent brainstorming for improvement ideas
+- **brainstorm**: Multi-agent brainstorming for improvement ideas
 - **faion/knowledge/solo/infra/server-craft/**: Server-specific configurations and tuning
 - **faion/knowledge/pro/infra/devops-engineer/**: Infrastructure and CI/CD improvements
 - **faion/knowledge/solo/sdd/sdd/**: SDD workflow improvements

@@ -33,7 +33,7 @@ Drive CD adoption as a six-stage pipeline: (1) a baseline agent scores the curre
 - `faion-sdd-executor-agent` (`agents/faion-sdd-executor-agent.md`) — one task per CD-phase upgrade (e.g., "add staging smoke tests," "wire automatic rollback"). Sonnet for routine pipeline edits; opus for deploy-strategy redesign.
 - `password-scrubber-agent` (`agents/password-scrubber-agent.md`) — pipelines move secrets (deploy keys, registry tokens, webhook URLs); scrub workflows + Helm values pre-commit.
 - A **cd-review-agent** (worth adding under `agents/`): scans CI YAML for missing rollback step, missing smoke test, branch trigger != main on a "production" job, secrets in plaintext, migrations applied before app deploy, no concurrency lock.
-- `faion-feature-executor` skill — sequential mode for a feature whose deploy spans migration → app deploy → flag flip → bake → flag remove; out-of-order = outage.
+- `feature-executor` skill — sequential mode for a feature whose deploy spans migration → app deploy → flag flip → bake → flag remove; out-of-order = outage.
 
 ### Prompt pattern
 Maturity assessment:

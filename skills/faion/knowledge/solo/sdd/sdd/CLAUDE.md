@@ -9,7 +9,7 @@ Specification-Driven Development: "Intent is the source of truth" - specificatio
 | Sub-Skill | Focus | Methodologies |
 |-----------|-------|---------------|
 | [faion-sdd-planning](faion-sdd-planning/CLAUDE.md) | Specs, design docs, impl-plans, tasks, templates | 28 |
-| [faion-sdd-execution](faion-sdd-execution/CLAUDE.md) | Quality gates, reflexion, patterns, memory, review | 20 |
+| [sdd-execution](sdd-execution/CLAUDE.md) | Quality gates, reflexion, patterns, memory, review | 20 |
 
 **Total:** 48 methodologies
 
@@ -26,7 +26,7 @@ CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECU
 | Need | Use |
 |------|-----|
 | Write spec/design/impl-plan | faion-sdd-planning |
-| Execute/validate/learn | faion-sdd-execution |
+| Execute/validate/learn | sdd-execution |
 
 ## Key Concepts
 
@@ -97,5 +97,5 @@ feature-NNN/todo/ → feature-NNN/in-progress/ → feature-NNN/done/
 
 | Skill | Relationship |
 |-------|--------------|
-| [faion-feature-executor](../faion-feature-executor/CLAUDE.md) | Executes SDD tasks in sequence |
+| [feature-executor](../faion:feature-executor/CLAUDE.md) | Executes SDD tasks in sequence |
 | [faion-software-developer](../faion-software-developer/CLAUDE.md) | Implements code from tasks |

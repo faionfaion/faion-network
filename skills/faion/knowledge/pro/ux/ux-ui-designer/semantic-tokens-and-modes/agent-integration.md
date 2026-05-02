@@ -27,7 +27,7 @@ Drive tokens through a four-stage pipeline: author (Figma Variables) → export 
 - `faion-sdd-executor-agent` — runs the Style Dictionary build in CI and opens PRs with the generated files.
 - A purpose-built `token-coverage` subagent that reads exported Figma JSON, asserts that for each token in collection `Colors`, both `Light` and `Dark` modes have a value, and fails the build with the missing list.
 - A `token-lint` subagent that scans source files for forbidden raw hex values and direct references to reference (palette) tokens, suggesting the semantic equivalent.
-- `faion-improver` — periodic mode coverage audit ("does every semantic token have a value in every mode?").
+- `improver` — periodic mode coverage audit ("does every semantic token have a value in every mode?").
 
 ### Prompt pattern
 "Given `figma-variables.json` exported from collection `Colors` with modes `Light, Dark, HC`, list semantic tokens missing in any mode. Propose a value for the missing mode using WCAG-AA contrast against the corresponding `surface.*` token in that mode. Do not invent reference tokens; reuse existing palette."

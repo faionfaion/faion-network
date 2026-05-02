@@ -25,7 +25,7 @@ A subagent is well-suited to: ingest free-form change requests (Slack, email), n
 ### Recommended subagents
 - `faion-pm-agent` — owns CR lifecycle, drafts impact analyses, updates the register.
 - `faion-business-analyst` agent (per skill router) — strong for impact analysis on scope and requirements traceability.
-- `faion-sdd-execution` reviewer — gate that flags PRs whose diff implies an undeclared scope change.
+- `sdd-execution` reviewer — gate that flags PRs whose diff implies an undeclared scope change.
 
 ### Prompt pattern
 ```

@@ -19,7 +19,7 @@ The mode-dispatch pattern in the original README uses pseudocode that does not m
 
 - One-off factual lookup (single TAM number, single competitor URL) — call `WebSearch` directly; a research subagent costs 10x more tokens.
 - Internal codebase research — use `Grep`/`Glob`/`Agent` instead; this agent is tuned for external web sources.
-- Purely creative ideation (brand voice, copy variants) — use `faion-brainstorm` instead of `mode: ideas`.
+- Purely creative ideation (brand voice, copy variants) — use `brainstorm` instead of `mode: ideas`.
 - Project already has fresh `market-research.md` / `competitive-analysis.md` — re-running burns budget; read existing files first.
 
 ## Content

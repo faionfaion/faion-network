@@ -47,7 +47,7 @@ Add a new workflow when **all** apply:
 Otherwise:
 - Same orchestration, new surface → add a playbook under the existing workflow.
 - Same orchestration, one phase tweak → note in the existing playbook, do not fork.
-- One-off feature delivery → use `faion-feature-executor`, not a workflow.
+- One-off feature delivery → use `feature-executor`, not a workflow.
 
 ## 3. Folder shape ("I am here" map)
 

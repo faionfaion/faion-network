@@ -29,7 +29,7 @@ Drive JUnit test scaffolding as a four-stage pipeline: (1) a slice-picker agent 
 
 ### Recommended subagents
 - `faion-sdd-executor-agent` (`agents/faion-sdd-executor-agent.md`) — opus model fits because slice selection (when to use `@WebMvcTest` vs. `@SpringBootTest`) is decision-heavy.
-- `faion-feature-executor` skill — sequential mode is correct: write controller test → service test → repository test → integration test, each gating on green.
+- `feature-executor` skill — sequential mode is correct: write controller test → service test → repository test → integration test, each gating on green.
 - A purpose-built **junit-style-lint agent** (worth adding under `agents/`): grep-based linter for the common drift (`assertEquals` instead of AssertJ, `@MockBean` instead of `@MockitoBean` on Spring Boot ≥3.4, missing `@DisplayName`, H2 in `@DataJpaTest`).
 - `password-scrubber-agent` (`agents/password-scrubber-agent.md`) — run before committing test fixtures; agents copy real-looking emails / tokens into `@Sql` seed scripts.
 - For Testcontainers workflows, pair with sibling `pro/infra/devops-engineer/docker-*` methodologies; the agent should know how to start `PostgreSQLContainer` once per JVM.

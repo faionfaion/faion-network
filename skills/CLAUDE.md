@@ -1,6 +1,6 @@
 # Skills Directory
 
-Claude Code skills for the faion-network framework.
+Claude Code skills for the `faion` plugin (repo: faion-network).
 
 ## Active Skills
 
@@ -15,11 +15,11 @@ Claude Code skills for the faion-network framework.
 
 | Skill | Description |
 |-------|-------------|
-| `faion-brainstorm` | Multi-agent diverge/converge/review for ideation |
-| `faion-sdd-execution` | Quality gates, code review cycle, pattern/mistake memory |
-| `faion-feature-executor` | Sequential SDD task execution with quality gates |
-| `faion-improver` | Session-based audit/improve loop |
-| `faion-media-ops` | Media pipeline templates |
+| `brainstorm` | Multi-agent diverge/converge/review for ideation |
+| `sdd-execution` | Quality gates, code review cycle, pattern/mistake memory |
+| `feature-executor` | Sequential SDD task execution with quality gates |
+| `improver` | Session-based audit/improve loop |
+| `media-ops` | Media pipeline templates |
 
 ### NERO-specific
 

@@ -64,8 +64,8 @@ options:
 **Routing:**
 - "Starting" → constitution-guidelines, project bootstrap
 - "Planning" → `Skill(faion-sdd-planning)`
-- "Execute" → `Skill(faion-sdd-execution)` or `Skill(faion-feature-executor)`
-- "Reviewing" → `Skill(faion-sdd-execution)` → quality-gates
+- "Execute" → `Skill(faion:sdd-execution)` or `Skill(faion:feature-executor)`
+- "Reviewing" → `Skill(faion:sdd-execution)` → quality-gates
 
 #### Q2: Document Type (if planning)
 
@@ -113,7 +113,7 @@ This skill orchestrates 2 sub-skills:
 | Sub-Skill | Scope | Methodologies |
 |-----------|-------|---------------|
 | **faion-sdd-planning** | Specs, design docs, impl-plans, tasks, templates, workflows | 28 |
-| **faion-sdd-execution** | Quality gates, reflexion, patterns, memory, code review, context | 20 |
+| **sdd-execution** | Quality gates, reflexion, patterns, memory, code review, context | 20 |
 
 **Total:** 48 methodologies
 
@@ -140,7 +140,7 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 - Template usage
 - Workflow navigation
 
-### Use faion-sdd-execution for:
+### Use sdd-execution for:
 - Task execution workflows
 - Quality gate validation (L1-L6)
 - Code review cycles
@@ -160,12 +160,12 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 | Create impl-plan | faion-sdd-planning | Documentation phase |
 | Create tasks | faion-sdd-planning | Documentation phase |
 | Get templates | faion-sdd-planning | Templates stored there |
-| Run quality gates | faion-sdd-execution | Validation phase |
-| Execute tasks | faion-sdd-execution | Execution phase |
-| Code review | faion-sdd-execution | Review phase |
-| Learn patterns | faion-sdd-execution | Learning phase |
-| Check mistakes | faion-sdd-execution | Learning phase |
-| Parallelize tasks | faion-sdd-execution | Optimization phase |
+| Run quality gates | sdd-execution | Validation phase |
+| Execute tasks | sdd-execution | Execution phase |
+| Code review | sdd-execution | Review phase |
+| Learn patterns | sdd-execution | Learning phase |
+| Check mistakes | sdd-execution | Learning phase |
+| Parallelize tasks | sdd-execution | Optimization phase |
 
 ---
 
@@ -226,7 +226,7 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 | Skill | Relationship |
 |-------|--------------|
 | [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
-| [faion-feature-executor](../faion-feature-executor/CLAUDE.md) | Executes SDD tasks in sequence |
+| [feature-executor](../faion:feature-executor/CLAUDE.md) | Executes SDD tasks in sequence |
 | [faion-software-developer](../faion-software-developer/CLAUDE.md) | Implements code from tasks |
 | [faion-product-manager](../faion-product-manager/CLAUDE.md) | Provides product specs |
 | [faion-software-architect](../faion-software-architect/CLAUDE.md) | Provides design documents |
@@ -234,4 +234,4 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 ---
 
 *faion-sdd v4.0 (Orchestrator)*
-*Sub-skills: faion-sdd-planning (28) + faion-sdd-execution (20)*
+*Sub-skills: faion-sdd-planning (28) + sdd-execution (20)*

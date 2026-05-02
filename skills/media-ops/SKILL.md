@@ -1,6 +1,12 @@
-Base directory for this skill: /home/nero/.claude/skills/faion-media-ops
+---
+name: media-ops
+description: "Build and operate complete AI media publishing pipelines from scratch: discovery interview, requirements, site, TG channels, prompts, automation."
+tier: pro
+user-invocable: true
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
+---
 
-> **Entry point:** `/faion-media-ops` — invoke directly or via `/faion-net`.
+> **Entry point:** `/faion:media-ops` — invoke directly.
 
 # Media Pipeline Factory
 
@@ -18,7 +24,7 @@ Reference implementations (4 active outlets):
 
 Central control plane: `~/workspace/projects/media-manager-faion-net/`
 
-Templates directory: `~/.claude/skills/faion-media-ops/templates/`
+Templates directory: `~/.claude/skills/faion:media-ops/templates/`
 
 ---
 
@@ -267,7 +273,7 @@ Shall I proceed?
 
 ### 3b. Render Templates
 
-Use files from `~/.claude/skills/faion-media-ops/templates/` as starting points.
+Use files from `~/.claude/skills/faion:media-ops/templates/` as starting points.
 Render with project-specific values from the interview.
 
 ### 3c. Key Patterns

@@ -1,11 +1,11 @@
 ---
-name: faion-feature-executor
+name: feature-executor
 description: "SDD feature executor: sequential task execution with quality gates, test validation."
 tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite, AskUserQuestion
 ---
-> **Entry point:** `/faion-feature-executor` — invoked directly.
+> **Entry point:** `/faion:feature-executor` — invoked directly.
 
 # Feature Executor Skill
 
@@ -144,13 +144,13 @@ Proceed with YOLO execution? [Yes/No]
 ## Input
 
 ```
-/faion-feature-executor {project} {feature}
+/faion:feature-executor {project} {feature}
 ```
 
 **Examples:**
 ```
-/faion-feature-executor cashflow-planner 01-auth
-/faion-feature-executor faion-net 02-landing-page
+/faion:feature-executor cashflow-planner 01-auth
+/faion:feature-executor faion-net 02-landing-page
 ```
 
 **Parameters:**
@@ -214,5 +214,5 @@ SPEC → DESIGN → IMPL-PLAN → TASKS → [FEATURE-EXECUTOR] → DONE
 
 ---
 
-*faion-feature-executor v1.1.0*
+*feature-executor v1.1.0*
 *Execute features with quality gates*

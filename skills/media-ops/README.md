@@ -1,11 +1,11 @@
-# faion-media-ops
+# media-ops
 
 Media Pipeline Factory: build and operate complete AI media publishing pipelines.
 All outlets managed centrally by **media-manager** (@nero_media_manager_bot).
 
 ## Entry Point
 
-`/faion-media-ops` or via `/faion-net`
+`/faion:media-ops` or via `/faion-net`
 
 ## What It Does
 

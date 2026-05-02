@@ -1,6 +1,6 @@
-# faion-feature-executor
+# feature-executor
 
-> **Entry Point:** `/faion-feature-executor` — invoked directly.
+> **Entry Point:** `/faion:feature-executor` — invoked directly.
 
 ## When to Use This Skill
 
@@ -30,13 +30,13 @@ feature-NNN/todo/ → feature-NNN/in-progress/ → feature-NNN/done/
 ## Usage
 
 ```
-/faion-feature-executor {project} {feature}
+/faion:feature-executor {project} {feature}
 ```
 
 **Examples:**
 ```
-/faion-feature-executor cashflow-planner 01-auth
-/faion-feature-executor faion-net 02-landing-page
+/faion:feature-executor cashflow-planner 01-auth
+/faion:feature-executor faion-net 02-landing-page
 ```
 
 ## Agents Used

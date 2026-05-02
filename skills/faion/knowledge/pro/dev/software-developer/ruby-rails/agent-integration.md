@@ -32,7 +32,7 @@ Drive Rails feature work as a five-stage pipeline: (1) design agent extracts mod
 - `faion-sdd-executor-agent` (`agents/faion-sdd-executor-agent.md`) — one task = migration + model + service + controller + spec. Sonnet for routine CRUD; opus for service-object boundary + transaction design.
 - `password-scrubber-agent` (`agents/password-scrubber-agent.md`) — run before committing `config/credentials.yml.enc` decrypted dumps, fixtures, or `.env` files; Rails commits are a recurring leak source.
 - A **rails-review-agent** (worth adding under `agents/`): single-pass linter for `params.permit!`, `find_each` missing on large iterations, `default_scope`, callbacks > 3 per model, jobs without `idempotent` guard, `update_all` bypassing callbacks unintentionally.
-- `faion-feature-executor` skill — sequential mode keeps migration → model → service → controller → spec ordering correct; out-of-order writes leave failing autoload.
+- `feature-executor` skill — sequential mode keeps migration → model → service → controller → spec ordering correct; out-of-order writes leave failing autoload.
 
 ### Prompt pattern
 Inventory pass:

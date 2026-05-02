@@ -25,7 +25,7 @@ For SCAMPER: agent receives a product/service description and applies all 7 lens
 ### Recommended subagents
 - General Claude Opus call — SCAMPER "Reverse" and "Put to Other Uses" lenses; lateral thinking quality matters
 - General Claude Sonnet call — Starbursting question generation and Mind Map JSON structure; structured output task
-- `faion-brainstorm` — when combining all three methods in a full ideation sprint with review gate
+- `brainstorm` — when combining all three methods in a full ideation sprint with review gate
 
 ### Prompt pattern
 SCAMPER structured pass:

@@ -58,7 +58,7 @@ WHY   TECHNICAL  100k RULE   UNITS
 ## Related
 
 - **Parent:** [faion-sdd](../faion-sdd/SKILL.md)
-- **Sibling:** [faion-sdd-execution](../faion-sdd-execution/CLAUDE.md)
+- **Sibling:** [sdd-execution](../faion:sdd-execution/CLAUDE.md)
 - **Full list:** See [SKILL.md](SKILL.md)
 
 ---

@@ -32,7 +32,7 @@ Drive perf work as: (1) define SLO/budget upfront (latency p95, RPS, error rate)
 - `faion-sdd-executor-agent` — wraps perf work under SDD gates, enforces baseline-fix-retest loop.
 - `faion-software-architect-agent` — picks scenarios + interprets bottlenecks (DB, network, CPU, GC).
 - `faion-browser-agent` — drives k6/Lighthouse from CLI (despite the name).
-- `faion-feature-executor` — orchestrates baseline → optimize → verify as discrete tasks.
+- `feature-executor` — orchestrates baseline → optimize → verify as discrete tasks.
 
 ### Prompt pattern
 ```

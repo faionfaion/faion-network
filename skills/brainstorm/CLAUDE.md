@@ -1,6 +1,6 @@
 # Brainstorm Skill
 
-> **Entry Point:** `/faion-brainstorm` — user-invocable
+> **Entry Point:** `/faion:brainstorm` — user-invocable
 
 ## When to Use
 

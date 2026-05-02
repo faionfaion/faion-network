@@ -192,7 +192,7 @@ If not specified in constitution:
 
 ---
 
-*faion-feature-executor/quality-gates.md*
+*feature-executor/quality-gates.md*
 
 ## Agent Selection
 

@@ -19,9 +19,9 @@ Multi-feature batches drift when the orchestrator improvises long prompts each t
 
 - Single one-off feature — the planning + wave overhead is not worth it.
 - Pure exploratory research that produces no merge candidate.
-- Cross-cutting refactor where every feature touches the same lines — wave parallelism gives nothing; run sequentially with `faion-feature-executor`.
+- Cross-cutting refactor where every feature touches the same lines — wave parallelism gives nothing; run sequentially with `feature-executor`.
 - Anything where the user has not authorized writes — this orchestrator commits, merges into `main` / `master` locally, and (only on confirmation) pushes.
-- Pure data jobs that do not touch git — use `faion-poll-agents` for queue-driven batch work that does not need SDD artifacts.
+- Pure data jobs that do not touch git — use `poll-agents` for queue-driven batch work that does not need SDD artifacts.
 
 ## Content
 
@@ -50,7 +50,7 @@ Multi-feature batches drift when the orchestrator improvises long prompts each t
 ## Related
 
 - `docs/skill-authoring.md` — methodology folder shape, token budgets.
-- `skills/faion-sdd-execution/` — quality gates, reflexion, code review primitives.
-- `skills/faion-feature-executor/` — sequential SDD task executor (counterpart for non-batch work).
-- `skills/faion-poll-agents/` — self-replenishing background pool for queue-driven batches without SDD artifacts.
+- `skills/faion:sdd-execution/` — quality gates, reflexion, code review primitives.
+- `skills/faion:feature-executor/` — sequential SDD task executor (counterpart for non-batch work).
+- `skills/faion:poll-agents/` — self-replenishing background pool for queue-driven batches without SDD artifacts.
 - `.aidocs/proposal/sdd-batch-orchestrator/` — original proposal text (kept for traceability).

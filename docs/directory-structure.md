@@ -22,10 +22,10 @@ Claude Code loads `.claude/` from TWO locations:
 │   │   ├── faion/            # Global: umbrella knowledge (52 domain knowledge bases, tier-partitioned)
 │   │   │   └── knowledge/              #   ├── free/ (8), solo/ (13), pro/ (24), geek/ (7)
 │   │   │                               #   each tier → groups (dev/, ai/, infra/, product/, pm/, ba/, ux/, marketing/, research/, comms/, sdd/)
-│   │   ├── faion-brainstorm/           # Global: multi-agent brainstorm
-│   │   ├── faion-feature-executor/     # Global: SDD feature executor
-│   │   ├── faion-sdd-execution/        # Global: SDD quality gates + reflexion
-│   │   ├── faion-improver/             # Global: session-based improvement
+│   │   ├── brainstorm/           # Global: multi-agent brainstorm
+│   │   ├── feature-executor/     # Global: SDD feature executor
+│   │   ├── sdd-execution/        # Global: SDD quality gates + reflexion
+│   │   ├── improver/             # Global: session-based improvement
 │   │   └── {project}-*/                # Project: gitignored
 │   │
 │   ├── agents/                         # ALL agents (global + project)
@@ -374,7 +374,7 @@ Multi-repository project with shared `.aidocs/` structure:
 |-----------|---------|---------|
 | Skill (orchestrator) | `faion-net` | `faion-net` |
 | Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
-| Skill (process) | `faion-{process}` | `faion-sdd`, `faion-feature-executor` |
+| Skill (process) | `faion-{process}` | `faion-sdd`, `feature-executor` |
 | Agent | `faion-{name}-agent` | `faion-task-YOLO-executor-opus-agent` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 | Command | `{verb}` (no prefix) | `commit`, `deploy` |

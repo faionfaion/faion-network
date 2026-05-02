@@ -1,11 +1,11 @@
 ---
-name: faion-sdd-execution
+name: sdd-execution
 description: "SDD execution: quality gates, reflexion learning, pattern/mistake memory, code review."
 tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
-> **Entry point:** `/faion-sdd-execution` — invoke directly for SDD quality gates, code review, and reflexion learning.
+> **Entry point:** `/faion:sdd-execution` — invoke directly for SDD quality gates, code review, and reflexion learning.
 
 # SDD Execution Sub-Skill
 
@@ -135,5 +135,5 @@ PLAN → DO → CHECK → ACT
 
 ---
 
-*faion-sdd-execution v1.0*
+*sdd-execution v1.0*
 *Execution phase: quality → execute → reflect → learn*
