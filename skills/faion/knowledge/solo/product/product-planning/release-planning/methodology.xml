@@ -4,141 +4,356 @@
     <tier>solo</tier>
     <group>product</group>
     <domain>product-planning</domain>
-    <summary>Six-step process for deciding what goes into each release, when it ships, and how it is communicated. Covers release types, readiness checklists, rollback requirements, and communication plans.</summary>
+    <summary>Six-step process to decide what ships, when, and how it is announced. Goal, contents, readiness, communication, execution, post-release.</summary>
     <tags>
       <tag>release-planning</tag>
       <tag>release-management</tag>
       <tag>versioning</tag>
       <tag>rollback</tag>
       <tag>release-notes</tag>
+      <tag>semver</tag>
+      <tag>changelog</tag>
     </tags>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
+    <updated>2026-05-01</updated>
+    <applies-to>both</applies-to>
   </metadata>
   <content>
     <title>Release Planning</title>
-    <summary>A six-step process for deciding what goes into each release, when it ships, and how it is communicated. Covers release-type taxonomy (major/minor/patch/hotfix), readiness checklists, rollback requirements, and audience-specific communication plans. The concrete rule: every release needs a goal statement, a rollback plan, and a communication plan before code touches production.</summary>
+    <summary>Six-step process for deciding what goes into each release, when it ships, and how it is communicated. Covers release-type taxonomy (major/minor/patch/hotfix per SemVer 2.0), readiness checklists, rollback requirements, and audience-specific communication plans. Concrete rule: every release needs a goal statement, a one-command rollback plan, and a communication plan before code touches production.</summary>
+
     <why>
-      <p>Releases without structure are chaotic, missed, or anticlimactic — features are ready but not shipped, or shipped without communication, or broken in production with no rollback path. A structured approach prevents the three most common failure modes: scope creep into a release, skipping staging, and going dark to customers.</p>
+      <p>Releases without structure fail in three predictable ways: scope creep slips into the bundle and breaks freeze, staging is skipped and integration bugs hit production, communication is missing and users notice silent changes that drown support. A structured release plan turns each shipment into a small, reversible, observable event with a known audience.</p>
+      <p>This methodology aligns with SemVer 2.0 (MAJOR.MINOR.PATCH), Keep a Changelog 1.1.0, and DORA's four key metrics — deployment frequency, lead time for changes, change failure rate, time to restore service — which together correlate with elite engineering performance.</p>
     </why>
+
     <when-to-use>
       <list>
         <item>Planning what to include in an upcoming version (major, minor, patch, or hotfix).</item>
-        <item>Coordinating release timing across engineering, support, and marketing.</item>
-        <item>Writing release notes for an existing set of changes.</item>
-        <item>Setting up a repeatable release cadence for a solo or small-team product.</item>
+        <item>Coordinating release timing across engineering, support, and marketing for a SaaS or library.</item>
+        <item>Writing release notes for an existing set of merged changes that have not yet shipped.</item>
+        <item>Setting up a repeatable release cadence for a solo founder or small team.</item>
+        <item>Triggers: tag matches `v*`, CHANGELOG `[Unreleased]` is non-empty, milestone closes, customer-visible breaking change is queued.</item>
       </list>
     </when-to-use>
+
     <when-not-to-use>
       <list>
-        <item>Continuous deployment with feature flags — individual flag decisions replace release bundling.</item>
-        <item>Pre-launch, pre-user products — no communication audience yet, use task lists instead.</item>
-        <item>Emergency hotfixes under time pressure — use the hotfix checklist only, not the full plan.</item>
+        <item>Continuous deployment with feature flags — individual flag rollouts replace release bundling.</item>
+        <item>Pre-launch products with no users — use a task list, not a release plan.</item>
+        <item>Emergency hotfixes under time pressure — jump straight to the hotfix subset (steps 3, 5, 6 only).</item>
+        <item>Internal-only refactors with no observable surface area — push through the regular CI/CD pipeline.</item>
       </list>
     </when-not-to-use>
 
     <section name="release-types">
-      <p>Major releases are quarterly, cover large features and breaking changes, and carry high risk. Minor releases are monthly, add new features and improvements, and carry medium risk. Patch releases are weekly or as needed, fix bugs and security issues, and carry low risk. Hotfixes are immediate, address critical production issues, and carry very low risk.</p>
+      <p>Release type drives cadence, risk posture, and announcement scope. Use SemVer 2.0 numbering: MAJOR for breaking, MINOR for features, PATCH for fixes. Hotfix is a PATCH bumped out-of-cadence to address a production incident.</p>
+      <list>
+        <item>major (vX.0.0) — quarterly or yearly. Breaking API changes, large features. Risk: high. Requires migration guide, deprecation notice ≥ one MINOR before, and beta period.</item>
+        <item>minor (v0.Y.0) — monthly or biweekly. Backward-compatible features. Risk: medium. Requires release notes and customer email.</item>
+        <item>patch (v0.0.Z) — weekly or as fixes accumulate. Bug fixes and security patches only. Risk: low. Requires changelog entry only.</item>
+        <item>hotfix (v0.0.Z+1) — within hours. Critical production fix. Risk: very low if scope is limited to the single bug. Requires post-incident review.</item>
+      </list>
     </section>
+
+    <how-to>
+      <step>Step 1 — Define release goal. Write a single-sentence outcome the release delivers, a measurable success metric, and an optional theme. This is the title and abstract of every other artifact.</step>
+      <step>Step 2 — Select release contents. List all merge-ready changes; cut anything that is not at definition of done; freeze the list. Anything added after this point requires either an explicit re-freeze or a slot in the next release.</step>
+      <step>Step 3 — Assess readiness. Run the seven-item readiness checklist below. If any item fails, the release does not ship.</step>
+      <step>Step 4 — Plan communication. For each audience write the asset they receive (release notes, blog, email, in-app banner, social post, status page).</step>
+      <step>Step 5 — Execute. Follow the deploy ordering: final staging test → maintenance window notice (if needed) → production deploy → smoke verification → monitor metrics 30 minutes → public announcement.</step>
+      <step>Step 6 — Post-release. Watch error rates, latency, and key conversion metrics for 24 hours. Collect feedback. Run a 30-minute retrospective. Update roadmap.</step>
+    </how-to>
 
     <section name="step-1-define-release-goal">
       <rule>
-        <statement>Every release must have a stated outcome for users, a success metric, and an optional theme. Template: "Release [Version]. Goal: [Primary outcome]. Success Metric: [How we measure]. Theme: [Optional narrative]."</statement>
-        <rationale>Without a goal, a release is just a list of changes. The goal connects the release to product strategy and makes post-release retrospectives meaningful.</rationale>
+        <statement>Every release MUST have a stated user outcome, one success metric, and a target version. Use template: "Release vX.Y.Z. Goal: [outcome]. Metric: [how measured, target, deadline]. Theme: [optional narrative]."</statement>
+        <rationale>Without a goal, a release is just a list of changes. The goal connects the release to product strategy and makes the post-release retrospective meaningful. The metric forces the team to define success before shipping, not after.</rationale>
       </rule>
     </section>
 
     <section name="step-2-select-release-contents">
       <rule>
-        <statement>Include: completed features at definition of done, related bug fixes, documentation updates, configuration changes. Exclude: half-finished features, unrelated bug fixes (next release), scope creep added after freeze.</statement>
-        <rationale>Half-finished features create technical debt and confuse users. Scope creep added after freeze is the top cause of delayed and broken releases.</rationale>
+        <statement>Include only: (a) features at definition of done with passing tests and updated docs, (b) bug fixes related to the release theme or marked release-critical, (c) documentation and configuration updates that ship with the code. Exclude: half-finished features, unrelated bug fixes, scope creep added after freeze, vendored dependency upgrades not validated in staging.</statement>
+        <rationale>Half-finished features create technical debt and confuse users. Scope creep after freeze is the top empirical cause of delayed and broken releases — DORA reports correlate freeze discipline with low change-failure rate.</rationale>
       </rule>
     </section>
 
     <section name="step-3-assess-release-readiness">
       <rule>
-        <statement>All seven readiness items must pass before deployment: code complete, tests passing, documentation updated, migrations tested, rollback plan exists, support team briefed, release notes written.</statement>
-        <rationale>Missing any one item creates a predictable class of post-release incidents. Rollback plan especially: without it, every incident response starts with a debate instead of an action.</rationale>
+        <statement>All seven readiness items MUST pass before deployment. Treat the checklist as a gate, not a guideline.</statement>
+        <rationale>Missing any one item creates a predictable class of post-release incident. The rollback plan especially: without it every incident response begins with a debate instead of an action.</rationale>
       </rule>
+      <checklist>
+        <check>Code complete: all PRs targeting this release are merged to the release branch and CI is green.</check>
+        <check>Tests passing: unit + integration + e2e on the release branch within the last 24 hours.</check>
+        <check>Documentation updated: README, API docs, CHANGELOG `[Unreleased]` has all entries, migration notes for breaking changes.</check>
+        <check>Migrations tested: schema migrations applied and rolled back successfully against a copy of production.</check>
+        <check>Rollback plan exists: a one-command revert path is written, owned, and tested in staging.</check>
+        <check>Support team briefed: known issues, FAQ, and triage runbook delivered to support 24 hours before deploy.</check>
+        <check>Release notes written: customer-facing notes drafted in the audience's voice and reviewed by one other person.</check>
+      </checklist>
     </section>
 
     <section name="step-4-plan-communication">
       <rule>
-        <statement>Identify all audiences (internal team, support, sales, customers, partners) and prepare each asset: release notes, blog post or changelog, customer email, social media, in-app notifications. Announce every release — even small patches.</statement>
-        <rationale>Silent releases frustrate customers who noticed a change and can't find context. Support volume spikes when communication is missing.</rationale>
+        <statement>Identify every audience (internal eng, support, sales, customers, partners, ecosystem) and ship a matching asset for each: release notes, blog/changelog, customer email, social post, in-app notification, status page entry. Announce every release, including patches.</statement>
+        <rationale>Silent releases generate confused support tickets from users who noticed a change and cannot find context. The marginal cost of a one-line changelog entry is far smaller than the support volume it prevents.</rationale>
       </rule>
+      <checklist>
+        <check>Release notes (technical) at templates/release-notes.md.</check>
+        <check>Customer email drafted and queued in the marketing tool.</check>
+        <check>Blog post or changelog page published on release day.</check>
+        <check>Social post (X / LinkedIn) scheduled for one hour after deploy verification.</check>
+        <check>In-app banner copy and date set in the feature-flag or CMS.</check>
+        <check>Support macro updated with the new feature talk-track.</check>
+        <check>Status page incident pre-drafted in case of rollback (kept private until needed).</check>
+      </checklist>
     </section>
 
     <section name="step-5-execute-release">
       <rule>
-        <statement>Execute in order: final staging test, maintenance window announcement if needed, production deploy, deployment verification, metrics monitoring, public release announcement.</statement>
-        <rationale>Order matters. Announcing before verifying deployment creates a second announcement ("actually it's delayed") that erodes trust.</rationale>
+        <statement>Execute strictly in order: final staging test → maintenance window announcement (if applicable) → production deploy → smoke verification → 30-minute metric watch → public release announcement. Do not announce before verifying. Do not deploy on Friday or the day before a public holiday.</statement>
+        <rationale>Order matters because a wrong-order release creates a second corrective announcement ("actually it is delayed") that erodes trust. Friday deploys multiply incident response time because weekend on-call has reduced coverage.</rationale>
       </rule>
     </section>
 
     <section name="step-6-post-release">
       <rule>
-        <statement>Monitor for 24 hours post-release. Gather user feedback. Run a retrospective. Update the roadmap based on what you learned.</statement>
-        <rationale>Issues spike in the first 24 hours. Early monitoring contains blast radius. The retrospective closes the learning loop that makes future releases better.</rationale>
+        <statement>Monitor for 24 hours. Compare error rate, p95 latency, and the release's primary success metric against the prior 7-day baseline. Hold a 30-minute retrospective within 72 hours. Update roadmap and backlog with what was learned.</statement>
+        <rationale>Issues spike in the first 24 hours; early monitoring contains blast radius. Retrospectives close the learning loop that improves the next release. DORA's mean-time-to-restore metric improves directly with disciplined post-release monitoring.</rationale>
       </rule>
+    </section>
+
+    <section name="commands">
+      <p>Reference commands an autonomous agent can run when planning, cutting, and verifying a release. Adapt to the project's actual tooling; the names below assume git, GitHub CLI, and a Node/Python toolchain.</p>
+      <commands>
+        <command name="version-bump-patch">npm version patch -m "chore: release v%s"</command>
+        <command name="version-bump-minor">npm version minor -m "chore: release v%s"</command>
+        <command name="version-bump-major">npm version major -m "chore: release v%s"</command>
+        <command name="python-version-bump">python -m bumpversion patch</command>
+        <command name="diff-since-last-tag">git log $(git describe --tags --abbrev=0)..HEAD --oneline</command>
+        <command name="list-merged-prs">gh pr list --base main --state merged --search "merged:&gt;$(git log -1 --format=%aI $(git describe --tags --abbrev=0))"</command>
+        <command name="cut-release-branch">git checkout -b release/v$VERSION main</command>
+        <command name="tag-release">git tag -a v$VERSION -m "release v$VERSION" &amp;&amp; git push origin v$VERSION</command>
+        <command name="generate-release-notes">gh release create v$VERSION --generate-notes --draft --target main</command>
+        <command name="publish-release">gh release edit v$VERSION --draft=false</command>
+        <command name="rollback-tag">git revert --no-commit v$VERSION..HEAD &amp;&amp; git commit -m "revert: roll back v$VERSION"</command>
+        <command name="rollback-deploy">kubectl rollout undo deployment/$APP --to-revision=$PREV</command>
+        <command name="staging-smoke">curl -fsS https://staging.example.com/healthz &amp;&amp; npm run test:e2e -- --baseUrl=https://staging.example.com</command>
+        <command name="prod-smoke">curl -fsS https://example.com/healthz &amp;&amp; curl -fsS https://example.com/api/version | jq -e ".version == \"$VERSION\""</command>
+        <command name="watch-error-rate">while sleep 60; do curl -s "$METRICS/api/v1/query?query=rate(http_requests_total{status=~\"5..\"}[5m])"; done</command>
+      </commands>
+    </section>
+
+    <section name="prompt-templates">
+      <prompt purpose="Draft a release plan from a CHANGELOG and milestone state."><![CDATA[
+You are preparing release vX.Y.Z. Inputs:
+- CHANGELOG.md [Unreleased] section.
+- Open milestone "vX.Y.Z" with N closed issues.
+- Current branch state and last tag.
+
+Produce a release plan with these sections:
+1. Goal (one sentence outcome).
+2. Success metric (number, target, deadline).
+3. Contents: features, fixes, docs, breaking changes (each links to PR/issue).
+4. Dependencies and risks.
+5. Rollback plan (one-command path that has been tested in staging).
+6. Communication plan: release notes, email, blog, social, in-app, status page.
+7. Timeline: freeze date, staging deploy, production deploy window, monitor window.
+
+Hard constraints:
+- Use SemVer 2.0 numbering and explain MAJOR/MINOR/PATCH choice.
+- No Friday production deploys.
+- Mark every breaking change with a migration note.
+- Output Markdown, no time estimates ("after step X" instead of "in 2h").
+]]></prompt>
+      <prompt purpose="Generate customer-facing release notes from a technical PR list."><![CDATA[
+You are writing customer-facing release notes for vX.Y.Z. Input: list of merged PRs with title, body, and labels.
+
+Output a Markdown document with sections in this order:
+- Highlights (1-3 bullets, plain language, value-focused).
+- New features (group by area; include screenshots/links if linked in PRs).
+- Improvements.
+- Bug fixes (one-line each).
+- Breaking changes (each: what changed, why, migration steps, deprecation timeline).
+- Security (CVE IDs if applicable).
+- Acknowledgements (external contributors).
+
+Style:
+- Active voice, second person ("you can now").
+- No internal jargon; expand acronyms on first use.
+- Link every change to its PR or issue.
+- Lead with user-visible value, not implementation detail.
+]]></prompt>
+      <prompt purpose="Run the readiness gate as an automated check."><![CDATA[
+You are the release readiness gate for vX.Y.Z. For each of the seven items below, return PASS or FAIL with a one-sentence justification grounded in the linked artifact. If any item is FAIL, refuse the release.
+
+Items:
+1. Code complete — all milestone PRs merged, CI green.
+2. Tests passing — unit + integration + e2e green within last 24h.
+3. Docs updated — README, API ref, CHANGELOG [Unreleased] -> [vX.Y.Z], migration notes.
+4. Migrations tested — applied + rolled back on prod-shape DB.
+5. Rollback plan — one-command path documented and dry-run-validated.
+6. Support briefed — runbook delivered ≥24h before deploy.
+7. Release notes — customer-facing draft reviewed by one peer.
+
+Output: Markdown table | Item | Status | Evidence link | Notes |.
+Final line: READINESS=PASS or READINESS=FAIL.
+]]></prompt>
+    </section>
+
+    <section name="changelog-template">
+      <p>Follow Keep a Changelog 1.1.0. Maintain CHANGELOG.md at repo root. On each release, rename `[Unreleased]` to `[vX.Y.Z] - YYYY-MM-DD` and create a fresh empty `[Unreleased]` block above it.</p>
+      <code lang="markdown"><![CDATA[
+# Changelog
+All notable changes to this project will be documented in this file.
+The format is based on Keep a Changelog 1.1.0 and this project adheres to SemVer 2.0.
+
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [1.4.0] - 2026-05-15
+### Added
+- Real-time collaboration on tasks (#412).
+### Fixed
+- Fix payment retry loop on 402 (#420).
+
+[Unreleased]: https://github.com/org/repo/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/org/repo/compare/v1.3.0...v1.4.0
+]]></code>
+    </section>
+
+    <section name="rollback-plan-template">
+      <p>Every release ships with a written rollback plan. Store at `docs/releases/vX.Y.Z-rollback.md` and dry-run it on staging before approving the release.</p>
+      <code lang="markdown"><![CDATA[
+# Rollback Plan v1.4.0
+
+## Trigger conditions
+- 5xx rate > 1% sustained 5 minutes.
+- p95 latency > 2x baseline sustained 10 minutes.
+- Critical user-reported regression (data loss, payment failure).
+
+## Owner
+- Primary: @alice (on-call until +24h post-deploy).
+- Backup: @bob.
+
+## Procedure (target time-to-restore: < 10 minutes)
+1. Announce in #incidents: "rolling back v1.4.0".
+2. Run: `kubectl rollout undo deployment/api --to-revision=$PREV`.
+3. Verify smoke: `curl -fsS https://example.com/healthz`.
+4. Confirm error rate < 0.1% for 5 minutes.
+5. Run: `git revert --no-commit v1.4.0..HEAD && git commit -m "revert: v1.4.0"`.
+6. Update status page: incident resolved.
+7. Post-mortem within 48h.
+
+## Data migration reversal
+- v1.4.0 migration `0042_add_team_table` is forward-only.
+- Data written by new code is compatible with v1.3.x readers (validated in staging).
+- If reversal is required, run `python manage.py migrate app 0041` then redeploy v1.3.x.
+]]></code>
     </section>
 
     <section name="antipatterns">
       <antipattern>
         <description>Shipping on Fridays.</description>
-        <reason>Weekend incidents have slower response. Engineering and support have reduced coverage. A Monday–Wednesday release window keeps the full team available for the critical 24-hour monitoring window.</reason>
+        <reason>Weekend on-call has reduced coverage and slower mean-time-to-restore. A Monday-Wednesday production window keeps the full team available for the critical 24-hour monitoring period.</reason>
       </antipattern>
-
       <antipattern>
         <description>No rollback plan.</description>
-        <reason>Every release should have a one-click or one-command rollback path. Without it, incident response time multiplies and pressure leads to poor decisions under stress.</reason>
+        <reason>Every release must have a one-command rollback path that has been dry-run on staging. Without it, incident response time multiplies and pressure leads to poor decisions.</reason>
       </antipattern>
-
       <antipattern>
-        <description>Last-minute feature additions after the feature freeze.</description>
-        <reason>Late additions skip testing and break the readiness checklist. Institute a 24–48 hour feature freeze before every release.</reason>
+        <description>Last-minute feature additions after the freeze.</description>
+        <reason>Late additions skip the readiness checklist and break the test baseline. Enforce a 24-48 hour code freeze before every release; later changes go to the next release.</reason>
       </antipattern>
-
       <antipattern>
         <description>Skipping communication because the release is "just a patch".</description>
-        <reason>Users and support staff notice changes regardless of size. Silent releases generate confused support tickets. Always publish a changelog entry.</reason>
+        <reason>Users and support staff notice changes regardless of size. Silent releases generate confused tickets. Always publish at least a CHANGELOG entry and an in-app changelog link.</reason>
       </antipattern>
-
       <antipattern>
         <description>Skipping staging deployment.</description>
-        <reason>Staging catches integration issues that unit tests miss. A staging deploy is mandatory for any release that touches data migrations or third-party integrations.</reason>
+        <reason>Staging catches integration issues that unit tests miss. Mandatory for any release touching data migrations, third-party integrations, or infrastructure.</reason>
       </antipattern>
-
       <antipattern>
         <description>No monitoring after release.</description>
-        <reason>Error rates, latency, and conversion metrics can degrade subtly after a release. Watch metrics for at least 24 hours before declaring success.</reason>
+        <reason>Error rate, latency, and conversion metrics can degrade subtly after a release. Watch for at least 24 hours before declaring success and updating the status page.</reason>
       </antipattern>
-
       <antipattern>
         <description>Monster releases bundling months of features.</description>
-        <reason>Large releases have higher risk, harder rollbacks, and diluted communication impact. Smaller, more frequent releases reduce blast radius and keep users engaged with steady progress.</reason>
+        <reason>Large releases have higher risk, harder rollbacks, and diluted communication impact. Smaller, more frequent releases reduce blast radius and keep users engaged with steady visible progress.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Announcing before verifying production deploy.</description>
+        <reason>A premature announcement followed by a delay or rollback erodes trust faster than any feature can rebuild it. Verify smoke + 30 minutes of clean metrics before publishing the announcement.</reason>
       </antipattern>
     </section>
 
     <section name="example-saas-monthly-release">
-      <example type="good">
-        <note>v2.4.0 — Goal: enable team collaboration. Contents: real-time collaboration feature, comments on tasks, 15 bug fixes.</note>
-        <note>Timeline: Monday feature freeze and testing, Wednesday staging deploy and final QA, Thursday 2pm production deploy, Thursday customer email and blog post.</note>
-        <note>Success metric: team features used by 20% of active users within the first week.</note>
+      <example type="good" title="v2.4.0 — team collaboration release">
+        <note>Goal: enable team collaboration. Metric: 20% of active users use a team feature within 7 days of release.</note>
+        <note>Contents: real-time collaboration, comments on tasks, 15 fixes. SemVer: MINOR (additive features only).</note>
+        <note>Timeline: Mon freeze + regression run, Wed staging deploy + final QA, Thu 14:00 UTC production deploy, Thu 15:00 UTC announcement (after 30-min metric watch).</note>
+        <note>Rollback: `kubectl rollout undo deployment/api`, owner on-call until Fri 14:00 UTC.</note>
       </example>
     </section>
 
     <section name="example-solo-patch-release">
-      <example type="good">
-        <note>v1.2.3 — Goal: fix critical payment processing bug. Contents: payment fix, 2 minor UI bugs.</note>
-        <note>Timeline: same-day deploy, quick changelog update, email to affected customers only.</note>
-        <note>Success metric: zero payment failures post-deploy.</note>
+      <example type="good" title="v1.2.3 — payment hotfix">
+        <note>Goal: fix critical payment processing bug. Metric: zero payment failures with the new code path for 24h.</note>
+        <note>Contents: payment fix, 2 minor UI bugs. SemVer: PATCH.</note>
+        <note>Timeline: same-day staging smoke at 11:00, deploy at 13:00, monitor until 14:00, changelog + email to affected customers only.</note>
+        <note>Rollback: revert PR #218 + redeploy previous tag; tested on staging at 10:30.</note>
       </example>
     </section>
 
+    <section name="example-bad-friday-release">
+      <example type="bad" title="Friday 17:00 deploy with no rollback plan">
+        <note>v3.0.0 (MAJOR) shipped 17:00 Friday with breaking auth change.</note>
+        <note>Bug discovered 18:30; on-call solo engineer; rollback plan undocumented.</note>
+        <note>Restore-time 4h; 23% of weekend logins failed; trust hit visible in churn for two weeks.</note>
+        <note>Lessons: enforce no-Friday rule, mandate documented + dry-run-tested rollback for every MAJOR.</note>
+      </example>
+    </section>
+
+    <verify>
+      <step>Run: `git tag -l "v$VERSION"` returns the tag and `git push --tags` succeeded.</step>
+      <step>Run: `gh release view v$VERSION --json isDraft,publishedAt` shows `isDraft=false` and a non-null timestamp.</step>
+      <step>Run: `curl -fsS https://example.com/api/version | jq -e ".version == \"$VERSION\""` returns 0.</step>
+      <step>Confirm CHANGELOG has `[vX.Y.Z] - YYYY-MM-DD` block populated and `[Unreleased]` reset to empty headers.</step>
+      <step>Confirm error rate (5xx) for the new version is &lt; 0.1% sustained over 30 minutes after deploy.</step>
+      <step>Confirm p95 latency is within 1.2x of the 7-day baseline 30 minutes after deploy.</step>
+      <step>Confirm release notes are published, customer email sent, in-app banner live.</step>
+      <step>Schedule and complete the 30-minute retrospective within 72 hours; capture three actions in the next-release backlog.</step>
+      <step>Verify DORA metrics for this release: deploy frequency unchanged or up, lead-time-for-change recorded, change-failure-rate marked false (or true with linked incident), MTTR recorded if any incident occurred.</step>
+    </verify>
+
+    <section name="success-criteria">
+      <list>
+        <item>Goal sentence, success metric, and SemVer-correct version are written before any deploy command runs.</item>
+        <item>All seven readiness checks pass; readiness gate prompt returns READINESS=PASS.</item>
+        <item>Rollback plan is written, owned, and dry-run-validated on staging.</item>
+        <item>Each identified audience received its asset on or before deploy.</item>
+        <item>24-hour monitoring window completed; error rate and latency within thresholds.</item>
+        <item>Retrospective held; learnings captured in roadmap or backlog.</item>
+      </list>
+    </section>
+
     <templates>
-      <template path="templates/release-plan.md" purpose="Full release plan: metadata, goal, contents, dependencies, risks, rollback plan, communication plan, timeline"/>
-      <template path="templates/release-notes.md" purpose="Release notes template: highlights, new features, improvements, bug fixes, breaking changes"/>
+      <template path="templates/release-plan.md" purpose="Full release plan: metadata, goal, contents, dependencies, risks, rollback plan, communication plan, timeline."/>
+      <template path="templates/release-notes.md" purpose="Release notes template: highlights, new features, improvements, bug fixes, breaking changes, security."/>
     </templates>
+
+    <see-also>
+      <link href="https://semver.org/spec/v2.0.0.html">SemVer 2.0.0 specification</link>
+      <link href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog 1.1.0</link>
+      <link href="https://dora.dev/">DORA core metrics</link>
+    </see-also>
   </content>
 </methodology>
