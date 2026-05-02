@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: cloudflare-domain-dns methodology (new)
 - docs: add Autonomous-Agent Sufficiency section to methodology-xml-schema (formalizes feature-048 requirements)
 - add: llm-classifier-design methodology (new)
 - improve: prototyping — methodology rewritten for autonomous agent application
