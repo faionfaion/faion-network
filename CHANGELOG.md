@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/growth-marketing/aarrr-funnel
 - add: tier-playbook pro/infra-engineering/aws-gcp-basics
 - add: tier-playbook pro/client-engagement/statement-of-work
 - add: tier-playbook pro/product-management/prd-template
