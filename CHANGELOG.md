@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/dev-fundamentals/python-first-project
 - add: tier-playbook free/tech-setup/github-account-and-first-repo
 - docs: feature-048 wave 1 dispatch rules
 - feat: feature-048 phases 1-3 — tier-playbook foundation: convention spec at `.aidocs/conventions/playbooks/` (CLAUDE.md, AGENTS.md ≤80 lines, full playbook-spec.md with 8 anti-patterns + inline template + 8-item authoring checklist) + cross-link from `.aidocs/conventions/workflows/AGENTS.md`; `skills/faion/SKILL.md` Playbooks section + `skills/faion/CLAUDE.md` playbooks tree + `skills/CLAUDE.md` index row; `skills/tier-manifest.json` extended with `playbook_root` + `playbook_paths` per tier (49 group paths); validator `scripts/validate-tier-playbook.py` with --self-test (5 cases pass: valid playbook, slug regex, missing front-matter, broken section order, foo/bar placeholder) covering DS1-DS10; scaffold `skills/faion/playbooks/{free,solo,pro,geek}/` with per-tier AGENTS.md (≤80 lines) listing groups from priority-120.md; author-prompt template at `.aidocs/conventions/playbooks/author-prompt.md` for orchestrator dispatch to faion-sdd-executor-agent. Phases 4-7 (120-playbook authoring waves) ready to dispatch.
