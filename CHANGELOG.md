@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/business-analysis/stakeholder-elicitation
 - add: tier-playbook pro/market-research/competitor-analysis
 - add: tier-playbook pro/ux-research/user-interviews-at-scale
 - add: tier-playbook pro/delivery-ops/sprint-planning-agency
