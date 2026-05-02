@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-classifier-design">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Design a token-efficient LLM classifier: pick model by task, force structured output via tool_use, strip auto-loaded SDK context, batch inputs, and amortise cache spend over the run.</summary>
+    <tags>
+      <tag>classifier</tag>
+      <tag>structured-output</tag>
+      <tag>tool-use</tag>
+      <tag>context-minimisation</tag>
+      <tag>prompt-caching</tag>
+      <tag>claude-agent-sdk</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-05-01</created>
+  </metadata>
+  <content>
+    <title>LLM Classifier Design (tool-use, minimum context, batched)</title>
+    <summary>An LLM classifier should answer one question per item with the smallest possible payload. The right design decisions — pick the model that just barely meets the bar, force the answer through a single tool call, replace the SDK's default system prompt with your own, disable auto-loaded project context, batch items by numeric ID, and accept that an SDK turn includes the user message — collapse a multi-step agent loop into a single forced tool_use response and let prompt caching amortise the system prefix across the run.</summary>
+
+    <why>
+      <p>"Just ask the model and parse the JSON" is the path that burns ten times more output tokens than necessary, hits rate limits inside a single 5-hour window, and produces brittle parsers that misread thinking blocks as answers. A classifier is a structured-output problem, not a chat problem: the model should emit one tool call with one boolean (or one enum) per item and nothing else. Every other token is overhead — the model's, the SDK's, the project context the wrapper auto-loads, the per-call system prefix that the cache could have re-used. Minimising each of those layers in turn is what separates a $5 run from a $50 run on the same task.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Yes/no or small-enum classification across many items (sufficiency audit, spam triage, intent detection, content gating, deduplication).</item>
+        <item>Document scoring where the score is a fixed-shape object (rubric grading, relevance ranking, safety verdict).</item>
+        <item>Bulk extraction with a known schema (named entities, citations, contact details).</item>
+        <item>Any pipeline where the model's job is "look at this and produce one structured answer," not "have a conversation."</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Open-ended generation where the answer shape is unknown — use plain text completion.</item>
+        <item>Multi-step reasoning where the model genuinely benefits from intermediate scratchpad turns — use Extended Thinking, not a forced single tool call.</item>
+        <item>Tiny one-shot requests where building a tool schema and an SDK config costs more developer time than the cost saved.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="1. Frame the task before picking the model">
+      <p>Write the question the classifier answers in one sentence. Decide the answer's exact shape: a boolean, a small enum (≤10 values), a fixed-keys object, an array of those. Write the *failure mode* you care about — false positives or false negatives — and pick the model that clears that bar with margin, not the cheapest one that *might* clear it.</p>
+      <list>
+        <item>Pure binary on short, structured input (≤2K tokens, clear signal): Haiku is the floor; verify with a 50-item gold set.</item>
+        <item>Binary on noisy/long input, or small enum: Sonnet — still cheap, still fast, handles ambiguity.</item>
+        <item>Subtle judgement, multi-criterion, or anything where you'd ask a senior engineer: Opus — pay the premium once, don't rerun.</item>
+        <item>Inputs near or above 200K tokens per item: switch to the 1M-context variant of the chosen model (Sonnet has a `[1m]` form on paid extra-usage; Opus has 1M as standard).</item>
+      </list>
+      <p>Build a 30–100-item evaluation set with hand-labelled answers before the first batch. Lock the model only after it scores acceptably. Re-test whenever you change the prompt, the schema, or the model.</p>
+    </section>
+
+    <section name="2. Force the answer through a single tool call">
+      <p>Define exactly one tool whose schema is the answer shape. Set `tool_choice` to that tool by name (Anthropic SDK) or list it as the only `allowed_tools` entry (Claude Agent SDK). The model can no longer "explain its reasoning" in prose — it can only call the tool. Output token cost collapses to roughly the JSON of the answer.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[# Anthropic SDK, single-item classifier
+from anthropic import Anthropic
+
+VERDICT_TOOL = {
+    "name": "verdict",
+    "description": "Report whether the input meets the criterion.",
+    "input_schema": {
+        "type": "object",
+        "properties": {"sufficient": {"type": "boolean"}},
+        "required": ["sufficient"],
+        "additionalProperties": False,
+    },
+}
+
+client = Anthropic()
+resp = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=64,
+    system=SYSTEM_PROMPT,
+    tools=[VERDICT_TOOL],
+    tool_choice={"type": "tool", "name": "verdict"},
+    messages=[{"role": "user", "content": item_text}],
+)
+verdict = next(
+    b.input["sufficient"] for b in resp.content if b.type == "tool_use"
+)]]></code>
+      </example>
+      <p>Never parse the model's free text. If you see yourself running `re.search` or `json.loads` on assistant prose, the design is wrong — go back and add the tool.</p>
+    </section>
+
+    <section name="3. Strip every byte the SDK adds for free">
+      <p>Wrappers like Claude Agent SDK and Cursor/Continue load a system prompt of their own (≈10–15K tokens of built-in tool descriptions, behaviours, hints) plus any `CLAUDE.md` / `AGENTS.md` files they discover walking up from the working directory (another 3–10K tokens). For a classifier none of that helps — the model only needs the criterion and the schema.</p>
+      <list>
+        <item>Replace the preset system prompt by passing your own string. Do not append; replace.</item>
+        <item>Disable project-context auto-load via `setting_sources=[]` (Claude Agent SDK) or run from a directory that has no `CLAUDE.md`/`AGENTS.md` chain.</item>
+        <item>Restrict tools to your one tool via `allowed_tools=["mcp__yours__verdict"]`. The model still sees other tools in the cached prefix but cannot call them.</item>
+        <item>Block the deferred-tool resolver: Claude Code lazily loads MCP tool schemas via a `ToolSearch` call, which costs a turn. Add `disallowed_tools=["ToolSearch"]` so the schema lands in the initial context and the model goes straight to your tool.</item>
+        <item>Run with `bypassPermissions` to avoid the permission-prompt round-trip.</item>
+      </list>
+      <example type="good">
+        <code lang="python"><![CDATA[# Claude Agent SDK — minimum-context classifier
+from claude_agent_sdk import (
+    ClaudeAgentOptions, query, tool, create_sdk_mcp_server,
+    AssistantMessage, ToolUseBlock,
+)
+
+@tool("verdict", "Yes/no on the input",
+      {"type": "object",
+       "properties": {"sufficient": {"type": "boolean"}},
+       "required": ["sufficient"]})
+async def verdict_tool(args): return {"content": [{"type": "text", "text": "ok"}]}
+
+server = create_sdk_mcp_server(name="audit", version="0.1.0", tools=[verdict_tool])
+
+options = ClaudeAgentOptions(
+    model="claude-sonnet-4-6",
+    system_prompt=SYSTEM_PROMPT,           # str → replaces preset
+    setting_sources=[],                    # no CLAUDE.md / AGENTS.md
+    mcp_servers={"audit": server},
+    allowed_tools=["mcp__audit__verdict"],
+    disallowed_tools=["ToolSearch"],       # skip deferred-schema turn
+    permission_mode="bypassPermissions",
+    max_turns=2,
+)]]></code>
+      </example>
+      <p>Counter-intuitive trap: stripping all built-in tool descriptions (e.g. `--tools ""`) often makes things worse — with no tools visible, sonnet falls back to Extended Thinking and spends 10× the output tokens reasoning before the tool call. Leave the built-ins alone; just don't allow them.</p>
+    </section>
+
+    <section name="4. Accept the SDK's 2-turn floor">
+      <p>Claude Agent SDK counts every message — user and assistant — as a turn. A single forced tool-use response is therefore `num_turns=2` (one user, one assistant). Setting `max_turns=1` produces an `error_max_turns` exception even though the tool was successfully called, because the SDK accounts for the user message you just sent. The minimum is `max_turns=2`. Anything you read in docs about "1 turn = 1 model action" is the model's perspective; the SDK's accounting is different. Do not waste effort trying to drop below 2.</p>
+    </section>
+
+    <section name="5. Batch items by numeric ID">
+      <p>Per-item calls pay the system-prefix overhead (cached but not free) on every call. Pack N items into one prompt and ask the tool for an array of N answers keyed by their position. This converts O(N) calls into O(N/B) calls.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[# Batch prompt body
+prompt = "\n\n".join(f'<doc n="{i+1}">\n{body}\n</doc>'
+                     for i, body in enumerate(batch_bodies))
+
+# Batch tool schema
+TOOL = {
+    "name": "verdicts",
+    "description": "Sufficiency for each numbered document.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "results": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "n":          {"type": "integer"},
+                        "sufficient": {"type": "boolean"},
+                    },
+                    "required": ["n", "sufficient"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["results"],
+    },
+}]]></code>
+      </example>
+      <p>Empirical cap: Sonnet truncates the `results` array around 15–20 entries, regardless of `max_tokens`. Increasing the limit doesn't help — the model just stops emitting items. Default to `batch_size=10` for safety, push to 15 only if you measure the model still emits the full array. Do not chase batch_size=30 or 100: you will lose half the answers and waste the call.</p>
+      <p>Always include a per-item ID in the prompt and require it back in the answer. Position-only matching (zip on order) silently corrupts when the model drops one item from the middle.</p>
+    </section>
+
+    <section name="6. Amortise the system prefix with prompt caching">
+      <p>The system prompt + tool schema + custom instructions are byte-identical across every batch — that's exactly what prompt caching is for. With caching enabled (default for Anthropic API and Claude Agent SDK), the first call writes the prefix to cache (cache_w; ≈1.25× input cost), and every subsequent call within the cache window reads it (cache_r; ≈0.1× input cost).</p>
+      <list>
+        <item>First batch is expensive — accept that one cache write happens. After that, per-batch cost drops 5–10×.</item>
+        <item>Keep the system prefix byte-identical between batches. A single trailing newline change invalidates the cache. Centralise the prompt in a constant; do not interpolate per-batch values into it.</item>
+        <item>Put per-batch variability after the cached prefix: cached system + tool schema first, then the variable user message with the documents.</item>
+        <item>Don't restart the process per batch if you can avoid it. Some SDKs spawn a fresh subprocess per `query()` call and lose the in-process cache key — measure your stack.</item>
+      </list>
+      <example type="bad">
+        <code lang="python"><![CDATA[# Cache-busting: per-batch timestamp in the cached prefix
+SYSTEM = f"You are an auditor. Run started {datetime.now()}. ..."  # different every batch]]></code>
+      </example>
+      <example type="good">
+        <code lang="python"><![CDATA[SYSTEM = "You are an auditor. Reply only via the verdicts tool."  # identical bytes
+# variability lives in the user message]]></code>
+      </example>
+    </section>
+
+    <section name="7. Parallelism vs rate limits">
+      <p>For most subscription-billed setups, more than ~3 concurrent classifier sessions trips per-minute or per-account caps and produces silent `exit code 1` failures from the CLI sub-process. Sequential is the safe default; small parallelism (2–3) is the sweet spot.</p>
+      <list>
+        <item>Always retry the failed shard. Rate-limit failures cluster; the survivors finish faster than the failures retry.</item>
+        <item>Use shell parallelism (xargs -P, GNU parallel) rather than asyncio inside the classifier itself — it keeps the script sync, easier to debug, and naturally caps at process count.</item>
+        <item>Each parallel shard primes its own cache if the SDK uses per-process keys. 5 cold caches = 5× cache_w cost. Shard count is a knob; raise it only after measuring.</item>
+        <item>Exit-1 from the CLI is opaque: enable the `stderr` callback (Claude Agent SDK) or capture sub-process stderr (Anthropic CLI) so you see the real reason — often `429 rate_limited` or `error_max_turns`.</item>
+      </list>
+    </section>
+
+    <section name="8. Track quota and cost per batch">
+      <p>Cost reported by the SDK (`ResultMessage.total_cost_usd`) is authoritative. Quota burn (5-hour window, 7-day window) lives in a runtime state file the wrapper writes — read it before and after each batch and log the delta.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[# Per-batch metrics line
+elapsed_s = round(time.monotonic() - t0, 1)
+usage = result_msg.usage  # input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens
+cost  = result_msg.total_cost_usd
+
+print(
+    f"batch {bi}/{n}: elapsed={elapsed_s}s "
+    f"in={usage['input_tokens']} out={usage['output_tokens']} "
+    f"cache_w={usage['cache_creation_input_tokens']} "
+    f"cache_r={usage['cache_read_input_tokens']} "
+    f"cost=${cost:.4f}"
+)]]></code>
+      </example>
+      <p>Three signals to watch on every batch: cache_w trending to zero (cache is warm), output_tokens flat with batch size (model is on-task), elapsed jumps (the model fell back to thinking — your prompt or the tool list changed). Any spike in any of those tells you to stop and inspect before you burn the rest of the quota.</p>
+    </section>
+
+    <section name="9. Build the failed-batch retry path before the first run">
+      <p>You will have failures. Plan for them up-front. Two failure modes dominate:</p>
+      <list>
+        <item>Truncation: model returned `n` answers for a `B`-item batch, `n &lt; B`. Detect by ID-matching the response. The missing IDs are the retry list.</item>
+        <item>Hard error: the call raised. Log every input ID in the batch as failed.</item>
+      </list>
+      <p>Persist a per-batch JSON with `audited`, `errors`, `insufficient_per_domain` (or your equivalent), `totals`. Merge across shards. The retry pass takes only the failed IDs and re-runs them with `batch_size=1..3` — small enough that truncation can't happen — usually under a single-thread loop because the survivor count is small.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[# Build retry list from per-shard reports
+import json
+from pathlib import Path
+
+failed = sorted({
+    err["path"]
+    for shard in Path("reports").glob("shard-*.json")
+    for err in json.loads(shard.read_text())["errors"]
+})
+Path("retry-paths.txt").write_text("\n".join(failed) + "\n")
+
+# Then re-run the same script with --paths-file retry-paths.txt --batch-size 3]]></code>
+      </example>
+    </section>
+
+    <section name="10. Final checklist">
+      <list>
+        <item>Question is one sentence; answer shape is a fixed schema.</item>
+        <item>Eval set of 30–100 hand-labelled items exists and the model passes it.</item>
+        <item>Tool defined; `tool_choice` (or `allowed_tools`) forces it; nothing else is in scope.</item>
+        <item>System prompt is custom, not appended to a preset; no `CLAUDE.md` / `AGENTS.md` auto-loaded.</item>
+        <item>`disallowed_tools=["ToolSearch"]`; `permission_mode="bypassPermissions"`.</item>
+        <item>`max_turns=2` (the SDK floor; lower errors out).</item>
+        <item>Batch size starts at 10; raise only after measuring full-array returns.</item>
+        <item>System prefix is byte-identical across batches; no per-batch interpolation in the cached region.</item>
+        <item>Per-batch metrics line logs elapsed, in/out tokens, cache_w/r, cost.</item>
+        <item>Retry path takes a `--paths-file` (or equivalent) and runs the survivors at `batch_size&lt;=3`.</item>
+        <item>Quota state read before and after the run from the runtime state file (not by parsing statusline output).</item>
+        <item>If a parallel shard hits `exit code 1` cascade, sequential retry is cheaper than tuning concurrency.</item>
+      </list>
+    </section>
+  </content>
+</methodology>
