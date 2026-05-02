@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook pro/hr-ops/technical-interview-process
 - add: tier-playbook pro/market-research/positioning-workshop
 - add: tier-playbook pro/client-engagement/discovery-call-structure
 - add: tier-playbook pro/devops-cicd/deploy-blue-green-canary
