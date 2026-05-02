@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - add: tier-playbook solo/launch-operations/churn-intervention
-
+- add: tier-playbook solo/launch-operations/payment-flow
 - add: tier-playbook solo/automation/github-actions-cicd
 - add: tier-playbook solo/frontend-launch/landing-page-from-zero
 - add: tier-playbook solo/seo-essentials/technical-seo-audit
