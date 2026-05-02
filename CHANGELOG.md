@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/ai-product-positioning/trust-ux-citations
 - add: tier-playbook geek/ai-consultancy-ops/ai-audit-checklist
 - add: tier-playbook geek/ai-agents/agent-debugging-observability
 - add: tier-playbook geek/cost-optimization/prompt-caching-strategy
