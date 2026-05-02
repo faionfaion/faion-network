@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- improve: mlp-planning — methodology rewritten for autonomous agent application
 - improve: minimum-product-frameworks — methodology rewritten for autonomous agent application
 - improve: outcome-based-roadmaps-advanced — methodology rewritten for autonomous agent application
 - improve: reporting-dashboards — methodology rewritten for autonomous agent application
