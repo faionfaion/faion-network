@@ -4,59 +4,203 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Centralize sentinel errors in apperror, wrap with fmt.Errorf, use errors.Is/As, map errors at transport edge, log once. Enforce with errcheck, errorlint, wrapcheck.</summary>
+    <summary>Centralize sentinel errors in apperror, wrap with fmt.Errorf %w, use errors.Is/As, map at transport edge, log once. Enforce with errcheck, errorlint, wrapcheck.</summary>
     <tags>
       <tag>go</tag>
       <tag>error-handling</tag>
       <tag>best-practices</tag>
       <tag>testing</tag>
     </tags>
+    <languages>
+      <language>go</language>
+    </languages>
     <difficulty>intermediate</difficulty>
     <created>2026-04-26</created>
+    <updated>2026-05-01</updated>
+    <applies-to>both</applies-to>
   </metadata>
   <content>
     <title>Go Error Handling Patterns</title>
     <summary>Go error handling convention for services: define sentinel errors in one apperror package; wrap with fmt.Errorf("op: %w", err); check errors with errors.Is/As, never ==; map domain errors to HTTP/gRPC codes only at transport edge; log once at boundary, never log-and-return.</summary>
     <why>
-      <p>Bare errors.New("failed") without context makes stack traces useless in production. %v formats without wrapping — errors.Is cannot traverse chain. Logging + returning creates duplicate Sentry events. Centralizing sentinels in apperror makes domain error contract explicit.</p>
+      <p>Bare errors.New("failed") without context makes stack traces useless in production. %v formats without wrapping — errors.Is cannot traverse the chain. Logging plus returning creates duplicate Sentry events for one failure. Centralizing sentinels in apperror makes the domain error contract explicit and lets transport layers (HTTP, gRPC, CLI) map them deterministically without leaking sql.ErrNoRows or driver-specific errors into business logic.</p>
     </why>
     <when-to-use>
       <list>
-        <item>Designing error contracts for new Go services</item>
-        <item>Refactoring legacy Go code with bare errors</item>
-        <item>Auditing for double-wrapping or missing errors.Is checks</item>
-        <item>Mapping domain errors to HTTP status codes</item>
+        <item>Designing error contracts for a new Go service or library</item>
+        <item>Refactoring legacy Go code with bare errors.New or stringly-typed errors</item>
+        <item>Auditing for double-wrapping, missing errors.Is checks, or log-and-return chains</item>
+        <item>Mapping domain errors to HTTP status codes or gRPC status</item>
+        <item>Preparing for SLO/observability rollout where one failure must yield exactly one alert</item>
       </list>
     </when-to-use>
     <when-not-to-use>
       <list>
-        <item>Quick scripts where log.Fatal is acceptable</item>
-        <item>One-shot migration scripts where error taxonomy is overkill</item>
+        <item>Quick scripts where log.Fatal on first error is acceptable</item>
+        <item>One-shot migration scripts where building a sentinel taxonomy is overkill</item>
+        <item>main.go bootstrap where panic is the documented failure mode</item>
       </list>
     </when-not-to-use>
+    <how-to>
+      <step>Audit current state. Run grep counters for forbidden patterns: bare errors.New, %v in fmt.Errorf, == comparisons, log.Error followed by return.</step>
+      <step>Create or locate the apperror package at internal/apperror/. Add the Sentinel block (ErrNotFound, ErrConflict, ErrUnauthorized, ErrInvalidInput, ErrInternal, ErrUnavailable). Copy from templates/apperror.go.</step>
+      <step>Wrap errors at every layer boundary using fmt.Errorf("operation: %w", err). The operation string MUST be the function or method name plus the entity, e.g. "user.GetByID".</step>
+      <step>In repository code, translate driver errors into apperror sentinels. Example: errors.Is(err, sql.ErrNoRows) -&gt; return apperror.ErrNotFound. Never let sql or pgx errors leak past the repository.</step>
+      <step>In service/use-case code, classify with errors.Is for sentinel comparison and errors.As for typed extraction. Never compare with ==.</step>
+      <step>At the transport edge (HTTP handler, gRPC interceptor, CLI exit), map sentinels to status codes via apperror.HTTPStatus(err) once. Log here with full chain. Do not log inside services.</step>
+      <step>Install golangci-lint config from templates/golangci.yml. Enable errcheck, errorlint, wrapcheck, nilerr, gocritic. Run `golangci-lint run ./...` and resolve every finding.</step>
+      <step>Add a unit test per sentinel: trigger the error path, assert errors.Is matches the expected sentinel and the wrap chain contains the operation string.</step>
+      <step>Verify success with the verify checklist below before merging.</step>
+    </how-to>
     <rule>
       <statement>Wrap every error with operation name using fmt.Errorf("operation_name: %w", err). Use %w not %v.</statement>
-      <rationale>%v formats but does not wrap, making errors.Is traversal impossible. %w preserves the chain.</rationale>
+      <rationale>%v formats but does not wrap, making errors.Is traversal impossible. %w preserves the chain so transport-layer mapping and tests can identify sentinels.</rationale>
     </rule>
     <rule>
       <statement>Define sentinel errors in one apperror package per service. Repository wraps low-level errors into domain sentinels.</statement>
-      <rationale>Preventing sql.ErrNoRows leak into business logic keeps domain transport-agnostic.</rationale>
+      <rationale>Preventing sql.ErrNoRows or pgx-specific errors from leaking into business logic keeps the domain transport-agnostic and makes the public error contract auditable.</rationale>
     </rule>
     <rule>
-      <statement>Always use errors.Is to compare sentinels. Never use == to compare errors.</statement>
-      <rationale>== fails on wrapped errors. errors.Is traverses the entire chain.</rationale>
+      <statement>Always use errors.Is to compare sentinels and errors.As to extract typed errors. Never use == to compare errors.</statement>
+      <rationale>== fails on wrapped errors. errors.Is traverses the entire chain via Unwrap, which is the only correct comparison once %w is in use.</rationale>
     </rule>
     <rule>
-      <statement>Log errors once at the outermost boundary. Never log-and-return.</statement>
-      <rationale>Log-and-return creates 3 Sentry events for one failure through a 3-layer call chain.</rationale>
+      <statement>Log errors exactly once at the outermost boundary (HTTP handler, gRPC interceptor, job runner). Never log-and-return.</statement>
+      <rationale>Log-and-return creates 3 Sentry events for one failure through a 3-layer call chain, distorting alert volume and SLO budgets.</rationale>
     </rule>
+    <rule>
+      <statement>Do not double-wrap. If a function already returns a wrapped error from a callee, only add wrapping when adding new context.</statement>
+      <rationale>Double-wrapping ("svc: repo: db: not found") is noise. wrapcheck and errorlint flag the patterns.</rationale>
+    </rule>
+    <rule>
+      <statement>Never return raw third-party errors across module boundaries. Wrap or translate.</statement>
+      <rationale>wrapcheck enforces this. It guarantees that callers see only your error contract, not a leaking dependency.</rationale>
+    </rule>
+    <commands>
+      <command name="grep-bare-errors-new">grep -rn 'errors\.New(' --include='*.go' . | grep -v '_test.go'</command>
+      <command name="grep-percent-v-wrap">grep -rEn 'fmt\.Errorf\([^)]*%v[^)]*,[^)]*err' --include='*.go' .</command>
+      <command name="grep-eq-err-compare">grep -rEn 'err\s*==\s*[A-Za-z]' --include='*.go' . | grep -v 'err == nil'</command>
+      <command name="grep-log-and-return">grep -rEn 'log\.(Error|Errorf|Warn|Warnf)\([^)]+\)\s*$' --include='*.go' -A1 . | grep -B1 'return'</command>
+      <command name="lint">golangci-lint run ./...</command>
+      <command name="lint-errors-only">golangci-lint run --disable-all --enable errcheck,errorlint,wrapcheck,nilerr ./...</command>
+      <command name="test-error-paths">go test ./... -run 'Error|NotFound|Conflict|Unauthorized' -count=1 -race</command>
+      <command name="vet">go vet ./...</command>
+      <command name="build">go build ./...</command>
+    </commands>
     <templates>
-      <template path="templates/apperror.go" purpose="Sentinel errors, AppError type, HTTP mapping"/>
-      <template path="templates/golangci.yml" purpose="Lint config with errcheck, errorlint, wrapcheck"/>
+      <template path="templates/apperror.go" purpose="Sentinel errors, AppError struct with Op/Code/Err fields, HTTPStatus mapper, gRPC code mapper, Wrap helper"/>
+      <template path="templates/golangci.yml" purpose="Lint config: errcheck, errorlint, wrapcheck, nilerr, gocritic, govet — copy to repo root"/>
     </templates>
+    <example type="good" title="Repository translates driver error to sentinel">
+      <code lang="go"><![CDATA[
+func (r *UserRepo) GetByID(ctx context.Context, id string) (*User, error) {
+    const op = "UserRepo.GetByID"
+    var u User
+    err := r.db.QueryRowContext(ctx, getUserSQL, id).Scan(&u.ID, &u.Email)
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, fmt.Errorf("%s: %w", op, apperror.ErrNotFound)
+        }
+        return nil, fmt.Errorf("%s: %w", op, err)
+    }
+    return &u, nil
+}
+      ]]></code>
+      <note>The driver error never leaves the repository. Callers see apperror.ErrNotFound, not sql.ErrNoRows.</note>
+    </example>
+    <example type="good" title="Transport edge maps sentinel to HTTP status, logs once">
+      <code lang="go"><![CDATA[
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+    u, err := h.svc.GetUser(r.Context(), chi.URLParam(r, "id"))
+    if err != nil {
+        h.log.Error("get_user_failed", "err", err, "path", r.URL.Path)
+        http.Error(w, err.Error(), apperror.HTTPStatus(err))
+        return
+    }
+    json.NewEncoder(w).Encode(u)
+}
+      ]]></code>
+      <note>This is the only place log.Error is allowed for this request. Service and repo only return wrapped errors.</note>
+    </example>
+    <antipattern>
+      <description>fmt.Errorf("failed: %v", err) — formats with %v instead of %w.</description>
+      <reason>Breaks errors.Is/As traversal. errorlint flags this. Replace %v with %w when err is the last argument.</reason>
+    </antipattern>
+    <antipattern>
+      <description>if err == apperror.ErrNotFound { ... } — direct equality check.</description>
+      <reason>Fails when err is wrapped. Use errors.Is(err, apperror.ErrNotFound). errorlint catches this.</reason>
+    </antipattern>
+    <antipattern>
+      <description>log.Error("db failed", err); return err — logging then returning the same error up the stack.</description>
+      <reason>Each layer logs once, producing N alerts for one failure. Decide where the boundary is and log there only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>return errors.New("user not found") — bare ad-hoc error string in domain code.</description>
+      <reason>Cannot be matched with errors.Is across packages. Use a sentinel from apperror.</reason>
+    </antipattern>
+    <prompt purpose="Audit a Go file for error-handling violations"><![CDATA[
+You are auditing a Go file against the go-error-handling-patterns methodology.
+
+Report violations in JSON list with fields {line, code, fix} where code is one of:
+  BARE_ERRORS_NEW    — errors.New in non-test code outside apperror
+  PCT_V_WRAP         — fmt.Errorf uses %v instead of %w with err argument
+  EQ_ERR_COMPARE     — err compared with == to a non-nil value
+  LOG_AND_RETURN     — log.Error/Warn followed by return on next line
+  NO_OP_PREFIX       — fmt.Errorf wrap without "operation: " prefix
+  LEAKED_DRIVER_ERR  — sql/pgx error returned without translation
+  DOUBLE_WRAP        — wrap with no new context
+
+For each violation, give a one-line fix snippet.
+
+File:
+<<<
+{{FILE_CONTENT}}
+>>>
+    ]]></prompt>
+    <prompt purpose="Generate an apperror package skeleton for a new service"><![CDATA[
+Generate internal/apperror/apperror.go for a Go service.
+
+Requirements:
+- Sentinels: ErrNotFound, ErrConflict, ErrUnauthorized, ErrForbidden, ErrInvalidInput, ErrUnavailable, ErrInternal
+- AppError struct {Op, Code string; Err error} with Error() and Unwrap()
+- HTTPStatus(err error) int — returns 404/409/401/403/400/503/500
+- GRPCCode(err error) codes.Code — same mapping for gRPC
+- Wrap(op string, err error) error — convenience helper
+- 100% test coverage in apperror_test.go using errors.Is and errors.As
+
+Service name: {{SERVICE_NAME}}
+    ]]></prompt>
+    <verify>
+      <step>Run `golangci-lint run ./...` — exit code 0 and zero errcheck/errorlint/wrapcheck findings.</step>
+      <step>Run `go vet ./...` — exit code 0.</step>
+      <step>Run `go test ./... -race -count=1` — all tests pass; assertions use errors.Is/As exclusively.</step>
+      <step>Run the four grep audit commands — each returns no production-code matches (test files allowed).</step>
+      <step>Open the apperror package — confirm sentinel list, HTTPStatus mapper, and Wrap helper exist; package has no external dependencies beyond errors and net/http.</step>
+      <step>Pick three random repository methods — confirm every error return is either fmt.Errorf("%s: %w", op, err) or a sentinel translation; no raw driver errors leak.</step>
+      <step>Pick three transport handlers — confirm log.Error happens exactly once and HTTPStatus maps via apperror, not via switch on error string.</step>
+      <step>Trigger one error path end-to-end — confirm exactly one log line and one Sentry event are produced for the failure.</step>
+    </verify>
+    <checklist>
+      <check>apperror package exists with sentinels, AppError type, HTTPStatus, GRPCCode, Wrap helper</check>
+      <check>Every fmt.Errorf wrapping err uses %w, never %v</check>
+      <check>Every sentinel comparison uses errors.Is, never ==</check>
+      <check>Every typed-error extraction uses errors.As</check>
+      <check>Repositories translate driver errors to apperror sentinels</check>
+      <check>Services and use-cases only wrap and return, never log</check>
+      <check>Transport edge logs once and maps via apperror.HTTPStatus / GRPCCode</check>
+      <check>golangci-lint config enables errcheck, errorlint, wrapcheck, nilerr</check>
+      <check>Lint passes with zero findings</check>
+      <check>One unit test per sentinel asserting errors.Is and operation string in chain</check>
+      <check>No double-wrapping (no wrap without added context)</check>
+      <check>No third-party error types cross module boundaries</check>
+    </checklist>
+    <warning>Never use panic for control flow in service code. panic is reserved for unrecoverable bugs (nil pointer assertions failing, programmer errors in init). Recover only at top-level goroutines or HTTP middleware.</warning>
+    <warning>Do not embed user-controlled strings in fmt.Errorf format strings. Use %s with the value as an argument: fmt.Errorf("invalid input: %s: %w", input, apperror.ErrInvalidInput).</warning>
     <see-also>
       <link href="https://go.dev/blog/go1.13-errors">Go blog: Working with Errors in Go 1.13</link>
-      <link href="https://github.com/cockroachdb/errors">Cockroach error library with stack traces</link>
+      <link href="https://github.com/cockroachdb/errors">Cockroach errors library with stack traces</link>
+      <link href="https://golangci-lint.run/usage/linters/">golangci-lint linters reference (errcheck, errorlint, wrapcheck, nilerr)</link>
+      <link href="https://pkg.go.dev/errors">Go errors package: Is, As, Unwrap, Join</link>
     </see-also>
   </content>
 </methodology>
