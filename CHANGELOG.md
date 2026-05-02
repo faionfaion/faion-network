@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/hosting-infra/deploy-to-vercel-free
 - add: tier-playbook free/mvp-essentials/ugly-first-version
 - add: tier-playbook free/ops-basics/wise-account-for-solos
 - add: tier-playbook free/business-discovery/idea-validation-landing-page
