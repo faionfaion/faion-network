@@ -4,11 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- add: tier-playbook pro/paid-acquisition/linkedin-ads-b2b
-- add: tier-playbook pro/smm-cro/conversion-optimization
-- add: tier-playbook pro/devops-cicd/docker-for-prod
-- add: tier-playbook pro/product-management/okrs-team-level
-- add: tier-playbook pro/hr-ops/technical-interview-process
+- feat: feature-048 wave 3 closeout — Pro tier complete (30/30 pass validator); group AGENTS.md/CLAUDE.md added for team-management, hr-ops, business-analysis; 5 orphan worktree commits restored (caching-strategy, scoping-workshop, hiring-funnel, terraform-iac, onboarding-30-60-90)
 - add: tier-playbook pro/market-research/positioning-workshop
 - add: tier-playbook pro/client-engagement/discovery-call-structure
 - add: tier-playbook pro/devops-cicd/deploy-blue-green-canary
