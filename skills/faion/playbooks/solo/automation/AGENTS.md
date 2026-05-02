@@ -8,6 +8,7 @@ How-to guides for indie hackers automating their development workflow. Audience:
 |------|------|
 | `github-actions-cicd` | Three-job CI/CD pipeline (lint, test, deploy) via GitHub Actions for Node or Python projects |
 | `env-management-secrets` | Manage per-environment secrets without committing them to the repo |
+| `pre-commit-hooks` | Install pre-commit with formatter, linter, whitespace, large-file, and secret-detection hooks |
 
 ## Authoring
 
