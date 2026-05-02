@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/rag-pipelines/rag-reranking
 - add: tier-playbook geek/llm-integration/function-calling-tool-use
 - add: tier-playbook geek/context-engineering/long-context-strategies
 - add: tier-playbook geek/llm-integration/structured-output-json-schema
