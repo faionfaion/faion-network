@@ -35,7 +35,7 @@ The recommended install path is as a **Claude Code plugin** named `faion` — ke
 /plugin install faionfaion/faion-network
 ```
 
-After installing, the umbrella retrieval skill is available as `/faion` (or `/faion:faion` explicit), applied skills as `/faion:brainstorm`, `/faion:feature-executor`, `/faion:improver`, `/faion:sdd-execution`, `/faion:media-ops`, `/faion:poll-agents`.
+After installing, the umbrella retrieval skill is available as `/faion` (or `/faion:faion` explicit), applied skills as `/faion:brainstorm`, `/faion`, `/faion:improver`, `/faion`, `/faion:media-ops`, `/faion:poll-agents`.
 
 ---
 
@@ -72,7 +72,7 @@ Update with `/plugin update faion`. Disable with `/plugin disable faion`. Plugin
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
 # Verify
-ls ~/.claude/skills       # faion, brainstorm, feature-executor, improver, sdd-execution, media-ops, poll-agents
+ls ~/.claude/skills       # faion, brainstorm, /faion, improver, /faion, media-ops, poll-agents
 ls ~/.claude/skills/faion/knowledge/   # free/ solo/ pro/ geek/
 ```
 
@@ -140,7 +140,7 @@ Full tier map: [faion/SKILL.md](skills/faion/SKILL.md). Authoritative path list:
 Read `knowledge/solo/sdd/sdd/` and `knowledge/solo/sdd/sdd-planning/` for specs, designs, implementation plans. Then:
 
 ```bash
-/faion:feature-executor {project} {feature}
+/faion {project} {feature}
 ```
 
 Sequential task execution with test runs, coverage checks, and code review cycles.
@@ -176,8 +176,8 @@ skills/
 │       ├── pro/          (24)  backend systems/enterprise, DevOps/CI-CD/infra, PM, product-manager, BA, UX research, growth/GTM/PPC/SMM/CRO, research, HR
 │       └── geek/          (7)  ML engineer, AI agents, RAG, ML ops, multimodal AI, LLM integration, Claude Code
 ├── brainstorm/                  # Multi-agent diverge/converge/review
-├── sdd-execution/               # Quality gates, reflexion learning
-├── feature-executor/            # Sequential SDD task execution
+├── /faion/               # Quality gates, reflexion learning
+├── /faion/            # Sequential SDD task execution
 ├── improver/                    # Session-based audit/improve loop
 └── media-ops/                   # Media pipeline templates
 ```
@@ -194,7 +194,7 @@ Each methodology = 5-file pattern: `README.md`, `checklist.md`, `templates.md`, 
 Error: Skill 'faion-*' not found
 ```
 
-Only top-level skills are invocable: `faion`, `brainstorm`, `feature-executor`, `improver`, `sdd-execution`, `media-ops`.
+Only top-level skills are invocable: `faion`, `brainstorm`, `/faion` (sdd-batch-orchestrator workflow), `improver`, `/faion` (knowledge/solo/sdd/sdd/), `media-ops`.
 
 Domain knowledge is NOT invocable as sub-skills — load via Read. Knowledge paths are tier-prefixed:
 

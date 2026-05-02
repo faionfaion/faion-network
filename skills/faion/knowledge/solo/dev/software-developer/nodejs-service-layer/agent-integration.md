@@ -31,7 +31,7 @@ A four-stage flow per feature. (1) **Spec → DTOs**: an agent generates Zod / T
 - `faion-sdd-executor-agent` — gates: controllers don't import repos, services don't import `Request`/`Response`, every public service method has unit tests with ≥1 happy + ≥1 error path.
 - A **layer-linter** subagent (worth creating): walks the dependency graph and fails when controller→repo or service→framework imports appear. Cheap to run with `dependency-cruiser` / `eslint-plugin-boundaries`.
 - A **DTO-from-schema** subagent: given Zod / TypeBox schemas, generates request/response types and OpenAPI fragments.
-- `feature-executor` (skill) — sequence schema → service → repo → controller → tests as ordered SDD tasks.
+- `/faion` (sdd-batch-orchestrator workflow) (skill) — sequence schema → service → repo → controller → tests as ordered SDD tasks.
 - `password-scrubber-agent` — scrub fixture data and example logs before publishing.
 
 ### Prompt pattern

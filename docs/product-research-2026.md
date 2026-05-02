@@ -38,7 +38,7 @@ Faion-network - це комплексний фреймворк для Claude Cod
 faion-net (Orchestrator)
 ├── Core Skills (2)
 │   ├── faion-sdd           → Specification-Driven Development
-│   └── feature-executor → Task execution with quality gates
+│   └── /faion → Task execution with quality gates
 │
 ├── Research & Planning (3)
 │   ├── faion-researcher    → 9 research modes, 32 methodologies

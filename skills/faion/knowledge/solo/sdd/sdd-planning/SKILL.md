@@ -138,7 +138,7 @@ This sub-skill handles:
 
 ## Related Sub-Skill
 
-**sdd-execution** - Quality gates, reflexion, patterns, memory, execution workflows.
+**/faion** - Quality gates, reflexion, patterns, memory, execution workflows.
 
 ---
 

@@ -25,7 +25,7 @@
 A subagent should drive a full vertical: minimal/controller endpoint → DTO + validator (FluentValidation) → service interface + impl → EF entity + configuration + migration → xUnit feature test using `WebApplicationFactory<Program>`. Quality gates: `dotnet build -warnaserror`, `dotnet test`, `dotnet format --verify-no-changes`. For complex domains, brainstorm a record/aggregate model first, then have the agent generate code.
 
 ### Recommended subagents
-- `feature-executor` — slice-by-slice; works well with the controller/service/repo split.
+- `/faion` (sdd-batch-orchestrator workflow) — slice-by-slice; works well with the controller/service/repo split.
 - `faion-sdd-executor-agent` — runs `dotnet test`, format, and analyzers as gates.
 
 ### Prompt pattern

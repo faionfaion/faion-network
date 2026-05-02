@@ -23,13 +23,13 @@
 - Strategic design (context maps, core/supporting/generic subdomains) skipped because it requires business conversations that LLMs cannot have alone.
 
 ## Agentic workflow
-DDD splits cleanly into a strategic phase (event storming, context mapping — human-led, LLM as scribe) and a tactical phase (entities/VOs/aggregates/repos — LLM does most of the typing under human review). Drive the strategic phase with `brainstorm` to diverge on candidate bounded contexts, then converge on a context map. Drive the tactical phase with `faion-sdd-executor-agent` per bounded context: spec → design → implementation-plan → tasks, with `sdd-execution` enforcing quality gates (no anemic models, no cross-aggregate references, repos return aggregates not rows). Always pass the ubiquitous-language glossary as the first context block of every prompt — without it the LLM invents synonyms (`User` vs `Customer` vs `Account`) within a single session.
+DDD splits cleanly into a strategic phase (event storming, context mapping — human-led, LLM as scribe) and a tactical phase (entities/VOs/aggregates/repos — LLM does most of the typing under human review). Drive the strategic phase with `brainstorm` to diverge on candidate bounded contexts, then converge on a context map. Drive the tactical phase with `faion-sdd-executor-agent` per bounded context: spec → design → implementation-plan → tasks, with `/faion` (knowledge/solo/sdd/sdd/) enforcing quality gates (no anemic models, no cross-aggregate references, repos return aggregates not rows). Always pass the ubiquitous-language glossary as the first context block of every prompt — without it the LLM invents synonyms (`User` vs `Customer` vs `Account`) within a single session.
 
 ### Recommended subagents
 - `brainstorm` — diverge/converge on bounded context candidates; surface domain events from event-storming notes; propose aggregate boundaries with rationale.
 - `faion-sdd-executor-agent` — pick up a bounded-context task (e.g. "implement Order aggregate") and run spec → design → impl-plan → code with commit lifecycle.
-- `sdd-execution` — quality-gate hook: rejects PRs with anemic entities (only getters/setters), aggregate-to-aggregate object references, or domain code importing ORM/HTTP modules.
-- `feature-executor` — sequential execution across the tasks of one bounded context once the design is approved.
+- `/faion` (knowledge/solo/sdd/sdd/) — quality-gate hook: rejects PRs with anemic entities (only getters/setters), aggregate-to-aggregate object references, or domain code importing ORM/HTTP modules.
+- `/faion` (sdd-batch-orchestrator workflow) — sequential execution across the tasks of one bounded context once the design is approved.
 - `password-scrubber-agent` — run before committing example code; DDD examples often inline test credentials in repository fixtures.
 
 ### Prompt pattern

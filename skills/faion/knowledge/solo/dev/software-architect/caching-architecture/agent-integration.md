@@ -25,7 +25,7 @@ Use a designer agent to map cache layers (CDN → gateway → app → DB) and pi
 
 ### Recommended subagents
 - `brainstorm` — diverge over cache placement and pattern choice (cache-aside vs read-through vs write-through vs write-behind).
-- `sdd-execution` — produce spec/design including invalidation events and TTL policy, with explicit test cases for staleness.
+- `/faion` (knowledge/solo/sdd/sdd/) — produce spec/design including invalidation events and TTL policy, with explicit test cases for staleness.
 - `improver` — post-deploy audit of hit ratio, eviction rate, p99 tail.
 
 ### Prompt pattern

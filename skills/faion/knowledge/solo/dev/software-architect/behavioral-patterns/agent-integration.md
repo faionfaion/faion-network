@@ -24,7 +24,7 @@ Run a recognizer agent that scans diffs/files for code-smell signatures (long sw
 
 ### Recommended subagents
 - `brainstorm` — diverge over candidate patterns when more than one fits.
-- `sdd-execution` — small refactor task with tests proving behavior preservation.
+- `/faion` (knowledge/solo/sdd/sdd/) — small refactor task with tests proving behavior preservation.
 - `improver` — periodic sweep for over-abstraction (one-impl interfaces, dead Strategy slots).
 
 ### Prompt pattern

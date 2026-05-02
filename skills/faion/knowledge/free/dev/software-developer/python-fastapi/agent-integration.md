@@ -36,7 +36,7 @@ Build FastAPI features in vertical slices: `schema → router → service → re
 
 ### Recommended subagents
 - `faion-sdd-executor-agent` — SDD task pickup; matches well to vertical-slice tasks.
-- `feature-executor` — sequential execution with quality gates after each slice.
+- `/faion` (sdd-batch-orchestrator workflow) — sequential execution with quality gates after each slice.
 - General-purpose subagent restricted to `app/routers/<domain>.py` + `app/schemas/<domain>.py` + matching tests.
 - `password-scrubber-agent` — sweep `app/config.py` and `.env*` before commit.
 

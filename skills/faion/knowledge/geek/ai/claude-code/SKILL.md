@@ -145,7 +145,7 @@ For shared/reusable components in faion-network:
 |-----------|---------|---------|
 | Skill (orchestrator) | `faion-net` | `faion-net` |
 | Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
-| Skill (process) | `faion-{process}` | `faion-sdd`, `feature-executor` |
+| Skill (process) | `faion-{process}` | `faion-sdd`, `/faion` (sdd-batch-orchestrator workflow) |
 | Agent | `faion-{name}-agent` | `faion-task-YOLO-executor-opus-agent` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 | Command | `{verb}` (no prefix) | `commit`, `deploy` |

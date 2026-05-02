@@ -26,7 +26,7 @@ A subagent writes the test alongside the feature it tests, in the same commit. F
 
 ### Recommended subagents
 - `faion-sdd-executor-agent` — pairs implementation with mandatory tests as a quality gate.
-- `feature-executor` — slice work where the test step is non-skippable.
+- `/faion` (sdd-batch-orchestrator workflow) — slice work where the test step is non-skippable.
 
 ### Prompt pattern
 ```

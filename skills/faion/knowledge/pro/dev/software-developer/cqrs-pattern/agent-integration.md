@@ -32,7 +32,7 @@ Drive CQRS scaffolding as a four-stage pipeline: (1) a design agent extracts the
 - `faion-sdd-executor-agent` (`agents/faion-sdd-executor-agent.md`) — opus model fits because handler / projection trade-offs are non-trivial and easy to get wrong.
 - `password-scrubber-agent` (`agents/password-scrubber-agent.md`) — run before committing event payloads / fixtures; commands often carry PII (`shipping_address`, `customer_id`, `payment_token`) that must not leak into test snapshots.
 - A purpose-built **cqrs-review-agent** (worth adding under `agents/`): linter that greps handler files for the four canonical anti-patterns (command return type ≠ `None|UUID`, query handler with `await *.save(`, projection importing domain services, event without `occurred_at`).
-- `feature-executor` skill — sequential execution mode is correct for CQRS feature slices: command before query before projection before integration test; out-of-order task execution corrupts the read model.
+- `/faion` (sdd-batch-orchestrator workflow) skill — sequential execution mode is correct for CQRS feature slices: command before query before projection before integration test; out-of-order task execution corrupts the read model.
 - For event-sourced variants, pair with sibling `pro/dev/software-developer/event-sourcing/` — same agent set, additional snapshot/replay concerns.
 
 ### Prompt pattern

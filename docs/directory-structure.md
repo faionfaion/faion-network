@@ -23,8 +23,8 @@ Claude Code loads `.claude/` from TWO locations:
 │   │   │   └── knowledge/              #   ├── free/ (8), solo/ (13), pro/ (24), geek/ (7)
 │   │   │                               #   each tier → groups (dev/, ai/, infra/, product/, pm/, ba/, ux/, marketing/, research/, comms/, sdd/)
 │   │   ├── brainstorm/           # Global: multi-agent brainstorm
-│   │   ├── feature-executor/     # Global: SDD feature executor
-│   │   ├── sdd-execution/        # Global: SDD quality gates + reflexion
+│   │   ├── /faion/     # Global: SDD feature executor
+│   │   ├── /faion/        # Global: SDD quality gates + reflexion
 │   │   ├── improver/             # Global: session-based improvement
 │   │   └── {project}-*/                # Project: gitignored
 │   │
@@ -374,7 +374,7 @@ Multi-repository project with shared `.aidocs/` structure:
 |-----------|---------|---------|
 | Skill (orchestrator) | `faion-net` | `faion-net` |
 | Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
-| Skill (process) | `faion-{process}` | `faion-sdd`, `feature-executor` |
+| Skill (process) | `faion-{process}` | `faion-sdd`, `/faion` (sdd-batch-orchestrator workflow) |
 | Agent | `faion-{name}-agent` | `faion-task-YOLO-executor-opus-agent` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 | Command | `{verb}` (no prefix) | `commit`, `deploy` |

@@ -29,7 +29,7 @@ Drive doc generation as a four-stage pipeline. (1) A spec-extractor agent parses
 ### Recommended subagents
 - `faion-sdd-executor-agent` — gates merges on "every public endpoint has a working code sample in at least 3 languages".
 - A purpose-built **example-runner** subagent (worth creating): given a code block, executes it against a sandbox; writes `pass | fail + diff`. Crucial for keeping docs honest.
-- `feature-executor` (skill) — sequences spec → docs → SDK update → changelog as one feature task chain.
+- `/faion` (sdd-batch-orchestrator workflow) (skill) — sequences spec → docs → SDK update → changelog as one feature task chain.
 - `password-scrubber-agent` (`agents/password-scrubber-agent.md`) — strip real tokens, customer IDs, internal hostnames before publishing.
 
 ### Prompt pattern

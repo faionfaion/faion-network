@@ -24,7 +24,7 @@
 ```
 ~/.claude/                                     # Global framework (faion-network)
 ├── skills/faion/knowledge/<tier>/<group>/  # Umbrella knowledge (tiers: free, solo, pro, geek)
-├── skills/faion-{applied}/                    # Applied tools (brainstorm, feature-executor, improver, ...)
+├── skills/faion-{applied}/                    # Applied tools (brainstorm, /faion, improver, ...)
 ├── agents/faion-*-agent.md
 └── docs/
 

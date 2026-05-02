@@ -26,7 +26,7 @@
 Have the subagent generate the entity, the Spring Data Repository (interface + custom queries), a Flyway migration matching the entity, and the service that orchestrates transactions. Tests must include one slice test (`@DataJpaTest`) per repository plus one transactional integration test (`@SpringBootTest` + Testcontainers Postgres). Quality gates: `./mvnw verify` (or `./gradlew check`), `./mvnw spring-javaformat:validate`, and a SQL log review for N+1 patterns.
 
 ### Recommended subagents
-- `feature-executor` — slice-by-slice generation; Spring Boot's layering matches well.
+- `/faion` (sdd-batch-orchestrator workflow) — slice-by-slice generation; Spring Boot's layering matches well.
 - `faion-sdd-executor-agent` — runs build, tests, and lint as quality gates.
 
 ### Prompt pattern

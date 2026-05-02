@@ -32,7 +32,7 @@ Use this methodology as a **style/idiom check** in code review and as a **bootst
 ### Recommended subagents
 - `python-style-reviewer` (sonnet) — read diff, flag non-idiomatic patterns; do NOT modify code.
 - `python-bootstrap` (haiku) — emit `pyproject.toml`, `.python-version`, basic layout.
-- `feature-executor` — sequential gate; the basics methodology contributes the lint/format step.
+- `/faion` (sdd-batch-orchestrator workflow) — sequential gate; the basics methodology contributes the lint/format step.
 - `password-scrubber-agent` — sweep before commit.
 
 ### Prompt pattern

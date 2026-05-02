@@ -25,8 +25,8 @@ Stand up a daily ETL agent: pull raw cost + conversion rows from Google Ads, Met
 
 ### Recommended subagents
 - `faion-ads-agent` — pulls raw Google + Meta Ads data, executes geo-holdout config changes.
-- `feature-executor` — wraps the warehouse / dbt build pipeline as feature work.
-- `sdd-execution` — quality gates around SQL views feeding the attribution dashboard.
+- `/faion` (sdd-batch-orchestrator workflow) — wraps the warehouse / dbt build pipeline as feature work.
+- `/faion` (knowledge/solo/sdd/sdd/) — quality gates around SQL views feeding the attribution dashboard.
 - `brainstorm` — divergent thinking when "the data doesn't make sense and we need new hypotheses".
 
 ### Prompt pattern

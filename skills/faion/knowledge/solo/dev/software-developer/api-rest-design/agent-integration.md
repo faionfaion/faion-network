@@ -29,7 +29,7 @@ Drive REST design as a three-pass loop. Pass 1: a domain-modeling agent maps ent
 ### Recommended subagents
 - `faion-sdd-executor-agent` (`agents/faion-sdd-executor-agent.md`) — owns REST conformance as a quality gate inside SDD task execution; rejects PRs whose new endpoints fail the checklist.
 - A purpose-built **rest-design-critic** subagent (worth creating): system prompt = the rules table + status-code table; only output is `pass | fail + reasons[]`. Cheap (haiku) and runs on every diff.
-- `feature-executor` (skill) — sequences design → spec → stub → impl → contract test for each new endpoint as ordered SDD tasks.
+- `/faion` (sdd-batch-orchestrator workflow) (skill) — sequences design → spec → stub → impl → contract test for each new endpoint as ordered SDD tasks.
 - `password-scrubber-agent` — scrub example payloads in the spec before publishing publicly; example bodies often leak real customer IDs and tokens.
 
 ### Prompt pattern

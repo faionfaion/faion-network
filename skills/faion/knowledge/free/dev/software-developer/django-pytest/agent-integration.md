@@ -25,7 +25,7 @@ A test-writing subagent reads the spec/test-plan, lists test cases per acceptanc
 
 ### Recommended subagents
 - `faion-sdd-executor-agent` — task-level driver, gates on test pass.
-- `feature-executor` — sequential test execution with quality gates.
+- `/faion` (sdd-batch-orchestrator workflow) — sequential test execution with quality gates.
 - A purpose-built `factory-builder` subagent — given a model schema, generates `factory_boy` factory + parametrized fixtures.
 - A `coverage-gap-finder` subagent — runs coverage, lists uncovered lines per file, and emits a draft test list.
 

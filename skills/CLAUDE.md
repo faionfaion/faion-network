@@ -13,13 +13,7 @@ Claude Code skills for the `faion` plugin (repo: faion-network).
 
 ### Applied tools
 
-| Skill | Description |
-|-------|-------------|
-| `brainstorm` | Multi-agent diverge/converge/review for ideation |
-| `sdd-execution` | Quality gates, code review cycle, pattern/mistake memory |
-| `feature-executor` | Sequential SDD task execution with quality gates |
-| `improver` | Session-based audit/improve loop |
-| `media-ops` | Media pipeline templates |
+All applied workflows are accessed via the `/faion` umbrella — auto-routed by context. Sub-folders under `faion/workflows/`: `brainstorm`, `improver`, `media-ops`, `poll-agents`, `sdd-batch-orchestrator`. SDD execution theory lives in `faion/knowledge/solo/sdd/sdd/`.
 
 ### NERO-specific
 
