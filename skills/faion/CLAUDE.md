@@ -30,9 +30,13 @@ Tier gating: free reads `free/`; solo reads `free/ + solo/`; pro reads `free/ + 
 
 ## Workflows
 
-End-to-end orchestration patterns live alongside `knowledge/` under [workflows/](workflows/AGENTS.md). Each workflow is a methodology folder (`AGENTS.md` + `content/*.xml` + optional `templates/`). Current workflows:
+End-to-end orchestration patterns under [workflows/](workflows/AGENTS.md). The umbrella skill `/faion` auto-routes to one of these by context (see `description` in SKILL.md):
 
-- `workflows/sdd-batch-orchestrator/` — multi-feature SDD batch (study → clarify → plan → wave-execute → verify → review → fix → visual-deliver → close), fronted by versioned prompt files.
+- `workflows/brainstorm/` — multi-agent diverge-converge-review (consent gate runs first if user did not request brainstorm)
+- `workflows/sdd-batch-orchestrator/` — single-feature or multi-feature SDD batch (study → clarify → plan → wave-execute → verify → review → fix → close)
+- `workflows/improver/` — session review + system audit + fix-apply-log-commit cycle
+- `workflows/media-ops/` — AI media pipeline (interview → propose → scaffold → infra → content → register)
+- `workflows/poll-agents/` — self-replenishing background-agent pool for long task queues
 
 ## Playbooks
 

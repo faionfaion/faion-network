@@ -28,14 +28,14 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 
 ## Quick Start
 
-The recommended install path is as a **Claude Code plugin** named `faion` — keeps your `~/.claude/` clean, supports versioning, and namespaces all applied skills under `/faion:<skill>`.
+The recommended install path is as a **Claude Code plugin** named `faion`. **One** entry point — `/faion` — auto-routes to the right workflow (knowledge lookup, brainstorm, SDD batch, improver, media-ops, poll-agents) based on context.
 
 ```bash
 # Inside Claude Code:
 /plugin install faionfaion/faion-network
 ```
 
-After installing, the umbrella retrieval skill is available as `/faion` (or `/faion:faion` explicit), applied skills as `/faion:brainstorm`, `/faion`, `/faion:improver`, `/faion`, `/faion:media-ops`, `/faion:poll-agents`.
+After installing, just use `/faion` (or let auto-invocation pick it up from context). Internal workflows live under `skills/faion/workflows/<slug>/` and are routed by the umbrella's rich description, not invoked separately.
 
 ---
 
@@ -56,13 +56,14 @@ After installing, the umbrella retrieval skill is available as `/faion` (or `/fa
 
 Plugin assets register automatically:
 
-| Asset | Location in repo | Plugin invocation |
-|-------|------------------|-------------------|
-| Umbrella retrieval skill | `skills/faion/SKILL.md` | `/faion` (or `/faion:faion`) |
-| Applied skills | `skills/<slug>/` | `/faion:<slug>` |
+| Asset | Location in repo | Invocation |
+|-------|------------------|------------|
+| Umbrella skill | `skills/faion/SKILL.md` | `/faion` (auto-routes) |
+| Workflows | `skills/faion/workflows/<slug>/` | routed internally by `/faion` |
+| Tier playbooks | `skills/faion/playbooks/<tier>/<group>/<slug>/` | read on demand |
+| Knowledge bases | `skills/faion/knowledge/<tier>/<group>/<name>/` | read on demand |
 | Subagents | `agents/*.md` | auto-discovered |
 | Hooks | `hooks/hooks.json` (UserPromptSubmit) | auto-wired |
-| Tier playbooks | `skills/faion/playbooks/<tier>/<group>/<slug>/` | read on demand |
 
 Update with `/plugin update faion`. Disable with `/plugin disable faion`. Plugin name (`faion`) ≠ git repo name (`faion-network`) — install URL points to the repo, plugin namespace stays short.
 
@@ -72,7 +73,8 @@ Update with `/plugin update faion`. Disable with `/plugin disable faion`. Plugin
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
 # Verify
-ls ~/.claude/skills       # faion, brainstorm, /faion, improver, /faion, media-ops, poll-agents
+ls ~/.claude/skills       # faion (single skill, all workflows inside)
+ls ~/.claude/skills/faion/workflows/   # brainstorm/ improver/ media-ops/ poll-agents/ sdd-batch-orchestrator/
 ls ~/.claude/skills/faion/knowledge/   # free/ solo/ pro/ geek/
 ```
 
@@ -148,7 +150,7 @@ Sequential task execution with test runs, coverage checks, and code review cycle
 ### Multi-Agent Brainstorm
 
 ```bash
-/faion:brainstorm How to improve our deployment pipeline?
+/faion How to improve our deployment pipeline?
 ```
 
 Diverge (10 research agents) → Converge (synthesis) → Review (8 adversarial reviewers) → Finalize.
@@ -156,7 +158,7 @@ Diverge (10 research agents) → Converge (synthesis) → Review (8 adversarial 
 ### Session Improvement
 
 ```bash
-/faion:improver
+/faion
 ```
 
 Capture patterns, mistakes, and decisions from the current session into `.aidocs/memory/`.

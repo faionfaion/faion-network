@@ -52,5 +52,5 @@ Multi-feature batches drift when the orchestrator improvises long prompts each t
 - `docs/skill-authoring.md` — methodology folder shape, token budgets.
 - `skills/faion/` — quality gates, reflexion, code review primitives.
 - `skills/faion/` — sequential SDD task executor (counterpart for non-batch work).
-- `skills/faion:poll-agents/` — self-replenishing background pool for queue-driven batches without SDD artifacts.
+- `skills/faion/` — self-replenishing background pool for queue-driven batches without SDD artifacts.
 - `.aidocs/proposal/sdd-batch-orchestrator/` — original proposal text (kept for traceability).

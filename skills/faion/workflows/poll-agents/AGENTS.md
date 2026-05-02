@@ -1,12 +1,35 @@
 ---
-name: poll-agents
-description: "Self-replenishing background-agent pool: dispatch N parallel worktree subagents on a queue of batched tasks, replace on completion, persist state to disk, drive via cron tick + completion handler."
-tier: free
-user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion
+status: active
+audience: both
+owner: ruslan
+last_verified: 2026-05-02
+version: 2.0.0
+applies_to: any
 ---
 
-> **Entry point:** `/faion:poll-agents` — invoke directly, or compose from `/loop` + `/schedule` for the cron tick.
+# Poll-Agents Workflow
+
+## Summary
+
+Self-replenishing background-agent pool. Process a long queue of independent task batches by keeping a constant pool of N background subagents busy. Parent does only orchestration; all writes happen inside isolated worktree subagents. Pool stays full via cron tick + completion handler.
+
+## Why
+
+Linear sequential processing of 100+ task batches is slow and burns parent context. Pool pattern keeps N subagents in flight, replaces on completion, persists state to disk. Used to enrich 1142 methodologies with `agent-integration.md` files (~140 batches × 8 paths each); used for feature-048 (120 tier playbooks across 4 waves with strict 15-in-flight cap).
+
+## When To Use
+
+- ≥30 independent task batches that can run in parallel
+- Each batch is small (1-8 paths) and self-contained
+- Tasks must commit + push (worktree isolation prevents conflicts)
+- Long queue that benefits from cron-tick keepalive
+
+## When NOT To Use
+
+- <30 batches (sequential is simpler)
+- Tasks share state / depend on each other
+- Tasks need to coordinate mid-execution
+- Single-feature work (use sdd-batch-orchestrator instead)
 
 # Self-Replenishing Agent Pool
 

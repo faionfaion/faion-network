@@ -1,12 +1,34 @@
 ---
-name: media-ops
-description: "Build and operate complete AI media publishing pipelines from scratch: discovery interview, requirements, site, TG channels, prompts, automation."
-tier: pro
-user-invocable: true
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
+status: active
+audience: both
+owner: ruslan
+last_verified: 2026-05-02
+version: 2.0.0
+applies_to: any
 ---
 
-> **Entry point:** `/faion:media-ops` — invoke directly.
+# Media-Ops Workflow
+
+## Summary
+
+Build a complete AI media publishing pipeline from scratch: discovery interview → propose format → scaffold project → setup infrastructure (TG, domain, nginx, Gatsby) → seed content → register in media-manager. 7 phases, 4 production reference implementations.
+
+## Why
+
+Media outlets are built repeatedly with the same shape. Without a workflow each one drifts (different folder structure, missing review loops, no central registration). This workflow encodes the pattern proven in neromedia, pashtelka, longlife, ender.
+
+## When To Use
+
+- New media outlet (TG + site, or just TG)
+- AI-driven content pipeline (RSS / web search → LLM → publish)
+- Multi-language news bot
+- Branded blog with auto-image generation
+
+## When NOT To Use
+
+- Manual blog with no automation
+- Single-post project (overhead too high)
+- Modifying an existing outlet (use that outlet's own AGENTS.md)
 
 # Media Pipeline Factory
 
@@ -24,7 +46,7 @@ Reference implementations (4 active outlets):
 
 Central control plane: `~/workspace/projects/media-manager-faion-net/`
 
-Templates directory: `~/.claude/skills/faion:media-ops/templates/`
+Templates directory: `templates/` (relative to this file).
 
 ---
 
@@ -273,7 +295,7 @@ Shall I proceed?
 
 ### 3b. Render Templates
 
-Use files from `~/.claude/skills/faion:media-ops/templates/` as starting points.
+Use files from `~/.claude/skills/faion/templates/` as starting points.
 Render with project-specific values from the interview.
 
 ### 3c. Key Patterns

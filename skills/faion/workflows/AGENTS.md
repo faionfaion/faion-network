@@ -15,7 +15,11 @@ A workflow is **the orchestration shape**, not a script. The orchestrator is alw
 
 | Workflow | When to use |
 |----------|-------------|
-| `sdd-batch-orchestrator/` | Batch of ≥3 related SDD features delivered through study → clarify → plan → wave-execute → verify → review → fix → visual-deliver → close, fronted by versioned prompt files. |
+| `brainstorm/` | Multi-agent diverge-converge-review (10 research + 8 reviewers). Triggers: "brainstorm", "10 ideas", "audit X", "give me options". **Phase 0 consent gate** runs first if user did not explicitly ask for brainstorming. |
+| `sdd-batch-orchestrator/` | Batch of ≥3 related SDD features delivered through study → clarify → plan → wave-execute → verify → review → fix → visual-deliver → close, fronted by versioned prompt files. Also single-feature SDD work. |
+| `improver/` | Session-based continuous improvement: extract patterns + mistakes from current session (Phase 0, always) → optional system audit → propose fixes → apply with explicit approval → log → commit → skill creation. Triggers: "що зробили", "audit my server", "find issues", "improve system". |
+| `media-ops/` | Build a complete AI media publishing pipeline from scratch (TG channel + site + automation). 7 phases: interview → propose → scaffold → infrastructure → seed content → register in media-manager → iterate. |
+| `poll-agents/` | Self-replenishing background-agent pool for long queues of independent task batches (≥30). Parent does only orchestration; subagents work in isolated worktrees. Driven by cron tick + completion handler. |
 
 ## Conventions Inherited from the Repo
 
