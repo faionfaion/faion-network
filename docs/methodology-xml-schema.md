@@ -156,6 +156,45 @@ Reference real files inside `templates/` or `scripts/`:
 | `<list><item>...</item></list>` | bullet list |
 | `<term name="...">` | definition term |
 
+## Autonomous-Agent Sufficiency
+
+Schema correctness is necessary but not sufficient. A methodology with `<applies-to>agents</applies-to>` or `<applies-to>both</applies-to>` (default) MUST be applicable by an autonomous coding agent without external help. Beyond the schema-required `<title>`, every such methodology MUST include the blocks below — this is the de-facto standard adopted in the feature-048 sufficiency rewrite (47 methodologies, May 2026).
+
+### Required content blocks
+
+| Block | Minimum |
+|-------|---------|
+| `<when-to-use>` | ≥1 concrete trigger inside `<list>/<item>` (signal that fires the methodology) |
+| `<when-not-to-use>` | ≥1 anti-trigger; one-line reason each |
+| `<how-to>` with `<step>` children OR `<checklist>` with `<check>` children | how-to: ≥5 ordered steps; checklist: ≥8 items |
+| `<commands>` | ≥1 real CLI command (`<command name="...">` with runnable body); omit only when the workflow truly produces no shell output |
+| `<prompt purpose="...">` | ≥1 reusable LLM prompt in CDATA when the workflow involves generation/classification/audit |
+| `<verify>` with `<step>` children | ≥3 verification steps; each MUST cite a concrete command, file check, or measurable pass criterion |
+| `<example type="good">` + (`<example type="bad">` OR `<antipattern>`) | at least one good and one failure-mode example |
+| `<see-also>` | ≥2 cross-references (`<ref slug="...">` for internal peers, `<link href="...">` for external docs) |
+
+### Why these four questions
+
+Sufficiency answers what an agent asks at runtime:
+
+1. **WHEN do I trigger this?** → `<when-to-use>` + `<when-not-to-use>`.
+2. **WHAT do I run?** → `<how-to>` / `<checklist>` + `<commands>` + `<prompt>`.
+3. **HOW do I know it worked?** → `<verify>` with concrete pass criteria.
+4. **WHAT does success vs failure look like?** → `<example>` + `<antipattern>`.
+
+Skip any of the four and the agent guesses. The `/faion` skill returns the methodology body verbatim — nothing fills the gaps at runtime.
+
+### Length parity (rewrites)
+
+For methodology rewrites, new `<content>` text length MUST be ≥80% of the original (validator rule 10). New methodologies have no parity floor but should still be deep enough to satisfy the four-question test above (typically ≥250 lines / ≥10KB).
+
+### Recommended additions
+
+- `<warning>` for irreversible or costly mistakes (e.g. "do NOT use Flexible SSL with HTTPS origin").
+- `<template path="templates/...">` referencing a real file in `templates/` when the agent copies a config skeleton.
+- `<rule>` / `<rules>` for testable invariants the agent can grep-check.
+- `<note>` for short caveats inside steps.
+
 ## Closed Tag Vocabulary
 
 The full closed list lives in [`docs/methodology-tag-glossary.xml`](methodology-tag-glossary.xml). Validation rejects any tag outside that file.
@@ -349,6 +388,7 @@ A separate validator `scripts/validate-router-xml.py` (added in feature-047) enf
 - **Free-text inside top-level `<content>`** without a wrapper element. Wrap in `<p>`, `<summary>`, `<why>`, etc.
 - **Formatting tags** (`<bold>`, `<heading>`, `<br>`). Glossary rejects them.
 - **Skipping `<when-not-to-use>`.** Without anti-cases agents mis-apply the methodology.
+- **Methodology without `<commands>` or `<verify>`.** Schema-valid but agent-useless: the agent has no way to act or check the result. Fails the sufficiency rules above.
 - **Wrapping working code in XML attributes.** Code goes in `<code>` with CDATA.
 - **Empty `<templates>` / `<scripts>` blocks.** Omit instead.
 - **Inventing tags** outside the glossary. Update `methodology-tag-glossary.xml` first, with rationale.
