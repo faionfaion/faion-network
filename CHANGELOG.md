@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/launch-operations/customer-onboarding-email
 - add: tier-playbook solo/product-planning/roadmap-for-one-person
 - docs: feature-048 wave 2 dispatch rules
 - feat: feature-048 wave 1 closeout — Free tier complete (30/30 playbooks pass validator); group AGENTS.md/CLAUDE.md added for tech-setup, dev-fundamentals, business-discovery, cost-free-stack; validator hardened (DS3 ignores H2 inside fenced code-blocks; DS10 placeholder regex no longer false-positives on "address bar" / "snack bar" / etc.); --self-test still 5/5 pass
