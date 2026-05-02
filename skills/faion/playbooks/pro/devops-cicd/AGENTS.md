@@ -7,6 +7,7 @@ GitHub Actions pipelines, deployment patterns, container builds, and release aut
 | Slug | Goal |
 |------|------|
 | `production-cicd-pipeline` | Multi-stage GitHub Actions pipeline: lint → test → scan → build → staging → gate → production |
+| `deploy-blue-green-canary` | Zero-downtime blue/green ECS+ALB cutover (10 s) and canary 5%→25%→100% weighted routing with rollback |
 
 ## Authoring
 
