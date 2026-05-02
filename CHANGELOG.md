@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/sdd-workflow/spec-to-code-pipeline
 - add: tier-playbook solo/comms-stakeholder/client-email-templates
 - add: tier-playbook solo/sdd-workflow/scope-cutting
 - add: tier-playbook solo/ui-design/design-tokens-minimal
