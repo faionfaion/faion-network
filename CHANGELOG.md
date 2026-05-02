@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/ai-safety/pii-redaction-pipeline
 - add: tier-playbook geek/cost-optimization/model-routing-cheap-vs-strong
 - add: tier-playbook geek/ml-ops/model-monitoring-drift
 - add: tier-playbook geek/context-engineering/prompt-caching-anthropic
