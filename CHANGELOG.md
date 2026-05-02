@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook free/dev-fundamentals/javascript-first-project
 - add: tier-playbook free/hosting-infra/deploy-static-site-github-pages
 - add: tier-playbook free/tech-setup/ssh-key-setup-github
 - add: tier-playbook free/business-discovery/mom-test-customer-interview
