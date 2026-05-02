@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/ai-agents/multi-agent-orchestration
 - add: tier-playbook geek/claude-code-skills/claude-code-skill-authoring
 - add: tier-playbook geek/mcp-protocol/mcp-server-build
 - add: tier-playbook geek/rag-pipelines/rag-chunking-benchmark
