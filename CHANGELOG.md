@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook geek/ml-ops/model-monitoring-drift
 - add: tier-playbook geek/context-engineering/prompt-caching-anthropic
 - add: tier-playbook geek/prompt-engineering/semantic-xml-prompts-anthropic
 - add: tier-playbook geek/ai-agents/multi-agent-orchestration
