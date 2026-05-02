@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- add: tier-playbook solo/sdd-workflow/sdd-for-solos
 - add: tier-playbook solo/launch-operations/pricing-experiments
 - add: tier-playbook solo/launch-operations/customer-onboarding-email
 - add: tier-playbook solo/product-planning/roadmap-for-one-person
