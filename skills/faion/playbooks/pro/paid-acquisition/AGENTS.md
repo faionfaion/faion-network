@@ -9,6 +9,7 @@ Citation scope: `knowledge/free/ + solo/ + pro/`. Never cite `geek/`.
 | Slug | Title | Status |
 |------|-------|--------|
 | `google-ads-first-campaign` | Google Ads First Campaign: Structure to Launch | active |
+| `meta-ads-b2c` | Meta Ads Playbook: Audience, Creative, Scale | active |
 
 ## Authoring
 
