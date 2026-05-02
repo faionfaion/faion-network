@@ -41,7 +41,12 @@ REQUIRED_SECTIONS = [
 SLUG_RE = re.compile(r"^[a-z][a-z0-9-]{2,40}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(-[a-z0-9.-]+)?$")
-PLACEHOLDER_RE = re.compile(r"\b(foo|bar|example\.com|baz|qux)\b", re.IGNORECASE)
+PLACEHOLDER_RE = re.compile(
+    r"(?<![a-z])(foo(?:bar)?|example\.com|baz|qux)(?![a-z])"
+    r"|\bbar\.(?:py|js|ts|sh|md|html|css|json|yml|yaml)\b"
+    r"|\bfoo\.[a-z]+\b",
+    re.IGNORECASE,
+)
 GENERIC_PHRASES = (
     "this methodology explains",
     "covers the basics",
@@ -83,12 +88,22 @@ def parse_frontmatter(text: str) -> dict:
 
 
 def parse_h2_sections(body: str) -> list[tuple[str, str]]:
-    """Return list of (heading, content) tuples for `## ` H2 sections in order."""
+    """Return list of (heading, content) tuples for `## ` H2 sections in order.
+
+    Skips H2 lines inside fenced code blocks (``` ... ```).
+    """
     sections: list[tuple[str, str]] = []
     cur_name = None
     cur_buf: list[str] = []
+    in_fence = False
     for line in body.splitlines():
-        if line.startswith("## "):
+        stripped = line.lstrip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            if cur_name is not None:
+                cur_buf.append(line)
+            continue
+        if not in_fence and line.startswith("## "):
             if cur_name is not None:
                 sections.append((cur_name, "\n".join(cur_buf)))
             cur_name = line[3:].strip()

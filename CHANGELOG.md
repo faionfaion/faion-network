@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: feature-048 wave 1 closeout — Free tier complete (30/30 playbooks pass validator); group AGENTS.md/CLAUDE.md added for tech-setup, dev-fundamentals, business-discovery, cost-free-stack; validator hardened (DS3 ignores H2 inside fenced code-blocks; DS10 placeholder regex no longer false-positives on "address bar" / "snack bar" / etc.); --self-test still 5/5 pass
+
 - add: tier-playbook free/dev-fundamentals/code-style-and-prettier
 - add: tier-playbook free/marketing-fundamentals/positioning-basics
 - add: tier-playbook free/cost-free-stack/free-email-with-cloudflare
