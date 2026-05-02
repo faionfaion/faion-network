@@ -6,9 +6,9 @@ last_verified: 2026-05-02
 applies_to: skills/faion/workflows/
 ---
 
-# Workflows + Playbooks Conventions
+# Workflows + Workflow Playbooks Conventions
 
-Authoritative spec for the two new entity types under `skills/faion/workflows/<slug>/`.
+Authoritative spec for entities under `skills/faion/workflows/<slug>/`. For the sibling **tier-playbook** entity at `skills/faion/playbooks/<tier>/<group>/<slug>/`, see `../playbooks/playbook-spec.md`.
 
 ## What lives here
 
@@ -16,6 +16,7 @@ Authoritative spec for the two new entity types under `skills/faion/workflows/<s
 |------|-----------|
 | `workflow-spec.md` | Authoring a new workflow (orchestration pattern) or auditing an existing one. Reference + explanation. |
 | `playbook-spec.md` | Authoring a new per-surface playbook for an existing workflow. How-to. |
+| `../playbooks/playbook-spec.md` | Authoring a tier playbook (per-task, per-tier how-to under `skills/faion/playbooks/`). Different entity, same word. |
 
 ## Reading order
 

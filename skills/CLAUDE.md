@@ -9,6 +9,7 @@ Claude Code skills for the faion-network framework.
 | Skill | Description |
 |-------|-------------|
 | `faion` | 52 domain knowledge bases, 1300+ methodologies. Tier-partitioned. Load content from `faion/knowledge/<tier>/<group>/<name>/` on demand with Read. |
+| `faion/playbooks` | Standalone how-to guides at `faion/playbooks/<tier>/<group>/<slug>/playbook.md`. Tier-gated parallel to knowledge. Spec: `.aidocs/conventions/playbooks/playbook-spec.md`. |
 
 ### Applied tools
 

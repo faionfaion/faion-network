@@ -23,3 +23,12 @@ The output below is XML.
 ```!
 python3 ~/workspace/projects/faion-net/faion-network/skills/faion/scripts/retrieve.py "${CLAUDE_SESSION_ID:-}"
 ```
+
+## Playbooks
+
+Beyond knowledge methodologies, the faion umbrella also hosts **tier playbooks** at `playbooks/<tier>/<group>/<slug>/playbook.md`. Playbooks are standalone how-to guides (e.g., "Buy a domain on Namecheap", "Build an MCP server", "First hire developer") — one task, one tier, one folder.
+
+Tier-gated on the same boundary as knowledge: free reads `playbooks/free/`; solo reads `free/ + solo/`; pro reads `free/ + solo/ + pro/`; geek reads all four. Each playbook MUST cite ≥1 methodology from `knowledge/<tier ≤ playbook tier>/`.
+
+Spec: [`.aidocs/conventions/playbooks/playbook-spec.md`](../../.aidocs/conventions/playbooks/playbook-spec.md). Validator: `python3 scripts/validate-tier-playbook.py <path>`.
+

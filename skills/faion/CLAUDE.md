@@ -34,6 +34,21 @@ End-to-end orchestration patterns live alongside `knowledge/` under [workflows/]
 
 - `workflows/sdd-batch-orchestrator/` — multi-feature SDD batch (study → clarify → plan → wave-execute → verify → review → fix → visual-deliver → close), fronted by versioned prompt files.
 
+## Playbooks
+
+Standalone how-to guides at [playbooks/](playbooks/AGENTS.md), parallel to `knowledge/`. Each playbook = one task at one tier (free/solo/pro/geek). Tier inheritance for citations is identical to knowledge: free playbook may only cite `knowledge/free/`; solo cites `free/ + solo/`; etc.
+
+```
+playbooks/
+├── AGENTS.md
+├── free/   tech-setup, hosting-infra, dev-fundamentals, business-discovery, mvp-essentials, marketing-fundamentals, cost-free-stack, ops-basics
+├── solo/   sdd-workflow, frontend-launch, api-design, server-craft, automation, product-planning, product-ops, ui-design, content-marketing, seo-essentials, comms-stakeholder, launch-operations, solo-ops-finance
+├── pro/    client-engagement, delivery-ops, team-management, business-analysis, product-management, devops-cicd, infra-engineering, backend-systems, ux-research, growth-marketing, paid-acquisition, smm-cro, market-research, hr-ops
+└── geek/   rag-pipelines, ai-agents, llm-integration, prompt-engineering, context-engineering, mcp-protocol, claude-code-skills, evaluation, ai-safety, ml-ops, fine-tuning, multimodal, cost-optimization, ai-product-positioning, ai-consultancy-ops
+```
+
+Spec: `.aidocs/conventions/playbooks/playbook-spec.md`. Validator: `scripts/validate-tier-playbook.py`.
+
 ---
 
 *Faion Network v4.1*
