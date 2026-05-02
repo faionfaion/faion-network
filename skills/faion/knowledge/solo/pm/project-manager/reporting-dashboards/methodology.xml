@@ -4,7 +4,7 @@
     <tier>solo</tier>
     <group>pm</group>
     <domain>project-manager</domain>
-    <summary>Automated PM reporting with tool-specific dashboard config, scheduled generation, Slack delivery, BI integration via API ETL. Query tools read-only, validate data, archive reports.</summary>
+    <summary>Automated PM reporting: tool-specific dashboards (Jira/Linear/ClickUp), scheduled runs, Slack delivery, BI ETL, validate-then-send agent chain.</summary>
     <tags>
       <tag>reporting</tag>
       <tag>dashboards</tag>
@@ -14,6 +14,8 @@
     </tags>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
+    <updated>2026-05-01</updated>
+    <applies-to>agents</applies-to>
   </metadata>
 
   <content>
@@ -27,22 +29,34 @@
 
     <when-to-use>
       <list>
-        <item>Sprint-cadence status reporting requires manual data collection from multiple PM tools</item>
-        <item>Stakeholders need a consolidated view across several projects without PM tool access</item>
-        <item>PM tool native reports are insufficient and data needs cross-referencing with external sources</item>
-        <item>Automated Slack digests needed on a fixed schedule (daily standup summary, weekly status)</item>
-        <item>PM data needs to feed into BI tools for trend analysis over time</item>
+        <item>Sprint-cadence status reporting requires manual data collection from multiple PM tools (Jira + Linear + spreadsheets), and the same numbers are computed every week.</item>
+        <item>Stakeholders need a consolidated view across several projects without PM tool access (executives, customers, cross-team partners).</item>
+        <item>PM tool native reports are insufficient and data needs cross-referencing with external sources (deploy frequency, error rates, support tickets).</item>
+        <item>Automated Slack digests are required on a fixed schedule (daily standup summary, weekly status, end-of-sprint review).</item>
+        <item>PM data must feed a BI tool (Metabase / PowerBI / Grafana) for multi-sprint trend analysis.</item>
+        <item>Trigger phrases from a human PM that map to this methodology: "automate weekly status", "send sprint summary to Slack", "build executive dashboard", "feed Jira metrics into Metabase".</item>
       </list>
     </when-to-use>
 
     <when-not-to-use>
       <list>
-        <item>Team of 1-3 people where a quick manual update is faster than building dashboard automation</item>
-        <item>PM tool's native dashboard covers all stakeholder needs — adding automation creates maintenance burden</item>
-        <item>Regulated environments needing report provenance and immutability guarantees — automated reports lack audit trails unless outputs are explicitly archived</item>
-        <item>Real-time operational dashboards (incident response) — PM dashboards lag by minutes to hours</item>
+        <item>Team of 1-3 people where a quick manual update is faster than building dashboard automation.</item>
+        <item>PM tool's native dashboard covers all stakeholder needs — adding automation creates maintenance burden.</item>
+        <item>Regulated environments needing report provenance and immutability — automated reports lack audit trails unless outputs are explicitly archived.</item>
+        <item>Real-time operational dashboards (incident response) — PM dashboards lag by minutes to hours and are not suitable for on-call.</item>
       </list>
     </when-not-to-use>
+
+    <how-to>
+      <p>Run the seven-step pipeline whenever the trigger fires (cron, sprint-end webhook, manual). Each step is independently testable; never collapse generate and deliver into one script.</p>
+      <step>1. Audit data quality. Run a JQL or GraphQL query that lists every sprint issue without an estimate, with status Done but resolution Unresolved, or with status In Progress and no assignee. If hit count exceeds 5% of sprint size, abort with a "fix data first" alert — do not generate the report.</step>
+      <step>2. Define schema. Lock the report schema in a JSON file checked into the repo (status enum, threshold table, metric list, archival path, dashboard URL). Every run reads the same schema; ad-hoc changes go through a PR.</step>
+      <step>3. Fetch read-only. Use a token whose scope is read-only. Paginate until startAt + maxResults >= total or nextPageToken is empty. Store raw JSON to disk with timestamp before computing metrics.</step>
+      <step>4. Compute multi-metric health. completion_rate, scope_creep (issues added after Day 2 of sprint), blocked_count, mid_sprint_status_changes. Apply the threshold table → status enum (On Track / At Risk / Off Track).</step>
+      <step>5. Validate. If committed == 0 OR fetch_errors &gt; 0 OR sprint_start_date &gt; today → emit error alert and exit non-zero. Never deliver a degraded report.</step>
+      <step>6. Archive. Write the rendered report to a durable store (S3, Notion, GitHub issue comment, or local file under reports/&lt;date&gt;.md) BEFORE delivery. Include the dashboard URL and the raw JSON path.</step>
+      <step>7. Deliver. Post to Slack via Block Kit (chunk if &gt; 3000 chars per block), attach the archive URL, and exit 0. For executive reports, route to a human-checkpoint queue first; the human appends a 1-2 sentence narrative, then sends.</step>
+    </how-to>
 
     <section name="data-quality">
       <rule>
@@ -61,7 +75,7 @@
 
     <section name="report-schema">
       <rule>
-        <statement>Define a fixed report schema before automating. Every automated report must include: status (On Track/At Risk/Off Track), the metric thresholds that determine status (On Track = completion >= 85%, At Risk = 70-84%, Off Track = &lt;70%), a link to the live dashboard, and archival path for the generated report.</statement>
+        <statement>Define a fixed report schema before automating. Every automated report must include: status (On Track/At Risk/Off Track), the metric thresholds that determine status (On Track = completion &gt;= 85%, At Risk = 70-84%, Off Track = &lt;70%), a link to the live dashboard, and archival path for the generated report.</statement>
         <rationale>Ad-hoc report formats generate "what does this number mean?" questions from recipients. Fixed thresholds make status classifications auditable.</rationale>
       </rule>
       <rule>
@@ -140,11 +154,116 @@
       </list>
     </section>
 
+    <commands>
+      <command name="install-deps">pip install requests python-dateutil</command>
+      <command name="run-jira-fetcher">JIRA_URL=https://yourorg.atlassian.net JIRA_TOKEN=$JIRA_TOKEN SLACK_WEBHOOK=$SLACK_WEBHOOK SPRINT_ID=123 python3 templates/jira-metrics-fetcher.py</command>
+      <command name="probe-jira-sprint">curl -s -H "Authorization: Bearer $JIRA_TOKEN" "$JIRA_URL/rest/api/3/search?jql=sprint%20%3D%20$SPRINT_ID&amp;maxResults=0" | jq '.total'</command>
+      <command name="probe-linear-graphql">curl -s -X POST -H "Authorization: $LINEAR_TOKEN" -H "Content-Type: application/json" -d '{"query":"query{viewer{id name}}"}' https://api.linear.app/graphql | jq</command>
+      <command name="post-slack-test">curl -s -X POST -H 'Content-Type: application/json' --data '{"text":"reporting-dashboards smoke test"}' "$SLACK_WEBHOOK"</command>
+      <command name="schedule-cron-weekly">echo '0 9 * * MON cd /opt/reports &amp;&amp; /usr/bin/python3 templates/jira-metrics-fetcher.py &gt;&gt; reports/cron.log 2&gt;&amp;1' | crontab -</command>
+      <command name="archive-locally">mkdir -p reports &amp;&amp; python3 templates/jira-metrics-fetcher.py | tee "reports/$(date -u +%Y-%m-%d)-status.md"</command>
+      <command name="dryrun-no-deliver">SLACK_WEBHOOK=https://example.invalid SPRINT_ID=123 python3 templates/jira-metrics-fetcher.py</command>
+    </commands>
+
+    <prompt purpose="agent-system-prompt-for-report-run"><![CDATA[
+You are the PM reporting agent. Treat every PM tool API as READ-ONLY (no PUT/POST/PATCH/DELETE).
+
+Pipeline (do not skip steps):
+  1. fetch  → call read-only API, paginate until done, save raw JSON to ./reports/raw/<utc-date>.json
+  2. compute → completion_rate, scope_creep, blocked_count, status (On Track/At Risk/Off Track)
+  3. validate → if committed == 0 OR fetch_errors > 0 OR sprint_start > today: emit error alert and STOP
+  4. archive  → write rendered markdown to ./reports/<utc-date>-<sprint_id>.md BEFORE delivery
+  5. deliver  → post Slack Block Kit (chunk at 3000 chars), include archive URL + dashboard URL
+
+Thresholds:
+  On Track   completion >= 85% AND scope_creep <= 10% AND blocked == 0
+  At Risk    completion 70-84%  OR  scope_creep 11-25%  OR  blocked 1-2
+  Off Track  completion <  70%  OR  scope_creep >  25%  OR  blocked >  2
+
+Output schema (JSON, exactly these keys):
+  {sprint_id, status, completion_rate, scope_creep, blocked_count,
+   committed, completed, dashboard_url, archive_path, generated_at_utc}
+
+Hard rules:
+- Never write to PM tools.
+- Never deliver if validation fails. Emit error alert instead.
+- Never invent numbers. If a field is unknown, write "data unavailable", not 0.
+- Never reuse a JQL query as a Linear GraphQL query.
+]]></prompt>
+
+    <prompt purpose="jql-template-jira-current-sprint"><![CDATA[
+project = "<PROJECT_KEY>" AND sprint in openSprints()
+ORDER BY rank ASC
+-- pagination: startAt = 0, maxResults = 100, loop until startAt+maxResults >= total
+]]></prompt>
+
+    <prompt purpose="graphql-template-linear-current-cycle"><![CDATA[
+query CurrentCycleIssues($teamId: String!) {
+  team(id: $teamId) {
+    activeCycle {
+      id
+      startsAt
+      endsAt
+      issues(first: 100) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id identifier title state { name } estimate createdAt completedAt }
+      }
+    }
+  }
+}
+]]></prompt>
+
+    <prompt purpose="slack-block-kit-status-digest"><![CDATA[
+{
+  "blocks": [
+    {"type": "header", "text": {"type": "plain_text", "text": "Sprint <SPRINT_ID> — <STATUS>"}},
+    {"type": "section", "fields": [
+      {"type": "mrkdwn", "text": "*Completion:* <COMPLETED>/<COMMITTED> (<RATE>%)"},
+      {"type": "mrkdwn", "text": "*Scope creep:* <CREEP>%"},
+      {"type": "mrkdwn", "text": "*Blocked:* <BLOCKED>"},
+      {"type": "mrkdwn", "text": "*Generated:* <UTC_TIMESTAMP>"}
+    ]},
+    {"type": "actions", "elements": [
+      {"type": "button", "text": {"type": "plain_text", "text": "Live dashboard"}, "url": "<DASHBOARD_URL>"},
+      {"type": "button", "text": {"type": "plain_text", "text": "Full report"}, "url": "<ARCHIVE_URL>"}
+    ]}
+  ]
+}
+]]></prompt>
+
     <templates>
       <template path="templates/weekly-status-report.md" purpose="Weekly status report markdown template with exec summary, metrics table, risks, next week focus"/>
       <template path="templates/sprint-report.md" purpose="Sprint report template with delivery summary, burndown, quality metrics, retrospective highlights"/>
-      <template path="templates/jira-metrics-fetcher.py" purpose="Python script to pull Jira sprint metrics and post to Slack"/>
+      <template path="templates/jira-metrics-fetcher.py" purpose="Python script: read-only Jira fetch, validate, post to Slack, archive locally"/>
     </templates>
+
+    <checklist>
+      <check>Trigger matches when-to-use list (sprint cadence, multi-tool, BI feed, scheduled digest).</check>
+      <check>Token used for the run is read-only; no write scopes attached.</check>
+      <check>Report schema (status enum, thresholds, fields) is checked into the repo and unchanged for this run.</check>
+      <check>Pagination loop continues until startAt + maxResults &gt;= total or nextPageToken is null.</check>
+      <check>Multi-metric health is computed (completion_rate, scope_creep, blocked_count) — not a single metric.</check>
+      <check>Validation guards are in place: committed==0, fetch_errors&gt;0, sprint_start&gt;today all abort delivery.</check>
+      <check>Sprint-boundary guard fires if sprint is unstarted or empty (sends "sprint not started" instead).</check>
+      <check>Raw JSON and rendered markdown are archived to a durable path BEFORE Slack delivery.</check>
+      <check>Slack message respects the 3000-char-per-block limit; large tables are chunked or replaced with "see full report" link.</check>
+      <check>Dashboard URL and archive URL are present in every delivered message.</check>
+      <check>For executive reports: human-checkpoint queue is used (agent generates, human adds narrative, then sends).</check>
+      <check>BI ETL writes use idempotent upsert keyed on (sprint_id, issue_id); a second run produces identical DB state.</check>
+      <check>API token expiry dates are recorded in .aidocs/memory/ with a calendar reminder set.</check>
+      <check>Cron schedule starts weekly (not daily) and is reviewed after 4 sends for engagement.</check>
+    </checklist>
+
+    <verify>
+      <step>1. Lint and validate the methodology XML itself: python3 scripts/validate-methodology-xml.py skills/faion/knowledge/solo/pm/project-manager/reporting-dashboards/methodology.xml — expect PASS.</step>
+      <step>2. Smoke-test API access (read-only): probe-jira-sprint or probe-linear-graphql command above. Expect HTTP 200 and a non-error JSON body.</step>
+      <step>3. Dry-run the fetcher with an invalid SLACK_WEBHOOK to confirm validation aborts before delivery: dryrun-no-deliver. Expect non-zero exit if data invalid, no Slack post regardless.</step>
+      <step>4. Run the real pipeline against a known sprint with non-zero committed issues. Verify the rendered report appears under reports/&lt;date&gt;-&lt;sprint&gt;.md before any Slack message lands.</step>
+      <step>5. Open the Slack message and confirm: status badge present, completion/scope/blocked fields present, dashboard URL clickable, archive URL clickable, no truncation marker without "see full report" fallback.</step>
+      <step>6. Run the pipeline twice in a row. Confirm BI table row count is unchanged (idempotent upsert) and the second Slack post is suppressed or labelled as a duplicate.</step>
+      <step>7. Negative test: change SPRINT_ID to a future or empty sprint. Confirm the pipeline emits the "sprint not started" alert and exits non-zero, with NO status report posted.</step>
+      <step>8. Audit: confirm the API token used has no write scopes (Jira: read:jira-work only; Linear: viewer-scoped key; GitHub: repo:status read).</step>
+    </verify>
 
     <see-also>
       <link href="https://support.atlassian.com/jira-software-cloud/docs/create-and-customize-a-dashboard/"/>

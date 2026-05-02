@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- improve: reporting-dashboards — methodology rewritten for autonomous agent application
 - improve: zero-click-search-adaptation — methodology rewritten for autonomous agent application
 - improve: topical-authority — methodology rewritten for autonomous agent application
 - improve: seo — methodology rewritten for autonomous agent application
