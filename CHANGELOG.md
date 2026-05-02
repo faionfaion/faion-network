@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - add: tier-playbook solo/sdd-workflow/scope-cutting
 - add: tier-playbook solo/ui-design/design-tokens-minimal
 - add: tier-playbook solo/product-ops/backlog-hygiene
+- add: tier-playbook solo/content-marketing/content-calendar
 - add: tier-playbook solo/automation/env-management-secrets
 - add: tier-playbook solo/launch-operations/churn-intervention
 - add: tier-playbook solo/launch-operations/payment-flow
