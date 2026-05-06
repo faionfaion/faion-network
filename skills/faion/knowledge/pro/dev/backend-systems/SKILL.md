@@ -91,15 +91,19 @@ options:
 - Message queues
 - Error handling patterns
 
-## Methodologies (22 files)
+## Methodologies (44 files)
 
-**Go (10):** go-backend, go-channels, go-concurrency-patterns, go-error-handling, go-error-handling-patterns, go-goroutines, go-http-handlers, go-project-structure, go-standard-layout
+**Go (13):** `go-backend`, `go-channels`, `go-concurrency-patterns`, `go-error-handling`, `go-error-handling-patterns`, `go-goroutines`, `go-http-handlers`, `go-project-structure`, `go-standard-layout`, `go-layout-agentic-workflow`, `go-layout-directory-structure`, `go-layout-layer-rules`, `go-layout-toolchain`
 
-**Rust (7):** rust-backend, rust-error-handling, rust-http-handlers, rust-ownership, rust-project-structure, rust-testing, rust-tokio-async
+**Rust (12):** `rust-backend`, `rust-error-handling`, `rust-http-handlers`, `rust-ownership`, `rust-project-structure`, `rust-testing`, `rust-tokio-async`, `rust-testing-antipatterns`, `rust-testing-ci-toolchain`, `rust-testing-integration`, `rust-testing-property`, `rust-testing-unit`
 
-**Database (3):** database-design, nosql-patterns, sql-optimization
+**Database (7):** `database-design`, `sql-optimization`, `nosql-patterns`, `nosql-cassandra-patterns`, `nosql-mongodb-patterns`, `nosql-neo4j-patterns`, `nosql-redis-patterns`
 
-**Infrastructure (4):** caching-strategy, error-handling, message-queues
+**Caching (6):** `caching-strategy`, `caching-http-headers`, `caching-in-memory`, `caching-invalidation`, `caching-stampede-prevention`, `caching-write-patterns`
+
+**Messaging (5):** `message-queues`, `mq-broker-implementations`, `mq-idempotent-consumers`, `mq-patterns`, `mq-reliability`
+
+**Infrastructure (1):** `error-handling`
 
 ## Tools
 

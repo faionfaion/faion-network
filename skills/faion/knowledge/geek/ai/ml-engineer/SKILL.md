@@ -186,6 +186,112 @@ When a task arrives:
 | Vision, image gen | faion-multimodal-ai |
 | Speech, TTS | faion-multimodal-ai |
 
+## Methodologies (70)
+
+Orchestrator-local methodology folders co-located with this KB.
+
+**Agents (8):**
+- `ai-agent-patterns`: Core agent design patterns
+- `agents-framework-selection`: Pick LangChain / LlamaIndex / native
+- `agents-react-pattern`: ReAct reasoning + acting loop
+- `agents-memory-system`: Short / long memory layers
+- `agents-safety-guardrails`: Agent-level safety controls
+- `agents-production-deployment`: Deploy agents to prod
+- `multi-agent-systems`: Multi-agent coordination
+- `multi-agent-design-patterns`: Hierarchical, peer, sequential
+
+**RAG & Retrieval (6):**
+- `rag`: RAG fundamentals
+- `rag-pipeline-design`: End-to-end pipeline shape
+- `rag-evaluation`: Eval metrics, frameworks
+- `agentic-rag`: Agent-driven retrieval
+- `graph-rag`: Knowledge-graph augmented RAG
+- `hybrid-search`: Vector + keyword search
+- `reranking`: Cross-encoder reranking
+- `chunking-strategies`: Chunking patterns
+
+**Embeddings (5):**
+- `embedding-generation`: Generate vectors via API
+- `embeddings-provider-apis`: OpenAI / Voyage / Cohere
+- `embeddings-model-selection`: Pick model by task / cost
+- `embeddings-batch-and-cache`: Batching and cache layer
+- `embeddings-evaluation`: Eval embedding quality
+- `embeddings-production-ops`: Run embeddings in prod
+
+**Vector Databases (6):**
+- `vector-databases`: Comparison and selection
+- `vector-db-setup-dev`: Local / dev setup
+- `vector-db-setup-prod`: Production deployment
+- `vector-db-index-tuning`: Index params, recall vs latency
+- `vector-db-monitoring`: Health, drift, freshness
+- `vector-db-security`: Auth, isolation, encryption
+
+**LLM Providers (3):**
+- `openai-api`: OpenAI SDK integration
+- `claude-api`: Anthropic SDK integration
+- `gemini-api`: Google AI SDK integration
+
+**Prompt Engineering (5):**
+- `prompt-engineering-fundamentals`: Structure, few-shot
+- `prompt-engineering-reasoning`: CoT, ToT, reflection
+- `prompt-engineering-production`: Versioning, templates
+- `prompt-engineering-evaluation`: Test prompts at scale
+- `prompt-engineering-security`: Injection / jailbreak defense
+- `chain-of-thought`: CoT reasoning patterns
+- `structured-output`: JSON / schema-constrained output
+- `tool-use-function-calling`: Tool definitions, dispatch
+
+**MCP (5):**
+- `mcp-architecture`: Protocol architecture
+- `mcp-server-implementation`: Build an MCP server
+- `mcp-client-integration`: Connect Claude Code / clients
+- `mcp-dev-prompts`: Prompts inside MCP servers
+- `mcp-security`: Auth, capability scopes
+
+**Guardrails (5):**
+- `guardrails-concepts`: Why and what to guard
+- `guardrails-ai-framework`: Guardrails AI library
+- `guardrails-nemo`: NVIDIA NeMo Guardrails
+- `guardrails-custom-pipeline`: Build custom guardrail chain
+- `guardrails-testing`: Red-team and regression tests
+
+**Fine-tuning (6):**
+- `fine-tuning-lora`: LoRA / QLoRA workflow
+- `fine-tuning-openai-data-prep`: Dataset shaping
+- `fine-tuning-openai-sft`: Supervised fine-tuning
+- `fine-tuning-openai-dpo`: Preference tuning
+- `fine-tuning-openai-eval`: Eval before / after
+- `fine-tuning-openai-deployment`: Ship fine-tuned model
+
+**Ollama / Local (6):**
+- `ollama-setup-models`: Install and pull models
+- `ollama-deployment`: Production deployment
+- `ollama-python-client`: Python integration
+- `ollama-prompt-engineering`: Local-model prompting
+- `ollama-tool-calling`: Tool calling on local LLMs
+- `ollama-agent-integration`: Use Ollama inside an agent
+
+**Vision (5):**
+- `vision-provider-selection`: Pick vision provider
+- `vision-document-extraction`: PDF / form extraction
+- `vision-classification-moderation`: Tagging, moderation
+- `vision-accessibility`: Alt-text, screen-reader support
+- `vision-agentic-pipeline`: Agent-driven vision pipeline
+
+**Video Generation (4):**
+- `video-generation-provider-selection`: Pick provider
+- `video-generation-prompt-engineering`: Prompt for video
+- `video-generation-async-api`: Long-running async jobs
+- `video-generation-production-service`: Production service
+
+**Speech (1):**
+- `speech-to-text`: STT providers, streaming
+
+**Governance (2):**
+- `ai-governance-compliance`: Org-level governance
+- `eu-ai-act-compliance`: EU AI Act tiers, duties
+- `reasoning-first-architectures`: Extended-thinking design
+
 ## Related Skills
 
 | Skill | Relationship |

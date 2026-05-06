@@ -156,6 +156,61 @@ faion-project-manager (orchestrator)
         - Project closure, lessons learned
 ```
 
+## Methodologies (37 in this folder)
+
+### PMBoK Foundations (5)
+- `seven-performance-domains` — PMBoK 7 domain model
+- `performance-domains-overview` — Domain summary
+- `six-core-principles` — PMBoK core principles
+- `pm-framework-focus-areas` — Framework focus map
+- `pm-certification-alignment-2026` — 2026 certification map
+
+### Planning (8)
+- `scope-management` — Scope baseline
+- `wbs-creation` — Work breakdown structure
+- `work-breakdown-structure` — WBS reference
+- `schedule-development` — Schedule baseline
+- `cost-estimation` — Cost estimating techniques
+- `resource-management` — Resource planning
+- `procurement-management` — Procurement plan
+- `quality-management` — Quality plan
+
+### Risk & Stakeholders (5)
+- `risk-management` — Risk process
+- `risk-register` — Risk register template
+- `stakeholder-engagement` — Engagement plan
+- `stakeholder-engagement-advanced` — Advanced engagement tactics
+- `stakeholder-register` — Stakeholder register
+
+### Execution & Tools (8)
+- `agile-ceremonies-setup` — Scrum/Kanban ceremonies
+- `agile-hybrid-approaches` — Hybrid delivery setup
+- `hybrid-delivery` — Hybrid playbook
+- `jira-workflow-management` — Jira workflows
+- `azure-devops-boards` — Azure Boards
+- `gitlab-boards` — GitLab issue boards
+- `pm-tool-selection` — Tool selection guide
+- `cross-tool-migration` — PM tool migration
+
+### Team & Comms (4)
+- `team-development` — Team building stages
+- `raci-matrix` — RACI assignment
+- `communications-management` — Comms plan
+- `change-control` — Change control board
+
+### Closure & Value (4)
+- `project-closure` — Closure checklist
+- `project-integration` — Integration management
+- `lessons-learned` — Retrospective capture
+- `benefits-realization` — Benefit tracking
+
+### Modern PM (3)
+- `predictive-analytics-pm` — AI-driven PM forecasting
+- `value-stream-management` — VSM practice
+- `pm-certification-changes-2026` — 2026 certification changes
+
+---
+
 ## References
 
 | Reference | Content |

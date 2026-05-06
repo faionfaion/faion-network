@@ -142,7 +142,7 @@ options:
 
 ---
 
-## Methodologies (30)
+## Methodologies (55)
 
 **Fundamentals (5):** system-design-process | c4-model | architecture-decision-records | quality-attributes-analysis | trade-off-analysis
 
@@ -157,6 +157,46 @@ options:
 **Quality (4):** security-architecture | performance-architecture | reliability-architecture | observability-architecture
 
 **Templates (3):** adr-template | quality-attributes | workflows
+
+### Architecture patterns (split)
+
+- `arch-pattern-clean` — Clean Architecture (Uncle Bob)
+- `arch-pattern-hexagonal` — Hexagonal / Ports and Adapters
+- `arch-pattern-onion` — Onion Architecture
+- `arch-pattern-ddd` — Domain-Driven Design
+
+### API gateway (split)
+
+- `api-gateway-patterns` — gateway patterns and topologies
+- `api-gateway-security` — auth, rate limit, WAF at the gateway
+- `api-gateway-resilience` — retry, timeout, circuit breaker
+- `api-gateway-observability` — tracing, logging, metrics
+- `api-gateway-graphql` — GraphQL federation, gateway
+
+### Serverless (split)
+
+- `serverless-foundations` — serverless model basics
+- `serverless-architecture-patterns` — common serverless patterns
+- `serverless-cold-start-optimization` — cold start mitigation
+- `serverless-cost-optimization` — pay-per-use cost tuning
+- `serverless-iac-and-templates` — SAM, SST, CDK templates
+
+### Decision trees (split)
+
+- `decision-tree-process` — how to run a decision tree
+- `decision-tree-architecture-style` — monolith vs micro vs hybrid
+- `decision-tree-tech-stack` — tech stack selection
+- `decision-tree-build-vs-buy` — build vs buy framework
+- `decision-tree-cloud-provider` — cloud provider choice
+
+### Trade-off analysis (split)
+
+- `trade-off-decision-methods` — decision methods overview
+- `trade-off-decision-matrix` — weighted decision matrix
+- `trade-off-quality-attributes` — quality attribute trade-offs
+- `trade-off-build-vs-buy` — build-vs-buy trade-offs
+- `trade-off-technical-debt` — technical debt trade-offs
+- `trade-off-stakeholder-communication` — communicating trade-offs
 
 ---
 
@@ -204,4 +244,4 @@ options:
 ---
 
 *faion-software-architect v1.2*
-*30 Methodologies*
+*55 Methodologies*

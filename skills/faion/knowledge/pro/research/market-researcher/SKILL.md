@@ -112,38 +112,38 @@ questions:
 ## Methodologies (22)
 
 ### Market Analysis (5)
-- TAM/SAM/SOM framework
-- Market sizing with AI
-- Market opportunity assessment
-- Trend analysis
-- Continuous discovery
+- `market-analysis` — TAM/SAM/SOM framework
+- `market-research-tam-sam-som` — Market sizing top-down/bottom-up
+- `market-sizing-with-ai` — AI-assisted sizing
+- `trend-analysis` — Market trends, signals
+- `continuous-discovery` — Ongoing market intelligence
 
 ### Competitive Intelligence (3)
-- Competitor analysis
-- Competitive intelligence gathering
-- Competitive intelligence methods
+- `competitor-analysis` — Direct/indirect competitor mapping
+- `competitive-intelligence` — Intel gathering practice
+- `competitive-intelligence-methods` — Frameworks (Porter, SWOT)
 
 ### Business Planning (5)
-- Business model research
-- Business model planning
-- Niche evaluation
-- Risk assessment
-- Distribution channel research
+- `business-model-research` — Model discovery
+- `business-model-planning` — Canvas, revenue streams
+- `niche-evaluation` — 5-criteria viability scoring
+- `risk-assessment` — Market and execution risks
+- `distribution-channel-research` — Channel selection
 
 ### Pricing Strategy (1)
-- Pricing research & benchmarking
+- `pricing-research` — Benchmark pricing models
 
 ### Idea Generation (3)
-- Idea generation (7 Ps framework)
-- Idea generation methods
-- Product development trends
+- `idea-generation` — 7 Ps framework
+- `idea-generation-methods` — Brainstorm techniques
+- `product-development-trends` — Industry trend signals
 
 ### Tools & Methods (5)
-- AI research tools
-- AI research tool categories
-- Perplexity AI research
-- Naming & domains
-- Product development trends 2026
+- `ai-research-tools` — Toolkit overview
+- `ai-research-tool-categories` — Tool taxonomy
+- `perplexity-ai-research` — Perplexity workflows
+- `naming-and-domains` — Brand and domain checks
+- `product-development-trends-2026` — 2026 trend report
 
 ---
 

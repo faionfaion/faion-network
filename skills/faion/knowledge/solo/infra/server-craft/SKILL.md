@@ -83,6 +83,8 @@ Bash: crontab -l                         # cron jobs
 | "Health check" / "auto-heal" / "watchdog" | `health-checks-autoheal/` |
 | "Dotfiles" / "config management" | `dotfiles-management/` |
 | "Claude hooks" / "settings.json" | `claude-code-hooks/` |
+| "Cloudflare DNS" / "buy domain" | `cloudflare-domain-dns/` |
+| "Cloudflare Pages" / "static deploy" | `cloudflare-pages-github/` |
 
 ### Multi-methodology flows
 
@@ -121,7 +123,8 @@ Bash: crontab -l                         # cron jobs
 | Developer UX | 4 | tmux, shell tools, aliases, dotfiles |
 | Infrastructure | 4 | backup, monitoring, swap/memory, secrets |
 | Setup | 3 | bootstrap, direnv/mise, agent tuning |
-| **Total** | **27** | |
+| Cloudflare | 2 | DNS + domain, Pages + GitHub |
+| **Total** | **29** | |
 
 ---
 

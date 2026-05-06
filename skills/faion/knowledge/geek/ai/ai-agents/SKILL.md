@@ -108,47 +108,118 @@ These rules apply to Claude Code Agent SDK agents, claude CLI wrappers, and any 
 | LangChain agents | langchain-agents-architectures.md |
 | MCP integration | mcp-model-context-protocol.md → mcp-ecosystem-2026.md |
 
-## Methodologies (26)
+## Methodologies (84)
 
 **Agent Fundamentals (4):**
-- ai-agent-patterns: Core patterns, memory, planning
-- agent-patterns: ReAct, chain-of-thought, reflection
-- agent-architectures: System design, components
-- autonomous-agents: Loops, decision-making, persistence
+- `ai-agent-patterns`: Core patterns, memory, planning
+- `agent-patterns`: ReAct, chain-of-thought, reflection
+- `agent-architectures`: System design, components
+- `autonomous-agents`: Loops, decision-making, persistence
 
-**Multi-Agent (4):**
-- multi-agent-basics: Fundamentals, communication
-- multi-agent-patterns: Delegation, collaboration
-- multi-agent-design-patterns: Hierarchical, peer-to-peer
+**Multi-Agent (7):**
+- `multi-agent-basics`: Fundamentals, communication
+- `multi-agent-design-patterns`: Hierarchical, peer-to-peer
+- `multi-agent-hierarchical`: Manager / specialist topology
+- `multi-agent-collaborative`: Peer collaboration
+- `multi-agent-conversational`: Dialogue-driven coordination
+- `multi-agent-production-bus`: Production message bus
+- `role-specialized-models`: One model per role
 
 **LangChain (7):**
-- langchain-basics: Setup, chains, components
-- langchain-chains: LCEL, sequential, routing
-- langchain-memory: Conversation, summary, entity
-- langchain-workflows: Complex flows, branching
-- langchain-agents-architectures: Agent types, tools
-- langchain-agents-multi-agent: Multi-agent with LangChain
-- langchain-patterns: Production patterns
+- `langchain-basics`: Setup, chains, components
+- `langchain-chains`: LCEL, sequential, routing
+- `langchain-memory`: Conversation, summary, entity
+- `langchain-workflows`: Complex flows, branching
+- `langchain-agents-architectures`: Agent types, tools
+- `langchain-agents-multi-agent`: Multi-agent with LangChain
+- `langchain-rag-pipeline`: RAG via LangChain
+- `langchain-observability`: Tracing, LangSmith
+- `langchain-production-patterns`: Prod-grade patterns
 
-**LlamaIndex (3):**
-- llamaindex-basics: Data connectors, indexes
-- llamaindex-indexes-queries: Query engines, retrievers
-- llamaindex-agents-eval: Agent implementation, evaluation
+**LlamaIndex (7):**
+- `llamaindex-basics`: Data connectors, indexes
+- `llamaindex-indexes-queries`: Query engines, retrievers
+- `llamaindex-agents-eval`: Agent impl + evaluation
+- `llamaindex-ingestion-pipeline`: Document ingestion
+- `llamaindex-chat-engine`: Chat-mode retrieval
+- `llamaindex-hybrid-retrieval`: Hybrid retrieval mode
+- `llamaindex-sql-query`: Text-to-SQL retrieval
+- `llamaindex-production-gotchas`: Prod pitfalls
 
-**MCP & Tooling (4):**
-- mcp-model-context-protocol: Protocol fundamentals
-- model-context-protocol: Specification
-- mcp-ecosystem: Available servers, tools
-- mcp-ecosystem-2026: Latest developments
+**MCP & Tooling (5):**
+- `model-context-protocol`: Specification
+- `mcp-transport-stdio-vs-http`: Pick transport
+- `mcp-resource-vs-tool-vs-prompt`: Primitive selection
+- `mcp-gateway-composition`: Compose multiple MCP servers
+- `gateway-fallback-chain`: Fallback chain across gateways
+
+**Tool Design (10):**
+- `verb-object-tool-naming`: Name tools verb-object
+- `tool-description-as-prompt`: Description IS the prompt
+- `bundle-vs-split-tools`: When to bundle vs split
+- `idempotent-write-tools`: Make writes safely retryable
+- `structured-tool-errors`: Errors as structured data
+- `terse-default-tool-output`: Short outputs by default
+- `manifest-then-fetch`: List then retrieve pattern
+- `file-reference-passing`: Pass file refs not contents
+- `filesystem-as-working-memory`: FS as working memory
+- `auto-evict-tool-results`: Evict stale tool results
+
+**Schema Design (10):**
+- `discriminated-union-output`: Tagged unions in schemas
+- `array-items-wrapper-extraction`: Wrap arrays for extract
+- `enum-constraints-closed-vocabularies`: Enum-only fields
+- `strict-mode-required-fields`: Strict required-field mode
+- `schema-field-order`: Order influences generation
+- `schema-version-pinning`: Pin schema versions
+- `semantic-field-naming`: Names that prompt the model
+- `field-descriptions-as-prompts`: Descriptions as prompts
+- `decimal-as-string-pattern`: Decimals as strings
+- `refusal-field-strict-schema`: Explicit refusal field
+- `embedded-scratchpad-field`: In-schema reasoning slot
+- `structured-output-mode-picker`: Pick JSON / tool / grammar
+
+**Reasoning & Routing (8):**
+- `plan-execute-vs-react`: Pick planner vs ReAct
+- `reasoning-first-architectures`: Extended thinking first
+- `two-pass-reason-then-extract`: Reason then extract
+- `generator-critic-bounded-loop`: Bounded critic loop
+- `confidence-thresholded-cascade`: Cascade by confidence
+- `weak-model-preselection`: Cheap pre-router
+- `preference-trained-router`: Preference-trained router
+- `previous-response-id-reasoning-reuse`: Reuse reasoning state
+- `rerank-before-reasoning`: Rerank before the LLM
+- `llm-judge-rubric-evidence-first`: Rubric + evidence judge
+
+**Orchestration & Cost (8):**
+- `map-reduce-send-fanout`: Fan-out / fan-in
+- `subagent-as-context-firewall`: Subagent as context wall
+- `progressive-disclosure-skills`: Reveal skills lazily
+- `inverted-header-content-first`: Content before header
+- `compaction-preserve-refs`: Compact, keep refs
+- `prompt-cache-prefix-order`: Order for cache hits
+- `batch-cache-stack`: Batch + cache stacking
+- `stream-json-orchestration`: Stream JSON between agents
+- `handoff-id-payload`: ID-based agent handoff
+- `max-turns-circuit-breaker`: Hard turn cap
+
+**Headless / Claude Code (4):**
+- `claude-code-headless-default`: Headless-first default
+- `headless-cli-four-guards`: Four guards for headless CLI
+- `posttool-hook-self-correction`: PostTool self-correction
+- `cheap-guardrail-tripwire`: Cheap guardrail tripwire
+
+**Eval & Debug (3):**
+- `chaos-eval-fault-injection`: Fault-injection eval
+- `trajectory-eval-otel`: OTEL trajectory eval
+- `record-replay-debugging`: Record / replay debugging
 
 **Governance (2):**
-- ai-governance-compliance: Frameworks, best practices
-- eu-ai-act-compliance: Risk tiers, requirements
-- eu-ai-act-compliance-2026: Latest updates
+- `ai-governance-compliance`: Frameworks, best practices
+- `eu-ai-act-compliance`: Risk tiers, requirements
 
-**Advanced (2):**
-- agentic-rag: Agent-driven retrieval (duplicated in RAG)
-- reasoning-first-architectures: Extended thinking patterns
+**Advanced (1):**
+- `agentic-rag`: Agent-driven retrieval (also in RAG)
 
 ## Agent Architectures
 
@@ -300,4 +371,4 @@ response = agent.chat("How do I use embeddings?")
 
 ---
 
-*AI Agents v1.0 | 26 methodologies*
+*AI Agents v1.0 | 84 methodologies*

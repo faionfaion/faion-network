@@ -106,39 +106,63 @@ options:
 | RAG evaluation | rag-eval-metrics.md → rag-eval-methods.md |
 | Agentic RAG | agentic-rag.md |
 
-## Methodologies (22)
+## Methodologies (40)
 
-**Chunking (2):**
-- chunking-basics: Size, overlap, delimiters
-- chunking-advanced: Semantic, recursive, custom
+**Chunking (5):**
+- `chunking-basics`: Size, overlap, delimiters
+- `chunking-semantic`: Embedding-driven boundaries
+- `chunking-document-structure`: Header / section-aware splits
+- `chunking-code-ast`: AST-based code chunking
+- `chunking-production-service`: Production chunking pipeline
 
-**Embeddings (4):**
-- embedding-basics: Fundamentals, similarity
-- embedding-generation: API usage, batching
-- embedding-models: Comparison, selection
-- embedding-applications: Use cases, patterns
+**Embeddings (8):**
+- `embedding-generation`: API usage, batching
+- `embedding-applications`: Use cases, patterns
+- `embedding-models`: Comparison, selection
+- `embedding-model-selection`: Pick model by task / cost / dim
+- `embedding-caching`: Cache layer for repeated inputs
+- `embedding-chunking-strategies`: Pair chunking with model limits
+- `embedding-cost-optimization`: Reduce per-vector spend
 
-**Vector Databases (4):**
-- db-comparison: Feature comparison, selection
-- db-qdrant: Setup, indexing, search (recommended)
-- db-weaviate: Knowledge graphs, hybrid search
-- db-chroma: Local dev, prototyping
-- vector-database-setup: General setup patterns
+**Vector Databases (5):**
+- `db-comparison`: Feature comparison, selection
+- `db-qdrant`: Setup, indexing, search (recommended)
+- `db-weaviate`: Knowledge graphs, hybrid search
+- `db-chroma`: Local dev, prototyping
+- `vector-database-setup`: General setup patterns
 
-**Retrieval (4):**
-- hybrid-search-basics: Vector + keyword search
-- hybrid-search-implementation: Production patterns
-- reranking-basics: Cross-encoder fundamentals
-- reranking-models: Cohere, MixedBread, custom
+**Retrieval (6):**
+- `hybrid-search-basics`: Vector + keyword search
+- `hybrid-search-implementation`: Production patterns
+- `reranking-models`: Cohere, MixedBread, custom
+- `reranking-two-stage`: Cheap retrieve + strong rerank
+- `reranking-diversity-mmr`: MMR / diversity reranking
+- `reranking-pipeline-integration`: Wire reranker into pipeline
 
-**RAG Systems (7):**
-- rag: RAG overview, fundamentals
-- rag-architecture: System design, components
-- rag-implementation: Production patterns
-- rag-eval-metrics: Relevance, faithfulness, correctness
-- rag-eval-methods: Evaluation frameworks
-- agentic-rag: Agent-driven retrieval
-- graph-rag-advanced-retrieval: Knowledge graphs
+**Agentic RAG (4):**
+- `agentic-rag-iterative-retrieval`: Iterate until evidence covers query
+- `agentic-rag-query-decomposition`: Split complex query into sub-queries
+- `agentic-rag-self-correction`: Detect and repair bad retrievals
+- `agentic-rag-tool-using`: Retriever as tool inside agent
+
+**Graph RAG (3):**
+- `graph-rag-indexing`: Build entity / relation index
+- `graph-rag-retrieval`: Traverse graph for context
+- `graph-rag-production`: Operate graph RAG at scale
+
+**RAG Systems (3):**
+- `rag`: RAG overview, fundamentals
+- `rag-architecture`: System design, components
+- `rag-implementation`: Production patterns
+
+**RAG Evaluation (6):**
+- `rag-eval-strategy`: Pick metrics for the use case
+- `rag-eval-retrieval-metrics`: Recall, MRR, nDCG
+- `rag-eval-generation-metrics`: Faithfulness, relevance
+- `rag-eval-test-set-generation`: Synthesize eval set
+- `rag-eval-ab-testing`: Compare pipelines under load
+- `rag-eval-production-monitoring`: Live drift / quality signals
+- `rag-eval-pipeline`: End-to-end eval workflow
 
 ## Architecture
 
@@ -250,4 +274,4 @@ reranked = co.rerank(
 
 ---
 
-*RAG Engineer v1.0 | 22 methodologies*
+*RAG Engineer v1.0 | 40 methodologies*

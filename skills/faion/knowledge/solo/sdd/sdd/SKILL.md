@@ -221,6 +221,41 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 
 ---
 
+## Methodologies (18)
+
+### Workflow
+
+- `sdd-workflow-overview` — full SDD workflow overview
+- `backlog-grooming-roadmapping` — backlog grooming and roadmapping
+- `task-creation-parallelization` — task creation and parallelization
+- `code-review-cycle` — review-fix-test cycle
+- `quality-gates-confidence` — L1-L6 gates and confidence checks
+
+### Writing artifacts
+
+- `writing-specifications` — writing spec.md (what + why)
+- `writing-design-documents` — writing design.md (how)
+- `writing-implementation-plans` — writing implementation-plan.md
+- `design-docs-patterns` — design doc patterns
+- `design-docs-big-tech` — big-tech design doc styles
+- `yaml-frontmatter` — YAML frontmatter conventions for SDD docs
+
+### Documentation and decisions
+
+- `architecture-decision-records` — ADRs in SDD
+- `living-documentation` — keep docs in sync with code
+- `api-first-development` — API-first design within SDD
+
+### Memory and learning
+
+- `pattern-memory` — pattern memory in `.aidocs/memory/patterns.md`
+- `mistake-memory` — mistake memory and prevention
+- `reflexion-learning` — PDCA reflexion cycle
+
+### Reference
+
+- `key-trends-summary` — current SDD trends summary
+
 ## Related Skills
 
 | Skill | Relationship |

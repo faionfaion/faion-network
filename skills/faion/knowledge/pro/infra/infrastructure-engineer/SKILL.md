@@ -199,6 +199,75 @@ options:
 
 ---
 
+## Methodologies (50+ in this folder)
+
+### AWS Foundations (11)
+- `aws-cli-setup` — AWS CLI configuration
+- `aws-ec2-provisioning` — EC2 launch templates
+- `aws-vpc-design` — VPC architecture
+- `aws-vpc-three-tier` — Three-tier VPC pattern
+- `aws-iam-security-foundations` — IAM foundations
+- `aws-iam-practical-patterns` — IAM practical patterns
+- `aws-multi-account-landing-zone` — Landing zone for multi-account
+- `aws-well-architected-framework` — WAF six pillars
+- `aws-monitoring-observability` — CloudWatch + observability
+- `aws-cost-optimization` — Cost cutting tactics
+- `aws-infra-prompt-library` — LLM prompt library
+
+### GCP Foundations (12)
+- `gcp-overview-cli` — gcloud CLI overview
+- `gcp-resource-hierarchy` — Org/folder/project hierarchy
+- `gcp-iam-design` — IAM design
+- `gcp-security-iam` — IAM security patterns
+- `gcp-org-policies` — Org policy controls
+- `gcp-networking-vpc` — VPC networking
+- `gcp-compute-gke` — Compute and GKE
+- `gcp-cloud-run-serverless` — Cloud Run serverless
+- `gcp-billing-cost` — Billing and cost mgmt
+- `gcp-terraform-templates` — Terraform GCP templates
+- `gcp-llm-prompts` — LLM prompts for GCP
+- `gcp-arch-patterns` — GCP architecture patterns
+
+### GCE Compute (4)
+- `gce-instance-templates` — Instance template patterns
+- `gce-managed-instance-groups` — MIG configuration
+- `gce-autoscaling` — GCE autoscaling
+- `gce-spot-vms` — Spot/preemptible VMs
+
+### Cloud Run (6)
+- `cloud-run-deployment` — Service deployment
+- `cloud-run-autoscaling` — Concurrency and scaling
+- `cloud-run-jobs` — Cloud Run Jobs
+- `cloud-run-monitoring` — Cloud Run observability
+- `cloud-run-traffic-management` — Traffic splitting
+- `cloud-run-vpc-access` — VPC connector setup
+
+### Kubernetes Workloads (8)
+- `k8s-deployment-workloads` — Deployment patterns
+- `k8s-rolling-update` — Rolling update strategy
+- `k8s-canary-progressive` — Canary/progressive delivery
+- `k8s-scaling-availability` — HPA/VPA, PDB
+- `k8s-resource-requests-limits` — Resource requests/limits
+- `k8s-resource-quota` — ResourceQuota
+- `k8s-limitrange` — LimitRange policies
+- `k8s-security-hardening` — Pod security and hardening
+
+### Terraform Modules (5)
+- `terraform-modules-structure` — Module structure
+- `terraform-modules-composition` — Module composition
+- `terraform-modules-versioning` — Versioning strategy
+- `terraform-modules-security` — Module security
+- `terraform-modules-prompts` — LLM prompts for modules
+
+### IaC Patterns (5)
+- `iac-patterns-cicd` — IaC CI/CD integration
+- `iac-patterns-composition` — Composition patterns
+- `iac-patterns-dry` — DRY refactoring patterns
+- `iac-patterns-module-design` — Module design rules
+- `iac-patterns-testing` — IaC testing strategy
+
+---
+
 ## Related Skills
 
 | Skill | Relationship |

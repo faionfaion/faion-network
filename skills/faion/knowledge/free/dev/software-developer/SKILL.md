@@ -200,6 +200,76 @@ For tasks spanning multiple domains, coordinate relevant sub-skills:
 | faion-storybook-agent | Setup/maintain Storybook |
 | faion-frontend-component-agent | Develop components with stories |
 
+## Methodologies (47)
+
+### Python
+
+- `python` — Python language overview and conventions
+- `python-fastapi` — FastAPI basics, routing, dependencies
+- `python-poetry-setup` — Poetry dependency management
+- `python-type-hints` — typing, gradual typing, mypy
+- `django-api` — DRF viewsets, serializers, routers
+- `django-base-model` — base model pattern, mixins
+- `django-coding-standards` — Django coding standards
+- `django-decision-tree` — when to use Django, framework selection
+- `django-imports` — import organization and circular imports
+- `django-models` — fields, managers, migrations
+- `django-pytest` — pytest-django patterns
+- `django-quality` — Django code quality and linting
+- `django-testing` — Django test patterns and factories
+
+### JavaScript / TypeScript
+
+- `javascript` — modern JS language patterns
+- `typescript-strict-mode` — strict tsconfig, narrowing, types
+- `nodejs-express-fastify` — Node backends with Express/Fastify
+- `react-hooks` — hooks patterns and best practices
+- `bun-runtime` — Bun runtime, scripts, bundler
+- `pnpm-package-management` — pnpm workspaces, lockfiles
+
+### Frontend / UI
+
+- `tailwind` — Tailwind CSS patterns and tokens
+- `css-in-js` — Emotion, styled-components, vanilla-extract
+- `shadcn-ui` — shadcn/ui component conventions
+- `storybook-setup` — Storybook for components
+- `mobile-responsive` — responsive layout strategies
+
+### Go
+
+- `go-backend` — Go HTTP services, project layout
+- `go-concurrency` — goroutines, channels, sync primitives
+- `go-error-handling` — error wrapping, sentinel errors
+- `go-http-handlers` — http.Handler, middleware patterns
+
+### Rust
+
+- `rust-ownership` — borrow checker, lifetimes
+- `rust-error-handling` — Result, anyhow, thiserror
+- `rust-testing` — cargo test, integration tests
+
+### Testing
+
+- `testing` — testing fundamentals overview
+- `unit-testing` — unit test design and isolation
+- `integration-testing` — integration tests across boundaries
+- `e2e-testing` — end-to-end tests, browser drivers
+- `api-testing` — REST/GraphQL contract testing
+- `tdd-workflow` — red/green/refactor TDD cycle
+- `mocking-strategies` — mocks, stubs, spies, fakes
+- `test-fixtures` — fixture data and shared setup
+- `code-coverage` — coverage tools, gates, blind spots
+
+### Quality and Practices
+
+- `code-review` — code review process and checklists
+- `refactoring-patterns` — extract, inline, rename, decompose
+- `error-handling` — defensive programming and error shape
+- `documentation` — code/API/system documentation
+- `pair-programming` — pair programming patterns
+- `mob-programming` — mob programming patterns
+- `best-practices-2026` — modern engineering practices
+
 ## Related Skills
 
 | Skill | Relationship |

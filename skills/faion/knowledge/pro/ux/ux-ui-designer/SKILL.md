@@ -279,6 +279,62 @@ For detailed methodologies, see sub-skill documentation:
 
 ---
 
+## Methodologies (38 in this folder)
+
+### Research Methods (5)
+- `contextual-inquiry` — Field research method
+- `diary-studies` — Longitudinal diary research
+- `focus-groups` — Group interview moderation
+- `surveys` — Quantitative survey design
+- `tree-testing` — IA validation
+
+### Evaluation (2)
+- `cognitive-walkthrough` — Task-based expert review
+- `accessibility-evaluation` — A11y heuristic review
+
+### Design Tokens (6)
+- `design-tokens-fundamentals` — Token primitives
+- `semantic-tokens-and-modes` — Semantic naming + theming
+- `token-organization` — Token structure
+- `cross-platform-token-distribution` — Style Dictionary distribution
+- `w3c-design-tokens-standard` — W3C DTCG spec
+- `design-system-success-factors` — DS adoption factors
+
+### Voice UI (8)
+- `voice-ui` — VUI overview
+- `core-vui-design-principles` — VUI principles
+- `vui-conversation-design` — Dialogue flow design
+- `vui-iot-integration` — IoT voice integration
+- `vui-market-context` — VUI market landscape
+- `vui-privacy-security` — VUI privacy
+- `vui-testing-best-practices` — VUI testing
+- `error-handling-in-vui` — Voice error recovery
+
+### Accessibility & VUI Inclusion (6)
+- `accessibility-first-design` — Proactive a11y design
+- `wcag-22-compliance` — WCAG 2.2 criteria
+- `ada-title-ii-compliance-2026` — ADA 2026 rules
+- `regulatory-compliance-2026` — EAA, Section 508
+- `cognitive-inclusion-design` — Cognitive a11y
+- `testing-with-assistive-technology` — AT testing
+- `vui-accessibility-inclusivity` — VUI inclusion
+
+### Spatial Computing (8)
+- `spatial-computing-overview` — Spatial UI overview
+- `spatial-design-tools` — Reality Composer, Unity
+- `spatial-interaction-patterns` — Hand/gaze interaction
+- `spatial-ui-patterns` — Floating, tethered UI
+- `spatial-ux-fundamentals` — Spatial UX basics
+- `spatial-accessibility` — Spatial a11y
+- `enterprise-xr-applications` — Enterprise XR use cases
+- `immersive-design-principles` — Immersive design rules
+
+### XR Patterns (3)
+- `ar-design-patterns` — AR design patterns
+- `vr-design-patterns` — VR design patterns
+
+---
+
 ## Sources
 
 - [Nielsen Norman Group](https://www.nngroup.com/) - 10 Usability Heuristics

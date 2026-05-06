@@ -92,45 +92,49 @@ options:
 | Prompts | prompt-basics.md → prompt-techniques.md |
 | Function calling | function-calling-patterns.md + tool-use-basics.md |
 
-## Methodologies (26)
+## Methodologies (28)
 
 **OpenAI (5):**
-- openai-api-integration: API setup, authentication, models
-- openai-chat-completions: Chat API, streaming, parameters
-- openai-function-calling: Tool definitions, execution
-- openai-embeddings: Text embeddings (moved to rag-engineer)
-- openai-assistants: Assistant API, threads, tools
+- `openai-api-integration`: API setup, authentication, models
+- `openai-chat-completions`: Chat API, streaming, parameters
+- `openai-function-calling`: Tool definitions, execution
+- `openai-embeddings`: Text embeddings (also in rag-engineer)
+- `openai-assistants`: Assistant API, threads, tools
 
 **Claude (6):**
-- claude-api-basics: Anthropic API setup
-- claude-messages-api: Messages API, streaming
-- claude-tool-use: Tool definitions, structured output
-- claude-advanced-features: Extended thinking, prompt caching
-- claude-best-practices: Safety, context management
-- claude-api-integration: SDK integration patterns
+- `claude-api-basics`: Anthropic API setup
+- `claude-messages-api`: Messages API, streaming
+- `claude-tool-use`: Tool definitions, structured output
+- `claude-advanced-features`: Extended thinking, prompt caching
+- `claude-best-practices`: Safety, context management
+- `claude-api-integration`: SDK integration patterns
 
 **Gemini (4):**
-- gemini-basics: Google AI setup, models
-- gemini-multimodal: Vision, audio, video inputs
-- gemini-function-calling: Function declarations
-- gemini-api-integration: SDK patterns
+- `gemini-basics`: Google AI setup, models
+- `gemini-multimodal`: Vision, audio, video inputs
+- `gemini-function-calling`: Function declarations
+- `gemini-api-integration`: SDK patterns
 
 **Prompt Engineering (6):**
-- prompt-basics: Structure, few-shot, roles
-- prompt-techniques: Advanced patterns, templates
-- cot-basics: Chain-of-thought fundamentals
-- cot-techniques: Zero-shot CoT, reasoning chains
-- structured-output-basics: JSON mode, schemas
-- structured-output-patterns: Advanced structuring
+- `prompt-basics`: Structure, few-shot, roles
+- `prompt-techniques`: Advanced patterns, templates
+- `cot-basics`: Chain-of-thought fundamentals
+- `cot-techniques`: Zero-shot CoT, reasoning chains
+- `structured-output-basics`: JSON mode, schemas
+- `structured-output-patterns`: Advanced structuring
 
 **Safety & Tools (4):**
-- guardrails-basics: Content safety, PII detection
-- guardrails-implementation: Implementation patterns
-- function-calling-patterns: Tool design, error handling
-- tool-use-basics: Tool fundamentals
+- `guardrails-basics`: Content safety, PII detection
+- `guardrails-implementation`: Implementation patterns
+- `function-calling-patterns`: Tool design, error handling
+- `tool-use-basics`: Tool fundamentals
+
+**Classifiers & Content (2):**
+- `llm-classifier-design`: LLM-as-classifier patterns, label design
+- `semantic-xml-content`: Closed XML tag glossary for prompts
 
 **Local (1):**
-- local-llm-ollama: Ollama setup, model management
+- `local-llm-ollama`: Ollama setup, model management
 
 ## Code Examples
 
@@ -198,4 +202,4 @@ response = client.chat.completions.create(
 
 ---
 
-*LLM Integration v1.0 | 26 methodologies*
+*LLM Integration v1.0 | 28 methodologies*

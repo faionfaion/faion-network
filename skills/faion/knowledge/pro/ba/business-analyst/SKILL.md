@@ -168,6 +168,50 @@ Use cases, user stories, BPMN, ERD, decision tables, interfaces, acceptance crit
 
 ---
 
+## Methodologies (32 in this folder)
+
+### Frameworks & Overviews (5)
+- `agile-ba-frameworks` — Agile-aligned BA practices
+- `modern-ba-framework` — Contemporary BA model
+- `knowledge-areas-overview` — BABOK area summary
+- `methodologies-detail` — Method reference catalog
+- `ba-trends-summary` — Industry trends digest
+
+### Strategy Analysis (5)
+- `strategy-analysis-business-need` — Business need definition
+- `strategy-analysis-current-state` — Current state assessment
+- `strategy-analysis-future-state` — Future state design
+- `strategy-analysis-gap-analysis` — Gap identification
+- `strategy-analysis-change-strategy` — Change strategy
+
+### Requirements Lifecycle (4)
+- `requirements-lifecycle` — End-to-end requirements flow
+- `requirements-documentation` — Spec writing
+- `requirements-validation` — Verify and validate
+- `data-driven-requirements` — Analytics-led requirements
+
+### Modern Practices (2)
+- `process-mining-automation` — Automated process discovery
+- `ba-strategic-partnership` — BA as strategic partner
+
+### Other Methodologies
+- `acceptance-criteria` — AC writing
+- `ba-planning` — BA approach planning
+- `business-process-analysis` — BPMN modeling
+- `data-analysis` — Data modeling
+- `decision-analysis` — Business rules
+- `elicitation-techniques` — Stakeholder elicitation
+- `interface-analysis` — Interface specs
+- `knowledge-areas-detail` — Deep area reference
+- `requirements-prioritization` — Prioritization frameworks
+- `requirements-traceability` — Traceability matrix
+- `solution-assessment` — Solution evaluation
+- `stakeholder-analysis` — Stakeholder mapping
+- `use-case-modeling` — Use case construction
+- `user-story-mapping` — Story map workshop
+
+---
+
 ## Navigation
 
 - Main orchestrator: This file

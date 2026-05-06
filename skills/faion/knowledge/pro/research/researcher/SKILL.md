@@ -183,6 +183,32 @@ faion-researcher (orchestrator)
 
 ---
 
+## Methodologies (16 in this folder)
+
+### Market Intelligence (8)
+- `market-research-tam-sam-som` — TAM/SAM/SOM sizing
+- `competitor-analysis` — Direct/indirect competitor mapping
+- `competitive-intelligence` — Intel gathering practice
+- `business-model-research` — Revenue model discovery
+- `distribution-channel-research` — Channel selection
+- `risk-assessment` — Market and execution risks
+- `trend-analysis` — Market trend signals
+- `product-development-trends` — Product trend research
+
+### User & Discovery (5)
+- `audience-segmentation` — Persona segmentation
+- `persona-building` — User persona construction
+- `survey-design` — Survey methodology
+- `user-research-at-scale` — Large-sample research
+- `continuous-discovery` — Ongoing customer feedback loops
+
+### Strategy (3)
+- `opportunity-solution-trees` — Teresa Torres OST
+- `methodologies-detail` — Method reference
+- `product-development-trends-2026` — 2026 trend report
+
+---
+
 ## Sub-Skills (2)
 
 ### faion-market-researcher

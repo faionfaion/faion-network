@@ -94,14 +94,15 @@ options:
 | Evaluation | evaluation-metrics.md → evaluation-framework.md |
 | Observability | llm-observability.md → llm-observability-stack-2026.md |
 
-## Methodologies (15)
+## Methodologies (16)
 
-**Fine-tuning (5):**
-- finetuning-basics: Fundamentals, when to fine-tune
-- finetuning-datasets: Data preparation, quality
-- fine-tuning-openai-basics: OpenAI API fine-tuning
-- fine-tuning-openai-production: Production deployment
-- lora-qlora: Efficient fine-tuning, parameter selection
+**Fine-tuning (6):**
+- `finetuning-basics`: Fundamentals, when to fine-tune
+- `finetuning-datasets`: Data preparation, quality
+- `fine-tuning-openai-basics`: OpenAI API fine-tuning
+- `fine-tuning-openai-production`: Production deployment
+- `fine-tuning-lora`: LoRA-specific fine-tuning workflow
+- `lora-qlora`: Efficient fine-tuning, parameter selection
 
 **Evaluation (3):**
 - evaluation-metrics: Accuracy, F1, perplexity, task metrics
@@ -241,4 +242,4 @@ def rag_pipeline(query: str) -> str:
 
 ---
 
-*ML Ops v1.0 | 15 methodologies*
+*ML Ops v1.0 | 16 methodologies*

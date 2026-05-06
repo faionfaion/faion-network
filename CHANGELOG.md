@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore(skills): index 234 methodologies in 6 geek-tier index files (closes audit gap)
+- chore(skills): index 330 methodologies in 12 pro-tier SKILL.md files (closes audit gap)
+- chore(skills): index 139 methodologies in 7 free/solo SKILL.md files (closes audit gap)
 - chore(skills): add SKILL.md + CLAUDE.md for 21 geek-tier KBs (closes audit gap)
 - chore(skills): add SKILL.md + CLAUDE.md for 21 solo-tier KBs (closes audit gap)
 - chore(skills): add SKILL.md + CLAUDE.md for 6 pro-tier KBs (code-quality, software-architect, software-developer, product-operations, product-planning, ui-designer)

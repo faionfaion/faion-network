@@ -96,13 +96,13 @@ options:
 
 ## Methodologies (25 files)
 
-**Java (6):** java-jpa-hibernate, java-junit-testing, java-spring, java-spring-async, java-spring-boot, java-spring-boot-patterns
+**Java (6):** `java-jpa-hibernate`, `java-junit-testing`, `java-spring`, `java-spring-async`, `java-spring-boot`, `java-spring-boot-patterns`
 
-**C# (6):** csharp-aspnet-core, csharp-background-services, csharp-dotnet, csharp-dotnet-patterns, csharp-entity-framework, csharp-xunit-testing
+**C# (6):** `csharp-aspnet-core`, `csharp-background-services`, `csharp-dotnet`, `csharp-dotnet-patterns`, `csharp-entity-framework`, `csharp-xunit-testing`
 
-**PHP (7):** decomposition-laravel, laravel-patterns, php-eloquent, php-laravel, php-laravel-patterns, php-laravel-queues, php-phpunit-testing
+**PHP (7):** `decomposition-laravel`, `laravel-patterns`, `php-eloquent`, `php-laravel`, `php-laravel-patterns`, `php-laravel-queues`, `php-phpunit-testing`
 
-**Ruby (6):** decomposition-rails, ruby-activerecord, ruby-rails, ruby-rails-patterns, ruby-rspec-testing, ruby-sidekiq-jobs
+**Ruby (6):** `decomposition-rails`, `ruby-activerecord`, `ruby-rails`, `ruby-rails-patterns`, `ruby-rspec-testing`, `ruby-sidekiq-jobs`
 
 ## Tools
 

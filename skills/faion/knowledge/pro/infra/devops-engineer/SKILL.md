@@ -310,6 +310,95 @@ For tasks spanning both domains, coordinate sequentially:
 
 ---
 
+## Methodologies (61 in this folder)
+
+### Core Containers & Orchestration (6)
+- `docker` — Docker reference
+- `docker-image-optimization` — Image size and layer optimization
+- `docker-language-templates` — Per-language Dockerfile templates
+- `docker-security-hardening` — Container hardening
+- `docker-llm-prompts` — LLM prompts for Docker
+- `kubernetes-deployment` — K8s deployment reference
+
+### IaC (5)
+- `terraform` — Terraform reference
+- `terraform-iac` — Terraform IaC patterns
+- `helm-charts` — Helm chart patterns
+- `gitops` — GitOps overview
+- `argocd-gitops` — Argo CD GitOps
+
+### CI/CD (3)
+- `github-actions-cicd` — GitHub Actions CI/CD
+- `gitlab-cicd` — GitLab CI
+- `jenkins-pipelines` — Jenkins pipelines
+
+### Monitoring & Observability (8)
+- `prometheus-monitoring` — Prometheus metrics
+- `grafana-dashboards` — Grafana dashboarding
+- `aiops` — AIOps practices
+- `dora-metrics` — DORA performance metrics
+- `devops-elk-architecture` — ELK architecture
+- `devops-elk-beats-collection` — Beats collectors
+- `devops-elk-index-management` — ELK index management
+- `devops-elk-logstash-pipeline` — Logstash pipelines
+- `devops-elk-queries-alerting` — ELK queries + alerting
+
+### Security & Networking (4)
+- `secrets-management` — Secrets vaulting
+- `security-as-code` — Security as code
+- `nginx-configuration` — Nginx configuration
+- `ssl-tls-setup` — SSL/TLS setup
+
+### Load Balancing (6)
+- `devops-lb-algorithms` — LB algorithms
+- `devops-lb-haproxy` — HAProxy patterns
+- `devops-lb-health-checks` — Health checks
+- `devops-lb-high-availability` — LB HA
+- `devops-lb-kubernetes` — K8s LB
+- `devops-lb-ssl-tls` — LB TLS termination
+
+### Backups (1)
+- `backup-strategies` — Backup strategy reference
+
+### AWS Architecture (8)
+- `aws-cli-compute` — AWS CLI compute commands
+- `aws-cli-containers-iac` — AWS CLI containers/IaC
+- `aws-cfn-terraform-templates` — CloudFormation/Terraform
+- `aws-well-architected-checklists` — WAF checklists
+- `aws-infra-llm-prompts` — LLM prompts for AWS
+- `devops-aws-three-tier` — AWS three-tier architecture
+- `devops-aws-service-selection` — Service selection
+- `devops-aws-serverless-api` — Serverless API
+- `devops-aws-monitoring-dr` — Monitoring + DR
+- `devops-aws-terraform-cicd` — Terraform CI/CD on AWS
+
+### Azure (1)
+- `azure-architecture` — Azure architecture overview
+
+### GCP Architecture (5)
+- `gcp` — GCP reference
+- `gcp-landing-zone` — GCP landing zone
+- `gcp-network-architecture` — GCP network architecture
+- `gcp-gke-architecture` — GKE architecture
+- `gcp-storage-cdn` — Storage + CDN
+
+### Platform Engineering (5)
+- `devops-platform-backstage` — Backstage IDP
+- `devops-platform-crossplane` — Crossplane control plane
+- `devops-platform-golden-paths` — Golden paths
+- `devops-platform-idp-core` — IDP core
+- `devops-platform-policy-finops` — Policy + FinOps
+
+### FinOps (6)
+- `finops` — FinOps overview
+- `finops-devops-cost-alerts` — Cost alerts
+- `finops-devops-cost-commitments` — Commitment pricing
+- `finops-devops-cost-kubernetes` — K8s cost optimization
+- `finops-devops-cost-rightsizing` — Rightsizing
+- `finops-devops-cost-tagging` — Cost tagging
+
+---
+
 *DevOps Engineer Orchestrator v2.0*
 *2 Sub-Skills | 58 Total Methodologies*
 *Infrastructure + CI/CD/Monitoring*

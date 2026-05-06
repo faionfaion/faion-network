@@ -204,10 +204,38 @@ options:
 | pytest basics | Fixtures, parametrize, markers | python-testing-pytest.md |
 | **Python Core** |
 | Python basics | Language fundamentals, patterns | python-basics.md |
-| Python overview | Quick reference | python.md |
+| Python overview | Quick reference | python-overview.md |
 | Python modern 2026 | Python 3.12/3.13 features | python-modern-2026.md |
 | Python code quality | ruff, mypy, black, isort | python-code-quality.md |
 | Poetry setup | Dependency management, pyproject.toml | python-poetry-setup.md |
+
+### Django Detail (split methodologies)
+
+- `django-project-structure` — apps layout, settings split, env config
+- `django-constants` — choices, enums, settings constants
+- `django-selectors` — read-side query helpers (selector layer)
+- `django-serializers` — DRF serializer patterns and conventions
+- `django-service-layer` — write-side service functions, transactions
+- `django-quality-linting` — ruff/flake8 config for Django
+- `django-quality-logging` — logging setup, structured logs
+- `django-quality-queries` — N+1, query optimization, indexes
+- `django-quality-security` — CSRF, XSS, auth, permissions
+
+### Django pytest (split methodologies)
+
+- `django-pytest-fixtures` — pytest-django fixtures, db access
+- `django-pytest-factories` — factory_boy patterns
+- `django-pytest-mocking` — mocking external services and DB
+- `django-pytest-parametrize` — parametrize, ids, indirect
+- `django-pytest-integration` — integration tests, client, db state
+
+### Python pytest (split methodologies)
+
+- `python-pytest-setup` — install, conftest, project layout
+- `python-pytest-fixtures` — fixtures, scopes, autouse
+- `python-pytest-mocking` — unittest.mock, monkeypatch, MagicMock
+- `python-pytest-parametrize` — parametrize and combinatorial cases
+- `python-pytest-async` — pytest-asyncio, async fixtures, event loop
 
 ## Tools
 
@@ -233,4 +261,4 @@ Invoked by parent skill `faion-software-developer` when working with Python code
 
 ---
 
-*faion-python-developer v1.0 | 24 methodologies*
+*faion-python-developer v1.0 | 35 methodologies*

@@ -227,4 +227,29 @@ Check these signals before starting accessibility work:
 
 ---
 
+## Methodologies (13 in this folder)
+
+### Standards & Compliance (4)
+- `wcag-22-compliance` — WCAG 2.2 audit criteria
+- `ada-title-ii-compliance-2026` — ADA Title II 2026 rules
+- `regulatory-compliance-2026` — EAA, Section 508, AODA
+- `a11y-basics` — Accessibility fundamentals
+
+### Testing (2)
+- `a11y-testing` — Manual + automated test workflow
+- `testing-with-assistive-technology` — Screen reader/AT testing
+
+### Inclusive Design (3)
+- `accessibility-first-design` — Proactive a11y design
+- `cognitive-inclusion-design` — Cognitive accessibility
+- `vui-accessibility-inclusivity` — VUI inclusion patterns
+
+### Spatial & Immersive (4)
+- `ar-design-patterns` — AR accessibility patterns
+- `vr-design-patterns` — VR accessibility patterns
+- `immersive-design-principles` — XR inclusive design
+- `spatial-accessibility` — Spatial computing a11y
+
+---
+
 *faion-accessibility-specialist v1.0.0 | 22 methodologies*

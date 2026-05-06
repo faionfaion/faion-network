@@ -137,6 +137,31 @@ options:
 
 ---
 
+## Methodologies (15 in this folder)
+
+### Strategy & Discovery (5)
+- `competitive-positioning` — Positioning vs competitors
+- `continuous-discovery-habits` — Teresa Torres habit cadence
+- `learning-speed-competitive-moat` — Speed-to-learn moat
+- `portfolio-strategy` — Multi-product portfolio
+- `product-led-growth` — PLG playbook
+
+### Planning & Lifecycle (5)
+- `minimum-product-frameworks` — MVP/MLP framework comparison
+- `mlp-planning` — Minimum Lovable Product planning
+- `product-lifecycle` — Stage-based playbook
+- `release-planning` — Release strategy
+- `technical-debt-management` — Tech debt tracking
+
+### Operations (5)
+- `blurred-roles-team-evolution` — PM/EM/Design role overlap
+- `experimentation-at-scale` — A/B and rollout
+- `product-analytics` — Metrics and dashboards
+- `product-explainability` — Explainable AI features
+- `stakeholder-management` — Cross-functional alignment
+
+---
+
 ## Sub-Skills
 
 | Sub-Skill | Focus | Methodologies |

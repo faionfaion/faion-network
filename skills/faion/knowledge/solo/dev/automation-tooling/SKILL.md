@@ -78,7 +78,7 @@ questions:
 - Internationalization
 - AI-assisted development
 
-## Methodologies (23 files)
+## Methodologies (49 files)
 
 **Browser Automation (4):** puppeteer-automation, playwright-automation, browser-automation-overview, web-scraping
 
@@ -93,6 +93,50 @@ questions:
 **Trunk-Based Dev (2):** trunk-based-dev-principles, trunk-based-dev-patterns
 
 **Modern Practices (2):** ai-assisted-dev, best-practices-2026
+
+### Puppeteer (split methodologies)
+
+- `puppeteer-launch-setup` — launch flags, browser context, env
+- `puppeteer-page-interaction` — clicks, forms, waits, selectors
+- `puppeteer-session-management` — cookies, storage, persistent state
+- `puppeteer-output-capture` — screenshots, PDFs, traces
+- `puppeteer-stealth-proxy` — stealth, proxy chains, fingerprinting
+- `puppeteer-agent-workflow` — agent-driven Puppeteer flows
+
+### Web scraping (split methodologies)
+
+- `web-scraping-element-extraction` — selectors, attributes, text
+- `web-scraping-pagination` — paged lists, infinite scroll, cursors
+- `web-scraping-resilience` — retries, backoff, rate limits, errors
+- `web-scraping-agentic-workflow` — agent-driven scraping pipelines
+
+### Feature flags (split methodologies)
+
+- `feature-flags-types-lifecycle` — flag types and lifecycle
+- `feature-flags-core-implementation` — flag core impl patterns
+- `feature-flags-rollout-targeting` — rollouts, segments, targeting
+- `feature-flags-services-testing` — testing flagged services
+
+### Trunk-based development (split methodologies)
+
+- `trunk-based-ci-gates` — CI gates for trunk-based dev
+- `trunk-based-feature-flags` — flags as branch-by-config
+- `trunk-based-branch-by-abstraction` — branch by abstraction patterns
+- `trunk-based-challenges` — common trunk-based challenges
+
+### Practices (per stack)
+
+- `practices-python-ecosystem` — Python ecosystem practices
+- `practices-django-coding` — Django-specific coding practices
+- `practices-backend-languages` — backend language practices
+- `practices-js-ts-stack` — JS/TS stack practices
+- `practices-frontend-components` — frontend component practices
+
+### Testing (per stack)
+
+- `testing-django-pytest` — Django + pytest practices
+- `testing-backend-languages` — backend language testing
+- `testing-js-ts-frontend` — JS/TS frontend testing
 
 ## Tools
 
@@ -116,4 +160,4 @@ Invoked by parent skill `faion-devtools-developer` for automation and tooling wo
 
 ---
 
-*faion-automation-tooling v1.0 | 23 methodologies*
+*faion-automation-tooling v1.0 | 49 methodologies*

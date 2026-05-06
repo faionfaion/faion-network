@@ -85,6 +85,10 @@ Browser automation, CI/CD pipelines, monorepo management, and developer tooling.
 
 **Focus:** Puppeteer, Playwright, web scraping, CI/CD, monorepo, performance testing, A/B testing, feature flags, trunk-based development
 
+## Methodologies (1)
+
+- `github-repo-bootstrap` — bootstrap a new GitHub repo with sensible defaults
+
 ## Routing Logic
 
 | Task Type | Route To |
