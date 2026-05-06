@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore(skills): sync tier-manifest.json with filesystem (50 paths) — closes audit gap
 - feat(scripts): add audit-index-coverage.py — verifies tier-manifest, workflow catalog, tier-AGENTS.md, per-KB SKILL.md, and structural floor. Five checks, JSON output, --strict exit codes for CI gating. Recognizes both KB shapes (router with SKILL.md, flat with AGENTS.md).
 - feat: add Codex compatibility layer while preserving Claude Code packaging. Added `.codex-plugin/plugin.json`, top-level and workflow platform adapters for Claude Code vs Codex, and neutral workflow primitives for user-choice, subagent dispatch, quota state, memory, and worktree isolation. Updated Faion indexes and README so Claude reads Claude adapters and Codex reads Codex adapters; Claude-only frontmatter, hooks, and retrieval remain available for Claude Code.
 - feat: `sdd-batch-orchestrator/decisions.xml` — closes the last workflow-spec gap. Seven architectural decisions: 12-phase shape (vs collapsed 9-phase), versioned prompt files (vs inline orchestrator improvisation), worktree-isolated parallel waves (vs shared working tree), `flock`-serialized merge into the default branch (vs optimistic concurrent merges), hard-capped REVIEW→FIX loop (vs unbounded retry), focused before/after visual delivery (vs PR description text), per-surface playbook adaptation (vs one-size-fits-all). `xmllint --noout` clean. catalog.json updated: `sdd-batch-orchestrator.has_decisions: true`.
