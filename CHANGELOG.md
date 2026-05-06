@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore(skills): add SKILL.md + CLAUDE.md for 21 geek-tier KBs (closes audit gap)
+- chore(skills): add SKILL.md + CLAUDE.md for 21 solo-tier KBs (closes audit gap)
+- chore(skills): add SKILL.md + CLAUDE.md for 6 pro-tier KBs (code-quality, software-architect, software-developer, product-operations, product-planning, ui-designer)
 - chore(skills): sync tier-manifest.json with filesystem (50 paths) — closes audit gap
 - feat(scripts): add audit-index-coverage.py — verifies tier-manifest, workflow catalog, tier-AGENTS.md, per-KB SKILL.md, and structural floor. Five checks, JSON output, --strict exit codes for CI gating. Recognizes both KB shapes (router with SKILL.md, flat with AGENTS.md).
 - feat: add Codex compatibility layer while preserving Claude Code packaging. Added `.codex-plugin/plugin.json`, top-level and workflow platform adapters for Claude Code vs Codex, and neutral workflow primitives for user-choice, subagent dispatch, quota state, memory, and worktree isolation. Updated Faion indexes and README so Claude reads Claude adapters and Codex reads Codex adapters; Claude-only frontmatter, hooks, and retrieval remain available for Claude Code.
