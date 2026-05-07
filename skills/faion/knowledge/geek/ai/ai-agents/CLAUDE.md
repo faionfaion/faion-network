@@ -16,7 +16,7 @@
 
 Specializes in AI agent development and orchestration.
 
-**Methodologies:** 26 | **Focus:** Agents, frameworks, MCP
+**Methodologies:** 84 | **Focus:** Agents, frameworks, MCP, structured-output, multi-model, planning, memory, eval, cost, prompts
 
 ## Quick Reference
 
@@ -28,18 +28,19 @@ Specializes in AI agent development and orchestration.
 | LlamaIndex | llamaindex-basics.md, llamaindex-agents-eval.md |
 | MCP | mcp-model-context-protocol.md, mcp-ecosystem-2026.md |
 | Governance | eu-ai-act-compliance-2026.md |
+| Structured output (so-) | schema-field-order, weak-model-preselection, refusal-field-strict-schema, schema-version-pinning, structured-output-mode-picker, ... |
+| Multi-model (mm-), tool-use (tu-), planning (pl-) | weak-model-preselection, file-reference-passing, ... (see folder index) |
+| Long-running (lp-), memory (mem-), CLI (cli-) | (see folder index) |
+| Eval (eval-), cost (cost-), MCP (mcp-) | cheap-guardrail-tripwire, ... (see folder index) |
 
 ## Methodology Count
 
-- Agent Fundamentals: 4 methodologies
-- Multi-Agent: 4 methodologies
-- LangChain: 7 methodologies
-- LlamaIndex: 3 methodologies
-- MCP: 4 methodologies
-- Governance: 2 methodologies
-- Advanced: 2 methodologies
+- Legacy heavy-format (pre-2026-04): 31 methodologies
+- New shape (2026-04 brainstorm batch): 53 methodologies in 10 categories (so/mm/tu/pl/lp/mem/cli/eval/cost/mcp)
 
-**Total: 26**
+**Total: 84**
+
+The new-shape methodologies use `methodology.xml` (closed semantic XML vocabulary) instead of the 5-file legacy pattern. Public-reader articles for the 53 new entries are mapped at `faion-net-fe/content/knowledge/agents/MAP.md` (`AGT-A-001`..`AGT-A-053`).
 
 ## Agent Patterns
 

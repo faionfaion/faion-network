@@ -53,8 +53,9 @@ faion/
     │   ├── marketing/  growth-marketer, gtm-strategist, ppc-manager, smm-manager, conversion-optimizer
     │   ├── research/   market-researcher, researcher
     │   └── comms/      hr-recruiter
-    └── geek/   (7)   AI agent-builder stack
-        └── ai/         ml-engineer, ai-agents, rag-engineer, ml-ops, multimodal-ai, llm-integration, claude-code
+    └── geek/   (8)   AI agent-builder stack + SDLC+AI
+        ├── ai/         ml-engineer, ai-agents (84), rag-engineer, ml-ops, multimodal-ai, llm-integration, claude-code
+        └── sdlc-ai/    (52) lang/lint/test/tracker/kb/task/mr/inc/sec/gov methodologies wiring AI agents into the SDLC floor
 ```
 
 Each skill folder: `SKILL.md` + methodology subfolders. Each methodology: 5-file pattern (`README.md`, `checklist.md`, `templates.md`, `examples.md`, `llm-prompts.md`).
