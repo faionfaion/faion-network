@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="10-bootstrap" title="Project file layout and bootstrap contract">
+  <summary>The workflow's contract is a fixed on-disk layout under the project's `.product/` folder. Master-prompt + state + decisions + tasks + research are the five durable artifacts. Every subagent reads its inputs from disk; the orchestrator never pastes long prompts.</summary>
+
+  <section title="Directory layout">
+    <p>Every project driven by this workflow has a `.product/` folder at its root with this shape.</p>
+    <code lang="text"><![CDATA[
+.product/
+├── master-prompt.md          # WHAT we build, WHY, conventions, /faion resources
+├── state.md                  # CURRENT phase, in-flight tasks, one-line log
+├── decisions/decisions.md    # append-only architectural decisions
+├── tasks/NN-<slug>.md        # per-task briefs read by subagents
+├── research/NN-<slug>.md     # subagent outputs land here BEFORE summary
+└── (optional) features/NN-<slug>/  # SDD feature folders once Phase 3 lands
+]]></code>
+    <p>The folder names and the file shape are the contract. Project content (vision, stack, billing model) is project-specific; the file layout is not.</p>
+  </section>
+
+  <section title="master-prompt.md">
+    <p>Single entry point. Every agent (orchestrator and every subagent) reads it first. Holds the project vision, architecture sketch, phase list, conventions inherited from the workspace, and the list of `/faion` resources to invoke per phase. It is rewritten only when the vision itself changes; phase progression does not edit it.</p>
+  </section>
+
+  <section title="state.md">
+    <p>Refreshed every cron tick. Holds: current phase, in-flight subagents, last action, next action, parked open questions. The log section is one line per tick — symbols not paragraphs.</p>
+    <reference path="content/40-cron-loop.xml">Tick semantics and the log format.</reference>
+  </section>
+
+  <section title="decisions.md (append-only)">
+    <rule>
+      <statement>Architectural decisions MUST be appended to `decisions/decisions.md` with: ISO date, decision (one sentence), rationale (why this beats alternatives), alternatives considered (list with rejection reasons). Past entries are NEVER rewritten.</statement>
+      <rationale>External callers (commits, SDD tickets, code review) cite decisions by date. Rewriting silently breaks citations. Append-only plus a chosen-vs-rejected pair makes the trail trustworthy across compactions and restarts.</rationale>
+    </rule>
+  </section>
+
+  <section title="tasks/ and research/">
+    <p>Each task brief under `tasks/NN-&lt;slug&gt;.md` is self-contained: goal, required output structure, `/faion` resources to use, search tool chain, constraints, return-summary word cap. The matching subagent saves its full output to `research/NN-&lt;slug&gt;.md` before returning the bounded summary to the orchestrator.</p>
+    <rule>
+      <statement>Subagents MUST save full output to `research/NN-&lt;slug&gt;.md` BEFORE returning a summary. The orchestrator's summary read is bounded; full output is not re-read unless an architectural decision depends on a specific quote.</statement>
+      <rationale>If the summary alone could contain the full output, the orchestrator carries N copies of it across ticks. Persisting on disk keeps the orchestrator lean and lets future ticks re-source detail without re-running the subagent.</rationale>
+    </rule>
+  </section>
+
+  <section title="Bootstrap step">
+    <p>On first invocation, the orchestrator creates `.product/` with empty `state.md` (phase 1 pending) and a fresh `master-prompt.md` derived from the operator's one-line ask. The first task briefs (one per Phase 1 research dimension) are written before any subagent dispatch. After bootstrap, the cron loop takes over.</p>
+  </section>
+
+  <section title="Per-directory docs">
+    <rule>
+      <statement>Every directory created by this workflow MUST get an `AGENTS.md` (essential context, file table) and a `CLAUDE.md` (`@AGENTS.md` only). This includes `.product/`, `.product/tasks/`, `.product/research/`, and any `features/&lt;id&gt;/` folder.</statement>
+      <rationale>The workspace convention is that any directory without the pair is invisible to future agents. Skipping the pair means later sessions cannot route through the project.</rationale>
+    </rule>
+  </section>
+</text>

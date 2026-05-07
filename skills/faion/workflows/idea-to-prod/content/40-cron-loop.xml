@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="40-cron-loop" title="Cron tick semantics: heartbeat, not control flow">
+  <summary>A `*/5 * * * *` cron tick wakes the orchestrator if it has gone idle. The tick is a heartbeat (drain detection, post-compaction recovery) — NOT control flow. The orchestrator drives iterations continuously without waiting for the next tick whenever there is work to do.</summary>
+
+  <section title="Tick action sequence">
+    <p>On every tick, the orchestrator runs this sequence in order.</p>
+    <list>
+      <item>Read `.product/master-prompt.md` (cached) and `.product/state.md` (always refresh).</item>
+      <item>Identify the current phase and the set of pending tasks for it.</item>
+      <item>If a background subagent is still running for the current phase, no-op and append a one-line "still in flight" entry to the log.</item>
+      <item>If every output file the current phase declares exists on disk, advance phase: update `state.md`, append the transition to the decision log, dispatch the next-phase subagent set.</item>
+      <item>If a subagent failed (no output file within the expected window), re-dispatch with the same brief. After two failures on the same task, fall back to the failure-modes recovery path.</item>
+      <item>Append a single line to the `state.md` log — symbols, not paragraphs.</item>
+    </list>
+    <reference path="content/50-failure-modes.xml">Recovery paths for failed subagents.</reference>
+  </section>
+
+  <section title="Heartbeat, not control">
+    <rule>
+      <statement>The cron tick is a keepalive signal. The orchestrator MUST drive the next iteration immediately whenever it has work to do — it does NOT wait for the next tick between dispatches.</statement>
+      <rationale>Waiting for cron between iterations adds 5 minutes of idle per step and turns a one-day project into a multi-week loop. Cron exists to recover from drain (no in-flight subagents) and from context compaction (orchestrator state lost). Steady-state throughput comes from the orchestrator's own continuous loop.</rationale>
+    </rule>
+  </section>
+
+  <section title="Restart from disk">
+    <rule>
+      <statement>The orchestrator MUST be fully restartable from `.product/state.md` plus the on-disk file layout. After context compaction, a fresh orchestrator reads `state.md`, identifies the current phase, and resumes — it does NOT require any in-memory state from the previous session.</statement>
+      <rationale>Context compaction is inevitable on multi-day projects. If the orchestrator depends on in-memory state, every compaction is a reset. Persisting all state to `state.md` and the file layout makes the loop survive compaction transparently.</rationale>
+    </rule>
+  </section>
+
+  <section title="One-line log format">
+    <p>Every tick adds exactly one line to the log section of `state.md`. Lines use symbols and short fragments — never paragraphs. Detail goes to commits or to the open-questions section.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+2026-05-07T14:05Z phase=1 dispatched=3 inflight=3 ✓
+2026-05-07T14:10Z phase=1 inflight=2 done=1 ✓
+2026-05-07T14:15Z phase=1 done → phase=2 dispatched=1 ✓
+2026-05-07T14:20Z phase=2 inflight=1 ✓
+]]></code>
+      <note>Symbols carry the verdict. The full detail of what each subagent produced is on disk in `research/`, not in the log.</note>
+    </example>
+    <antipattern>
+      <description>Multi-paragraph tick entries narrating the orchestrator's reasoning, the subagent's output, and the next intended action.</description>
+      <reason>The log balloons over a multi-day run, future ticks must scan it to find current state, and the same content already lives in `research/` and `decisions/`.</reason>
+    </antipattern>
+  </section>
+</text>

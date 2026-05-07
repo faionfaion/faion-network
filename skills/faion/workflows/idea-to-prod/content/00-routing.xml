@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="00-routing" title="When to invoke idea-to-prod vs sibling workflows">
+  <summary>idea-to-prod is the umbrella shape for one-prompt autonomous builds. Sibling /faion workflows (brainstorm, sdd-batch-orchestrator, improver, media-ops, poll-agents) are invoked by name from inside the matching phase, never as a substitute for the umbrella.</summary>
+
+  <section title="Triggers that route here">
+    <list>
+      <item>"build this end-to-end" / "ship this idea" / "запусти проект сам" / "автономний білд".</item>
+      <item>"від ідеї до прод" / "idea to production" / "one prompt to ship".</item>
+      <item>An operator pasting one description plus an instruction to "drive the loop yourself" or "wake on cron".</item>
+      <item>Greenfield project that needs research, decisions, SDD, implementation, deploy, and validation — all from a single conversation root.</item>
+    </list>
+  </section>
+
+  <section title="Routing rules">
+    <rule>
+      <statement>The orchestrator MUST select idea-to-prod only when the operator explicitly opts into a multi-phase autonomous loop. If the ask names a single phase (just brainstorm, just SDD, just deploy), route to that sibling workflow directly and skip the umbrella.</statement>
+      <rationale>The umbrella's per-phase scaffolding (`.product/` layout, cron tick, decisions log) is overhead when only one phase is needed. Mis-routing inflates token cost and creates unused folders that future agents must reason about.</rationale>
+    </rule>
+
+    <rule>
+      <statement>When intent is ambiguous between idea-to-prod and a single sibling workflow, the orchestrator MUST ask via the platform user-choice primitive with 2-3 candidate routes and explicit trade-offs.</statement>
+      <rationale>Single-option prompts are rubber stamps. The operator is the one who knows whether this is a one-shot or a multi-phase build; the orchestrator must surface the choice instead of guessing.</rationale>
+    </rule>
+  </section>
+
+  <section title="Role split">
+    <p>Three roles, never collapsed.</p>
+    <list>
+      <item>Operator — strategic decisions, phase gates, irreversible-action approval, persona checks. Can halt or park the loop at any tick.</item>
+      <item>Orchestrator (the active session) — phase selection, subagent dispatch by file reference, `state.md` updates, decision-log appends. Does NOT do research, code, tests, or commits itself.</item>
+      <item>Subagents — heavy work behind one task brief each. Save outputs to disk before returning a bounded summary. Run on `general-purpose` unless the task brief says otherwise.</item>
+    </list>
+  </section>
+
+  <section title="Sibling-workflow composition">
+    <p>idea-to-prod composes sibling workflows by name from the matching phase. It does not duplicate their content.</p>
+    <list>
+      <item>Phase 2 brainstorm → invoke `../brainstorm/` (multi-agent diverge-converge-review).</item>
+      <item>Phase 3 plan + Phase 4 implement → invoke `../sdd-batch-orchestrator/` (study → clarify → plan → wave-execute → verify → review → fix → close).</item>
+      <item>Post-Phase-6 capture (optional) → invoke `../improver/` (Phase 0 session review).</item>
+      <item>For a media-pipeline project specifically (TG channel + site + automation), prefer `../media-ops/` instead of this umbrella.</item>
+      <item>For a queue of ≥30 independent batches (no SDD artifacts), prefer `../poll-agents/` instead of this umbrella.</item>
+    </list>
+    <reference path="content/20-phases.xml">Per-phase invocation contract for the sibling workflows.</reference>
+  </section>
+</text>

@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat(workflows): add idea-to-prod — autonomous one-prompt build workflow
 - chore(skills): index 234 methodologies in 6 geek-tier index files (closes audit gap)
 - chore(skills): index 330 methodologies in 12 pro-tier SKILL.md files (closes audit gap)
 - chore(skills): index 139 methodologies in 7 free/solo SKILL.md files (closes audit gap)

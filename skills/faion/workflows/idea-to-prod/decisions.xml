@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<decisions>
+  <decision date="2026-05-07" topic="on-disk-file-layout-as-contract">
+    <chose>The workflow's contract is a fixed `.product/` directory layout (master-prompt + state + decisions + tasks + research) read by every subagent via `Read`, not pasted into dispatch messages.</chose>
+    <rejected>Inline-prompt dispatch (orchestrator pastes the full task body into each spawn call) or per-batch ad-hoc prompt files living only in the run log.</rejected>
+    <rationale>Inline-prompt dispatch ties the orchestrator's token cost to the size of every task brief on every dispatch and makes per-task edits invisible to future runs. Run-log-only briefs are lost at context compaction. A canonical on-disk layout makes the project restartable from disk after compaction, lets briefs be reviewed in code review, and decouples orchestrator latency from brief size. The cost of writing the layout once is paid back on every subsequent tick.</rationale>
+  </decision>
+
+  <decision date="2026-05-07" topic="cron-tick-as-heartbeat-not-control">
+    <chose>The `*/5 * * * *` cron tick is a keepalive signal — drain detection and post-compaction recovery. The orchestrator drives iterations continuously without waiting for the next tick whenever there is work to do.</chose>
+    <rejected>Cron-driven iteration: each tick advances exactly one step, the orchestrator waits for the next tick between dispatches.</rejected>
+    <rationale>Cron-driven iteration adds 5 minutes of idle per step and turns a one-day project into a multi-week loop. Steady-state throughput must come from the orchestrator's own continuous loop; cron exists only to recover from drain (no in-flight subagents) and from context compaction (orchestrator state lost). Treating the tick as control flow misses the recovery purpose and inflates wall time without any quality gain.</rationale>
+  </decision>
+
+  <decision date="2026-05-07" topic="file-reference-dispatch">
+    <chose>Every subagent dispatch passes exactly two file paths (master-prompt + task brief) plus a small parameter block. The subagent reads the prompts from disk itself.</chose>
+    <rejected>Pasting the full task body into the dispatch message; templating per-call prompts in the orchestrator's own context.</rejected>
+    <rationale>Inline pasting duplicates content the subagent will read anyway, inflates the orchestrator's input tokens, and silently drifts when the orchestrator paraphrases between dispatches. File-reference dispatch keeps a single source of truth for each brief, lets the brief be edited once and used many times, and bounds the orchestrator's per-dispatch token cost to a constant.</rationale>
+  </decision>
+
+  <decision date="2026-05-07" topic="sibling-workflow-composition">
+    <chose>idea-to-prod composes sibling /faion workflows by name from the matching phase (Phase 2 brainstorm, Phase 3-4 sdd-batch-orchestrator, optional improver post-Phase-6). It does not duplicate their content.</chose>
+    <rejected>Self-contained umbrella that re-implements the diverge-converge, SDD wave execution, and session capture loops inside its own content/ files.</rejected>
+    <rationale>Duplicating sibling content drifts: the umbrella's copy of the brainstorm rules ages while the canonical brainstorm workflow evolves. Composition keeps each workflow as the single source of truth for its concern, makes the umbrella a routing shape rather than a content store, and lets sibling workflow improvements propagate automatically. The cost is an extra Read per phase (negligible) for the gain of zero drift.</rationale>
+  </decision>
+
+  <decision date="2026-05-07" topic="append-only-decision-log">
+    <chose>`decisions/decisions.md` is append-only with monotonic chosen-vs-rejected pairs. Past entries are never rewritten; corrections are appended as new entries that reference the older one by date.</chose>
+    <rejected>Allow rewrites of past decisions when newer information makes them stale, to keep the file concise.</rejected>
+    <rationale>External callers (commits, SDD tickets, code-review comments) cite specific decisions by date. Rewriting silently breaks citations and erases the learning trail. Append-only with chosen-vs-rejected makes the file a reliable audit surface across compactions and across agent sessions; conciseness is recovered by appending corrections rather than by deletion.</rationale>
+  </decision>
+
+  <decision date="2026-05-07" topic="irreversible-action-gate-at-deploy">
+    <chose>Phase 5 (deploy) requires explicit operator approval via the platform user-choice primitive. The orchestrator's autonomy ends at every irreversible / shared-state mutation (deploy, public push, paid API key rotation, DNS change).</chose>
+    <rejected>Auto-deploy on Phase 4 success because the SDD review and CI gates already validate the artifact.</rejected>
+    <rationale>Deploy mutates production. CI validates correctness against the spec; it does not validate that the operator wants this artifact live now. The umbrella's autonomy is bounded at the security boundary, and the operator is that boundary. Past cases of auto-deploy after green CI shipped artifacts the operator wanted to defer (timing, coordination with marketing, partial-feature gating). Gating every irreversible action keeps the operator in control without slowing the reversible 95% of the loop.</rationale>
+  </decision>
+</decisions>

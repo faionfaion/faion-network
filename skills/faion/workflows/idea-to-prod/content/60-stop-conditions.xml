@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="60-stop-conditions" title="Stop and pause conditions">
+  <summary>Four conditions stop or pause the loop: operator halt, irreversible-action gate, Phase 6 full pass, and cron expiry. The orchestrator never decides on its own to terminate; it stops on a defined trigger and records the stop reason in `state.md`.</summary>
+
+  <section title="Operator halt (immediate)">
+    <p>Trigger: operator says "stop", "pause", "park", or any equivalent signal in chat or in `state.md`.</p>
+    <p>Action: the orchestrator stops dispatching, lets in-flight subagents finish (does not abort them), records the halt reason and timestamp in `state.md`, and exits. The next cron tick observes the halt and no-ops.</p>
+    <rule>
+      <statement>Operator halt MUST be honored on the same tick it is observed. The orchestrator does NOT defer the halt to the next phase boundary.</statement>
+      <rationale>Deferring the halt lets the orchestrator commit work the operator wanted to stop. Same-tick honoring matches the operator's expectation that "stop" means now.</rationale>
+    </rule>
+  </section>
+
+  <section title="Irreversible-action gate">
+    <p>Trigger: the next dispatched action is a deploy, a public push, a paid API key rotation, a DNS change, or any other irreversible / shared-state mutation.</p>
+    <p>Action: the orchestrator pauses before the action, requests operator approval via the platform user-choice primitive with 2-3 options (proceed, defer, abort), and resumes only on `proceed`. On `defer`, the action is parked in `state.md` and the orchestrator continues with orthogonal work.</p>
+    <reference path="content/20-phases.xml">Phase 5 deploy gate uses this pattern.</reference>
+  </section>
+
+  <section title="Phase 6 full pass (success terminal state)">
+    <p>Trigger: every Phase 6 validation returns PASS and `state.md` records `phase: shipped`.</p>
+    <p>Action: the orchestrator stops driving. The cron tick observes `phase: shipped` and no-ops. The operator can re-engage by editing `state.md` or by invoking a sibling workflow (e.g. `improver` for session capture).</p>
+  </section>
+
+  <section title="Cron expiry">
+    <p>Trigger: the cron job's session-scoped expiry (typically 7 days) is reached and the orchestrator's wake-up signal is no longer scheduled.</p>
+    <p>Action: the orchestrator records the expiry in `state.md`. The operator decides whether to revive with a longer-lived schedule (`durable: true` or equivalent) or to retire the project.</p>
+  </section>
+
+  <section title="Stop reason logging">
+    <rule>
+      <statement>Every stop MUST be recorded in `state.md` with: ISO timestamp, stop reason (one of: operator-halt, irreversible-gate-defer, phase-6-shipped, cron-expiry), and (for operator halt) the operator's stated reason if provided.</statement>
+      <rationale>Future sessions need to know why the loop stopped to decide whether to resume. An unrecorded stop forces the next session to re-read the entire `state.md` log to infer cause — slow and unreliable.</rationale>
+    </rule>
+  </section>
+
+  <section title="What is NOT a stop condition">
+    <p>The following are NOT stop conditions and the orchestrator MUST NOT treat them as such.</p>
+    <list>
+      <item>A single subagent failure (handled by the failure-modes recovery path).</item>
+      <item>Quota exhaustion (handled by the quota-check-time recovery path).</item>
+      <item>An open question parked in `state.md` (handled by the open-question recovery path; orthogonal work continues).</item>
+      <item>A pre-commit hook failure (handled by fix-and-retry; never bypass with `--no-verify`).</item>
+    </list>
+    <reference path="content/50-failure-modes.xml">Each non-stop condition routes here.</reference>
+  </section>
+</text>

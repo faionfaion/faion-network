@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="20-phases" title="Six phases from idea to validated production">
+  <summary>Fixed phase order: research (parallel) → brainstorm → SDD plan → implement → deploy → validate. A phase advances only when its outputs exist on disk and `state.md` reflects the transition. Each phase invokes its sibling /faion workflow by name.</summary>
+
+  <section title="Phase 1 — Research (parallel)">
+    <p>Trigger: bootstrap complete, no `research/*.md` files exist yet.</p>
+    <p>What it does: dispatches one subagent per research dimension (each task brief in `tasks/NN-&lt;slug&gt;.md`). Subagents run in background (`run_in_background: true`) and save outputs to `research/NN-&lt;slug&gt;.md` before returning summaries.</p>
+    <p>Output: every dimension covered by a research file on disk. The orchestrator advances when all expected files exist; missing files trigger re-dispatch in Phase 5 of the cron loop.</p>
+    <rule>
+      <statement>Phase 1 task briefs MUST list the `/faion` knowledge resources the subagent should consult (e.g. `software-architect`, `gtm-strategist`, `rag-engineer`) and the search tool chain (Bash gemini → codex → claude as fallback) inside the brief itself, not in the dispatch message.</statement>
+      <rationale>The brief is the contract. Putting tool chains and knowledge paths in the dispatch couples the orchestrator to per-task content; putting them in the brief lets future re-dispatches reproduce the same subagent without orchestrator memory.</rationale>
+    </rule>
+  </section>
+
+  <section title="Phase 2 — Brainstorm">
+    <p>Trigger: all `research/*.md` files exist; no `brainstorm.md` yet.</p>
+    <p>What it does: a single subagent invokes `../brainstorm/` (multi-agent diverge → converge → review). Inputs: every `research/*.md`. Output: `brainstorm.md` with locked architectural decisions (stack, runtime shape, knowledge schema, billing model — project-dependent). Each locked decision is appended to `decisions/decisions.md`.</p>
+    <reference path="../brainstorm/AGENTS.md">Sibling workflow contract.</reference>
+  </section>
+
+  <section title="Phase 3 — SDD Plan">
+    <p>Trigger: `brainstorm.md` exists and decisions are appended.</p>
+    <p>What it does: per feature identified in brainstorm, the orchestrator creates `features/NN-&lt;slug&gt;/` and dispatches one planning subagent. Each subagent reads `brainstorm.md` + `decisions/decisions.md` and writes the SDD quartet: `spec.md`, `design.md`, `test-plan.md`, `implementation-plan.md`.</p>
+    <p>Output: complete SDD set per feature, ready for wave execution.</p>
+  </section>
+
+  <section title="Phase 4 — Implement">
+    <p>Trigger: SDD quartet exists for at least one feature.</p>
+    <p>What it does: hands off to `../sdd-batch-orchestrator/` for wave execution. Each task subagent reads its `TASK_*.md`, executes, runs the project's pre-commit hook, and produces a granular commit (one logical change per commit).</p>
+    <reference path="../sdd-batch-orchestrator/AGENTS.md">Wave-execute contract.</reference>
+    <rule>
+      <statement>Pre-commit hook failures MUST be fixed at the root cause and a NEW commit created — never `--amend`, never `--no-verify`.</statement>
+      <rationale>The workspace standard is that hooks are correctness gates, not noise. `--amend` after a hook failure rewrites a commit that did not happen; `--no-verify` ships broken artifacts that a later session must debug.</rationale>
+    </rule>
+  </section>
+
+  <section title="Phase 5 — Deploy">
+    <p>Trigger: Phase 4 produced merged commits and the project's deploy script exists.</p>
+    <p>What it does: invokes the project's `deploy-gh.sh` (or equivalent) following the workspace pattern (push → SSH → pull → build → deploy). DNS via Cloudflare API when needed (creds in 1Password).</p>
+    <rule>
+      <statement>Phase 5 MUST request operator approval via the platform user-choice primitive before the deploy step runs. Deploy is irreversible / shared-state; the orchestrator is not authorized to act unilaterally.</statement>
+      <rationale>Deploy mutates production. The umbrella's autonomy ends at the irreversible-action gate; the operator is the security boundary for shared-state writes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Phase 6 — Validate">
+    <p>Trigger: Phase 5 reports deploy success.</p>
+    <p>What it does: end-to-end walk of the product surface (per `test-plan.md`); adversarial probes on isolation boundaries (read-only); fallback-chain test (e.g. force primary tool failure → secondary → tertiary); cost-per-action measurement against the margin model.</p>
+    <p>Output: validation report appended to `state.md`. On full pass, `state.md` reads `phase: shipped` and the cron loop stops driving.</p>
+    <reference path="content/60-stop-conditions.xml">Stop semantics.</reference>
+  </section>
+
+  <section title="Advance condition (invariant)">
+    <rule>
+      <statement>A phase advances if and only if (a) every output file the phase declares exists on disk AND (b) `state.md` records the transition with the new phase id and timestamp. Both conditions are required; either alone is insufficient.</statement>
+      <rationale>Files-only advance allows a half-written brainstorm to count as Phase 2 done. State-only advance allows a tick to claim progress without artifact. Coupling the two makes the loop restartable from disk after compaction.</rationale>
+    </rule>
+  </section>
+</text>

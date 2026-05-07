@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="50-failure-modes" title="Failure modes and recovery paths">
+  <summary>Six failure modes are first-class in this workflow: failed subagent, dead-end loop, internet-research blocked, quota exhaustion, open question requiring operator input, and pre-commit hook failure. Each has a defined detection signal and recovery action so the orchestrator never improvises under stress.</summary>
+
+  <section title="Failed subagent">
+    <p>Detection: expected output file missing or under expected size after the dispatch window.</p>
+    <p>Recovery: re-dispatch with the same brief once. If a second attempt also fails, escalate via the dead-end path below.</p>
+    <rule>
+      <statement>The orchestrator MUST NOT rewrite the task brief on first failure — re-dispatch the same brief to rule out transient causes (rate limits, intermittent tool failure) before changing inputs.</statement>
+      <rationale>Rewriting the brief on first failure muddles the failure signal: if it then succeeds, the orchestrator does not know whether the rewrite or the retry caused success. Two attempts of the same brief isolate the variable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Dead-end (two failed attempts on the same task)">
+    <p>Detection: same task brief failed twice in a row.</p>
+    <p>Recovery: invoke `../brainstorm/` on the specific question the task was meant to answer. The brainstorm output replaces the original brief with a sharper one, and the next dispatch uses the new brief.</p>
+    <reference path="../brainstorm/AGENTS.md">Sibling brainstorm workflow.</reference>
+  </section>
+
+  <section title="Internet research blocked">
+    <p>Detection: `WebFetch` / `WebSearch` returns errors, or the tool is not available in the current environment.</p>
+    <p>Recovery: fall back through the CLI chain `gemini -p "..."` → `codex exec "..."` → `claude -p "..."` via Bash. The first one that succeeds wins; the orchestrator records which tool answered in `state.md`.</p>
+  </section>
+
+  <section title="Quota exhaustion on the top model">
+    <p>Detection: API 429 or quota response from a model call.</p>
+    <p>Recovery: check `date -u` first — the reset window may have already passed. If the reset is still ahead, park the affected subagent, continue the orchestrator with non-blocked work, and re-dispatch after the reset.</p>
+    <rule>
+      <statement>On quota error the orchestrator MUST run `date -u` before parking the loop. Stale quota records in transcript may already be restored; parking unnecessarily wastes a tick.</statement>
+      <rationale>Quota errors are timestamped against the model's reset window, not the orchestrator's local time. Without checking current UTC, the orchestrator cannot tell whether the error is current or stale, and parks defensively when it could continue.</rationale>
+    </rule>
+  </section>
+
+  <section title="Open question requiring operator input">
+    <p>Detection: a subagent's brief or a brainstorm output surfaces a decision the orchestrator is not authorized to take alone.</p>
+    <p>Recovery: append the question to the "Open questions" section of `state.md`, stop the directly-affected phase, and continue any orthogonal work. On the next tick, if the operator has answered (in chat or by editing `state.md`), the orchestrator resumes the parked phase.</p>
+  </section>
+
+  <section title="Pre-commit hook failure">
+    <p>Detection: `git commit` exits non-zero with a hook-failure message.</p>
+    <p>Recovery: read the hook output, fix the root cause, re-stage the affected files, and create a NEW commit. Never `--amend` (the previous commit did not happen) and never `--no-verify`.</p>
+    <antipattern>
+      <description>Re-running the failed `git commit` with `--no-verify` to "unblock" the loop.</description>
+      <reason>The hook caught a real defect (lint, format, missing CHANGELOG entry, debug print). Bypassing it ships the defect, which a later session must debug — and the bypass itself becomes a precedent that erodes the gate.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Recovery escalation">
+    <rule>
+      <statement>If the same recovery path triggers three times in one phase, the orchestrator MUST stop the phase, append a written escalation note to `state.md`, and request operator guidance via the platform user-choice primitive — it does NOT loop indefinitely.</statement>
+      <rationale>An infinite recovery loop burns quota and produces no progress. Three is the cheapest cap that covers transient causes without becoming an infinite-cost search; beyond that the issue is structural and needs operator input.</rationale>
+    </rule>
+  </section>
+</text>

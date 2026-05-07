@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="30-token-discipline" title="Token discipline for the orchestrator">
+  <summary>The orchestrator is the most expensive context. Five hard rules keep it lean: file-reference dispatch, on-disk subagent outputs, bounded summaries, default background mode for long work, and no narration of internal deliberation.</summary>
+
+  <section title="Dispatch by file reference">
+    <rule>
+      <statement>Every subagent dispatch MUST pass two file paths — master-prompt + task brief — and nothing else beyond a small parameter block. The subagent reads the prompts from disk itself.</statement>
+      <rationale>Pasting the full prompt into the dispatch message duplicates content the subagent will read anyway, inflates the orchestrator's input tokens, and makes per-task brief edits invisible to future runs.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+You are <Phase-X> subagent for project <slug>.
+
+Read these files first, in order:
+1. /<abs path>/.product/master-prompt.md
+2. /<abs path>/.product/tasks/<NN-task>.md
+
+Execute the task as specified. Save full output to <output-path>
+BEFORE returning. Return summary under <N> words.
+]]></code>
+      <note>Two paths plus a word cap. The task brief carries the rest.</note>
+    </example>
+    <antipattern>
+      <description>Inline-pasting a 1500-word prompt body into the dispatch message instead of pointing at the task brief on disk.</description>
+      <reason>The orchestrator pays for those tokens on every dispatch and on every summary that quotes the prompt. The brief on disk is paid for once.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Subagents save before they summarize">
+    <rule>
+      <statement>Subagents MUST save full output to `research/NN-&lt;slug&gt;.md` (or feature SDD files for Phase 3) BEFORE returning a summary. Summaries are bounded to 300-400 words unless the task brief says otherwise.</statement>
+      <rationale>The full output is the artifact; the summary is a pointer. The orchestrator never re-reads the full output unless an architectural decision depends on a specific quote — and even then, a sub-subagent reads it, not the orchestrator.</rationale>
+    </rule>
+  </section>
+
+  <section title="Background mode by default">
+    <rule>
+      <statement>Long-running research and heavy computation MUST run with `run_in_background: true`. The orchestrator continues with other work and is notified on completion.</statement>
+      <rationale>Foreground-mode subagents block the orchestrator and waste cron ticks waiting. Background mode lets parallel research dimensions advance simultaneously and lets the orchestrator handle other phase logic in the same tick.</rationale>
+    </rule>
+  </section>
+
+  <section title="Orchestrator does not redo subagent work">
+    <rule>
+      <statement>If a question can be answered by re-reading a research file, the orchestrator MUST dispatch a sub-subagent (or trust the existing summary) instead of reading the file itself.</statement>
+      <rationale>Re-reading the full research output puts those tokens back into the orchestrator's context. Sub-subagent dispatch keeps the cost in a disposable context that ends when the answer arrives.</rationale>
+    </rule>
+  </section>
+
+  <section title="No narration of internal deliberation">
+    <rule>
+      <statement>Status updates from the orchestrator are emitted at decision points only — phase transitions, subagent dispatch, irreversible-action gate, halt. Internal reasoning is not narrated.</statement>
+      <rationale>Narration is read by the operator and consumes tokens for content the next tick will not need. Decision points are the natural cut where the operator wants visibility; everything else is overhead.</rationale>
+    </rule>
+  </section>
+</text>
