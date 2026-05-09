@@ -1,4 +1,27 @@
-# Claude Code Instructions
+# faion-network
+
+**Methodology base for the CLI.** The repo is the source of truth for everything the `faion` CLI ships at runtime: skills, methodologies, playbooks, workflows, and the `tier-manifest.json` that gates them.
+
+| Item | Value |
+|------|-------|
+| Repo | `faionfaion/faion-network` |
+| Content | 54 skills, 1300+ methodologies, 120 playbooks, 5 workflows, `tier-manifest.json` |
+| Tiers | free / solo / pro / geek (cumulative; manifest is the authoritative path-to-tier map) |
+| Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH` settings; **not** bundled into the public `faion` plugin |
+| Symlink | `~/workspace/.claude → projects/faion-net/faion-network` so Claude Code loads skills from here directly |
+
+**Ecosystem map:** see `../AGENTS.md` for the full 5-repo stack and runtime data flow.
+
+## Adapters
+
+This repo is packaged for Claude Code and Codex. Shared project rules live below; runtime-specific Faion behavior lives in adapter files:
+
+| Runtime | Adapter |
+|---------|---------|
+| Claude Code | `skills/faion/adapters/claude-code.md` and `skills/faion/workflows/adapters/claude-code.md` |
+| Codex | `skills/faion/adapters/codex.md` and `skills/faion/workflows/adapters/codex.md` |
+
+Claude Code-specific metadata (`CLAUDE.md`, `allowed-tools`, hooks) is kept for Claude compatibility. Codex should ignore it unless the Codex adapter says otherwise.
 
 ## Git Commits
 
