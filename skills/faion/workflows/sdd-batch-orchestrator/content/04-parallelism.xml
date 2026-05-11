@@ -10,7 +10,7 @@
       <item>They live in the same repository and same file, but at non-overlapping line ranges, AND the orchestrator accepts a possible rebase between them.</item>
     </list>
     <p>Otherwise the features go in sequential waves. When in doubt, default to a separate worktree per feature.</p>
-    <p>Pool size is bounded by quota: read `/tmp/claude-session-state.json`'s `rate_limits.five_hour.used_percentage`. Stop adding agents to the wave when the projected wave consumption would push the meter past the user-set threshold (default 50%).</p>
+    <p>Pool size is bounded by quota: read `platform quota-state source`'s `rate_limits.five_hour.used_percentage`. Stop adding agents to the wave when the projected wave consumption would push the meter past the user-set threshold (default 50%).</p>
   </section>
 
   <section title="Worktree pattern">
@@ -39,6 +39,13 @@ git -C "$REPO" worktree remove "$WT"
 git -C "$REPO" branch -d feature/${FEATURE}
 ]]></code>
     </example>
+  </section>
+
+  <section title="Pre-flight branch check">
+    <rule>
+      <statement>Every executor subagent MUST verify branch state before any edit: run `git rev-parse --abbrev-ref HEAD`, expect the canonical branch (main/master). Halt and report if the tree is detached or on an unexpected ref.</statement>
+      <rationale>Pool parallelism with `git worktree add` can leave the original tree in detached HEAD if a sibling agent does `git checkout` for any reason. Committing on detached HEAD silently loses work when the worktree closes. Observed in F-050 T09 (2026-05-10): faion-net-fe working tree found at pre-F-050 commit; recovered via `git checkout main`. No work lost only because the executor detected drift before committing.</rationale>
+    </rule>
   </section>
 
   <section title="Merge serialization">

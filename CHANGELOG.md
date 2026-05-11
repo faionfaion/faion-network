@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- sdd-batch-orchestrator: add Pre-flight branch check section to 04-parallelism.xml (F-056; rule landed after F-050 T09 detached-HEAD incident).
 - chore(skills): feature-044 closeout — bump tier-manifest to v6, refresh `geek/ai/ai-agents/CLAUDE.md` count (26 → 84, with 53-new + 31-legacy split documented), and extend `skills/CLAUDE.md` geek tree with `sdlc-ai (52)`. tier-manifest.json's geek `knowledge_paths` already lists `faion/knowledge/geek/sdlc-ai`; no schema change required (044-T06).
 - feat(workflows): add idea-to-prod — autonomous one-prompt build workflow
 - chore(skills): index 234 methodologies in 6 geek-tier index files (closes audit gap)
