@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Design Review Facilitation — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the meeting record + recap email shape. Facilitator, scribe, or supporting agent must satisfy these contracts.</summary>
+
+  <output-contract>
+    <required>
+      <field name="meeting_date" format="ISO-8601_date"/>
+      <field name="duration_min" type="integer" max="60"/>
+      <field name="facilitator" format="single_named_individual_not_artifact_author"/>
+      <field name="scribe" format="single_named_individual"/>
+      <field name="attendees" min="3" source="named_list"/>
+      <field name="artifacts_reviewed" min="1" required_keys="title,stage,time_box_min,actual_min,feedback_tags,outcome"/>
+      <field name="feedback_tags" required_keys="clarifying,suggesting,blocking"
+             value_type="count_or_array_of_quotes"/>
+      <field name="outcome" format="enum: decision | defer | kill"/>
+      <field name="decision_or_defer_details" required_keys="owner,date_or_trigger,specific_action_or_followup"/>
+      <field name="recap_published_at" format="ISO-8601_timestamp"/>
+      <field name="recap_within_24h" type="boolean"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">duration_min &gt; 60 (r1)</pattern>
+      <pattern id="f2">any artifact with outcome=decision but missing owner OR date</pattern>
+      <pattern id="f3">any artifact with outcome="iterate" / "discuss later" / "let's see" — not a valid outcome enum value (r3)</pattern>
+      <pattern id="f4">facilitator == any artifact_author</pattern>
+      <pattern id="f5">scribe == facilitator (one person cannot do both reliably)</pattern>
+      <pattern id="f6">recap_within_24h=false (r5)</pattern>
+      <pattern id="f7">feedback_tags has only "looks great" / vague comments without retag — meeting did not enforce r2</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Combine sequential clarifying-questions about the same element into one bundled clarification.</transformation>
+      <transformation>Move an artifact to next week if its time-box overflows and the discussion is healthy (vs. cutting off prematurely).</transformation>
+      <transformation>Skip the structured-feedback round-robin for trivial artifacts (e.g., copy-only changes) — log explicit "trivial, decision: ship" in 1 min.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/meeting-record.json"/>
+  </output-contract>
+
+  <section title="Recap email contract (templates/recap-email.md)">
+    <list>
+      <item>Subject: "Design review recap — YYYY-MM-DD"</item>
+      <item>Decisions section: artifact + decision + owner + date</item>
+      <item>Defer section: artifact + follow-up trigger + named decider</item>
+      <item>Action items section: action + owner + date</item>
+      <item>Link to full meeting record</item>
+      <item>Sent within 24h of meeting end</item>
+    </list>
+  </section>
+
+  <section title="Self-check (run before sending recap)">
+    <list>
+      <item>Duration &lt;= 60 min (r1)</item>
+      <item>Every artifact has outcome decision / defer / kill with owner + date (r3)</item>
+      <item>No "looks great" / "iterate" non-decisions in record (r2)</item>
+      <item>Scribe and facilitator are different people (f5)</item>
+      <item>Recap drafted, ready to send within 24h (r5)</item>
+      <item>Output validates against templates/meeting-record.json</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Pricing Experiment Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every Stripe-based pricing experiment must satisfy. Hard rules; designed to prevent the four standard incidents: re-billed grandfathered customers, refund storms, currency-tax errors, and tests that never statistically close.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-pre-commit-experiment-plan" testable="true" depth="essential">
+      <statement>The Experiment Plan is written and committed to the marketing repo BEFORE any Stripe change is made. It states: variant (old vs new price + structure), audience (new sign-ups only / existing customers / segment), exposure rule (random 50/50, geo split, cohort), duration, success metric with significance threshold, and a defined termination rule.</statement>
+      <rationale source="A/B-testing methodology; pre-registration in clinical trials">Without pre-commit, the founder consciously or unconsciously picks the success metric that already won. Pre-registered design also makes the "this test failed" outcome cheaper to accept, because the bar was set before the data was in.</rationale>
+    </rule>
+
+    <rule id="r2-grandfathering-explicit-and-pinned" testable="true" depth="essential">
+      <statement>Existing customers are grandfathered explicitly: either kept on the old Stripe Price object indefinitely, or moved with a documented coupon stack that holds the old effective price for a defined window. The grandfathering rule is written in the Experiment Plan and announced to customers in writing. The old Stripe Price object is NEVER deleted.</statement>
+      <rationale source="customer-retention research on price-change perception; Stripe-billing incident postmortems">Accidentally re-billing a grandfathered customer at a higher price is the single most-cited "I am cancelling and leaving a bad review" event. Deleting the old Price object is the second most-cited; Stripe will silently re-bill the customer at the new price on the next renewal. The discipline is "old Price stays in Stripe forever, even if archived in the dashboard".</rationale>
+      <example type="good" title="Grandfathering with coupon stack">
+        <code lang="json"><![CDATA[
+{
+  "experiment_id": "exp-2026-q2-pricing",
+  "grandfathering_policy": {
+    "audience": "all subscriptions active before 2026-06-01",
+    "mechanism": "100% off coupon stacked on top of new Price",
+    "stripe_coupon_id": "grandfather_q2_2026",
+    "window_months": 12,
+    "renewal_after_window": "moves to new Price at +10% step (announced in 2026-04 email)"
+  }
+}
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r3-stripe-config-validated-via-script" testable="true" depth="essential">
+      <statement>Before the experiment goes live, run `scripts/stripe-pre-flight.py` against the production Stripe account. It verifies: new Price object exists with the experiment variant, old Price object active, grandfather coupon attached to all eligible customers, no orphaned subscriptions, no test-mode artifacts in live. Test cannot start until pre-flight returns green.</statement>
+      <rationale source="Stripe Dashboard error patterns; production-deploy gating practice">Manual checklist execution misses one in ten verifications. A scripted pre-flight is the only mechanism that prevents the "I thought I checked that" failure mode. Stripe-specific errors (currency mismatch on Price object, deleted Plan referenced by active subscription) are not visible from the Dashboard alone.</rationale>
+    </rule>
+
+    <rule id="r4-currency-and-tax-explicit" testable="true" depth="essential">
+      <statement>For every Price object in the experiment, currency, tax behavior (`tax_behavior: inclusive | exclusive`), and tax-id capture flow are documented in the Plan. Multi-currency experiments require a separate Price object per currency and an explicit display-rule (visitor's IP-geo or browser-locale). EU VAT, UK VAT, GST, and US state-sales-tax are handled at announcement time, not after the first invoice rejects.</statement>
+      <rationale source="Stripe Tax documentation; cross-border SaaS invoicing incidents">Currency conversion at billing time silently changes the perceived price by 3-7% in either direction, breaking the experiment's framing. Tax-inclusive vs tax-exclusive defaults differ by jurisdiction; mismatched tax behavior surfaces as a customer-support storm 14 days into the experiment.</rationale>
+    </rule>
+
+    <rule id="r5-forced-go-no-go-decision-memo" testable="true" depth="essential">
+      <statement>On the final scheduled day of the experiment, the founder writes the Decision Memo: variant-level metrics, significance verdict, qualitative signals (support tickets, customer feedback, refund rate), and a single binary decision (adopt new price / revert to old / extend test with documented adjustment). The memo is committed to the marketing repo within 48h of the experiment end. No "let's leave it running and see" is permitted.</statement>
+      <rationale source="decision-discipline patterns; sunk-cost research in experiment governance">Experiments that drift past their planned duration become indistinguishable from the new status quo, and the founder loses the ability to revert. Forced go/no-go at the planned date preserves the experiment as a real choice.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Termination rules">
+    <list>
+      <item>Refund rate &gt; 2x baseline OR support-ticket rate &gt; 3x baseline — terminate immediately, revert to old Price</item>
+      <item>Stripe dispute rate spikes &gt; 0.5% during the window — terminate immediately, revert</item>
+      <item>Significance not reached but sample size at 80% of plan — extend by 30 days max, then force go/no-go</item>
+      <item>Significance reached with negative effect on MRR or trial-to-paid — terminate, revert, document</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
