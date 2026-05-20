@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="E2E Framework Migration — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the migration tracker + per-wave record shape. Migration lead or agent producing artifacts must satisfy these contracts.</summary>
+
+  <output-contract>
+    <required>
+      <field name="migration_id" format="adr_reference_or_repo_label"/>
+      <field name="source_framework" format="name_and_version"/>
+      <field name="target_framework" format="name_and_version"/>
+      <field name="migration_lead" format="single_named_individual"/>
+      <field name="start_date" format="ISO-8601_date"/>
+      <field name="target_end_date" format="ISO-8601_date"/>
+      <field name="waves" required_keys="wave_number,name,entry_criteria,exit_criteria,status,owner,started_date,completed_date,rollback_path"
+             value_type="four_wave_array_PoC_ParallelBuild_Cutover_Decommission"/>
+      <field name="modules_inventory" min="1" required_keys="module_id,status,codemod_applied,parity_test_status,owner"/>
+      <field name="dual_window" required_keys="kind,start_date,planned_end_date,actual_end_date_if_complete"/>
+      <field name="rollback_drill_records" min="0" required_keys="wave,date,outcome,actual_RTO_min"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">waves array missing the Decommission wave (r5)</pattern>
+      <pattern id="f2">cutover wave started without parity gate passed (r1)</pattern>
+      <pattern id="f3">dual_window.planned_end_date null OR &gt; 6 months after start (r3)</pattern>
+      <pattern id="f4">module marked "complete" without codemod_applied OR documented manual rationale (r2)</pattern>
+      <pattern id="f5">wave entered without rollback_drill_records for the prior wave (r4)</pattern>
+      <pattern id="f6">migration marked complete with old framework still imported anywhere in codebase (r5)</pattern>
+      <pattern id="f7">wave.exit_criteria empty or "TBD" — every wave must have explicit exit criteria</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Split a wave into sub-waves when scope is unexpectedly large (e.g., Wave 2a / 2b) — but the parent wave's exit criteria still apply.</transformation>
+      <transformation>Extend planned_end_date for a dual-window with documented justification + new explicit end date (NOT open-ended).</transformation>
+      <transformation>Document a module as "skipped with rationale" if it will not migrate (e.g., legacy feature being retired in parallel) — counts toward Wave 4 completion as long as it's removed from the codebase.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/wave-record.json"/>
+  </output-contract>
+
+  <section title="Self-check (run before declaring a wave complete)">
+    <list>
+      <item>Wave entry_criteria were met before start_date (r-applicable)</item>
+      <item>Wave exit_criteria are all true at completed_date</item>
+      <item>If wave is Cutover, parity gate passed (r1)</item>
+      <item>If wave is ParallelBuild, dual_window has explicit end date (r3)</item>
+      <item>Rollback path documented AND rehearsed (r4)</item>
+      <item>If wave is Decommission, codebase grep returns zero imports of old framework (r5)</item>
+      <item>Output validates against templates/wave-record.json</item>
+    </list>
+  </section>
+</text>

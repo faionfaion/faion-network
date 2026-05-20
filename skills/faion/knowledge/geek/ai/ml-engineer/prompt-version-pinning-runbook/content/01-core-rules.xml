@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Prompt Version Pinning Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every prompt version-pinning rollout must satisfy. Hard rules; gateway policy enforces them, not social pressure.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-immutable-version-ids" testable="true" depth="essential">
+      <statement>Every prompt has a stable `prompt_id` and an immutable `version` identifier. Versions are content-addressable (`v_{sha16}`) or monotonic (`v23`); once published, a version's content NEVER changes. Edits create a new version; the old version stays accessible for rollback and replay forever.</statement>
+      <rationale source="content-addressable identity in software supply chain; LLM-replay debugging research">A mutable version is a debugging nightmare: an incident replay against `prompt v3` last week and against the same `prompt v3` today returns different results. Immutability is the property that makes the entire pinning runbook trustworthy.</rationale>
+      <example type="good" title="Immutable lock-file entry">
+        <code lang="yaml"><![CDATA[
+# prompts.lock.yaml (env: prod)
+classify_intent:
+  active: v_a7b3f2c189de4501
+  history:
+    - v_a7b3f2c189de4501 (rolled out 2026-05-19, current)
+    - v_4419c2d80f8a8d2b (2026-04-12 → 2026-05-19, rolled back due to fp spike)
+    - v_b8e91d70a0192334 (2026-03-01 → 2026-04-12)
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-gateway-enforces-pinning" testable="true" depth="essential">
+      <statement>The LLM gateway is the enforcement point. Every incoming call carries an explicit `prompt_id @ version`; calls without an explicit version are rejected with HTTP 400. The gateway's enforcement policy is environment-scoped (prod, staging, shadow) and version-locked.</statement>
+      <rationale source="defense-in-depth supply-chain practice; observability requirements">Client-side pinning is necessary but insufficient. The gateway is the only place that can guarantee no call leaks an unpinned prompt; client code can drift, but the gateway is one config file. Gateway enforcement closes the supply-chain hole.</rationale>
+    </rule>
+
+    <rule id="r3-explicit-rollout-strategy-per-change" testable="true" depth="essential">
+      <statement>Every prompt version change picks one of four rollout strategies and documents it in the PR: (a) shadow (no traffic, eval only, runs alongside live), (b) canary (5% traffic, 24h minimum hold), (c) guarded-flag (per-tenant or per-segment), (d) full (after canary holds OR for prompts with no eval risk). Default is canary; immediate-full requires written justification from ML lead.</statement>
+      <rationale source="progressive-delivery practice; LLM-prompt regression research">Direct full rollout of a prompt version is the single biggest source of customer-visible regressions. Canary catches most regressions within hours; shadow catches the rest before they reach customers. The discipline is the rollout strategy, not the optimism.</rationale>
+    </rule>
+
+    <rule id="r4-sixty-second-rollback-contract" testable="true" depth="essential">
+      <statement>The gateway supports `prompt rollback {prompt_id}` returning to the previously-active version in &lt; 60 seconds. Rollback is one CLI command; it produces a rollback-receipt artifact recording who, when, why, and which version was the rollback target. The rollback path is rehearsed quarterly with a game-day exercise.</statement>
+      <rationale source="MTTR research on LLM regressions; chaos-engineering practice">A rollback that takes 30 minutes might as well not exist during a customer-impacting incident. The 60-second contract forces the gateway design to support it: in-memory lock file, no rebuild required, no deploy required, atomic flip. Game-day exercises catch the bit-rot that turns a working rollback into a broken one over months.</rationale>
+    </rule>
+
+    <rule id="r5-weekly-ab-review" testable="true" depth="essential">
+      <statement>At least one prompt is under active A/B comparison every week; the comparison runs at the gateway (5/95 split or shadow), eval metrics are reported to the team channel each Friday, and the comparison closes within 4 weeks (no perpetual experiments). Comparisons without a planned close-date are blocked at the rollout gate.</statement>
+      <rationale source="experimentation cadence research; LLM-quality drift analysis">Without a weekly review cadence, A/B experiments become wallpaper. The 4-week cap forces a decision and prevents indefinite tail-experiment drift. The Friday post is the discipline trigger.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Storage layout">
+    <list>
+      <item>prompts/registry/ — content-addressed prompt versions; immutable</item>
+      <item>prompts.lock.{env}.yaml — per-environment active version + history; mutable by ops CLI</item>
+      <item>prompts.lock.{env}.yaml is committed to git but managed by the ops CLI, not hand-edited</item>
+      <item>gateway-policy.yaml — per-environment enforcement config (reject unpinned, allowed versions)</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
