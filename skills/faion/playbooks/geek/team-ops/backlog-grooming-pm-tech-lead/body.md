@@ -1,0 +1,110 @@
+# Backlog grooming with PM + tech lead (weekly)
+
+**Playbook slug:** `backlog-grooming-pm-tech-lead`
+**Tier:** geek
+**Complexity:** medium
+**Persona:** P6 — Product-Dev Team
+
+## Intent
+
+Open backlog of mixed maturity → top-of-backlog spec-ready (AC + complexity tag) each week in 1 hour.
+
+## Scope
+
+Weekly 1-hour grooming session: PM brings business priorities, tech lead brings tech-debt + capacity reality. Goal: only the top of the backlog is spec-ready (acceptance criteria + estimated complexity), everything else stays untouched. AI agent splits oversized items into sub-tasks. Tech-debt has a fixed slot quota per cycle. Session ends with a written grooming-decisions log.
+
+### What this playbook covers
+
+Three tight stages: walk the top of the backlog with maturity tags, make spec-ready, balance and log. The session is intentionally bounded to one hour — grooming sessions that drift past 90 minutes are a signal that maturity work belongs to async pre-reads, not the meeting.
+
+### Non-goals
+
+- Sprint planning — see `sprint-planning-sdd-task-expansion`
+- Quarter-level prioritisation — see `quarter-planning-okr-reset`
+- Day-to-day triage — see `daily-standup-ai-prebrief`
+
+### Prerequisites
+
+- Backlog exists with at least 10 items beyond current sprint
+- Tech-debt register tagged in tracker
+- AI agent able to propose task splits from spec
+
+## Success criteria
+
+The playbook is done when:
+- Top of backlog spec-ready (AC + complexity tag)
+- Oversized items split
+- Tech-debt slot quota respected
+- Grooming-decisions log appended
+
+## Stages
+
+### Stage 1: Walk the backlog
+
+**Intent:** Cover top-N items; classify maturity.
+
+**Methodologies in chain:**
+- `backlog-management` → `solo/product/product-operations/backlog-management`
+- `backlog-grooming-roadmapping` → `solo/sdd/sdd-planning/backlog-grooming-roadmapping`
+- `backlog-grooming-roadmapping-sdd` → `solo/sdd/sdd/backlog-grooming-roadmapping`
+
+**Decision gate:**
+> Advance once every top-N item has a maturity tag. Don't groom below the line — that's pretend-work.
+
+### Stage 2: Make spec-ready
+
+**Intent:** Top-of-backlog items become spec-ready: AC + complexity tag.
+
+**Methodologies in chain:**
+- `acceptance-criteria` → `pro/ba/business-analyst/acceptance-criteria`
+- `user-story-mapping` → `pro/ba/business-analyst/user-story-mapping`
+- `task-creation-principles` → `solo/sdd/sdd-planning/task-creation-principles`
+- `impl-plan-100k-rule` → `solo/sdd/sdd-planning/impl-plan-100k-rule`
+- `task-creation-parallelization` → `solo/sdd/sdd/task-creation-parallelization`
+- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
+
+**Decision gate:**
+> Advance when each spec-ready item has AC + complexity tag. Don't promote anything without both.
+
+### Stage 3: Balance the slate + log decisions
+
+**Intent:** Honour tech-debt quota; write grooming-decisions log.
+
+**Methodologies in chain:**
+- `tech-debt-management` → `solo/dev/code-quality/tech-debt-management`
+
+**Decision gate:**
+> Required: written log. Verbal-only grooming guarantees next week's session repeats the same arguments.
+
+## Common pitfalls
+
+- Grooming below the line — wastes session on items nobody will pick up
+- Tech-debt quota slips — accumulates into a quarter-end crisis
+- Oversized items left whole — sprint planning blocks on them
+- Decisions stay verbal — same debates repeat weekly
+
+## Quality checklist (self-review)
+
+- Can a dev claim the top item and start without re-asking what 'done' means?
+- Did we close at least one tech-debt slot this week?
+- Did the session end in 1 hour?
+
+## Related playbooks
+
+- `quarter-planning-okr-reset`
+- `sprint-planning-sdd-task-expansion`
+- `daily-standup-ai-prebrief`
+
+## Known gaps
+
+The following methodologies are referenced or implied by this playbook but do not yet exist in the knowledge base. They are tracked in the manifest `gaps[]` array and block publication until resolved (BLOCK policy).
+- **pm-tech-lead-grooming-agenda** (tier `geek`, blocks stage 1) — Walk-the-backlog stage needs a fixed weekly agenda template
+- **tech-debt-slot-quota-policy** (tier `geek`, blocks stage 3) — Balance stage needs a written tech-debt slot quota policy so it's not negotiated weekly
+
+## CLI usage
+
+```
+faion get-content backlog-grooming-pm-tech-lead --format md       # human-readable rendering
+faion get-content backlog-grooming-pm-tech-lead --format context  # agent-optimised context bundle
+faion get-content backlog-grooming-pm-tech-lead --format json     # raw structured form
+```
