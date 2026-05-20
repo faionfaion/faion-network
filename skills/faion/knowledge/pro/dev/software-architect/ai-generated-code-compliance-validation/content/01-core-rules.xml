@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Code Compliance Validation Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules the senior dev MUST enforce on every AI-generated diff before a client PR opens.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-charter-immutability" testable="true" depth="essential">
+      <statement>The client's coding-standard charter is the authoritative input to the pass. The senior dev MUST NOT silently extend or relax the charter based on the AI's preferred style. Charter updates require a written change request to the client and an explicit charter version bump.</statement>
+      <rationale source="Outsource governance practice; SOC 2 change-management criterion">Silent charter drift is the leading cause of "the previous senior dev let it slide" disputes. The charter is a contract artefact, not a wiki page; modifications need a paper trail.</rationale>
+    </rule>
+
+    <rule id="r2-delta-scope-filter" testable="true" depth="essential">
+      <statement>The validation pass MUST run only over the AI-touched files in the current branch's diff. Running the lint against the entire repo wastes review time and produces noise unrelated to the PR. The `scripts/scope-diff.sh` output is the authoritative file list.</statement>
+      <rationale source="Practical lint adoption; the `lint-staged-only-not-whole-tree` sibling methodology">Whole-tree lint output drowns the AI-specific findings in pre-existing noise. The senior dev's job is reviewing the AI's contribution; whole-tree review is a separate engagement.</rationale>
+    </rule>
+
+    <rule id="r3-client-profile-lint" testable="true" depth="essential">
+      <statement>Lint MUST run with the CLIENT's lint configuration (ruff.toml, eslint.config.mjs, .swiftlint.yml committed in the client repo) — NEVER the senior dev's personal lint profile or the AI tool's default. If the client config is absent, the pass HALTS until a config is obtained or generated via `client-conventions-reverse-engineering`.</statement>
+      <rationale source="Repeated outsource conflict pattern">"It passed my lint" without the client lint is a recurring source of PR back-and-forth. Forcing client config eliminates the most common preventable rework.</rationale>
+    </rule>
+
+    <rule id="r4-forbidden-api-per-posture" testable="true" depth="essential">
+      <statement>The forbidden-APIs file (`forbidden-apis.yaml`) is INDEXED by compliance posture: SOC 2, HIPAA, PCI, GDPR, internal-only. The scan applies the union of postures the client declares. Common posture-bound rules: no `print()` / `console.log` to STDOUT in HIPAA; no unbounded `requests.get` without timeout; no `eval` / `exec`; no insecure crypto primitives.</statement>
+      <rationale source="Compliance audit findings literature; OWASP ASVS controls">AI assistants emit logging and HTTP code by default that violates regulated postures. A posture-indexed forbidden-API scan is the cheapest defence against silently regressing the client's audit position.</rationale>
+    </rule>
+
+    <rule id="r5-pr-comment-rationale" testable="true" depth="essential">
+      <statement>Every finding in the validation report MUST be turned into a PR comment with: (a) the finding type; (b) the rule it violates; (c) the recommended fix; (d) an explicit `block` or `advise` severity tag. The senior dev signs off the report before any AI-generated diff lands in the client PR.</statement>
+      <rationale source="PR review effectiveness studies">Findings without rationale are dismissed by reviewers; findings without recommended fixes generate back-and-forth. The (a)-(d) structure is the minimum a client reviewer needs to act.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="HIPAA posture catches a console.log">
+      <code lang="text"><![CDATA[
+File:   src/clinical/record-service.ts (AI-touched)
+Finding: console.log(patientRecord) at line 142
+Rule:    HIPAA Security Rule §164.312(a)(1) audit controls
+         + forbidden-apis.yaml: posture=HIPAA / no_console_log_PHI
+Fix:     remove the console.log; emit only sanitized audit-trail event
+         via the audit-logger module already in the codebase.
+Severity: block
+      ]]></code>
+      <note>r4 + r5 satisfied. PR comment is unambiguous; senior dev does not need to research; AI fix is one-line.</note>
+    </example>
+
+    <example type="bad" title="Whole-tree lint noise">
+      <code lang="text"><![CDATA[
+Validation report: 1,847 findings.
+File touched by AI: 4 files.
+Findings in AI-touched files: 12.
+Findings in other (pre-existing) files: 1,835.
+Recommendation: review all 1,847 before opening PR.
+      ]]></code>
+      <note>r2 violation. The senior dev's actual scope is 12 findings. Whole-tree review burns 2 days; AI-scope review takes 20 minutes.</note>
+    </example>
+
+    <example type="bad" title="Senior dev relaxes the charter silently">
+      <code lang="text"><![CDATA[
+Charter: snake_case for Python identifiers.
+AI diff: introduces 14 camelCase identifiers.
+Senior dev action: opens PR anyway with comment "modern style".
+      ]]></code>
+      <note>r1 violation. The senior dev cannot relax the charter without a written client request. Client review will bounce the PR and erode trust.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

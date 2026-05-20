@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="ADR Staleness Audit Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the audit report and per-ADR transition schemas.</summary>
+
+  <output-contract>
+    <required>
+      <field name="audit_metadata">
+        <subfield name="quarter_label" type="string"/>
+        <subfield name="audit_lead" type="string"/>
+        <subfield name="audited_at" type="iso_date"/>
+        <subfield name="adr_count_audited" type="integer"/>
+      </field>
+      <field name="audit_entries" format="list">
+        <subfield name="adr_id" type="string"/>
+        <subfield name="signal_1_code_reality" enum="0,0.5,1"/>
+        <subfield name="signal_2_stakeholder" enum="0,0.5,1"/>
+        <subfield name="signal_3_triggers" enum="0,0.5,1,N/A"/>
+        <subfield name="signal_4_external" enum="0,0.5,1"/>
+        <subfield name="aggregate_score" type="number" min="0" max="1"/>
+        <subfield name="decision" enum="accepted,re_open,superseded,deprecated"/>
+        <subfield name="evidence_links[]" type="string" min_items="1"/>
+        <subfield name="follow_up_action" type="string" required_if="decision IN [re_open, superseded, deprecated]"/>
+        <subfield name="follow_up_deadline" type="iso_date" required_if="follow_up_action present"/>
+      </field>
+      <field name="superseding_adrs_drafted" format="list" required_if="any decision == superseded"/>
+      <field name="audit_summary" required_keys="accepted_count,re_open_count,superseded_count,deprecated_count"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">ADR with decision != "accepted" but no evidence_links</pattern>
+      <pattern id="f2">ADR text edited or deleted during audit (only status / metadata may change)</pattern>
+      <pattern id="f3">"deprecated" decision without a follow_up_action explaining why no successor</pattern>
+      <pattern id="f4">"superseded" decision without a linked superseding_adr id (even if draft)</pattern>
+      <pattern id="f5">aggregate_score outside [0,1] OR not matching the signal mapping</pattern>
+      <pattern id="f6">audit run more than 14 days outside the quarterly window (signals stale)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Signal 3 may be marked "N/A" when reversibility tagging is not in use; aggregate_score then divides by 3 instead of 4.</transformation>
+      <transformation>"re_open" status may temporarily hold an ADR for 30 days max; if no decision after 30 days, force to deprecated or write a superseder.</transformation>
+      <transformation>For ADRs flagged by the decay-detector-agent with high confidence, the manual code-reality signal may inherit the agent's score with a citation.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/staleness-audit-report.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>audit_metadata complete (quarter, lead, date)</item>
+      <item>every audited ADR has all 4 signals scored (with 0.5 / N/A where appropriate)</item>
+      <item>aggregate_score matches the decision mapping</item>
+      <item>evidence_links present for any decision != accepted</item>
+      <item>follow_up_action + deadline for re_open / superseded / deprecated</item>
+      <item>superseding_adrs_drafted (at least skeletons) for every "superseded" decision</item>
+      <item>audit_summary counts match audit_entries totals</item>
+    </list>
+  </section>
+</text>

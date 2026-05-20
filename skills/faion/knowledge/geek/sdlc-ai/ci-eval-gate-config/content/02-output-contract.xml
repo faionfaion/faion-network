@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="CI Eval Gate Config — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the eval-gate run output + override-record shape. CI step or agent running the gate must satisfy these contracts.</summary>
+
+  <output-contract>
+    <required>
+      <field name="pr_id" format="repo_pr_number_or_url"/>
+      <field name="changed_artifacts" min="1" source="prompt_files_or_model_config_or_eval_config"/>
+      <field name="baseline_ref" format="git_blob_sha_of_baseline_file"/>
+      <field name="harness_version" format="semver"/>
+      <field name="eval_run_id" format="unique_identifier_for_reproducibility"/>
+      <field name="metrics" required_keys="accuracy,refusal_rate,latency_p95,cost_per_eval,json_schema_validity"
+             value_type="numeric_with_threshold_status"/>
+      <field name="thresholds_applied" source="templates/thresholds.yaml_at_pr_HEAD"/>
+      <field name="quarantined_cases" type="array" source="flaky_case_list_at_run_time"/>
+      <field name="decision" format="enum: pass | fail | override-applied"/>
+      <field name="override_record_ref" condition="required_if_decision=override-applied"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">baseline_ref pointing to a feature-branch SHA</pattern>
+      <pattern id="f2">decision=pass while any metric.status=over-threshold AND no override record</pattern>
+      <pattern id="f3">override_record with approver field equal to PR author</pattern>
+      <pattern id="f4">override_record without rationale OR revert_plan</pattern>
+      <pattern id="f5">quarantined_cases entry without re_eval_date OR with re_eval_date in the past at run time</pattern>
+      <pattern id="f6">metrics entry missing for any metric listed in thresholds_applied (silent skip)</pattern>
+      <pattern id="f7">cost_per_eval not included in metrics (r5)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Aggregate per-case scores into per-category aggregates if the eval set defines categories (e.g., math / reasoning / instruction-following).</transformation>
+      <transformation>Re-run a single flaky case up to N=3 times; report the median outcome with variance.</transformation>
+      <transformation>Skip cost gating if the eval set does NOT exercise the cost-bearing path (offline ranking eval) — but explicitly mark as "cost-not-applicable" with reason.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/eval-baseline.json"/>
+  </output-contract>
+
+  <section title="Override-record schema (templates/override-record.json)">
+    <list>
+      <item>pr_id</item>
+      <item>metric_that_failed</item>
+      <item>delta_observed</item>
+      <item>threshold_exceeded_by</item>
+      <item>approver: named individual on the approver list</item>
+      <item>rationale: 1-2 sentences explaining business justification</item>
+      <item>revert_plan: concrete follow-up commitment (PR / ticket / date)</item>
+      <item>expiry_or_followup_date</item>
+    </list>
+  </section>
+
+  <section title="Self-check (CI gate run)">
+    <list>
+      <item>Baseline reference is a main/trunk SHA (r1)</item>
+      <item>All gated metrics evaluated and reported (r2)</item>
+      <item>cost_per_eval included (r5)</item>
+      <item>Quarantined cases listed with re-eval dates (r3)</item>
+      <item>If override applied, all override fields populated, approver != PR author (r4)</item>
+      <item>Decision is consistent with metric statuses</item>
+      <item>Output validates against templates/eval-baseline.json (run + threshold sections)</item>
+    </list>
+  </section>
+</text>
