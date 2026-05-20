@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="RAG Canary Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the rollout plan, per-step gate result, online-quality event, and rollback receipt.</summary>
+
+  <output-contract>
+    <required>
+      <field name="plan.feature_id" type="string"/>
+      <field name="plan.target_version" type="string" notes="immutable prompt + retriever + reranker config id"/>
+      <field name="plan.baseline_version" type="string"/>
+      <field name="plan.steps" type="list_of_object" min="4" max="4"/>
+      <field name="plan.steps[].percent" type="enum" values="1|5|25|100"/>
+      <field name="plan.steps[].hold_hours" type="integer" min="12"/>
+      <field name="plan.steps[].min_samples" type="integer"/>
+      <field name="plan.golden_eval.suite_id" type="string"/>
+      <field name="plan.golden_eval.thresholds" type="object" notes="primary_no_regression, secondary_max_regression_pct, p95_latency_max_delta_pct"/>
+      <field name="plan.online_quality.rubric_id" type="string"/>
+      <field name="plan.online_quality.sample_rate" type="float" min="0.02" max="0.20"/>
+      <field name="plan.online_quality.floor_composite_score" type="float"/>
+      <field name="plan.kill_switch.criteria" type="list_of_object" min="4"/>
+      <field name="step_gate_result.step_id" type="string"/>
+      <field name="step_gate_result.eval_pass" type="bool"/>
+      <field name="step_gate_result.metrics_snapshot" type="object"/>
+      <field name="step_gate_result.decision" type="enum" values="promote|hold|rollback"/>
+      <field name="online_quality_event.timestamp" format="ISO8601"/>
+      <field name="online_quality_event.composite_score" type="float"/>
+      <field name="rollback_receipt.executed_at" format="ISO8601"/>
+      <field name="rollback_receipt.trigger_reason" type="enum" values="quality_floor|hallucination|latency|error_rate|manual"/>
+      <field name="rollback_receipt.completed_within_seconds" type="integer" max="60"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">plan.steps with percent skipping the 1/5/25/100 curve</pattern>
+      <pattern id="f2">plan.online_quality.sample_rate outside 2-20% (too thin to score reliably, or too expensive)</pattern>
+      <pattern id="f3">plan.kill_switch.criteria fewer than 4 (must cover quality, hallucination, latency, error rate)</pattern>
+      <pattern id="f4">rollback_receipt.completed_within_seconds &gt; 60 (60s contract violated)</pattern>
+      <pattern id="f5">step promoted before golden_eval pass OR before min_samples reached</pattern>
+      <pattern id="f6">online_quality.floor_composite_score lower than baseline minus 10% (floor is too lax to detect quality drops)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Extend a step's hold when quality data is inconclusive; never shorten.</transformation>
+      <transformation>Drop sampling rate to the lower bound (2%) at the 100% step to control cost, provided the absolute sample count remains above 1000/hour.</transformation>
+      <transformation>Add additional kill-switch criteria for feature-specific signals (e.g. tool-use failure rate for tool-augmented RAG).</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/rollout-plan.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Canary curve fixed at 1/5/25/100</item>
+      <item>Golden eval thresholds set and committed before rollout</item>
+      <item>Online quality rubric and floor pre-committed</item>
+      <item>Kill-switch criteria cover quality, hallucination, latency, error rate</item>
+      <item>Rollback path rehearsed within the last quarter</item>
+      <item>Rollback receipt template captures completion time</item>
+    </list>
+  </section>
+</text>
