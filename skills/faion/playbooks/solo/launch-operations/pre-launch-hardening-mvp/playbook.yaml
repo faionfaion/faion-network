@@ -1,0 +1,187 @@
+# =============================================================================
+# faion playbook manifest — P1 solo SaaS builder
+# Generated for F-064 from playbook-index.json entry #17
+# =============================================================================
+
+slug: pre-launch-hardening-mvp
+title: "Pre-launch hardening: vibe-coded MVP to safe-to-bill production"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 2d89fba1573b1b14
+
+tier_min: solo
+complexity: deep
+context: [solo]
+persona_hints: [P1]
+
+intent: |
+  MVP that works on localhost → MVP that survives paying customers without a co-founder/SRE.
+
+scope: |
+  Solo founder takes an MVP that works on localhost and makes it survive paying customers without a co-founder or SRE. End state: Stripe live, RLS audited, backups proven, legal docs live, support inbox routed. Exit artifact is a hardening checklist with every row checked or explicitly accepted-risk.
+
+non_goals:
+  - "SOC2 / ISO compliance — overkill at pre-launch"
+  - "Multi-region failover — single-region only"
+
+prerequisites:
+  - "MVP works end-to-end on localhost"
+  - "Stripe test mode integrated"
+
+success_criteria:
+  - "Stripe live mode tested with real $1 charge + refund"
+  - "Row-level security (or equivalent) audited per table"
+  - "Secrets management: no secrets in git, vault in use"
+  - "Backups: restore drill performed once before launch"
+  - "Legal docs live: ToS, Privacy, Refund"
+  - "Support inbox routed + first-reply SLA documented"
+
+stages:
+  - name: "Security audit"
+    intent: "Catch the vibe-coded security debt before paying customers do."
+    tasks:
+      - "Audit RLS / authz per table"
+      - "Scan git history for secret leaks"
+      - "Run security tests"
+    methodologies:
+      - slug: security-testing
+        path: solo/dev/testing-developer/security-testing
+        required: true
+        tier_gate: solo
+      - slug: secrets-management
+        path: solo/infra/server-craft/secrets-management
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Security audit report"
+    decision_gate: |
+      Advance when zero P0/P1 findings open. Refuse launch with any open P0.
+  - name: "Payments hardening"
+    intent: "Stripe live + webhooks + refund flow tested."
+    tasks:
+      - "Switch Stripe to live keys"
+      - "Harden webhooks (idempotency, signature)"
+      - "Test $1 charge + refund end-to-end"
+    methodologies:
+      []
+    outputs:
+      - "Stripe live test log"
+    decision_gate: |
+      Advance when $1 charge + refund cycle works clean. Stay if webhooks miss events.
+  - name: "Backups"
+    intent: "Prove restore, don't just enable backups."
+    tasks:
+      - "Configure backups (or verify)"
+      - "Run a restore drill on staging"
+      - "Document restore command"
+    methodologies:
+      - slug: backup-recovery
+        path: solo/infra/server-craft/backup-recovery
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Restore drill log"
+    decision_gate: |
+      Advance when restore completed successfully. Refuse launch without proven restore.
+  - name: "Legal"
+    intent: "ToS / Privacy / Refund live and linked from footer."
+    tasks:
+      - "Draft ToS / Privacy / Refund (template + edits)"
+      - "Publish at /legal/*"
+      - "Link from footer + checkout"
+    methodologies:
+      []
+    outputs:
+      - "3 published legal docs"
+    decision_gate: |
+      Advance when all 3 are live. Stay if any missing.
+  - name: "Support"
+    intent: "Inbox routed. Customer can reach you."
+    tasks:
+      - "Route support inbox (email / Crisp)"
+      - "Set first-reply SLA"
+      - "Set up FAQ baseline"
+    methodologies:
+      - slug: ops-customer-support
+        path: solo/marketing/gtm-strategist/ops-customer-support
+        required: true
+        tier_gate: solo
+      - slug: feedback-management
+        path: solo/product/product-operations/feedback-management
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Support routing config"
+    decision_gate: |
+      Required output: live inbox + documented SLA. No invisible founders post-launch.
+
+common_pitfalls:
+  - "Going live with backups enabled but never restored — discovering it doesn't work mid-incident"
+  - "Skipping legal docs because 'just MVP' — refund disputes get expensive fast"
+
+quality_checklist:
+  - "Could I restore prod tonight from yesterday's backup without panic?"
+  - "Did the $1 charge + refund cycle actually settle, or just look successful in the UI?"
+
+related_playbooks:
+  - solo-prod-incident-response
+  - deploy-day-staging-to-prod
+
+token_budget_estimate: 18000
+cli_invocations:
+  human:  "faion get-content pre-launch-hardening-mvp --format md"
+  agent:  "faion get-content pre-launch-hardening-mvp --format context"
+  json:   "faion get-content pre-launch-hardening-mvp --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P1 solo SaaS builder persona"
+
+gaps:
+  - methodology_slug: supabase-rls-audit-checklist
+    expected_tier: solo
+    blocks_stage: 1
+    note: "Security-audit stage needs RLS checklist for Supabase stack"
+  - methodology_slug: vibe-coded-mvp-security-audit
+    expected_tier: solo
+    blocks_stage: 1
+    note: "Security-audit stage needs holistic audit specific to AI-generated MVPs"
+  - methodology_slug: secret-leak-git-history-scan
+    expected_tier: solo
+    blocks_stage: 1
+    note: "Security-audit stage needs concrete scan procedure"
+  - methodology_slug: stripe-webhook-hardening
+    expected_tier: solo
+    blocks_stage: 2
+    note: "Payments-hardening stage needs explicit hardening checklist"
+  - methodology_slug: solo-saas-legal-docs-pack
+    expected_tier: solo
+    blocks_stage: 4
+    note: "Legal stage needs solo-scale ToS/Privacy/Refund pack"
+  - methodology_slug: gdpr-for-solo-saas
+    expected_tier: solo
+    blocks_stage: 4
+    note: "Legal stage needs GDPR essentials at solo-scale"
+  - methodology_slug: subscription-lifecycle-edge-cases
+    expected_tier: solo
+    blocks_stage: 2
+    note: "Payments stage needs edge-case catalogue (trial, dunning, etc.)"
+  - methodology_slug: supabase-backup-and-restore-drill
+    expected_tier: solo
+    blocks_stage: 3
+    note: "Backups stage needs Supabase-specific drill"
+  - methodology_slug: postgres-pitr-for-solos
+    expected_tier: solo
+    blocks_stage: 3
+    note: "Backups stage needs PITR setup for solo-scale Postgres"
+  - methodology_slug: solo-support-sla-template
+    expected_tier: solo
+    blocks_stage: 5
+    note: "Support stage needs SLA template scoped to one operator"
+  - methodology_slug: first-100-tickets-playbook
+    expected_tier: solo
+    blocks_stage: 5
+    note: "Support stage needs playbook for early-stage ticket volume"

@@ -1,0 +1,160 @@
+# =============================================================================
+# faion playbook manifest — P1 solo SaaS builder
+# Generated for F-064 from playbook-index.json entry #16
+# =============================================================================
+
+slug: solo-prod-incident-response
+title: "Solo prod incident response (no team safety net)"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: b450ea4deff8240a
+
+tier_min: solo
+complexity: deep
+context: [solo]
+persona_hints: [P1]
+
+intent: |
+  Alert at 3am → root-caused, mitigated, postmortem-documented incident for one person without SRE rotation.
+
+scope: |
+  Solo founder runs incident response designed for one person: alert to mitigation to postmortem, without an SRE rotation. Exit artifact is a green prod + blameless postmortem + followup backlog entry.
+
+non_goals:
+  - "Multi-team incident command — single operator only"
+  - "PR / public status comms — separate stakeholder-communication playbook"
+
+prerequisites:
+  - "Monitoring + alerting configured (monitoring-logging complete)"
+  - "Sentry / equivalent error tracking live"
+  - "Deploy + rollback path proven (deploy-day playbook done)"
+
+success_criteria:
+  - "Alert acknowledged within 5 minutes"
+  - "Stop-the-bleed action shipped (rollback or flag-off)"
+  - "Root cause identified and documented"
+  - "Postmortem written within 48h"
+  - "Followup action added to backlog"
+
+stages:
+  - name: "Triage"
+    intent: "Acknowledge, scope impact, decide stop-the-bleed action."
+    tasks:
+      - "Acknowledge alert"
+      - "Open incident channel / note"
+      - "Decide: rollback / flag-off / patch"
+    methodologies:
+      - slug: monitoring-logging
+        path: solo/infra/server-craft/monitoring-logging
+        required: true
+        tier_gate: solo
+      - slug: health-checks-autoheal
+        path: solo/infra/server-craft/health-checks-autoheal
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Triage note with decision"
+    decision_gate: |
+      Advance when stop-the-bleed action is chosen. Refuse to investigate before bleeding stops.
+  - name: "Mitigate"
+    intent: "Stop the bleed. Diagnosis comes later."
+    tasks:
+      - "Execute rollback / flag-off / hot-patch"
+      - "Verify mitigation via health checks"
+      - "Communicate ETA to customers if needed"
+    methodologies:
+      - slug: cd-pipelines
+        path: solo/dev/automation-tooling/cd-pipelines
+        required: true
+        tier_gate: solo
+      - slug: feature-flags-rollout-targeting
+        path: solo/dev/automation-tooling/feature-flags-rollout-targeting
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Mitigated prod"
+    decision_gate: |
+      Advance when monitoring is green again. Stay if mitigation incomplete.
+  - name: "Investigate"
+    intent: "Find root cause. Don't guess."
+    tasks:
+      - "Pull logs around incident window"
+      - "Identify trigger + contributing factors"
+      - "Document timeline"
+    methodologies:
+      []
+    outputs:
+      - "Root-cause notes"
+    decision_gate: |
+      Advance when root cause is named. Refuse to write postmortem with 'cause unknown'.
+  - name: "Postmortem"
+    intent: "Blameless. What happened, why, what changes."
+    tasks:
+      - "Write blameless postmortem"
+      - "List followup actions"
+      - "Update mistake-memory"
+    methodologies:
+      - slug: mistake-memory
+        path: solo/sdd/sdd/mistake-memory
+        required: true
+        tier_gate: solo
+      - slug: reflexion-learning
+        path: solo/sdd/sdd/reflexion-learning
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Postmortem doc"
+      - "Mistake-memory entry"
+    decision_gate: |
+      Required output: postmortem within 48h. Without it, the same incident recurs.
+
+common_pitfalls:
+  - "Investigating before mitigating — extends bleeding for diagnosis purity"
+  - "Skipping postmortem because incident felt small — small ones recur fastest"
+
+quality_checklist:
+  - "If I get paged for the same root cause next month, will I find this postmortem?"
+  - "Is the followup actually in the backlog, or only mentioned in the postmortem?"
+
+related_playbooks:
+  - deploy-day-staging-to-prod
+  - pre-launch-hardening-mvp
+
+token_budget_estimate: 12000
+cli_invocations:
+  human:  "faion get-content solo-prod-incident-response --format md"
+  agent:  "faion get-content solo-prod-incident-response --format context"
+  json:   "faion get-content solo-prod-incident-response --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P1 solo SaaS builder persona"
+
+gaps:
+  - methodology_slug: solo-alerting-noise-budget
+    expected_tier: solo
+    blocks_stage: 1
+    note: "Triage stage needs noise budget so alerts at 3am are signal"
+  - methodology_slug: sentry-supabase-vercel-wiring
+    expected_tier: solo
+    blocks_stage: 1
+    note: "Triage stage needs concrete wiring for solo-popular stack"
+  - methodology_slug: solo-incident-triage-checklist
+    expected_tier: solo
+    blocks_stage: 1
+    note: "Triage stage needs checklist tailored to single operator"
+  - methodology_slug: stop-the-bleed-playbook
+    expected_tier: solo
+    blocks_stage: 2
+    note: "Mitigate stage needs decision tree for rollback/flag/patch"
+  - methodology_slug: solo-blameless-postmortem-template
+    expected_tier: solo
+    blocks_stage: 4
+    note: "Postmortem stage needs blameless template scoped to one author"
+  - methodology_slug: incident-followup-backlog-policy
+    expected_tier: solo
+    blocks_stage: 4
+    note: "Postmortem stage needs policy on what becomes backlog vs accepted risk"
