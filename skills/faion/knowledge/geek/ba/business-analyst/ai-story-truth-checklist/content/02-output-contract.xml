@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI Story Truth Checklist Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the vetting-record shape, the decision rule, and the traceability map.</summary>
+
+  <section title="Required vetting-record fields">
+    <list>
+      <item><code>story_id</code> (string)</item>
+      <item><code>vetted_at_utc</code> (ISO timestamp)</item>
+      <item><code>vetted_by</code> (BA name)</item>
+      <item><code>persona_ref</code> (persona id from personas.yaml or null)</item>
+      <item><code>jtbd_ref</code> (jtbd id from research/jtbd.md or null)</item>
+      <item><code>checklist_results</code> (object with 8 boolean keys + notes)</item>
+      <item><code>stats_flagged</code> (array of {snippet, source_url_or_null, status})</item>
+      <item><code>edge_cases_present</code> (object: failure_path, empty_state, privacy)</item>
+      <item><code>ac_count</code> (integer)</item>
+      <item><code>ac_traceable_count</code> (integer)</item>
+      <item><code>decision</code> (enum: pass, revise, scrap)</item>
+      <item><code>revise_notes</code> (string; required when decision != pass)</item>
+    </list>
+    <reference path="templates/vetting-record.json">Authoritative JSON Schema.</reference>
+  </section>
+
+  <section title="Decision rule">
+    <list>
+      <item><code>scrap</code> when ANY: persona_ref is null; stats_flagged contains any `unverified` AND stat affects core claim; ac_count = 0.</item>
+      <item><code>revise</code> when ANY: jtbd_ref null; edge cases incomplete; ac_traceable_count &lt; ac_count.</item>
+      <item><code>pass</code> when all checklist_results are true AND no scrap / revise triggers.</item>
+    </list>
+  </section>
+
+  <section title="Traceability map">
+    <list>
+      <item>Vetted stories accumulate links: story_id → persona_ref, jtbd_ref, research artefacts referenced in stats.</item>
+      <item>The traceability map is the audit trail; the team can re-derive "why does this story exist" in one query.</item>
+      <item>Stories that lose traceability after a research-doc deletion are flagged in a weekly audit.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>decision = pass while jtbd_ref is null.</description>
+      <reason>r2 violation. JTBD anchor is required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>decision = pass while stats_flagged has unverified entries.</description>
+      <reason>r3 violation. Unverified stats must be removed or sourced.</reason>
+    </antipattern>
+    <antipattern>
+      <description>edge_cases_present.failure_path = false AND decision != revise.</description>
+      <reason>r4 violation. Failure path is mandatory.</reason>
+    </antipattern>
+    <antipattern>
+      <description>ac_count &gt; 0 AND ac_traceable_count = 0 AND decision = pass.</description>
+      <reason>r5 violation. AC must be traceable.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>persona_ref points to a real id in personas.yaml.</item>
+      <item>jtbd_ref points to a real id in research/jtbd.md.</item>
+      <item>Every stat has a source URL or status `unverified`.</item>
+      <item>Edge-case map has all three keys.</item>
+      <item>revise_notes populated when decision != pass.</item>
+    </list>
+  </section>
+</text>
