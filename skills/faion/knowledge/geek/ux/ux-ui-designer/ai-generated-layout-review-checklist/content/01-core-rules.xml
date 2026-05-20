@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Layout Review Core Rules" version="1.0.0" est_tokens="1300" depth="essential">
+  <summary>Ten checks every AI-generated mockup must pass before it ships to engineering or enters the design system. Each carries a hard verdict (block / request-changes / approve / approve-with-note).</summary>
+
+  <section title="The ten checks">
+
+    <rule id="c01-research-grounding" testable="true" depth="essential">
+      <statement>Mockup must cite at least one named user-research artifact (interview transcript, usability test id, support-ticket cluster, JTBD job statement). The artifact must be linked or referenced in the PR/Figma comment. No artifact → BLOCK.</statement>
+      <rationale source="Faion gap analysis pain explicitly named; Nielsen Norman 'AI UI without research' study (2024)">AI generates layouts by pattern-matching training data, not by reasoning about your users' jobs. The most common pain point named by designers in 2025 is "AI hands me a mock with no grounding, then leadership wants to ship it." A cited research artifact lets the designer prove the mock either matches user evidence or contradicts it.</rationale>
+    </rule>
+
+    <rule id="c02-token-compliance" testable="true" depth="essential">
+      <statement>Every color, font-size, spacing value, radius, and elevation in the mock either maps to a named token in the design system OR is documented as an intentional new token with a token-introduction record. Off-token values without record → REQUEST_CHANGES.</statement>
+      <rationale source="Design Tokens W3C community spec; Lyft / Shopify token-governance writeups">AI tools (v0, Galileo) emit raw hex colors and arbitrary spacing that drift from the system. Once one screen ships off-token, the system fractures because subsequent screens copy the new values. Token enforcement is the only thing that keeps a system coherent at scale.</rationale>
+      <example type="bad" title="Off-token drift">
+        <code lang="text"><![CDATA[
+v0-generated card uses #1A73E8 for the primary CTA.
+Design system primary token is #1E66F5.
+No new-token record exists. Visually almost identical, semantically different.
+Verdict: REQUEST_CHANGES — swap to token or open a new-token RFC.
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="c03-a11y-contrast-and-focus" testable="true" depth="essential">
+      <statement>Run WCAG 2.2 AA checks: text contrast ≥ 4.5:1 (≥ 3:1 for large text), UI component contrast ≥ 3:1, focus indicators present and ≥ 3:1 against adjacent colors, target sizes ≥ 24×24 CSS px (AA) or 44×44 (AAA / mobile primary). Any failure → BLOCK.</statement>
+      <rationale source="WCAG 2.2 normative requirements; EU Accessibility Act enforceable from June 2025">AI image-generated mockups frequently miss focus states entirely (they're not in the training distribution of static screenshots). For EU-facing products, AA is now a legal floor — shipping non-compliant layouts is a regulatory risk, not just a UX one.</rationale>
+    </rule>
+
+    <rule id="c04-edge-state-coverage" testable="true" depth="essential">
+      <statement>For every screen, mockup must show: empty state, loading state, error state, and one realistic-data state with long names, long numbers, and right-to-left script if applicable. Missing states → REQUEST_CHANGES.</statement>
+      <rationale source="Edge-case-driven design (Smashing Magazine 2024); Shopify Polaris UX patterns">AI generates the "happy path with hero name 'Jane Doe' and a single $12.99 line item." Real users have 5-line addresses, 47-character company names, and zero-result states. Without edge-state coverage, engineering ships broken UIs that the designer has to fix in production.</rationale>
+    </rule>
+
+    <rule id="c05-motion-and-reduced-motion" testable="true" depth="essential">
+      <statement>Any animation or transition in the mock specifies (a) duration (ms), (b) easing curve, (c) prefers-reduced-motion fallback. Animations without all three → REQUEST_CHANGES. Default to ≤ 200ms for affordance animations, ≤ 400ms for hero animations.</statement>
+      <rationale source="WCAG 2.3.3 Animation from Interactions; CSS prefers-reduced-motion spec; vestibular-disorder UX guidance">AI tools generate animations from prompts like "make it slide in" without considering vestibular-disorder users or system-level reduced-motion preferences. Shipping without a fallback regresses on accessibility and triggers motion-sickness for ~35% of users with vestibular sensitivity.</rationale>
+    </rule>
+
+    <rule id="c06-copy-and-microcopy-honesty" testable="true" depth="essential">
+      <statement>UI copy is reviewed for: brand voice match, no placeholder lorem-ipsum-style filler, no AI-generated "marketing-confident" copy ("Revolutionize your workflow", "Powered by intelligent AI"), no hallucinated feature names that don't exist in the product. Failures → REQUEST_CHANGES.</statement>
+      <rationale source="Mailchimp content style guide; SaaS landing-page copy audits 2024">AI mocks often invent feature names ("Smart Insights", "Magic Compose") that the product doesn't have. Engineering then builds the layout, marketing scrambles to explain a feature that doesn't exist. Copy hygiene at design time prevents this.</rationale>
+    </rule>
+
+    <rule id="c07-ia-and-nav-coherence" testable="true" depth="essential">
+      <statement>New screen must fit into existing information architecture: navigation depth, breadcrumbs, back-button behavior, in-app linking targets. Screen that contradicts current IA without an IA-RFC → REQUEST_CHANGES.</statement>
+      <rationale source="Information Architecture: For the Web and Beyond (Rosenfeld et al.); production app navigation regression patterns">AI generates a screen in isolation; it doesn't know your nav model. A "new screen" without IA grounding causes orphan screens, broken back-buttons, and broken deep links — the kind of paper-cut bug that erodes trust over months.</rationale>
+    </rule>
+
+    <rule id="c08-brand-fit" testable="true" depth="essential">
+      <statement>Mockup matches the brand guideline on: typography hierarchy, illustration vs photography rule, button shape language, signature components (header, footer, CTA card). Cross-brand drift (a B2B product suddenly looking like Linear because v0's default is "Linear-ish") → REQUEST_CHANGES.</statement>
+      <rationale source="Brand-system audits; AI design tool default-style analysis (Awwwards 2025)">v0 / Galileo / Figma Make have visual defaults (rounded corners, neutral grays, sans-serif). Mocks created from open prompts inherit these defaults and erode brand differentiation. The most common 2025 brand-decay vector is "we shipped a v0 page and it looks like everyone else's v0 page."</rationale>
+    </rule>
+
+    <rule id="c09-file-hygiene-and-component-reuse" testable="true" depth="essential">
+      <statement>Mockup uses existing design-system components by name (Button/primary, Card/elevated, Input/text) rather than recreated free-form rectangles. Free-form recreations of existing components → REQUEST_CHANGES with link to the component to use.</statement>
+      <rationale source="Figma component-instance best practices; design-system ROI research (Sparkbox 2024)">AI tools recreate components from scratch because they don't have your Figma library context. Engineering then asks "is this the existing Button or a new variant?" — the question that kills design-system velocity. Component reuse must be enforced at review.</rationale>
+    </rule>
+
+    <rule id="c10-ai-tool-attestation" testable="true" depth="essential">
+      <statement>Reviewer records: which AI tool generated the mock, prompt or input image used, approximate % of the artifact that is AI-generated vs human-edited, and the link to the source asset. Missing attestation → REQUEST_CHANGES.</statement>
+      <rationale source="EU AI Act transparency requirements; design-system provenance audits">Future debugging ("why does this screen contradict the research?"), regulatory audits, and design-system governance need to know which artifacts started as AI output. Capturing the metadata at review time is far cheaper than reconstructing it from Figma history.</rationale>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

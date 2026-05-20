@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI Layout Review Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Schema for the layout-review-decision artifact the designer emits per AI-generated mockup. Must be satisfied before the mockup is marked ship-ready.</summary>
+
+  <output-contract>
+    <required>
+      <field name="mockup_id" type="string" source="figma_node_or_v0_url"/>
+      <field name="ai_tool_attestation"
+             format="tool_name + tool_version + prompt_or_input_ref + percent_ai_generated"/>
+      <field name="research_artifact_ref" type="uri_or_doc_id"
+             notes="must resolve to a real, dated research artifact"/>
+      <field name="checks"
+             type="array_of_check_results"
+             count="10"
+             notes="exactly one entry per c01..c10, each with verdict + evidence_pointer"/>
+      <field name="token_compliance_report"
+             type="object"
+             notes="off_token_count + new_token_record_ids"/>
+      <field name="a11y_report"
+             type="object"
+             notes="contrast_ratio_min + focus_indicators_present + target_size_compliance"/>
+      <field name="verdict" enum="BLOCK,REQUEST_CHANGES,APPROVE,APPROVE_WITH_NOTE"/>
+      <field name="rationale" type="paragraph" min_words="20"
+             notes="required for any verdict other than APPROVE"/>
+      <field name="reviewer_id" type="string"/>
+      <field name="reviewed_at" format="ISO-8601"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">verdict = APPROVE with any check entry marked BLOCK</pattern>
+      <pattern id="f2">research_artifact_ref absent or points to a placeholder ("see Figma file" with no link)</pattern>
+      <pattern id="f3">ai_tool_attestation missing or claims "unknown" — provenance must be recorded even for retroactive review</pattern>
+      <pattern id="f4">a11y_report.contrast_ratio_min &lt; 4.5 AND verdict = APPROVE</pattern>
+      <pattern id="f5">token_compliance_report.off_token_count &gt; 0 AND no new_token_record_ids cited</pattern>
+      <pattern id="f6">reviewer_id = the same AI tool that generated the mockup (must be a designer or a different model)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Auto-fill ai_tool_attestation.tool_version from the Figma plugin metadata when present.</transformation>
+      <transformation>Auto-run token_compliance_report via design-token diff script and attach output verbatim.</transformation>
+      <transformation>Collapse repeat off-token instances of the same value into a single line in the report.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All 10 checks have a verdict</item>
+      <item>research_artifact_ref resolves to a real document</item>
+      <item>ai_tool_attestation populated</item>
+      <item>token_compliance_report attached</item>
+      <item>a11y_report attached with concrete numbers</item>
+      <item>Rationale present when verdict ≠ APPROVE</item>
+      <item>Edge-state coverage (empty / loading / error / realistic-data) confirmed in c04</item>
+      <item>Reviewer is not the generating tool</item>
+    </list>
+  </section>
+</text>
