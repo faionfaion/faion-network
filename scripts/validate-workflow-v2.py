@@ -247,8 +247,14 @@ def collect_targets(paths: list[str], walk_all: bool) -> list[Path]:
         if not WORKFLOWS_ROOT.is_dir():
             return []
         for child in sorted(WORKFLOWS_ROOT.iterdir()):
-            if child.is_dir() and (child / "AGENTS.md").is_file():
-                targets.append(child / "AGENTS.md")
+            if not child.is_dir():
+                continue
+            agents = child / "AGENTS.md"
+            content_dir = child / "content"
+            # A workflow folder must have BOTH AGENTS.md and content/.
+            # Sibling dirs like `adapters/` are not workflows and are skipped.
+            if agents.is_file() and content_dir.is_dir():
+                targets.append(agents)
         return targets
     for raw in paths:
         targets.append(resolve_agents_md(Path(raw).resolve()))
