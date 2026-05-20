@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Crash-Pipeline-as-Code Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six failure modes that turn an "we have crash tracking" claim into "we have un-symbolicated stacks." Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Silent symbol-upload failure — CI step returns success but vendor never indexed the symbols.</description>
+      <detector>symbol-manifest entry exists with upload_status=200 BUT synthetic_verification_passed_at is null OR &gt; 30 minutes stale</detector>
+      <repair>Add the verify-symbol-upload step (r2). Treat verification failure as a release-blocking error. Re-run upload OR investigate vendor-side processing.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Expired or rotated auth token quietly disables uploads — CI passes (no auth required), but vendor returns 401.</description>
+      <detector>upload_status across last 3 releases includes 401/403 OR vendor dashboard shows 0 symbols indexed for recent releases</detector>
+      <repair>Add token-expiry check to CI (vendor API call before upload). Rotate via secret manager with calendar alarm. Store rotation date in retention.yaml.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Console drift — admin added an alert rule in the console, not committed; rule disappears in a vendor migration.</description>
+      <detector>Daily drift-check: list vendor rules via API, compare to crash-pipeline/alert-rules/. Diff &gt; 0.</detector>
+      <repair>Export drifted rule to code OR delete from vendor. Add the drift-check job to CI (daily cron). Treat drift like infra drift — fix immediately.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>PII leakage — crash payloads include user emails, tokens, request bodies, sent to vendor unredacted.</description>
+      <detector>Sample 5 events; grep payload for emails, tokens, common name lists. Or vendor's data-scrubbing dashboard shows 0% scrubbed.</detector>
+      <repair>Set vendor-side data-scrubbing rules in retention.yaml. Wrap exception handlers to strip PII before sending. Test by emitting a synthetic event with PII and confirming it arrives scrubbed.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Dashboard "owned by the team" — actually owned by no one. Rots into stale metrics.</description>
+      <detector>Dashboard owner field empty or "team" AND last_modified &gt; 6 months</detector>
+      <repair>Assign a named owner per dashboard (rotation OK quarterly). Quarterly review ritual: each owner walks their dashboard and either updates or proposes removal.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="medium">
+      <description>AI-generated alert rule fires too aggressively (every minor exception page) and team mutes the channel.</description>
+      <detector>Alert channel has muted notifications OR alert rule fires &gt; 50x/day with no actionable response</detector>
+      <repair>Tune threshold and group-by (per release, per app version). Mute channels are a symptom of bad rules, not bad team discipline. Use a fresh-events / users-affected percentile rather than raw count.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>If LLM helps generate alert rules from incident postmortems, generated rules MUST be human-reviewed before merge. Auto-merged AI rules become noise generators.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Production-readiness review on each release: a human (release captain or on-call) confirms symbol-manifest verification passed, no drift on alert rules, and the primary dashboard is green. Sign-off in the release ticket.</p>
+  </section>
+</text>

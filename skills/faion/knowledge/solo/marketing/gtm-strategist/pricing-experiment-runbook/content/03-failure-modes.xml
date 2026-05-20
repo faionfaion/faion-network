@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Pricing Experiment Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six failure modes that recur in Stripe-based pricing experiments. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Grandfathered customer re-billed at the new price — Stripe Plan or Price object was deleted, or the grandfather coupon expired silently, customer churns and posts a critical review.</description>
+      <detector>any subscription with grandfather_eligible = true is billed with the new effective price after renewal OR coupon used_count drops to zero unexpectedly</detector>
+      <repair>Immediately credit the difference back to the customer via Stripe (Refund + apology email). Restore the grandfather coupon attachment. Post-incident: switch grandfathering from "coupon stacked on new Price" to "subscription stays on old Price object" — more durable.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Statistically never closes — experiment volume too low for the chosen significance threshold, founder extends it for months, status quo becomes the new price by default.</description>
+      <detector>plan.duration_days &gt; 60 AND samples per variant &lt; required-power AND third extension proposed</detector>
+      <repair>Force the decision: if the test cannot close at the planned bar, the founder either (a) accepts a wider confidence interval (Bayesian 80% credible interval, or pre-registered effect-size threshold) and decides on that basis, or (b) cancels and reverts. No third extension.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Refund storm — price increase announced poorly or grandfather rule missed an audience segment, refund requests spike, Stripe Radar dispute risk rises.</description>
+      <detector>refund_rate during experiment &gt; 2x baseline OR dispute_rate &gt; 0.5%</detector>
+      <repair>Terminate experiment immediately, revert to old Price for new signups, process refunds proactively for affected customers, post an apology + correction email. Audit the customer announcement and grandfather rule to identify the missed audience segment.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Currency drift — experiment runs on a single USD Price but ~20% of customers see localised currency display from another source (Stripe Checkout auto-localisation, frontend lookup), so the perceived test variant differs from the actual Stripe Price.</description>
+      <detector>plan.currencies_in_test has only USD AND visitor-tracking shows &gt; 5% of trial signups from non-USD regions</detector>
+      <repair>Pause the experiment. Create per-currency Price objects matching the variant intent. Re-run with proper currency routing. Existing trial signups during the contaminated window are flagged and excluded from the readout.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Stripe Tax misconfiguration — tax_behavior was inclusive in test mode and exclusive in live mode, so first VAT invoice rejects and the customer-support queue explodes.</description>
+      <detector>tax_behavior in plan.variant_new differs from live Stripe Price object OR Stripe Tax shows mismatched jurisdictional default</detector>
+      <repair>Pause experiment. Reconfigure tax_behavior on the new Price to match. Issue corrected invoices to any customers billed during the misconfigured window. Document the fix in the decision memo.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>Decision memo absent — experiment ends, founder is too busy to write the memo, default becomes "leave it running" and the experimental price quietly becomes permanent.</description>
+      <detector>plan.end_date passed by &gt; 14 days AND decision_memo.written_at empty</detector>
+      <repair>Calendar reminder T-2 and T+1 to write the memo. If the memo is genuinely impossible (founder unavailable), an automatic revert-to-old-price is triggered as the safer default; the founder writes the memo after returning.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      Customer pressure to "extend the experiment so I can decide later" is not a basis for extension. Either the metric closes the test or it does not; ad-hoc extensions defeat the discipline. The grandfather coupon is the right tool for individual customer hesitation, not the experiment extension.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      Post-decision: founder posts a one-paragraph announcement to existing customers explaining the outcome (we adopted / we reverted / we are extending with X change). Transparency is the cheapest trust currency a solo SaaS has; pricing experiments are precisely where it pays out.
+    </p>
+  </section>
+</text>

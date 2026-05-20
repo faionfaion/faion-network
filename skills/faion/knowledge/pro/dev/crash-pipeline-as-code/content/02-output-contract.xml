@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Crash-Pipeline-as-Code Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The methodology produces a `crash-pipeline/` folder in the repo, reviewed and deployed alongside the application. PRs touching crash-tracking that don't update this folder are rejected.</summary>
+
+  <section title="Required folder structure">
+    <list>
+      <item><code>crash-pipeline/ci-jobs/</code> — symbol-upload jobs per platform.</item>
+      <item><code>crash-pipeline/alert-rules/</code> — alert definitions (Terraform / YAML / JSON).</item>
+      <item><code>crash-pipeline/dashboards/</code> — dashboard JSON / Terraform.</item>
+      <item><code>crash-pipeline/retention.yaml</code> — retention + PII redaction settings.</item>
+      <item><code>crash-pipeline/README.md</code> — ownership, runbook link, vendor info, secret references.</item>
+      <item><code>crash-pipeline/symbol-manifest.json</code> — per-release record of uploaded symbols + verification result.</item>
+    </list>
+  </section>
+
+  <section title="Required release artifact">
+    <list>
+      <item><code>symbol-manifest.json</code> entry per release: release_id, platform, dSYM/sourcemap files, upload_status, vendor_url, synthetic_verification_passed_at.</item>
+    </list>
+  </section>
+
+  <section title="Required alert-rule fields">
+    <list>
+      <item><code>name</code>, <code>condition</code>, <code>threshold</code>, <code>action</code> (channel + on-call), <code>owner</code>, <code>created_at</code>, <code>last_reviewed</code>.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Symbol upload via developer machine (script lives in /Scripts but is run manually).</description>
+      <reason>Violates r1. Drift and forgotten uploads are inevitable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Alert rule exists in console with no matching file in crash-pipeline/alert-rules/.</description>
+      <reason>Violates r3. Drift-check should fail. Rule cannot survive a vendor migration or admin reset.</reason>
+    </antipattern>
+    <antipattern>
+      <description>retention.yaml absent OR PII fields set to "send full payload."</description>
+      <reason>Violates r5. Compliance + cost risk.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Release shipped without symbol-manifest entry OR with verification_passed_at = null.</description>
+      <reason>Violates r2. Release likely has un-symbolicated crashes.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>CI runs symbol upload + verification on every release tag.</item>
+      <item>All alert rules defined in code; drift-check passes daily.</item>
+      <item>Primary health dashboard is in code with named owner.</item>
+      <item>Retention + PII settings explicit and reviewed.</item>
+      <item>Symbol manifest updated per release with verification timestamp.</item>
+    </list>
+  </section>
+</text>
