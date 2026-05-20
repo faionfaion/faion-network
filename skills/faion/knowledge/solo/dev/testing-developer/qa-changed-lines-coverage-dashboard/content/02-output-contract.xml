@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Diff-Coverage Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the coverage-diff policy, the PR comment, and the trend dashboard payload.</summary>
+
+  <output-contract>
+    <required>
+      <field name="policy.default_threshold" type="integer" min="0" max="100"/>
+      <field name="policy.overrides" type="list_of_object" min="0"/>
+      <field name="policy.overrides[].paths" type="list_of_glob" min="1"/>
+      <field name="policy.overrides[].threshold" type="integer" min="0" max="100"/>
+      <field name="policy.overrides[].reason" type="paragraph" min_words="10"/>
+      <field name="policy.report_full_repo_trend" type="bool"/>
+      <field name="pr_comment.headline_metric" type="enum" values="diff_coverage_percent"/>
+      <field name="pr_comment.per_file" type="list_of_object" notes="path, diff_covered_lines, diff_total_lines, percent, gate_pass"/>
+      <field name="pr_comment.full_repo_trend_line" type="string" notes="secondary, single line"/>
+      <field name="pr_comment.merge_gate_verdict" type="enum" values="pass|fail"/>
+      <field name="dashboard.timestamp" format="ISO8601"/>
+      <field name="dashboard.median_diff_coverage_7d" type="float"/>
+      <field name="dashboard.median_diff_coverage_30d" type="float"/>
+      <field name="dashboard.low_coverage_files" type="list_of_path"/>
+      <field name="dashboard.exclusion_list_size" type="integer"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">pr_comment.headline_metric uses whole-repo coverage instead of diff coverage</pattern>
+      <pattern id="f2">policy.default_threshold = 0 (no gate; defeats the system)</pattern>
+      <pattern id="f3">policy.overrides[] entry without reason field OR with reason shorter than 10 words</pattern>
+      <pattern id="f4">aggregated-only diff coverage reported without per-file breakdown</pattern>
+      <pattern id="f5">exclusion list grows by &gt; 5 paths between consecutive cleanup PRs without testing-lead approval</pattern>
+      <pattern id="f6">merge_gate_verdict = pass while any file falls below its per-file threshold (aggregate masking per-file fail)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Round per-file percent to nearest integer for the PR comment; keep float precision in dashboard payload.</transformation>
+      <transformation>Collapse adjacent low-coverage lines into a `lines 42-78 uncovered` range in the comment for readability.</transformation>
+      <transformation>Show a "delta from main" column when the file already existed; show only "new file" diff coverage for newly created files.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/coverage-diff.yml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Diff coverage is the primary metric in the PR comment</item>
+      <item>Per-file thresholds enforced; no aggregate-only gate</item>
+      <item>Every exclusion has a reason and was reviewed within 6 months</item>
+      <item>Dashboard updated automatically per merge</item>
+      <item>Monthly testing meeting reviews the trend and exclusion list</item>
+      <item>Low-coverage files surface in the dashboard, not just the PR-of-the-week</item>
+    </list>
+  </section>
+</text>

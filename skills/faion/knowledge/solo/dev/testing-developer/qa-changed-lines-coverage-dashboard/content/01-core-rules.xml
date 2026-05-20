@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Diff-Coverage Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every diff-coverage rollout must satisfy. These prevent the dominant failure: teams substituting whole-repo coverage back in when the diff number is uncomfortable.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-diff-only-as-the-gate" testable="true" depth="essential">
+      <statement>The CI quality gate uses ONLY the diff-coverage number for the merge decision. Whole-repo coverage is reported as a secondary trend line, never as the gate. The gate threshold defaults to 80% diff coverage per file, configurable in coverage-diff.yml.</statement>
+      <rationale source="empirical analysis of coverage-gaming; Karpathy / Google Testing Blog on coverage metrics">Whole-repo coverage rewards piling structural tests on already-tested code. Diff coverage measures the test investment for THIS change, which is the only metric correlated with regression resistance for the code that just changed.</rationale>
+    </rule>
+
+    <rule id="r2-per-file-threshold-not-aggregate" testable="true" depth="essential">
+      <statement>The gate is per-file: every file in the diff must hit the threshold individually. Aggregate-only thresholds let a high-coverage helper file mask a low-coverage business-logic file. coverage-diff.yml supports per-glob overrides (lower for scripts/, higher for billing/).</statement>
+      <rationale source="diff-cover and Codecov design rationale; aggregate-gaming research">An aggregate threshold of 80% can be met by a PR that adds 100 lines of well-tested helpers and 50 lines of un-tested business logic. Per-file is the only level at which the metric is robust to this pattern.</rationale>
+      <example type="good" title="Per-file policy">
+        <code lang="yaml"><![CDATA[
+# coverage-diff.yml
+default_threshold: 80
+overrides:
+  - paths: ["billing/**", "checkout/**"]
+    threshold: 90    # money-touching
+  - paths: ["scripts/**", "tools/**"]
+    threshold: 0     # ops scripts, intentionally exempt
+  - paths: ["migrations/**", "**/__init__.py"]
+    threshold: 0     # generated or near-empty
+report_full_repo_trend: true   # secondary, not gating
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r3-no-full-repo-deception" testable="true" depth="essential">
+      <statement>The PR-comment template MUST surface diff coverage as the primary number with per-file detail. Whole-repo coverage may appear, but only as a small "trend: 78.4% (-0.1pp)" line. Inverting this order is forbidden by lint; the template file is owned by the testing lead.</statement>
+      <rationale source="behavioral-economics research on metric framing">The number that appears first is the number the team optimises for. Putting diff coverage first reframes the team's mental model of coverage from "the score" to "the increment", which is the conceptual shift the whole system depends on.</rationale>
+    </rule>
+
+    <rule id="r4-trend-dashboard-required" testable="true" depth="essential">
+      <statement>Per-merge diff-coverage is published to a trend dashboard. The dashboard shows: median diff coverage per week, files with consistently low diff coverage, and PR authors with diff-coverage well below team median. The dashboard is reviewed monthly in the testing meeting.</statement>
+      <rationale source="metric-observability research; team-learning patterns">A single PR-comment dies in scroll history. A trend dashboard surfaces patterns — recurring low-coverage authors, files that always require waivers, modules that have decayed. The monthly review is the action threshold.</rationale>
+    </rule>
+
+    <rule id="r5-exclusion-list-disciplined" testable="true" depth="essential">
+      <statement>Exclusion globs (threshold=0 or skipped paths) require explicit justification in coverage-diff.yml. Each exclusion has a `reason` field; new exclusions require a PR with reviewer approval. Quarterly cleanup PR revisits the list and challenges entries older than 6 months.</statement>
+      <rationale source="taxonomy-drift in exclusion-list configs">Exclusions are the path of least resistance for coverage-allergic teams. Within 12 months an undisciplined exclusion list covers half the repo and the metric loses meaning. Justification + quarterly review is the only mechanism that keeps the list honest.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Tool selection by stack">
+    <list>
+      <item>Python — coverage.py + diff-cover (OpenEdX)</item>
+      <item>JavaScript / TypeScript — jest --coverage / c8 + codecov diff or @apify/diff-coverage-checker</item>
+      <item>Java / Kotlin — JaCoCo + diff-cover-jacoco</item>
+      <item>Go — go cover + gocover-cobertura + diff-cover (via cobertura adapter)</item>
+      <item>C# / .NET — coverlet --output-format=cobertura + diff-cover</item>
+      <item>Ruby — SimpleCov::Formatter::Cobertura + diff-cover</item>
+      <item>PHP — pcov/Xdebug + Clover + diff-cover</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

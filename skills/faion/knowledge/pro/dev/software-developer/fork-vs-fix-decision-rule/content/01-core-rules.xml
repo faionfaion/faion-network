@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Fork vs Fix — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules governing axis scoring, action selection, and the discipline of forking.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-five-axes" testable="true">
+      <statement>Decision MUST score 5 axes (0-3 each, 15 total): URGENCY (3=hours, 0=weeks-OK), BLAST (3=CI/build broken, 0=one route), PATCH-SIZE (3=&gt;100 LOC, 0=&lt;10 LOC), UPSTREAM-RESPONSIVENESS (3=dead repo, 0=PR-merged-in-days), STRATEGIC-DEPENDENCY (3=core forever, 0=we're replacing it next quarter).</statement>
+      <rationale source="NERO n8n fork case study + Tom Critchlow forking essays">Single-axis decisions ("just fork it") create maintenance debt; the 5-axis score forces explicit trade-off across speed, scope, effort, and strategic horizon.</rationale>
+    </rule>
+
+    <rule id="r2-action-map" testable="true">
+      <statement>Action selection from total score: 0-3 → WORKAROUND (config / wrap); 4-6 → MONKEY-PATCH (patch-package, contained); 7-9 → UPSTREAM-PR (with workaround until merged); 10-12 → FORK-PIN (private fork until upstream catches up); 13-15 → REPLACE (swap for alternative library).</statement>
+      <rationale source="OSS contribution analytics 2020-2024 + agency observed patterns">Score bands map to the empirical pain/benefit of each path. Below 7 forking is over-investment; above 12 the library is so broken it's safer to leave.</rationale>
+    </rule>
+
+    <rule id="r3-strategic-override" testable="true">
+      <statement>STRATEGIC-DEPENDENCY score == 3 forces action ≥ UPSTREAM-PR (never WORKAROUND or MONKEY-PATCH alone). If the library is core forever, we must invest in shaping its trajectory, not patch around it.</statement>
+      <rationale source="n8n fork example (NERO) + Patrick McKenzie kalzumeus">If a library is truly forever-core (Rails, Postgres, n8n for an automation product), patches accumulate to unmaintainable scar tissue. Upstream PR is the only durable strategy.</rationale>
+    </rule>
+
+    <rule id="r4-fork-hygiene" testable="true">
+      <statement>FORK-PIN action MUST emit a playbook with: (a) fork repo URL, (b) branch naming `vX-faion-fork`, (c) Renovate config to track upstream changes, (d) re-rebase cadence (≥ monthly), (e) sunset criterion ("when upstream merges X" OR "by date Y"). Forks without sunset criteria become orphan codebases.</statement>
+      <rationale source="GitHub fork-graveyard analytics + observed agency anti-pattern">Forks created in heat-of-incident mode and never re-rebased become unmaintainable within 12-18 months. Sunset criteria force the team to either upstream the patch or commit to long-term maintenance budget.</rationale>
+    </rule>
+
+    <rule id="r5-monkey-patch-ban-list" testable="true">
+      <statement>MONKEY-PATCH is FORBIDDEN for: security-critical libraries (auth, crypto, validation), core framework runtimes (React, Next.js core), and any library shipping its own update mechanism. For these, only WORKAROUND or UPSTREAM-PR or FORK-PIN.</statement>
+      <rationale source="OWASP supply-chain advisories / Heroku monkey-patch incident reports">Monkey-patches on security libraries silently revert on dep upgrade and create undocumented attack surface. Framework runtime patches break on minor bumps. Ban-list prevents catastrophic categories.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Action selection examples">
+
+    <example type="good" title="NERO n8n fork case (real-world)">
+      <code lang="text"><![CDATA[
+Library: n8n (workflow automation engine)
+Bug: Custom node loader does not support our Python-via-child_process
+     pattern; we need to fork to ship the integration.
+
+Axis scoring:
+  URGENCY                    = 2  (days, not hours)
+  BLAST                      = 3  (blocks entire product line)
+  PATCH-SIZE                 = 2  (~40 LOC across 3 files)
+  UPSTREAM-RESPONSIVENESS    = 2  (median merge: 3 weeks; mixed)
+  STRATEGIC-DEPENDENCY       = 3  (n8n is core forever)
+Total = 12
+
+Action: FORK-PIN (band 10-12)
+  + Upstream PR opened in parallel (per r3 strategic override)
+  + Branch: v1.x-faion-fork
+  + Renovate tracks upstream weekly
+  + Sunset: when our PR merges OR by 2027-Q1
+      ]]></code>
+      <note>r3 forces parallel upstream PR despite FORK-PIN action. Hybrid path.</note>
+    </example>
+
+    <example type="bad" title="Monkey-patch on auth library (r5 violation)">
+      <code lang="text"><![CDATA[
+Library: next-auth
+Bug: Token expiry off by 30s; quick fix in node_modules/...
+
+Engineer's plan: patch-package next-auth/server/jwt.js, ship.
+
+r5 BAN: next-auth is auth-critical → MONKEY-PATCH forbidden.
+Re-route to:
+  WORKAROUND (configure 30s tolerance via valid config)
+  OR UPSTREAM-PR (with bridging workaround)
+      ]]></code>
+      <note>Even when monkey-patch is fastest, security boundary forces the slower path.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
