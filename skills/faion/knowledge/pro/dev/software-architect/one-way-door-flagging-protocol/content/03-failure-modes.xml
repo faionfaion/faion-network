@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="One-Way-Door Flagging Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six failure modes that defeat the protocol in practice. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Everything flagged two-way-door — the team uses the cheaper review path even for irreversible decisions to maintain velocity.</description>
+      <detector>more than 80% of ADRs in a quarter are decision_class=two-way-door OR a known-irreversible decision (vendor lock-in, public API breakage) shipped as two-way</detector>
+      <repair>Run the quick-classification heuristics retrospectively over the last quarter's ADRs. Reclassify miscalls; the engineering leader posts a one-page note to the team explaining the pattern. Strengthen the pre-commit lint to require explicit justification when reversal_estimate &lt; 1 engineer-week on a vendor or schema decision.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Every decision flagged one-way-door — defensive labelling turns the protocol into a velocity-killer, the team starts skipping ADRs entirely.</description>
+      <detector>more than 60% of ADRs in a quarter are decision_class=one-way-door OR reversal_estimate_engineer_weeks values cluster at &gt;= 4 weeks across the board with no calibration data backing it</detector>
+      <repair>Force calibration: pull the last 8 quarters' ADRs and ask which were actually reversed. The reversal rate is typically &lt; 15%; if the team flags more than 40% one-way, the classification is wrong. Engineering leader leads the recalibration session.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>After-the-fact reclassification — a one-way-door is silently relabelled two-way after merge to dodge a difficult conversation.</description>
+      <detector>ADR file's decision_class field was edited after merged_at OR git blame shows the field changed by someone other than the original author</detector>
+      <repair>Lock decision_class as immutable after merge; further reclassification requires a new ADR that supersedes the old one with explicit rationale. Pre-commit hook rejects field-edit commits on merged ADRs.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Devil's-advocate role assigned but unused — the named reviewer rubber-stamps the ADR without posting a real objection, defeating the cooldown's purpose.</description>
+      <detector>devils_advocate_review.objection_or_endorsement is shorter than 60 words OR is the literal string "LGTM" OR is the same template across multiple ADRs</detector>
+      <repair>Require the reviewer to address at least one named risk from the classification rationale and either rebut it or endorse the decision despite it. Quarterly miscall report calls out reviewers whose objections were systematically thin.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Reversal estimate as a placeholder — writer enters TBD or unknown for the engineer-weeks field, defeating the calibration loop.</description>
+      <detector>reversal_estimate_engineer_weeks is non-numeric OR equals the team default (e.g. always 4 weeks for every one-way ADR)</detector>
+      <repair>Pre-commit lint rejects non-numeric values. If the writer truly cannot estimate, the protocol requires a 30-minute estimation session with the devil's-advocate reviewer to produce a real number before the ADR can be merged.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>Quarterly miscall review skipped — busy quarter, owner forgets, the calibration signal is lost.</description>
+      <detector>miscall_report missing for the prior quarter OR more than 90 days since the last report</detector>
+      <repair>Calendar reminder on the first Monday of each quarter. If the review is genuinely skipped, the next report combines two quarters and explicitly flags the gap.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      Pressure from a vendor or partner to ship a decision faster ("we need this by Friday or the deal slips") must NOT auto-shortcut the cooldown on a one-way-door ADR. Cooldown can be reduced to 24h with engineering-leader written approval, but never eliminated. The deal moving faster than the cooldown is a signal that the deal terms need re-examination, not that the cooldown does.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      Quarterly: protocol owner publishes the miscall report. Engineering leader reads it, identifies one classification pattern the team got wrong, and adjusts the heuristics list in 01-core-rules. The protocol improves with each quarter of data.
+    </p>
+  </section>
+</text>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Pulse Survey — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a weekly `MoralePulse` aggregate and the alert event it may trigger.</summary>
+
+  <section title="MoralePulse required fields">
+    <list>
+      <item>`team_id` — string</item>
+      <item>`sprint_id` — string</item>
+      <item>`week_iso` — ISO week</item>
+      <item>`responses_received` — integer</item>
+      <item>`team_size` — integer</item>
+      <item>`response_rate` — number 0-1</item>
+      <item>`anonymity_threshold_met` — boolean (≥ 3 AND ≥ 60%)</item>
+      <item>`scores` — object {enps: object {mean, median, distribution}, workload: {mean, median}, autonomy: {mean, median}, clarity: {mean, median}}</item>
+      <item>`trend_vs_prior_sprint` — object delta per axis (only when anonymity met)</item>
+      <item>`alerts_triggered` — array of alert events (may be empty)</item>
+    </list>
+  </section>
+
+  <section title="Alert event required fields">
+    <list>
+      <item>`alert_id` — string</item>
+      <item>`team_id` — string</item>
+      <item>`trigger` — enum {enps_drop, axis_median_low, response_rate_low}</item>
+      <item>`evidence` — object (the specific number that triggered it)</item>
+      <item>`action_required` — enum {one_on_ones_within_48h, survey_pause}</item>
+      <item>`due_by` — ISO-8601</item>
+      <item>`responsible_pm` — string</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`MoralePulse.scores` includes per-person breakdowns OR raw responses.</description>
+      <reason>Violates r5 no-retaliation. Aggregate-only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`anonymity_threshold_met: false` AND axis medians published.</description>
+      <reason>Violates r2. Suppress per-axis data until threshold met.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Alert event without `due_by` ≤ 48 business hours of trigger.</description>
+      <reason>Violates r4 action SLA.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Survey continues running while a prior alert's 1:1s are NOT done.</description>
+      <reason>Violates r4 pause clause; running pulse without action destroys trust.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Comment-box responses included in `MoralePulse.scores`.</description>
+      <reason>Comments are qualitative, may be de-anonymising. Surface to PM privately as separate file with a 7-day auto-delete window.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Anonymise team_id when sharing program-level dashboards.</item>
+      <item>Aggregate scores by month for retrospective trend analysis.</item>
+      <item>Convert eNPS distribution to Promoter / Passive / Detractor counts.</item>
+    </list>
+  </section>
+
+  <reference path="templates/morale-pulse.json">MoralePulse JSON Schema.</reference>
+  <reference path="templates/alert-event.json">Alert event schema.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Anonymity threshold respected.</item>
+      <item>All four axes scored.</item>
+      <item>Alerts have due_by ≤ 48h.</item>
+      <item>No per-person data in output.</item>
+      <item>Comment box treated separately and auto-purged.</item>
+    </list>
+  </section>
+</text>

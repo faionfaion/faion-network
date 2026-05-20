@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI-Feature Observability Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every LLM-feature observability setup MUST satisfy on launch day. Hard rules; "we'll add it later" is the dominant failure pattern this list prevents.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-all-four-pillars" testable="true" depth="essential">
+      <statement>The feature MUST emit metrics for all four pillars on launch day: latency (p50/p95/p99 in ms), cost-per-request (in real currency with model+token breakdown), quality_score (from eval set or human grade), drift_signal (input-token mean, refusal_rate, or semantic-cluster drift). Shipping with three pillars is REJECTED at launch review.</statement>
+      <rationale source="Incident-history analysis across LLM-feature postmortems 2023-2025">Missing a pillar is the dominant root cause of "we didn't know the model was worse" postmortems. The four together cover symptoms (latency, cost), outcomes (quality), and leading indicators (drift). Three pillars always misses one class of incident.</rationale>
+    </rule>
+
+    <rule id="r2-slo-bands-from-baseline" testable="true" depth="essential">
+      <statement>SLO bands MUST be set from 1-2 weeks of pre-launch baseline traffic — never from intuition or vendor defaults. The default SLO assignment is: p95_latency &lt; 2x baseline p95; cost_per_request &lt; 1.25x baseline mean; quality_score &gt;= baseline_mean - 1.5*sigma; drift_signal alert when KL or PSI &gt; 0.2 over baseline distribution.</statement>
+      <rationale source="Google SRE workbook Ch.4; statistical process control">SLO bands chosen by intuition pass even when the system degrades. Baseline-derived bands fail when the system is actually worse. The 2x / 1.25x / 1.5-sigma defaults are conservative starting points that get tightened as the team learns the production shape.</rationale>
+    </rule>
+
+    <rule id="r3-cost-in-currency-not-tokens" testable="true" depth="essential">
+      <statement>The cost pillar MUST be expressed in real currency (USD by default) per request, NOT in tokens. Token counts are stored as inputs to cost computation but the dashboard metric is currency. Cost MUST break down by model name and by direction (input tokens, cached input, output tokens, thinking tokens where applicable).</statement>
+      <rationale source="Faion product rule `feedback_no_token_pricing` + stakeholder reporting practice">Token counts read different across models (Sonnet vs Opus vs Haiku); currency is the only stakeholder-readable signal. Token-only dashboards are the dominant pattern that hides 4-5x cost increases when a model swap inflates output tokens silently.</rationale>
+    </rule>
+
+    <rule id="r4-eval-set-ownership-defined" testable="true" depth="essential">
+      <statement>Every feature MUST name an `eval_set_owner` (single human accountable) AND a cadence (daily or weekly run). Eval-set runs older than 7 days are STALE; the quality_score metric MUST emit a `stale` tag on every observation older than the cadence. Eval sets without an owner are FORBIDDEN.</statement>
+      <rationale source="ML practice; eval-set decay studies">Eval sets rot fast — production traffic drifts, examples become outdated, gold answers become wrong. Ownership + cadence is the only mechanism that keeps the eval set live. An unowned eval set is no signal.</rationale>
+    </rule>
+
+    <rule id="r5-drift-signal-explicit" testable="true" depth="essential">
+      <statement>The drift_signal pillar MUST declare its chosen drift definition explicitly: (a) input-token mean with EMA; (b) refusal_rate ratio; (c) semantic-cluster drift via embedding distance over a rolling window. Defaults: chat features use (b); RAG features use (c); long-context features use (a). Implicit "drift" with no definition is REJECTED.</statement>
+      <rationale source="ML monitoring literature; arXiv:2206.06672 drift metrics taxonomy">"Drift" is ambiguous without a chosen metric. The three families catch different shifts (volume / model-policy / query-topic). Picking one per feature is the discipline that makes alerts actionable.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Four-pillar dashboard at launch">
+      <code lang="text"><![CDATA[
+Panel 1: latency_ms     p50=420  p95=1180  p99=2340     (SLO: p95 < 2000)
+Panel 2: cost_usd       mean=0.0042  p95=0.018          (SLO: mean < 0.005)
+Panel 3: quality_score  daily=4.21 / 5 (eval set 200)   (SLO: > 4.10)
+Panel 4: refusal_rate   1.2%  baseline 1.1% (PSI 0.04)  (alert: PSI > 0.2)
+      ]]></code>
+      <note>r1 satisfied (four pillars), r3 satisfied (currency not tokens), r5 satisfied (refusal_rate drift declared with PSI). Bands from a 14-day baseline.</note>
+    </example>
+
+    <example type="bad" title="Tokens-as-cost dashboard">
+      <code lang="text"><![CDATA[
+Panel 1: latency_ms      p50=420
+Panel 2: tokens_per_req  mean=2400  p95=8400
+Panel 3: (no quality)
+Panel 4: drift           (label exists, no metric attached)
+      ]]></code>
+      <note>r1, r3, r5 violations. Tokens hide a 4x cost spike if model swaps from Haiku to Opus mid-week. Quality absent. Drift undefined.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

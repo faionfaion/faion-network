@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063 harvest +8.
 - F-063 Added: harvest +6 writer dirs.
 - F-063 Added: harvest +6 writer dirs.
 - F-063 Added: harvest +8 writer dirs.
