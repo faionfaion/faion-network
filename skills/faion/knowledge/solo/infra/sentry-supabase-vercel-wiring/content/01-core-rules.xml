@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Sentry Supabase Vercel Wiring Core Rules" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>6 testable rules for wiring Sentry into a Next.js-on-Vercel + Supabase stack so first incidents are useful, not noisy.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-three-runtimes-three-configs" testable="true" depth="essential">
+      <statement>The repo MUST contain three Sentry configs: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`. Single-config setups miss edge-runtime errors (middleware, edge API routes). Missing any file = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Next.js runs three different runtimes; Sentry's bundler-plugin emits separate transports. A single config silently drops edge-runtime errors — exactly where middleware-level auth fails.</rationale>
+    </rule>
+
+    <rule id="r2-source-maps-via-vercel-build" testable="true" depth="essential">
+      <statement>Source maps MUST upload via Sentry's Next.js bundler plugin during the Vercel build (NOT a post-deploy hook). `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` MUST live in Vercel project env (NOT in committed code). Builds without source-maps upload = REJECT — stack traces are minified garbage.</statement>
+      <rationale source="gap-analysis 2026-05-17">Post-deploy hooks race the first user error. Vercel build is the only place that has both the unminified bundle and the deploy ID; everything else is hope.</rationale>
+    </rule>
+
+    <rule id="r3-supabase-auth-error-scrubbing" testable="true" depth="essential">
+      <statement>`beforeSend` MUST scrub Supabase auth error payloads: strip `access_token`, `refresh_token`, `provider_token`, full email body, any `Authorization:` header echo. Unscrubbed Supabase errors leak JWTs into Sentry, which is a credential leak.</statement>
+      <rationale source="gap-analysis 2026-05-17">Supabase client errors include the request that failed, which often contains the JWT. Sentry then becomes the leak. Scrubbing is mandatory, not optional.</rationale>
+    </rule>
+
+    <rule id="r4-rls-error-classification" testable="true" depth="essential">
+      <statement>Supabase `PGRST*` and `42501` (RLS denial) errors MUST be classified before sending to Sentry: legitimate RLS denials are expected behaviour (NOT errors), unexpected RLS denials indicate a real bug. The rule MUST tag `level: warning` for expected, `level: error` for unexpected, using a `meta.expected_rls` payload.</statement>
+      <rationale source="gap-analysis 2026-05-17">Treating every RLS denial as an error floods Sentry with user-typo noise and hides the actual bugs. Classification is what makes Supabase + Sentry usable together.</rationale>
+    </rule>
+
+    <rule id="r5-edge-sampling-cap" testable="true" depth="essential">
+      <statement>`sentry.edge.config.ts` MUST set `tracesSampleRate` ≤ 0.1 (10%) regardless of client/server settings. Edge runtime executes per-request including middleware; 1.0 sampling on a moderate-traffic site exhausts quota in hours.</statement>
+      <rationale source="gap-analysis 2026-05-17">Solo plans on Sentry have small spans quotas. Edge middleware runs on every request including bots — leaving sampling at 1.0 burns through monthly quota by lunchtime.</rationale>
+    </rule>
+
+    <rule id="r6-ignore-noise-baseline" testable="true" depth="essential">
+      <statement>`ignoreErrors` MUST include the baseline noise list: ResizeObserver loop limit, AbortError on navigation, NextRouter cancel, hydration mismatch from extensions. New projects MUST start with this baseline; teams MAY only ADD, never remove without a rationale comment.</statement>
+      <rationale source="gap-analysis 2026-05-17">Solo builders fight Sentry signal-to-noise for weeks before discovering the baseline list; codifying it saves the discovery cost and stops "Sentry is useless" abandonment.</rationale>
+    </rule>
+
+    <example title="Config skeleton (compressed)">
+      <text>// sentry.server.config.ts
+import * as Sentry from '@sentry/nextjs'
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  tracesSampleRate: 0.2,
+  beforeSend(e){ return scrubSupabaseAuth(e) },
+  ignoreErrors: ['ResizeObserver loop','AbortError','NextRouter:cancel'],
+})
+// sentry.edge.config.ts → tracesSampleRate: 0.1 (cap)
+// vercel.json env: SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT</text>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../supabase-rls-audit-checklist/AGENTS.md"/>
+    <link path="../one-person-rollback-runbook/AGENTS.md"/>
+  </see-also>
+</text>

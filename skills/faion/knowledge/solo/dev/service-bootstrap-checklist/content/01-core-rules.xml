@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Service Bootstrap Checklist Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>8 testable gates every greenfield service MUST clear on day 0 before being declared "ready to ship." Skipping any gate guarantees a discovery during the first incident.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-repo-layout-canonical" testable="true" depth="essential">
+      <statement>Repo MUST follow the project's canonical layout: `src/` (or framework default), `tests/`, `docs/`, `.github/workflows/`, `AGENTS.md` at root, `CLAUDE.md` at root pointing to `@AGENTS.md`. Ad-hoc layouts = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Layout drift compounds; the first 10 services set the template every subsequent service copies. Canonical layout on day 0 is the cheapest standardisation win.</rationale>
+    </rule>
+
+    <rule id="r2-ci-on-first-commit" testable="true" depth="essential">
+      <statement>CI MUST run on the first commit: at minimum lint + format + unit-test gates. CI files committed but disabled = REJECT. Green build on commit 1 is the proof.</statement>
+      <rationale source="gap-analysis 2026-05-17">"We'll add CI later" never happens; by commit 50 the codebase is too noisy to enable lint without a week of cleanup.</rationale>
+    </rule>
+
+    <rule id="r3-agents-md-and-claude-md" testable="true" depth="essential">
+      <statement>Repo MUST contain `AGENTS.md` (20-80 lines, file table + key types + commands) AND `CLAUDE.md` containing exactly `@AGENTS.md`. Both files committed on day 0; empty placeholders = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Multi-agent workflows (Claude Code, Codex, etc.) require both files for orientation. Day-0 commit is the only time they get written; deferred = forgotten.</rationale>
+    </rule>
+
+    <rule id="r4-container-or-build-artefact" testable="true" depth="essential">
+      <statement>If the deploy target uses containers (k8s / Fly / Railway with Docker / etc.), a working `Dockerfile` MUST build and the image MUST start locally. If deploy target is serverless (Vercel / Cloudflare Workers), the build command MUST produce a deployable artefact locally. "Will containerize before launch" = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Dockerfile pain (multi-stage, image size, base image vulns) is a 1-day distraction at any time except day 0, when it's a 2-hour task with no other context.</rationale>
+    </rule>
+
+    <rule id="r5-observability-stub" testable="true" depth="essential">
+      <statement>Service MUST emit at minimum: a structured log line per request (level, request_id, route, status, latency), an error tracker SDK initialised (Sentry / Highlight / equivalent) with DSN from env, and a health endpoint (`/healthz` or platform default). All three stubs present = PASS.</statement>
+      <rationale source="gap-analysis 2026-05-17">Observability wired in production-AFTER-incident costs hours during a real incident, on top of the incident itself. Stubs on day 0 cost ~15 minutes and pay off the first time a request 500s.</rationale>
+    </rule>
+
+    <rule id="r6-secrets-not-committed" testable="true" depth="essential">
+      <statement>`.env.example` MUST exist listing required env vars (without values); `.env.local` and any real-secret file MUST be in `.gitignore`; a secret-scanner pre-commit hook (gitleaks / trufflehog) MUST be installed. Real secrets in any committed file = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">First-commit secret leaks are the single highest-frequency security incident on greenfield repos. Pre-commit scanning is the only durable mitigation.</rationale>
+    </rule>
+
+    <rule id="r7-release-notes-and-rollback" testable="true" depth="essential">
+      <statement>Repo MUST contain `CHANGELOG.md` with `## [Unreleased]` section AND a documented rollback procedure (either via `solo/dev/deploy-notes-template-with-rollback` or inline `ROLLBACK.md`). No rollback doc = REJECT — you cannot ship without a documented exit.</statement>
+      <rationale source="gap-analysis 2026-05-17">Rollback procedure invented mid-incident usually doesn't work; documented day-0 rollback is the safety net that lets you ship fast later.</rationale>
+    </rule>
+
+    <rule id="r8-bootstrap-record-signed" testable="true" depth="essential">
+      <statement>Bootstrap completion MUST emit `BOOTSTRAP.md` listing each gate, its pass evidence (filename / CI run / screenshot), and the operator's signature with date. Unsigned bootstraps are not "ready to ship" regardless of how green the repo looks.</statement>
+      <rationale source="gap-analysis 2026-05-17">A signed record makes the bootstrap auditable later (post-mortems, compliance, onboarding new operators) and forces the operator to actually verify each gate.</rationale>
+    </rule>
+
+    <example title="BOOTSTRAP.md output">
+      <text>service: payments-api  bootstrapped: 2026-05-20  operator: @nero  gates: [layout=PASS(canonical), ci=PASS(run #1 green), agents_md=PASS(48 lines), container=PASS(Dockerfile builds 142MB), observability=PASS(structured logs + Sentry stub + /healthz), secrets=PASS(gitleaks installed, .env.example committed), release_notes=PASS(CHANGELOG + ROLLBACK.md), bootstrap_record=this file]  signature: @nero 2026-05-20</text>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../../../free/dev/github-repo-bootstrap/AGENTS.md"/>
+    <link path="../automation-tooling/AGENTS.md"/>
+    <link path="../deploy-notes-template-with-rollback/AGENTS.md"/>
+  </see-also>
+</text>

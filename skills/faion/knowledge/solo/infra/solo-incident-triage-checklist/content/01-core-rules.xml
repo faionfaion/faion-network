@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Solo Incident Triage Core Rules">
+  <summary>Five testable rules the solo operator must enforce in the first 15 minutes of a production incident, in this order.</summary>
+
+  <section title="Triage rules">
+
+    <rule id="r1-stop-bleed-first" testable="true">
+      <statement>The first action is to stop the bleed, not to find the cause. Acceptable stop-bleed actions: roll back the last deploy, toggle a feature flag off, scale a stuck worker to zero, route traffic to a maintenance page. Cause-hunting before stop-bleed is forbidden.</statement>
+      <rationale>Mean-time-to-recovery dominates mean-time-to-cause for customer impact. A 2-minute rollback that restores service beats a 40-minute root-cause that ships a perfect fix.</rationale>
+    </rule>
+
+    <rule id="r2-snapshot-before-fix" testable="true">
+      <statement>Before applying any fix or rollback, capture: (a) timestamp of the alert, (b) error rate / latency at alert time, (c) last 3 deploy SHAs with timestamps, (d) current value of any feature flag touched in the last 24h. Write these into the incident log file in one block.</statement>
+      <rationale>Snapshots are lost as soon as you start fixing. Without them the post-incident review degenerates into reconstructed memory.</rationale>
+    </rule>
+
+    <rule id="r3-15-min-deadline" testable="true">
+      <statement>Set a wall-clock 15-minute deadline at the moment of acknowledging the alert. If the bleed is not stopped by the deadline, the operator MUST switch to the documented rollback runbook or post a status-page incident, even if a fix feels "close".</statement>
+      <rationale>Solo operators chronically under-estimate fix time. A hard deadline converts hope into a decision point.</rationale>
+    </rule>
+
+    <rule id="r4-single-incident-log" testable="true">
+      <statement>All incident activity goes into one append-only file (`~/incidents/YYYY-MM-DD-slug.md`). One line per action with timestamp. No parallel Slack DMs, no scratch notes, no memory.</statement>
+      <rationale>A solo responder cannot reconstruct the timeline from Slack history a week later. Single-file logs become the post-mortem artefact for free.</rationale>
+    </rule>
+
+    <rule id="r5-no-fix-without-evidence" testable="true">
+      <statement>No code change, no DB migration, no config edit is permitted during triage unless backed by a log line, metric delta, or error trace cited in the incident log. "I think it's X" is rejected as evidence.</statement>
+      <rationale>Stress-driven guesses during incidents cause more outages than they fix. Forcing evidence citation slows panic and surfaces the actual fault.</rationale>
+    </rule>
+
+  </section>
+
+  <example type="good">
+    <code lang="markdown"><![CDATA[
+## 2026-05-20 14:03 db-pool-exhausted
+- 14:03 alert: api 5xx rate 14%
+- 14:04 snapshot: rate=14%, p95=8s, deploys: a1b2c3 (13:55), prev=9f8e7d (yesterday)
+- 14:05 stop-bleed: rollback to 9f8e7d via deploy-gh.sh
+- 14:08 verified: 5xx rate back to 0.2%
+- 14:09 evidence: db pool log "FATAL: too many connections" at 13:58
+- 14:30 root cause: a1b2c3 opened a connection in module import; fix on branch
+]]></code>
+    <note>Stop-bleed at minute 5, deadline never hit, evidence cited before re-deploy.</note>
+  </example>
+
+  <antipattern>
+    <description>Operator opens DataDog, scrolls logs for 25 minutes hunting for the cause while users keep hitting 500s.</description>
+    <reason>Violates r1 (bleed not stopped) and r3 (deadline ignored). Customer impact compounds linearly with time-to-stop-bleed.</reason>
+  </antipattern>
+</text>

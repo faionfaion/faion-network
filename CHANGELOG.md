@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063 final wave: harvest batch 1 (+100 files).
 - F-063 final wave: harvest batch 0 (+100 files).
 - F-063+F-064 harvest +312.
 - F-063+F-064 harvest +1.

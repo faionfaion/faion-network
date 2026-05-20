@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Flaky Test Triage Playbook Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules trace each flake through detect → quarantine → bucket → fix → close-loop with explicit gates so the triage process is auditable, not improvised.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement><strong>Detect:</strong> a test enters the triage pipeline only when a mechanical signal trips — pass-on-retry ≥ 2% over the last 50 runs, or two retry-pass events on the same commit in 30 days, or a manual report that is corroborated within 24 hours by retrying the test 20 times on the latest main. Manual reports without a mechanical re-check are rejected to avoid recency-bias noise.</statement>
+      <rationale source="Detect stage: existing testing-patterns mention flakes but don't define detection">A triage pipeline whose intake is anecdotal will be dominated by whoever shouts loudest. Mechanical detection levels the field and converts "I think test X is flaky" into either "yes, here's the signal" or "no, log it for next time".</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement><strong>Quarantine:</strong> on detection, a test may be quarantined immediately to unblock CI, but the quarantine consumes one slot of a fixed budget (e.g. 1% of suite, with a small floor). Quarantine entries carry an owner, the detect-signal value, and a hard expiry no further than 14 days; expiry is enforced by CI breaking the build.</statement>
+      <rationale source="Quarantine stage to keep CI unblocked without enabling rot">An unbudgeted quarantine becomes a graveyard. A budgeted quarantine with hard expiry keeps the pipeline green while forcing the team to actually finish the work.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement><strong>Bucket:</strong> before any fix is attempted, the test is bucketed by (a) responsible owner — feature team that owns the code under test, infra team if runner-level — and (b) classification: root-cause class (shared-state / ordering / timing / network / locator / infra) and pyramid-level signal (does this flake suggest the test belongs at a lower tier, e.g. an E2E that should be a contract test?). The bucket is recorded; the fix is not assigned to a "general flake fixer".</statement>
+      <rationale source="Bucket stage drives fix discipline + pyramid rebalance signal">Without bucketing, every flake lands on whoever has bandwidth, and the same root cause is misdiagnosed repeatedly. The pyramid-signal field captures the secondary insight: many flakes are really mis-tiered tests.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement><strong>Fix:</strong> the fix must address the bucketed root cause, not the symptom. Acceptable outcomes: (a) test repaired in place, (b) test rewritten at a lower pyramid tier (E2E → contract or unit), (c) test deleted with written rationale (the assertion was redundant or proxy for nothing). Adding retries or `sleep()` calls without root-cause repair is forbidden and rejected at PR review.</statement>
+      <rationale source="Fix stage that respects classification">Retries and sleeps are placebo fixes; they unblock CI but ensure the flake reappears under load or in CI on a slower runner. Forcing one of the three acceptable outcomes keeps the suite honest.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement><strong>Close the loop:</strong> a fix is considered closed only after the test passes 50 consecutive scheduled runs without retry. Until then it remains in a "pending close" state in the ledger. If it re-flakes during the 50-run window, the original ledger entry reopens with the recurrence noted; a new entry is never created for the same test. Resolved entries are kept (not deleted) so future engineers can see the prior diagnosis.</statement>
+      <rationale source="Close-the-loop gap in existing flake content">Without a "held N runs" gate, fixes are declared on the same day they ship and the team has no signal whether the cure stuck. The reopen-on-recurrence rule prevents the ledger from forgetting and lets the team see chronic offenders.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical example">
+    <example type="good" title="End-to-end triage of a network-dependent test">
+      <code lang="text"><![CDATA[
+Detect:
+  test "fetch_invoice_pdf" pass-on-retry 4/100 (4%) → enters pipeline.
+
+Quarantine:
+  Engineer adds @pytest.mark.flaky_quarantine, slot 3 of 5 budget used,
+  expires_at=2026-06-03, owner=billing-team.
+
+Bucket:
+  Class: network (hits real Stripe API for PDF)
+  Pyramid signal: yes — this is currently an integration test, should be a
+    contract test against Stripe mock + a separate prod smoke.
+
+Fix:
+  - Rewrite as contract test using stripe-mock (lower pyramid tier)
+  - Add a 1-test prod smoke that hits real Stripe weekly, not on every PR
+  - Quarantine flag removed; original integration test deleted with note
+
+Close the loop:
+  Pending close from 2026-05-23. Pipeline runs 50× over next 4 days without
+  retry-pass → entry moved to resolved log on 2026-05-27.
+
+If it re-flakes within the window:
+  Same ledger entry reopens with recurrence=1; team is alerted that this is
+  a returning offender, not a fresh discovery.
+]]></code>
+      <note>Every stage produced an artefact. The fix moved the test to the right tier instead of patching with retries. The 50-run gate decided when "done" was actually done.</note>
+    </example>
+  </section>
+</text>

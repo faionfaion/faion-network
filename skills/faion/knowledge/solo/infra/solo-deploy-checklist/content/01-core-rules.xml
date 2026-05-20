@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Solo Deploy Checklist — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every solo deploy must pass. These are HARD rules — schedule pressure or feature excitement cannot override them.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>PRE-DEPLOY: A fresh, restorable DB snapshot exists with a timestamp ≤ 30 minutes old AND a successful test-restore was demonstrated within the last 30 days; without both, the deploy is no-go.</statement>
+      <rationale source="Backup-without-restore-is-not-a-backup industry maxim + Patrick McKenzie writings on solo operations">Untested backups fail at recovery roughly half the time; the demonstrated-restore window catches the silent rot.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>PRE-DEPLOY: A rollback procedure MUST be documented in plain text (file, runbook, README) and reachable on a phone — not behind a VPN-only wiki — because the rollback case is the case where the laptop might be the broken part.</statement>
+      <rationale source="On-call accessibility design (Google SRE Book Ch. 11)">Solo founders deploy from cafés and trains; a rollback gated on the laptop is no rollback at all.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>PRE-DEPLOY: Deploys with breaking DB migrations MUST NOT begin within 4 hours of a hard meeting, end of workday, or boarding a flight; calendar conflict = abort.</statement>
+      <rationale source="On-call hand-off failure analysis (Beyer et al., SRE Book Ch. 14)">Migration deploys produce their worst symptoms 30–90 minutes in; finishing them in flight or asleep is the most expensive option.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>DURING-DEPLOY: A smoke-test suite (≥ one end-to-end flow that exercises auth + DB write + payment-or-equivalent) MUST run within 5 minutes of deploy completion; a failed smoke test triggers automatic rollback before any "stable" declaration.</statement>
+      <rationale source="Canary + smoke-test deploy practice (Humble and Farley, Continuous Delivery)">Visual inspection of the home page is not a smoke test; the explicit end-to-end exercise catches the silent breakages that page-load misses.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>POST-DEPLOY: A 30-minute observation window with active log + error-rate watch is mandatory before the founder context-switches to anything else; "stable" is declared only after the window with zero new error-class spikes.</statement>
+      <rationale source="Incident-window patterns (PagerDuty / Honeycomb post-mortem corpora)">Most production-affecting issues surface in the first 30 minutes; leaving the chair before then puts the user-facing error budget at maximum risk.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical examples">
+    <example type="good" title="Anchored deploy run">
+      <code lang="yaml"><![CDATA[
+release: v0.42.0
+pre:
+  backup_snapshot_timestamp: 2026-05-20T13:14:00Z
+  restore_demonstrated_within_30d: true
+  rollback_runbook_reachable_on_phone: true
+  no_calendar_conflict_4h: true
+during:
+  deploy_started: 2026-05-20T13:32:00Z
+  smoke_test_passed_at: 2026-05-20T13:35:40Z
+post:
+  observation_window_min: 30
+  error_class_spike: none
+  changelog_updated: true
+  status: stable
+]]></code>
+      <note>Every gate ticked, observation honored, "stable" earned not declared.</note>
+    </example>
+    <example type="bad" title="Un-anchored deploy">
+      <code lang="text"><![CDATA[
+"Pushed the migration before bed Friday. Will check Saturday."
+]]></code>
+      <note>No backup verification, no smoke test, no observation, no rollback within reach. Every rule violated; the next failure compounds with sleep deprivation.</note>
+    </example>
+  </section>
+  <see-also>
+    <link path="../one-person-rollback-runbook/" />
+    <link path="../../sdd/solo-blameless-postmortem-template/" />
+  </see-also>
+</text>

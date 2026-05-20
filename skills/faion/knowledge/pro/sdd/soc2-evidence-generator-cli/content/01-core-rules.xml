@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="SOC2 Evidence Generator CLI — Core Rules" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Testable rules every `faion soc2 evidence` invocation must enforce. These are HARD rules — developer or CI configuration cannot override them.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every merged PR touching files declared in-scope by the control map MUST emit a stub; the merge action fails closed if stub generation errors.</statement>
+      <rationale source="SOC 2 CC8.1 change management">Missing evidence on a merged change is the single most common audit finding; failing-closed prevents the gap from forming.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The stub MUST contain: control_ids[], actor (verified Git identity), merge_commit_sha, diff_hash (SHA-256 of the unified diff), reviewer_approvals[], ci_run_ids[], merged_at (UTC ISO 8601), and a cryptographic signature over the canonical JSON.</statement>
+      <rationale source="NIST SP 800-92 / SOC 2 evidence completeness">Auditors challenge any field they cannot independently verify; the seven fields cover the standard chain-of-custody questions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Control labels MUST come from the closed vocabulary defined in the upstream `soc2-control-to-repo-artifact-map`; unknown labels reject the stub and surface the diff for relabeling.</statement>
+      <rationale source="Controlled-vocabulary discipline (ISO 25964)">Free-form labels produce orphan stubs that the binder cannot aggregate; closed vocab forces the conversation before merge.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Stubs MUST be written to an append-only store with immutability guarantees (S3 Object Lock, immutable bucket, git ref under signed-tag protection); deletion of any past stub fires a P0 alert.</statement>
+      <rationale source="SOC 2 CC7.2 detection of unauthorized changes">Evidence whose history can be rewritten silently is functionally absent; immutability is the only credible defense.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>The CLI MUST output a stable, sortable evidence_id (e.g., `evid_{merged_at}_{short_sha}`) and MUST be idempotent: re-running on the same merge_commit_sha returns the original evidence_id without writing a duplicate.</statement>
+      <rationale source="Idempotent-side-effect API design">Webhook retries and re-runs are a fact of life; non-idempotent emit produces duplicate evidence that confuses the auditor and inflates storage cost.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical examples">
+    <example type="good" title="Anchored application">
+      <code lang="json"><![CDATA[
+{
+  "evidence_id": "evid_2026-05-20T14:22:01Z_a3f9c12",
+  "control_ids": ["CC6.1", "CC8.1"],
+  "actor": "alice@acme.com",
+  "merge_commit_sha": "a3f9c12d4b...",
+  "diff_hash": "sha256:7c2a4f...",
+  "reviewer_approvals": ["bob@acme.com"],
+  "ci_run_ids": ["gh-actions/run/12345"],
+  "merged_at": "2026-05-20T14:22:01Z",
+  "signature": "sigstore:..."
+}
+]]></code>
+      <note>Closed-vocab labels, signed, idempotent id, append-only target. The auditor runs one query and gets the change story in seconds.</note>
+    </example>
+    <example type="bad" title="Un-anchored application">
+      <code lang="text"><![CDATA[
+PR #482 merged. See Slack #compliance for context.
+]]></code>
+      <note>No control mapping, no signed integrity, no reviewer record. The auditor cannot verify any claim; the finding writes itself.</note>
+    </example>
+  </section>
+  <see-also>
+    <link path="../../geek/infra/soc2-control-to-repo-artifact-map/" />
+  </see-also>
+</text>

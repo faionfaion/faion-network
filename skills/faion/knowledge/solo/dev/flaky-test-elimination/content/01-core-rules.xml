@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Flaky Test Elimination Core Rules" version="1.0.0" est_tokens="1150" depth="essential">
+  <summary>Six testable rules classify flakes by root cause, prescribe one fix pattern per class, cap the quarantine, and close the loop so the long tail can't rot.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Flake detection is mechanical, not anecdotal: a test is officially "flaky" when it has a pass-on-retry rate ≥ 2% over the last 50 runs OR has failed-then-passed on the same commit at least twice in the last 30 days. CI emits a daily flake report; conversations about flakes start from the report, not from memory.</statement>
+      <rationale source="#1 day-to-day QA pain — needs an evidence-based detector">Anecdotal flake reports always under- and over-count: noisy tests are remembered, quiet flakes are not. A mechanical detector lets the team triage by frequency and impact rather than by recency bias.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every detected flake is classified into exactly one of six root-cause buckets before any fix: <code>shared-state</code> (database, filesystem, singletons), <code>ordering</code> (test depends on prior test's side effects), <code>timing</code> (race, sleep, polling), <code>network</code> (real or stubbed third-party non-determinism), <code>locator-fragility</code> (CSS/XPath/animation-sensitive UI selectors), <code>infra</code> (runner CPU starvation, Docker DNS, container time skew). The bucket is recorded in the flake ledger.</statement>
+      <rationale source="Root-cause classification (shared state, ordering, timing, network, locator fragility, infra)">A flake without a class will be "fixed" by adding sleep(2), masking the symptom and breeding the next flake. Classification routes the engineer to the right repair, not a placebo.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Each class has one canonical fix pattern; deviations need a written rationale: shared-state → per-test isolation (transaction rollback, tmp-dir per worker, factory-per-test); ordering → enforce independence via random test order in CI; timing → replace sleeps with bounded polling (`wait_for(condition, timeout, interval)`); network → record-replay (VCR / WireMock / Mock Service Worker), no real HTTP in unit tier; locator-fragility → role/text-based selectors, disable CSS animations under test, retry-on-detach; infra → pin runner image, set CPU/memory floors, separate flaky-suite to non-shared worker pool.</statement>
+      <rationale source="Per-class fix prescriptions to prevent placebo fixes">Each class has one fix that works in the field; substituting another (e.g. adding retries to a shared-state flake) hides the cause and the bug returns under load. Forcing class → fix pairing keeps the cure aligned with the disease.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Quarantine is allowed but budgeted: at most 1% of the suite (rounded up to a small floor like 5) may be quarantined at any time. Each quarantine entry has an owner, a root-cause class, and an expiry date no further than 14 days out. Exceeding the budget blocks new quarantines until something is fixed or removed.</statement>
+      <rationale source="Quarantine-with-budget policy so the long tail doesn't rot">Unbounded quarantines turn into a graveyard. A hard cap with expiry dates forces the team to choose: fix it, delete it, or rewrite it — never "park indefinitely".</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Expired quarantines fail the build. CI checks the quarantine ledger on every run; any entry whose `expires_at` is in the past breaks the pipeline until the owner either re-classifies (with a new expiry, max two extensions, each requiring written reason), fixes the underlying flake, or formally deletes the test with a justification.</statement>
+      <rationale source="Long tail rot prevention">"Soft" expiry that only sends a Slack reminder gets ignored after one quarter. A hard CI break is the only mechanism that survives team turnover and quarterly attention drift.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Every fix closes the loop: the flake ledger gets an entry with before/after pass-on-retry rate, the root-cause class, the fix pattern applied, the commit, and a short post-fact note ("did this work?"). Once a fix has held for 50 consecutive runs without recurrence, the entry is moved to a "resolved" log; recurrence reopens the entry rather than starting a new one, so the team's institutional memory grows instead of forgetting.</statement>
+      <rationale source="Quarterly QA suite health — close the loop is the institutional memory">Without an explicit close-the-loop record, the team re-debugs the same flake every six months with no awareness it was already classified, fixed, and broke again. The resolved-vs-recurring distinction tells the team where the real systemic problem lives.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical example">
+    <example type="good" title="Triaging a Cypress checkout flake on the AI-augmented QA programme">
+      <code lang="text"><![CDATA[
+Day 1 — detector:
+  test "checkout_full_card" pass-on-retry 7/200 runs (3.5%) over 30d → flagged
+
+Day 1 — classification:
+  Repro under --headless --no-retry: fails when prior test "cart_clear" runs first.
+  Root cause: ordering (shared cookie not cleared between tests).
+  Class: ordering
+
+Day 1 — canonical fix:
+  Enforce random test order in CI (--shuffle). Add explicit per-test cookie reset
+  in beforeEach. Run 50× locally: 0 fails.
+
+Day 1 — quarantine ledger:
+  Not quarantined (fix landed same day). Entry recorded in resolved log with
+  before=3.5%, after=0%, commit=ab12cd.
+
+Day 2-7 — observation:
+  50 consecutive CI runs pass → resolved entry stays closed.
+
+Week 8 — recurrence check:
+  No recurrence; if it returned, the same ledger entry would reopen rather
+  than appearing as a "new" flake.
+]]></code>
+      <note>The fix matched the class. The ledger learns. The quarantine budget never had to absorb this flake.</note>
+    </example>
+  </section>
+</text>

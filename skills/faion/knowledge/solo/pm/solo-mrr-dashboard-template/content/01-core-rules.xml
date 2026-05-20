@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Solo MRR Dashboard Core Rules">
+  <summary>Five testable rules for computing MRR, churn, ARPU, and LTV from Stripe in a single-operator SaaS without finance support.</summary>
+
+  <section title="Dashboard rules">
+
+    <rule id="r1-annual-divided-by-12" testable="true">
+      <statement>Annual plans contribute (unit_amount / 12) to MRR, applied per month for the full 12 months of the term. Quarterly plans divide by 3. The full annual payment is NOT booked as a single month of MRR.</statement>
+      <rationale>Booking annual payments as one-month spikes inflates MRR in the signup month and tanks it the next, destroying churn-rate accuracy. Spreading matches the underlying revenue commitment.</rationale>
+    </rule>
+
+    <rule id="r2-refunds-subtract-not-cancel" testable="true">
+      <statement>Refunds in month M subtract from MRR in month M only. They do NOT retroactively delete the subscription from earlier months. Voids (mistaken charges, $0 net) are excluded entirely.</statement>
+      <rationale>Retroactive deletion makes prior-month numbers move every time you reopen the sheet — fatal for trust. Period-bound treatment keeps each month's number stable once closed.</rationale>
+    </rule>
+
+    <rule id="r3-frozen-month-snapshot" testable="true">
+      <statement>On the 5th of each month, the prior month's MRR / churn / ARPU / LTV / customer-count are snapshotted into an append-only "closed months" tab. The closed snapshot is the canonical number — investor updates, dashboards, and analyses cite it, not a live recompute.</statement>
+      <rationale>Stripe's data continues to backfill (refunds, disputes) for weeks. A frozen snapshot prevents number drift after the month has been reported externally.</rationale>
+    </rule>
+
+    <rule id="r4-single-formula-per-metric" testable="true">
+      <statement>Each of the five metrics has exactly one formula stored next to the dashboard. Variants ("MRR ex-trials", "MRR ex-refunds") are forbidden — pick one definition. Gross churn = MRR lost from cancels + downgrades in month / MRR at start of month. Net churn allows expansions; the chosen definition is stated explicitly.</statement>
+      <rationale>Multiple "MRR" definitions destroy benchmarking against the operator's own past months and against industry comparables.</rationale>
+    </rule>
+
+    <rule id="r5-customer-equals-subscription-not-user" testable="true">
+      <statement>"Customer" in MRR-land is one paid subscription, not one auth user or one workspace. A workspace with three seats on one subscription is one customer. Per-seat plans count seats separately only inside an "average seats per customer" tile, never in the headline customer count.</statement>
+      <rationale>Solo operators routinely double-count customers by mixing auth-user counts with subscription counts. The discipline of one definition per dashboard line prevents headline-number inflation.</rationale>
+    </rule>
+
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+# MRR computation (Stripe v2024-10)
+def monthly_mrr(stripe, on: date) -> Decimal:
+    total = Decimal(0)
+    for sub in stripe.subscriptions.list(status="active"):
+        if sub.start_date.date() > on:
+            continue
+        if sub.canceled_at and sub.canceled_at.date() <= on:
+            continue
+        for item in sub["items"]["data"]:
+            price = item["price"]
+            qty = item["quantity"]
+            cents = price["unit_amount"] * qty
+            if price["recurring"]["interval"] == "year":
+                total += Decimal(cents) / 12 / 100
+            else:
+                total += Decimal(cents) / 100
+    return total
+]]></code>
+    <note>Annual prices divided by 12, refunds handled by a separate `monthly_refunds(on)` pass that subtracts at the month level, not retroactively.</note>
+  </example>
+
+  <antipattern>
+    <description>Operator reports "$8k MRR this month" by summing all annual payments collected this month plus monthly recurring — number triples in October and crashes in November.</description>
+    <reason>Violates r1 (annual not spread) and erodes investor trust the first time MRR "drops 60% with no churn".</reason>
+  </antipattern>
+</text>

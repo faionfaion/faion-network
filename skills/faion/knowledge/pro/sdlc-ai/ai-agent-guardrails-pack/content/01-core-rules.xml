@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Agent Guardrails Pack Core Rules">
+  <summary>Hard rules every guardrails pack must satisfy to be portable across coding agents and acceptable to a regulated client's security reviewer.</summary>
+  <section title="Pack composition">
+    <rule testable="true">
+      <statement>The pack contains four mandatory files at the repo root or under guardrails/: a system-prompt file (AGENT_RULES.md or .cursorrules / .github/copilot-instructions.md), a redaction allowlist (denylist of PII fields, secret patterns, tenant identifiers), a lint-alignment manifest (the exact lint configs the agent must respect), and a forbidden-patterns file (regex set rejected at PR time).</statement>
+      <rationale>One missing file collapses the guarantee: a redaction allowlist without a forbidden-patterns regex means leaked PII reaches the PR diff; a lint manifest without a system prompt means the agent regenerates non-compliant code on every save.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Every rule in the system-prompt file is paired with a runtime check — either a lint rule, a pre-commit hook, a CI grep, or a server-side review-bot rule. Rules with no runtime check are deleted from the pack, not kept as "soft guidance".</statement>
+      <rationale>Soft guidance fails on the first 100k-token context window; auditors reject "the prompt asked nicely" as a control. Every rule needs a defence in depth at the file-system or CI layer.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>The pack is versioned with semver and pinned in the repo. A pack bump requires a security-reviewer sign-off entry in the CHANGELOG; agents are configured to reject suggestions when the pack file hash drifts from the pinned version.</statement>
+      <rationale>Regulated clients cannot accept "the AI rules changed last Tuesday and we forgot to tell legal". Hash-pinning makes drift a build-fail, not a footnote.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>The pack ships cross-agent variants generated from a single source-of-truth file: rules.yaml → AGENT_RULES.md (Claude Code) + .cursorrules (Cursor) + .github/copilot-instructions.md (Copilot) + CONTINUE.md. Hand-edited per-agent files are forbidden; only the source is editable.</statement>
+      <rationale>Hand-maintained per-agent copies drift within a sprint. A single source plus generator script is the only mechanism that survives team turnover and tooling churn.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Cross-tenant context rules are enforced as a structural constraint: the agent's workspace excludes other tenants' directories via .cursorignore / .gitignore-style allowlists, and CI fails any PR that imports across tenant boundaries. The system-prompt rule is the third line of defence, never the first.</statement>
+      <rationale>Multi-tenant leakage is the highest-cost AI-coding incident in regulated codebases. Trusting only the prompt to prevent it is malpractice; isolation must be file-system enforced.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# guardrails/rules.yaml
+version: 1.4.0
+reviewed_by: security@client.example  # 2026-05-12
+forbidden_patterns:
+  - pattern: 'AKIA[0-9A-Z]{16}'  # AWS keys
+    enforce_in: [pre-commit, ci]
+  - pattern: '\b\d{3}-\d{2}-\d{4}\b'  # SSN
+    enforce_in: [pre-commit, ci, agent-prompt]
+cross_tenant:
+  workspace_allowlist: [tenants/${TENANT_ID}/**]
+  ci_check: scripts/check-tenant-boundary.sh
+]]></code>
+      <note>Single source generates every per-agent variant; security reviewer signs off the yaml, not four separate files.</note>
+    </example>
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+# .cursorrules
+Please don't paste AWS keys.
+Try to respect HIPAA.
+]]></code>
+      <note>No runtime check, no version, no cross-agent parity, no auditor sign-off — fails on the first long context window.</note>
+    </example>
+  </section>
+</text>

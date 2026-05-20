@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Deterministic Test Data Pattern Core Rules">
+  <summary>The five guarantees every test must inherit so that data, time, and randomness stop being flake sources.</summary>
+  <section title="The five guarantees">
+    <rule testable="true">
+      <statement>Every test creates its data through a factory or fixture function — never by raw INSERT, model.objects.create, or hand-built dicts. The factory accepts overrides for fields the test cares about and generates deterministic values (seeded faker or explicit literals) for everything else. Tests using raw object creation are flagged by lint or PR review.</statement>
+      <rationale>Hand-built data couples the test to schema details it doesn't care about; schema changes break unrelated tests. Factory-only construction localises schema knowledge to one file and exposes only the fields each test actually asserts on.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Tests that read or compute time freeze the clock at a fixed UTC instant (e.g. 2026-01-01T00:00:00Z) using freezegun, sinon.useFakeTimers, jest.useFakeTimers, or the equivalent. Tests that depend on relative time freeze first and then advance the clock by explicit deltas. Reading wall-clock time inside a test body is forbidden.</statement>
+      <rationale>Wall-clock time creates flakes that fire only at midnight, only at month-end, or only when a CI runner is slow. Freezing eliminates the entire class.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Every source of randomness (uuid, secrets, random, np.random, hash-based ids) is seeded per-test through a fixture that derives the seed from the test name. Tests must not call un-seeded random APIs; lint rules block uuid.uuid4() and random.random() unless wrapped through the test RNG helper.</statement>
+      <rationale>Un-seeded randomness is the #2 flake source after time. Per-test deterministic seeding gives reproducible failures: re-running the failed test produces the same exact values.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Tests touching a shared store (DB, cache, message queue, blob storage) run inside per-test isolation — a transaction rolled back, a fresh schema, a namespaced key prefix, or a containerised store. Cleanup between tests is asserted in setup, not as a teardown hope. Tests that depend on data left by a previous test are rewritten.</statement>
+      <rationale>Order-dependent tests are the most expensive class of flake to debug because they pass alone and fail in the suite. Hard isolation removes the dependency surface entirely.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Golden datasets (anonymised prod snapshots, multi-row scenarios, complex graphs) are versioned in the repo under tests/data/ with a manifest that records: source, anonymisation script, schema version, last refresh date. Loading a golden dataset whose schema version differs from the current DDL fails the test setup rather than silently skipping fields.</statement>
+      <rationale>Drift between the production schema and the captured snapshot creates tests that pass locally and fail in CI (or worse, the inverse). Versioning and a load-time schema check converts drift into a loud failure with a clear remediation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def frozen_clock():
+    with freeze_time("2026-01-01T00:00:00Z"):
+        yield
+
+@pytest.fixture
+def seeded_rng(request):
+    seed = hash(request.node.name) & 0xFFFFFFFF
+    random.seed(seed); np.random.seed(seed)
+    yield seed
+
+def test_invoice_due_date(frozen_clock, seeded_rng, invoice_factory):
+    inv = invoice_factory(amount=100)
+    assert inv.due_at == datetime(2026, 1, 31, tzinfo=UTC)
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def test_invoice_due_date():
+    inv = Invoice.objects.create(
+        id=uuid.uuid4(), amount=100, created_at=datetime.now())
+    assert inv.due_at.month == datetime.now().month + 1
+]]></code>
+      <note>Raw create, wall-clock time, un-seeded uuid, no isolation — will flake on month boundaries and order-dependent runs.</note>
+    </example>
+  </section>
+</text>
