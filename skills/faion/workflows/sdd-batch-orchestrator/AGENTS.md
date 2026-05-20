@@ -1,4 +1,19 @@
-# SDD Batch Orchestrator (faion-network)
+---
+status: active
+audience: both
+owner: ruslan
+last_verified: 2026-05-02
+version: 2.0.0
+applies_to: any
+content_id: 92296fb91a0883f3
+success_criteria:
+  - Every phase is fronted by a versioned prompt file under `prompts/`; the orchestrator never inlines long prompts.
+  - Parallel waves run inside isolated `git worktree` checkouts; `flock` serializes merges into the default branch.
+  - REVIEW → FIX loop respects the hard iteration cap defined in `content/07-verify-review-fix-loop.xml`.
+  - Visual-delivery phase produces focused before/after evidence before the batch is declared done.
+---
+
+# SDD Batch Orchestrator
 
 ## Summary
 
