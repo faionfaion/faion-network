@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI-Generated Test Audit Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules grouping the 12 checklist items. Each item produces a pass/flag verdict; any flag blocks merge until repaired.</summary>
+
+  <section title="The five rules and their twelve items">
+
+    <rule id="r1-assertion-class-pass" testable="true" depth="essential">
+      <statement>For each test in the diff, classify the assertion class as behavior (state, output, side-effect, negative) or structural (was-called, no-exception, status-only). At least one assertion per test must be behavioral; structural assertions are allowed only as supporting checks, not as the sole assertion.</statement>
+      <rationale source="AI-generated-test failure pattern analysis; mutation-testing research on assertion strength">AI assistants default to structural assertions because they are the safest to generate (do not require understanding business logic). A test with only structural assertions passes whenever the code compiles, regardless of whether it does the right thing.</rationale>
+      <example type="good" title="Behavior assertion (passes)">
+        <code lang="python"><![CDATA[
+def test_invoice_total_includes_tax():
+    invoice = create_invoice(items=[{"price": 100}], tax_rate=0.2)
+    assert invoice.total == 120  # behavioral: actual value
+    assert invoice.tax_amount == 20
+        ]]></code>
+      </example>
+      <example type="bad" title="Structural-only (flag)">
+        <code lang="python"><![CDATA[
+def test_invoice_total_includes_tax():
+    invoice = create_invoice(items=[{"price": 100}], tax_rate=0.2)
+    assert invoice.total is not None  # structural
+    assert hasattr(invoice, 'tax_amount')  # structural
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-failure-cases-present" testable="true" depth="essential">
+      <statement>For every AC that has an error path or a documented failure mode, at least one negative-case test exists. Checklist items: (a) input validation failures, (b) external dependency failures (DB unavailable, API 5xx), (c) authorization failures (403/401), (d) state preconditions violated. AI-generated suites typically have zero of these; flagging is the default.</statement>
+      <rationale source="empirical analysis of GitHub Copilot test PR output; QA pattern research">AI assistants strongly default to happy-path tests because failure-case generation requires reasoning about what could go wrong. A reviewer who flags missing failure cases recovers most of the test-suite value the AI did not provide.</rationale>
+    </rule>
+
+    <rule id="r3-boundary-conditions-present" testable="true" depth="essential">
+      <statement>For every numeric or bounded input, tests cover at least: zero, negative, exactly-at-boundary, one-over-boundary, large value (10x typical). For collections: empty, single-item, large. For strings: empty, very-long, unicode, whitespace-only. Checklist flags missing boundary cases per AC.</statement>
+      <rationale source="boundary-value testing canon; AI-test PR audits">Boundary cases are where production bugs concentrate; AI test generators rarely produce them spontaneously. Naming them in the checklist makes the absence visible.</rationale>
+    </rule>
+
+    <rule id="r4-mock-scope-honest" testable="true" depth="essential">
+      <statement>Mocks are limited to: (a) external services with documented unreliability, (b) time / random sources, (c) heavyweight components in unit tests. Forbidden: mocking the system-under-test itself, mocking the database when an in-memory or test-container alternative is cheap, mocking pure functions. Checklist counts mocks per test and flags tests with &gt; 3 mocks for review.</statement>
+      <rationale source="testing-pyramid research; AI-test pattern analysis">AI-generated tests default to mocking everything to avoid set-up complexity. The result is tests that pass whether the system works or not. The 3-mock heuristic catches the typical over-mocking pattern; explicit allowlist prevents collateral noise.</rationale>
+    </rule>
+
+    <rule id="r5-naming-and-independence-honest" testable="true" depth="essential">
+      <statement>Test names describe behavior, not structure. Forbidden patterns: "test_function_X", "test_X_works", "test_X_returns_value". Required: "test_X_when_Y_then_Z". Tests run independently: no test depends on another's state; setup is per-test. Checklist items: name honesty (per test), independence (full-suite scan), unique fixtures (per test).</statement>
+      <rationale source="testing-style research; CI-flakiness analysis">AI generators produce generic names that obscure intent and assume shared setup that creates flaky inter-test dependencies. The checklist catches both.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="The 12 checklist items in PR-review order">
+    <list>
+      <item>1. Every test has at least one behavior assertion (not structural-only)</item>
+      <item>2. Every AC with error paths has at least one failure-case test</item>
+      <item>3. Numeric/bounded inputs cover zero / negative / boundary / over-boundary / large</item>
+      <item>4. Collections cover empty / single / large</item>
+      <item>5. Strings cover empty / long / unicode / whitespace where applicable</item>
+      <item>6. Mocks limited to external services, time/random, heavyweight components</item>
+      <item>7. No mock of the system-under-test itself</item>
+      <item>8. Test names follow when_X_then_Y pattern, not generic</item>
+      <item>9. Tests run independently (no shared mutable state)</item>
+      <item>10. Setup per-test (no test depends on another's effects)</item>
+      <item>11. AC mapping populated and walks behavior assertions</item>
+      <item>12. Mutation-test kill rate did not drop on changed files (when mutation-testing CI is on)</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

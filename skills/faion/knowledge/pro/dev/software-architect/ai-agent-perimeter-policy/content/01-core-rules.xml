@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI-Agent Perimeter Policy Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five hard rules for translating client confidentiality contracts into AI-agent dev environment configuration.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-clause-to-config-mapping" testable="true" depth="essential">
+      <statement>Every data-handling clause in the NDA / MSA maps to a SPECIFIC tool setting. Mappings are recorded in a clause-to-config table per engagement. Vague "we'll handle it carefully" promises are not mappings — they're hand-waves and produce breaches.</statement>
+      <rationale source="DPA / DPIA practice; NIST SP 800-218A for AI software development">Contracts are testable only when each clause has an enforcement mechanism. "No third-party processing" maps to: Claude Code MAX_TURNS limits + disable Codex auto-correct sharing + Cursor privacy mode ON + telemetry off + MCP allow-list of vetted servers only. The mapping table makes the breach auditable.</rationale>
+    </rule>
+
+    <rule id="r2-no-default-trust" testable="true" depth="essential">
+      <statement>Default settings for AI tools are NOT trusted. Verify per tool, per release, what data is sent where. Anthropic, OpenAI, Microsoft, Cursor have all changed defaults in past releases. Document the explicit setting (not the inferred default) for every tool in the policy.</statement>
+      <rationale source="vendor data-handling change history 2023-2026">Defaults have changed: Cursor Privacy Mode toggle added in 2024, Copilot Business defaults changed in early 2024, MCP host defaults differ between Claude Code releases. Trusting "the default is fine" produces silent regressions when defaults change. Explicit configuration is the audit artifact.</rationale>
+    </rule>
+
+    <rule id="r3-kill-switch-on-disallowed-tools" testable="true" depth="essential">
+      <statement>Tools or MCP servers that violate the perimeter are HARD-disabled in the engagement environment (not "just don't use them"). Disable mechanism: env-var override, allowed-tools allowlist, MCP allow-list, network egress rules, OR separate dev profile. "Be careful not to invoke X" is not enforcement; it's a wish.</statement>
+      <rationale source="security-by-construction principle; OWASP A05:2021">Reliance on operator discipline fails on the first tired evening. Hard disabling makes the tool unavailable; the operator can't accidentally invoke it. Claude Code allowed-tools list, Cursor's project-specific privacy settings, and OS-level network egress rules are the canonical mechanisms.</rationale>
+    </rule>
+
+    <rule id="r4-weekly-perimeter-audit" testable="true" depth="essential">
+      <statement>Once a week, the engineer runs a 10-min perimeter audit: tools enabled, MCP servers configured, telemetry settings, log retention. Compare against the engagement's policy. Any drift triggers immediate fix + a written note. Audit cadence is calendar-blocked.</statement>
+      <rationale source="continuous-compliance practice; SOC 2 / ISO 27001 audit principles">Configuration drift is inevitable: new tools install themselves, settings change with updates, MCP servers get added during another project. Weekly catches drift within 7 days. Quarterly catches it after 90 days of breach. The 10-min budget is realistic; deeper checks live in the script.</rationale>
+    </rule>
+
+    <rule id="r5-written-escalation-on-conflict" testable="true" depth="essential">
+      <statement>If a clause cannot be enforced by available tool configuration (e.g., client says "no embedding of code" but you need to use Cursor which always embeds), STOP. Write an escalation note to the client BEFORE any work proceeds. Either renegotiate the clause, exclude the tool from this engagement, or terminate. Never proceed silently in conflict.</statement>
+      <rationale source="legal liability under NDA / MSA breach clauses; UCITA / GDPR fines">Silent conflict = breach of contract + potential statutory penalty. The written escalation creates the paper trail that protects both sides. Most clients will grant a specific carve-out (e.g., "approved tools: Claude Code with default Anthropic data policy"); the policy doc is the artifact of that approval.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Clause-to-config mapping for a fintech client">
+      <code lang="text"><![CDATA[
+NDA clauses (extracted):
+  C1: "All client code shall be processed only by services with US data residency."
+  C2: "No third-party AI training, embedding, or fine-tuning on client materials."
+  C3: "All inference logs must be retained ≤ 30 days and deleted on engagement end."
+
+Tool config per clause:
+  Claude Code:
+    Anthropic API region: us-east — ✓ satisfies C1
+    Anthropic data policy: "no training" (commercial tier default) — ✓ satisfies C2
+    Log retention: configured via Anthropic console to 30 days — ✓ satisfies C3
+    allowed-tools: [Read, Edit, Bash, Glob, Grep]  (NO WebFetch, NO TaskCreate)
+
+  Cursor:
+    DISABLED for this engagement (privacy mode embeds code to Cursor servers,
+    cannot be verified as US-residency by them).
+    Engagement escalation note signed by client 2026-03-10.
+
+  GitHub Copilot:
+    Copilot Business plan with "no code training" — ✓ satisfies C2
+    Telemetry off — ✓ satisfies C2
+    EU region disabled (US-only routing) — ✓ satisfies C1
+
+  MCP allow-list:
+    [filesystem, sequential-thinking, slack-engagement-channel]
+    DISABLED: any internet-fetching MCP, any cloud-storage MCP
+      ]]></code>
+      <note>Illustrates r1 (clause-to-config), r2 (explicit not default), r3 (hard disable Cursor), r5 (escalation noted).</note>
+    </example>
+
+    <example type="bad" title="Hand-wave compliance">
+      <code lang="text"><![CDATA[
+"We're using AI tools but our team is careful with client data."
+
+Problem: violates r1 (no mapping), r2 (relying on defaults), r3 (no kill-switch),
+r5 (no escalation). When the client audit asks "show us your enforcement", there's
+nothing to show. NDA breach exposure: 6-7 figure damages.
+Repair: per-engagement mapping table + audit cadence + escalation paper trail.
+      ]]></code>
+      <note>The "we're careful" defense is the canonical zero-protection pattern.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
