@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063 Added: P0 gap methodologies (5): agency-case-study-template, ai-code-review-checklist, ai-generated-layout-review-checklist, async-standup-template, debt-scoring-rubric.
 - F-059 Changed: validate-methodology-v2.py accepts any 01-*.xml as core (not just 01-core-rules.xml).
 - F-059 Added: methodology template v2 (multi-file dir AGENTS.md + content/*.xml).
 - F-059 Added: scripts/validate-methodology-v2.py + scripts/migrate-methodology-to-v2.py.
