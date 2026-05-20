@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Alert Dedup Playbook Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the alert-routing.yaml, audit-report, and paging SLO dashboard shape.</summary>
+
+  <section title="alert-routing.yaml required fields">
+    <list>
+      <item><code>alerts.<name>.route</code>: enum {page, ticket, silenced}</item>
+      <item><code>alerts.<name>.fingerprint</code>: array of label names</item>
+      <item><code>alerts.<name>.grouping_window</code>: duration (e.g. 5m, 1h, 6h)</item>
+      <item><code>alerts.<name>.runbook_url</code>: required for `page` and `ticket` routes</item>
+      <item><code>silences</code>: array of {alertname, matchers, expires_at, reason, set_by}</item>
+    </list>
+    <reference path="templates/alert-routing.yaml">Authoritative routing config.</reference>
+  </section>
+
+  <section title="Audit report required sections">
+    <list>
+      <item><code>period</code> (window analysed)</item>
+      <item><code>total_alerts</code> + <code>total_incidents_after_fingerprint</code></item>
+      <item><code>classification</code>: per-alert family with counts and percent_actionable</item>
+      <item><code>routing_recommendation</code>: per-family suggested route</item>
+      <item><code>fingerprint_recommendation</code>: per-family suggested label set</item>
+      <item><code>paging_slo</code>: current pages_per_week vs target</item>
+    </list>
+  </section>
+
+  <section title="Paging SLO dashboard required panels">
+    <list>
+      <item>Pages per week per rotation with SLO line.</item>
+      <item>Top 10 alert families by page count.</item>
+      <item>Silenced alert count + count of silences expiring this week.</item>
+      <item>Time-to-acknowledge p50/p95 (proxy for on-call attention).</item>
+    </list>
+    <reference path="templates/slo-dashboard.json">Authoritative dashboard JSON.</reference>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Silence without expires_at or reason.</description>
+      <reason>r4 violation. Permanent silences are forbidden.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Alert family with route=page and no runbook_url.</description>
+      <reason>Page-routed alert without runbook forces on-call to freelance during the incident.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Alerts grouped via AlertManager defaults without explicit fingerprint declaration.</description>
+      <reason>r2 violation. Implicit grouping is unpredictable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Audit report missing classification for any alert family that fired in the period.</description>
+      <reason>r1 violation. Audit must cover every family before rule changes.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every alert family in the source-of-truth Prometheus / Datadog rules has an entry in alert-routing.yaml.</item>
+      <item>Every silence has expiry within 90 days.</item>
+      <item>Pages-per-week SLO target documented and tracked.</item>
+      <item>Audit report committed to repo; review meeting scheduled within 14 days of audit.</item>
+      <item>Quarterly cadence enforced via calendar / cron.</item>
+    </list>
+  </section>
+</text>
