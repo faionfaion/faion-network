@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Page Object Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of a page-object file and its companion contract test. Both must validate before merge.</summary>
+
+  <output-contract>
+    <required>
+      <field name="page_object.class_name" type="PascalCase_string" notes="ends with `Page` or `Component`"/>
+      <field name="page_object.url_pattern" type="string" notes="regex or pathname this page maps to"/>
+      <field name="page_object.extends" type="enum" values="BasePage|BaseComponent"/>
+      <field name="page_object.locators" type="list_of_object" min="1"/>
+      <field name="page_object.locators[].name" type="camelCase_string"/>
+      <field name="page_object.locators[].priority" type="enum" values="role|test-id|text|css"/>
+      <field name="page_object.locators[].selector_expression" type="string"/>
+      <field name="page_object.public_methods" type="list_of_object" min="1"/>
+      <field name="page_object.public_methods[].name" type="camelCase_string" notes="user-action level"/>
+      <field name="page_object.public_methods[].parameters" type="list_of_object"/>
+      <field name="page_object.public_methods[].returns" type="string" notes="next page object or `this` or `Promise&lt;void&gt;`"/>
+      <field name="contract_test.file_path" type="path" notes="pages/contracts/{name}.contract.spec.ts"/>
+      <field name="contract_test.snapshot_path" type="path"/>
+      <field name="contract_test.last_passed_at" format="ISO8601"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">page_object.public_methods includes a name in the closed list of DOM-action verbs: type, click, hover, blur, focus, fill, press</pattern>
+      <pattern id="f2">locators include any of waitForTimeout, sleep, cy.wait with a numeric timeout</pattern>
+      <pattern id="f3">locators[].priority = css AND no comment explaining why role/test-id/text were not viable</pattern>
+      <pattern id="f4">test file outside pages/ calls page.locator, page.click, cy.get directly</pattern>
+      <pattern id="f5">page object missing a companion contract_test in pages/contracts/</pattern>
+      <pattern id="f6">contract_test.last_passed_at older than 30 days (snapshot rotted, page-object has drifted from reality)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Inline-compose two methods into one when they always run together with no decision points (e.g. fillEmail and fillPassword become loginAs).</transformation>
+      <transformation>Promote a locator to a getter-method when it returns a list whose length is meaningful (count of rows, count of errors).</transformation>
+      <transformation>Move a sub-component (modal, dropdown) into its own *.component.ts file when it has &gt; 3 locators of its own.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/base-page-object.ts"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Class extends BasePage / BaseComponent — no standalone page objects</item>
+      <item>Every locator uses the highest viable priority</item>
+      <item>Every public method is named at user-action level</item>
+      <item>No time-based waits anywhere in the file</item>
+      <item>Contract test exists, snapshot fresh, last passed within 30 days</item>
+      <item>Tests in `tests/` use page-object methods only, no direct DOM access</item>
+    </list>
+  </section>
+</text>

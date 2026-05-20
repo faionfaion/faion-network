@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Code Lint Presets Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every adoption of these presets MUST enforce. Hard rules; agents and humans MUST NOT silently downgrade them.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-preset-immutability" testable="true" depth="essential">
+      <statement>The two preset files (`ruff-ai-presets.toml`, `eslint-ai-presets.json`) are versioned in the repo and changed only via PR review. The AI assistant is FORBIDDEN from editing these files; a check (CODEOWNERS rule and a CI guard) MUST refuse PRs that modify them without human approval.</statement>
+      <rationale source="Self-modifying-AI failure pattern">If the AI can relax its own lint, it will. Multiple repositories have observed AI assistants adding `# noqa` or downgrading ESLint rule severity to silence findings in their own PR. CODEOWNERS protection is the cheapest defence.</rationale>
+    </rule>
+
+    <rule id="r2-no-op-test-rule" testable="true" depth="essential">
+      <statement>Tests that contain only `assert True`, `assert response`, `expect(result)`, or other no-op assertions MUST fail lint. Ruff rule: custom `T-NO-OP-ASSERT`. ESLint: custom rule via `eslint-plugin-jest/expect-expect` or equivalent. Tests that pass without checking specific properties are a tax, not coverage.</statement>
+      <rationale source="LLM test-fabrication studies; coverage-gaming patterns">"Generate tests for this module" is the most common LLM request and the most common smell source. Tests with property assertions catch regressions; no-op tests train developers to ignore the suite.</rationale>
+    </rule>
+
+    <rule id="r3-broad-except-rule" testable="true" depth="essential">
+      <statement>`try: ... except: pass`, `except Exception: pass`, or `catch(e) {}` MUST fail lint. Ruff: BLE001 + E722. ESLint: `no-empty` + `@typescript-eslint/no-explicit-any` on the catch parameter. An empty broad except is FORBIDDEN; the developer MUST handle, log, or re-raise with an explicit narrower type.</statement>
+      <rationale source="Python idioms PEP-8; ECMAScript catch-binding semantics">Empty broad excepts hide hallucinated APIs (the AI's `requests.get()` call fails — the except silently swallows). The PR looks green; production fails opaque. Broad-except detection is the highest-leverage lint rule against AI-introduced silent failure.</rationale>
+    </rule>
+
+    <rule id="r4-magic-literal-rule" testable="true" depth="essential">
+      <statement>Magic numbers / strings used as policy values (timeouts, retry counts, thresholds, URLs, secret-prefixes) MUST be replaced with named constants. Ruff: PLR2004. ESLint: `no-magic-numbers`. Test files and obviously-data values (HTTP status codes 200/404/500 in assertions) are exempted.</statement>
+      <rationale source="AI codegen empirical signature">LLMs emit literals where humans use constants. `time.sleep(2)` reappears in 18 files of an AI-drafted codebase; the constant `RETRY_BACKOFF_SECONDS = 2` reappears never. Magic-literal lint forces the AI to refactor.</rationale>
+    </rule>
+
+    <rule id="r5-debug-statement-rule" testable="true" depth="essential">
+      <statement>`print()`, `console.log()`, `debugger;`, `breakpoint()`, and `pp ` (Ruby) MUST fail lint in non-test code. Ruff: T20. ESLint: `no-console`, `no-debugger`. Production code uses the project's logger; tests may use print for diagnostic output, scripts (`/scripts/*`) may be exempted.</statement>
+      <rationale source="AI session pattern; debug-leftover surveys">AI assistants insert print / console.log during inner-loop debugging and forget to remove. The smell is detectable; the lint rule is the cheapest scrubber.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Broad except caught and repaired">
+      <code lang="python"><![CDATA[
+# AI draft (lint FAIL: BLE001)
+try:
+    resp = requests.get(url)
+except Exception:
+    pass
+
+# Lint repair
+try:
+    resp = requests.get(url, timeout=REQUEST_TIMEOUT_S)
+except requests.RequestException as exc:
+    log.warning("upstream request failed", extra={"url": url, "exc": str(exc)})
+    raise
+      ]]></code>
+      <note>r3 satisfied. Narrow exception class, logging with structure, re-raise. The repair also surfaces the magic-literal rule (timeout becomes a constant) per r4.</note>
+    </example>
+
+    <example type="bad" title="No-op test that lint MUST catch">
+      <code lang="python"><![CDATA[
+def test_user_creation_works():
+    user = create_user(name="alice")
+    assert user
+      ]]></code>
+      <note>r2 violation. `assert user` is true for any non-null object. Repair: assert specific properties (user.id is not None, user.name == "alice", user.created_at &lt; now()).</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

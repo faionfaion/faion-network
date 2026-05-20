@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Thumbs Down → Eval — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that turn user thumbs-down into versioned eval-set rows without exploding CI cost or leaking PII.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-four-stage-pipeline" testable="true">
+      <statement>The pipeline has EXACTLY 4 stages, in order: INGEST (normalize) → SCRUB (PII removal) → JUDGE (3 LLM judges vote) → ADMIT (PR to eval suite). Stages must run sequentially; skipping SCRUB to "save tokens" is forbidden.</statement>
+      <rationale source="Anthropic / OpenAI eval workflows + Presidio docs">Out-of-order or partial pipelines either leak PII to evals (legal) or admit noise (poisoned eval set). Sequential structure is the only auditable shape.</rationale>
+    </rule>
+
+    <rule id="r2-pii-scrub-gate" testable="true">
+      <statement>SCRUB stage MUST detect and redact: email, phone, SSN/national-ID, names tagged PER, credit card, IP address, IBAN. Any candidate that fails scrub (entity remained after redaction) is REJECTED — never admitted to eval suite.</statement>
+      <rationale source="GDPR Art. 5 + CCPA / Presidio default categories">Eval rows are persisted in code repos and run by future engineers. PII in evals propagates indefinitely. The reject-on-fail rule prevents the leak class entirely.</rationale>
+    </rule>
+
+    <rule id="r3-three-judge-vote" testable="true">
+      <statement>JUDGE stage uses 3 LLM judges (different prompts, optionally different models) scoring the candidate on (a) was the original response wrong, (b) is the prompt representative of real usage, (c) is this row likely to be reproducible. Admit threshold: ≥ 2 of 3 judges score "admit" on ALL three criteria.</statement>
+      <rationale source="Self-consistency literature (Wang et al. 2023) + LLM-as-judge research (Zheng et al. 2024)">Single-judge admission is noisy (~70% agreement with human raters). 3-judge majority lifts agreement to &gt; 85%. Different prompts/models reduce shared blind spots.</rationale>
+    </rule>
+
+    <rule id="r4-weekly-cap" testable="true">
+      <statement>ADMIT stage caps growth at 50 new rows/week. Excess candidates are queued for the next week or dropped if older than 14 days. CI runtime stays bounded; eval set drift is paced.</statement>
+      <rationale source="Hamel Husain / Eugene Yan eval-ops essays">Unbounded eval growth makes CI prohibitively slow and the team starts skipping eval runs. The cap is an operational constraint that keeps the eval suite usable.</rationale>
+    </rule>
+
+    <rule id="r5-stop-the-bleed" testable="true">
+      <statement>STOP-THE-BLEED rule: if 3+ thumbs-down within a 60-min window cluster into the same failure pattern (cosine similarity &gt; 0.85 on embedding), an alert pages on-call within 4 BUSINESS hours. This is independent of the eval pipeline and may NOT be muted by admit-stage backpressure.</statement>
+      <rationale source="SRE incident-response playbook + LLM-ops cohort failures">An eval-set row added next week is irrelevant if the model is hallucinating right now. Stop-the-bleed is a parallel fast path for production incidents.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Pipeline data flow">
+
+    <example type="good" title="Single thumbs-down → admitted eval row">
+      <code lang="text"><![CDATA[
+INGEST    raw: {interaction_id: abc123, prompt: "What's John's salary?",
+                response: "John makes $87,500.", signal: down,
+                comment: "we don't have John in our system"}
+
+SCRUB     entities: [PER(John), MONEY($87,500)]
+          → {prompt: "What's [PER_1]'s salary?",
+             response: "[PER_1] makes [MONEY_1].",
+             comment: scrub clean}
+          Output: scrub passes (no leakage).
+
+JUDGE     J1: wrong=YES, representative=YES, reproducible=YES → admit
+          J2: wrong=YES, representative=YES, reproducible=YES → admit
+          J3: wrong=YES, representative=NO, reproducible=YES → reject
+          Vote: 2/3 admit → ADMIT
+
+ADMIT     This week's count: 42/50 → admit. PR to evals/regressions/
+          adds row {id, prompt_redacted, expected: "I don't have data
+          for [PER_1]", actual: "[PER_1] makes [MONEY_1].",
+          assertion: model_should_not_invent_records}
+      ]]></code>
+      <note>End-to-end, ~3 LLM calls + PR. Cap enforced. PII contained.</note>
+    </example>
+
+    <example type="bad" title="Skip SCRUB to save tokens (r2 violation)">
+      <code lang="text"><![CDATA[
+INGEST → JUDGE  (skipping SCRUB)
+JUDGE   admits row containing "John Smith, ssn 123-45-6789"
+ADMIT   PR lands in evals/regressions/ repository.
+
+3 months later: dev team runs evals on shared machine.
+Eval prompts logged to telemetry. SSN now in 6 systems.
+      ]]></code>
+      <note>r1 + r2 violation. SCRUB is non-skippable.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
