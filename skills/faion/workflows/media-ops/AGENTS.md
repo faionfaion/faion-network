@@ -5,6 +5,12 @@ owner: ruslan
 last_verified: 2026-05-02
 version: 2.0.0
 applies_to: any
+content_id: 9b69e99f0b6a7925
+success_criteria:
+  - Discovery interview answers (Phase 1) cover every required question group before scaffolding starts.
+  - The new outlet's project tree matches the canonical scaffold in `content/05-scaffold-structure.xml`.
+  - Outlet is registered with the central media-manager (cron, monitoring, bot commands) before content goes live.
+  - Pipeline runs end-to-end at least once (Phase 6 seed content) before the workflow exits.
 ---
 
 # Media-Ops Workflow
