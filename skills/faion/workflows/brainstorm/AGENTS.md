@@ -5,6 +5,12 @@ owner: ruslan
 last_verified: 2026-05-02
 version: 2.0.0
 applies_to: any
+content_id: 084b0d7bdc299820
+success_criteria:
+  - Phase 0 consent gate runs first when the user did not explicitly request brainstorming.
+  - Phase 1 produces ≥10 distinct-persona generations of 30 recs each, with no cross-talk.
+  - Phase 2 dedup + consensus count + tier ranking yields a single merged list.
+  - Phase 3 attaches an adversarial review verdict (KEEP / DEMOTE / DROP) to every item.
 ---
 
 # Brainstorm Workflow
