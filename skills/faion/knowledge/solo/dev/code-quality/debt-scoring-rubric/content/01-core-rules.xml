@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Debt Scoring Rubric Core Rules" version="1.0.0" est_tokens="1300" depth="essential">
+  <summary>Five testable rules every debt-scoring application must follow. These are hard rules — stakeholder preference does not override them.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-five-factor-definitions" testable="true" depth="essential">
+      <statement>Each debt item is scored on exactly five factors, each on a 1-5 integer scale: User-Impact (UI), Change-Frequency (CF), Fragility (FR), Blast-Radius (BR), Fix-Cost (FC). Factor definitions are fixed: UI = severity of user-facing harm if unfixed; CF = how often this code/design/infra changes; FR = how often it breaks (bugs, incidents, hot-fix count); BR = how many other systems/users are affected when it breaks; FC = effort to pay it off (1=hour, 5=quarter).</statement>
+      <rationale source="Adam Tornhill 'Your Code as a Crime Scene'; SonarSource debt-quadrant research; Faion `solo/dev/code-quality/tech-debt-management`">Without fixed factor definitions, scoring drifts: "User-Impact" becomes "what the loudest stakeholder said yesterday". Fowler's quadrant (prudent/reckless × deliberate/inadvertent) is great for retrospective analysis but doesn't produce a number a PM can defend. This five-factor model gives a defensible composite while staying simple enough that a developer can score 20 items in an afternoon.</rationale>
+    </rule>
+
+    <rule id="r2-anchored-scale" testable="true" depth="essential">
+      <statement>Each factor has explicit anchor descriptions per score level (1, 3, 5), and 2/4 are interpolations. Anchors are written down once per product and committed to the repo. Scoring without anchors is invalid output and must be rejected.</statement>
+      <rationale source="Behavioral psychology — anchor-and-adjust bias (Tversky &amp; Kahneman); SRE on-call calibration patterns">Unanchored 1-5 scales drift toward 3-3-3-3-3 within a week. Anchor descriptions ("User-Impact = 5 means &gt; 30 minutes of total user blockage per week across all users") make scoring inter-rater-reliable. Re-using the same anchors across debt rounds is what lets you compare last quarter's debt to this quarter's.</rationale>
+      <example type="good" title="Anchor definition example">
+        <code lang="text"><![CDATA[
+User-Impact (UI):
+  1 = Internal only; no user ever sees the symptom.
+  3 = Visible to power users; minor confusion or workaround needed.
+  5 = Blocks core flow for ≥10% of weekly active users when it triggers,
+      OR causes data loss / security exposure.
+
+Change-Frequency (CF) (from git-log of last 90 days):
+  1 = 0-1 commits touching this area.
+  3 = 5-10 commits.
+  5 = 20+ commits, recurring source of churn.
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r3-formula-and-rounding" testable="true" depth="essential">
+      <statement>Composite score = (UI × CF × FR × BR) / FC, rounded to one decimal place. Range is 0.2 (worst-investment debt) to 625 (highest-priority debt). Above the team's pre-agreed threshold (default 50 for solo, 100 for team) → eligible for next debt sprint. Below threshold → debt register only.</statement>
+      <rationale source="multiplicative scoring models in safety-engineering literature; FAIR risk-scoring composite design">Multiplicative composites prevent the "5+5+5+5+1 looks decent" additive trap: if Fix-Cost is huge, the item should score down even if the others are high. The pre-agreed threshold is the lever for organizational risk appetite — it should not be set by the scorer in the moment, it must be agreed upfront with the prioritization audience.</rationale>
+    </rule>
+
+    <rule id="r4-confidence-band" testable="true" depth="essential">
+      <statement>Every scored item carries a confidence flag: HIGH (all five factors backed by data: git log, incident log, dependency graph), MEDIUM (3-4 backed by data, others by informed estimate), LOW (≤ 2 backed by data). LOW-confidence items cannot be the top-3 of a debt sprint; if they are, escalate for additional data collection first.</statement>
+      <rationale source="evidence-based prioritization research; SPACE / DORA metrics on data-grounded engineering decisions">High-score / low-confidence items are the single most expensive mistake a debt sprint makes: you commit a quarter of engineering time to a problem you didn't actually verify. The confidence band makes the data-gap visible to the PM at the time of the decision.</rationale>
+    </rule>
+
+    <rule id="r5-audience-defensibility" testable="true" depth="essential">
+      <statement>Every scored item must include a one-line "what changes if we pay this" statement, written in the language of the prioritization audience (PM, client, executive). The statement must reference the User-Impact factor concretely — never "improves code quality" or "reduces tech debt" as the only justification.</statement>
+      <rationale source="Faion gap analysis pain explicitly named: 'P6 teams need one to defend the sprint scope to PMs'; Engineering-Excellence reports from Stripe/Shopify">PMs reject debt sprints when developers can't articulate what the user gets. "Refactor the order service" loses; "fix the cart-saving race that's costing us 3-4 abandoned-cart events/day" wins. The one-line statement forces the framing back to user/business outcome before the rubric output is allowed to leave the developer's desk.</rationale>
+      <example type="good" title="Defensible one-liner">
+        <code lang="text"><![CDATA[
+What changes: today the checkout race condition causes 3-4 abandoned
+carts/day (logged 18 incidents in last 30 days). Paying this debt
+removes the race, recovers ~$2,800/mo at current AOV, and frees ~5h/wk
+of on-call investigation.
+        ]]></code>
+      </example>
+      <example type="bad" title="Indefensible one-liner">
+        <code lang="text"><![CDATA[
+What changes: improves code maintainability and reduces tech debt in
+the order service.
+        ]]></code>
+        <note>No user-language, no numbers, no business framing. Will be rejected by every competent PM.</note>
+      </example>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

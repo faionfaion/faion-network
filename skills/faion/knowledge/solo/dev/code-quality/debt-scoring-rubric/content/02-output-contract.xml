@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Debt Scoring Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Schema for a scored-debt-item object and the debt register. Must be satisfied before a scored list is published or fed into sprint planning.</summary>
+
+  <output-contract>
+    <required>
+      <field name="item_id" type="string"/>
+      <field name="title" type="string" max_words="12"/>
+      <field name="description" type="paragraph" max_words="80"/>
+      <field name="code_or_design_pointer" type="uri_or_path"
+             notes="file path, design-system component id, or RFC link"/>
+      <field name="category" enum="architecture,code,test,design,infra,dependency,documentation"/>
+      <field name="factors.user_impact" type="integer" range="1..5"/>
+      <field name="factors.change_frequency" type="integer" range="1..5"/>
+      <field name="factors.fragility" type="integer" range="1..5"/>
+      <field name="factors.blast_radius" type="integer" range="1..5"/>
+      <field name="factors.fix_cost" type="integer" range="1..5"/>
+      <field name="score"
+             format="(UI*CF*FR*BR)/FC rounded to 1 decimal"/>
+      <field name="confidence" enum="HIGH,MEDIUM,LOW"/>
+      <field name="confidence_evidence" type="object"
+             notes="per-factor data_backed: true|false"/>
+      <field name="what_changes_if_paid" type="paragraph" max_words="60"
+             notes="audience-language outcome; must reference user-impact concretely"/>
+      <field name="scored_by" type="string"/>
+      <field name="scored_at" format="ISO-8601"/>
+      <field name="anchor_doc_ref" type="uri"
+             notes="link to the committed anchor descriptions used for this scoring round"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">factor values outside 1..5 OR non-integer</pattern>
+      <pattern id="f2">score computed by different formula than (UI*CF*FR*BR)/FC</pattern>
+      <pattern id="f3">confidence = HIGH with confidence_evidence showing &lt;5 factors data_backed</pattern>
+      <pattern id="f4">what_changes_if_paid contains only banned phrases ("improves quality", "reduces debt", "improves maintainability") without user/business outcome</pattern>
+      <pattern id="f5">anchor_doc_ref missing or points to an ad-hoc just-now-invented anchor</pattern>
+      <pattern id="f6">item ranked in top-3 of debt sprint with confidence = LOW</pattern>
+      <pattern id="f7">all five factors set to 3 (signal of unanchored scoring fatigue)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Recompute score automatically from factor values; reject hand-set scores that don't match the formula.</transformation>
+      <transformation>Auto-populate confidence_evidence.change_frequency.data_backed = true when git-log query returns ≥1 result for the item path.</transformation>
+      <transformation>Round score to 1 decimal place at presentation time; store full precision.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All five factor integers present in range 1..5</item>
+      <item>Score matches formula exactly</item>
+      <item>Confidence band assigned and matches evidence count</item>
+      <item>what_changes_if_paid is audience-language and references user-impact</item>
+      <item>anchor_doc_ref resolves to committed anchors</item>
+      <item>No top-3 items with LOW confidence (or escalated for more data)</item>
+      <item>No 3-3-3-3-3 items (re-score these)</item>
+    </list>
+  </section>
+</text>
