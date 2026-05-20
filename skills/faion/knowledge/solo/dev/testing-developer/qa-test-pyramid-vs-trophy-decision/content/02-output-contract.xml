@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Pyramid vs Trophy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the per-module test-strategy decisions.</summary>
+
+  <output-contract>
+    <required>
+      <field name="strategy.refreshed_at" format="YYYY-MM-DD"/>
+      <field name="strategy.modules" type="list_of_object" min="3"/>
+      <field name="strategy.modules[].name" type="slug"/>
+      <field name="strategy.modules[].diagnostic.q1_pure_logic_percent" type="integer" min="0" max="100"/>
+      <field name="strategy.modules[].diagnostic.q2_commits_per_month" type="integer"/>
+      <field name="strategy.modules[].diagnostic.q3_integration_incident_percent" type="integer" min="0" max="100"/>
+      <field name="strategy.modules[].diagnostic.q4_unit_runtime_seconds" type="integer"/>
+      <field name="strategy.modules[].diagnostic.q5_ac_level" type="enum" values="unit|workflow|mixed"/>
+      <field name="strategy.modules[].shape" type="enum" values="pyramid|trophy|hybrid"/>
+      <field name="strategy.modules[].shape_rationale" type="paragraph" min_words="30"/>
+      <field name="strategy.modules[].runtime_budget_seconds" type="integer"/>
+      <field name="strategy.modules[].current_distribution" type="object" notes="unit_count, integration_count, e2e_count"/>
+      <field name="strategy.modules[].rebalancing_plan" type="paragraph" notes="empty if current matches target"/>
+      <field name="strategy.total_pr_runtime_budget_seconds" type="integer" max="480"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">single shape applied across all modules without per-module diagnostic</pattern>
+      <pattern id="f2">module with shape=pyramid AND zero integration tests of any kind (shape becomes exclusion, not proportion)</pattern>
+      <pattern id="f3">strategy.total_pr_runtime_budget_seconds &gt; 480 (8-minute cap)</pattern>
+      <pattern id="f4">strategy.refreshed_at older than 90 days</pattern>
+      <pattern id="f5">shape_rationale shorter than 30 words OR generic phrasing not referencing the diagnostic answers</pattern>
+      <pattern id="f6">rebalancing_plan = empty for a module whose current distribution differs &gt; 30% from the target shape</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Defer non-PR-time tests (e2e, slow integration) to nightly runs to stay under the PR-time budget.</transformation>
+      <transformation>Parallelise unit suite across CI workers when runtime exceeds the per-module budget despite trimming.</transformation>
+      <transformation>Adopt a new shape on a new module immediately; for an existing module, the rebalancing plan stages it across 2-3 release cycles.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/test-strategy.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Per-module decisions, not a global default</item>
+      <item>Diagnostic answers populated from data (not opinion)</item>
+      <item>Shape rationale references the diagnostic answers explicitly</item>
+      <item>Runtime budget per module documented and respected</item>
+      <item>Total PR-time budget under 8 minutes</item>
+      <item>Refreshed within 90 days</item>
+    </list>
+  </section>
+</text>
