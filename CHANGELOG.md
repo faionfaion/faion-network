@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063+F-064 harvest +40.
 - F-063+F-064 harvest +8.
 - F-063 harvest +395.
 - F-063 harvest +316.
