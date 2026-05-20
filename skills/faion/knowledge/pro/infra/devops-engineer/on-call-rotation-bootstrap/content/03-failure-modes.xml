@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="On-Call Rotation Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six failure modes that recur when teams bootstrap an on-call rotation without explicit design. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Single-engineer rotation in a team large enough to support a secondary — burnout accumulates silently, surfaces as a resignation 6-12 months in.</description>
+      <detector>charter.tiers = primary AND charter.participants &gt;= 8 OR weekly load report shows the same engineer carries &gt; 60% of off-hours pages over 3 consecutive months</detector>
+      <repair>Add a secondary tier. Re-cut the schedule so every shift has primary + secondary. Adjust the comp policy to apply to both tiers (secondary off-hours pages count even when no escalation fired).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Alerts-as-rotation — the team has no rotation, the on-call is "whoever is in Slack and notices the alert".</description>
+      <detector>no charter.config OR no paging-tool schedule OR ack times tracked manually in a spreadsheet</detector>
+      <repair>Stand up the paging tool (PagerDuty / Opsgenie / Better Stack), commit the schedule config to version control, route alerts through the tool. Charter publication is the prerequisite for any further alert tuning.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Comp-time policy missing or aspirational — engineers are told "we appreciate your off-hours work" with no actual time-off-in-lieu or cash compensation accruing.</description>
+      <detector>charter.comp_policy_doc_url empty OR HR handbook has no entry OR no comp accrual visible in engineer time-off balances after 90 days of on-call</detector>
+      <repair>Draft and ship the comp-time policy. Backfill 90 days of comp for the team. Make the comp-accrual engine automatic from paging-tool events; do not rely on manual tracking.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Noisy alerts swamp the rotation — engineers receive 10+ pages per shift, most non-actionable, leading to alert-blindness and missed real incidents.</description>
+      <detector>load_report.per_engineer median pages_per_shift &gt; 5 OR &gt; 30% of pages closed without a runbook step taken</detector>
+      <repair>Halt new rotation participation. Spend a week on alert tuning: every alert without a runbook is either deleted, downgraded to a ticket, or assigned a runbook. Re-open the rotation only when median pages_per_shift drops below 3.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>New-joiner thrown into solo primary on day one of rotation — first incident is sev-1, joiner does not know the runbook conventions, MTTR spikes.</description>
+      <detector>new engineer's first shift = solo primary AND shadow_period_count = 0</detector>
+      <repair>Enforce the shadow-period rule: 2 shadow shifts + 2 supervised solo shifts before a true solo shift. Block the scheduling tool from assigning solo primary to anyone without a completed shadow record.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>Schedule drift — paging-tool schedule diverges from the charter (engineers swap informally in Slack, vacations not honoured, secondary tier silently dropped).</description>
+      <detector>tool schedule does not match git-versioned schedule config OR swap-policy events tracked in Slack threads instead of the tool</detector>
+      <repair>Run a weekly schedule-reconciliation script that diffs the live paging-tool schedule against the version-controlled config. PR-based changes only; ad-hoc Slack swaps require the tool's override-mechanism, not informal coverage.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      Engineer pressure to "skip the secondary tier this week, I have a vacation, just bump my comp" should be evaluated against the charter. Comp is not a substitute for the secondary tier; the secondary protects the customer's MTTR independent of comp accrual.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      Quarterly: rotation owner reviews the load report, comp accrual, and resignation/dissatisfaction signals. If any red-line was crossed during the quarter, the owner produces a one-page corrective plan and reviews it with the engineering leader.
+    </p>
+  </section>
+</text>

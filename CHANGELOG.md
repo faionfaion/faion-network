@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063 Added: harvest +12 writer dirs.
 - F-063 Added: 27 incremental writer-output dirs (mid-flight harvest).
 - F-063 Added: 52+ P1 gap methodologies from Wave 3 writers (uncommitted batch harvest).
 - F-062 Added: bulk migration of all 1638 v1 methodology.xml → v2 multi-file dirs (94% in initial sweep + 98 force-fix for skill-level conflicts + 5 XML id repairs).

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI-Feature Incident Runbook Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules that turn a generic SRE response into an AI-incident response. Hard rules; the on-call MUST follow them in order.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-classify-before-mitigate" testable="true" depth="essential">
+      <statement>On page, the on-call MUST classify the incident into one of the four AI-incident classes BEFORE applying any mitigation: hallucination_spike, jailbreak_observed, refusal_rate_anomaly, quality_regression. A classification of `unknown` is permitted only for &lt;= 10 minutes; after that the runbook escalates rather than freelances.</statement>
+      <rationale source="SRE chapter 14, "Identify the problem before treating it"">Mitigation playbooks are class-specific. Applying a model rollback when the actual cause is a refusal-class allowlist change makes the incident worse. Forced classification is the cheapest way to stop heroic freelancing during incidents.</rationale>
+    </rule>
+
+    <rule id="r2-mitigation-reversible-by-default" testable="true" depth="essential">
+      <statement>Every mitigation MUST be reversible within 5 minutes via a single command. Permitted mitigations: model rollback (to last-known-good version pin), prompt revert (to the prior commit in `prompts/`), temperature pin (lower), refusal allowlist flag toggle. Adding new behaviour (e.g. inserting a moderation layer) IS NOT a mitigation — it is a fix and is FORBIDDEN during the live incident.</statement>
+      <rationale source="Production SRE practice; reversibility as a constraint">Live incidents are not the time to add complexity. Reversible mitigations let the team try one thing, observe, and back out cleanly. Permanent fixes go through normal review post-mitigation.</rationale>
+    </rule>
+
+    <rule id="r3-eval-set-freshness" testable="true" depth="essential">
+      <statement>The quality_regression class MUST be confirmed against an eval set whose last full run is within 48 hours of the incident timestamp. If the eval set is stale, the on-call MUST run it before declaring a quality regression. Declaring quality_regression on a single user report without eval-set confirmation is FORBIDDEN.</statement>
+      <rationale source="Empirical floor in ML observability practice">User-reported quality drops are noisy and often reflect a UX edge case, not a model regression. Eval-set confirmation is the cheapest filter between "one user complained" and "we rolled back the model unnecessarily".</rationale>
+    </rule>
+
+    <rule id="r4-prompt-registry-as-ground-truth" testable="true" depth="essential">
+      <statement>Every mitigation MUST identify the model+prompt version in the registry BEFORE acting. A mitigation that says "revert the prompt" without an explicit prior commit SHA in `prompts/` is REJECTED. The on-call references the registry; the registry is the source of truth.</statement>
+      <rationale source="Configuration management theory; SRE incident retrospectives">Prompts are mutable text that drifts. Memory-based reverts during incidents are the dominant source of "we rolled back to a worse version" postmortems.</rationale>
+    </rule>
+
+    <rule id="r5-postmortem-within-5-business-days" testable="true" depth="essential">
+      <statement>A SEV1 or SEV2 AI incident MUST produce a postmortem draft within 5 business days. The draft uses the template's four AI-specific sections: which-class, which-signal-fired, which-root-cause-branch, which-harden-step. Auto-publishing the postmortem is FORBIDDEN — the team reviews and signs before publication.</statement>
+      <rationale source="Faion sibling rule `inc-postmortem-auto-draft-no-publish`; SRE postmortem culture">Postmortems decay below the 5-day floor — institutional memory of the incident fades. The four AI-specific sections force the writer to distinguish AI failure modes from classical failure modes; that distinction is the learning.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="The four AI-incident classes">
+
+    <example type="good" title="hallucination_spike — fast-fact wrong answers">
+      <code lang="text"><![CDATA[
+Signal: hallucination_flag rate > 3x 7-day baseline AND last model deploy
+        happened within 24h.
+Class:  hallucination_spike
+Mitigation: model rollback to last-known-good version pin (reversible in 30s).
+      ]]></code>
+      <note>Classification ties to a measurable SLI delta and a deploy event. Mitigation is reversible per r2.</note>
+    </example>
+
+    <example type="good" title="jailbreak_observed — system prompt extracted">
+      <code lang="text"><![CDATA[
+Signal: customer report + log inspection shows model output verbatim quoting
+        system prompt under a multi-turn pivot prompt.
+Class:  jailbreak_observed
+Mitigation: enable refusal-allowlist flag for the matched attack family; add
+            input filter as a HARDEN step post-incident (not during incident).
+      ]]></code>
+      <note>Mitigation toggles a flag (reversible per r2). The filter is a fix and is scheduled for harden, not slapped in during the page.</note>
+    </example>
+
+    <example type="bad" title="Class skipped, mitigation freelanced">
+      <code lang="text"><![CDATA[
+Page fires: refusal-rate up 4x.
+On-call action: bumps temperature to 1.5 to make the model "less rigid".
+Result: refusal rate drops, hallucination rate triples, new SEV1 opens.
+      ]]></code>
+      <note>r1 violation: no classification. r2 violation: temperature increase is not a reversible mitigation pattern in the playbook; it introduces a new failure surface. Postmortem will tag the on-call's improvisation.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

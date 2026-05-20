@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Architect PR Review Checklist — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the architect-review record shape. Reviewer or agent producing the record must satisfy this contract before the PR is allowed to merge under architect approval.</summary>
+
+  <output-contract>
+    <required>
+      <field name="pr_id" format="repo_pr_number_or_url"/>
+      <field name="reviewer" format="single_named_individual"/>
+      <field name="review_duration_min" type="integer"/>
+      <field name="ai_generated_flag" type="boolean" source="pr_description_metadata_or_reviewer_judgment"/>
+      <field name="section_findings" required_keys="module_boundaries,public_contracts,data_flow,failure_modes,performance_budget,security_posture"
+             value_type="enum: pass | needs-changes | n/a-with-reason | escalate"/>
+      <field name="adr_references" type="array" required_when_finding_present="true"/>
+      <field name="ai_specific_checks" condition="required_if_ai_generated_flag=true"
+             required_keys="hallucinated_apis,missing_error_paths,boilerplate_inflation,pattern_drift"/>
+      <field name="decision" format="enum: approve | changes-needed | escalate | split-requested"/>
+      <field name="escalation_record" condition="required_if_decision=escalate"
+             required_keys="forum,context,proposed_resolution_path"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">decision=approve with any section_finding=needs-changes</pattern>
+      <pattern id="f2">decision=approve while ai_specific_checks contain unresolved AI-specific findings (if ai_generated_flag=true)</pattern>
+      <pattern id="f3">review_duration_min &lt; 5 with PR size &gt; 200 lines AND decision=approve (rubber-stamp signal)</pattern>
+      <pattern id="f4">section finding contradicts a referenced ADR but no proposal to update ADR is included (silent violation)</pattern>
+      <pattern id="f5">free-text "lgtm" / "ship it" without any section_findings populated</pattern>
+      <pattern id="f6">PR &gt; 500 lines AND decision != split-requested AND review_duration_min &gt; 30 (PR is too large, should be split)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Mark a section N/A-with-reason when truly inapplicable (e.g., performance section for a docs-only PR) — reason must be one short sentence.</transformation>
+      <transformation>Reference an existing review record from a sibling PR if findings are identical (same pattern in two PRs).</transformation>
+      <transformation>Collapse multiple line-level comments into a single section finding when they share a root cause.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/review-record.json"/>
+  </output-contract>
+
+  <section title="Self-check (architect or AI-self-review)">
+    <list>
+      <item>All six sections have a status (pass / needs-changes / N/A-with-reason / escalate) (r1)</item>
+      <item>review_duration_min &lt;= 15 OR split-requested (r2)</item>
+      <item>If PR is AI-generated, all four AI-specific checks done (r4)</item>
+      <item>Each finding references an ADR OR proposes a new one (r5)</item>
+      <item>Decision aligns with findings (no "approve" with open needs-changes) (f1)</item>
+      <item>If escalating, the escalation forum + context is named (r3)</item>
+      <item>Output validates against templates/review-record.json</item>
+    </list>
+  </section>
+</text>
