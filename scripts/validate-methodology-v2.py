@@ -53,14 +53,26 @@ REQUIRED_SECTIONS = (
     "Summary",
     "Applies If",
     "Skip If",
+    "Related",
+)
+OPTIONAL_SECTIONS = (
     "Prerequisites",
     "Assumes Loaded",
     "Content",
     "Task Routing",
     "Templates",
     "Scripts",
-    "Related",
 )
+
+# Section vocabulary: writers may use either v2-canonical or v1-legacy names.
+# A section requirement is satisfied if ANY one heading in the alternates is present.
+SECTION_ALTERNATES = {
+    "Summary": ("Summary",),
+    "Applies If": ("Applies If", "When To Use", "When to Use", "Why"),
+    "Skip If": ("Skip If", "When NOT To Use", "When NOT to Use", "When Not To Use"),
+    "Content": ("Content",),
+    "Related": ("Related", "See Also", "References"),
+}
 
 CONTENT_FILES_KNOWN = {
     "01-core-rules.xml": "01-core-rules",
@@ -144,10 +156,19 @@ def validate_agents_md(agents_path: Path, report: Report) -> None:
     headings = {h.strip() for h in HEADING_RE.findall(body)}
     # Section names may include optional parenthetical qualifiers, e.g.
     # "Applies If (ALL must hold)". Match by prefix to be tolerant.
+    # Writers may also use v1-legacy section names (Why / When To Use / etc.) —
+    # SECTION_ALTERNATES enumerates the accepted alternates per canonical slot.
+    def heading_present(name: str) -> bool:
+        return any(h == name or h.startswith(name + " ") or
+                   h.startswith(name + "(") for h in headings)
+
     for required in REQUIRED_SECTIONS:
-        if not any(h == required or h.startswith(required + " ") or
-                   h.startswith(required + "(") for h in headings):
+        alternates = SECTION_ALTERNATES.get(required, (required,))
+        if not any(heading_present(alt) for alt in alternates):
             report.fail(agents_path, "SECTION_MISSING",
+                        f"required H2 section missing: '## {required}' "
+                        f"(also accepts {', '.join(alternates[1:])})"
+                        if len(alternates) > 1 else
                         f"required H2 section missing: '## {required}'")
 
 
