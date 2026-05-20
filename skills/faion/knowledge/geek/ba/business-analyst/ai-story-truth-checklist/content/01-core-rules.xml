@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Story Truth Checklist Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every AI-generated story MUST pass. Hard rules; "the AI seems confident" is not a valid reason to skip them.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-persona-in-roster" testable="true" depth="essential">
+      <statement>The story's primary persona ("As a &lt;persona&gt;...") MUST appear verbatim in `personas.yaml`. Synonyms, role-noun substitutions ("user", "manager") that do not match a named persona are REJECTED. Fabricated personas trigger `scrap`.</statement>
+      <rationale source="LLM-generated user-story failure surveys">LLMs invent personas under prompt pressure ("write a story for the busy enterprise admin"). The persona roster is the source of truth; new personas require user research, not a story-generation prompt.</rationale>
+    </rule>
+
+    <rule id="r2-jtbd-anchored" testable="true" depth="essential">
+      <statement>Every story MUST reference a specific JTBD statement from `research/jtbd.md` in a `jtbd_ref` field. Stories without a JTBD anchor are REJECTED. The BA verifies that the story's "I want" clause maps to the JTBD's progress motion (not a solution).</statement>
+      <rationale source="JTBD methodology + story-validation practice">Solution-first stories ("As X I want to click button Y") bypass the job. JTBD anchoring forces the story to express progress, which is what the team should build for.</rationale>
+    </rule>
+
+    <rule id="r3-no-fabricated-stats" testable="true" depth="essential">
+      <statement>Any numeric claim in the story narrative ("60% of users", "saves 4 hours/week") MUST trace to a research artefact via inline citation. Fabricated stats — common in LLM output — trigger `revise` AND removal of the stat. The narrative may stand without the stat, never with a hallucinated one.</statement>
+      <rationale source="Sibling rule from `ai-content-quality-review` r5">LLMs fabricate plausible-sounding metrics. Citation-tracing is the cheapest defence; the narrative without a stat is usually clearer than with a wrong one.</rationale>
+    </rule>
+
+    <rule id="r4-edge-cases-enumerated" testable="true" depth="essential">
+      <statement>Every story MUST include at least 3 edge cases in the AC: a failure path (e.g. API down), an empty / zero state (e.g. no data), and a privacy / consent implication where applicable. Stories that ship with only happy-path AC are REJECTED.</statement>
+      <rationale source="QA shift-left practice; LLM happy-path bias">LLMs draft happy-path AC by default. Enumerating the three edge cases at story-time prevents PR-time scrambling and forces the team to discuss failure shapes early.</rationale>
+    </rule>
+
+    <rule id="r5-ac-traceable" testable="true" depth="essential">
+      <statement>Every acceptance criterion MUST be testable AND traceable to a specific behaviour. AC that read "the system works as expected" or "the UI is intuitive" are REJECTED. Each AC uses Given/When/Then OR an equivalent BDD-style with explicit observable outcome.</statement>
+      <rationale source="BDD literature (Dan North); test-design discipline">Untestable AC create no closure signal. Given/When/Then forces concrete behaviour, which the QA can verify and the developer can implement against. Vague AC are LLM-comfort filler.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="The 8-point checklist (summary)">
+    <list>
+      <item>1. Persona in roster (r1)</item>
+      <item>2. JTBD anchored (r2)</item>
+      <item>3. No fabricated stats (r3)</item>
+      <item>4. Three edge cases (r4)</item>
+      <item>5. AC traceable (r5)</item>
+      <item>6. Voice / tense correct: "As a X, I want Y, so that Z" — no role-noun "the user".</item>
+      <item>7. Dependencies named (not "depends on the system") — link by ticket / module.</item>
+      <item>8. Out-of-scope items moved to a separate "not in this story" note.</item>
+    </list>
+    <reference path="templates/checklist.md">The 8-point checklist with concrete prompts and examples per check.</reference>
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="bad" title="Invented persona + fabricated stat + happy-path AC">
+      <code lang="markdown"><![CDATA[
+As a busy enterprise admin
+I want to bulk-import 1000 users at once
+So that I save 4 hours per week (60% of admins requested this).
+
+AC:
+- The system imports users.
+- The UI is intuitive.
+      ]]></code>
+      <note>r1, r3, r4, r5 violations. "busy enterprise admin" not in roster. Stat fabricated. AC vague and happy-path only. Decision: scrap.</note>
+    </example>
+
+    <example type="good" title="Properly-vetted story">
+      <code lang="markdown"><![CDATA[
+As a Site Administrator (persona ref: persona-admin-01)
+I want to bulk-import users from a CSV file
+So that I onboard a cohort without per-user clicks (JTBD ref: jtbd-onboard-cohort).
+
+AC:
+- Given a CSV with valid rows, when I upload, then all rows are imported.
+- Given a CSV with malformed rows, when I upload, then valid rows import and invalid rows produce a per-row error report.
+- Given a CSV with > 5000 rows, when I upload, then the system processes in chunks and reports progress.
+- Given a CSV with email addresses already in the system, when I upload, then duplicates are skipped without error.
+- Edge: when the CSV upload API is unavailable, the user sees a retry prompt with cause.
+Privacy: confirm consent flag check per row (per data-policy doc 2026-04).
+      ]]></code>
+      <note>r1, r2, r4, r5 satisfied. Persona ref + JTBD ref present. AC are Given/When/Then. Edge cases enumerated. Privacy implication acknowledged.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

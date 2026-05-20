@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI-Assisted Quarter Retro Synthesis Output Contract" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>Defines the quarterly retro doc schema for product-dev teams with 3-6 squads.</summary>
+
+  <output-contract>
+    <required>
+      <field name="retro_metadata">
+        <subfield name="quarter_label" type="string"/>
+        <subfield name="squad_count" type="integer" min="3"/>
+        <subfield name="sources_ingested" required_keys="squad_retros,tickets,dora,incident_postmortems"/>
+        <subfield name="missing_sources_log" type="string"/>
+        <subfield name="page_count" type="integer" min="4" max="6"/>
+        <subfield name="finalized_by" type="string"/>
+        <subfield name="finalized_at" type="iso_datetime"/>
+      </field>
+      <field name="okr_review_section">
+        <subfield name="company_okr_scores" type="dict"/>
+        <subfield name="squad_okr_scores" type="dict"/>
+        <subfield name="biggest_wins" min_items="2"/>
+        <subfield name="biggest_misses" min_items="1"/>
+      </field>
+      <field name="dora_section">
+        <subfield name="deploy_frequency_delta" type="string"/>
+        <subfield name="lead_time_delta" type="string"/>
+        <subfield name="mttr_delta" type="string"/>
+        <subfield name="change_failure_rate_delta" type="string"/>
+        <subfield name="dora_narrative" type="string" max_words="200"/>
+      </field>
+      <field name="incident_learnings" min_items="0">
+        <subfield name="incident_learnings[].incident_id" type="string"/>
+        <subfield name="incident_learnings[].systemic_cause" type="string"/>
+        <subfield name="incident_learnings[].systemic_fix_owner" type="string"/>
+      </field>
+      <field name="themes" min_items="3" max_items="8">
+        <subfield name="themes[].title" type="string"/>
+        <subfield name="themes[].squad_coverage" min_squads="2"/>
+        <subfield name="themes[].evidence_sources" required_min_distinct_source_types="2"/>
+        <subfield name="themes[].severity" enum="0,1,2,3"/>
+      </field>
+      <field name="q_plus_1_process_changes" min_items="3" max_items="7">
+        <subfield name="q_plus_1_process_changes[].title" type="string"/>
+        <subfield name="q_plus_1_process_changes[].owner_role" type="string"/>
+        <subfield name="q_plus_1_process_changes[].deadline" type="iso_date"/>
+        <subfield name="q_plus_1_process_changes[].success_criteria" type="string"/>
+      </field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">retro_metadata.sources_ingested missing any of the 4 source types without entry in missing_sources_log</pattern>
+      <pattern id="f2">theme with squad_coverage &lt; 2</pattern>
+      <pattern id="f3">DORA section reports snapshot values without delta vs. previous quarter</pattern>
+      <pattern id="f4">page_count outside 4-6 range</pattern>
+      <pattern id="f5">q_plus_1_process_changes[].owner_role generic ("team", "everyone")</pattern>
+      <pattern id="f6">incident_learnings empty when retro_metadata indicates ≥ 1 P1/P2 incident in quarter</pattern>
+      <pattern id="f7">theme severity == 3 with squad_coverage == 2 but no DORA / incident evidence (perception-only severe)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Single-squad pain points move to the appendix labeled "squad-specific observations" — not in main themes.</transformation>
+      <transformation>If a source is unavailable (e.g., no DORA dashboard), the missing_sources_log explains and the synthesis proceeds with the available sources — but the gap is named.</transformation>
+      <transformation>Themes may be tagged "process" / "tooling" / "people" / "scope" for navigation; tag does not change evidence requirements.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/quarterly-retro-doc.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>all 4 source types ingested OR missing logged</item>
+      <item>every theme has multi-squad coverage AND ≥ 2 distinct source types</item>
+      <item>DORA section reports deltas not snapshots</item>
+      <item>incident learnings extracted for every P1/P2 in quarter</item>
+      <item>Q+1 changes have named owners + deadlines + success criteria</item>
+      <item>retro doc fits 4-6 pages</item>
+      <item>previous quarter's retro referenced (carry-over action items addressed)</item>
+    </list>
+  </section>
+</text>
