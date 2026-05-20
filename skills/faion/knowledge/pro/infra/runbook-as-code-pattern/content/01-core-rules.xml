@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Runbook as Code Pattern Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every runbook-as-code adoption must enforce so on-call always lands on the right step and rotted runbooks fail CI, not pagers.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-repo-colocation" testable="true" depth="essential">
+      <statement>Each service's runbook lives in that service's repo at a stable path (default: `docs/runbook.md` or `runbooks/&lt;alert&gt;.md`). Runbooks stored in a separate "ops wiki" without a copy in the repo are rejected as not-runbook-as-code regardless of how good the content is.</statement>
+      <rationale source="Single-source-of-truth">Wiki runbooks fall out of date because they are never reviewed when the code changes. Co-location means the service PR that breaks the runbook is the same PR that must update it, and the on-call only ever needs one URL to find current content.</rationale>
+    </rule>
+
+    <rule id="r2-anchor-per-alert" testable="true" depth="essential">
+      <statement>Every alert rule has a dedicated anchor in the runbook (`#alert-rule-slug`). The runbook frontmatter must list `alert_anchors:` as a map of alert-rule-slug → anchor. An alert without a corresponding anchor is rejected at CI; an anchor without a corresponding alert is allowed but flagged for cleanup.</statement>
+      <rationale source="Direct-to-step principle">On-call woken at 03:00 should not skim a 40-section runbook. Anchor-per-alert means the pager link lands on the exact step matching the rule that fired. The frontmatter map makes the mapping checkable, not implicit.</rationale>
+    </rule>
+
+    <rule id="r3-ci-link-and-anchor-check" testable="true" depth="essential">
+      <statement>CI must run a fast check (target &lt;60s) that: (a) every alert_anchors entry resolves to an existing anchor in the runbook body, (b) every external URL in the runbook returns 200/301/302, (c) every shell snippet's binary exists in the repo's documented prereq list. A failing check blocks merge of the service repo.</statement>
+      <rationale source="Rot-proof documentation">Link rot, missing anchors, and references to retired CLIs are the three most common ways a "real" runbook becomes a 03:00 dead-end. Catching them in CI converts runbook quality from a periodic audit into a per-commit gate.</rationale>
+    </rule>
+
+    <rule id="r4-alert-rule-carries-url" testable="true" depth="essential">
+      <statement>Every alert rule emitted by the service must carry a `runbook_url` field pointing at the anchor-suffixed URL (e.g. `https://github.com/org/svc/blob/main/docs/runbook.md#alert-payment-error-rate-high`). Alerts without runbook_url, or with a URL whose anchor does not exist (per r3), are rejected at the alert-rule PR stage.</statement>
+      <rationale source="Closed-loop on-call">An alert without a runbook link is hostile to the responder. The "URL must include a valid anchor" requirement closes the gap where a generic /runbook URL is technically present but useless because the responder still has to hunt.</rationale>
+    </rule>
+
+    <rule id="r5-review-with-code" testable="true" depth="essential">
+      <statement>Pull requests that change service behaviour related to a documented alert (new failure mode, retry-policy change, dependency swap) must also update the corresponding runbook section, or carry an explicit `runbook-unchanged: &lt;reason&gt;` label. CODEOWNERS for runbook files must overlap with service CODEOWNERS — a separate "docs team" reviewer is forbidden for runbook changes.</statement>
+      <rationale source="Same-PR review">Splitting code review and runbook review across teams creates a permanent backlog where the runbook trails the code by months. Forcing the same reviewers to see both keeps the two in lockstep, and the explicit `runbook-unchanged` label preserves the audit trail for genuinely no-op changes.</rationale>
+    </rule>
+
+  </section>
+
+  <example>
+    <description>Service runbook frontmatter wired to alerts and CI.</description>
+    <code language="markdown">
+---
+service: checkout-api
+alert_anchors:
+  payment-error-rate-high:    "#alert-payment-error-rate-high"
+  upstream-timeout-spike:     "#alert-upstream-timeout-spike"
+  queue-depth-saturation:     "#alert-queue-depth-saturation"
+ci_link_check: required
+last_reviewed_with_release: v2.14.0
+---
+# checkout-api runbook
+## alert-payment-error-rate-high
+**Symptom:** error rate &gt; 2% on /charge for 5 minutes.
+**First check:** `kubectl logs -l app=checkout-api --since=10m | rg ERR`
+...
+    </code>
+  </example>
+
+  <see-also>
+    <link path="../alert-triage-decision-tree/AGENTS.md"/>
+    <link path="../../sdlc-ai/inc-runbook-as-markdown-tagged-steps/AGENTS.md"/>
+  </see-also>
+</text>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Agent Postmortem Template Core Rules">
+  <summary>Hard rules every agent-as-defendant postmortem must satisfy. These fields replace the generic incident template — omitting any one collapses the layer-attribution discipline this methodology exists to enforce.</summary>
+  <section title="Required fields">
+    <rule testable="true">
+      <statement>Every postmortem records the exact model identifier (provider plus version pin, e.g. anthropic/claude-sonnet-4-5-20250929) and the deployment timestamp. "Claude" or "GPT-4" is not a model identifier and fails the template gate.</statement>
+      <rationale>Half of agent regressions are silent model upgrades. Without a pinned version string the postmortem cannot distinguish a prompt bug from a provider-side model swap.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Every postmortem includes a prompt diff: the system prompt at the time of incident vs. the system prompt at the last green eval run, rendered with all variables substituted. Diff is byte-exact, not paraphrased.</statement>
+      <rationale>Prompt regressions are the #1 cause of agent incidents and are invisible without a rendered byte-diff. Paraphrased diffs mask conditional branches that fired only in the failing context.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>The Layer Attribution section assigns the root cause to exactly one of six layers: model, system prompt, tool schema, tool result, retrieved context, user input. If the team cannot pick one, the postmortem is incomplete — escalate to a second reviewer, do not close.</statement>
+      <rationale>"Combination of factors" is the agent-postmortem version of "human error" — it forecloses corrective action. Forcing a single primary layer routes the fix to the owner who can act.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Every postmortem records an eval delta: score on the incident's regression case before the fix, and a target score after. Closure requires the after-fix eval to be green; merging the fix without re-running the eval is forbidden.</statement>
+      <rationale>Without eval delta the fix is theatre — the team learns nothing about whether the change generalised. Eval-gated closure is the only way to prevent the same hallucination class re-shipping next sprint.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Replay artefacts (rendered prompt, tool-call payloads, tool results, retrieved chunks, response) are attached to the postmortem as files or trace links. If a layer's artefact cannot be replayed, the postmortem records a Trace Gap with an explicit instrumentation action item.</statement>
+      <rationale>Replay is the difference between a postmortem and a story. Trace gaps are themselves valuable findings — they force instrumentation investment before the next incident.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+Model: anthropic/claude-sonnet-4-5-20250929 (pinned in prod since 2026-04-12)
+Layer attributed: tool schema (description field missing units → model assumed seconds, API expected ms)
+Eval delta: regression case "tool_time_unit_conversion" 0/10 → 10/10 after schema fix
+Trace: trace_id=abc123, replay attached at incidents/2026-05-20-agent-postmortem.zip
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+Model: Claude
+Cause: model hallucinated
+Fix: improved prompt
+]]></code>
+      <note>No version pin, no layer attribution, no eval delta, no replay — the team will ship the same incident next month.</note>
+    </example>
+  </section>
+</text>

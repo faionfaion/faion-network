@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Rotation Evidence Template Core Rules" version="1.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules every rotation-evidence record must enforce so the artefact passes SOC-2 / ISO27001 audit on first inspection.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-seven-required-fields" testable="true" depth="essential">
+      <statement>Every record carries all seven required fields: (1) secret_id (non-sensitive identifier), (2) cause (scheduled | incident | personnel-change | suspected-compromise), (3) initiated_at (ISO-8601 UTC), (4) completed_at, (5) system_of_record_event_id, (6) approver_handles (≥1, dual-control where policy requires), (7) verification_result. A record missing any of the seven is rejected.</statement>
+      <rationale source="Audit-grade evidence">Auditors do not accept "we rotated it on Tuesday". The seven fields together establish what was rotated, why, when, by whose authority, where the system-of-record trail lives, and that downstream consumers were verified. Missing any one field leaves a gap the auditor must close manually.</rationale>
+    </rule>
+
+    <rule id="r2-immutable-after-close" testable="true" depth="essential">
+      <statement>Once verification_result is recorded, the record is immutable. Corrections require a new record with `supersedes: &lt;prior_record_id&gt;` and a corrected_reason field. Editing a closed record in place is forbidden.</statement>
+      <rationale source="Audit trail integrity">Mutable evidence is non-evidence. The supersession pattern preserves the original observation while still allowing factual correction; auditors can follow the supersession chain and see the team's response to its own errors.</rationale>
+    </rule>
+
+    <rule id="r3-dual-control-attestation" testable="true" depth="essential">
+      <statement>For secrets classified as high-risk (production database root credentials, code-signing keys, customer-data-encryption KEKs), the record must carry two distinct approver_handles, neither of whom is the operator who performed the rotation. For lower-risk secrets, one named approver is sufficient. The classification is recorded inline so the chosen control level is auditable.</statement>
+      <rationale source="Separation of duties">SOC-2 CC6.1 and ISO27001 A.6.1.2 both require separation of duties for high-risk operations. Inlining the classification means auditors do not need to cross-reference a separate policy doc to confirm the right control was applied.</rationale>
+    </rule>
+
+    <rule id="r4-downstream-reconciliation" testable="true" depth="essential">
+      <statement>The record lists each downstream system that consumed the prior secret, each with a verification status: `verified-using-new` | `verified-pinned-version-still-using-old (window-closes-at)` | `decommissioned`. A record with any unverified downstream is rejected as incomplete.</statement>
+      <rationale source="Defense-in-depth">A rotation is only successful when every consumer has actually switched. The pinned-version-still-using-old state is explicitly named because it is the most common partial-rotation failure mode; forcing a window-closes-at timestamp converts a quiet defect into a tracked obligation.</rationale>
+    </rule>
+
+    <rule id="r5-prior-secret-decommission" testable="true" depth="essential">
+      <statement>The record names the prior-secret-decommission timestamp and method (revoked | deleted | grace-window-expired). For grace-window-expired the record must reference the prior r4 reconciliation that confirmed no consumer still used it. A rotation without decommissioning the prior secret is recorded as `decommission: pending` and auto-escalates after the policy window.</statement>
+      <rationale source="Defense-in-depth">Many "rotations" leave the prior credential valid forever. Auditors specifically test that the prior credential is no longer accepted. Recording the decommission method as a typed enum makes this checkable by tooling, not just by spot-audit.</rationale>
+    </rule>
+
+    <rule id="r6-incident-mode-flag" testable="true" depth="essential">
+      <statement>When cause is `incident` or `suspected-compromise`, the record must carry an `incident_ref` field linking to the incident ticket, AND fields r3/r4/r5 may be filled post-incident within 5 business days. The record opens with `status: provisional` and must transition to `status: closed` once the post-incident fill-in is complete; provisional records older than 5 business days are surfaced on the compliance dashboard.</statement>
+      <rationale source="Incident-realistic compliance">During a live compromise, demanding dual-control attestation in real time gets people killed (figuratively — it slows containment). The provisional → closed pattern preserves audit-grade evidence without blocking incident response, and the 5-day window keeps the obligation from being forgotten.</rationale>
+    </rule>
+
+  </section>
+
+  <example>
+    <description>Minimal closed record for a scheduled production DB password rotation.</description>
+    <code language="yaml">
+record_id: rot-2026-05-20-pgmain-001
+status: closed
+secret_id: pgmain.app_user
+classification: high-risk
+cause: scheduled
+initiated_at: 2026-05-20T09:00:00Z
+completed_at: 2026-05-20T09:14:00Z
+system_of_record_event_id: vault://audit/2026/05/20/op_id=abc123
+approver_handles: [@sre-lead, @secops-onduty]
+operator_handle: @sre-rotation-bot
+prior_secret_decommission:
+  method: revoked
+  at: 2026-05-20T09:15:00Z
+downstream_reconciliation:
+  - system: api-prod-1, status: verified-using-new
+  - system: batch-reports, status: verified-using-new
+  - system: legacy-etl, status: verified-pinned-version-still-using-old, window-closes-at: 2026-05-22T00:00:00Z
+verification_result: pass
+    </code>
+  </example>
+
+  <see-also>
+    <link path="../external-secrets-operator-recipe/AGENTS.md"/>
+    <link path="../cve-exception-template/AGENTS.md"/>
+  </see-also>
+</text>

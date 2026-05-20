@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Storybook as Source of Truth Core Rules" version="1.0.0" est_tokens="1300" depth="essential">
+  <summary>Five testable rules that convert Storybook from documentation site to design-system Source of Truth. Each rule is enforced in CI or PR review; violation blocks merge, not warns.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-story-per-state" testable="true" depth="essential">
+      <statement>Every component MUST have one story per distinct visual state: default, hover, focus, active, disabled, loading, error, empty, success, dark theme. States that are unreachable for the component (e.g. button has no "empty") MUST be documented as N/A in the component README. Adding a new state to the component implementation without adding the matching story is a CI failure.</statement>
+      <rationale source="Storybook authoring conventions; visual-regression coverage requirements">A SoT must cover every state the component can render. Skipping states (especially focus / error / dark theme) leads to drift between code and the design system that re-emerges as a11y or visual regressions weeks later. CI enforcement makes the discipline self-sustaining.</rationale>
+    </rule>
+
+    <rule id="r2-a11y-addon-ci-gate" testable="true" depth="essential">
+      <statement>The `@storybook/addon-a11y` MUST run in CI on every PR that touches `src/components/`, and any new rule violation (vs. main baseline) MUST block merge. Existing baseline violations are tracked in a CHANGELOG-style file and burned down sprint-by-sprint; net new violations are forbidden.</statement>
+      <rationale source="WCAG 2.2 compliance trends; cost of post-hoc a11y remediation">A11y violations are 10-50x cheaper to fix at component-write time than post-launch. The addon catches the cheap-to-fix tier (contrast, ARIA, focus order); without a CI gate the team learns to ignore yellow icons. Treating new violations as PR-blocking aligns incentives.</rationale>
+    </rule>
+
+    <rule id="r3-tokens-only-styling" testable="true" depth="essential">
+      <statement>Component styles inside the design system package MUST consume design tokens (CSS custom properties or token JS imports). Hard-coded colours (`#ffffff`), spacing values (`16px`), or font sizes are FORBIDDEN. A lint rule (Stylelint `declaration-property-value-allowed-list` or equivalent) MUST enforce this in CI.</statement>
+      <rationale source="Design tokens W3C draft; tokens-as-API discipline">Tokens are the contract between design and code. Hard-coded values escape that contract — a brand refresh or theme addition requires hunting them down. Lint enforcement converts the discipline from review-time hope to compile-time guarantee.</rationale>
+    </rule>
+
+    <rule id="r4-figma-generated-from-storybook" testable="true" depth="essential">
+      <statement>Figma component libraries MUST be generated from Storybook (e.g. Storybook Figma plugin, Specify, design-tokens sync), NOT the other way around. Designers consume the generated library; they MUST NOT redraw components in Figma as the canonical reference. Sync runs on every Storybook release.</statement>
+      <rationale source="Code-as-SoT vs. design-as-SoT trade-off">When Figma is canonical, designers ship visual specs that engineering re-implements with subtle drift — the same pattern that motivates "Storybook as SoT" in the first place. Generating Figma from code closes the loop: the design library cannot drift from the implementation because it IS the implementation's rendered output.</rationale>
+    </rule>
+
+    <rule id="r5-deviation-equals-pr-comment" testable="true" depth="essential">
+      <statement>When product code uses a component-like pattern outside the design system (one-off styling, inline overrides, "just this once" CSS), the PR review MUST add a comment linking to the relevant Storybook story or open a follow-up ticket to add the component. Inline approvals of "we'll fix it later" without a tracked ticket are FORBIDDEN.</statement>
+      <rationale source="Architectural-drift prevention; broken-windows principle">One-off deviations are how design systems erode. The PR-comment-or-ticket rule converts each deviation into a tracked decision instead of a silent escape hatch. Over a quarter, this is the single biggest determinant of whether the system stays canonical.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Story-per-state coverage for a Button component">
+      <code lang="tsx"><![CDATA[
+// Button.stories.tsx
+export default { component: Button, parameters: { a11y: { test: 'error' } } };
+
+export const Default = { args: { children: 'Save' } };
+export const Hover = { args: { children: 'Save' }, parameters: { pseudo: { hover: true } } };
+export const Focus = { args: { children: 'Save' }, parameters: { pseudo: { focus: true } } };
+export const Disabled = { args: { children: 'Save', disabled: true } };
+export const Loading = { args: { children: 'Saving...', isLoading: true } };
+export const Error = { args: { children: 'Retry', tone: 'danger' } };
+export const Dark = { args: { children: 'Save' }, parameters: { theme: 'dark' } };
+// 'empty' and 'success' documented as N/A in README
+      ]]></code>
+      <note>r1 + r2 satisfied. The a11y addon parameter blocks merge on any new violation. Each visual state is reachable by URL for visual regression and Figma generation.</note>
+    </example>
+
+    <example type="bad" title="Storybook treated as a one-off demo site">
+      <code lang="tsx"><![CDATA[
+// Button.stories.tsx — single happy-path story; no a11y; hard-coded styles
+export default { component: Button };
+export const Default = {
+  args: { children: 'Save', style: { backgroundColor: '#0066cc', padding: '12px' } },
+};
+      ]]></code>
+      <note>r1, r2, r3 all violated. Only one state covered; no a11y addon; hard-coded colour and spacing escape the token contract. Storybook drifts within weeks.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../audit-grade-code-review-checklist/"/>
+    <link path="../../../../geek/dev/software-developer/fitness-function-suite-bootstrap/"/>
+  </see-also>
+</text>

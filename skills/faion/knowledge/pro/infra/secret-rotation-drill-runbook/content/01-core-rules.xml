@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Secret Rotation Drill Runbook Core Rules" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>6 testable rules every secret rotation drill MUST follow to produce audit-grade evidence. Skipping any rule invalidates the drill as a compliance artefact.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-non-prod-target" testable="true" depth="essential">
+      <statement>The drill MUST target a non-production environment that mirrors prod's consumer topology (same services, same secret aliases, same scheduler jobs). Running against prod = NOT a drill, it's an incident — separate runbook applies.</statement>
+      <rationale source="gap-analysis 2026-05-17">A drill that breaks prod customers is malpractice. A clone environment is the only acceptable target; if no clone exists, the prerequisite is to build one first.</rationale>
+    </rule>
+
+    <rule id="r2-breakglass-path-verified" testable="true" depth="essential">
+      <statement>The drill MUST include a scenario where the rotation system itself is unavailable. Operator MUST retrieve out-of-band breakglass credentials, perform manual rotation, and document the path. Drill records without a breakglass scenario are INVALID as compliance evidence.</statement>
+      <rationale source="gap-analysis 2026-05-17">Real incidents that trigger emergency rotation often coincide with rotation-system outage (compromised Vault, AWS region down). Auditors specifically ask "what if Vault is offline" — drilling the answer is the point.</rationale>
+    </rule>
+
+    <rule id="r3-mttr-measured" testable="true" depth="essential">
+      <statement>The drill MUST record MTTR (Mean Time To Rotation) per consumer category: API service, scheduler, database, IaC pipeline. Operators MUST start the clock at "rotation triggered" and stop it at "consumer verified using new value." Unmeasured drills = INVALID.</statement>
+      <rationale source="gap-analysis 2026-05-17">Without a numeric MTTR, the org can't tell if rotation capability is improving or regressing. Auditors trend MTTR over multiple drills.</rationale>
+    </rule>
+
+    <rule id="r4-post-drill-restoration" testable="true" depth="essential">
+      <statement>After the drill, the operator MUST verify the non-prod environment is back to a known-good state, all rotated secrets are usable, and no orphan secrets remain in the store. Restoration checklist signed off = drill complete; unsigned = drill OPEN.</statement>
+      <rationale source="gap-analysis 2026-05-17">Half-completed drills leave the clone in a worse state than they found it; orphan secrets are themselves a finding. Restoration is part of the drill, not an after-the-fact concern.</rationale>
+    </rule>
+
+    <rule id="r5-evidence-pack-signed" testable="true" depth="essential">
+      <statement>The drill MUST emit a signed evidence pack containing: pre-drill checklist, rotation timeline (timestamps + operator actions), breakglass scenario log, MTTR per consumer category, restoration sign-off, and reviewer signature. Pack stored in compliance evidence vault with retention ≥ 7 years.</statement>
+      <rationale source="gap-analysis 2026-05-17">SOC2 Type II and ISO 27001 specifically ask for dated, signed evidence of rotation. Verbal "yes we drill quarterly" is not acceptable evidence.</rationale>
+    </rule>
+
+    <rule id="r6-quarterly-cadence" testable="true" depth="essential">
+      <statement>Drills MUST run on a quarterly cadence at minimum; a real rotation event with full evidence pack counts as the drill for that quarter. Two consecutive quarters with no drill = compliance escalation, not "we'll do it next sprint."</statement>
+      <rationale source="gap-analysis 2026-05-17">Annual drills are too rare to catch consumer drift; monthly is operator-fatigue territory. Quarterly is the auditor-accepted minimum.</rationale>
+    </rule>
+
+    <example title="Evidence pack header">
+      <text>drill_id: Q2-2026-stripe  target_env: staging-clone  operator: @ops-lead  reviewer: @ciso  rotation_started: 2026-05-20T09:00Z  rotation_complete: 2026-05-20T09:18Z  mttr: {api: 4m12s, scheduler: 8m03s, db: 11m45s, iac: 6m31s}  breakglass_exercised: true  restoration_signoff: 2026-05-20T11:00Z by @ops-lead  evidence_pack: vault://compliance/drills/2026-Q2-stripe.tar.gz</text>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../secrets-rotation-end-to-end/AGENTS.md"/>
+    <link path="../secret-consumer-discovery/AGENTS.md"/>
+  </see-also>
+</text>

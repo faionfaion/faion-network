@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="RTO/RPO Measurement Template Core Rules" version="1.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules every DR-drill measurement run must enforce so the resulting RTO/RPO numbers are actual observations, not vibes.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-eight-checkpoints" testable="true" depth="essential">
+      <statement>The drill log must capture eight typed checkpoints with timestamps: t0_drill_start, t1_failure_injected, t2_detection_recognised, t3_decision_to_failover, t4_failover_begin, t5_primary_traffic_restored, t6_data_loss_window_measured, t7_drill_closed. A drill with a missing checkpoint is recorded as `measurement: partial` and explicitly disqualified from trending.</statement>
+      <rationale source="Falsifiable observation">RTO and RPO are computed deltas (RTO = t5-t1, RPO = t6 data-window). Missing any of the eight makes the math impossible. Naming the partial state instead of fudging missing data preserves the integrity of the multi-drill trend.</rationale>
+    </rule>
+
+    <rule id="r2-one-clock" testable="true" depth="essential">
+      <statement>All eight checkpoints must be timestamped against a single declared authoritative clock (named NTP server URL or one operator's monotonic clock). Mixing clocks across checkpoints is forbidden; the clock identity is recorded once at the top of the log.</statement>
+      <rationale source="Single-source-of-truth">Wall-clock skew across operator laptops produces minute-level errors that quietly inflate or deflate measured RTO. The single-clock rule removes a class of measurement noise that is otherwise nearly impossible to audit after the fact.</rationale>
+    </rule>
+
+    <rule id="r3-independent-observer" testable="true" depth="essential">
+      <statement>Each checkpoint timestamp must be confirmed by an observer who is not on the failover-execution team. Observer confirms by countersignature on the log (handle + time-of-countersign within 5 minutes of the checkpoint).</statement>
+      <rationale source="Separation of duties">Operators under pressure round timestamps subconsciously — they want the drill to look good. An independent observer turns the timestamp from a self-report into a witnessed observation. The 5-minute countersign window prevents reconstruction after the drill ends.</rationale>
+    </rule>
+
+    <rule id="r4-data-loss-windowed" testable="true" depth="essential">
+      <statement>RPO measurement (t6_data_loss_window_measured) must be expressed as a closed interval [earliest_lost_write_ts, latest_lost_write_ts] derived from a query against the recovered system, not as a guess. If no write loss occurred, the field is `data_loss_window: empty (verified-by-query)`.</statement>
+      <rationale source="Audit-grade evidence">"We probably lost about 5 minutes" is not an RPO measurement. The closed-interval requirement forces an actual query against the recovered data (e.g. max-id in primary vs recovered) and converts RPO from estimation into observation.</rationale>
+    </rule>
+
+    <rule id="r5-post-drill-reconciliation" testable="true" depth="essential">
+      <statement>Within 1 business day of drill close, the conductor produces a reconciliation record carrying: measured_rto, measured_rpo, target_rto, target_rpo, deltas, root-cause notes for any delta &gt;25%, and a `verified-by: &lt;observer_handle&gt;` field. The reconciliation is what feeds the tracking board — the raw log alone does not.</statement>
+      <rationale source="Closed-loop measurement">Raw timestamps without reconciliation rot in the drill folder. The 1-business-day window keeps the reconciliation cheap (memory still fresh) while still forcing a structured second-pass that catches obvious data-entry errors in the live log.</rationale>
+    </rule>
+
+    <rule id="r6-target-vs-actual-delta" testable="true" depth="essential">
+      <statement>The reconciliation must include a signed delta (measured − target) for both RTO and RPO. Any positive delta &gt;25% of target, or two consecutive drills with same-sign delta, triggers a target review or remediation plan — the team is not allowed to close the loop with "we'll do better next time".</statement>
+      <rationale source="Anti-theatre principle">Drills become theatre when "almost made it" is the standing answer. A typed escalation threshold converts a soft observation into an obligation to either fix the system or renegotiate the target with the rpo-rto-negotiation-guide.</rationale>
+    </rule>
+
+  </section>
+
+  <example>
+    <description>Closed measurement record for a partial failover drill on a payments DB.</description>
+    <code language="yaml">
+record_id: drill-2026-05-20-payments-failover
+clock: ntp://time.cloudflare.com
+conductor: @sre-lead
+observer: @secops-onduty
+checkpoints:
+  t0_drill_start:             2026-05-20T10:00:00Z (obs-countersigned @10:01)
+  t1_failure_injected:        2026-05-20T10:05:00Z (obs-countersigned @10:05)
+  t2_detection_recognised:    2026-05-20T10:09:14Z
+  t3_decision_to_failover:    2026-05-20T10:12:00Z
+  t4_failover_begin:          2026-05-20T10:12:35Z
+  t5_primary_traffic_restored:2026-05-20T10:24:48Z
+  t6_data_loss_window:        empty (verified-by-query select max(id) cross-check)
+  t7_drill_closed:            2026-05-20T10:35:00Z
+reconciliation:
+  measured_rto: 19m48s    (target: 1h)   delta: -40m12s OK
+  measured_rpo: 0          (target: 15m)  delta: -15m OK
+  root_cause_notes: none
+  verified_by: @secops-onduty
+    </code>
+  </example>
+
+  <see-also>
+    <link path="../rto-rpo-tracking-board/AGENTS.md"/>
+    <link path="../dr-drill-script-template/AGENTS.md"/>
+  </see-also>
+</text>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Security by Design Feature Checklist Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules — one per STRIDE letter — that every per-feature security-by-design checklist MUST satisfy before architecture review approval.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-spoofing" testable="true" depth="essential">
+      <statement>(S) Spoofing: checklist MUST answer "who can claim to be the user/service in this feature, and what proves identity?" Output: identity-claim mechanism (auth token / mTLS cert / signed request) + verification step. Decision MUST be one of {mitigated, accepted+rationale, deferred+ticket}.</statement>
+      <rationale source="gap-analysis 2026-05-17">Identity assumptions silently leak between features. Naming the claim mechanism per feature catches "we'll just trust the JWT" gaps.</rationale>
+    </rule>
+
+    <rule id="r2-tampering" testable="true" depth="essential">
+      <statement>(T) Tampering: checklist MUST answer "what data does this feature persist or transmit, and what prevents modification in flight or at rest?" Output: integrity mechanism (TLS / signed payload / row hash / write-once log). Decision MUST be one of {mitigated, accepted+rationale, deferred+ticket}.</statement>
+      <rationale source="gap-analysis 2026-05-17">Features that "just read from the DB" still tamper risk if upstream writes are not authenticated. Forces upstream-of-feature thinking.</rationale>
+    </rule>
+
+    <rule id="r3-repudiation" testable="true" depth="essential">
+      <statement>(R) Repudiation: checklist MUST answer "what user/admin actions in this feature need to be non-repudiable?" Output: audit-log entry (who, what, when, source-IP/agent) + retention period. Decision MUST be one of {mitigated, accepted+rationale, deferred+ticket}.</statement>
+      <rationale source="gap-analysis 2026-05-17">Audit logging is the cheapest mitigation that nobody adds until after the first incident. Per-feature prompt is the only reliable way to install it.</rationale>
+    </rule>
+
+    <rule id="r4-information-disclosure" testable="true" depth="essential">
+      <statement>(I) Information Disclosure: checklist MUST answer "what new PII/secrets/internal state is exposed by this feature, intentionally or as side-effect (logs, error messages, telemetry)?" Output: data-class table + redaction policy. Decision MUST be one of {mitigated, accepted+rationale, deferred+ticket}.</statement>
+      <rationale source="gap-analysis 2026-05-17">Logs and error messages are the #1 PII-leak vector. STRIDE-heavyweight workshops catch it; lightweight feature pass catches it earlier and cheaper.</rationale>
+    </rule>
+
+    <rule id="r5-denial-of-service" testable="true" depth="essential">
+      <statement>(D) Denial of Service: checklist MUST answer "what unbounded input, recursion, or downstream call does this feature introduce, and what bounds it?" Output: rate-limit / quota / timeout / circuit-breaker that applies. Decision MUST be one of {mitigated, accepted+rationale, deferred+ticket}.</statement>
+      <rationale source="gap-analysis 2026-05-17">Features add accidental DoS vectors via fan-out, unbounded queries, or new third-party API calls. Catching at design time is 100x cheaper than at incident time.</rationale>
+    </rule>
+
+    <rule id="r6-elevation-of-privilege" testable="true" depth="essential">
+      <statement>(E) Elevation of Privilege: checklist MUST answer "does this feature let any actor act with privilege they didn't have before — directly or via path traversal, role inheritance, deserialization, or template injection?" Output: privilege-boundary diff + enforcement point. Decision MUST be one of {mitigated, accepted+rationale, deferred+ticket}.</statement>
+      <rationale source="gap-analysis 2026-05-17">EoP is the bug class with the worst blast radius and the easiest to miss in a feature that "just adds an admin toggle." Forcing the question stops the toggle from becoming RCE.</rationale>
+    </rule>
+
+    <example title="Feature STM excerpt">
+      <text>feature: bulk-export-csv  STRIDE: {S: mitigated(JWT+rate-limit), T: mitigated(signed row hash), R: mitigated(audit-log 7y), I: deferred(redaction-policy in TICKET-2114), D: mitigated(rate-limit 5/min/user, query timeout 30s), E: accepted(admin role required; rationale: scoped to org)}  reviewer: @sec-lead 2026-05-20  decision: APPROVE WITH FOLLOW-UP (I-deferred)</text>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../stride-threat-model-template/AGENTS.md"/>
+    <link path="../architecture-review-meeting-facilitation/AGENTS.md"/>
+  </see-also>
+</text>

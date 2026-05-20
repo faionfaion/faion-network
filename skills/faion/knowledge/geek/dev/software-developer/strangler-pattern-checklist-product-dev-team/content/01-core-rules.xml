@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Strangler Pattern Team Checklist Core Rules" version="1.0.0" est_tokens="1300" depth="essential">
+  <summary>Five testable rules that turn a strangler migration from "the team is migrating things" into a checkbox-driven schedule. Each rule is a binary gate with an owner and a date; gates are reviewed weekly at the migration stand-up.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-legacy-contract-frozen" testable="true" depth="essential">
+      <statement>Before ANY new code lands in scope, the legacy contract MUST be frozen: a written API/schema/operation list with a CODEOWNERS rule blocking modifications, an attached migration-only exception process, and a designated "contract owner" engineer. The freeze MUST predate the ACL implementation and be communicated to all consuming teams in writing.</statement>
+      <rationale source="Migration RFC patterns; product-team coordination playbooks">Without a frozen legacy contract, the new implementation chases a moving target — every legacy feature added during migration becomes a second migration. The freeze converts the migration into a fixed-scope project instead of a tail-chase.</rationale>
+    </rule>
+
+    <rule id="r2-acl-covers-100-percent" testable="true" depth="essential">
+      <statement>The Anti-Corruption Layer MUST cover 100% of the legacy contract's operations before traffic shift begins. Coverage MUST be verified by a contract-test suite that runs both implementations against each operation and asserts byte-equal output (or documented-and-approved variance). Partial-coverage migrations are FORBIDDEN; uncovered operations are blockers.</statement>
+      <rationale source="Consumer-driven-contracts; dual-implementation invariance">Shipping traffic to a partial new implementation is how production incidents are born. The 100% coverage gate catches "we didn't think anyone used that endpoint" and "we missed the legacy retry semantics" before they hit users.</rationale>
+    </rule>
+
+    <rule id="r3-shadow-read-green-7-days" testable="true" depth="essential">
+      <statement>Before live traffic is shifted, the new implementation MUST run in shadow-read mode (legacy serves the response; new implementation runs in parallel and its result is logged + compared) for a minimum of 7 consecutive days with &lt;0.1% divergence on critical fields. Divergence ≥0.1% MUST trigger root-cause investigation and reset the 7-day clock.</statement>
+      <rationale source="Shadow-read pattern; production-data validation literature">Synthetic tests cover ~70% of production cases. The remaining 30% — rare data shapes, legacy quirks, timezone edges — only show up under real traffic. Shadow read converts the "we hope it works" gap into measured divergence with a hard threshold.</rationale>
+    </rule>
+
+    <rule id="r4-traffic-shift-staged-with-auto-rollback" testable="true" depth="essential">
+      <statement>Live traffic shift MUST proceed in stages: 1% → 10% → 50% → 100%, each stage held a minimum of 24 hours OR one full traffic cycle (whichever is longer). At each stage, automated rollback MUST trigger if: error rate exceeds legacy baseline by &gt;20%, OR p95 latency exceeds baseline by &gt;50%, OR a critical business metric (e.g. signup conversion) drops by &gt;5%. Manual rollback authority always present; auto-rollback removes the political cost of pulling the cord.</statement>
+      <rationale source="Progressive-delivery; SRE error-budget discipline">Staged shifts with auto-rollback bound the worst-case blast radius. The thresholds are deliberately tight at the small stages and proportional to traffic, so that the team learns whether the new implementation is healthy at 1% before risking 100%.</rationale>
+    </rule>
+
+    <rule id="r5-sunset-criteria-written-pre-cutover" testable="true" depth="essential">
+      <statement>Before the 100% stage completes, the team MUST publish written sunset criteria for the legacy implementation: (a) target deletion date, (b) any consumers that must migrate off legacy first, (c) what data needs to be archived vs deleted, (d) the named engineer who will run the deletion PR. Without a published sunset plan, the migration is incomplete and may NOT be marked "done".</statement>
+      <rationale source="Migration-aftermath debt; two-stack-forever anti-pattern">Migrations that stop at "new stack is serving 100%" leave the legacy stack alive as forever-debt. Forcing a written sunset plan converts "we'll delete it eventually" into a scheduled work item with an owner, closing the loop the migration was meant to close.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Worked example — Postgres major upgrade migration">
+
+    <example type="good" title="Gate-by-gate timeline for a 14→16 Postgres major migration">
+      <code lang="markdown"><![CDATA[
+Week 1     r1: Legacy schema frozen. CODEOWNERS blocks app/migrations/* on 14-only DB.
+           Owner: DBA-lead.
+Weeks 1-3  r2: pgbouncer-fronted dual-target ACL implemented. 100% of read ops
+           covered, 100% of write ops covered, contract tests green.
+Weeks 4-5  r3: Shadow-read enabled. Day 1 divergence 0.4% on `created_at`
+           microsecond rounding (Postgres 16 differs from 14). Fixed in ACL,
+           clock reset. Days 6-12: divergence 0.0% — gate green.
+Week 6     r4: Traffic shift starts. 1% for 24h, 10% for 24h, 50% for 24h, 100%.
+           No auto-rollback triggered. p95 latency 4% better on 16.
+Week 7     r5: Sunset plan published. Legacy 14 cluster archived to S3,
+           snapshot retained 90 days, named engineer files deletion PR week 9.
+Week 9     r5: Deletion PR merged. Migration marked done.
+      ]]></code>
+      <note>r1-r5 all satisfied. The schedule is checklist-driven, not Gantt-driven — each gate has an explicit owner and a binary outcome.</note>
+    </example>
+
+    <example type="bad" title="Same migration, gateless">
+      <code lang="markdown"><![CDATA[
+"We're going to upgrade Postgres in Q3."
+- New cluster spun up week 1.
+- App code changed to dual-write week 2.
+- Cutover scheduled for end of Q3.
+- Cutover slipped 3 times.
+- At cutover, missing index on `events` table → p95 latency 4x baseline → rolled
+  back at 2am.
+- Team morale tanked.
+      ]]></code>
+      <note>r1-r5 all violated. No frozen contract, no ACL coverage gate, no shadow-read window, no staged shift, no sunset plan. The Postgres 16 cluster ran in parallel for another 6 months before someone finally migrated it again.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../../../../pro/dev/software-developer/strangler-fig-migration-pattern/"/>
+    <link path="../dual-write-shadow-read-template/"/>
+    <link path="../incident-decision-template/"/>
+  </see-also>
+</text>

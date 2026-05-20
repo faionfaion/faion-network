@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="RTO/RPO Tracking Board Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every standing RTO/RPO board must enforce so target-vs-actual drift is impossible to miss between audits.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-standing-surface" testable="true" depth="essential">
+      <statement>The board lives at a single discoverable URL referenced from the SLO doc, the DR plan, and the on-call runbook. Slack threads, attached PDFs, or ephemeral reports are explicitly NOT a tracking board for the purposes of this methodology.</statement>
+      <rationale source="Anti-decay practice">If the surface is not standing (lives at one URL, always reachable), nobody opens it on a regular cadence and drift accumulates. The triple cross-link from SLO/DR/runbook forces the board into the team's natural workflow.</rationale>
+    </rule>
+
+    <rule id="r2-row-schema" testable="true" depth="essential">
+      <statement>Each row carries: system_id, classification (high/medium/low risk), target_rto, target_rpo, last_observed_rto, last_observed_rpo, last_observation_at, last_observation_source (drill | incident | backup-verify), trend (1-period delta sign), breach_flag. Free-form rows are rejected.</statement>
+      <rationale source="Decisions-as-data">A board with free-form columns becomes a slideshow nobody can filter or alert on. The typed schema lets the breach flag and trend arrow be computed, not eyeballed.</rationale>
+    </rule>
+
+    <rule id="r3-source-record-link" testable="true" depth="essential">
+      <statement>Every last_observed_rto / last_observed_rpo cell must link to the underlying record (measurement record id, postmortem id, or backup-verify run id). A cell without a source link is rejected and rendered as `missing-source: &lt;date&gt;` until fixed.</statement>
+      <rationale source="Falsifiable trail">Numbers on a board without source links degrade into folklore. Forcing the click-through preserves the chain from "the dashboard says 47 minutes" to the actual drill log that produced 47 minutes.</rationale>
+    </rule>
+
+    <rule id="r4-staleness-policy" testable="true" depth="essential">
+      <statement>Each row carries a per-classification staleness threshold (high-risk: 30 days, medium: 90 days, low: 180 days). Rows older than threshold render as `STALE: last observed &lt;date&gt;` and count as breaches for board-health metrics regardless of the numeric values.</statement>
+      <rationale source="Anti-decay practice">A stale "we are within target" is indistinguishable from "we have not actually checked in months". Treating staleness itself as a breach forces the board to drive the next drill, instead of being merely a passive display.</rationale>
+    </rule>
+
+    <rule id="r5-breach-flag" testable="true" depth="essential">
+      <statement>breach_flag is set when last_observed_rto &gt; target_rto, last_observed_rpo &gt; target_rpo, OR the row is stale per r4. Each breach must carry an open action item (handle + due_at) within 5 business days of detection. The board cannot quietly hold an un-actioned breach.</statement>
+      <rationale source="Closed-loop accountability">A board that shows breaches without producing action items is decoration. The 5-business-day attachment window keeps the queue moving and surfaces systemic backlog when actions repeatedly slip.</rationale>
+    </rule>
+
+  </section>
+
+  <example>
+    <description>Three rows from a steady-state tracking board.</description>
+    <code language="markdown">
+| system           | class | target_rto | target_rpo | last_obs_rto | last_obs_rpo | last_obs_at | source              | trend | breach |
+|------------------|-------|------------|------------|--------------|--------------|-------------|---------------------|-------|--------|
+| checkout-prod    | high  | 1h         | 15m        | 0h 20m       | 0m           | 2026-05-20  | drill-2026-05-20    | =     | -      |
+| reports-prod     | med   | 4h         | 1h         | STALE 2025-11| STALE 2025-11| 2025-11-04  | drill-2025-11-04    | n/a   | STALE  |
+| legacy-etl       | low   | 24h        | 6h         | 9h 14m       | 5h 02m       | 2026-04-12  | incident IR-2026-04 | ↑     | -      |
+    </code>
+  </example>
+
+  <see-also>
+    <link path="../rto-rpo-measurement-template/AGENTS.md"/>
+    <link path="../../pm/rpo-rto-negotiation-guide/AGENTS.md"/>
+  </see-also>
+</text>

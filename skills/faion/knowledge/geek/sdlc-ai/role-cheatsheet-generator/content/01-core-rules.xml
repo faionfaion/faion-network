@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Role Cheatsheet Generator Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every cheatsheet-generator run must enforce so the artefact is reproducible, tier-safe, and teaches a single canonical path per role.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-deterministic-ordering" testable="true" depth="essential">
+      <statement>For a fixed (corpus-version, role, tier) input, the generator must produce byte-identical output across runs. Ordering uses a documented tie-breaker chain: priority signal desc → role-tag-match-count desc → slug alphabetical.</statement>
+      <rationale source="Reproducible artefacts">Non-deterministic output makes diffs across corpus releases unreviewable. The fixed tie-breaker chain also removes the temptation to "shuffle the list to look fresh".</rationale>
+    </rule>
+
+    <rule id="r2-tier-gated" testable="true" depth="essential">
+      <statement>The generator must read tier-manifest.json and filter out any methodology whose tier is above the requested org tier. A cheatsheet referencing pro-tier content for a solo-tier org is rejected at generate-time, not at click-time.</statement>
+      <rationale source="Tier-safe distribution">A cheatsheet that links to content the team can't open trains the team to ignore the cheatsheet. Filtering at generate-time also means the artefact can be cached as a static file.</rationale>
+    </rule>
+
+    <rule id="r3-role-tag-source-of-truth" testable="true" depth="essential">
+      <statement>Role membership is determined exclusively by the `role:` tag list in each methodology's frontmatter. The generator must never infer role from slug substrings, group folder, or summary text.</statement>
+      <rationale source="Single-source-of-truth">Heuristic role inference produces silent miscategorisation (a methodology slugged "architect-review-template" is not necessarily architect-only). The tag-only rule forces missing tags to be fixed at the source, not patched in the generator.</rationale>
+    </rule>
+
+    <rule id="r4-regeneratable-not-edited" testable="true" depth="essential">
+      <statement>The generated file carries a `# generated-do-not-edit` header with corpus-version, role, tier, and timestamp. Manual edits to the file body are not supported and will be overwritten on the next regenerate. Curated overrides live in a separate `cheatsheet-&lt;role&gt;.overrides.md` file that the generator merges.</statement>
+      <rationale source="Generated-content discipline">Edits-in-place cause divergence between corpus and cheatsheet that the next regenerate silently wipes. The separate overrides file lets teams pin must-include items without breaking the regenerate-from-scratch property.</rationale>
+    </rule>
+
+    <rule id="r5-top-n-cap" testable="true" depth="essential">
+      <statement>The cheatsheet is capped at 10 primary entries plus up to 5 overrides. Requests for N&gt;10 are rejected with a hint to split into multiple role-scoped cheatsheets (e.g. architect-runtime, architect-data) rather than grow one list.</statement>
+      <rationale source="Cognitive load cap">A "top 30" is not a cheatsheet, it is another index. The hard cap forces the priority signal to actually rank, and forces overflow to become its own narrower cheatsheet rather than diluting the canonical one.</rationale>
+    </rule>
+
+  </section>
+
+  <example>
+    <description>Generator invocation and resulting top-of-file header.</description>
+    <code language="bash">
+faion cheatsheet --role software-architect --tier pro --out cheatsheet-architect.md
+    </code>
+    <code language="markdown">
+&lt;!-- generated-do-not-edit
+corpus_version: 2026-05-20
+role: software-architect
+tier: pro
+top_n: 10
+overrides_merged: 2
+--&gt;
+# Software Architect — Top 10 Faion Methodologies
+1. pro/infra/greenfield-infra-decision-matrix
+2. pro/infra/capacity-planning-at-design-time
+...
+    </code>
+  </example>
+
+  <see-also>
+    <link path="../kb-agents-md-context-pyramid/AGENTS.md"/>
+    <link path="../team-mode-cli-flag/AGENTS.md"/>
+  </see-also>
+</text>

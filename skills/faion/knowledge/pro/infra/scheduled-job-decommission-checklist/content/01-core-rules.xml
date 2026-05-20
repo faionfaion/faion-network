@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Scheduled-Job Decommission Checklist Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every scheduled-job retirement must enforce so the orphan-job sprawl that drives monthly cron audits is reduced, not just deferred.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-five-stage-order" testable="true" depth="essential">
+      <statement>Decommission proceeds in the documented order: (1) disable schedule, (2) observe 30 days with no re-enable, (3) archive code (move to /archive, tag with decommission record id), (4) drop downstream artefacts (empty tables, drained queues, unused dashboards), (5) remove alerts and monitoring. Skipping or reordering stages is rejected; "archive code first" or "drop tables before observation" are the two most common destructive shortcuts.</statement>
+      <rationale source="Reversibility first">The order is reversibility-descending: disabling the schedule is fully reversible, dropping tables is not. The observation step exists between the two reversible stages and the irreversible ones; reordering destroys that safety property.</rationale>
+    </rule>
+
+    <rule id="r2-owner-attestation" testable="true" depth="essential">
+      <statement>The record opens with a named owner attesting that the job is no longer needed, with a one-line reason (replaced-by | feature-removed | data-no-longer-required | duplicate-of | never-served-purpose). Anonymous decommissions or "we don't think anyone uses it" are rejected; if no owner can be found, the job moves to `orphan-investigation` queue instead of decommission.</statement>
+      <rationale source="Accountability trail">Many "dead" jobs come back to life because the original owner left and the new team didn't know it served a payroll cycle once a month. A named attestation makes the assumption explicit and traceable.</rationale>
+    </rule>
+
+    <rule id="r3-30-day-observation" testable="true" depth="essential">
+      <statement>After disabling, the team waits 30 calendar days (covering at least one full month of any monthly cycle) before proceeding to archive. During this window the record carries `status: observation`; any ticket, alert, or complaint mentioning the job's name, dashboard, or output during the window resets the observation clock and re-opens the decommission decision.</statement>
+      <rationale source="Monthly-cycle coverage">A 7-day window misses monthly jobs entirely. 30 calendar days catches monthly cycles and the most common "we always run this at end-of-month" usage. The reset-on-mention rule is what turns the observation from theatre into a real check.</rationale>
+    </rule>
+
+    <rule id="r4-downstream-removal" testable="true" depth="essential">
+      <statement>Stage 4 must enumerate and remove every downstream artefact: tables/views the job wrote, queues it produced, S3 paths, dashboards, alert rules, and CI jobs that referenced its output. Each removed artefact is listed in the record with its id. An "I think that's all" or unenumerated cleanup is rejected.</statement>
+      <rationale source="Leftover-cost economics">The job is cheap to disable; its artefacts are where ongoing cost and confusion live (storage bills, broken dashboards loading empty tables, alerts that will never fire again). Enumerating them in the record is the only way to confirm "actually decommissioned" vs "schedule disabled".</rationale>
+    </rule>
+
+    <rule id="r5-archive-not-delete" testable="true" depth="essential">
+      <statement>Job source code is moved to a designated archive path (e.g. `/archive/jobs/&lt;year&gt;/&lt;slug&gt;.&lt;ext&gt;`), not deleted. The archive copy carries a header comment with the decommission record id, the date, and the attesting owner's handle. Deleted-without-archive is rejected because future "did we used to have a job for X?" investigations are common.</statement>
+      <rationale source="Cheap-history principle">Storage is cheaper than re-deriving lost logic. Six months later, a similar requirement often surfaces and the archived code provides the starting point. The header comment connects the file back to the decommission record so the reader knows why it stopped running.</rationale>
+    </rule>
+
+  </section>
+
+  <example>
+    <description>Closed decommission record for a monthly invoice-reminder cron.</description>
+    <code language="yaml">
+record_id: decom-2026-05-invoicemail
+job_identifier: cron://k8s/billing/invoice-reminder-monthly
+attesting_owner: @billing-lead
+reason: replaced-by (new dunning service v2.3, since 2026-03-15)
+timeline:
+  stage_1_disabled_at: 2026-04-01
+  stage_2_observation_ended_at: 2026-05-01 (no resets)
+  stage_3_archived_at: 2026-05-05 (path: /archive/jobs/2026/invoice-reminder.py)
+  stage_4_downstream_removed_at: 2026-05-12
+  stage_5_signals_removed_at: 2026-05-15
+downstream_removed:
+  - table: billing.invoice_reminders_log
+  - dashboard: grafana://billing/invoice-reminder-d/abc
+  - alert: invoice-reminder-overrun
+status: closed
+    </code>
+  </example>
+
+  <see-also>
+    <link path="../cronjob-overrun-monitoring/AGENTS.md"/>
+    <link path="../deprecated-api-sweeper-recipe/AGENTS.md"/>
+  </see-also>
+</text>

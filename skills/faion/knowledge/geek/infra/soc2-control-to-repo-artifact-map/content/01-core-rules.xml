@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="SOC2 Control to Repo Artifact Map — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every soc2-map.yaml application must enforce. These are HARD rules — auditor or operator preferences cannot override them.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every in-scope TSC criterion (e.g., CC6.1, CC7.2) MUST have at least one mapped artifact entry; a control with zero artifacts fails CI.</statement>
+      <rationale source="AICPA SOC 2 TSC 2017 / 2022 evidence requirement">A control without evidence is functionally absent at audit time; renderer must hard-fail to prevent silent gaps.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Each artifact entry MUST declare type ∈ {file, ci_job, dashboard_url, ticket_query, iac_resource, runbook} and a resolvable locator (repo-relative path, CI job ID, URL, JQL/Linear query, Terraform module address).</statement>
+      <rationale source="ISO 19011 audit evidence handling">Free-form prose locators ("see Slack #ops") are not auditable; a closed type vocabulary keeps the renderer deterministic.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>The map MUST be validated daily by CI: file artifacts resolve to existing paths, ci_job artifacts exist in the pipeline catalogue, URLs return non-404 — failures open a P2 ticket within 24h.</statement>
+      <rationale source="Continuous-controls-monitoring (CCM) practice">Annual checks let artifact rot accumulate for 11 months; daily validation catches drift while the fix is cheap.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Each artifact entry MUST declare an owner (Git handle or team identifier) and a review_period (≤365 days); expired ownership blocks merge of unrelated PRs touching the control.</statement>
+      <rationale source="SOC 2 CC1.4 / CC1.5 accountability">Auditors disqualify evidence with no current human responsible; review_period forces yearly re-confirmation.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>The rendered evidence binder MUST be reproducible: same map + same git ref ⇒ byte-identical binder; renderer pins all upstream tool versions and refuses to run on a dirty working tree.</statement>
+      <rationale source="Reproducible builds for compliance artifacts">Auditors challenge evidence whose origin cannot be re-derived; reproducibility kills the challenge before it starts.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical examples">
+    <example type="good" title="Anchored application">
+      <code lang="yaml"><![CDATA[
+controls:
+  CC6.1:
+    description: "Logical access security"
+    owner: "@platform-team"
+    review_period_days: 180
+    artifacts:
+      - type: iac_resource
+        locator: "infra/terraform/iam/policies.tf"
+      - type: ci_job
+        locator: "ci.access-review-monthly"
+      - type: dashboard_url
+        locator: "https://grafana.example.com/d/iam-anomalies"
+]]></code>
+      <note>Three artifact types, named owner, sub-yearly review. Renderer can verify all three locators in CI; auditor pulls the binder and sees provenance at a glance.</note>
+    </example>
+    <example type="bad" title="Un-anchored application">
+      <code lang="yaml"><![CDATA[
+controls:
+  CC6.1: "We have IAM, ask the platform team"
+]]></code>
+      <note>No type vocabulary, no resolvable locator, no owner, no review period. The renderer cannot validate anything; the auditor will issue a finding.</note>
+    </example>
+  </section>
+  <see-also>
+    <link path="../soc2-evidence-generator-cli/" />
+  </see-also>
+</text>

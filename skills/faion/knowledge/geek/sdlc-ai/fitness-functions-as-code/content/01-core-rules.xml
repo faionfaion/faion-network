@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Fitness Functions as Code Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules to encode architecture invariants as runnable tests so quarterly review compares green-bar diffs over time and drift-detection has machine signal, not opinion.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The architecture-as-code repo includes a `fitness/` directory with one runnable test per invariant, written in the language-native framework: ArchUnit (JVM), ts-arch or dependency-cruiser (TypeScript), import-linter (Python), depgraph or go-cleanarch (Go), Roslyn analyzers (C#). One framework per language — never two competing frameworks for the same module.</statement>
+      <rationale source="Geek/sdlc-ai gap: rules must be runnable, not prose">Prose architecture rules cannot be executed; choosing exactly one ecosystem-native framework per language gives AI agents and humans a single check command and avoids contradictory rule sets.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Layering and dependency-direction predicates are encoded as positive allow-lists, not negative deny-lists. The fitness test states "module `domain` may depend on `core` only"; any other import fails the test. The allow-list is the single source of truth for the dependency graph.</statement>
+      <rationale source="Encoding layering / dependency direction">Deny-lists rot quietly as new modules appear, because the absence of a rule defaults to allow. Allow-lists fail loudly on every novel import, which is exactly what drift detection needs.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Performance budgets are encoded as runnable assertions, not commentary: hot-path functions carry an annotation (`@PerfBudget(p99_ms=50)`) or a sibling `.perf.yaml`, and a CI test executes the hot-path microbenchmark and fails the build when the budget is breached. Budgets without an executable assertion are deleted from the repo.</statement>
+      <rationale source="Encoding performance budgets as tests">A budget written in a wiki page is decorative. A budget that fails a build forces a real conversation about either fixing the regression or revising the budget — and that conversation is logged in the PR.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>License and supply-chain invariants are encoded as fitness tests too: an SPDX allow-list test fails on any introduced dependency outside the allowed list; a "no `@Deprecated` in public API" test fails on regression. These run on every PR alongside layering tests, not as a separate quarterly audit.</statement>
+      <rationale source="Architecture rules include compliance constraints">Pushing licence and deprecation checks into the same fitness suite means they share the same break-build-or-pass discipline as architectural layering — compliance stops being a once-a-quarter scramble.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Quarterly architecture review consumes a machine-generated drift report built from the fitness suite's git history: which invariants were added, which were skipped (`@Ignore` / `@xfail`), and which thresholds were widened. Any invariant marked "temporarily skipped" must have an expiry date inside the same review; expired skips block the next quarter's review approval.</statement>
+      <rationale source="Quarterly review + drift detection depend on encoded rules">A quarterly review without a machine diff is theatre. The skip-with-expiry mechanism is the only one that prevents permanent silencing of expensive-to-fix invariants.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical example">
+    <example type="good" title="Layering invariant in ArchUnit + perf budget in pytest">
+      <code lang="text"><![CDATA[
+fitness/Layering.archtest (JVM, ArchUnit):
+  noClasses().that().resideInAPackage("..web..")
+    .should().dependOnClassesThat().resideInAPackage("..persistence..")
+    .because("web must go through application, not persistence directly");
+
+  classes().that().resideInAPackage("..domain..")
+    .should().onlyDependOnClassesThat().resideInAnyPackage("..domain..", "java..", "kotlin..")
+    .because("domain is the only allow-listed island");
+
+fitness/perf_checkout.py (Python, pytest):
+  @perf_budget(p99_ms=50)
+  def test_checkout_handler_hot_path():
+      latencies = run_microbench(handler=checkout, n=10_000)
+      assert percentile(latencies, 99) <= 50  # budget enforced
+
+fitness/spdx_allowlist.yaml:
+  allowed: [Apache-2.0, MIT, BSD-3-Clause, ISC]
+  test: scripts/check_spdx.py # fails CI on first disallowed licence
+
+Quarterly review report (auto-generated from git log on fitness/):
+  Added: SC-022 latency assertion, SC-031 layering for shipping module
+  Skipped (>0): 1 (SC-009 ZAP-baseline, expires next sprint → review approves only if cleared)
+  Widened: SC-014 from p99_ms=200 to 250 (with PR link)
+]]></code>
+      <note>Every architectural commitment is either a green CI line or an explicit, dated waiver. AI-generated PRs that cross a layer boundary fail on submission, not at quarterly review.</note>
+    </example>
+  </section>
+</text>

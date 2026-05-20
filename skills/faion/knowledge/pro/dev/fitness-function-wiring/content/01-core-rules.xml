@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Fitness Function Wiring Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules turn each (High-impact, High-likelihood) QAA scenario into a concrete CI job. Every scenario gets a tool, a config artefact, a threshold, a cadence, and a breach action — no prose-only obligations survive.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every (H,H) scenario in the QAA register has exactly one canonical CI job named <code>fitness-&lt;scenario-id&gt;</code>, owned by a single team, with the tool fixed by quality attribute: k6 or Gatling for throughput/latency, Chaos Monkey / Litmus / Toxiproxy for resilience, OWASP ZAP for runtime AppSec, Trivy / Grype for supply-chain. No (H,H) scenario is allowed without a named job.</statement>
+      <rationale source="QAA fitness-function checkbox gap">When scenarios point to "we will measure this" without a named CI job, the obligation evaporates between architecture review and engineering. One job, one owner, one tool removes the diffusion.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Each fitness job's threshold is expressed in the numeric units of the agreed cost + latency budget (e.g. p99 ≤ 250ms, error_rate ≤ 0.1%, MTTR ≤ 5min, container-CVE count = 0 critical) and is stored as code next to the job (`fitness/&lt;scenario-id&gt;.yaml`), not hidden in a dashboard.</statement>
+      <rationale source="Bridge between architecture and CI">A threshold stored only in a Grafana panel cannot block a deploy. Co-locating the threshold with the job makes it reviewable in PRs and prevents silent drift.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Each job has a declared cadence: <code>per-PR</code> (lightweight smoke), <code>nightly</code> (full load profile), <code>weekly</code> (chaos / ZAP), or <code>release-gate</code> (must pass before tag). The cadence is part of the architecture-as-code repo and is reviewed in the monthly architecture review.</statement>
+      <rationale source="Architecture-as-code continuous maintenance">Without cadence-as-code, fitness jobs decay into "we used to run this". Pinning cadence into the same review cycle as the architecture keeps verification frequency proportional to architectural risk.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Every fitness job declares a breach-action of one of: <code>block-merge</code>, <code>block-release</code>, <code>page-on-call</code>, <code>open-ticket</code>. The action is mechanical (CI exits non-zero, PagerDuty triggers, Jira issue auto-created) — never "notify the architect by email".</statement>
+      <rationale source="Bridges architecture and CI; breach actions must be enforceable">Email-only breach actions get filtered or ignored; mechanical actions force the conversation. Choosing the correct action by scenario keeps the noise budget aligned with the risk score.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>The QAA register and the fitness/ directory are link-checked in CI: any (H,H) scenario without a corresponding `fitness/&lt;id&gt;.yaml` and any orphan fitness file without a register entry fails the architecture-as-code build. The monthly review explicitly reads the link-check output before approving the next iteration.</statement>
+      <rationale source="Continuous maintenance + monthly review activity">A two-way link check is the only mechanism that prevents the register and the CI surface from quietly drifting apart over a quarter. Without it, the methodology degrades to good intentions.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical example">
+    <example type="good" title="Wiring a checkout-latency (H,H) scenario">
+      <code lang="text"><![CDATA[
+QAA register entry:
+  id: SC-014
+  attribute: performance
+  scenario: "checkout submit p99 ≤ 250ms under 200 RPS, error_rate ≤ 0.1%"
+  impact: H
+  likelihood: H
+
+fitness/SC-014.yaml:
+  job_name: fitness-SC-014
+  tool: k6
+  config: fitness/SC-014.k6.js   # 200 RPS, 10 min, ramp 1 min
+  thresholds:
+    http_req_duration_p99_ms: { lte: 250 }
+    http_req_failed_rate:     { lte: 0.001 }
+  cadence: nightly + release-gate
+  breach_action: block-release
+  owner: payments-team
+
+CI:
+  - PR check: link-check passes (SC-014 ↔ fitness/SC-014.yaml)
+  - Nightly: k6 run; on threshold breach → exit 1, GitHub issue auto-opened
+  - Release tag: k6 must pass; otherwise tag job halts
+
+Monthly architecture review:
+  - Read link-check output: 0 orphans
+  - Confirm SC-014 thresholds still match budget; rotate config if not
+]]></code>
+      <note>The architecture decision ("checkout must be fast under load") is now a mechanically enforced contract. Drift triggers a release-block, not a quarterly surprise.</note>
+    </example>
+  </section>
+</text>

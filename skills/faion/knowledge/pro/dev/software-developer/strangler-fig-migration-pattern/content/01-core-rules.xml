@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Strangler Fig Migration Pattern Core Rules" version="1.0.0" est_tokens="1300" depth="essential">
+  <summary>Five testable rules that distinguish a true strangler-fig migration from a long-running upgrade branch that pretends to be one. Each rule is verifiable from the repo state (router config, PR history, legacy-frozen marker).</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-boundary-first" testable="true" depth="essential">
+      <statement>Before ANY route is migrated, the migration MUST land an outermost router / boundary that can dispatch to either legacy or new implementations per-route. This boundary MUST be merged to main and operate in production before move-1 begins. Migrations that start with "let's just port one route" before the boundary exists are FORBIDDEN.</statement>
+      <rationale source="Fowler StranglerFigApplication; Next.js / Rails migration retros">Without a dispatch boundary, every per-route move becomes a hand-coded conditional inside the legacy app, which is itself a migration debt. A real boundary (nginx, middleware, URLconf split, Rack stack) lets each subsequent move be a small config change.</rationale>
+    </rule>
+
+    <rule id="r2-new-code-beside-legacy" testable="true" depth="essential">
+      <statement>New implementations MUST live BESIDE legacy ones in the same repo, in a clearly separated directory (e.g. `app/` vs `pages/`, `apps/new-frontend/` vs `apps/legacy/`, `engines/admin_v2/` vs `app/controllers/admin/`). A long-running parallel branch is FORBIDDEN. Main MUST remain deployable on every commit.</statement>
+      <rationale source="Trunk-based development; long-running-branch failure modes">Long-running upgrade branches accumulate merge conflicts, drift from main, and become a singular bet that dominates planning. Coexistence in main converts the migration into 100 small bets instead of one big one.</rationale>
+    </rule>
+
+    <rule id="r3-route-by-route-cutover" testable="true" depth="essential">
+      <statement>Cutover from legacy to new MUST happen one route (or one module / one bounded surface) at a time, gated by the boundary's per-route config. Each cutover MUST be revertible by flipping a flag or config line. "Switch everything when we're ready" cutovers are FORBIDDEN.</statement>
+      <rationale source="Per-route incremental rollout; blast-radius minimisation">Big-bang cutovers concentrate risk in a single moment. Per-route cutovers spread risk across N small moments, each with a near-instant rollback. This is the single largest determinant of whether a major migration ships intact.</rationale>
+    </rule>
+
+    <rule id="r4-legacy-frozen-post-cutover" testable="true" depth="essential">
+      <statement>Once a route is cut over to the new implementation, the legacy code for that route MUST be frozen: no new features, no non-security fixes. A CODEOWNERS rule or a `LEGACY_FROZEN.md` marker MUST encode the freeze. Bug fixes in frozen legacy code are an explicit exception requiring sign-off.</statement>
+      <rationale source="Migration-completion incentive alignment">If legacy can still accept features, the migration never finishes — every developer chooses the path of least resistance, which is the framework they already know. Freezing legacy aligns incentives: shipping new work now requires the new stack.</rationale>
+    </rule>
+
+    <rule id="r5-completion-by-deletion" testable="true" depth="essential">
+      <statement>The migration is COMPLETE only when the legacy code is DELETED from the repo (not just unreachable). A migration that ends with both stacks coexisting "for now" is incomplete and counts against the team's tech-debt budget. A final task in the migration plan MUST be "delete legacy directory + remove boundary + remove dependency".</statement>
+      <rationale source="Migration-aftermath debt; two-stack-forever anti-pattern">Coexistence is the strangler's mid-state, not its end-state. Stopping at coexistence doubles the maintenance surface forever. Forcing deletion as a planned step closes the loop and recovers the velocity the migration was meant to unlock.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Scenario sketches">
+
+    <example type="good" title="Next.js pages → app router strangler">
+      <code lang="markdown"><![CDATA[
+boundary:
+  next.config: `experimental.appDir = true`
+  directory: `pages/` and `app/` coexist; Next dispatches per route automatically.
+
+cutover order (size-ascending):
+  1. /about (static)            → app/about/page.tsx
+  2. /pricing (static, MDX)     → app/pricing/page.tsx
+  3. /login (form, no SSR auth) → app/login/page.tsx
+  ... up to ...
+  N. /dashboard (auth + SSR)   → app/(authenticated)/dashboard/page.tsx
+
+per-route revert: rename app/route/page.tsx → app/route/_disabled.page.tsx
+  → Next falls back to pages/route.tsx automatically.
+
+freeze: pages/*.tsx that already moved get a top-comment marker and CODEOWNERS rule.
+delete: final PR removes pages/, next.config experimental flag, and any compat shim.
+      ]]></code>
+      <note>r1-r5 all satisfied. Each cutover is a 5-50-line PR; main is releasable on every commit.</note>
+    </example>
+
+    <example type="bad" title="The big-bang branch in disguise">
+      <code lang="markdown"><![CDATA[
+branch: feat/next-15-app-router (created 4 months ago)
+status: 87 files changed, 280 commits, 14 conflicts with main
+plan: "merge when everything is migrated"
+
+reality:
+  - main keeps shipping features the branch must continually rebase against
+  - one bug in the branch blocks the whole team
+  - the only person who knows the branch state quits / goes on holiday
+  - branch is abandoned; team starts over with strangler approach
+      ]]></code>
+      <note>r1, r2 violated. A long-running branch IS the failure mode the strangler exists to prevent. Even if delivered, every conflict resolution is a per-PR cost the per-route approach skips.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../codemod-recipe-library/"/>
+    <link path="../contract-testing-consumer-driven/"/>
+    <link path="../../../../geek/dev/software-developer/dual-write-shadow-read-template/"/>
+  </see-also>
+</text>

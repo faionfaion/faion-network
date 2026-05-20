@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="SOTA Onboarding 1-Day Runbook Core Rules">
+  <summary>Five testable rules for the one-day SOTA-LLM onboarding runbook: time-boxed, gateway-wired, eval-driven, decision-recorded.</summary>
+
+  <section title="Onboarding rules">
+
+    <rule id="r1-8-hour-wallclock" testable="true">
+      <statement>The runbook fits in an 8-hour wall-clock budget on a single calendar day. Stages: 1h announce-scan + spec read, 1h gateway adapter wiring, 1h smoke eval, 2h full benchmark vs incumbent on the team's eval set, 1h cost-quality readout, 1h go/no-go + decision record. If a stage overruns, the next stage absorbs the slip — total never exceeds 8h.</statement>
+      <rationale>Without a wall-clock budget the onboarding stretches to 3 weeks and the team ships against the previous SOTA. A one-day cap forces decisive scoping.</rationale>
+    </rule>
+
+    <rule id="r2-gateway-not-direct" testable="true">
+      <statement>The new model is integrated through the existing model-gateway adapter pattern — never wired directly into a feature module. The adapter implements the same interface as the incumbent, including request/response shape, error mapping, and cost accounting hooks.</statement>
+      <rationale>Direct integrations create per-feature switching cost that compounds across the codebase. Gateway-only integrations are reversible in one config flip — essential for a one-day experiment.</rationale>
+    </rule>
+
+    <rule id="r3-eval-against-own-set" testable="true">
+      <statement>The benchmark is run against the team's own stratified eval set, NOT against public leaderboard scores or the vendor's announcement numbers. Public scores are noted but not used to decide the rollout — only the team's eval-set numbers count.</statement>
+      <rationale>Public leaderboards over-index on capabilities that may not matter for the team's actual product flows. The team's eval set is the only valid evidence base for the team's production decision.</rationale>
+    </rule>
+
+    <rule id="r4-written-decision-record" testable="true">
+      <statement>The day ends with a written decision record (1-page) containing: model id + version, eval-set scores vs incumbent, per-1k-token cost delta, latency p50/p95 delta, decision (GO / NO-GO / DEFER), and the named owner who will revisit it. The record is committed to the repo, not parked in Slack.</statement>
+      <rationale>Decision records prevent the team from re-running the same evaluation 4 months later because no one remembers why the model was rejected. They also let future maintainers re-litigate with new evidence.</rationale>
+    </rule>
+
+    <rule id="r5-flag-gated-rollout" testable="true">
+      <statement>A GO decision results in the model behind a feature flag routing 1–5% of traffic — never a direct cut-over. Promotion to 100% requires a separate, later decision after at least 48h of production traces and the eval-in-prod sampling policy fires.</statement>
+      <rationale>One-day evals miss long-tail failure modes (rare tool-call shapes, edge prompts, hostile inputs). Flag-gated rollouts catch these without rolling back the whole team.</rationale>
+    </rule>
+
+  </section>
+
+  <example type="good">
+    <code lang="markdown"><![CDATA[
+# SOTA Onboarding — 2026-05-20 (Anthropic claude-opus-4-7)
+
+## Schedule (wall-clock)
+08:30 announce-scan, model card, breaking changes
+09:30 gateway adapter wired (commit a31fb20)
+10:30 smoke eval (50 cases)            → pass on 47/50
+11:30 full bench vs claude-opus-4-6    → see results
+13:30 cost-quality readout              → see results
+14:30 GO/NO-GO meeting (15 min)         → GO @ 3%
+15:30 decision record committed (this file)
+16:30 feature flag enabled, monitoring dashboard linked
+
+## Results
+                      incumbent (4-6)   candidate (4-7)
+Eval-set (n=287):          82.1%             86.4%      (+4.3pp)
+p50 latency:               1.9s              2.1s       (+0.2s)
+p95 latency:               4.4s              4.8s       (+0.4s)
+$/1k input tokens:         $0.012            $0.018     (+50%)
+$/1k output tokens:        $0.060            $0.090     (+50%)
+
+## Decision: GO @ 3% behind flag `model.opus47`
+Owner: @maria (revisit 2026-05-27)
+Rationale: +4.3pp on our eval-set crosses the +3pp threshold from
+cost-quality-pareto-template. Cost delta accepted on production
+metric weighting (quality > cost for agent reasoning class).
+Rollback: flip flag to 0%; gateway adapter stays merged for re-evaluation.
+]]></code>
+    <note>8-hour schedule, gateway-only integration, evaluated on own set, decision committed, flag-gated 3% rollout with named owner and revisit date.</note>
+  </example>
+
+  <antipattern>
+    <description>Team reads the model announcement, sees the public leaderboard scores, swaps the model name in the gateway, deploys to 100% production. The next day, the agent's tool-calling format silently breaks for 8% of requests because the new model emits slightly different JSON.</description>
+    <reason>Violates r3 (relied on public scores instead of own eval set) and r5 (100% rollout, no flag, no monitoring window). A 1-hour eval against the team's set would have caught the tool-call drift.</reason>
+  </antipattern>
+</text>

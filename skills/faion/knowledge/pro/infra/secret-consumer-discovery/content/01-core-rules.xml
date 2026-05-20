@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Secret Consumer Discovery Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules that govern enumeration of every consumer of a given secret across the stack. Any missed consumer = production outage at rotation time.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-alias-set-first" testable="true" depth="essential">
+      <statement>Before any search, MUST build the alias set: logical name, every known env-var spelling, every file-path form, every KMS/store path, every short ID. Searches with fewer than 3 aliases for a secret older than 12 months are REJECTED — old secrets always have alias drift.</statement>
+      <rationale source="gap-analysis 2026-05-17">A single-string search misses 30-60% of consumers because Devs spell secrets inconsistently across repos. Alias-set-first is the only way to avoid blind spots.</rationale>
+    </rule>
+
+    <rule id="r2-six-source-sweep" testable="true" depth="essential">
+      <statement>Discovery MUST query ALL SIX consumer surfaces: (1) source code in every repo, (2) CI/CD pipeline definitions, (3) secret-store audit log (last 90 days reads), (4) scheduler/cron jobs, (5) runtime configs (k8s ConfigMaps, .env mounts, systemd EnvironmentFiles), (6) infrastructure-as-code (Terraform/Pulumi). Skipping any source = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Most rotation breakage comes from sources teams forget — cron jobs and IaC pipelines especially. The six-source sweep is the minimum honest discovery.</rationale>
+    </rule>
+
+    <rule id="r3-audit-log-truth" testable="true" depth="essential">
+      <statement>The secret-store audit log (e.g. Vault audit, AWS CloudTrail GetSecretValue) is the GROUND TRUTH for active consumers. Any consumer that hit the store in the last 30 days MUST appear in the registry. Code-grep matches without audit-log hits are tagged `unverified` and surface for follow-up.</statement>
+      <rationale source="gap-analysis 2026-05-17">Code may reference a secret that the runtime never actually fetches. Audit log proves who is really live; code search proves who is theoretically a consumer. Both are needed; audit log is authoritative.</rationale>
+    </rule>
+
+    <rule id="r4-consumer-registry-typed" testable="true" depth="essential">
+      <statement>Output MUST be a structured registry: `consumers: [{name, type: code|ci|cron|runtime|iac, location: &lt;path&gt;, owner: &lt;handle&gt;, last_fetch: &lt;iso8601 or null&gt;, rotation_blast_radius: low|medium|high}]`. Free-form text registry = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Untyped registries cannot be programmatically consumed by the rotation runbook. The typed form is the contract between discovery and rotation.</rationale>
+    </rule>
+
+    <rule id="r5-blast-radius-rated" testable="true" depth="essential">
+      <statement>Every consumer MUST carry a `rotation_blast_radius` rating with a rationale string. Ratings: low = restart consumer to pick up new value, medium = cascading dep needs coordinated restart, high = consumer is a database / payment processor / external integration with no graceful reload. Unrated consumers = REJECT.</statement>
+      <rationale source="gap-analysis 2026-05-17">Without blast-radius ratings the rotation operator can't sequence the cutover. SOC2/ISO auditors also want documented risk per consumer.</rationale>
+    </rule>
+
+    <rule id="r6-registry-versioned" testable="true" depth="essential">
+      <statement>The registry MUST be versioned (git or wiki history) and signed by a named human reviewer before the rotation runbook is allowed to start. Registry older than 30 days at runbook start = MUST refresh.</statement>
+      <rationale source="gap-analysis 2026-05-17">Staleness is the most common failure mode. A 6-month-old registry is worse than no registry because operators trust it.</rationale>
+    </rule>
+
+    <example title="Registry excerpt">
+      <text>secret: STRIPE_API_KEY  aliases: [STRIPE_KEY, stripe_sk, sk-stripe]  consumers: [{name: payment-api, type: runtime, location: k8s/prod/payment-api/env, owner: @ops, last_fetch: 2026-05-19T11:02Z, rotation_blast_radius: high}, {name: nightly-recon, type: cron, location: hosts/recon-01/crontab, owner: @finance, last_fetch: 2026-05-20T03:00Z, rotation_blast_radius: medium}]</text>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="../secrets-rotation-end-to-end/AGENTS.md"/>
+    <link path="../devops-engineer/AGENTS.md"/>
+  </see-also>
+</text>
