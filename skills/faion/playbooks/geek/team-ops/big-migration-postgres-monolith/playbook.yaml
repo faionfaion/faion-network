@@ -1,0 +1,306 @@
+# =============================================================================
+# faion playbook manifest — P6 product-dev team
+# Generated for F-064 from playbook-index.json p6-product-dev-team entry 4
+# =============================================================================
+
+slug: big-migration-postgres-monolith
+title: "Big migration: Postgres major or monolith-to-services"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 43f7883951904aa3
+
+tier_min: geek
+complexity: deep
+context: [team]
+persona_hints: [P6]
+
+intent: |
+  Cross-quarter migration completes with zero data loss, proven rollback, bounded dual-stack window, and clean post-migration audit.
+
+scope: |
+  A multi-quarter migration (Postgres major upgrade, monolith-to-services decomposition, or equivalent) goes from "we should probably do this" to "post-migration audit clean." The team builds a pre-migration baseline, proves dual-write / shadow-read, executes a cutover from a tagged runbook, and runs the post-migration audit. Risk register is alive throughout. All squads are informed at each gate.
+
+non_goals:
+  - "Greenfield architecture — assumes an existing production system"
+  - "Routine feature delivery — covered by rfc-to-production-feature-delivery"
+  - "Vendor selection / licence procurement — handled by separate procurement track"
+
+prerequisites:
+  - "Business case approved with explicit cost-of-doing-nothing"
+  - "Backup + restore tested in last 90 days"
+  - "Observability stack in place (metrics, logs, traces)"
+  - "On-call rotation able to absorb cutover window"
+
+success_criteria:
+  - "Strategy current/future/gap analysis docs published"
+  - "Pre-migration baseline captured (perf, correctness, cost)"
+  - "Dual-write + shadow-read evidence collected for ≥2 weeks"
+  - "Cutover runbook executed end-to-end with sign-offs"
+  - "Post-migration audit clean (functional + perf + cost)"
+  - "Lessons-learned doc + risk register closed"
+
+stages:
+  - name: "Strategy + scope"
+    intent: "Current/future state + gap analysis turn intuition into a written change strategy."
+    tasks:
+      - "Run strategy-analysis current-state"
+      - "Define future-state architecture"
+      - "Produce gap-analysis with concrete delta"
+      - "Author change-strategy doc"
+      - "WBS and risk register seeded"
+    methodologies:
+      - slug: strategy-analysis-current-state
+        path: pro/ba/business-analyst/strategy-analysis-current-state
+        required: true
+        tier_gate: pro
+      - slug: strategy-analysis-future-state
+        path: pro/ba/business-analyst/strategy-analysis-future-state
+        required: true
+        tier_gate: pro
+      - slug: strategy-analysis-gap-analysis
+        path: pro/ba/business-analyst/strategy-analysis-gap-analysis
+        required: true
+        tier_gate: pro
+      - slug: strategy-analysis-change-strategy
+        path: pro/ba/business-analyst/strategy-analysis-change-strategy
+        required: true
+        tier_gate: pro
+      - slug: wbs-creation
+        path: pro/pm/pm-traditional/wbs-creation
+        required: true
+        tier_gate: pro
+      - slug: risk-management
+        path: pro/pm/pm-traditional/risk-management
+        required: true
+        tier_gate: pro
+      - slug: risk-register
+        path: pro/pm/pm-traditional/risk-register
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Change-strategy doc"
+      - "Seeded risk register"
+    decision_gate: |
+      Advance when change-strategy is signed off and risk register is reviewed across all impacted squads.
+
+  - name: "Architecture + boundaries"
+    intent: "Service boundaries, quality attributes, and reliability/observability baselines defined."
+    tasks:
+      - "Define service boundaries"
+      - "Apply microservices-architecture + event-driven-architecture where relevant"
+      - "Run quality-attributes analysis with reliability + observability focus"
+      - "Pick patterns: ACL, circuit breaker, saga, inter-service comm"
+    methodologies:
+      - slug: microservices-architecture
+        path: pro/dev/software-architect/microservices-architecture
+        required: true
+        tier_gate: pro
+      - slug: event-driven-architecture
+        path: pro/dev/software-architect/event-driven-architecture
+        required: true
+        tier_gate: pro
+      - slug: quality-attributes-analysis
+        path: pro/dev/software-architect/quality-attributes-analysis
+        required: true
+        tier_gate: pro
+      - slug: reliability-architecture
+        path: pro/dev/software-architect/reliability-architecture
+        required: true
+        tier_gate: pro
+      - slug: observability-architecture
+        path: pro/dev/software-architect/observability-architecture
+        required: true
+        tier_gate: pro
+      - slug: microservices-design
+        path: pro/dev/code-quality/microservices-design
+        required: true
+        tier_gate: pro
+      - slug: ddd-aggregates
+        path: pro/dev/software-developer/ddd-aggregates
+        required: true
+        tier_gate: pro
+      - slug: ddd-anti-corruption-layer
+        path: pro/dev/software-developer/ddd-anti-corruption-layer
+        required: true
+        tier_gate: pro
+      - slug: microservices-service-boundaries
+        path: pro/dev/software-developer/microservices-service-boundaries
+        required: true
+        tier_gate: pro
+      - slug: microservices-inter-service-comm
+        path: pro/dev/software-developer/microservices-inter-service-comm
+        required: true
+        tier_gate: pro
+      - slug: microservices-circuit-breaker
+        path: pro/dev/software-developer/microservices-circuit-breaker
+        required: true
+        tier_gate: pro
+      - slug: microservices-saga-pattern
+        path: pro/dev/software-developer/microservices-saga-pattern
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Service boundary map"
+      - "Decision log for patterns picked / rejected"
+    decision_gate: |
+      Advance when boundaries are testable in a spike and the rejected patterns are written down with rationale.
+
+  - name: "Backups + reversibility"
+    intent: "Proven backups + verified restore + rollback plan before any cutover."
+    tasks:
+      - "Refresh Postgres + MySQL/Mongo + k8s/Velero backups"
+      - "Run backup-verification-dr drill end-to-end"
+      - "Define rollback runbook"
+      - "Wire GitOps progressive delivery so reverts are cheap"
+    methodologies:
+      - slug: backup-database-postgres
+        path: pro/infra/cicd-engineer/backup-database-postgres
+        required: true
+        tier_gate: pro
+      - slug: backup-database-mysql-mongo
+        path: pro/infra/cicd-engineer/backup-database-mysql-mongo
+        required: true
+        tier_gate: pro
+      - slug: backup-kubernetes-velero
+        path: pro/infra/cicd-engineer/backup-kubernetes-velero
+        required: true
+        tier_gate: pro
+      - slug: backup-verification-dr
+        path: pro/infra/cicd-engineer/backup-verification-dr
+        required: true
+        tier_gate: pro
+      - slug: backup-strategies
+        path: pro/infra/devops-engineer/backup-strategies
+        required: true
+        tier_gate: pro
+      - slug: argocd-gitops
+        path: pro/infra/cicd-engineer/argocd-gitops
+        required: true
+        tier_gate: pro
+      - slug: gitops-progressive-delivery
+        path: pro/infra/cicd-engineer/gitops-progressive-delivery
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Verified backup + restore report"
+      - "Rollback runbook"
+    decision_gate: |
+      Refuse to advance without a proven restore inside the last 30 days.
+
+  - name: "Dual-stack + shadow-read"
+    intent: "Run old and new side-by-side; capture parity evidence."
+    tasks:
+      - "Wire dual-write to both stacks"
+      - "Wire shadow-read on the new stack"
+      - "Generate consumer-contract tests from spec"
+      - "Pin a golden-master for legacy rewrite checks"
+      - "Property-based invariants on critical paths"
+    methodologies:
+      - slug: test-consumer-contract-from-spec
+        path: geek/sdlc-ai/test-consumer-contract-from-spec
+        required: true
+        tier_gate: geek
+      - slug: test-golden-master-legacy-rewrite
+        path: geek/sdlc-ai/test-golden-master-legacy-rewrite
+        required: true
+        tier_gate: geek
+      - slug: test-property-based-llm-invariants
+        path: geek/sdlc-ai/test-property-based-llm-invariants
+        required: true
+        tier_gate: geek
+      - slug: dora-metrics
+        path: pro/infra/cicd-engineer/dora-metrics
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Parity report from ≥2 weeks of dual-stack"
+      - "Open delta list with mitigation"
+    decision_gate: |
+      Advance when parity is within target band on production traffic shape and open deltas have owners.
+
+  - name: "Cutover"
+    intent: "Tagged runbook executes end-to-end; comms loop closes."
+    tasks:
+      - "Execute runbook as markdown tagged steps"
+      - "Run comms-management cadence: pre, mid, post"
+      - "Hold change-control gate at the critical step"
+      - "Capture timing + anomalies for post-audit"
+    methodologies:
+      - slug: inc-runbook-as-markdown-tagged-steps
+        path: geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps
+        required: true
+        tier_gate: geek
+      - slug: communications-management
+        path: pro/pm/pm-traditional/communications-management
+        required: true
+        tier_gate: pro
+      - slug: change-control
+        path: pro/pm/pm-traditional/change-control
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Executed cutover record"
+      - "Comms log"
+    decision_gate: |
+      Required: every tagged step has a 'done' marker. Skipped steps = block-and-investigate.
+
+  - name: "Post-audit + lessons"
+    intent: "Audit verifies the new state; lessons close the loop."
+    tasks:
+      - "Run functional + perf + cost audit"
+      - "Close the risk register"
+      - "Write lessons-learned doc"
+      - "Project closure with explicit benefits realisation"
+    methodologies:
+      - slug: lessons-learned
+        path: pro/pm/pm-traditional/lessons-learned
+        required: true
+        tier_gate: pro
+      - slug: project-closure
+        path: pro/pm/pm-traditional/project-closure
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Post-migration audit report"
+      - "Closed risk register + lessons-learned doc"
+    decision_gate: |
+      Required outputs: audit + lessons-learned. Migrations without retros teach nothing to the next one.
+
+common_pitfalls:
+  - "Skipping the restore drill — backups that don't restore aren't backups"
+  - "Dual-stack with no parity report — flying blind"
+  - "Cutover runbook in a wiki nobody reads — fails the bus-factor test"
+  - "Comms only after the fact — surprises customers and on-call"
+
+quality_checklist:
+  - "Can I restore last night's backup into a new cluster from cold steel?"
+  - "Did parity hold across all critical paths under real traffic shape?"
+  - "Do I have a written rollback that someone other than the migration lead can execute?"
+
+related_playbooks:
+  - rfc-to-production-feature-delivery
+  - incident-postmortem-preventive-backlog
+  - soc2-gdpr-audit-prep
+
+token_budget_estimate: 28000
+cli_invocations:
+  human:  "faion get-content big-migration-postgres-monolith --format md"
+  agent:  "faion get-content big-migration-postgres-monolith --format context"
+  json:   "faion get-content big-migration-postgres-monolith --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P6 product-dev team persona"
+
+gaps:
+  - methodology_slug: strangler-pattern-checklist-product-dev-team
+    expected_tier: geek
+    blocks_stage: 2
+    note: "Architecture stage references strangler-fig moves but lacks a written checklist"
+  - methodology_slug: dual-write-shadow-read-template
+    expected_tier: geek
+    blocks_stage: 4
+    note: "Dual-stack stage needs a concrete dual-write + shadow-read template"
