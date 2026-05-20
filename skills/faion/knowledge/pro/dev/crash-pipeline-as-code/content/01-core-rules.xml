@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Crash-Pipeline-as-Code Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that prevent the recurring "we're missing symbols for the build that crashed in production" failure.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-symbols-in-ci" testable="true" depth="essential">
+      <statement>Symbol upload (dSYMs for iOS, ProGuard/R8 for Android, source maps for web, debug info for native) MUST happen in CI as part of the release job — never from a developer laptop. The upload step is committed in the pipeline file and runs on every release tag. Manual upload is forbidden.</statement>
+      <rationale source="Field experience: 80%+ of "missing symbols" incidents stem from a forgotten manual upload">CI is the only path that runs every time. Developer laptops produce 95% reliability; releases need 100%.</rationale>
+    </rule>
+
+    <rule id="r2-symbol-verification" testable="true" depth="essential">
+      <statement>After upload, the CI MUST verify deobfuscation works by calling the vendor's API to check the symbol was indexed AND running a synthetic crash test (or test event) that returns symbolicated frames. A release that does not verify symbols is rolled back, not shipped.</statement>
+      <rationale source="Sentry, Crashlytics best-practice docs + post-incident reviews">Symbol upload returns 200 but vendor-side processing can silently fail. Without verification, the team learns about the failure when a real crash arrives un-symbolicated and the alert is useless.</rationale>
+    </rule>
+
+    <rule id="r3-alert-rules-in-code" testable="true" depth="essential">
+      <statement>Alert rules MUST be defined in version-controlled code (Terraform, vendor YAML config, or vendor CLI scripts). Web-console-only rules are forbidden — they vanish in audit, drift silently, and have no review history. If the vendor has no IaC: write a script that exports rules as JSON, commit, and run a daily drift-check.</statement>
+      <rationale source="Configuration-as-code principle; cf. GitOps">Console rules are mutable by anyone with admin and have zero audit trail. Code rules have PR reviews, history, and rollback.</rationale>
+    </rule>
+
+    <rule id="r4-dashboard-as-code" testable="true" depth="essential">
+      <statement>The primary "is the app healthy" dashboard MUST be defined in code (vendor's dashboard JSON / Terraform / Grafana JSON). Console-built dashboards are allowed for exploration but not as the team's source of truth. Dashboard ownership is documented (owner field, on-call rotation).</statement>
+      <rationale source="Observability practice (Honeycomb, Grafana communities)">Dashboards owned by people who leave evaporate. Dashboards in code survive personnel change and can be cloned per service.</rationale>
+    </rule>
+
+    <rule id="r5-retention-explicit" testable="true" depth="essential">
+      <statement>Retention settings (events, attachments, releases) MUST be set in code, not console defaults. Default retention is recorded with the reason (cost vs investigation window). PII redaction settings are also committed; sending PII to the vendor is a contract issue, not a config detail.</statement>
+      <rationale source="GDPR Art.5 storage-limitation + data-processor agreements">Default retention may exceed what GDPR/HIPAA permits for crash data. PII leakage to vendor is a controller-processor contract breach. Both must be reviewable in code.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="CI step that obeys r1 + r2">
+      <code lang="yaml"><![CDATA[
+- name: Upload iOS dSYMs to Sentry
+  run: |
+    sentry-cli upload-dif \
+      --org $SENTRY_ORG --project $SENTRY_PROJECT \
+      ios-build/*.dSYM/dSYMs/
+
+- name: Verify dSYM indexed (synthetic event)
+  run: |
+    EVENT_ID=$(sentry-cli send-event --release $RELEASE --message "ci-verify-$BUILD")
+    sleep 10
+    sentry-cli events get $EVENT_ID --json | jq -e '.entries[]|select(.type=="exception")|.data.values[0].stacktrace.frames[0].function != null'
+      ]]></code>
+      <note>Upload + verify in CI. Synthetic event confirms deobfuscation actually works for this release.</note>
+    </example>
+
+    <example type="bad" title="Pre-methodology baseline">
+      <code lang="text"><![CDATA[
+"After every release, run /Scripts/upload_dsyms.sh on Marek's MacBook.
+Marek is on PTO this week. Pawel will do it. The script path may have changed."
+      ]]></code>
+      <note>Single point of failure, no verification, no audit trail. Production crashes 3 days later have no symbols.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

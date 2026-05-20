@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI IaC Red-Flags Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the red-flag report shape, severity scheme, and PR-comment structure.</summary>
+
+  <section title="Required redflag-report fields">
+    <list>
+      <item><code>pr_branch</code> (string)</item>
+      <item><code>catalogue_version</code> (string; matches templates/redflag-catalogue.md version)</item>
+      <item><code>iac_files</code> (array of repo-relative paths)</item>
+      <item><code>flags</code> (array of objects, one per detected flag)</item>
+      <item><code>flags[].id</code> (one of RF-01..RF-08)</item>
+      <item><code>flags[].file</code> + <code>flags[].line_range</code></item>
+      <item><code>flags[].snippet</code> (the offending text)</item>
+      <item><code>flags[].provider_schema_ref</code> (URL or null; required for RF-01 / RF-02)</item>
+      <item><code>flags[].severity</code> (enum: block, advise)</item>
+      <item><code>flags[].recommendation</code> (concrete fix; not vague advice)</item>
+      <item><code>recommendation</code> (enum: ship, revise, escalate)</item>
+    </list>
+    <reference path="templates/redflag-report.json">Authoritative JSON Schema for the red-flag report.</reference>
+  </section>
+
+  <section title="Severity scheme">
+    <list>
+      <item><code>block</code> on every RF-01, RF-02, RF-04 (secret), RF-06 (dangling output).</item>
+      <item><code>advise</code> by default on RF-03 (version drift), RF-05 (for_each misuse), RF-07 (shape mismatch), RF-08 (tag).</item>
+      <item>Severity is upgraded to `block` for RF-08 if tag-policy.yaml marks the missing tag as required.</item>
+    </list>
+  </section>
+
+  <section title="PR comment structure">
+    <list>
+      <item>One section per flag, ordered by severity then line number.</item>
+      <item>Each section: header `RF-NN: <name>` + file:line + snippet block + schema reference + recommendation block.</item>
+      <item>Summary block at top: count by severity, total flags, recommendation.</item>
+    </list>
+    <reference path="templates/redflag-catalogue.md">Catalogue mapping flag-id → display name.</reference>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>RF-01 / RF-02 flagged without provider_schema_ref URL.</description>
+      <reason>r2 violation. Schema is authoritative; the reference proves the flag is real.</reason>
+    </antipattern>
+    <antipattern>
+      <description>RF-04 flagged but `recommendation` field empty.</description>
+      <reason>Secrets MUST be scrubbed from history; the recommendation MUST list the scrubbing steps.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Report recommendation `ship` while flags list has any `block` severity entry.</description>
+      <reason>Decision must follow the severity scheme.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>catalogue_version matches the file on disk.</item>
+      <item>Every flag has a recommendation string.</item>
+      <item>RF-01 / RF-02 flags include a schema URL.</item>
+      <item>RF-04 flags include scrubbing steps.</item>
+      <item>Top-level recommendation derives from flag severities, not from independent judgement.</item>
+    </list>
+  </section>
+</text>

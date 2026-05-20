@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Shadow Rollout Pattern — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every AI shadow rollout must satisfy. Skipping any one converts "shadow rollout" into "uncontrolled A/B" and the team learns about quality regressions from users.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-shadow-first-not-flag-first" testable="true" depth="essential">
+      <statement>The first stage is 100% shadow mirror (NOT a 1% real-traffic split). Only after the shadow window passes the gate does any real traffic see the candidate.</statement>
+      <rationale source="Anthropic AI deployment guidance; LaunchDarkly engineering blog">A 1% real-traffic split exposes some users to a possibly-worse experience before the team has joint-metric data. Shadow first measures quality safely; real traffic comes after.</rationale>
+    </rule>
+
+    <rule id="r2-joint-quality-latency-cost-gate" testable="true" depth="essential">
+      <statement>Promotion gate requires ALL three to be within contract for the shadow window: per-request quality delta ≥ -0.02 (or contract-specific), latency delta ≤ +20%, cost delta ≤ +10%. Any one out of band blocks promotion.</statement>
+      <rationale source="multi-objective optimisation; field experience with single-metric promotions">A model that is +0.05 quality but +200% cost is not a win. A model that is +0.10 quality but 3x latency may degrade user experience more than the quality gain helps. The joint gate forces the trade-off to be explicit.</rationale>
+    </rule>
+
+    <rule id="r3-judge-calibration-pinned" testable="true" depth="essential">
+      <statement>The judge model version and prompt are PINNED for the entire shadow window. Judge upgrades mid-window invalidate the comparison. Calibration audit (≥50 expert-labelled samples) MUST be ≤30 days old.</statement>
+      <rationale source="LLM-as-judge research (Zheng et al., 2023); production calibration practice">Judge drift is the silent invalidator of shadow conclusions. A judge upgraded mid-window may rate the candidate higher because of the upgrade, not because the candidate is better. Calibration audit aligns the judge with expert ground truth.</rationale>
+    </rule>
+
+    <rule id="r4-sustained-representative-window" testable="true" depth="essential">
+      <statement>Shadow window minimum: 48 hours AND ≥500 scored requests AND coverage of weekday + weekend patterns. Below any of these, the gate refuses to evaluate.</statement>
+      <rationale source="A/B-test power analysis; production-traffic seasonality">A 6-hour window during work hours misses the consumer-shaped weekend traffic. 500 requests is the floor below which judge-score deltas have insufficient statistical power. Coverage prevents promoting on a non-representative sample.</rationale>
+    </rule>
+
+    <rule id="r5-continuous-shadow-post-promotion" testable="true" depth="essential">
+      <statement>After promotion, the shadow does NOT shut down. The previous version becomes the shadow at sampled traffic (≥5%) for ≥7 days, producing a continuous quality monitor that catches surprises in the new normal.</statement>
+      <rationale source="canary post-promotion monitoring; safety-critical deployment patterns">Post-promotion is when novel real-world inputs hit the new model. The continuous shadow at sample rate is cheap insurance — if quality delta regresses, the team has fresh signal to roll back.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Shadow → promote → continuous shadow">
+      <code lang="text"><![CDATA[
+Day 0: shadow at 100% mirror. 2.1k requests scored.
+Day 2: gate evaluation. Quality +0.04 (good), latency +8% (within), cost -3% (good).
+       All three within contract. Coverage: weekday + weekend.
+       Decision: promote.
+Day 3: 25% real traffic on candidate. Day 5: 100%. Old version moves to 5% shadow.
+Day 10: continuous shadow shows quality +0.04 stable. Decommission old version.
+      ]]></code>
+      <note>Illustrates r1 (shadow first), r2 (joint gate), r3 (judge pinned), r4 (window), r5 (continuous shadow).</note>
+    </example>
+
+    <example type="bad" title="The 1% rollout that surfaced as CSAT drop">
+      <code lang="text"><![CDATA[
+Day 0: 1% real traffic on candidate. No error spike. Promote to 10%.
+Day 3: 25%. Day 5: 50%. Day 7: 100%.
+Day 14: CSAT down 4 points. Investigation: candidate is more concise but
+        omits a section users relied on; no shadow judge ever scored it.
+Day 16: rollback. Two weeks of degraded experience for half the user base.
+      ]]></code>
+      <note>r1 (no shadow first), r2 (no joint quality gate). The rollout used "no errors" as the gate; the regression was in quality, not errors.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

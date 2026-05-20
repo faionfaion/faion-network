@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Agency Tiered-Proposal System Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the proposal document schema with mandatory 3-tier comparison.</summary>
+
+  <output-contract>
+    <required>
+      <field name="proposal_metadata">
+        <subfield name="lead_name" type="string"/>
+        <subfield name="discovery_call_date" type="iso_date"/>
+        <subfield name="sent_at" type="iso_datetime"/>
+        <subfield name="hours_since_discovery" type="number" max="48"/>
+      </field>
+      <field name="problem_statement" type="string" min_words="40" max_words="200"/>
+      <field name="approach" type="string" min_words="60" max_words="300"/>
+      <field name="tiers" min_items="3" max_items="3">
+        <subfield name="tiers[].name" enum="Good,Better,Best"/>
+        <subfield name="tiers[].monthly_fee_usd" type="number"/>
+        <subfield name="tiers[].deliverables" min_items="3"/>
+        <subfield name="tiers[].sla" required_keys="response_hours,review_cadence"/>
+        <subfield name="tiers[].minimum_term_months" type="integer" min="6"/>
+        <subfield name="tiers[].out_of_scope" min_items="2"/>
+      </field>
+      <field name="case_studies" min_items="2">
+        <subfield name="case_studies[].client" type="string"/>
+        <subfield name="case_studies[].outcome_metric" type="string"/>
+      </field>
+      <field name="process_overview" type="string"/>
+      <field name="next_steps" required_keys="signature_link,clarification_meeting_offer"/>
+      <field name="tier_pricing_check">
+        <subfield name="good_as_percent_of_better" type="number" min="55" max="75"/>
+        <subfield name="best_as_percent_of_better" type="number" min="140" max="200"/>
+      </field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">tiers count != 3 (no 2-option, no 4-option proposals)</pattern>
+      <pattern id="f2">tiers[].deliverables containing vague phrases: "ongoing support", "as needed", "tbd"</pattern>
+      <pattern id="f3">tiers[].minimum_term_months &lt; 6 without explicit "month-to-month +premium" tier note</pattern>
+      <pattern id="f4">proposal_metadata.hours_since_discovery &gt; 48</pattern>
+      <pattern id="f5">tier_pricing_check.good_as_percent_of_better outside 55-75% (anchoring broken)</pattern>
+      <pattern id="f6">discount, "starting at", or à la carte pricing within the tier table (erodes anchoring)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Tier names may be branded (Essentials / Core / Premium, Starter / Growth / Scale) but mapping to Good/Better/Best must be unambiguous.</transformation>
+      <transformation>For one-time projects bundled into a retainer, list as add-ons OUTSIDE the tier comparison.</transformation>
+      <transformation>If the lead's stated budget is far below all 3 tiers, send a clean-no with a referral to a smaller-shop instead of underwater pricing.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/proposal-doc.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>exactly 3 tiers, all with explicit scope, SLA, term</item>
+      <item>Better tier sized as the target choice (deliverables match all stated needs)</item>
+      <item>Good is 60-70% of Better, Best is 150-180% of Better</item>
+      <item>proposal sent ≤ 48h after discovery</item>
+      <item>case studies match the lead's domain or problem shape</item>
+      <item>next steps include a signature link AND a clarification-meeting offer</item>
+      <item>no à la carte / discount / "starting at" pricing inside the tier table</item>
+    </list>
+  </section>
+</text>

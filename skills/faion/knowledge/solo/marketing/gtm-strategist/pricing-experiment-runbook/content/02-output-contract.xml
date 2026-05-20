@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Pricing Experiment Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the Experiment Plan, the Stripe config checklist, the post-experiment Decision Memo.</summary>
+
+  <output-contract>
+    <required>
+      <field name="plan.experiment_id" type="string" notes="slug e.g. exp-2026-q2-pricing"/>
+      <field name="plan.start_date" format="YYYY-MM-DD"/>
+      <field name="plan.end_date" format="YYYY-MM-DD"/>
+      <field name="plan.duration_days" type="integer" min="7" max="90"/>
+      <field name="plan.variant_old.stripe_price_id" type="string"/>
+      <field name="plan.variant_new.stripe_price_id" type="string"/>
+      <field name="plan.audience" type="enum" values="new_signups_only|new_and_existing_with_grandfather|specific_segment"/>
+      <field name="plan.exposure_rule" type="paragraph" notes="how visitors map to variants"/>
+      <field name="plan.success_metric_primary" type="string" notes="e.g. trial_to_paid_conversion_pct"/>
+      <field name="plan.success_metric_threshold" type="number"/>
+      <field name="plan.significance_target" type="enum" values="p&lt;0.05|p&lt;0.10|bayesian_95"/>
+      <field name="plan.guardrail_metrics" type="list_of_string" min="1" notes="refund_rate, dispute_rate, support_ticket_rate"/>
+      <field name="plan.grandfathering" type="object" notes="audience + mechanism + coupon_id + window_months"/>
+      <field name="plan.currencies_in_test" type="list_of_string"/>
+      <field name="plan.tax_behavior" type="enum" values="inclusive|exclusive"/>
+      <field name="stripe_preflight.passed_at" format="ISO8601"/>
+      <field name="stripe_preflight.checks_run" type="list_of_string"/>
+      <field name="decision_memo.written_at" format="ISO8601"/>
+      <field name="decision_memo.decision" type="enum" values="adopt_new|revert_to_old|extend_with_adjustment"/>
+      <field name="decision_memo.metric_readouts" type="object"/>
+      <field name="decision_memo.qualitative_signals" type="paragraph"/>
+      <field name="decision_memo.next_action" type="paragraph"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">plan.start_date later than the Stripe-config-checklist completion date (going live without verification)</pattern>
+      <pattern id="f2">grandfathering applied via "we will just not bill them yet" with no Stripe coupon or separate Price (grandfathering must be in Stripe, not in goodwill)</pattern>
+      <pattern id="f3">old Stripe Price object archived or deleted (must remain active so grandfathered subscriptions renew correctly)</pattern>
+      <pattern id="f4">multi-currency experiment without a separate Price per currency</pattern>
+      <pattern id="f5">decision_memo.decision = extend_with_adjustment for the third extension in a row (experiment is being kept alive to avoid the decision)</pattern>
+      <pattern id="f6">stripe_preflight.passed_at missing OR more than 7 days before plan.start_date</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Pause the experiment mid-window (Stripe new-signup routing reverts to old Price) without ending it, when a guardrail metric is approached but not breached.</transformation>
+      <transformation>Localise the customer announcement copy per currency-region; keep the substance identical.</transformation>
+      <transformation>Round MRR delta numbers to the nearest $50 when reporting; keep dollar precision in the underlying readout file.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/experiment-plan.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Plan written and committed BEFORE any Stripe change</item>
+      <item>Grandfather policy explicit, with Stripe coupon ID</item>
+      <item>scripts/stripe-pre-flight.py returned green within 7 days of start</item>
+      <item>Currency-per-Price object and tax_behavior documented</item>
+      <item>Customer announcement sent before experiment goes live</item>
+      <item>Decision Memo committed within 48h of end_date</item>
+      <item>Old Stripe Price object remains active (never deleted)</item>
+    </list>
+  </section>
+</text>
