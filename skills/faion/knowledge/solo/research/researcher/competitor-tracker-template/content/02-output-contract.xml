@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Competitor Tracker — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the matrix file shape + weekly delta-journal entry shape. Solo founder (or supporting agent) must satisfy these contracts.</summary>
+
+  <output-contract>
+    <required>
+      <field name="matrix.competitors" min="5" max="7" required_keys="name,url,icp_statement"/>
+      <field name="matrix.attributes" min="6" max="8" required_keys="attribute_id,attribute_name,current_value,last_updated_date"/>
+      <field name="weekly_journal.week_of" format="ISO-8601_date_monday"/>
+      <field name="weekly_journal.channels_scanned" required_keys="channel_name,scanned_yes_no,notes_if_skipped"/>
+      <field name="weekly_journal.duration_min" type="integer" max="45"/>
+      <field name="weekly_journal.deltas" type="array" required_keys="competitor,delta_text,evidence_link,action_or_noop"/>
+      <field name="action_or_noop" required_keys="kind,description,owner,date_or_reason"/>
+      <field name="action_or_noop.kind" format="enum: action-queued | explicit-no-op"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">matrix.competitors.length &lt; 5 OR &gt; 7 (r1)</pattern>
+      <pattern id="f2">attribute added mid-week without monthly-refresh marker (r2)</pattern>
+      <pattern id="f3">weekly_journal.duration_min &gt; 45 (r3 — time-box exceeded)</pattern>
+      <pattern id="f4">delta entry without action_or_noop (r4)</pattern>
+      <pattern id="f5">delta entry where action.kind=action-queued but action.date is empty or &gt; 30 days out</pattern>
+      <pattern id="f6">competitor in matrix not updated in any attribute for 90+ days AND not pruned at next monthly refresh (r5)</pattern>
+      <pattern id="f7">explicit-no-op entries that all share identical reasons ("not relevant") — signal of rubber-stamp</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Cluster multiple small deltas from the same competitor in a single week into one journal entry with sub-bullets.</transformation>
+      <transformation>Carry forward "skipped channel" to next week with a 15-min catch-up budget — allowed once per channel per month.</transformation>
+      <transformation>Mark an attribute as "stable, monthly-check-only" if it shows no variance for 60+ days — reduces weekly scan time.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/competitor-matrix.csv"/>
+  </output-contract>
+
+  <section title="Monthly refresh self-check">
+    <list>
+      <item>5-7 competitors still in scope (r1)</item>
+      <item>Each competitor influenced &gt;= 1 decision in last 90 days OR pruned with reason (r5)</item>
+      <item>Schema attributes reviewed; low-variance attributes flagged or removed (r5)</item>
+      <item>New competitor candidates evaluated; max 1 added per month (r1)</item>
+      <item>Monthly journal entry written summarizing month's net learning</item>
+    </list>
+  </section>
+
+  <section title="Weekly self-check">
+    <list>
+      <item>Scan completed in &lt;= 45 min (r3)</item>
+      <item>All channels in checklist marked scanned or explicitly skipped (r3)</item>
+      <item>Every delta has action OR explicit no-op (r4)</item>
+      <item>Schema unchanged (no mid-week additions) (r2)</item>
+      <item>Output validates against templates/competitor-matrix.csv schema for the columns part, and journal markdown structure</item>
+    </list>
+  </section>
+</text>
