@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Launch Readiness — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a `LaunchReadiness` report with 8 gates + go/no-go decision.</summary>
+
+  <section title="Required fields">
+    <list>
+      <item>`launch_id` — slug</item>
+      <item>`product_name` — string</item>
+      <item>`scheduled_launch_at` — ISO-8601</item>
+      <item>`gates` — array of EXACTLY 8 `GateStatus` objects in fixed order</item>
+      <item>`go_no_go` — enum {go, no-go, hold-remediation}</item>
+      <item>`blockers` — array of `{gate, criterion, owner, remediation_plan, new_eta}`</item>
+      <item>`risk_acceptances` — array (empty allowed) of `{gate, reason, accepted_by}` for explicit skip cases</item>
+      <item>`generated_at` — ISO-8601</item>
+      <item>`approver` — string (PM signing the go/no-go)</item>
+    </list>
+  </section>
+
+  <section title="GateStatus required fields">
+    <list>
+      <item>`gate` — enum {security, performance, observability, runbooks, on_call, legal, support_enablement, comms_tree}</item>
+      <item>`owner` — string (named human)</item>
+      <item>`criteria` — array of `{name, status: enum {pass, fail, n/a}, evidence_url}`</item>
+      <item>`overall_status` — enum {pass, fail, blocker}</item>
+      <item>`signed_by` — string</item>
+      <item>`signed_at` — ISO-8601</item>
+      <item>`notes` — string (≤ 240 chars)</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`gates.length != 8`.</description>
+      <reason>Violates r1.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`owner` is "team" or "TBD" or empty.</description>
+      <reason>Violates r2.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`overall_status: pass` AND any `criteria.status: fail`.</description>
+      <reason>Violates r3. Pass requires all criteria green.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`go_no_go: go` AND any gate `overall_status: blocker`.</description>
+      <reason>Violates r5 blocker veto.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`signed_at` &gt; 48h before `scheduled_launch_at`.</description>
+      <reason>Violates r4 sign-off freshness.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Render report as Markdown for launch-bridge channel pinning.</item>
+      <item>Aggregate by quarter for trend analysis.</item>
+      <item>Mask sensitive evidence URLs in shared external versions (compliance audits).</item>
+    </list>
+  </section>
+
+  <reference path="templates/launch-readiness.json">LaunchReadiness JSON Schema.</reference>
+  <reference path="templates/gate-criteria.yaml">Per-gate criteria source.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>8 gates present in fixed order.</item>
+      <item>Each gate has a named owner + signed_by + signed_at within 48h of launch.</item>
+      <item>No blocker permits go.</item>
+      <item>Explicit risk-acceptances for any n/a criteria.</item>
+      <item>Blockers have remediation plan + new ETA.</item>
+    </list>
+  </section>
+</text>

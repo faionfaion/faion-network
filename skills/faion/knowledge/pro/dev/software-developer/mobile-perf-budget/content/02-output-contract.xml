@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Mobile Perf Budget Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the perf-budget.yaml + CI gate config + RUM report.</summary>
+
+  <output-contract>
+    <required>
+      <field name="platform" type="closed_enum"
+             value="ios,android"/>
+      <field name="budget_axes" type="exact_set"
+             value="cold_start_time,frame_drop_rate,binary_size"/>
+      <field name="cold_start_p50_ms" type="integer"/>
+      <field name="cold_start_p90_ms" type="integer"
+             constraint="value &gt; cold_start_p50_ms"/>
+      <field name="frame_drop_pct_per_screen" type="object"
+             value_type="float between 0 and 1"
+             constraint="entries provided per critical screen"/>
+      <field name="binary_size_mb_max" type="integer"/>
+      <field name="measurement" type="object"
+             required_keys="lab_devices,rum_provider"
+             constraint="lab_devices includes low-end device per r5; rum_provider is non-null"/>
+      <field name="ci_config" type="object"
+             required_keys="gate_branch,block_on_exceed,override_requires"
+             constraint="block_on_exceed == true AND override_requires.length &gt;= 2"/>
+      <field name="regression_history" type="array_object"
+             item_required_keys="date,pr,axis,resolution"/>
+      <field name="last_audited_date" type="date"
+             constraint="within 30 days for active products"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">budget_axes missing any of the 3 mandatory (violates r1)</pattern>
+      <pattern id="f2">measurement.lab_devices empty OR contains only simulators / flagship-only (violates r2, r5)</pattern>
+      <pattern id="f3">ci_config.block_on_exceed == false OR override_requires.length &lt; 2 (violates r3)</pattern>
+      <pattern id="f4">regression_history entries with axis breach AND resolution == "TBD" past 7 days (violates r4)</pattern>
+      <pattern id="f5">cold_start_p90_ms &lt;= cold_start_p50_ms (impossible distribution)</pattern>
+      <pattern id="f6">binary_size_mb_max absent OR set to 0 / null (no enforcement)</pattern>
+      <pattern id="f7">measurement.rum_provider == null (RUM signal missing)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Adjust budgets after major platform change (e.g., framework upgrade) — record bump in regression_history with reason.</transformation>
+      <transformation>Add additional axes (memory_high_water_mark, network_payload_kb) — they extend, never replace, the mandatory 3.</transformation>
+      <transformation>Whitelist specific screens with higher frame_drop tolerance (animation-heavy) — must be explicit and reviewed.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/perf-budget.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All 3 axes present with numeric budgets</item>
+      <item>Measurement includes lab + RUM</item>
+      <item>Lab devices include a low-end model</item>
+      <item>CI block_on_exceed is true</item>
+      <item>Override requires ≥ 2 approvers</item>
+      <item>Last audited ≤ 30 days for active products</item>
+    </list>
+  </section>
+</text>
