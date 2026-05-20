@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Solo KPI Dashboard Core Rules">
+  <summary>Five testable rules for a solo-SaaS KPI dashboard at $0–50k ARR. Optimised for review-fatigue prevention, not analytical depth.</summary>
+
+  <section title="Dashboard rules">
+
+    <rule id="r1-six-tiles-max" testable="true">
+      <statement>The dashboard has exactly six tiles, in this order: weekly signups, activation rate (signed up → did core action within 7 days), MRR, gross monthly churn %, open support tickets, weekly active accounts. No seventh tile is added without removing one.</statement>
+      <rationale>Solo operators abandon dashboards above ~7 metrics within 4 weeks. A fixed roster forces prioritisation and survives review fatigue.</rationale>
+    </rule>
+
+    <rule id="r2-sql-or-api-only" testable="true">
+      <statement>Each tile is sourced from either (a) a single SQL query against the app DB, or (b) a single REST/GraphQL call to Stripe / Plausible / support tool. No ETL, no warehouse, no transformations beyond the query itself.</statement>
+      <rationale>ETL pipelines at this scale cost more in maintenance than the insight they yield. Direct queries break loudly when the schema changes — preferable to silently stale dashboards.</rationale>
+    </rule>
+
+    <rule id="r3-friday-30-min" testable="true">
+      <statement>Dashboard review is a fixed 30-minute Friday slot. The operator writes one note per tile: "expected / unexpected / action". If the slot runs long, cut analysis depth, not the slot.</statement>
+      <rationale>Variable-length review meetings get skipped. A 30-minute time-box makes the ritual durable.</rationale>
+    </rule>
+
+    <rule id="r4-one-source-of-truth" testable="true">
+      <statement>Each metric has exactly one definition stored next to the dashboard (Notion page, README, sheet tab). Conflicting definitions in marketing slides, investor updates, or internal docs are rejected; everything cites the dashboard definition.</statement>
+      <rationale>Metric-definition drift is the #1 source of "the numbers don't match" arguments — fatal for one person trying to make decisions.</rationale>
+    </rule>
+
+    <rule id="r5-no-vanity-metrics" testable="true">
+      <statement>Forbidden tiles: page views without conversion, total signups (cumulative), Twitter followers, GitHub stars, total users ever. If a metric cannot drive a decision the operator would take on Friday, it is removed.</statement>
+      <rationale>Vanity metrics consume review attention and bias decisions toward audience-growth theatre over revenue motion.</rationale>
+    </rule>
+
+  </section>
+
+  <example type="good">
+    <code lang="sql"><![CDATA[
+-- Tile: activation rate (signed up in last 30d → did core action within 7d)
+SELECT
+  ROUND(100.0 * SUM(CASE WHEN first_core_action_at - created_at <= INTERVAL '7 days'
+                         THEN 1 ELSE 0 END) / COUNT(*), 1) AS activation_pct
+FROM users
+WHERE created_at >= now() - INTERVAL '30 days';
+]]></code>
+    <note>One query, one tile, one number. No joins to a warehouse fact table.</note>
+  </example>
+
+  <antipattern>
+    <description>Operator builds a 14-tile Metabase board "to have it ready when the team grows" and stops opening it after week 3.</description>
+    <reason>Violates r1 (tile count) and r3 (no fixed review slot). Tool sophistication scales ahead of operational need.</reason>
+  </antipattern>
+</text>

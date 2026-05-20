@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Convention Anchoring Core Rules">
+  <summary>The three-layer anchoring contract every codebase using agentic coding tools must satisfy. Skipping a layer reopens the "compiles but wrong" failure mode this methodology exists to close.</summary>
+  <section title="The three layers">
+    <rule testable="true">
+      <statement>The repo root carries a CONVENTIONS.md (or equivalent — STYLE.md, ARCHITECTURE.md) that lists conventions as testable rules with examples. Each rule cross-references the lint rule, pre-commit hook, or test that mechanically checks it.</statement>
+      <rationale>Conventions written as "we prefer X" decay within a sprint. Conventions written as testable rules with a mechanical check survive because violations are caught at commit time, not at code review time.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Every module/package that contains source code carries an AGENTS.md (20-80 lines) that names its purpose, key types, public interface, and the convention-deltas specific to this module. The agent must be configured to read AGENTS.md on entering the module's context.</statement>
+      <rationale>Repo-wide conventions miss module-specific deltas (legacy section that breaks the rule, vendored code, in-progress migration). Per-module AGENTS.md surfaces those deltas before the agent generates wrong code.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Every convention from CONVENTIONS.md that can be expressed as a lint or test rule must be expressed that way and enforced in pre-commit or CI. Conventions that exist only in prose are deleted from CONVENTIONS.md or moved to a "guidance" section explicitly marked unenforced.</statement>
+      <rationale>Unenforced prose conventions train the agent to ignore the document over time, because half the rules don't matter. Mechanical enforcement is the only signal the agent reliably picks up across long sessions.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>The agent's system prompt (CLAUDE.md / .cursorrules / equivalent) explicitly instructs: read CONVENTIONS.md before writing code, read the nearest AGENTS.md before editing a module, and run the lint/format pipeline after every edit batch. Verify this instruction survives in the agent's effective system rules by inspecting a sample session.</statement>
+      <rationale>Without an explicit read-instruction, the agent fetches CONVENTIONS.md only if a search happens to surface it. Explicit instruction plus periodic session audit is the cheapest way to keep the pyramid alive.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>When the agent writes code that violates a convention, the lint/test failure message must cite the CONVENTIONS.md rule id (e.g. "CONV-014: error returns must wrap with %w") so the agent can self-correct on the next iteration. Generic lint messages without rule-id citation are upgraded.</statement>
+      <rationale>The agent learns from the failure message, not from the convention doc. Citing the rule id in the failure message turns one cycle of lint failure into a self-correcting feedback loop instead of a guessing game.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# CONVENTIONS.md (excerpt)
+## CONV-014: error returns must wrap with %w
+- enforced by: ruleguard rule `error_wrap.rg`
+- pre-commit: yes
+- example good: return fmt.Errorf("save user: %w", err)
+- example bad: return errors.New("save user failed")
+]]></code>
+      <note>Linkable rule id, mechanical enforcement, paired examples — the agent will read this on entry, the linter will catch what it misses, the failure message will quote CONV-014 so the next iteration self-corrects.</note>
+    </example>
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+# STYLE.md
+We try to use good error handling.
+Be consistent with the rest of the code.
+]]></code>
+      <note>No rule id, no enforcement, no examples — the agent will cheerfully ignore it and reviewers will re-litigate the same diff every PR.</note>
+    </example>
+  </section>
+</text>

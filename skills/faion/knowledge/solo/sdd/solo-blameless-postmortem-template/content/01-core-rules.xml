@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Solo Blameless Postmortem — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every solo postmortem must enforce. These are HARD rules — fatigue or embarrassment cannot override them.</summary>
+  <section title="The rules">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The postmortem MUST be completed within 24 hours of incident resolution; any incident still open after 7 days without a written postmortem fails the rule and the founder cannot ship new features until it is filed.</statement>
+      <rationale source="Memory-decay studies in incident analysis (SRE literature, Google SRE Book Ch. 15)">Causal recall halves within 48 hours; delaying the postmortem trades quality for nothing.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Language MUST be blameless: no first-person pejoratives ("I am stupid", "such an idiot move"); the rule applies to self-talk as much as to hypothetical team-talk. Reframe to system: "this configuration allowed X" not "I forgot X".</statement>
+      <rationale source="Cognitive science of self-criticism + Westrum's generative culture model">Solo founders run an aggressive inner critic that produces the same flinch-and-hide outcomes as hostile teammates; the rule rebuilds trust with self.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Contributing factors MUST be limited to at most three; if more come to mind, group or merge them. Long lists produce zero follow-up.</statement>
+      <rationale source="Decision-load research / 1-3-5 rule">Solo capacity for follow-through caps at one; listing nine factors guarantees zero action.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Exactly one action item MUST be written, with a date and a verification step ("I will know it is done when..."); items without both fields are deleted before the postmortem is considered complete.</statement>
+      <rationale source="SMART goal discipline + SRE action-item completion stats">"Investigate further" actions complete under 10% of the time; "by 2026-05-25 I have added a regression test that fails on the same input" completes 70%+.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>The postmortem MUST emit two artifacts: an entry in `.aidocs/memory/mistakes.md` (one line, canonical form) AND optionally an entry in `patterns.md` if a generalizable pattern was found; an unsynced postmortem is incomplete.</statement>
+      <rationale source="SDD memory discipline (faion `.aidocs/memory/` convention)">Postmortems that live in their own file are read once and forgotten; the memory system is the only place where future-you reliably encounters the lesson.</rationale>
+    </rule>
+  </section>
+  <section title="Canonical examples">
+    <example type="good" title="Anchored solo postmortem">
+      <code lang="markdown"><![CDATA[
+# Incident: Stripe webhook signature 401, 2026-05-19, 21:04–21:41 UTC
+
+## Timeline
+- 21:04 first 401 in logs
+- 21:18 customer DM "checkout failed"
+- 21:22 rotated webhook secret (had expired)
+- 21:41 success rate back to 100%
+
+## Trigger
+Stripe webhook signing secret expired; rotation was a yearly manual task with no reminder.
+
+## Contributing factors
+1. Yearly manual rotation, no calendar entry.
+2. Secret expiry not exported as a metric.
+3. No alert on consecutive 401s from any external source.
+
+## What worked
+Logs were tail-able; user DM was direct; rotation runbook existed.
+
+## Action item
+By 2026-05-22, add a cron job that emits a Prometheus gauge `stripe_webhook_secret_days_remaining` and alerts at ≤14. Done when alert fires in a staged test.
+
+## Memory entry
+mistakes.md: external-secret expiry without an alert leads to silent 401-storm.
+]]></code>
+      <note>Blameless ("rotation was manual" not "I forgot"), three factors, one dated action with verification, memory sync.</note>
+    </example>
+    <example type="bad" title="Un-anchored solo postmortem">
+      <code lang="text"><![CDATA[
+Webhook broke because I'm an idiot. Need to be more careful next time.
+]]></code>
+      <note>Blame language, no timeline, no factors, no action, no memory sync. Guaranteed to recur.</note>
+    </example>
+  </section>
+  <see-also>
+    <link path="../mistake-memory/" />
+  </see-also>
+</text>
