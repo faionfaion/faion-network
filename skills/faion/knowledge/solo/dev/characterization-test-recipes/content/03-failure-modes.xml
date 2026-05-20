@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Characterization Test Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six failure modes that turn characterization suites into expensive theater. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Snapshots accepted blindly because "the code does that already."</description>
+      <detector>baseline-signoff is absent OR signoff committed within minutes of snapshot creation with no review markers (no comments, no edits)</detector>
+      <repair>Wipe baseline. Re-generate snapshots and walk through each line with a human reviewer. Document the review in baseline-signoff.md (which fixtures were unexpected, which were confirmed).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Known bug pinned as expected behavior. Refactor cannot fix it without snapshot diff.</description>
+      <detector>Issue tracker contains an open bug whose reproduction matches a baseline snapshot's content</detector>
+      <repair>Re-classify the affected snapshot as "documented bug, intentional refactor-fix" and link the bug ID. The refactor's expected diff is captured separately from accidental diffs.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Non-determinism not handled — suite is flaky and devs add @flaky decorators instead of normalizing.</description>
+      <detector>Flaky-decorator or `pytest.mark.skip_if_random` in characterization tests OR tests rerun on CI</detector>
+      <repair>Add the missing normalization rule to the central normalize module. No flaky marks in characterization tests — flaky = bug in the suite.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>PII or production secrets in fixtures committed to git.</description>
+      <detector>grep fixtures/ for @-signs, common name lists, token prefixes, SSN patterns; or use a secret scanner.</detector>
+      <repair>Rewrite fixtures with redacted equivalents. Use git filter-repo to scrub history if PII shipped. Update fixture-manifest with redaction confirmation.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Sweep stopped at low branch coverage but declared "comprehensive."</description>
+      <detector>coverage-report.json shows branch coverage &lt; 70% on target module AND baseline-signoff is signed</detector>
+      <repair>Either lower the claim (this is a partial characterization, refactor only the covered branches) OR add fixtures for uncovered branches before signoff.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="medium">
+      <description>CI auto-updates snapshots, hiding real regressions in green builds.</description>
+      <detector>CI config contains `--update-snapshots` / `--ci=update` / `-u` in characterization test command</detector>
+      <repair>Remove the update flag from CI. Update is a developer action with an explicit commit. CI must fail on snapshot diff.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>When AI generates fixtures from logs, it must not paraphrase or "clean up" the inputs. The fixture must reflect real production noise (extra whitespace, capitalization quirks, optional fields present/absent). Sanitized inputs miss the bugs they would have surfaced.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Baseline signoff is a human gate — one person, named in baseline-signoff.md, claims to have reviewed the snapshots. After signoff, every snapshot diff requires an explicit classification commit. The suite is only as good as the signoff.</p>
+  </section>
+</text>

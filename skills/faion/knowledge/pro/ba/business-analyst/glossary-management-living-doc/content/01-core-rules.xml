@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Glossary Management — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that keep a project glossary alive instead of letting it decay into yet-another-Confluence-page.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-single-source-of-truth" testable="true" depth="essential">
+      <statement>The project has EXACTLY ONE glossary location. Every PRD, spec, ADR, test plan, and code constants file MUST link to terms here. Forbidden: parallel mini-glossaries inside individual documents.</statement>
+      <rationale source="DDD ubiquitous-language practice, Google TW glossary guide">Parallel glossaries diverge within a quarter. Single source forces conflict resolution to happen once, in public. Links from docs to glossary entries also make the glossary's traffic measurable — low traffic flags terms nobody actually uses.</rationale>
+    </rule>
+
+    <rule id="r2-scoped-definitions" testable="true" depth="essential">
+      <statement>Each entry MUST declare its scope: project-wide OR a named bounded context (e.g., "billing", "auth", "marketing-funnel"). A term can have different definitions per scope, but each scope's definition is explicit.</statement>
+      <rationale source="DDD bounded-context pattern (Evans)">"Customer" means different things to billing and to support. Forcing scope makes the difference explicit; without scope, teams argue about which definition is the "right" one when both are right in their context.</rationale>
+    </rule>
+
+    <rule id="r3-conflict-resolution-protocol" testable="true" depth="essential">
+      <statement>When two stakeholders disagree about a definition, follow the protocol: (a) document both definitions verbatim, (b) maintainer schedules a 30-min resolution session, (c) outcome is one of: pick winner / split into two scoped terms / merge into broader term, (d) record decision + date + named participants in conflict-resolution-record.md.</statement>
+      <rationale source="ADR practice, structured-dialogue conflict resolution">Without protocol, conflict resolves by whichever stakeholder is louder, leaving the loser's definition surviving in shadow docs. Protocol creates a single explicit outcome that can be referenced later.</rationale>
+    </rule>
+
+    <rule id="r4-deprecation-with-replacement" testable="true" depth="essential">
+      <statement>Terms are NOT deleted. Deprecation sets status=deprecated, adds a replaced_by link to the new canonical term, and triggers term-usage-audit. The deprecated entry stays in the glossary indefinitely so historical docs remain interpretable.</statement>
+      <rationale source="Software-versioning literature, API-deprecation patterns">Deletion breaks historical docs. Deprecation with replacement preserves interpretability while signaling new work to use the new term. Status flag is what audit script keys off to drive cleanup.</rationale>
+    </rule>
+
+    <rule id="r5-propagation-hook" testable="true" depth="essential">
+      <statement>Every term entry MUST list its propagation hooks: where this term appears (PRD section, code module / constant, test plan ID, support macro, marketing copy). When the entry changes, the maintainer notifies hook owners. Forbidden: glossary entries without any propagation hook (term that lives nowhere is term that should be deleted).</statement>
+      <rationale source="Living-documentation literature, requirements-traceability research">Propagation hooks make glossary changes actionable. Without them, the BA changes a definition and nobody updates the code constant, leaving a silent drift. Term-usage audit operationalizes this.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Scoped term with conflict resolution + propagation hooks">
+      <code lang="text"><![CDATA[
+Term: "Active Customer"
+
+Scope: billing
+Status: canonical
+Definition: A customer account whose subscription is in {trialing,
+  active, past_due} states AND last_login &lt; 30 days ago.
+Aliases: "engaged customer" (deprecated; replaced_by Active Customer)
+Conflicts-with: support team's "active" (any account not deleted)
+  -- resolved 2026-03-12: split into two scoped terms.
+  See conflict-resolution-records/2026-03-12-active.md
+Propagation hooks:
+  - PRD section: /docs/billing/prd.md#segments
+  - Code constant: billing.constants.ACTIVE_CUSTOMER_STATES
+  - Test plan: TP-billing-014
+  - Support macro: SM-renewal-001
+Last reviewed: 2026-05-12 by alex.k (BA)
+      ]]></code>
+      <note>Illustrates r1-r5: single canonical entry, scoped, conflict resolved on record, deprecation linked, hooks listed.</note>
+    </example>
+
+    <example type="bad" title="Term sprawl across docs">
+      <code lang="text"><![CDATA[
+Confluence "customer" page: vague definition, last edited 14 months ago.
+Billing PRD: defines "customer" inline, contradicts Confluence.
+Support macros: use "active customer" with a third definition.
+Code: customer_segment table has 4 enum values not in any of the above.
+
+Result: bug "customer not receiving renewal notice" debated 90 min
+in a Slack thread because three parties had three customers in mind.
+
+Repair: enforce r1-r5. Move all definitions to single glossary,
+split into scopes, run propagation audit, deprecate the rest.
+      ]]></code>
+      <note>Illustrates r1, r2, r5 violations — the standard BA pain point.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

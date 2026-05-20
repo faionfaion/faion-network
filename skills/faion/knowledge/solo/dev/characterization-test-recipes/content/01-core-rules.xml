@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Characterization Test Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules that separate working characterization suites from "tests I wrote and now ignore."</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-capture-before-refactor" testable="true" depth="essential">
+      <statement>The full input fixture set MUST be captured and committed BEFORE any refactor commit lands. The refactor branch and the characterization-suite branch are NEVER the same — fixtures captured on the refactored code prove nothing.</statement>
+      <rationale source="Feathers, Working Effectively With Legacy Code Ch.6">Capturing fixtures on already-refactored code recursively legitimizes whatever bugs the refactor introduced. The capture branch must reflect the pre-refactor production state, period.</rationale>
+    </rule>
+
+    <rule id="r2-snapshot-reviewed" testable="true" depth="essential">
+      <statement>Every snapshot/expected-output file MUST be reviewed line-by-line by a human (or by a deliberate second pass) the first time it is generated. "Auto-accept snapshot" is forbidden during initial capture. After the baseline is signed off, future updates require diff review and a commit message stating which behavior changed.</statement>
+      <rationale source="Approval-testing best practice (Llewellyn Falco)">Snapshot tests that are blindly accepted document whatever the code happened to do, including bugs. The reviewer step is what makes a characterization test a contract instead of a coincidence.</rationale>
+    </rule>
+
+    <rule id="r3-non-determinism-normalized" testable="true" depth="essential">
+      <statement>Non-deterministic outputs (timestamps, UUIDs, random IDs, ordering of unordered collections) MUST be normalized before snapshot comparison. The normalization rules are committed in a single file referenced by every snapshot-driven test. Ad-hoc per-test sanitization is forbidden.</statement>
+      <rationale source="Snapshot-testing failure analysis (Jest, syrupy, ApprovalTests issue trackers)">Per-test sanitization rots immediately. A central rule file is the only sustainable way to keep the suite passing without false negatives.</rationale>
+    </rule>
+
+    <rule id="r4-sweep-termination" testable="true" depth="essential">
+      <statement>The fixture sweep MUST have a documented termination criterion: e.g., branch coverage &gt;= 90% on the target module, OR 100 production-sampled inputs exercised, OR every documented edge case in the spec has a fixture. "Until I get bored" is not a termination criterion.</statement>
+      <rationale source="Test-design discipline; without a stopping rule developers under-test critical paths and over-test trivial ones">Termination criteria force the question "is this enough?" to be answered before the refactor starts, not after a regression is reported.</rationale>
+    </rule>
+
+    <rule id="r5-pin-the-diff" testable="true" depth="essential">
+      <statement>After the refactor, ANY snapshot diff is a behavior change that MUST be classified: (a) intentional fix (logged + retested), (b) accidental regression (revert), or (c) noise from new non-determinism (extend normalization rules). Snapshots are not auto-updated to "make CI green."</statement>
+      <rationale source="Working Effectively With Legacy Code Ch.7, plus practical post-mortems of failed legacy migrations">Auto-updating snapshots is the most common failure of characterization testing in practice. It silently turns the suite into a no-op.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Centralized normalization">
+      <code lang="python"><![CDATA[
+# tests/fixtures/normalize.py
+def normalize(snapshot: dict) -> dict:
+    snapshot = json.loads(json.dumps(snapshot, sort_keys=True))
+    snapshot["created_at"] = "<TS>"
+    snapshot["request_id"] = "<UUID>"
+    for item in snapshot.get("items", []):
+        item.pop("computed_at_ms", None)
+    return snapshot
+      ]]></code>
+      <note>One file. Every snapshot test imports it. Reviewer can audit the entire normalization surface in 20 lines.</note>
+    </example>
+
+    <example type="bad" title="Ad-hoc per-test sanitization">
+      <code lang="python"><![CDATA[
+def test_quote():
+    result = legacy_quote(input_a)
+    result.pop("created_at")          # forgot in test_invoice
+    result["id"] = "<ID>"              # different placeholder than test_order
+    assert result == snapshot
+      ]]></code>
+      <note>Two tests, two normalization schemes. The third will use a third. Within a quarter the suite is unmaintainable.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

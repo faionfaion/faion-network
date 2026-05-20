@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI Content Quality Review Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the shape of the rubric score, the inline annotation syntax, and the publish/revise/scrap decision rule.</summary>
+
+  <section title="Required rubric fields">
+    <list>
+      <item><code>piece_path</code> (string, repo-relative)</item>
+      <item><code>icp</code> (string, exact ICP declared in brief)</item>
+      <item><code>target_query</code> (string, exact target keyword or job-to-be-done query)</item>
+      <item><code>section_scores</code> (object with 7 keys, each 0-5): entity_density, citation_depth, original_pov, intro_tax, stat_verification, icp_fit, snippet_readiness</item>
+      <item><code>red_flags</code> (array of objects: line_range, tag, severity)</item>
+      <item><code>verified_stats</code> (array of objects: stat_text, source_url, verification_status)</item>
+      <item><code>original_pov_paragraph</code> (string, the paragraph identified as `[[original-pov]]` or null)</item>
+      <item><code>decision</code> (enum: publish, revise, scrap)</item>
+    </list>
+    <reference path="templates/rubric.json">Authoritative JSON Schema for the rubric output.</reference>
+  </section>
+
+  <section title="Decision rule">
+    <list>
+      <item><code>scrap</code> when ANY: original_pov_paragraph is null AND piece &gt;= 1500 words; entity_density score &lt;= 1; &gt;= 3 stat-unverified red flags affecting headline claim.</item>
+      <item><code>revise</code> when ANY: any section_score &lt;= 2; &gt;= 1 forbidden intro opener; original_pov_paragraph is null on a piece 600-1499 words; &lt;5 primary citations on a piece &gt;= 1500 words.</item>
+      <item><code>publish</code> when ALL: every section_score &gt;= 3; original_pov_paragraph non-null; zero unverified stats in headline claims; citation count meets r2 floor.</item>
+    </list>
+  </section>
+
+  <section title="Inline annotation syntax">
+    <list>
+      <item><code>[[entity-thin]]</code>: section below the 2-per-100-words floor (r1).</item>
+      <item><code>[[citation-needed]]</code>: claim of fact without a primary-source link (r2).</item>
+      <item><code>[[original-pov]]</code>: paragraph identified as the original-POV anchor (r3, required).</item>
+      <item><code>[[intro-tax]]</code>: forbidden generic opener detected (r4).</item>
+      <item><code>[[stat-unverified]]</code>: numeric stat without traceable source (r5).</item>
+    </list>
+    <reference path="templates/red-flag-annotations.md">Annotation usage rules and edge cases.</reference>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Reviewer emits a `publish` decision while original_pov_paragraph is null on a piece &gt;= 600 words.</description>
+      <reason>r3 violation. Original POV is a hard publish gate; no exceptions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Verified_stats array empty while body contains numeric statistics.</description>
+      <reason>r5 evasion. Stats must be enumerated even if all flagged unverified.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Rubric score given a 4 or 5 with no red_flags listed but section has &gt;= 1 known antipattern (e.g. generic intro opener detected).</description>
+      <reason>Score / red-flag mismatch defeats the rubric. Scores derive from red-flag counts.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every section_score has supporting red_flags or an explicit "no flags" note.</item>
+      <item>Original-POV paragraph identified verbatim (not paraphrased).</item>
+      <item>Every stat in the body appears in verified_stats with status.</item>
+      <item>Decision matches the decision rule table exactly.</item>
+      <item>ICP and target_query echoed back from the brief — not paraphrased by the reviewer.</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="A11y No-Regression PR Gate — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the gate output shape and the waiver record shape. Agent / CI step running the gate must satisfy these.</summary>
+
+  <output-contract>
+    <required>
+      <field name="pr_id" format="repo_pr_number_or_url"/>
+      <field name="scanned_routes" min="1" source="route_map_or_story_list"/>
+      <field name="scan_tool" format="enum: axe-core | pa11y | lighthouse"/>
+      <field name="scan_version" format="semver"/>
+      <field name="baseline_ref" format="git_blob_sha"/>
+      <field name="violations_new" required_keys="critical,serious,moderate,minor"
+             value_type="integer"/>
+      <field name="violations_fixed" required_keys="critical,serious,moderate,minor"
+             value_type="integer"/>
+      <field name="violations_unchanged" required_keys="critical,serious,moderate,minor"
+             value_type="integer"/>
+      <field name="waivers_applied" type="array" source="waiver_record_schema"/>
+      <field name="decision" format="enum: pass | fail | requires-ack"/>
+      <field name="ack_string_found" condition="required_if_moderate_or_minor_new_gt_0"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">decision=pass with violations_new.critical &gt; 0 (no critical may be silently waived)</pattern>
+      <pattern id="f2">baseline_ref pointing to a feature-branch SHA instead of main / trunk</pattern>
+      <pattern id="f3">scanned_routes empty when PR diff touches UI files</pattern>
+      <pattern id="f4">waiver_record with reviewer field equal to PR author OR empty</pattern>
+      <pattern id="f5">waiver_record with expiry date &gt; today + 90 days</pattern>
+      <pattern id="f6">decision=pass with violations_new.serious &gt; 0 AND no waiver entries for those specific violations</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Aggregate identical violation across multiple instances of the same component into a single record (with instance_count).</transformation>
+      <transformation>Merge two waivers that share the same WCAG criterion + selector into one entry with combined rationale.</transformation>
+      <transformation>Re-run a flaky scan ONE time before reporting failure; if both runs agree, report the result.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/gate-output.json"/>
+  </output-contract>
+
+  <section title="Waiver record fields (`.a11y-waivers.json` entries)">
+    <list>
+      <item>id: stable string identifier</item>
+      <item>wcag_criterion: e.g., "1.4.3 Contrast (Minimum)"</item>
+      <item>route_or_story: where the violation occurs</item>
+      <item>element_selector: CSS selector or XPath</item>
+      <item>rationale: 1-2 sentences explaining why the violation cannot be fixed now</item>
+      <item>reviewer: named individual (NOT the PR author)</item>
+      <item>created_date: ISO-8601</item>
+      <item>expiry_date: ISO-8601 (max 90 days from created_date)</item>
+      <item>tracking_ticket: link to the fix ticket</item>
+    </list>
+  </section>
+
+  <section title="Self-check checklist (run before merging)">
+    <list>
+      <item>No new critical violations OR every new critical has a current waiver (r3)</item>
+      <item>No new serious violations OR every new serious has a current waiver (r3)</item>
+      <item>Any new moderate / minor violations have a-ack line in PR description (r5)</item>
+      <item>Baseline reference points to main / trunk (r2)</item>
+      <item>Scanned routes match the routes impacted by the diff (r4)</item>
+      <item>No waiver with reviewer == PR author OR expiry &gt; 90 days (r3)</item>
+      <item>Gate output validates against templates/gate-output.json</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Support SLA — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of `SLAPolicy` and `CannedReply` outputs.</summary>
+
+  <section title="SLAPolicy required fields">
+    <list>
+      <item>`tiers` — array of 3 (Community, Paid, Enterprise) with `first_reply_sla_hours`, `business_hours_only: bool`, `channels`</item>
+      <item>`working_window` — object {timezone, days, start, end}</item>
+      <item>`escalation_triggers` — array (≥ 4) of concrete events per r4</item>
+      <item>`escalation_response_sla_hours` — number ≤ 4</item>
+      <item>`out_of_hours_auto_reply` — string ≤ 240 chars</item>
+      <item>`public_sla_url` — string</item>
+    </list>
+  </section>
+
+  <section title="CannedReply required fields">
+    <list>
+      <item>`reply_id` — slug</item>
+      <item>`scenario` — string (e.g. "bug report needing diagnostic")</item>
+      <item>`tier` — enum {community, paid, enterprise, all}</item>
+      <item>`body` — string with `{customer_name}`, `{ticket_id}`, `{specific_finding}` slots</item>
+      <item>`tone` — enum {empathetic, neutral, technical}</item>
+      <item>`churn_tag_suggestion` — enum {green, yellow, red}</item>
+      <item>`escalation_check` — boolean — does this scenario need escalation evaluation?</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>SLA hours expressed without `business_hours_only: true` for Community / Paid tiers.</description>
+      <reason>Violates r2. Wall-clock SLA destroys weekend.</reason>
+    </antipattern>
+    <antipattern>
+      <description>More than 3 tiers in `tiers` array.</description>
+      <reason>Violates r1. Sub-tiers collapse into Paid.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`escalation_triggers` contains generic ("urgent ticket") not concrete events.</description>
+      <reason>Violates r4. Generic triggers reactivate the squeaky-wheel problem.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Canned reply body without `{specific_finding}` slot.</description>
+      <reason>Replies without specifics feel robotic and erode trust. Customer must see the operator looked at THEIR ticket.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Canned reply tone `snarky` / `sarcastic` / `defensive`.</description>
+      <reason>Solo brand depends on warmth; bad tone churns paying users.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Add a 4th tier ONLY for enterprise sub-contracts with named customer; never publish publicly.</item>
+      <item>Tighten Paid SLA to 12h business hours for products with mission-critical workloads.</item>
+      <item>Translate canned replies into customer-language for non-English audiences.</item>
+    </list>
+  </section>
+
+  <reference path="templates/sla-policy.json">Machine-readable policy schema.</reference>
+  <reference path="templates/canned-replies.yaml">Canned reply skeleton schema.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Exactly 3 public tiers.</item>
+      <item>Each tier shows business-hours flag and timezone.</item>
+      <item>Escalation triggers concrete (data loss, security, churn-within-7d, 3+ same break).</item>
+      <item>Out-of-hours auto-reply references the SLA page.</item>
+      <item>Canned reply set covers: bug, billing, feature-request, complaint.</item>
+    </list>
+  </section>
+</text>

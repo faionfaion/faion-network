@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Alert Noise Budget — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that turn alerting from "more is safer" into "exceeding budget means tuning, not adding".</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-per-service-budget" testable="true" depth="essential">
+      <statement>Every service MUST have a documented noise budget with two numbers: max page-rate per on-call shift (default: 2) and max non-actionable alerts per 7-day rolling window (default: 5). The budget is per-service so noisy upstream services do not blow downstream services' budgets.</statement>
+      <rationale source="Google SRE Book ch. 6, Honeycomb alert-fatigue research">Aggregate budgets hide which service is the source. Per-service budgets create accountability and let the tuning conversation be specific. Defaults (2 / 5) come from Google's on-call data — beyond this, responder accuracy and morale collapse measurably.</rationale>
+    </rule>
+
+    <rule id="r2-actionable-flag-at-ack" testable="true" depth="essential">
+      <statement>Every alert acknowledgment MUST include an actionable yes/no flag with a one-line reason. "Yes" = responder took a remediation action (rollback, scale, patch, manual ops). "No" = noise (transient, self-healing, false positive, duplicate). Default to "no" if not explicitly marked yes.</statement>
+      <rationale source="Operational research on attribution, PagerDuty annual on-call reports">Without the flag, "noise" is impressionistic. With the flag, the budget metric is computable and decisions are evidence-based. Default-to-no prevents inflation: forces responder to justify "this was real" rather than auto-mark every alert as actionable.</rationale>
+    </rule>
+
+    <rule id="r3-weekly-review-triggers-tuning" testable="true" depth="essential">
+      <statement>The team reviews budget status weekly. Any service over budget triggers a mandatory tuning action on the top-offending alert: (a) raise threshold, (b) add hysteresis / dampening, (c) add suppression window, OR (d) delete the alert. Adding a NEW alert without retiring or tuning an existing one when over budget is forbidden.</statement>
+      <rationale source="Lean process management, SRE retrospective practice">Without weekly cadence, noise accumulates. The "must tune before adding" rule prevents the natural drift toward more alerts when stress is high (over-budget signals stress; adding more alerts compounds it).</rationale>
+    </rule>
+
+    <rule id="r4-deletion-default-action" testable="true" depth="essential">
+      <statement>When in doubt during tuning, the default action is DELETE the alert. The bar to keep an alert is: "I can describe a concrete remediation action a human will take when this fires." If no such action exists, the alert is informational and belongs in a dashboard, not a pager.</statement>
+      <rationale source="Ewaschuk's "My Philosophy on Alerting", Charity Majors observability principles">Most alerts that survive 6 months of "we'll fix it later" exist because deletion feels risky. Empirically, deleting 50% of alerts on a service correlates with FEWER missed incidents because responders trust the survivors. The bar shifts work from page-time to dashboard-time.</rationale>
+    </rule>
+
+    <rule id="r5-chronic-breach-escalation" testable="true" depth="essential">
+      <statement>A service that exceeds noise budget for 3 consecutive weeks AND has had at least one tuning action per week MUST be escalated to engineering leadership. The escalation is not blame — it's a signal that the service has a deeper reliability problem and needs investment beyond alerting tweaks.</statement>
+      <rationale source="SLO breach escalation patterns, organizational incident-management research">Chronic noise is rarely a tuning problem alone — it's usually an architectural / dependency / scaling problem. Escalation forces resource allocation before responder burnout. Without escalation, tuning becomes infinite whack-a-mole.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Weekly review with budget breach + tuning action">
+      <code lang="text"><![CDATA[
+Service: billing-api
+Budget: 2 pages/shift, 5 non-actionable/week
+This week:
+  Pages: 4 (3 of which non-actionable, marked at ack)
+  Non-actionable total: 9 (over budget by 4)
+
+Top offender: alert "billing-api p95 latency &gt; 800ms"
+  Fired 7 times this week, 6 non-actionable.
+  Root cause of fires: noisy customer cohort hitting batch endpoint;
+  latency recovers within 2 min without intervention.
+
+Tuning action chosen: add hysteresis (must be over threshold for
+  5 consecutive minutes before paging) + raise threshold to 1200ms.
+Owner: alex.k
+Expected impact: 80% noise reduction
+Follow-up date: 2026-05-27 (next weekly review)
+      ]]></code>
+      <note>Illustrates r1-r4: per-service budget, actionable flags drove the analysis, tuning chosen (not deletion this time because the underlying signal is real, just noisy).</note>
+    </example>
+
+    <example type="bad" title="Filter-everything pattern">
+      <code lang="text"><![CDATA[
+Service: payments-worker
+Pages this week: 17
+
+Responder action: created a Slack filter that auto-archives all
+  alerts from payments-worker. No alerts deleted. No thresholds
+  tuned. No escalation. "Will look at it later."
+
+Outcome: 2 weeks later, a real payment-stuck incident's alert was
+  also auto-archived. Customer noticed before team did. 6-hour
+  SLA breach.
+
+Repair: enforce r3 and r4. Filter is not a tuning action. Every
+breach week MUST result in an in-platform change (threshold, hysteresis,
+suppression, deletion) — not a downstream filter that hides signals.
+      ]]></code>
+      <note>Illustrates r3, r4 violations — the classic burnout response that ignores chronic-breach escalation.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

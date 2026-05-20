@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Hourly-to-Fixed Transition Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a transition plan. Subagent must satisfy this before returning a recommendation.</summary>
+
+  <output-contract>
+    <required>
+      <field name="audit_table" type="array_object"
+             required_keys="client_id,monthly_revenue,hours_delivered,effective_hourly,target_hourly,margin_pct,action"/>
+      <field name="action_enum" type="closed_enum"
+             value="convert_first,convert_round_two,sunset,retain_hourly"/>
+      <field name="pilot_client" type="object"
+             required_keys="client_id,proposed_fixed_price,scope_definition,exclusions_list,start_date,end_date"/>
+      <field name="productized_sku" type="object"
+             required_keys="sku_name,fixed_price,deliverables,exclusions,duration_weeks,operator_hours_budget"/>
+      <field name="overlap_window" type="object"
+             required_keys="hourly_clients_retained_count,duration_weeks"
+             constraint="hourly_clients_retained_count between 2 and 3 AND duration_weeks between 8 and 12"/>
+      <field name="reprice_round" type="object"
+             required_keys="effective_date,communication_window_days,message_template_id"/>
+      <field name="cash_bridge" type="object"
+             required_keys="savings_amount,credit_amount,signed_pipeline_amount,monthly_burn,weeks_covered"
+             constraint="weeks_covered &gt;= 6"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">action_enum values outside the closed set</pattern>
+      <pattern id="f2">pilot_client is the lowest-margin or newest client (violates r1)</pattern>
+      <pattern id="f3">overlap_window with hourly_clients_retained_count &lt; 2 (violates r2)</pattern>
+      <pattern id="f4">more than 1 productized_sku in the same quarter (violates r3)</pattern>
+      <pattern id="f5">reprice_round.communication_window_days &gt; 14 OR multiple non-overlapping windows (violates r4)</pattern>
+      <pattern id="f6">cash_bridge.weeks_covered &lt; 6 (violates r5)</pattern>
+      <pattern id="f7">scope_definition or deliverables marked "TBD" / "to be discussed"</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Convert action "retain_hourly" to "sunset" if client refuses reprice round (no operator override needed).</transformation>
+      <transformation>Extend overlap_window.duration_weeks up to 16 if cash_bridge.weeks_covered &gt;= 10.</transformation>
+      <transformation>Add ONE optional second productized_sku only after first SKU has 3 paying customers.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/transition-plan.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Audit table has every active client with margin computed</item>
+      <item>Pilot client is the highest-margin existing client</item>
+      <item>Overlap window keeps 2-3 hourly clients during pilot</item>
+      <item>Exactly ONE productized SKU in the plan</item>
+      <item>Re-price round is single communication window ≤ 14 days</item>
+      <item>Cash bridge covers ≥ 6 weeks at current burn</item>
+      <item>SKU deliverables and exclusions are concrete (no TBDs)</item>
+    </list>
+  </section>
+</text>

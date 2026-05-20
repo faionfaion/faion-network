@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Golden Set Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a golden-set artifact. Both per-item and dataset-level contracts apply.</summary>
+
+  <output-contract>
+    <required>
+      <field name="dataset_version" format="semver" example="2.3.0"/>
+      <field name="item_count" type="integer" min="50" max="200"/>
+      <field name="coverage_distribution" type="object"
+             required_keys="happy_path,edge_case,adversarial,known_failure_class"
+             constraint="each_value &gt;= 0.15"/>
+      <field name="items" type="array_object"
+             item_required_keys="id,feature,bucket,input,expected_output,anti_output,metadata"/>
+      <field name="bucket" type="closed_enum"
+             value="happy_path,edge_case,adversarial,known_failure_class"/>
+      <field name="anti_output" type="array" min="1"/>
+      <field name="metadata" type="object"
+             required_keys="difficulty,added_from,reviewer,added_date,last_validated_date"/>
+      <field name="quarterly_audit_log" type="array_object"
+             required_keys="audit_date,still_valid,schema_changed,retired"/>
+      <field name="incident_conversion_ratio" type="float" min="0.8"
+             window_days="90"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">items array with item_count &gt; 200 (signal: synthetic bloat; quality should improve, not size)</pattern>
+      <pattern id="f2">items with coverage_distribution.happy_path &gt; 0.55 (signal: insufficient stratification)</pattern>
+      <pattern id="f3">any item missing anti_output array OR anti_output.length == 0</pattern>
+      <pattern id="f4">item added without dataset_version bump in the same PR</pattern>
+      <pattern id="f5">metadata.reviewer == metadata.added_from.author (self-review)</pattern>
+      <pattern id="f6">audit_log entries with retired_items count == 0 over two consecutive quarters (signal: skipped audit)</pattern>
+      <pattern id="f7">expected_output containing the dataset's golden-set version string OR known seed-trigger tokens (indicates leakage)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Promote a candidate from "incident_followup" to a golden item after reviewer sign-off and bucket assignment.</transformation>
+      <transformation>Auto-redact PII fields in input while preserving the structural shape (replace email → "EMAIL_REDACTED").</transformation>
+      <transformation>Sub-bucket items within a parent bucket (e.g., known_failure_class.tax_id_format) for finer drift tracking; sub-buckets do not count for r1 distribution.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/golden-item-schema.json"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>item_count within 50-200</item>
+      <item>Each of 4 buckets ≥ 15% of items</item>
+      <item>Every item has anti_output array, length ≥ 1</item>
+      <item>dataset_version is bumped in any PR adding/removing items</item>
+      <item>Reviewer ≠ author for each new item</item>
+      <item>Quarterly audit_log has at least one retire OR schema_changed in 90 days OR explicit "no changes verified" entry</item>
+      <item>incident_conversion_ratio (last 90 days) ≥ 0.8</item>
+    </list>
+  </section>
+</text>

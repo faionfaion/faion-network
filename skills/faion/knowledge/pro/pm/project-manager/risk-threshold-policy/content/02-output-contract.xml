@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Risk Threshold Policy — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of `risk-threshold-policy.yaml`. PM tooling (router script, register UI) reads this file as source of truth.</summary>
+
+  <output-contract>
+    <required>
+      <field name="engagement_id" type="string"/>
+      <field name="version" format="semver"/>
+      <field name="severity_scale" required_keys="probability_max,impact_max,total_max"/>
+      <field name="bands" type="list" min_entries="3" max_entries="5"
+             item_required_keys="band_name,score_min,score_max,target_role,target_name,target_deputy,channel,sla_hours,de_escalation_criteria"/>
+      <field name="channels" type="map"
+             allowed_keys="slack_dm,slack_channel,email,phone,scheduled_meeting,board_memo"/>
+      <field name="co_signatures" required_keys="sponsor,delivery_lead,pmo"
+             value_format="email date version"/>
+      <field name="refresh_schedule" required_keys="cadence_weeks,next_refresh_date"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">band entry without target_name (only role) — r2 violation</pattern>
+      <pattern id="f2">band entry without sla_hours — r3 violation</pattern>
+      <pattern id="f3">de_escalation_criteria empty string — r4 violation</pattern>
+      <pattern id="f4">co_signatures missing sponsor signature — r5 violation</pattern>
+      <pattern id="f5">next_refresh_date is more than cadence_weeks past — policy is stale</pattern>
+      <pattern id="f6">two bands overlap on score range</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Reduce sla_hours after demonstrated reliability — e.g. amber from 24h to 12h.</transformation>
+      <transformation>Swap target_name when a person leaves; requires update + co-sign within 14 days.</transformation>
+      <transformation>Add a black band above red for catastrophic risks; requires full re-co-sign.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All bands have target_name (not just role)</item>
+      <item>All bands have SLA</item>
+      <item>De-escalation criteria written for each band</item>
+      <item>Sponsor + delivery lead + PMO signatures present and dated within refresh cadence</item>
+      <item>Channels listed match the team's actually-monitored channels</item>
+      <item>No band score-range overlap</item>
+    </list>
+  </section>
+</text>

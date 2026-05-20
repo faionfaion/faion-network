@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="CI Quality Gate Design Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules that make CI gate design a one-shot decision per check rather than a recurring debate.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-three-tiers" testable="true" depth="essential">
+      <statement>Every CI check MUST be classified into exactly one of three tiers: BLOCK (must pass for merge), WARN (runs and comments but does not gate), NIGHTLY (runs on schedule, alerts the team channel, never gates a PR). A check with no tier assignment is removed from CI until one is assigned.</statement>
+      <rationale source="DORA capability: deployment automation + change-fail rate balancing">Without a tier model, teams default to "block everything" — which leads to working-around CI via skip flags — or "block nothing meaningful" — which lets regressions through. Three tiers cover the realistic decision space.</rationale>
+    </rule>
+
+    <rule id="r2-written-rationale" testable="true" depth="essential">
+      <statement>Every BLOCK-tier check MUST have a one-paragraph written rationale committed in ci-design.md: what regression this check prevents, what false-positive rate is acceptable, and the escalation path if the check is flapping. Verbal justification ("we've always run this") does not count.</statement>
+      <rationale source="Standard governance practice; without written rationale, deprecation arguments win against forgotten reasoning">Two years later the team will debate removing the check. The written rationale is the only artifact that lets that decision be informed instead of reactive.</rationale>
+    </rule>
+
+    <rule id="r3-time-budget" testable="true" depth="essential">
+      <statement>The total BLOCK-tier wall-clock budget on a PR MUST be defined in ci-design.md and enforced. Default targets: &lt; 10 min for solo teams, &lt; 15 min for small teams. New BLOCK additions that exceed budget MUST either move an existing BLOCK to WARN or be added at WARN themselves.</statement>
+      <rationale source="DORA + Accelerate research on lead-time-to-change">PR cycle time above 30 min correlates strongly with batched PRs, larger diffs, and longer review queues. A budget keeps gate addition zero-sum, forcing real trade-offs.</rationale>
+    </rule>
+
+    <rule id="r4-signal-not-noise" testable="true" depth="essential">
+      <statement>A check is eligible for BLOCK tier only if it produces actionable feedback: the developer can read the failure and know what to do next. Checks that produce "exit code 1, see logs" or 200-line lint reports of pre-existing debt are demoted to WARN until their output is actionable.</statement>
+      <rationale source="Empirical CI failure-fatigue research; cf. Google's SET test-pyramid talks">Non-actionable BLOCK checks teach developers to bypass them. Actionable WARN checks teach developers to fix things.</rationale>
+    </rule>
+
+    <rule id="r5-escalation-path" testable="true" depth="essential">
+      <statement>Each BLOCK check MUST document its escalation path: who is alerted on persistent failure (3+ days), what the workaround is, and the maintenance owner. A check whose maintenance owner is "the team" defaults to nobody and gets bypassed during incidents.</statement>
+      <rationale source="Site Reliability Engineering Ch.5 (eliminating toil)">Unowned checks are the largest source of "we just merged with --no-verify because no one knew how to fix it" incidents. Naming an owner is cheap; the absence is expensive.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Tier classification entry">
+      <code lang="text"><![CDATA[
+Check: unit-tests
+Tier: BLOCK
+Rationale: Prevents merging code that breaks core business logic. Average runtime 3min, failure rate 2%/PR (actionable: failed test name + assertion). Owner: backend-team. Escalation: 3 days flapping -> #ci channel.
+
+Check: mutation-tests
+Tier: NIGHTLY
+Rationale: Mutation testing on full module is 25min. Too long for PR budget. Nightly run with alert on score regression. Owner: testing-developer. Escalation: 2 nightly fails -> issue.
+      ]]></code>
+      <note>Concrete, named, rationale-driven, owner present.</note>
+    </example>
+
+    <example type="bad" title="Block-everything pattern">
+      <code lang="text"><![CDATA[
+Check: lint, unit-tests, integration-tests, e2e, security-scan, mutation, accessibility, perf, docs-build, type-check, license-scan, dependency-audit
+Tier: BLOCK (all)
+Total runtime: 28min
+Rationale: "Quality matters"
+      ]]></code>
+      <note>No budget, no rationale per check, no actionable distinction. Developers will start to skip-merge.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

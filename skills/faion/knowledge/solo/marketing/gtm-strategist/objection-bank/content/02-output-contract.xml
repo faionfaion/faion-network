@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Objection Bank Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of objection-bank.yaml and the monthly diff post. Both must validate before merge to the marketing repo.</summary>
+
+  <output-contract>
+    <required>
+      <field name="entry.id" format="slug-lower-with-dashes" max_chars="64"/>
+      <field name="entry.tag" type="enum" values="price|trust|security|switching-cost|feature-gap|integration|fit"/>
+      <field name="entry.first_seen_date" format="YYYY-MM-DD"/>
+      <field name="entry.encounter_count" type="integer" min="1"/>
+      <field name="entry.blocked_revenue_estimate_usd" type="integer" min="0"/>
+      <field name="entry.score" type="integer" notes="encounter_count * blocked_revenue_estimate_usd"/>
+      <field name="entry.canonical_counter_statement" type="paragraph" min_words="40" max_words="80"/>
+      <field name="entry.variants" type="list_of_string" max="5"/>
+      <field name="entry.evidence_quotes" type="list_of_object" min="2" notes="verbatim quote + source channel + date"/>
+      <field name="entry.resolved_in" type="enum" values="hero-section|features-section|pricing-page|faq|case-studies|integrations-page|unanswered"/>
+      <field name="entry.severity_distribution" type="object" notes="counts of severity 1..5 across encounters"/>
+      <field name="entry.last_updated" format="YYYY-MM-DD"/>
+      <field name="monthly_diff.top_movers" type="list_of_string" min="0" max="3"/>
+      <field name="monthly_diff.new_entries" type="list_of_string"/>
+      <field name="monthly_diff.unanswered_list" type="list_of_string"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">entry.evidence_quotes empty or with fewer than 2 verbatim quotes from real encounters</pattern>
+      <pattern id="f2">entry.canonical_counter_statement is a paraphrase of a competitor's stock answer (drop-in template language)</pattern>
+      <pattern id="f3">resolved_in = unanswered for a top-5 ranked entry that has been in the bank for &gt; 30 days</pattern>
+      <pattern id="f4">entry.tag outside the closed vocabulary in 01-core-rules</pattern>
+      <pattern id="f5">monthly_diff posted to channel without the unanswered_list section (defeats the feedback loop)</pattern>
+      <pattern id="f6">entry created with encounter_count = 1 without a second corroborating quote — synthetic / single-anecdote noise</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Cluster near-duplicate objections into one entry, preserving each verbatim quote in the evidence_quotes list (with its own date and source channel).</transformation>
+      <transformation>Anonymise prospect names in evidence_quotes when the prospect requested it; never anonymise the substance of the objection.</transformation>
+      <transformation>Trim counter_statement to its load-bearing sentence when used in a cold-DM reply; the canonical lives in YAML, the trimmed version in the reply.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/objection-bank.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every entry has at least 2 verbatim evidence quotes</item>
+      <item>Top-5 entries all have resolved_in set to a real landing/faq location (none unanswered)</item>
+      <item>Tags drawn from the closed vocabulary</item>
+      <item>Monthly diff post includes the unanswered list</item>
+      <item>Canonical counter statements are 40-80 words and quarterly-reviewed</item>
+      <item>encounter_count and blocked_revenue_estimate align with the encounter logs they cite</item>
+    </list>
+  </section>
+</text>

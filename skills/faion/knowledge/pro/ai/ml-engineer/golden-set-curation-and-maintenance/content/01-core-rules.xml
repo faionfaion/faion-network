@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Golden Set Curation Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every golden-set curation must enforce. These prevent the most common failure: a golden set that looks healthy but doesn't catch real regressions.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-stratified-seeding" testable="true" depth="essential">
+      <statement>Seed coverage across at least 4 buckets: happy_path, edge_case, adversarial, known_failure_class. Distribution target ≥ 15% in each bucket. Pure happy-path golden sets are rejected.</statement>
+      <rationale source="eval-design research (Hamel Husain, Eugene Yan)">Happy-path-only sets pass with 95%+ accuracy on broken models because the broken behavior only shows under load or weird inputs. Stratification forces the set to expose what production exposes.</rationale>
+    </rule>
+
+    <rule id="r2-anti-output-required" testable="true" depth="essential">
+      <statement>Every golden item must carry an anti_output field: at least one plausible-wrong output that the model should NOT produce. Reject items with only expected_output.</statement>
+      <rationale source="LLM-judge calibration practice">Anti-outputs catch "right answer, wrong reason" regressions and improve LLM-judge calibration. Without them, judges over-credit outputs that contain the right tokens for the wrong reason.</rationale>
+    </rule>
+
+    <rule id="r3-incident-to-golden-pipeline" testable="true" depth="essential">
+      <statement>Every production incident involving the AI feature MUST produce at least one golden-set candidate within 7 days of the postmortem. Track conversion ratio: target ≥ 80% incidents → ≥ 1 candidate.</statement>
+      <rationale source="ml-ops practice">Incidents are pre-labelled, free, high-value data points. Teams that skip incident-to-golden conversion repeat the same bug class quarterly.</rationale>
+    </rule>
+
+    <rule id="r4-quarterly-drift-audit" testable="true" depth="essential">
+      <statement>Every 90 days, audit each golden item against current production behavior. Tag still_valid, schema_changed, retire. Retire items where the expected_output no longer matches updated business rules. Track retired-count per audit.</statement>
+      <rationale source="dataset-aging studies">Golden sets degrade ~ 10-20% per quarter through silent business-rule drift. Without retirement discipline, the set anchors the model to an outdated ground truth.</rationale>
+    </rule>
+
+    <rule id="r5-versioned-promotion" testable="true" depth="essential">
+      <statement>New items enter via PR with: dataset_version bump, per-item metadata complete, coverage report attached, peer review by ≥ 1 reviewer outside the proposing author. No direct push to main.</statement>
+      <rationale source="data-versioning best practice (DVC, LakeFS)">Unversioned datasets cause silent regressions where the eval pipeline runs against a different set than CI expects. Reviewer requirement catches biased labels from the author.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Stratified golden item">
+      <code lang="text"><![CDATA[
+id: gld-0042
+feature: invoice-extraction
+bucket: known_failure_class    # bucket for incident-derived items
+input:
+  pdf_uri: golden/invoices/0042.pdf
+expected_output:
+  vendor_name: "Acme GmbH"
+  total_eur: 1234.56
+  tax_id: "DE123456789"
+anti_output:
+  - vendor_name: "Acme Corp"    # wrong country variant
+  - tax_id: "VAT123456789"      # wrong tax-id prefix
+metadata:
+  difficulty: medium
+  added_from: incident-2026-04-12
+  reviewer: jdoe@team.io
+      ]]></code>
+      <note>Illustrates r1 + r2 + r3: stratified bucket, anti_output present, incident provenance.</note>
+    </example>
+
+    <example type="bad" title="Happy-path-only seeding">
+      <code lang="text"><![CDATA[
+golden/items:
+  - id: gld-0001 ... bucket: happy_path
+  - id: gld-0002 ... bucket: happy_path
+  - id: gld-0003 ... bucket: happy_path
+  ... 47 items, all happy_path
+
+Result: model that fails on every malformed input passes the golden eval
+with 100% accuracy. Incident-derived bugs never trigger regressions.
+      ]]></code>
+      <note>Illustrates r1 violation. Stratification is non-optional.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

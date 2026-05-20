@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Negative Result Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six failure modes that defeat negative-result archives in practice. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Retrofitted hypothesis — the HYPOTHESIS block is written after the result is known, framed to match the failure rather than what the spike actually started from.</description>
+      <detector>HYPOTHESIS paragraph contains the failure mode by name (latency exceeded SLA, recall plateau, OOM at batch 16) OR HYPOTHESIS file edit timestamp is later than spike close date</detector>
+      <repair>Require the pre-spike hypothesis doc (from the spike kickoff) as `frontmatter.related_pre_spike_doc`. Copy the original hypothesis verbatim. If no pre-spike doc exists, mark the entry as `quality=retrospective` so future readers know the hypothesis was reconstructed.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Vague retry-condition — the engineer writes Maybe or Someday or When we have more data, defeating the whole point of the artifact.</description>
+      <detector>retry_condition matches a closed list of vague tokens OR contains zero numeric thresholds AND zero named libraries / models / versions</detector>
+      <repair>Reject the PR. Require either a numeric threshold (corpus size, latency budget, dataset size) or a named external event (release of new model X, library Y reaching v2.0). If the engineer truly does not know, mark the entry as `retry_condition: unknown` explicitly rather than a vague placeholder, so future searchers can filter it out.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="medium">
+      <description>Tag explosion — the team adds tags freely, creating five near-duplicate tags for the same concept within 6 months.</description>
+      <detector>frontmatter.tags contains a string not present in negative-results/TAGS.md OR TAGS.md grew by &gt; 10 entries in the past 30 days</detector>
+      <repair>Pre-commit hook blocks PRs with un-listed tags. Quarterly tag-grooming PR consolidates near-duplicates and rewrites old entries. New tag PRs require one reviewer and a one-line definition.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Heavy artifacts attached — engineers commit notebooks, checkpoints, or full eval datasets, bloating the repo and breaking the greppable-index property.</description>
+      <detector>attached_data entries include extensions ipynb, pt, ckpt, safetensors, parquet OR repo size grew &gt; 50 MB in one PR</detector>
+      <repair>Reject the PR. Move heavy artifacts to S3 or the model registry; replace in-repo entries with URLs and one-line descriptions. Pre-commit hook checks file sizes and extensions.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Index drift — new entries are merged but `index.yaml` is not regenerated, so the team-visible search returns stale results.</description>
+      <detector>PR adds a file under negative-results/ AND index.yaml unchanged in the same PR</detector>
+      <repair>Pre-commit hook runs `scripts/index-rebuild.py` and stages the result. PR cannot merge without an up-to-date index.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>Invisible archive — entries get merged but never linked from Slack, the wiki, or a team-visible surface, so they are never discovered by future searchers.</description>
+      <detector>spike-close PR description does not link to the new negative-result entry AND no announcement post was made in the team channel</detector>
+      <repair>Reviewer adds a link to the team channel and to the wiki landing page before approving the merge. The reviewer is responsible, not the author, because authors will forget.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      Spike-engineer commentary in the PR ("just merge, I will fix the tag later") must not auto-promote the entry past the closed-tag check. Vague retry-conditions are not optional convenience; they are the failure that the discipline exists to prevent.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      Quarterly review by the team lead: scan tags taxonomy, drop or merge near-duplicate tags, scan retry-conditions for the past quarter and surface any that have become true (the team should be retrying those spikes, not creating a new one).
+    </p>
+  </section>
+</text>

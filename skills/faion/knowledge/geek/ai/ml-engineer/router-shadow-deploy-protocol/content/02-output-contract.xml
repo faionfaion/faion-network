@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Router Shadow Deploy — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schema for shadow-report.yaml and the promotion-decision artefact. The promote-gate script consumes the report; humans co-sign the decision.</summary>
+
+  <output-contract>
+    <required>
+      <field name="shadow_report" path="shadow-report.yaml"
+             required_keys="feature_id,candidate_id,baseline_id,window_start,window_end,sample_count,metrics,cost,schema_parity,coverage,issues_open"/>
+      <field name="metrics" required_keys="per_intent,overall"
+             per_intent_required_keys="intent_name,delta_faithfulness,delta_answer_relevance,delta_context_precision,judge_model_version"/>
+      <field name="cost" required_keys="baseline_per_1k,candidate_per_1k,delta_pct,budget_approval_status"/>
+      <field name="schema_parity" required_keys="total_pct,divergent_request_count,divergent_examples"/>
+      <field name="coverage" required_keys="intents_covered,traffic_pct_per_intent,unseen_intents"/>
+      <field name="promotion_decision" path="promotion-decision.md"
+             required_keys="status,signatures,risk_summary,rollback_owner,promotion_schedule"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">window_end - window_start &lt; 7 days</pattern>
+      <pattern id="f2">sample_count &lt; 1000</pattern>
+      <pattern id="f3">cost.delta_pct &gt; 10 AND cost.budget_approval_status == "none"</pattern>
+      <pattern id="f4">schema_parity.total_pct &lt; 100</pattern>
+      <pattern id="f5">coverage.unseen_intents non-empty AND promotion_decision.status == "go"</pattern>
+      <pattern id="f6">promotion_decision.signatures missing ml_engineer or sponsor</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Extend window beyond 7 days when seasonal traffic is expected (end-of-month, holiday).</transformation>
+      <transformation>Reduce sample threshold for low-volume intents only if the intent has &lt;5% of traffic AND a compensating analysis is attached.</transformation>
+      <transformation>Promote at lower than 100% schema parity ONLY if the divergence is additive (new optional fields) AND consumers are explicitly migrated.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Window ≥7 days; sample count ≥1000; all intent classes covered</item>
+      <item>Cost delta within ±10% or explicit approval recorded</item>
+      <item>Schema parity exactly 100%</item>
+      <item>Per-intent metrics within the acceptance contract</item>
+      <item>Promotion decision signed by ml_engineer + sponsor</item>
+      <item>Rollback runbook referenced and rollback owner named</item>
+    </list>
+  </section>
+</text>

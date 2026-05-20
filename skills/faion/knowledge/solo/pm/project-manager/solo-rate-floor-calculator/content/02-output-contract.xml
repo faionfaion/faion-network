@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Rate Floor — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a `RateFloor` output. Must satisfy this contract before returning to operator.</summary>
+
+  <section title="Required fields">
+    <list>
+      <item>`floor_usd_per_hour` — number (baseline band)</item>
+      <item>`sensitivity` — array of 3 objects {band: enum {low, baseline, high}, billable_pct, floor_usd_per_hour}</item>
+      <item>`project_minimum_usd` — convenience: floor × 20 (recommends rejecting engagements &lt; 20h)</item>
+      <item>`breakdown` — object {`target_income_loaded`, `tax_load_pct`, `working_weeks`, `billable_pct`, `benefit_cost_usd`, `tooling_cost_usd`, `profit_margin_pct`}</item>
+      <item>`defense_narrative` — string ≤ 400 chars, prospect-friendly explanation</item>
+      <item>`inputs_warning` — array (may be empty) of `{field, message}` for capped/clamped inputs</item>
+      <item>`computed_at` — ISO-8601 date</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`breakdown.billable_pct &gt; 0.55` without `inputs_warning` referencing historical data source.</description>
+      <reason>Violates r1 cap.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`breakdown.working_weeks &gt; 46` without `inputs_warning`.</description>
+      <reason>Violates r3 cap.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`breakdown.profit_margin_pct &lt; 0.15`.</description>
+      <reason>Violates r4 minimum.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`sensitivity` has fewer than 3 bands or bands not at ±10pp billable.</description>
+      <reason>Violates r5 sensitivity requirement.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`defense_narrative` discloses raw target income to prospect.</description>
+      <reason>Operator's income is not the prospect's business. Narrative should defend the rate using market and load, not personal finance.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Round `floor_usd_per_hour` to nearest $5.</item>
+      <item>Convert to non-USD currency at current rate for non-US operators (annotate currency).</item>
+      <item>Drop benefits row in jurisdictions where employer-equivalent benefits are state-funded (e.g. NHS).</item>
+    </list>
+  </section>
+
+  <reference path="templates/rate-floor.json">JSON Schema the output validates against.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All breakdown fields populated.</item>
+      <item>Caps (r1, r3) applied or input data cited.</item>
+      <item>Margin ≥ 15%.</item>
+      <item>3 sensitivity bands present.</item>
+      <item>Defense narrative does NOT leak raw income.</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Alert Noise Budget — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the weekly budget-report shape and the tuning-action record. Agent / SRE running the budget review must satisfy this contract.</summary>
+
+  <output-contract>
+    <required>
+      <field name="reporting_window" format="ISO-8601_date_range_7_days"/>
+      <field name="services" min="1" required_keys="service_name,budget,events,page_rate,non_actionable_rate,status"/>
+      <field name="status" format="enum: within-budget | at-budget | over-budget"/>
+      <field name="top_offenders" condition="required_if_status=over-budget" min="1"
+             required_keys="alert_id,fire_count,non_actionable_count,proposed_tuning_action"/>
+      <field name="tuning_actions_taken" required_keys="alert_id,action_type,actor,timestamp"/>
+      <field name="chronic_breach_flag" type="boolean" condition="set_true_if_over_budget_for_3_consecutive_weeks"/>
+      <field name="escalation_record" condition="required_if_chronic_breach_flag=true" required_keys="escalated_to,date,context"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">tuning_action_type = "added-filter" / "muted-in-slack" / "ignored" — none of these are valid in-platform actions</pattern>
+      <pattern id="f2">status=within-budget while actual events &gt; budget thresholds (math wrong or actionable flags inflated)</pattern>
+      <pattern id="f3">over-budget service with no top_offenders proposed action (review ran but no decision)</pattern>
+      <pattern id="f4">chronic_breach_flag=true with no escalation_record</pattern>
+      <pattern id="f5">tuning_action_type=add-new-alert when service is over budget (must retire/tune first per r3)</pattern>
+      <pattern id="f6">actionable_flag value missing for any alert event in the window (data quality failure)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Aggregate identical alert events that fire in rapid succession (within 5 min) into a single budget event (flap dampening).</transformation>
+      <transformation>Mark scheduled-maintenance alerts as out-of-budget (does not count) if maintenance window was pre-declared.</transformation>
+      <transformation>Roll up alerts from sub-services into the parent service budget IF the sub-service ownership is the same team.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/noise-budget.json"/>
+  </output-contract>
+
+  <section title="Self-check (run at end of weekly review)">
+    <list>
+      <item>Every service has a budget configured (r1)</item>
+      <item>Every alert event in the window has an actionable flag (r2)</item>
+      <item>Every over-budget service has at least one tuning action recorded this week (r3)</item>
+      <item>No tuning action this week added a NEW alert to an over-budget service (r3)</item>
+      <item>Default-to-delete bias documented: count of deletions / total tuning actions logged</item>
+      <item>Chronic-breach services have escalation record with date + recipient (r5)</item>
+      <item>Output validates against templates/noise-budget.json</item>
+    </list>
+  </section>
+</text>

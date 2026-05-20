@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Glossary Management — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a glossary entry, intake record, and conflict-resolution record. Agent or BA maintaining the glossary must satisfy these contracts.</summary>
+
+  <output-contract>
+    <required>
+      <field name="term" format="canonical_string_lowercase_or_titlecase_consistent_across_glossary"/>
+      <field name="scope" format="enum: project-wide | bounded_context_name"/>
+      <field name="status" format="enum: proposed | canonical | deprecated"/>
+      <field name="definition" format="one_to_three_sentences_no_circular_reference"/>
+      <field name="aliases" type="array"/>
+      <field name="examples" min="1" source="real_usage_in_project_artifact"/>
+      <field name="conflicts_with" type="array" optional="true_unless_resolution_record_required"/>
+      <field name="replaced_by" condition="required_if_status_is_deprecated" format="link_to_canonical_term"/>
+      <field name="propagation_hooks" min="1" required_keys="hook_type,location,owner"/>
+      <field name="owner" format="single_named_individual"/>
+      <field name="last_reviewed" format="ISO-8601_date"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">term that is its own definition ("Active Customer: a customer who is active")</pattern>
+      <pattern id="f2">circular alias chain (A aliases B, B aliases A; or longer cycle)</pattern>
+      <pattern id="f3">canonical entry with zero propagation_hooks (orphan term)</pattern>
+      <pattern id="f4">two canonical entries with identical term + identical scope (duplicate)</pattern>
+      <pattern id="f5">deprecated entry without replaced_by link</pattern>
+      <pattern id="f6">scope value not from the project's documented bounded-context list</pattern>
+      <pattern id="f7">conflict_with field populated without a corresponding conflict-resolution-record</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Merge two near-duplicate entries (e.g., "user" and "end-user") with the same scope — the surviving entry takes both as aliases.</transformation>
+      <transformation>Split a single entry into two scoped entries when conflict resolution outcome is "split".</transformation>
+      <transformation>Promote a proposed entry to canonical AFTER first use in a PRD or spec with the maintainer's review.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/glossary-entry.json"/>
+  </output-contract>
+
+  <section title="Self-check checklist (run on every entry edit)">
+    <list>
+      <item>Term is unique within scope (r1)</item>
+      <item>Scope is set and matches a documented bounded context (r2)</item>
+      <item>Definition does not reference itself (no circularity)</item>
+      <item>If conflicts_with is set, conflict-resolution-record exists with date + decision (r3)</item>
+      <item>If status=deprecated, replaced_by points to a canonical entry (r4)</item>
+      <item>At least one propagation_hook is set (r5)</item>
+      <item>Owner is a single named individual</item>
+      <item>last_reviewed is current OR explicitly stale-flagged for review</item>
+      <item>Output validates against templates/glossary-entry.json</item>
+    </list>
+  </section>
+</text>

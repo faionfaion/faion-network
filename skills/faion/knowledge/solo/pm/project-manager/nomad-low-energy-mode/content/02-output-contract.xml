@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Nomad Mode Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the Trip Mode Declaration and the daily 2h-window log. Founder must publish these before and during the trip respectively.</summary>
+
+  <output-contract>
+    <required>
+      <field name="declaration.trip_start_date" format="YYYY-MM-DD"/>
+      <field name="declaration.trip_end_date" format="YYYY-MM-DD"/>
+      <field name="declaration.timezones" type="list_of_string" min="1"/>
+      <field name="declaration.response_window_hours" type="enum" values="24|48"/>
+      <field name="declaration.paused_ops" type="list_of_string" min="1" notes="must list each production-touching op explicitly"/>
+      <field name="declaration.daily_window_local_time" format="HH:MM-HH:MM"/>
+      <field name="declaration.emergency_channel" type="string" notes="for catastrophic incidents only"/>
+      <field name="declaration.zero_work_days" type="list_of_date" min="1"/>
+      <field name="daily_log.date" format="YYYY-MM-DD"/>
+      <field name="daily_log.window_used_hours" type="float" min="0" max="4"/>
+      <field name="daily_log.shipped" type="list_of_string"/>
+      <field name="daily_log.deferred" type="list_of_string"/>
+      <field name="daily_log.bandwidth_quality" type="enum" values="good|patchy|offline"/>
+      <field name="post_trip.deferred_deploy_queue_size" type="integer" min="0"/>
+      <field name="post_trip.async_backlog_thread_count" type="integer" min="0"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">declaration.paused_ops empty when the team operates a production deploy pipeline (paused must include deploys)</pattern>
+      <pattern id="f2">declaration.zero_work_days empty for a trip longer than 4 days</pattern>
+      <pattern id="f3">daily_log.window_used_hours &gt; 4 (hard ceiling)</pattern>
+      <pattern id="f4">production deploy happened during trip window without an incident-justified override note</pattern>
+      <pattern id="f5">declaration.response_window_hours set to a value &lt; 24 (defeats the mode)</pattern>
+      <pattern id="f6">trip_end_date earlier than trip_start_date OR window length &lt; 1 day</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Override a single zero-work day if (a) an actual paid customer incident requires intervention AND (b) the founder logs an override note. The mode is then re-anchored with a replacement zero-day in the next 3 calendar days.</transformation>
+      <transformation>Extend the daily window to 3-4 hours for a maximum of 2 days per trip if a pre-trip deliverable slipped; never as the default.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Trip Mode Declaration posted to team channel BEFORE departure</item>
+      <item>paused_ops lists every production-touching workflow</item>
+      <item>At least one zero-work day per 5 calendar days</item>
+      <item>Daily window does not exceed 4 hours on any single day</item>
+      <item>Deferred-deploy queue tagged in PRs, not held in memory</item>
+      <item>Post-trip update published within 72h of return</item>
+    </list>
+  </section>
+</text>

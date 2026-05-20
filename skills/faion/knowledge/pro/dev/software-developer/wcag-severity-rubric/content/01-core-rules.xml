@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="WCAG Severity Rubric Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five hard rules for triaging accessibility audit findings reproducibly across roles.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-three-axis-scoring" testable="true" depth="essential">
+      <statement>Every finding is scored on 3 axes: (a) WCAG level (A=3 / AA=2 / AAA=1), (b) user impact (3=task-block / 2=degrades / 1=annoyance / 0=cosmetic), (c) AT population affected (3=screen-reader OR keyboard-only / 2=low-vision OR cognitive / 1=color OR motion / 0=none). Severity = max-impact mapping defined in section "Mapping table".</statement>
+      <rationale source="Deque axe-core impact levels; WebAIM evaluation methodology">Single-axis scoring (severity = WCAG level) overweights paperwork criteria and underweights actual user pain. Three-axis scoring forces the triager to consider real impact. Deque's axe-core uses a similar 4-tier impact (minor / moderate / serious / critical) grounded in user research.</rationale>
+    </rule>
+
+    <rule id="r2-blocker-equals-task-block" testable="true" depth="essential">
+      <statement>"Blocker" severity is reserved for findings that prevent a target user from completing a primary user journey (signup, checkout, contact form, content read). Not "WCAG level A violation". A heading-level skip on a marketing page is not a blocker. Missing button label on Pay button IS a blocker.</statement>
+      <rationale source="WebAIM Million 2024 - 96% of homepages have WCAG violations">If "blocker" includes every WCAG-A violation, 96% of products have 50+ blockers and the rubric is useless. Blocker = "cannot complete the job" makes the tier actionable. The legal compliance lens (every WCAG-A is a blocker for ADA Title II / EAA) is handled separately via the compliance methodology — this rubric is for engineering triage.</rationale>
+    </rule>
+
+    <rule id="r3-at-population-gate" testable="true" depth="essential">
+      <statement>Before severity is finalized, the finding must be validated with the actual AT it claims to affect: screen-reader findings tested with NVDA or VoiceOver; keyboard findings tested without a mouse; cognitive findings reviewed by a person with the relevant lived experience or a domain expert. Unvalidated AT claims default to "moderate" max.</statement>
+      <rationale source="Deque practice; WebAIM AT survey 2024">Automated tools (axe, WAVE, Lighthouse) flag what they CAN flag; many findings are false positives without AT validation. Pushing every automated "critical" to blocker burns sprint budget on non-issues. AT validation is the empirical gate that separates real impact from theoretical impact.</rationale>
+    </rule>
+
+    <rule id="r4-sla-per-tier" testable="true" depth="essential">
+      <statement>Each severity tier has an SLA: blocker = fix before next deploy (hot-fix if in prod), serious = within 1 sprint, moderate = within 1 quarter, minor = next major refactor or close-as-wontfix with rationale. SLAs are written into the audit report and the team's Definition of Done.</statement>
+      <rationale source="ISO 30071-1 (digital inclusion management); ThoughtWorks tech radar a11y">Without SLAs the moderate/minor bucket becomes a graveyard. Quantifying time-to-fix forces prioritization. The "minor with rationale" close is essential — without a wontfix path, every audit grows the backlog forever and team morale collapses.</rationale>
+    </rule>
+
+    <rule id="r5-sample-validate-triage" testable="true" depth="essential">
+      <statement>For every 50 findings triaged, a second reviewer (or the audit author) re-scores 10% sampled at random. Severity must match in ≥80% of samples or the rubric is re-calibrated. This catches drift, batch-fatigue, and over-confidence in automated impact scores.</statement>
+      <rationale source="Inter-rater reliability practice; Deque internal QA process">Triage drift is real — by finding 80 of 200, severity scoring is noticeably looser than at finding 5. Sampling forces a calibration checkpoint. 80% match is the industry-standard kappa threshold for reliable rubrics.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Mapping table (3-axis → severity)">
+    <code lang="text"><![CDATA[
+Compute s = wcag_level + user_impact + at_population
+
+s ≥ 8   → blocker   (e.g., WCAG-A + task-block + screen-reader)
+s = 6-7 → serious   (e.g., AA + degrades + screen-reader OR A + task-block + low-vision)
+s = 4-5 → moderate
+s ≤ 3   → minor
+
+Override: if user_impact == 3 (task-block) AND at_population ≥ 2, severity = blocker
+          regardless of WCAG level (covers AAA blockers on the primary journey).
+    ]]></code>
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Finding triaged with full 3-axis score">
+      <code lang="json"><![CDATA[
+{
+  "finding_id": "F-042",
+  "wcag_sc": "4.1.2 Name, Role, Value",
+  "wcag_level": 3,
+  "user_impact": 3,
+  "at_population": 3,
+  "axes_sum": 9,
+  "severity": "blocker",
+  "at_validation": "tested with NVDA 2024.4 + Firefox 128 — button announces as 'group' not 'button'",
+  "location": "checkout/PayButton.tsx:line 47",
+  "sla": "fix before next deploy"
+}
+      ]]></code>
+      <note>Illustrates r1 (3-axis), r2 (blocker = task-block on checkout), r3 (AT-validated).</note>
+    </example>
+
+    <example type="bad" title="Everything-p1 triage">
+      <code lang="text"><![CDATA[
+Auditor marks all 200 findings as severity=blocker because "WCAG compliance is critical".
+
+Problem: violates r2 — blocker must mean task-block. Team capacity is ~10
+blockers per sprint; backlog will never drain. PM loses trust in the rubric;
+findings get re-bucketed informally; rubric dies.
+Repair: re-triage on 3 axes. Expect typical distribution: 5-10% blocker,
+20-30% serious, 40-50% moderate, 15-25% minor.
+      ]]></code>
+      <note>Illustrates the most common rubric-killing pattern.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Time Tracking — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a `TimeReport` weekly output and the invoice draft consumed by billing tools.</summary>
+
+  <section title="Required fields (TimeReport)">
+    <list>
+      <item>`week_iso` — ISO week (e.g. "2026-W21")</item>
+      <item>`billable_hours_by_project` — array of `{project, hours, rate, amount}`</item>
+      <item>`write_offs` — array of `{reason ∈ {SALES, ADMIN, LEARNING, UNBILLABLE-REWORK, BREAK}, hours}`</item>
+      <item>`untagged_remaining` — number — hours still untagged after reconciliation (target ≤ 0.5h)</item>
+      <item>`billable_pct_actual` — billable_total / total_tracked, for rate-floor recalibration</item>
+      <item>`top_tasks` — array of `{task_label, hours}` (top 5)</item>
+      <item>`gaps_detected` — array of `{start, end, suspected_project}` for operator review</item>
+      <item>`invoice_drafts` — array per client `{project, lines: [{date, task, hours, rate, amount}]}`</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`untagged_remaining &gt; 1.0` AND report marked `final: true`.</description>
+      <reason>Untagged hours invoice as zero. Operator silently loses money each week. Reconciliation must close untagged blocks.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`write_offs[*].reason == "OTHER"` or string not in closed list.</description>
+      <reason>Violates r4. Forces coercion to ADMIN.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`invoice_drafts[*].lines` contains a line with `hours == 0` or `rate == 0`.</description>
+      <reason>Empty lines confuse clients. Drop them.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Report emitted without `gaps_detected` array.</description>
+      <reason>Even empty array required — its presence proves the gap detector ran.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`billable_pct_actual &gt; 0.65` for any single week.</description>
+      <reason>Statistically improbable for sustainable solo work; surfaces as a `data_warning` for inspection (capture errors, missed write-offs).</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Round per-day hours to nearest 0.25h (15-min increments).</item>
+      <item>Merge blocks &lt; 5min into the prior block (interruptions, not real switches).</item>
+      <item>Anonymise client names in shareable summaries.</item>
+    </list>
+  </section>
+
+  <reference path="templates/time-report.json">JSON Schema the output validates against.</reference>
+  <reference path="templates/invoice-lines.csv">CSV format invoicing tools (FreshBooks, Wave) ingest.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`untagged_remaining &lt; 0.5h`.</item>
+      <item>All write-off reasons from closed list.</item>
+      <item>Per-project totals sum to billable_hours total.</item>
+      <item>Each invoice draft has ≥ 1 line.</item>
+      <item>`billable_pct_actual` &lt; 0.65 OR `data_warning: true`.</item>
+    </list>
+  </section>
+</text>

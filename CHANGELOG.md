@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063 Added: 52+ P1 gap methodologies from Wave 3 writers (uncommitted batch harvest).
 - F-062 Added: bulk migration of all 1638 v1 methodology.xml → v2 multi-file dirs (94% in initial sweep + 98 force-fix for skill-level conflicts + 5 XML id repairs).
 - F-063 Added: P0 gap methodologies (5): agency-case-study-template, ai-code-review-checklist, ai-generated-layout-review-checklist, async-standup-template, debt-scoring-rubric.
 - F-059 Changed: validate-methodology-v2.py accepts any 01-*.xml as core (not just 01-core-rules.xml).

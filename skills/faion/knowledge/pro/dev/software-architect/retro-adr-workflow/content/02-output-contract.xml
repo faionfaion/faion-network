@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Retro-ADR — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the Retro-ADR file shape and the discovery-signal feed. ADR linter consumes both.</summary>
+
+  <output-contract>
+    <required>
+      <field name="frontmatter" required_keys="id,title,status,decided_on_estimated,authored_on,owner,sources"/>
+      <field name="status" enum="accepted-retroactively,deprecated-retroactively,superseded-retroactively"/>
+      <field name="sources" type="list" min_entries="1"
+             item_format="PR# | commit-hash | chat-thread-id | meeting-note-url"/>
+      <field name="body_sections" must_contain="Original intent,Current reconstruction,Consequences,Alternatives considered now"/>
+      <field name="trace_links" type="list" item_required_keys="kind,uri"
+             kind_enum="code-symbol,fitness-function,test,dashboard,runbook"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">status is `accepted` (forward) AND decided_on_estimated is set — must be one or the other</pattern>
+      <pattern id="f2">sources list empty — every retro claim must cite at least one evidence source</pattern>
+      <pattern id="f3">owner is a team name (e.g. "platform team") instead of a named individual</pattern>
+      <pattern id="f4">body contains `author_responsible` or `reason_undocumented` field — r1 violation</pattern>
+      <pattern id="f5">two retro-ADRs cover the same decision — supersede or merge instead of duplicating</pattern>
+      <pattern id="f6">capture session produced &gt;3 retro-ADRs in a single sitting — r4 violation</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Promote a retro-ADR to standard `accepted` status only after explicit team-wide review (not by single author).</transformation>
+      <transformation>Supersede a retro-ADR with a forward-looking ADR when the decision is consciously revisited.</transformation>
+      <transformation>Append `current_reconstruction` updates with date stamps; do not rewrite earlier reconstructions.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Discovery signal feed">
+    <p>The capture ritual consumes a weekly digest from `scripts/discover-undocumented-decisions.py`. Each candidate has:</p>
+    <list>
+      <item><b>signal_kind</b>: repeated_question | surprise_pr_review | onboarding_blocker | architecture_review_gap</item>
+      <item><b>occurrences</b>: integer count across the discovery window</item>
+      <item><b>candidate_owner</b>: most-recent code-author on the affected paths</item>
+      <item><b>priority_score</b>: occurrences × business_impact_band</item>
+      <item><b>recommended_action</b>: capture-this-week | defer | merge-with-adr-#XX</item>
+    </list>
+    <p>Capture ritual processes top-3 by priority_score per session.</p>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Frontmatter complete; owner is a named individual</item>
+      <item>≥1 source per claim</item>
+      <item>Original intent and Current reconstruction are clearly separated</item>
+      <item>Alternatives-considered-now field populated (even if "none")</item>
+      <item>Capture session this week ≤3 retro-ADRs</item>
+    </list>
+  </section>
+</text>

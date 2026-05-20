@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI Earned-Value Management Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every AI-driven EVM pipeline enforces. Hard rules; sensors and aggregators MUST NOT relax them on operator instruction.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-baseline-immutability" testable="true" depth="essential">
+      <statement>The PV baseline (`baseline.json`) is IMMUTABLE within a reporting period. Re-baselining is permitted ONLY on an explicit, signed change-control event recorded as `rebaselined_on_yyyy_mm_dd` in the report. Sliding the baseline silently to match actuals is FORBIDDEN.</statement>
+      <rationale source="PMBOK 7 / NASA SP-2015-3424 §4.2">Re-baselining-without-record is the dominant failure pattern that makes EVM theatre — SPI=1.0 every week because the baseline tracks the actual. Immutability is what gives EVM its forecasting power.</rationale>
+    </rule>
+
+    <rule id="r2-sensor-independence" testable="true" depth="essential">
+      <statement>EV (Earned Value) MUST derive from at least 2 independent sensors that disagree on noise but agree on direction (e.g. Git commit volume AND Jira story-point completion). Single-sensor EV is REJECTED. AC (Actual Cost) MUST derive from a finance-tool sensor, never inferred from time-tracking alone.</statement>
+      <rationale source="Cross-validation in measurement theory; sensor-fusion literature">Single-sensor EV is gameable — commits inflate when devs split PRs, story points inflate when teams pad estimates. Two independent sensors that drift together are credible; drift apart triggers a flag, never a silent average.</rationale>
+    </rule>
+
+    <rule id="r3-confidence-interval-required" testable="true" depth="essential">
+      <statement>The weekly report MUST publish SPI and CPI as both a point estimate AND a 80% confidence interval derived from the last 8 weeks of sensor noise via bootstrap or analogous resampling. A bare point estimate (`SPI = 0.92`) without CI is REJECTED.</statement>
+      <rationale source="Statistical reporting standards; Tufte / Gelman">A single-number EVM signal is read as exact and triggers wrong decisions. A point with a band lets the PM see when the variance is sensor noise vs project drift. The 80% band is the lowest practical floor; tighter bands need more history.</rationale>
+    </rule>
+
+    <rule id="r4-pm-signoff-gate" testable="true" depth="essential">
+      <statement>No EVM report is published to stakeholders until the PM signs off via `pm-signoff.md` in the report folder. Auto-publish from the pipeline to Slack / email / portfolio dashboard is FORBIDDEN. The agent's job is to draft; the PM's job is to publish.</statement>
+      <rationale source="Faion product policy `feedback_orchestrator_self_drive`">Sensor data is high-volume but low-context. Auto-publish to stakeholders creates governance incidents when the AC sensor is briefly stale or a sensor outage is misread. PM-in-the-loop is non-negotiable for stakeholder-facing reports.</rationale>
+    </rule>
+
+    <rule id="r5-weekly-cadence-and-freshness" testable="true" depth="essential">
+      <statement>The report MUST be produced weekly. Every sensor MUST have a `read_at_utc` timestamp on the report, AND every sensor's data MUST be within 36 hours of the report's reference date. Stale sensors (older than 36h) MUST trigger a RED band and `sensor_stale` flag — never quietly used.</statement>
+      <rationale source="EVM operational handbook (US DoE EM)">Stale sensor data feeding fresh EVM produces a confident-but-wrong forecast. Forced freshness floor is the cheapest gate against silent decay of the pipeline.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Two-sensor EV with disagreement noted">
+      <code lang="text"><![CDATA[
+EV (Git):       42% of baseline PV (commits weighted by reviewed-merge events)
+EV (Jira):      45% of baseline PV (story points completed)
+EV (fused):     43.5% point, [40.1%, 46.9%] 80% CI
+Note: sensors agree direction (project ~ on track), disagree on 3% magnitude.
+      ]]></code>
+      <note>r2 satisfied (two sensors), r3 satisfied (CI present), disagreement transparent rather than averaged silently.</note>
+    </example>
+
+    <example type="bad" title="Silent re-baselining">
+      <code lang="text"><![CDATA[
+Week 12: SPI = 1.02 (project ahead of plan)
+[baseline.json updated 2026-05-15 — no rebaselined_on entry, no change-control reference]
+      ]]></code>
+      <note>r1 violation. Baseline was edited to track actuals. SPI is meaningless. Detector: compare baseline file mtime against the rebaselined_on entry — mismatch is the failure signal.</note>
+    </example>
+
+    <example type="bad" title="Single-sensor EV without CI">
+      <code lang="text"><![CDATA[
+EV: 38% (Jira story points)
+SPI: 0.92
+      ]]></code>
+      <note>r2 + r3 violations. Single sensor, no CI. The number reads as exact; PM acts as if the project is 8% behind plan when in fact the value is within sensor noise.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

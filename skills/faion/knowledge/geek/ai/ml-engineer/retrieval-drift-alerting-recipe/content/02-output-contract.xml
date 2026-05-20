@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Retrieval Drift Alerting — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schemas for the three production artefacts: drift-alerts.yaml (config), baseline snapshot (parquet metadata), and Prometheus rule output.</summary>
+
+  <output-contract>
+    <required>
+      <field name="drift_alerts_config" path="drift-alerts.yaml"
+             required_keys="feature_id,baseline,metrics,routing,safer_mode,recontract_triggers"/>
+      <field name="baseline" required_keys="window_start,window_end,snapshot_path,sample_count,corpus_version,query_model_version"/>
+      <field name="metrics" required_keys="query_embedding_kl,retrieval_set_jaccard,top_k_score_psi,neighbour_recency_delta"
+             each_required="threshold_p1,threshold_p3,window_minutes"/>
+      <field name="routing" required_keys="p1_destination,p3_destination,info_destination,suppression_window_min"/>
+      <field name="safer_mode" required_keys="trigger_condition,degrade_behaviour,auto_disengage_condition,manual_override_required"/>
+      <field name="recontract_triggers" type="list" min_entries="1"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">baseline.window_start within 14 days of now — too fresh, captures the drift it's meant to detect</pattern>
+      <pattern id="f2">metrics map has &lt; 4 entries — incomplete coverage</pattern>
+      <pattern id="f3">routing.p1_destination == routing.p3_destination AND both go to the same pager — alarm fatigue by design</pattern>
+      <pattern id="f4">safer_mode.degrade_behaviour requires manual approval for a P1 — too slow</pattern>
+      <pattern id="f5">recontract_triggers empty OR contains "manual review every quarter" — must be event-based</pattern>
+      <pattern id="f6">baseline auto-refreshed on a cron without operator approval</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Tighten thresholds after a low-noise period (≤1 false-positive per month for &gt;3 months).</transformation>
+      <transformation>Add new metrics (e.g. retrieval-coverage-of-queries) without removing the four required ones.</transformation>
+      <transformation>Adjust suppression_window_min upward to reduce noise from transient infrastructure events.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All four metrics defined with both P1 and P3 thresholds</item>
+      <item>Baseline window ≥14 days AND not auto-refreshed</item>
+      <item>Routing splits P1 and P3 to different destinations</item>
+      <item>Safer-mode auto-engages on P1; no manual gate for the degradation</item>
+      <item>At least one recontract trigger references the acceptance contract</item>
+      <item>Prometheus rules match the schema; dashboard panels show all four metrics</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Strangler-Fig Migration Playbook Output Contract" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>Defines the migration artifact bundle: slice plan, cutover runbook, exit-criteria record.</summary>
+
+  <output-contract>
+    <required>
+      <field name="monolith_inventory" format="csv_or_json">
+        <subfield name="entries[].route_or_job_name" type="string"/>
+        <subfield name="entries[].traffic_rps" type="number"/>
+        <subfield name="entries[].error_rate_baseline" type="number"/>
+        <subfield name="entries[].p99_latency_ms_baseline" type="number"/>
+      </field>
+      <field name="slice_scoring_table">
+        <subfield name="rows[].slice_id" type="string"/>
+        <subfield name="rows[].coupling_depth" type="integer" min="1" max="5"/>
+        <subfield name="rows[].traffic_risk" type="integer" min="1" max="5"/>
+        <subfield name="rows[].business_priority" type="integer" min="1" max="5"/>
+        <subfield name="rows[].selection_order" type="integer" min="1"/>
+      </field>
+      <field name="cutover_runbook_per_slice" format="markdown">
+        <subfield name="steps[].command_or_action" type="string"/>
+        <subfield name="steps[].rollback_command" type="string"/>
+        <subfield name="kill_switch_test_passed_at" type="iso_datetime"/>
+      </field>
+      <field name="parity_burn_in_record" format="metrics_dump">
+        <subfield name="window_start" type="iso_datetime"/>
+        <subfield name="window_end" type="iso_datetime"/>
+        <subfield name="duration_hours" type="integer" min="168"/>
+        <subfield name="error_rate_delta_percent" type="number"/>
+        <subfield name="p99_latency_delta_percent" type="number"/>
+      </field>
+      <field name="exit_criteria_signoff" format="signed_document">
+        <subfield name="legacy_5xx_for_7_days" type="boolean"/>
+        <subfield name="parity_within_threshold" type="boolean"/>
+        <subfield name="runbook_handed_off" type="boolean"/>
+        <subfield name="client_architect_signature_date" type="iso_date"/>
+      </field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">first_slice with coupling_depth ≥ 4 OR traffic_risk ≥ 4</pattern>
+      <pattern id="f2">parity_burn_in_record.duration_hours &lt; 168 (less than 7 days)</pattern>
+      <pattern id="f3">cutover_runbook missing rollback_command on any step</pattern>
+      <pattern id="f4">kill_switch_test_passed_at missing OR &gt; 7 days before cutover (stale test)</pattern>
+      <pattern id="f5">exit_criteria_signoff with all three flags true but client_architect_signature_date missing</pattern>
+      <pattern id="f6">dual_write enabled OR shadow_read configured with no end_date — both must have explicit termination dates</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Burn-in window may extend beyond 7 days if error_rate_delta_percent &gt; 5% or p99_latency_delta_percent &gt; 10% at day 7.</transformation>
+      <transformation>For ultra-low-traffic slices (&lt; 1 rps), use a percentage rollout (1% → 10% → 50% → 100%) over the burn-in window instead of 100% from day 1.</transformation>
+      <transformation>A "slice" may bundle 2-3 tightly-coupled routes if they share a single bounded context — coupling_depth applies to the bundle.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/slice-plan.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>monolith inventory covers ≥ 95% of routes/jobs (no "we'll get to them later" hidden slices)</item>
+      <item>slice_scoring_table sorted by selection_order matches r1 (low-coupling rails first)</item>
+      <item>each slice has a cutover_runbook with rollback per step AND a tested kill-switch</item>
+      <item>parity_burn_in_record ≥ 168 hours per slice</item>
+      <item>exit_criteria_signoff signed by named client architect</item>
+      <item>dual-write and shadow-read both have explicit termination dates</item>
+    </list>
+  </section>
+</text>

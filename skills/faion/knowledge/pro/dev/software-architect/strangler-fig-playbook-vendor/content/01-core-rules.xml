@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Strangler-Fig Migration Playbook Core Rules" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Five hard rules for vendor-delivered strangler-fig migration. Violation produces outages, rollback storms, or contract disputes.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-slice-scoring-discipline" testable="true" depth="essential">
+      <statement>Score every monolith route/job/queue on coupling depth (1-5), traffic risk (1-5), business priority (1-5). Start with slices where coupling_depth ≤ 2 AND traffic_risk ≤ 3 AND business_priority ≥ 3. Never start with the "highest value" slice if it has coupling_depth ≥ 4.</statement>
+      <rationale source="Sam Newman, Monolith to Microservices (2019), ch. 3; Fowler StranglerFigApplication">First slice must build the rails: routing facade, observability parity, kill-switch tooling. A high-coupling first slice spends weeks fighting infrastructure debt instead of validating the pattern. Newman's case studies show first-slice failures kill 60% of migrations within 4 months.</rationale>
+    </rule>
+
+    <rule id="r2-parity-burn-in-window" testable="true" depth="essential">
+      <statement>Before retiring a legacy code path, the new service must run in production at the slice's full traffic for ≥7 days with error rate and p99 latency within ±10% of legacy baseline. Skipping the burn-in is the single largest cause of strangler-fig rollbacks.</statement>
+      <rationale source="GitHub API sharded-replicated migration retrospective (2020); Shopify modular monolith program">Production has edge cases dev/staging don't surface (header anomalies, rare locales, race conditions under real load). 7 days covers a full traffic cycle including peak; ±10% allows for the genuine differences between architectures while flagging regressions. Shopify's strangler-fig public retros explicitly cite 7-14 day burn-in as the gate.</rationale>
+    </rule>
+
+    <rule id="r3-kill-switch-per-slice" testable="true" depth="essential">
+      <statement>Every slice has a kill-switch (feature flag, routing rule, percentage rollback) that reverts traffic to the legacy path in ≤ 5 minutes by a human with documented commands. Kill-switch revert path is TESTED end-to-end before cutover.</statement>
+      <rationale source="Charity Majors / honeycomb operational practice; Google SRE chapter on rollback">Strangler-fig assumes you can roll back. A theoretical kill-switch is not a kill-switch. The kill-switch-validate.py script must show a successful revert in staging or a percentage rollback in prod before the slice goes live. ≤ 5 min target keeps the blast radius within MTTR norms.</rationale>
+    </rule>
+
+    <rule id="r4-dual-write-windowed" testable="true" depth="essential">
+      <statement>Dual-write (writes go to both legacy and new) is enabled only during the burn-in window. After burn-in, switch to single-write on new + shadow-read on legacy for ≥7 more days, then retire legacy writes. Dual-write left on permanently creates state divergence bugs that are silent until a year later.</statement>
+      <rationale source="Stripe internal migration practice; AWS prescriptive guidance on data migration patterns">Dual-write is for safety during cutover, not for the long term. Permanent dual-write hides asymmetric failures (legacy write succeeded, new write failed) and creates two sources of truth. The shadow-read phase catches read-path bugs without write coupling.</rationale>
+    </rule>
+
+    <rule id="r5-exit-criteria-contractual" testable="true" depth="essential">
+      <statement>Per-slice exit criteria are written into the vendor-client SOW: (a) legacy route returns 5xx for 7 consecutive days, (b) new service maintains parity error rate, (c) runbook handoff signed by client architect. Slice is not "done" until all three are checked.</statement>
+      <rationale source="Statement-of-work / change-order discipline; ThoughtWorks technology radar">Vendor delivery without contractual exit criteria turns into "is it really done?" debates that delay payment. SOW-anchored criteria align both parties on the same definition of complete and protect against scope creep ("can you also migrate this one too?").</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="First slice selection from a 60-route monolith">
+      <code lang="text"><![CDATA[
+Route scoring (sample):
+  GET /api/products/recommendations   coupling=2 traffic_risk=2 priority=4  → SELECT
+  POST /api/checkout                  coupling=5 traffic_risk=5 priority=5  → DEFER
+  GET /api/health                     coupling=1 traffic_risk=1 priority=1  → SELECT (rails)
+  POST /webhooks/stripe               coupling=4 traffic_risk=4 priority=4  → DEFER
+
+First-3 slice selection:
+  1. GET /api/health           — proves routing facade + observability
+  2. GET /api/products/recs    — proves dual-write/shadow-read pattern on real traffic
+  3. GET /api/users/profile    — proves DB extraction via ACL
+
+Slice 4-6 picked after slice 1-3 burn-in completes.
+      ]]></code>
+      <note>Illustrates r1: low-coupling slices first build the rails; high-value high-coupling slices wait until pattern proven.</note>
+    </example>
+
+    <example type="bad" title="Big-slice-first trap">
+      <code lang="text"><![CDATA[
+Sprint 1 goal: migrate /api/checkout (business-critical, $$$/sec) "to prove value
+to the client".
+
+Problem: violates r1 (coupling=5, traffic_risk=5). Sprint 1-4 spent fighting
+session-state coupling, payment gateway timeouts, fraud-detection plugins.
+By month 3 vendor is over budget, client loses confidence, migration paused.
+Repair: replan with the low-coupling rails-first slices. Save /api/checkout
+for slice 5+ after the migration platform is proven.
+      ]]></code>
+      <note>The big-slice-first pattern is the #1 vendor-killer. Newman's book opens with this anti-pattern.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

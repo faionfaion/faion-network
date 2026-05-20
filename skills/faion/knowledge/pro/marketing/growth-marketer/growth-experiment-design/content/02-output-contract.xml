@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Growth Experiment Design Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the one-page experiment doc. Subagent must produce all fields before the experiment ships.</summary>
+
+  <output-contract>
+    <required>
+      <field name="hypothesis" format="If we [change], for [segment], then [metric] will [direction] by [W%] within [window]."/>
+      <field name="ice_score" type="object"
+             required_keys="impact,confidence,ease,assumptions"
+             constraint="impact between 1 and 10; confidence between 1 and 10; ease between 1 and 10"/>
+      <field name="primary_metric" type="object"
+             required_keys="metric_name,baseline_value,baseline_variance,direction_of_improvement"/>
+      <field name="guardrail_metrics" type="array" min="1"
+             item_required_keys="metric_name,acceptable_floor"/>
+      <field name="control_definition" type="object"
+             required_keys="traffic_split_pct,exclusion_rules,holdout_pct,defined_at_timestamp"
+             constraint="defined_at_timestamp &lt; experiment_start_timestamp"/>
+      <field name="sample_size_plan" type="object"
+             required_keys="mde_pct,power_target,required_sample_per_arm,planned_run_days"
+             constraint="power_target &gt;= 0.8"/>
+      <field name="instrumentation_playback_status" type="closed_enum"
+             value="pass,fail,not_run"
+             constraint="value == pass before launch"/>
+      <field name="writeup_template_committed" type="boolean" constraint="value == true"/>
+      <field name="experiment_owner" type="string"/>
+      <field name="pre_flight_reviewer" type="string"
+             constraint="value != experiment_owner"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">Hypothesis missing any of: change, segment, metric, magnitude, window (violates r1)</pattern>
+      <pattern id="f2">ice_score average &lt; 5 without explicit override note (violates r2)</pattern>
+      <pattern id="f3">control_definition.defined_at_timestamp &gt;= experiment_start_timestamp (violates r3)</pattern>
+      <pattern id="f4">instrumentation_playback_status != pass at launch time (violates r4)</pattern>
+      <pattern id="f5">sample_size_plan with power_target &lt; 0.8 OR required_sample_per_arm not justified (violates r5)</pattern>
+      <pattern id="f6">primary_metric.baseline_variance absent (sample math cannot be verified)</pattern>
+      <pattern id="f7">writeup_template_committed == false at launch (post-hoc framing risk)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Adjust traffic_split to 90/10 for risky-treatment experiments; document the choice in control_definition.exclusion_rules.</transformation>
+      <transformation>Extend planned_run_days if SRM check fails on day 1 and the cause is identified; do NOT shorten run mid-experiment to declare a win.</transformation>
+      <transformation>Add guardrail_metrics during pre-flight; never remove guardrails once experiment has launched.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/experiment-one-pager.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Hypothesis matches the 5-slot template</item>
+      <item>ICE scored with documented assumptions</item>
+      <item>Control defined before rollout, timestamp recorded</item>
+      <item>Sample size plan ties to MDE and power ≥ 0.8</item>
+      <item>Instrumentation playback ran and passed</item>
+      <item>Write-up template committed before launch</item>
+      <item>Pre-flight reviewer is named and ≠ owner</item>
+    </list>
+  </section>
+</text>

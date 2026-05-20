@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AC Quality Rubric — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the per-AC scoring record + story-level decision shape. Agent or refinement-meeting facilitator producing rubric output must satisfy this.</summary>
+
+  <output-contract>
+    <required>
+      <field name="story_id" format="ticket_id_or_url"/>
+      <field name="ac_records" min="1" required_keys="ac_id,ac_text,dimension_scores,total_score,decision"/>
+      <field name="dimension_scores" required_keys="testability,observability,scope,precondition,postcondition,edge_case_coverage,bdd_form"
+             value_type="integer_0_to_2"/>
+      <field name="decision_per_ac" format="enum: pass | rewrite-required"/>
+      <field name="rewrite_proposal" condition="required_if_decision=rewrite-required" format="full_rewritten_AC_text"/>
+      <field name="fix_pattern_id" condition="required_if_decision=rewrite-required" format="reference_to_fix-pattern-table.md_entry"/>
+      <field name="story_aggregate_decision" format="enum: ready-for-sprint | needs-rewrite"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">story_aggregate_decision=ready-for-sprint while any ac_record.decision=rewrite-required</pattern>
+      <pattern id="f2">dimension_scores total &gt;= 10 with one dimension at 0 (must still reject per r2)</pattern>
+      <pattern id="f3">decision=rewrite-required without a rewrite_proposal AND fix_pattern_id</pattern>
+      <pattern id="f4">rewrite_proposal containing implementation language (file paths, framework names, column names) per r5</pattern>
+      <pattern id="f5">AC text passed through scoring with zero dimension scores recorded (rubric not actually run)</pattern>
+      <pattern id="f6">score record produced without ac_text included verbatim (cannot audit later)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Split a single multi-outcome AC into multiple ACs at the rubric step IF the scope dimension scores 0 due to multiple outcomes.</transformation>
+      <transformation>Merge two near-identical low-scoring ACs into one rewritten AC IF they describe the same outcome.</transformation>
+      <transformation>Reference an existing AC pattern (e.g., "standard auth-flow AC") instead of re-scoring it — but only after the pattern itself has been scored once.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/ac-score-record.json"/>
+  </output-contract>
+
+  <section title="Self-check (run before declaring story ready-for-sprint)">
+    <list>
+      <item>Every AC has a dimension_scores object with 7 dimensions present</item>
+      <item>Total computed correctly = sum of 7 dimensions</item>
+      <item>No dimension scores 0 in any passing AC (r2)</item>
+      <item>Every rewrite-required AC has both rewrite_proposal AND fix_pattern_id</item>
+      <item>Rewrite proposals contain no implementation references (r5)</item>
+      <item>story_aggregate_decision matches per-AC decisions</item>
+      <item>Output validates against templates/ac-score-record.json</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Router Shadow Deploy — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every router / tuned-model shadow deploy must satisfy. Violating any one of these turns the shadow window into either noise or a stealth production change.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-zero-user-impact" testable="true" depth="essential">
+      <statement>The candidate's response MUST be logged-only, never served to users. The traffic mirror returns the production router's response; the candidate's output is discarded after scoring.</statement>
+      <rationale source="canonical shadow-deploy pattern; Spotify / Stripe engineering blogs">A shadow that occasionally leaks to users is no longer a shadow — it is an uncontrolled A/B with no statistical hygiene. The mirror must enforce response-discard at the network layer, not at the application's discretion.</rationale>
+    </rule>
+
+    <rule id="r2-scoring-delta-gate" testable="true" depth="essential">
+      <statement>Promotion requires per-request scoring delta (candidate vs production) to fall within the acceptance contract for ≥7 days of stable shadow traffic AND ≥1000 scored requests AND coverage across all intent classes.</statement>
+      <rationale source="acceptance-contract methodology; A/B-test power analysis">Less than 7 days hides weekday-cycle effects. Less than 1000 scored requests has insufficient power to detect small deltas. Missing an intent class promotes on the easy intents and explodes on the rare ones.</rationale>
+    </rule>
+
+    <rule id="r3-cost-guardrail" testable="true" depth="essential">
+      <statement>Promotion blocked if candidate's cost-per-request &gt; baseline × 1.1 during the shadow window. Reductions are encouraged; spikes require explicit budget approval.</statement>
+      <rationale source="finops practice; LLM gateway routing literature">Routers that look cheap can route to expensive models on the long tail of queries. The cost guardrail catches the routing-policy bug before production users see the bill. Even a 10% margin is a hard threshold without explicit signoff.</rationale>
+    </rule>
+
+    <rule id="r4-schema-parity-100" testable="true" depth="essential">
+      <statement>Response schema parity (key set, types, enum values) MUST be exactly 100% across the shadow window. Any divergence requires either rolling the schema first in production OR rejecting the candidate.</statement>
+      <rationale source="API-versioning practice; downstream-integration risk literature">Schema divergence in shadow looks harmless because users do not see candidate output. When promoted, downstream consumers (clients, mobile apps, analytics) break. The schema-first principle is non-negotiable.</rationale>
+    </rule>
+
+    <rule id="r5-sustained-window-min" testable="true" depth="essential">
+      <statement>Minimum shadow window: 7 days. Below 7 days, no promotion regardless of delta. Reason: model routing patterns vary across day-of-week and hour-of-day; smaller windows mis-estimate steady-state behaviour.</statement>
+      <rationale source="seasonality of LLM workload literature; production-deployment retrospectives">A 24-hour shadow shows weekday traffic only; a 5-day window misses weekend behaviour. The 7-day floor is the cheapest insurance against the most-common over-confident promotion failure.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Successful shadow → promotion">
+      <code lang="text"><![CDATA[
+Day 1: candidate router deployed in shadow at 100% mirror. 1.4M requests scored.
+Day 7: delta report: faithfulness +0.02 (within contract), cost -8% (better), schema parity 100%.
+       Coverage: 3/3 intent classes within delta.
+Day 8: promotion gate passes. 5% traffic split (real cutover, not shadow) for 24h.
+Day 9: 25%. Day 10: 50%. Day 11: 100%. Old router decommissioned Day 14 after stable.
+      ]]></code>
+      <note>Illustrates r1-r5 fully satisfied. The 7-day window saw the weekend behaviour and the metric held.</note>
+    </example>
+
+    <example type="bad" title="The 24-hour shadow that broke production">
+      <code lang="text"><![CDATA[
+Friday 10:00 — shadow deployed.
+Saturday 10:00 — "looks good, let's ship". Promoted Saturday afternoon.
+Monday morning — cost spike: candidate router was sending every "long-context" query to the
+                  expensive model, and Monday traffic has 4x more long-context queries
+                  than weekend. Cost +180%. Emergency rollback at noon.
+      ]]></code>
+      <note>r5 violation (24h window) and r3 not actually checked on representative traffic. The router was correct on weekend volume; the weekday workload was different.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

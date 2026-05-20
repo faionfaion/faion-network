@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Retrieval Drift Alerting — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every drift-alerting setup must satisfy. Skipping any one of these turns the alerting into noise.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-baseline-freshness" testable="true" depth="essential">
+      <statement>The baseline distribution is captured from a ≥14-day window of stable production AND is refreshed only after an explicit recontract event (not on a calendar).</statement>
+      <rationale source="EvidentlyAI drift documentation; field practice">A baseline shorter than 14 days is dominated by weekday/weekend cycles. Auto-refreshing the baseline on a schedule hides drift — the alert never fires because the baseline drifts with the system. Refresh only on intentional change (model upgrade, contract renewal, schema change).</rationale>
+    </rule>
+
+    <rule id="r2-four-metric-coverage" testable="true" depth="essential">
+      <statement>Drift monitoring MUST compute four named metrics nightly: (a) query-embedding KL divergence vs baseline, (b) retrieval-set Jaccard drift, (c) top-k similarity-score histogram (PSI), (d) neighbour-document recency vs corpus median. Missing any one leaves a blind spot.</statement>
+      <rationale source="NannyML data-drift taxonomy; Pinecone production-RAG checklist">Each metric catches a different failure: (a) catches query-distribution shift, (b) catches retrieval-stack regression, (c) catches scoring-distribution collapse (model staleness), (d) catches corpus rot. Three of four metrics passing is not enough; the missing one is often the failure.</rationale>
+    </rule>
+
+    <rule id="r3-routing-by-severity" testable="true" depth="essential">
+      <statement>Each drift class has an explicit alert route: P1 page (sustained ≥1h, magnitude breach 2x threshold), P3 ticket (sustained ≥24h, magnitude breach 1x threshold), info-only (transient). No "all alerts go to PagerDuty" anti-pattern.</statement>
+      <rationale source="Google SRE Workbook — alert philosophy; PagerDuty incident classification">All-as-page is the canonical alarm-fatigue origin. The sustained-window requirement filters transients (an embedding-cache restart causes a 10-min spike). Magnitude-based routing escalates only real movement.</rationale>
+    </rule>
+
+    <rule id="r4-safer-mode-gate" testable="true" depth="essential">
+      <statement>When a P1 drift alert fires, the system MUST automatically degrade to safer mode (return citations + raw passages only, no LLM synthesis) until an operator acknowledges OR drift returns within threshold. Manual-only response is forbidden for P1.</statement>
+      <rationale source="Chaos engineering / circuit-breaker patterns; Anthropic deployment guidance">During retrieval drift, synthesis confidence falls but the user cannot tell. Safer mode preserves the useful part (citations) and disables the hazardous part (potentially hallucinated synthesis). Manual operator response in the middle of the night is too slow.</rationale>
+    </rule>
+
+    <rule id="r5-recontract-trigger" testable="true" depth="essential">
+      <statement>Sustained drift (any P3 alert remaining unresolved &gt; 14 days, or repeated P1 alerts within a week) MUST trigger a recontract event referencing `geek/ai/ml-engineer/rag-feature-acceptance-contract`. Drift never becomes the new normal silently.</statement>
+      <rationale source="Anthropic — Evals; production ML reliability literature">Without a recontract trigger, drift quietly becomes the baseline. The team learns to ignore the alert; the contract becomes wallpaper. The trigger forces an explicit decision: re-embed, re-tune thresholds, or accept the shift.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Metric definitions">
+    <list>
+      <item><b>query_embedding_kl</b>: KL(query_embedding_distribution_today || baseline). Threshold: P1 at &gt;0.5, P3 at &gt;0.25, info at &gt;0.1.</item>
+      <item><b>retrieval_set_jaccard</b>: average Jaccard distance between top-k IDs today vs baseline for matched queries. Threshold: P1 at &gt;0.5, P3 at &gt;0.3.</item>
+      <item><b>top_k_score_psi</b>: Population Stability Index of similarity scores. Threshold: P1 at &gt;0.25, P3 at &gt;0.1.</item>
+      <item><b>neighbour_recency_delta</b>: median age (days) of retrieved docs vs corpus median. Threshold: P1 if delta diverges by ≥3x, P3 at ≥1.5x.</item>
+    </list>
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Embedding-model upgrade caught by score PSI">
+      <code lang="text"><![CDATA[
+Day 0: corpus re-embedded with v3 model; query side still on v2 (config drift).
+Day 1: top_k_score_psi jumps from 0.04 to 0.41 (P1 threshold 0.25).
+01:12 — P1 page fires; system flips to safer mode (citations only).
+01:18 — On-call confirms config drift; runs query-embed re-sync.
+01:42 — PSI back below 0.1; safer mode auto-disengages.
+Outcome: 30-min degraded mode, zero hallucinated answers.
+      ]]></code>
+      <note>r2 (score PSI caught it), r3 (P1 routing), r4 (safer mode auto-engaged), r1 (baseline was clean before the change).</note>
+    </example>
+
+    <example type="bad" title="The we-will-know-when-users-complain anti-pattern">
+      <code lang="text"><![CDATA[
+No drift metrics computed. Corpus rotted: 40% of retrieved docs are stale
+quarterly reports from 2 years ago. Users notice over weeks; CSAT falls
+6 points. Eng team blames the model. The fix is corpus-side, but nobody
+sees it because nothing is measuring.
+      ]]></code>
+      <note>r2 violation (no metric coverage), r4 absent (no safer-mode gate), r5 absent (no recontract path).</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

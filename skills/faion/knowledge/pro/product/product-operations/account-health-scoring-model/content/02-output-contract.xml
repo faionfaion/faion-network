@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Account Health Scoring Model Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the per-account scorecard and the weekly dashboard schema.</summary>
+
+  <output-contract>
+    <required>
+      <field name="scorecards_per_account" format="list">
+        <subfield name="account_id" type="string"/>
+        <subfield name="scoring_week" type="iso_date"/>
+        <subfield name="signals" required_keys="S1,S2,S3,S4,S5,S6"/>
+        <subfield name="signals[].value" enum="0,1,2"/>
+        <subfield name="signals[].observation" type="string"/>
+        <subfield name="signals[].data_source" type="string"/>
+        <subfield name="total" type="integer" min="0" max="12"/>
+        <subfield name="status" enum="green,yellow,red"/>
+        <subfield name="week_over_week_delta" type="integer"/>
+      </field>
+      <field name="escalation_triggers_fired" format="list">
+        <subfield name="account_id" type="string"/>
+        <subfield name="trigger_type" enum="two_point_drop,two_week_red"/>
+        <subfield name="action_assigned" type="string"/>
+        <subfield name="action_deadline" type="iso_date" max_offset_hours_from_trigger="48"/>
+        <subfield name="action_owner" type="string"/>
+      </field>
+      <field name="weekly_dashboard" format="markdown_table">
+        <subfield name="accounts_total" type="integer"/>
+        <subfield name="green_count" type="integer"/>
+        <subfield name="yellow_count" type="integer"/>
+        <subfield name="red_count" type="integer"/>
+      </field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">scorecard with any signal value derived from "I feel like" / opinion-only (no data_source)</pattern>
+      <pattern id="f2">scorecard total mismatching sum of signal values</pattern>
+      <pattern id="f3">status mismatching the total → status mapping (green 10-12, yellow 5-9, red 0-4)</pattern>
+      <pattern id="f4">escalation trigger fired AND action_assigned empty OR deadline &gt; 48h</pattern>
+      <pattern id="f5">missing scorecard for an active account in the weekly window</pattern>
+      <pattern id="f6">threshold cutoffs modified mid-quarter without quarter-end retro entry</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>For accounts &lt; 3 months old, signal S6 (sponsor stability) defaults to 1; do not penalize for lack of history.</transformation>
+      <transformation>If an account is in a planned scope-down phase (signed CO), S3 scope creep score uses the new CO baseline, not the original SOW.</transformation>
+      <transformation>Quarterly retro may adjust threshold cutoffs with documented rationale; mid-quarter changes are forbidden by r3.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/account-health-card.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>scorecard exists for every active account this week</item>
+      <item>every signal has value + observation + data_source</item>
+      <item>total = sum(signals); status matches mapping</item>
+      <item>2-point drops AND 2-week red accounts have escalation triggers recorded</item>
+      <item>escalation actions have owner + deadline ≤ 48h</item>
+      <item>thresholds unchanged since quarter start (or have retro entry)</item>
+    </list>
+  </section>
+</text>
