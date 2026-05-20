@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Image Digest Pinning Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the digest-policy artifact + per-PR compliance report. Subagent must satisfy this before policy promotion.</summary>
+
+  <output-contract>
+    <required>
+      <field name="policy_per_env" type="object"
+             required_keys="production,staging,development"
+             value_type="object_with_keys=pinning_style,enforcement,exceptions"/>
+      <field name="pinning_style" type="closed_enum"
+             value="digest_only,immutable_tag,floating_tag_allowed"/>
+      <field name="enforcement" type="closed_enum"
+             value="ci_lint_block,ci_lint_warn,advisory"/>
+      <field name="renovation_bot" type="object"
+             required_keys="bot_name,schedule_cron,review_window_days,auto_merge_policy"/>
+      <field name="quarterly_review_checklist" type="array_object"
+             item_required_keys="image,current_digest,age_days,cve_status,next_review_date"/>
+      <field name="emergency_unpin_runbook" type="object"
+             required_keys="named_approver,temporary_tag_strategy,auto_restore_deadline_hours,postmortem_required"/>
+      <field name="per_pr_compliance_report" type="object"
+             required_keys="manifests_scanned,prod_floating_tag_count,blockers,warnings"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">policy_per_env.production.pinning_style != digest_only</pattern>
+      <pattern id="f2">policy_per_env.staging.pinning_style == floating_tag_allowed</pattern>
+      <pattern id="f3">enforcement != ci_lint_block for production</pattern>
+      <pattern id="f4">quarterly_review_checklist entries where age_days &gt; 180 AND no deliberate-hold rationale recorded</pattern>
+      <pattern id="f5">renovation_bot.auto_merge_policy == "auto" without named-reviewer second-step</pattern>
+      <pattern id="f6">emergency_unpin_runbook missing auto_restore_deadline OR named_approver</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Replace specific bot (Renovate ⇄ in-house) as long as schedule + review-window fields are preserved.</transformation>
+      <transformation>Add new environments (pre-prod, canary) by extending policy_per_env with appropriate pinning_style.</transformation>
+      <transformation>Mark a single image as "deliberate-hold" with mandatory expiry date; review on each quarter.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/digest-policy.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Production policy = digest_only</item>
+      <item>Staging policy = immutable_tag (registry-enforced)</item>
+      <item>CI lint blocks production floating tags</item>
+      <item>Renovation bot has explicit schedule + review window</item>
+      <item>Quarterly review checklist has all production images</item>
+      <item>Emergency-unpin runbook has named approver + auto-restore deadline</item>
+    </list>
+  </section>
+</text>

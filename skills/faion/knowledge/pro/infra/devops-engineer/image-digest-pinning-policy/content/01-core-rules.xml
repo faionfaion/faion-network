@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Image Digest Pinning Policy Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules governing container-image references across environments. These rules prevent silent base-image drift and "latest"-tag re-deploys that surprise production.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-prod-digest-only" testable="true" depth="essential">
+      <statement>All production container references MUST use `image@sha256:&lt;digest&gt;` syntax. Reject any production manifest containing a floating tag (`:latest`, `:main`, `:stable`) or unpinned semver tag.</statement>
+      <rationale source="supply-chain incident postmortems">Registry tags are mutable. A `:latest` pull at 02:00 may deliver a different image than the same `:latest` pull at 14:00. Digest pinning is the only way to guarantee deployment reproducibility.</rationale>
+    </rule>
+
+    <rule id="r2-staging-immutable-tag-min" testable="true" depth="essential">
+      <statement>Staging may use semver / release-tag references (e.g., `image:v1.4.3`), but the registry MUST have tag-immutability enabled. Reject staging manifests using floating tags. Tag immutability flag must be configured per repository, not relied on as a registry default.</statement>
+      <rationale source="ECR / Harbor docs">Immutable tags give engineers a reasonable middle ground — semver readability with reproducibility guarantee. Without registry-level enforcement, immutable-tag promises are unverifiable.</rationale>
+    </rule>
+
+    <rule id="r3-quarterly-rotation" testable="true" depth="essential">
+      <statement>Every pinned digest in production is reviewed every 90 days for CVE-clean updates. Stale digests (no update in 180 days) trigger a blocking warning unless a documented "deliberate hold" rationale exists in the policy doc.</statement>
+      <rationale source="CVE feed analyses">Base images accumulate vulnerabilities at a rate that makes 90-day cycles a reasonable balance between churn and security drift.</rationale>
+    </rule>
+
+    <rule id="r4-ci-lint-gate" testable="true" depth="essential">
+      <statement>CI must run a lint step on every PR that classifies image references and BLOCKS merge if production manifests contain unpinned tags. Lint must run before deploy step. Manual override requires named approver from security or platform team.</statement>
+      <rationale source="policy-as-code practice">A policy without automation enforcement decays within 6 months. CI is the cheapest, most reliable enforcement point.</rationale>
+    </rule>
+
+    <rule id="r5-emergency-unpin-runbook" testable="true" depth="essential">
+      <statement>Maintain a documented emergency-unpin runbook: when a pinned digest must be rolled back to the previous digest urgently (zero-day, registry outage), the runbook specifies the named approver, the temporary tag to use, the auto-restore deadline, and the postmortem requirement.</statement>
+      <rationale source="supply-chain incident response">Strict pinning slows emergency response if no escape valve exists. A documented unpin process keeps the policy strict while enabling rapid recovery.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Production manifest with pinned digest">
+      <code lang="yaml"><![CDATA[
+spec:
+  containers:
+    - name: api
+      image: ghcr.io/acme/api@sha256:b3f1c9a2e8...d4e7
+      # rotated: 2026-05-15, source: renovate PR #1248, CVE-clean: yes
+      # next-review: 2026-08-13
+      imagePullPolicy: IfNotPresent
+      ]]></code>
+      <note>Illustrates r1 + r3: digest pinning + rotation metadata embedded as comment.</note>
+    </example>
+
+    <example type="bad" title="Floating tag in production">
+      <code lang="yaml"><![CDATA[
+spec:
+  containers:
+    - name: api
+      image: ghcr.io/acme/api:latest
+      imagePullPolicy: Always
+      ]]></code>
+      <note>Illustrates r1 violation. `:latest` + `Always` means each pod restart can pull a different image.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
