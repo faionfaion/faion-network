@@ -5,6 +5,12 @@ owner: ruslan
 last_verified: 2026-05-02
 version: 2.1.0
 applies_to: any
+content_id: 23442bb5cf3079c6
+success_criteria:
+  - Phase 0 runs on every invocation and appends PAT/ERR/DEC entries to `.aidocs/memory/`.
+  - Any phase that writes (Phase 4 apply, Phase 6 commit) blocks until the Phase 3.5 user-approval gate passes.
+  - CRITICAL findings still pass through Phase 3.5 — severity never overrides consent.
+  - Phase 7 only fires when the captured experience is reusable as a skill.
 ---
 
 # Improver Workflow
