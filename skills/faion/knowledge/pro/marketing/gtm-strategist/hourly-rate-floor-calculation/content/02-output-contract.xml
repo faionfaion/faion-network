@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Hourly Rate Floor Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a rate-floor artifact. Subagent must satisfy this before returning a rate recommendation.</summary>
+
+  <output-contract>
+    <required>
+      <field name="rate_bands" type="object"
+             required_keys="bottom,floor,stretch"
+             constraint="bottom &lt; floor &lt; stretch AND each is positive integer"/>
+      <field name="currency" format="iso-4217" example="USD"/>
+      <field name="assumptions" type="object"
+             required_keys="target_take_home,effective_tax_rate_pct,annual_overhead,available_work_hours,billable_utilization_pct,jurisdiction"/>
+      <field name="effective_tax_rate_pct" type="float" min="0.1" max="0.6"/>
+      <field name="billable_utilization_pct" type="float" min="0.4" max="0.6"/>
+      <field name="overhead_categories" type="array_object"
+             item_required_keys="category,annual_amount"/>
+      <field name="recompute_trigger" type="array"
+             value="quarterly,target_income_change,jurisdiction_change,utilization_drift_gt_10pct"/>
+      <field name="walked_away_threshold" type="integer"
+             constraint="value == rate_bands.bottom"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">billable_utilization_pct &gt; 0.6 (violates r1) — exceptions require operator override note</pattern>
+      <pattern id="f2">effective_tax_rate_pct &lt; 0.15 in jurisdictions where self-employment tax / NI applies (under-grossed)</pattern>
+      <pattern id="f3">annual_overhead == 0 OR overhead_categories list missing healthcare for solo US/PT/UA operators</pattern>
+      <pattern id="f4">Output that is a single number instead of 3 bands (violates r4)</pattern>
+      <pattern id="f5">jurisdiction field referencing client jurisdiction, not operator jurisdiction (violates r5)</pattern>
+      <pattern id="f6">rate_bands where stretch / floor &lt; 1.2 (insufficient margin for savings + reinvestment)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Adjust utilization to 60% only when operator can document &gt; 6 months of sustained billable hours above 55%.</transformation>
+      <transformation>Substitute different currency; conversion happens at the floor output level, not during the calculation.</transformation>
+      <transformation>Mark a band as "negotiation-only" (e.g., stretch) when operator is in a particularly tight market for &lt; 90 days.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/rate-floor-worksheet.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>billable_utilization_pct between 0.4 and 0.6</item>
+      <item>effective_tax_rate_pct includes self-employment / NI / VAT where applicable</item>
+      <item>annual_overhead lists at least healthcare, tools, accounting</item>
+      <item>Three bands present, ordered bottom &lt; floor &lt; stretch</item>
+      <item>Jurisdiction is operator's, not client's</item>
+      <item>Recompute trigger array present (so operator knows when to redo)</item>
+    </list>
+  </section>
+</text>

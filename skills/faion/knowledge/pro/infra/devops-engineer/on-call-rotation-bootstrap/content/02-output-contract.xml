@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="On-Call Rotation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the On-Call Charter, the paging-tool schedule, and the weekly on-call-load report.</summary>
+
+  <output-contract>
+    <required>
+      <field name="charter.team_name" type="string"/>
+      <field name="charter.effective_date" format="YYYY-MM-DD"/>
+      <field name="charter.shift_length_hours" type="enum" values="8|12|24|72|168"/>
+      <field name="charter.shift_cutover_time_local" format="HH:MM"/>
+      <field name="charter.participants" type="list_of_string" min="5" notes="github handles or email"/>
+      <field name="charter.tiers" type="enum" values="primary|primary_plus_secondary|three_tier"/>
+      <field name="charter.ack_sla_seconds" type="object" notes="keys: sev1, sev2, sev3"/>
+      <field name="charter.escalation_tree" type="ordered_list" min="2"/>
+      <field name="charter.comp_policy_doc_url" type="url"/>
+      <field name="charter.swap_policy" type="paragraph" max_words="120"/>
+      <field name="charter.rotation_owner" type="string"/>
+      <field name="schedule.tool" type="enum" values="pagerduty|opsgenie|betterstack|squadcast"/>
+      <field name="schedule.config_path" type="path"/>
+      <field name="load_report.period_start" format="YYYY-MM-DD"/>
+      <field name="load_report.period_end" format="YYYY-MM-DD"/>
+      <field name="load_report.per_engineer" type="list_of_object" notes="engineer + pages + off_hours_pages + weekend_pages"/>
+      <field name="load_report.red_line_crossings" type="list_of_object"/>
+      <field name="load_report.recommended_action" type="paragraph"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">charter.tiers = primary AND charter.participants &gt;= 8 (single-tier rotation for a team large enough to support secondary)</pattern>
+      <pattern id="f2">charter.ack_sla_seconds with sev1 &gt; 600 (sev-1 must be under 10 minutes)</pattern>
+      <pattern id="f3">charter.comp_policy_doc_url empty OR pointing to a placeholder</pattern>
+      <pattern id="f4">schedule.config_path missing OR not committed to a version-controlled repo (paging schedules drift without VC)</pattern>
+      <pattern id="f5">load_report omitted for more than 2 consecutive weeks (load-blindness is the failure mode the report exists to prevent)</pattern>
+      <pattern id="f6">red_line_crossings list non-empty AND recommended_action equals "monitor" — the red-line is the action threshold, not the watchlist</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Adjust shift_length when participant count drops below 5 (move to external retainer + smaller in-house rotation).</transformation>
+      <transformation>Suspend swap requests during a critical-release week with explicit announcement; do not silently freeze.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/on-call-charter.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Charter published to team wiki BEFORE first shift</item>
+      <item>Paging tool config committed to a version-controlled repo</item>
+      <item>Ack SLAs enforced in the tool, not by social pressure</item>
+      <item>Comp policy URL resolves to a real HR-handbook page</item>
+      <item>Two-tier rotation when participants ≥ 8</item>
+      <item>Weekly load report runs automatically on a cron, sent to engineering leader</item>
+      <item>Red-line crossings produce a named action, not just a notification</item>
+    </list>
+  </section>
+</text>

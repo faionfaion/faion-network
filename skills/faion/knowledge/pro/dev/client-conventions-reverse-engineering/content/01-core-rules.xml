@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Client-Conventions Reverse-Engineering Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules. Each rule prevents a specific failure mode in AI-generated client code: cargo-culting, hallucinated rules, drift, missing the structural rules.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-lint-first" testable="true" depth="essential">
+      <statement>The first pass MUST exhaustively dump the active lint/format rules: every config file in the repo (.eslintrc, pyproject.toml, .editorconfig, .prettierrc, Makefile lint targets, pre-commit hooks). The guardrail file MUST list these as "machine-enforced rules — do not duplicate," then proceed to extract the unwritten conventions on top.</statement>
+      <rationale source="Boy-scout principle + DRY">Reverse-engineering rules the linter already enforces wastes context budget and risks contradicting the linter. The linter wins on conflicts, so the guardrail must be linter-aware.</rationale>
+    </rule>
+
+    <rule id="r2-evidence-from-prs" testable="true" depth="essential">
+      <statement>Every convention claim in the guardrail file MUST be backed by &gt;= 2 concrete examples from existing code (file paths) OR &gt;= 2 review comments from merged PRs. Inferring "they probably want camelCase" with no evidence is forbidden. If only one example exists, mark the rule "tentative" and re-verify on first PR.</statement>
+      <rationale source="Pattern-mining research; cf. style-rule discovery in tools like NaturalCC">Single-example or vibe-based rules cause an agent to hallucinate plausible but wrong conventions. Two-example floor catches most accidental over-specifications.</rationale>
+    </rule>
+
+    <rule id="r3-structural-extraction" testable="true" depth="essential">
+      <statement>Conventions MUST cover at minimum: file/directory layering (where does X go?), naming (file, class, function, test name pattern), import discipline (relative vs absolute, allowed external imports), test placement (co-located vs separate dir), and architecture boundaries (which layer may call which). A guardrail file that covers only formatting is incomplete and will produce structurally-wrong code.</statement>
+      <rationale source="Field experience with AI agents on enterprise codebases">Formatting rules are the visible 10%. Structural and layering rules are the 90% that determine whether the PR fits. Missing them produces functionally-correct, architecturally-wrong code.</rationale>
+    </rule>
+
+    <rule id="r4-dependency-policy" testable="true" depth="essential">
+      <statement>The guardrail MUST capture dependency policy: which package manager, version-pinning style (exact / caret / range), allowed vs disallowed registries, security review process for new deps, and whether agent is allowed to add deps without explicit approval. Default if unclear: agent is NOT allowed to add deps without flagging.</statement>
+      <rationale source="Supply-chain risk practice (SLSA, OWASP)">Agents adding deps without policy awareness create supply-chain incidents — accidentally adopting unmaintained or vulnerable packages. Default-deny is the only safe stance.</rationale>
+    </rule>
+
+    <rule id="r5-write-back-loop" testable="true" depth="essential">
+      <statement>The guardrail file MUST include a "review feedback append" section. When a client reviewer rejects a PR for a convention reason not captured, the developer appends the new rule with evidence and re-feeds it to the agent. The guardrail file is a living artifact, not a one-time snapshot.</statement>
+      <rationale source="Continuous-improvement / kaizen practice; cf. retrospective discipline">The first guardrail draft never captures everything. Without an explicit write-back loop, the same convention violation recurs PR after PR and the agent stays uncalibrated.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Evidence-backed convention rule">
+      <code lang="text"><![CDATA[
+Rule (structural): Repository pattern — controllers MUST NOT call ORM directly. Use the repository layer in src/repos/.
+Evidence:
+  - src/controllers/order_controller.py:42 (uses OrderRepo)
+  - src/controllers/user_controller.py:18 (uses UserRepo)
+  - PR #1247 review comment: "Move ORM call to UserRepo; we keep ORM out of controllers."
+Verified-by: human, 2026-05-20
+      ]]></code>
+      <note>Three citations, clear instruction the agent can act on, verification date.</note>
+    </example>
+
+    <example type="bad" title="Unverified vibe rule">
+      <code lang="text"><![CDATA[
+Rule: "Use TypeScript strict mode everywhere."
+Evidence: none provided.
+      ]]></code>
+      <note>Probably right, possibly wrong. tsconfig actually has noImplicitAny: false in three sub-projects. The agent will toggle strict and break a build.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

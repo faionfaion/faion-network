@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Supply Chain Risk — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a `LibraryRiskReport` for a single library evaluated against the 7-signal checklist.</summary>
+
+  <section title="Required fields">
+    <list>
+      <item>`library` — object {name, ecosystem, version}</item>
+      <item>`signals` — array of 7 objects {name, score 0-3, evidence_source_url, evidence_quote_or_number}</item>
+      <item>`aggregate_score` — integer 0-21 (sum of signal scores)</item>
+      <item>`decision` — enum {green, yellow, red, incomplete}</item>
+      <item>`remediation_suggestion` — enum {adopt, pin-and-review, fork-pin, replace, decline}</item>
+      <item>`data_freshness` — enum {fresh, stale, mixed}</item>
+      <item>`evaluator` — operator identifier</item>
+      <item>`evaluated_at` — ISO-8601 timestamp</item>
+      <item>`license_block` — boolean (true if LICENSE signal == 3)</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`signals.length &lt; 7`.</description>
+      <reason>Violates r1; aggregate becomes meaningless.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Any signal scored without `evidence_source_url`.</description>
+      <reason>Unsourced scores invite hallucination. URL is the falsifier.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`decision: green` AND `license_block: true`.</description>
+      <reason>License veto overrides aggregate. SSPL / proprietary stops the adoption regardless of other signals.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`decision: green` AND `data_freshness: stale`.</description>
+      <reason>Stale data cannot support a green decision. Refresh CVE/release data before reporting.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`remediation_suggestion: adopt` AND aggregate_score &gt; 6.</description>
+      <reason>Threshold violation. Yellow / red must NOT route to adopt.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Adjust signal score thresholds via `templates/license-allowlist.yaml` and `templates/risk-thresholds.yaml`.</item>
+      <item>Tag evaluation as "ecosystem-blessed exception" with explicit override field (still requires log).</item>
+      <item>Cache GitHub/OSV responses for &lt; 24h with timestamp in evidence.</item>
+    </list>
+  </section>
+
+  <reference path="templates/library-risk-report.json">Output JSON Schema.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>7 signals scored with evidence URLs.</item>
+      <item>Aggregate = arithmetic sum.</item>
+      <item>Decision matches threshold AND license veto.</item>
+      <item>Data freshness honest (no stale CVEs).</item>
+      <item>Remediation consistent with decision (no green → fork-pin).</item>
+    </list>
+  </section>
+</text>

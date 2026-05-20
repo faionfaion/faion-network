@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Scope Detection — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schemas for the per-ticket triage record and the weekly dashboard. Both are consumed by the PM, the change-control board, and the engagement-close auditor.</summary>
+
+  <output-contract>
+    <required>
+      <field name="triage_record" required_keys="ticket_id,ticket_url,baseline_version,classifier_verdict,confidence,citations,reasoning,recommended_route,human_override,timestamp"/>
+      <field name="classifier_verdict" enum="in_scope,legitimate_change,creep,ambiguous"/>
+      <field name="citations" type="list" min_entries="1"
+             item_required_keys="baseline_section,quote,relation_to_ticket"/>
+      <field name="human_override" required_keys="overridden,reason,actor,timestamp"
+             default_overridden="false"/>
+      <field name="recommended_route" enum="accept,change_control,pushback,pm_review"/>
+      <field name="weekly_dashboard" required_keys="window,counts_by_verdict,top_requesters,override_rate_per_verdict,baseline_version"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">classifier_verdict not one of the four enum values</pattern>
+      <pattern id="f2">citations empty</pattern>
+      <pattern id="f3">confidence omitted OR not in [0, 1]</pattern>
+      <pattern id="f4">triage_record committed without baseline_version recorded</pattern>
+      <pattern id="f5">override_rate_per_verdict &gt; 0.20 for any verdict over 2 consecutive weeks without rule recalibration</pattern>
+      <pattern id="f6">pushback message sent for a verdict where confidence &lt; 0.7 without human override sign-off</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Increase confidence-floor for auto-routing pushback (e.g. require ≥0.85 for unattended pushback).</transformation>
+      <transformation>Promote `ambiguous` to `pm_review` after 24h with no PM action; do not silently default to a verdict.</transformation>
+      <transformation>Add per-requester routing rules (e.g. always pm_review for the client sponsor) without changing the verdict logic.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every triage record has citations referring to the current baseline version</item>
+      <item>Verdict is one of the four enum values</item>
+      <item>Human override workflow is reachable from the ticket UI</item>
+      <item>Weekly dashboard shows override rate per verdict; alerts when &gt;20%</item>
+      <item>Audit log retention ≥ engagement duration + 12 months</item>
+    </list>
+  </section>
+</text>

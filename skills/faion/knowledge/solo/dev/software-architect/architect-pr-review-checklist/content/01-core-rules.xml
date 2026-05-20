@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Architect PR Review Checklist — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for the architect's review pass. Designed to keep the review focused on architectural surface while preventing both over-review and rubber-stamping, especially on AI-generated code.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-six-section-coverage" testable="true" depth="essential">
+      <statement>Every architect review MUST address all six sections relevant to the PR: (1) Module boundaries, (2) Public contracts (APIs, events, schemas), (3) Data flow (sources, transformations, sinks), (4) Failure modes (errors, retries, fallbacks), (5) Performance budget, (6) Security posture. A section is "addressed" with one of: pass / fail / N/A-with-reason. Skipping a section silently is forbidden.</statement>
+      <rationale source="Software Architecture: The Hard Parts (Richards/Ford), architectural decision research">Architects who go line-by-line miss architectural issues. Architects who skim miss the same issues but faster. Six-section coverage forces the right altitude — the things only an architect can catch.</rationale>
+    </rule>
+
+    <rule id="r2-fifteen-min-cap" testable="true" depth="essential">
+      <statement>The review SHOULD complete in 15 minutes for a typical PR (&lt;= 500 lines changed). If the PR cannot be reviewed in 15 min, the PR is too large — request a split. Splitting is a valid review outcome, NOT a failure to review.</statement>
+      <rationale source="Google Eng Practices, code-review time-distribution research">Reviews longer than 60 min show steeply declining defect-finding rate. PRs that are too large get rubber-stamped even by senior reviewers. The 15-min cap on architect review is achievable because the scope is architectural surface, not every line.</rationale>
+    </rule>
+
+    <rule id="r3-escalate-not-stall" testable="true" depth="essential">
+      <statement>If a finding has cross-team or strategic implications (e.g., introduces a new framework, breaks a public API, costs significant infra), the architect ESCALATES the PR to a broader architecture discussion rather than blocking it in review comments. The PR is paused (status=needs-architecture-discussion), not iteratively reviewed.</statement>
+      <rationale source="ADR practice, ICR (Inverse Conway) literature">Stalling a big decision in PR comments produces multi-day ping-pong with no resolution. Escalation forces a 30-min ADR conversation, after which the PR either lands or gets restructured with a documented decision. Faster + better record.</rationale>
+    </rule>
+
+    <rule id="r4-ai-generated-flag" testable="true" depth="essential">
+      <statement>If the PR is partially or fully AI-generated (Claude, Cursor, Copilot, etc.), the review MUST explicitly check for AI-specific failure modes: hallucinated APIs (function names that don't exist in the actual library), missing error paths (AI defaults to happy path), boilerplate inflation (unnecessary abstraction), and pattern drift (style/naming that doesn't match the codebase). Mark each as checked.</statement>
+      <rationale source="Empirical studies of LLM code (Hendel, Anthropic internal eval data, Google AI Code Review reports)">AI-generated code has a distinctive failure surface that overlaps with but is not identical to human-written code. Treating it like human code misses the AI-specific bugs; treating it as "all bad" misses the genuine value. Specific checks catch the specific defects.</rationale>
+    </rule>
+
+    <rule id="r5-adr-honoring" testable="true" depth="essential">
+      <statement>For each section finding, the reviewer must reference the relevant ADR (if one exists) or note "no ADR governs this; consider documenting if pattern recurs". Findings that contradict an ADR MUST either propose an ADR update OR block the PR — silent contradictions ("we'll deal with it later") are forbidden.</statement>
+      <rationale source="ADR maintenance research, organizational learning literature">Silent ADR violations decay the ADR system: future developers see contradictory code and assume the ADR is dead. Forcing either explicit update or block keeps the ADR system honest and useful.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Architect review record on AI-generated PR">
+      <code lang="text"><![CDATA[
+PR #1340: "Add async background job runner"
+Generated with Claude (declared in PR description).
+Reviewer: alex.k
+Duration: 12 min
+
+1. Module boundaries: PASS
+   Job runner lives in /infra/jobs; depends only on /core/queue.
+   No leak into /api or /domain layers.
+
+2. Public contracts: PASS
+   New JobRunner.enqueue(job) signature matches ADR-2026-007
+   (queue interface). No public-API breakage.
+
+3. Data flow: NEEDS CHANGES
+   Job results write to two stores (logs + Redis) but no
+   explicit ordering guarantee. ADR-2026-005 requires
+   write-ahead-log-first. Comment added requesting fix.
+
+4. Failure modes: NEEDS CHANGES (AI-specific)
+   AI generated retry logic that retries on ANY exception,
+   including 4xx client errors. Should distinguish retryable
+   (5xx, network) vs non-retryable (4xx, schema). Pointed to
+   existing /core/retry/retry-policy.ts pattern.
+
+5. Performance budget: PASS
+   Single-job execution time bounded; concurrency limit honored.
+
+6. Security posture: PASS
+   No secrets logged; uses standard secret-resolver.
+
+AI-specific checks:
+  - Hallucinated APIs:        none found
+  - Missing error paths:      yes (see section 4)
+  - Boilerplate inflation:    minor (unnecessary IRunner interface;
+                              suggested removal)
+  - Pattern drift:            naming consistent
+
+Decision: changes-needed (sections 3 + 4). 2 specific items.
+Re-review after author updates.
+      ]]></code>
+      <note>Illustrates r1-r5: six sections covered, 12 min duration, AI flag honored with specific checks, ADR references.</note>
+    </example>
+
+    <example type="bad" title="Rubber-stamp architect review">
+      <code lang="text"><![CDATA[
+PR #1341: 1,200 lines changed
+Reviewer: alex.k
+Duration: 4 min
+Findings: "lgtm, ship it"
+
+Two weeks later: PR introduced a circular module dependency
+between /api and /domain that took 3 days to untangle. PR also
+silently violated ADR-2026-003 (no business logic in /api).
+
+Repair: enforce r1 + r2. PRs &gt; 500 lines must be split before
+review. Six-section coverage cannot be skipped. "lgtm" is not
+a valid architect review record.
+      ]]></code>
+      <note>Illustrates r1, r2, r5 violations — the common "trust the senior dev" pattern that hides architectural drift.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

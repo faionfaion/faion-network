@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI EVM Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the weekly EVM record shape and the RAG band rule. Stakeholders consume this artifact directly after PM signoff.</summary>
+
+  <section title="Required weekly-report fields">
+    <list>
+      <item><code>report_date</code> (ISO date, end-of-week)</item>
+      <item><code>baseline_ref</code> (hash of baseline.json at report time)</item>
+      <item><code>rebaselined_on</code> (ISO date or null)</item>
+      <item><code>pv</code> (number, Planned Value as cumulative through report_date)</item>
+      <item><code>ev_sensors</code> (object: at least two named sensors, each with value and read_at_utc)</item>
+      <item><code>ev_fused</code> (object: point, ci_low_80, ci_high_80, method: bootstrap | jackknife)</item>
+      <item><code>ac</code> (number, sourced from finance sensor; sensor_id and read_at_utc included)</item>
+      <item><code>spi</code> (object: point, ci_low_80, ci_high_80)</item>
+      <item><code>cpi</code> (object: point, ci_low_80, ci_high_80)</item>
+      <item><code>rag_band</code> (enum: green, yellow, red)</item>
+      <item><code>flags</code> (array of strings: sensor_stale, sensor_drift, ac_lag, baseline_drift, etc.)</item>
+      <item><code>pm_signoff</code> (object: signed_by, signed_at_utc) — required before publish</item>
+    </list>
+    <reference path="templates/evm-weekly.json">Authoritative JSON Schema for the weekly EVM report.</reference>
+  </section>
+
+  <section title="RAG band rule">
+    <list>
+      <item><code>green</code>: 0.95 &lt;= SPI_point &lt;= 1.05 AND 0.95 &lt;= CPI_point &lt;= 1.05 AND zero flags.</item>
+      <item><code>yellow</code>: 0.85 &lt;= SPI &lt;= 1.15 AND 0.85 &lt;= CPI &lt;= 1.15 AND no `sensor_stale` flag.</item>
+      <item><code>red</code>: any of: SPI or CPI outside the yellow band; any sensor_stale flag; any baseline_drift flag; any sensor pair disagreement &gt; 15% relative.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Publish without a `pm_signoff` block populated.</description>
+      <reason>r4 violation. Stakeholder publish without PM signoff is forbidden.</reason>
+    </antipattern>
+    <antipattern>
+      <description>ev_fused.point present without ci_low_80 and ci_high_80.</description>
+      <reason>r3 violation. Point estimate alone is misleading.</reason>
+    </antipattern>
+    <antipattern>
+      <description>ev_sensors has only one entry.</description>
+      <reason>r2 violation. Single-sensor EV is gameable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>baseline_ref changed across consecutive reports without a `rebaselined_on` field set.</description>
+      <reason>r1 violation. Silent re-baselining.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every sensor has read_at_utc within 36h of report_date.</item>
+      <item>ev_sensors has &gt;= 2 entries.</item>
+      <item>spi, cpi, ev_fused each carry a CI.</item>
+      <item>RAG band is consistent with the rule table.</item>
+      <item>baseline_ref matches the current baseline.json hash OR rebaselined_on is populated.</item>
+      <item>pm_signoff populated only when a human actually signed.</item>
+    </list>
+  </section>
+</text>
