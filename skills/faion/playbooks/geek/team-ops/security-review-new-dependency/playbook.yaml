@@ -1,0 +1,148 @@
+# =============================================================================
+# faion playbook manifest — P6 product-dev team
+# Generated for F-064 from playbook-index.json p6-product-dev-team entry 13
+# =============================================================================
+
+slug: security-review-new-dependency
+title: "Security review for new dependency"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 151d40fef8f3c6a9
+
+tier_min: geek
+complexity: medium
+context: [team]
+persona_hints: [P6]
+
+intent: |
+  Proposed new lib/SDK → lightweight ADR + SBOM diff + supply-chain scan + license check before merge.
+
+scope: |
+  An engineer wants to add a new library or SDK to a service. Before merge, an AI agent runs SBOM diff, supply-chain scan, license-compliance check. A security-conscious engineer reviews the diff plus considered alternatives. The decision is recorded as a lightweight ADR. Ultra-trivial bumps are auto-applied via Renovate handoff with a signed JWT approval; non-trivial additions go through the full review.
+
+non_goals:
+  - "Annual audit prep — see soc2-gdpr-audit-prep"
+  - "Architectural review of in-house code — see weekly-architectural-review"
+  - "Removing dependencies — separate cleanup playbook"
+
+prerequisites:
+  - "Trivy / supply-chain scan wired into CI"
+  - "CodeQL + container scanning on PRs"
+  - "Renovate (or equivalent) handoff configured"
+  - "ADR convention adopted by team"
+
+success_criteria:
+  - "SBOM diff produced and reviewed"
+  - "License check pass"
+  - "Supply-chain scan green"
+  - "ADR written for non-trivial additions"
+  - "Alternatives considered + documented"
+  - "Renovate-eligible bumps auto-handled with signed JWT"
+
+stages:
+  - name: "Auto-screen"
+    intent: "AI screens the diff; trivial bumps move through Renovate handoff."
+    tasks:
+      - "Run Trivy supply-chain scan (pinned)"
+      - "Run license-compliance scan"
+      - "Decide if Renovate-eligible auto-handoff applies"
+      - "Apply signed-JWT approval token where applicable"
+    methodologies:
+      - slug: sec-trivy-pinned-supply-chain-scan
+        path: geek/sdlc-ai/sec-trivy-pinned-supply-chain-scan
+        required: true
+        tier_gate: geek
+      - slug: gov-license-compliance-scan
+        path: geek/sdlc-ai/gov-license-compliance-scan
+        required: true
+        tier_gate: geek
+      - slug: mr-renovate-ai-handoff
+        path: geek/sdlc-ai/mr-renovate-ai-handoff
+        required: true
+        tier_gate: geek
+      - slug: gov-approval-token-signed-jwt
+        path: geek/sdlc-ai/gov-approval-token-signed-jwt
+        required: true
+        tier_gate: geek
+      - slug: security-supply-chain
+        path: pro/infra/cicd-engineer/security-supply-chain
+        required: true
+        tier_gate: pro
+      - slug: security-container-scanning
+        path: pro/infra/cicd-engineer/security-container-scanning
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Scan report + license verdict"
+      - "Auto-merge decision (yes/no)"
+    decision_gate: |
+      If auto-merge eligible AND scans green AND license clear → merge. Otherwise advance to human review.
+
+  - name: "Human review + ADR"
+    intent: "Security-conscious engineer reads the diff; considers alternatives; writes an ADR."
+    tasks:
+      - "Walk the SBOM diff vs proposed addition"
+      - "List 2-3 alternatives considered"
+      - "Write ADR using ADR template"
+      - "Apply security-architecture lens"
+    methodologies:
+      - slug: architecture-decision-records
+        path: solo/dev/software-architect/architecture-decision-records
+        required: true
+        tier_gate: solo
+      - slug: architecture-decision-records-sdd-planning
+        path: solo/sdd/sdd-planning/architecture-decision-records
+        required: true
+        tier_gate: solo
+      - slug: architecture-decision-records-sdd
+        path: solo/sdd/sdd/architecture-decision-records
+        required: true
+        tier_gate: solo
+      - slug: security-architecture
+        path: solo/dev/software-architect/security-architecture
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Lightweight ADR"
+      - "Alternatives list"
+    decision_gate: |
+      Required: ADR with at least one alternative considered. ADR-less merges = future surprise.
+
+common_pitfalls:
+  - "Skipping ADR for a 'trivial' lib — turns load-bearing six months later"
+  - "License scan amber → ignored → legal surprise"
+  - "Auto-merge without signed-JWT — supply chain liability"
+  - "Adopting a dep with no maintainer pulse"
+
+quality_checklist:
+  - "Is the new dependency load-bearing or replaceable?"
+  - "Did the ADR list alternatives, or is it 'we picked X'?"
+  - "Does the license stack with our existing ones?"
+
+related_playbooks:
+  - soc2-gdpr-audit-prep
+  - weekly-architectural-review
+  - rfc-to-production-feature-delivery
+
+token_budget_estimate: 12000
+cli_invocations:
+  human:  "faion get-content security-review-new-dependency --format md"
+  agent:  "faion get-content security-review-new-dependency --format context"
+  json:   "faion get-content security-review-new-dependency --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P6 product-dev team persona"
+
+gaps:
+  - methodology_slug: new-dependency-risk-checklist
+    expected_tier: geek
+    blocks_stage: 2
+    note: "Human review stage needs a written risk checklist (maintainer pulse, transitive deps, etc.)"
+  - methodology_slug: load-bearing-dep-criteria
+    expected_tier: geek
+    blocks_stage: 2
+    note: "ADR stage needs explicit criteria to identify load-bearing dependencies"
