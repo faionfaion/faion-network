@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="LLM Hallucination Test Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the hallucination test suite. Subagent must satisfy this before suite is shipped to CI.</summary>
+
+  <output-contract>
+    <required>
+      <field name="suite_version" format="semver"/>
+      <field name="pattern_classes" type="exact_set"
+             value="fact_probes,grounding_required,refusal_correctness,citation_verification,contradiction_tests,off_topic_rejection"/>
+      <field name="cases_per_pattern" type="object"
+             constraint="every pattern in pattern_classes has count &gt;= 10"/>
+      <field name="cases" type="array_object"
+             item_required_keys="case_id,pattern_class,input_context,query,gold_label,gold_author,rubric_ref,added_date"/>
+      <field name="gold_label" type="object"
+             required_keys="pass_criteria,fail_criteria"/>
+      <field name="gold_author" type="object"
+             required_keys="name,date,is_human"
+             constraint="is_human == true"/>
+      <field name="rubric" type="object"
+             required_keys="per_pattern_rubric,version,last_reviewed"/>
+      <field name="incident_conversion_log" type="array_object"
+             item_required_keys="incident_id,date,resulting_case_ids,pattern_class"
+             constraint="≥ 80% of hallucination incidents in last 90 days produced ≥ 1 case"/>
+      <field name="expected_pass_rate_thresholds" type="object"
+             required_keys="fact_probes,grounding_required,refusal_correctness,citation_verification,contradiction_tests,off_topic_rejection"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">Pattern class missing OR not from the closed set (violates r1)</pattern>
+      <pattern id="f2">Any pattern with case_count &lt; 10 (violates r2)</pattern>
+      <pattern id="f3">gold_author.is_human == false (LLM-judge-only labels, violates r3)</pattern>
+      <pattern id="f4">gold_label fields with vague language ("seems right", "looks ok", "good answer") (violates r4)</pattern>
+      <pattern id="f5">incident_conversion_log empty after 2+ hallucination incidents (violates r5)</pattern>
+      <pattern id="f6">cases with input_context AND query AND gold_label all missing (skeleton case)</pattern>
+      <pattern id="f7">expected_pass_rate_thresholds missing OR set to 100% (impossible to fail)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Sub-class within a pattern (e.g., fact_probes.named_entity vs fact_probes.date) for finer regression tracking; sub-classes still count toward the parent r2 minimum.</transformation>
+      <transformation>Add an LLM-judge as a SECONDARY scorer alongside the human gold label; never replaces the human.</transformation>
+      <transformation>Retire cases when business rule changes (e.g., regulation updates); record retirement_reason in case metadata.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/pattern-case-schema.json"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All six pattern classes are present</item>
+      <item>Each pattern has ≥ 10 cases</item>
+      <item>Every gold label is human-authored</item>
+      <item>Rubric covers per-pattern pass/fail criteria</item>
+      <item>Incident-conversion log shows ≥ 80% conversion in last 90 days</item>
+      <item>Expected pass-rate thresholds set realistically (not 100%)</item>
+    </list>
+  </section>
+</text>

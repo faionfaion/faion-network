@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AIO Presence Tracker Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the per-query snapshot, the weekly aggregate, and the KPI definitions.</summary>
+
+  <section title="Required snapshot fields">
+    <list>
+      <item><code>scrape_started_at_utc</code> + <code>scrape_completed_at_utc</code></item>
+      <item><code>geo</code> (ISO country code or `world` for non-geo)</item>
+      <item><code>adapter_version</code></item>
+      <item><code>queries</code>: object query_text → per-query record</item>
+      <item><code>queries.<q>.aio_present</code> (bool)</item>
+      <item><code>queries.<q>.panel_citations</code> (array of {position, domain, title, snippet})</item>
+      <item><code>queries.<q>.our_domain_cited</code> (bool)</item>
+      <item><code>queries.<q>.our_panel_position</code> (integer or null)</item>
+      <item><code>queries.<q>.our_snippet_selected</code> (bool; true iff snippet text matches our page within tolerance)</item>
+      <item><code>queries.<q>.status</code>: enum {ok, error, captcha, parse_fail}</item>
+      <item><code>control_pass_rate</code> (float; required for snapshot to be `trusted`)</item>
+      <item><code>trust_tag</code>: enum {trusted, untrusted}</item>
+    </list>
+    <reference path="templates/snapshot.json">Authoritative JSON Schema.</reference>
+  </section>
+
+  <section title="Weekly aggregate fields">
+    <list>
+      <item><code>week_iso</code></item>
+      <item><code>kpi.our_domain_cited_rate</code> (per query, computed across the 7 daily snapshots)</item>
+      <item><code>kpi.aio_presence_rate</code> (per query)</item>
+      <item><code>kpi.our_snippet_selected_rate</code> (per query)</item>
+      <item><code>kpi.our_panel_position_median</code> (per query)</item>
+      <item><code>trend_delta_4w</code>: per-query KPI delta vs 4-week rolling baseline</item>
+      <item><code>untrusted_days</code>: count of days flagged untrusted</item>
+    </list>
+  </section>
+
+  <section title="KPI definitions">
+    <list>
+      <item><code>our_domain_cited_rate</code> = days_our_domain_cited / days_aio_present (per priority query).</item>
+      <item><code>our_snippet_selected</code> = true when AIO snippet text matches our page H2 / definition / table cell within 90% fuzzy match.</item>
+      <item><code>our_panel_position</code> = ordinal position of our citation in the panel's source list (1 = first).</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Weekly aggregate computed from `untrusted` snapshots without flag.</description>
+      <reason>r1 violation. Aggregate computed on bad data misleads decisions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Snapshot stored without scrape_started_at_utc.</description>
+      <reason>Timestamp is required for trend ordering.</reason>
+    </antipattern>
+    <antipattern>
+      <description>queries object reports only aio_present without panel_citations / our_panel_position.</description>
+      <reason>r3 violation. Position + snippet are required for diagnosis.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Control list passed &gt;= 70% of expectations.</item>
+      <item>trust_tag matches control_pass_rate threshold.</item>
+      <item>Weekly aggregate excludes untrusted days from the kpi rollup OR notes the inclusion.</item>
+      <item>Primary KPI displayed prominently in the weekly report; not buried.</item>
+    </list>
+  </section>
+</text>

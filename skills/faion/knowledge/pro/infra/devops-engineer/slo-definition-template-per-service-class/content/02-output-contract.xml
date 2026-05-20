@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="SLO Definition — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schema for slo-defs.yaml and the per-SLO rationale doc.</summary>
+
+  <output-contract>
+    <required>
+      <field name="service" type="string"/>
+      <field name="class" enum="api,async-worker,batch,static-asset,scheduled-job,gateway,ml-inference,custom"/>
+      <field name="sli_set" type="list" min_entries="1" max_entries="6"
+             item_required_keys="name,definition,metric_source"/>
+      <field name="slos" type="map" non_empty="true"
+             entry_required_keys="target,window,user_acceptable_error_rationale,owner"/>
+      <field name="budget_policy_path" type="string" requires_file_exists="true"/>
+      <field name="rationale_doc_path" type="string" requires_file_exists="true"/>
+      <field name="last_reviewed" type="date"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">class field empty OR not in enum</pattern>
+      <pattern id="f2">sli_set with &gt;6 entries (class template + 2 extras max for most classes)</pattern>
+      <pattern id="f3">SLO target without user_acceptable_error_rationale</pattern>
+      <pattern id="f4">window expressed as calendar-month (e.g. "2026-05")</pattern>
+      <pattern id="f5">budget_policy_path missing OR points to non-existent file</pattern>
+      <pattern id="f6">last_reviewed older than 90 days</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Add service-specific SLIs within the 2-extra cap; document why the class template was insufficient.</transformation>
+      <transformation>Tighten the SLO target after demonstrated headroom (≥3 consecutive windows hitting target with budget unspent).</transformation>
+      <transformation>Loosen the target only with product re-signoff; record the loosening event.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="SLI / SLO / SLA distinction">
+    <list>
+      <item><b>SLI</b> (Service Level Indicator): the metric. e.g. request_success_rate.</item>
+      <item><b>SLO</b> (Service Level Objective): the internal target. e.g. 99.9% over 30d rolling.</item>
+      <item><b>SLA</b> (Service Level Agreement): the external contractual obligation, looser than SLO, with penalties. e.g. 99.5% over the contract month.</item>
+    </list>
+    <p>Keep SLO ≥ SLA + safety margin. SLA breaches require legal/comms; SLO breaches require engineering/product attention.</p>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Class assigned; SLI set fits class template + ≤2 extras</item>
+      <item>Each SLO has a user-acceptable rationale and a named owner</item>
+      <item>Window is rolling (typically 30d)</item>
+      <item>Budget policy doc exists at the linked path</item>
+      <item>SLO ≥ SLA where applicable</item>
+      <item>Reviewed within last 90 days</item>
+    </list>
+  </section>
+</text>
