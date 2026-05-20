@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Vercel Deployment — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a `DeploymentPlan` produced before a release and the env-audit it relies on.</summary>
+
+  <section title="DeploymentPlan required fields">
+    <list>
+      <item>`project_id` — Vercel project ID</item>
+      <item>`commit_sha` — git SHA to deploy</item>
+      <item>`target_env` — enum {production, preview-staging, preview-pr}</item>
+      <item>`runtime_compatibility` — object `{edge_routes: array, edge_violations: array}` (must be empty for go-live)</item>
+      <item>`env_audit_id` — UUID of env audit run for this deployment</item>
+      <item>`isr_cache_review` — object `{paths_with_isr: array, tenant_discriminator_present: bool}`</item>
+      <item>`rollback_plan` — object `{prior_deployment_id, rollback_command, verify_url}`</item>
+      <item>`go_no_go` — enum {go, hold-fix, abort}</item>
+      <item>`go_no_go_reasons` — array of strings</item>
+    </list>
+  </section>
+
+  <section title="Env-audit required fields">
+    <list>
+      <item>`audit_id` — UUID</item>
+      <item>`ran_at` — ISO-8601</item>
+      <item>`env_vars` — array of `{name, scopes: array of enum {dev, preview, prod}, leakage_risk: enum {none, cross-env, client-exposed}}`</item>
+      <item>`violations` — array of `{var_name, rule_id, message}`</item>
+      <item>`pass: bool`</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`go_no_go: go` AND `runtime_compatibility.edge_violations.length &gt; 0`.</description>
+      <reason>Violates r2.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`go_no_go: go` AND `env_audit.pass: false`.</description>
+      <reason>Violates r1 / r5.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`isr_cache_review.tenant_discriminator_present: false` AND any ISR path serves tenant-scoped data.</description>
+      <reason>Violates r3.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`rollback_plan.prior_deployment_id` empty OR `verify_url` empty.</description>
+      <reason>Violates r4 atomicity.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Env var with `scopes: [dev, preview, prod]` (i.e. "All Environments") AND `name` contains tokens {SECRET, KEY, PASSWORD, TOKEN, DSN}.</description>
+      <reason>Violates r1 secrets-scoping.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Render plan as Markdown for PR description with the same fields.</item>
+      <item>Mask env var values in audit output (`***-redacted`).</item>
+      <item>Aggregate identical violations into a single entry with `count`.</item>
+    </list>
+  </section>
+
+  <reference path="templates/deployment-plan.json">DeploymentPlan schema.</reference>
+  <reference path="templates/env-audit.json">Env-audit schema.</reference>
+  <reference path="templates/runtime-allow-list.yaml">Edge-compatible API list.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Env audit pass.</item>
+      <item>No edge violations.</item>
+      <item>ISR tenant discriminator present for multi-tenant routes.</item>
+      <item>Rollback plan complete (prior_deployment_id + verify_url).</item>
+      <item>go_no_go reasons match the inputs.</item>
+    </list>
+  </section>
+</text>

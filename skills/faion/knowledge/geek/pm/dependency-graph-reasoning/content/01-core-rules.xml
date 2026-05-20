@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Dependency-Graph Reasoning Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that turn a program dependency graph from a one-off Mermaid diagram into a queryable, calibrated asset.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-typed-edges" testable="true" depth="essential">
+      <statement>Every edge MUST be typed: FS (finish-to-start), SS (start-to-start), FF (finish-to-finish), SF (start-to-finish), OR cross-team HANDOFF with a named artifact (API spec, design pack, data feed). Untyped "depends on" edges are rejected — they conflate "must finish before" with "must coordinate with."</statement>
+      <rationale source="PMBOK schedule-relationship taxonomy + program-management practice">Different edge types produce different at-risk analyses. FS slip propagates; SS slip may not. Without types the graph cannot answer the queries.</rationale>
+    </rule>
+
+    <rule id="r2-graph-as-code" testable="true" depth="essential">
+      <statement>The graph MUST live in a single committed file: Mermaid + Markdown, DOT + Graphviz, or JSON. Tool-of-record diagrams in Miro / Lucidchart are NOT the source of truth — at most they are renderings. Diffs, blame, and PR review apply to the file.</statement>
+      <rationale source="Configuration-as-code principle">Tool-bound diagrams die when the tool subscription lapses or the editor leaves. Code-form graphs survive personnel and tool turnover and integrate with CI.</rationale>
+    </rule>
+
+    <rule id="r3-weekly-refresh" testable="true" depth="essential">
+      <statement>The graph MUST be refreshed at a fixed cadence (default weekly) from team trackers. The refresh produces a diff (new nodes / removed nodes / changed edges) and the diff is reviewed before merge. Graphs older than 14 days are flagged stale and excluded from risk reports.</statement>
+      <rationale source="Empirical: program graphs drift faster than expected; even monthly refresh misses 30%+ of new dependencies">Weekly is the minimum cadence that keeps the graph calibrated. The diff is what catches teams adding hidden dependencies.</rationale>
+    </rule>
+
+    <rule id="r4-standard-queries" testable="true" depth="essential">
+      <statement>The PM MUST run at least three standard queries per week: (a) blocked-by-status — what is currently blocked, (b) at-risk-if-slip-1-week — propagation analysis for the top-3 at-risk nodes, (c) longest-path-to-milestone — critical path for each upcoming cross-team milestone. Ad-hoc queries are allowed but the three are mandatory.</statement>
+      <rationale source="Critical-path method + Theory of Constraints applied to multi-team programs">PMs default to looking only at currently-blocked items. The standard query set surfaces near-future blockers and structural risks before they become incidents.</rationale>
+    </rule>
+
+    <rule id="r5-pr-style-updates" testable="true" depth="essential">
+      <statement>Changes to the graph MUST come via PR-style change requests with author + reason. Direct edits without a PR (or equivalent change record) are forbidden. The PR review surfaces hidden assumptions ("why is Team B suddenly dependent on Team C's API?").</statement>
+      <rationale source="Code-review discipline applied to program artifacts">Silent edits erode trust. PR review makes dependency claims defensible and surfaces the "I didn't know we needed that" moments early.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Typed-edge graph fragment">
+      <code lang="text"><![CDATA[
+%% Mermaid program graph
+graph LR
+  TA_api_v2[Team A: API v2 GA] -- FS --> TB_billing[Team B: Billing on v2]
+  TA_api_v2 -- HANDOFF(openapi.yaml) --> TC_sdk[Team C: SDK regeneration]
+  TB_billing -- FS --> M_q3_launch[Milestone: Q3 launch]
+  TC_sdk -- FS --> M_q3_launch
+      ]]></code>
+      <note>Team-prefixed nodes, typed edges with handoff artifact, single milestone target. Queryable.</note>
+    </example>
+
+    <example type="bad" title="Untyped soup">
+      <code lang="text"><![CDATA[
+api_v2 --> billing
+api_v2 --> sdk
+billing --> launch
+sdk --> launch
+"these are all kind of blocking"
+      ]]></code>
+      <note>No team prefixes, no edge types, no handoff artifacts. Cannot answer the "what if API v2 slips" question.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

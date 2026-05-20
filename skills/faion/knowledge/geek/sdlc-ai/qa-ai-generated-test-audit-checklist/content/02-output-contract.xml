@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI-Generated Test Audit Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the filled-in audit checklist and the reviewer verdict.</summary>
+
+  <output-contract>
+    <required>
+      <field name="checklist.pr_id" type="string"/>
+      <field name="checklist.reviewer" type="string"/>
+      <field name="checklist.run_at" format="ISO8601"/>
+      <field name="items" type="list_of_object" min="12" max="12"/>
+      <field name="items[].item_id" type="enum" values="1|2|3|4|5|6|7|8|9|10|11|12"/>
+      <field name="items[].verdict" type="enum" values="pass|flag|n/a"/>
+      <field name="items[].verdict_note" type="paragraph" notes="required when verdict=flag, optional when pass/n/a"/>
+      <field name="items[].repair_request" type="paragraph" notes="required when verdict=flag"/>
+      <field name="overall_verdict" type="enum" values="approve|request_changes|block"/>
+      <field name="pre_lint_results" type="object" notes="output of scripts/ai-test-prelint.py"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">overall_verdict = approve while any item has verdict = flag</pattern>
+      <pattern id="f2">items[].verdict = pass without the test files actually existing in the diff</pattern>
+      <pattern id="f3">items[].verdict = flag without a repair_request</pattern>
+      <pattern id="f4">checklist completed within &lt; 3 minutes of PR-ready (rubber stamp signal)</pattern>
+      <pattern id="f5">items list contains fewer than 12 entries or duplicates an item_id</pattern>
+      <pattern id="f6">pre_lint_results indicates anti-patterns (excessive mocks, structural-only, missing failure cases) AND those items show verdict = pass</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Mark an item n/a when the AC genuinely has no error path or no bounded input; n/a requires a one-line justification.</transformation>
+      <transformation>Group repair_request items into a single PR comment for the engineer when several are related.</transformation>
+      <transformation>Skip item 12 (mutation testing) when mutation-testing CI is not yet adopted; record the skip explicitly.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/audit-checklist.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All 12 items have a verdict</item>
+      <item>Every flag has a repair_request</item>
+      <item>Reviewer spent at least 5-10 minutes walking the list (timestamp delta)</item>
+      <item>overall_verdict matches the worst per-item verdict (any flag blocks approve)</item>
+      <item>pre_lint_results were considered, not overridden silently</item>
+    </list>
+  </section>
+</text>

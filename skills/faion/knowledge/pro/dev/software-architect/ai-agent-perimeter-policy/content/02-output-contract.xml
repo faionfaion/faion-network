@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI-Agent Perimeter Policy Output Contract" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>Defines the per-engagement perimeter policy doc and dev environment config schema.</summary>
+
+  <output-contract>
+    <required>
+      <field name="engagement_metadata">
+        <subfield name="client_name" type="string"/>
+        <subfield name="nda_signed_date" type="iso_date"/>
+        <subfield name="msa_signed_date" type="iso_date"/>
+        <subfield name="policy_authored_date" type="iso_date"/>
+        <subfield name="engagement_end_date" type="iso_date"/>
+      </field>
+      <field name="extracted_clauses" format="list">
+        <subfield name="clause_id" type="string"/>
+        <subfield name="clause_text" type="string"/>
+        <subfield name="clause_topic" enum="data_residency,no_third_party_processing,retention,confidentiality_period,subprocessor_approval,custom"/>
+      </field>
+      <field name="clause_to_config_mapping" format="table">
+        <subfield name="rows[].clause_id" type="string"/>
+        <subfield name="rows[].tool" type="string"/>
+        <subfield name="rows[].setting" type="string"/>
+        <subfield name="rows[].verified_value" type="string"/>
+        <subfield name="rows[].verification_evidence" type="string"/>
+      </field>
+      <field name="disabled_tools" format="list">
+        <subfield name="disabled_tools[].tool" type="string"/>
+        <subfield name="disabled_tools[].reason" type="string"/>
+        <subfield name="disabled_tools[].enforcement_mechanism" enum="allow_list,env_var,network_egress,separate_profile"/>
+      </field>
+      <field name="mcp_allow_list" format="list"/>
+      <field name="escalation_log" format="list">
+        <subfield name="escalation_log[].clause_id" type="string"/>
+        <subfield name="escalation_log[].issue" type="string"/>
+        <subfield name="escalation_log[].resolution" enum="renegotiated,tool_excluded,terminated_engagement,pending"/>
+        <subfield name="escalation_log[].client_sign_off_date" type="iso_date"/>
+      </field>
+      <field name="weekly_audits" format="list">
+        <subfield name="weekly_audits[].audit_date" type="iso_date"/>
+        <subfield name="weekly_audits[].drift_found" type="boolean"/>
+        <subfield name="weekly_audits[].drift_actions" type="string"/>
+      </field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">extracted_clauses without source quoting from NDA/MSA</pattern>
+      <pattern id="f2">clause_to_config_mapping with vague verified_value ("default", "as configured", "trusted")</pattern>
+      <pattern id="f3">disabled_tools entry without enforcement_mechanism (wish, not enforcement)</pattern>
+      <pattern id="f4">escalation_log entry with resolution == "pending" for &gt; 7 days while work proceeds</pattern>
+      <pattern id="f5">no weekly_audits for past 14 days while engagement active</pattern>
+      <pattern id="f6">policy authored AFTER engagement work started</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>If client explicitly approves a specific AI toolchain in MSA, that approval REPLACES the perimeter exercise — the approved spec becomes the policy.</transformation>
+      <transformation>Subprocessor approvals (e.g., "Anthropic is approved as subprocessor") may be granted by client and recorded; do not silently rely on them.</transformation>
+      <transformation>For multi-engineer engagements, the policy must be acknowledged in writing by every engineer touching the codebase.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/perimeter-policy.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>NDA and MSA both read in full (not summarized)</item>
+      <item>every data-handling clause extracted with source quote</item>
+      <item>every clause mapped to a specific tool setting with verified value</item>
+      <item>disabled tools enforced via mechanism (not just policy)</item>
+      <item>escalation log shows client sign-off on any carve-outs</item>
+      <item>weekly audits run and recorded</item>
+      <item>policy authored BEFORE engagement work begins</item>
+    </list>
+  </section>
+</text>
