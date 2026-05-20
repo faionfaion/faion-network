@@ -1,0 +1,79 @@
+---
+slug: maintain-mode-sops-solo
+tier: solo
+group: product
+domain: product
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion]
+summary: Maintain Mode Sops Solo: codified product practice that turns the recurring 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year' decision into a repeatable, auditable artefact.
+content_id: "0eb47f7670a8d00a"
+tags: [maintain-mode-sops-solo, product, solo]
+---
+# Maintain Mode Sops Solo
+
+## Summary
+
+**One-sentence:** Maintain Mode Sops Solo: codified product practice that turns the recurring 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year' decision into a repeatable, auditable artefact.
+
+**One-paragraph:** Maintain Mode Sops Solo addresses the gap identified by the p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year playbook: When a launched product is profitable but not scaling, indies need a 'maintain mode' SOP: 1h/wk support, monthly invoice review, quarterly micro-update. Today this institutional knowledge is tribal; faion should codify it as a tier-solo methodology. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+
+## Applies If (ALL must hold)
+
+- task is an instance of p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year OR a closely-adjacent variant
+- the operator has the artefacts named in Prerequisites available before starting
+- output will be consumed by a downstream agent or human reviewer (not discarded)
+- tier == solo or higher (gating enforced by tier-manifest)
+
+## Skip If (ANY kills it)
+
+- the team already maintains a working artefact for this gap — replace, do not duplicate
+- the change being decided is greenfield prototype with no production users
+- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+
+## Prerequisites
+
+- recent context for the p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year task (last 30 days)
+- write-access to the artefact store (repo / wiki / decision log)
+- named owner who is accountable for the output downstream
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `solo/product/product-planning` | parent role skill — provides the operating context for this methodology |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
+| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/maintain-mode-sops-solo.json` | JSON schema for the Maintain Mode Sops Solo output contract |
+| `templates/maintain-mode-sops-solo.md` | Markdown skeleton with the required fields |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-maintain-mode-sops-solo.py` | Enforce Maintain Mode Sops Solo output contract | After subagent returns, before downstream consumer reads |
+
+## Related
+
+- parent skill: `solo/product/product-planning/`
+- upstream playbook: `p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year`
