@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Dependency-Adoption Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules that turn dependency adoption from a one-line npm install into a defensible audit-ready commit.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-pin-exact" testable="true" depth="essential">
+      <statement>The new dependency MUST be pinned to an exact version in both the manifest and the lockfile. Caret (^) and tilde (~) ranges are forbidden for direct deps. The lockfile commit includes the SHA/integrity hash if the ecosystem supports it.</statement>
+      <rationale source="Reproducible-build research; npm/yarn supply-chain incidents (event-stream, ua-parser-js)">Ranged deps allow silent upgrades that can introduce malware or breaking changes between two CI runs. Exact pin is the floor for reproducibility and audit.</rationale>
+    </rule>
+
+    <rule id="r2-named-owner" testable="true" depth="essential">
+      <statement>The dependency MUST have a named owner on the team — the human who answers "what is this for?", "is it healthy?", "what's the next upgrade path?". Owner = "the team" is rejected. The owner field is in dependency-adoption.md and is the escalation target for security alerts.</statement>
+      <rationale source="Site Reliability Engineering on toil ownership">Unowned dependencies rot. Security alerts for unowned deps land in #general and are ignored. Named ownership is the only mechanism that scales.</rationale>
+    </rule>
+
+    <rule id="r3-sbom-entry" testable="true" depth="essential">
+      <statement>The new dependency MUST appear in the SBOM produced by the CI pipeline. CI verifies the SBOM contains the new dep with version + license + supplier. SBOM coverage is checked as part of PR review (a separate CI step), not assumed.</statement>
+      <rationale source="NIST SSDF + Executive Order 14028 on SBOM requirements">SBOM is the audit artifact for supply-chain reviews and is increasingly contractually required. A dep not in SBOM is a future audit finding.</rationale>
+    </rule>
+
+    <rule id="r4-escape-hatch" testable="true" depth="essential">
+      <statement>The adoption file MUST contain an escape-hatch section: list of 1-2 replacement candidates with similar API/feature surface, plus a 3-bullet outline of what migration would look like. The escape hatch is written at adoption time, not at panic time when the dep is abandoned/compromised.</statement>
+      <rationale source="Risk-management practice; cf. lessons from left-pad, faker, ua-parser-js">When a dep gets abandoned or compromised, teams scramble to find a replacement under pressure. A pre-written escape hatch makes the swap a planned exercise rather than an incident.</rationale>
+    </rule>
+
+    <rule id="r5-renewal-date" testable="true" depth="essential">
+      <statement>The adoption file MUST set a renewal-review date (default: 12 months, sooner for high-risk deps). On that date the owner re-evaluates: still maintained? still needed? still pinned? Renewal output is committed as a brief update.</statement>
+      <rationale source="Lifecycle management; deps that adoption-reviewed once never get re-reviewed">Without scheduled renewal, dead dependencies accumulate. The renewal date is the forcing function for "is this still earning its place?"</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Adoption-file entry for a new direct dep">
+      <code lang="text"><![CDATA[
+Dependency: @tanstack/react-query
+Version pin: 5.59.0 (lockfile sha512: c4f...)
+Manifest: package.json
+Owner: Anna L. (frontend team lead)
+Adopted: 2026-05-20
+SBOM entry: confirmed in dist/sbom.json @ 2026-05-20T15:12Z
+Escape hatch:
+  - Candidates: SWR (similar fetcher caching), Apollo Client (if moving to GraphQL)
+  - Migration outline: extract useQuery to a thin wrapper; abstract refetch policies; estimate 3 days for current usage size.
+Renewal review: 2027-05-01
+Risk notes: actively maintained (last release 14 days), BUS-factor good (multiple core contributors), MIT license.
+      ]]></code>
+      <note>All five rules covered. Audit-ready.</note>
+    </example>
+
+    <example type="bad" title="Quick adoption">
+      <code lang="text"><![CDATA[
+"npm install --save react-query"
+PR title: "Add react-query"
+PR body: "Better data fetching"
+      ]]></code>
+      <note>Ranged pin (caret-default), no owner, no SBOM check, no escape hatch, no renewal. Classic accidental adoption.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

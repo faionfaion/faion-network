@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="AC Mapping Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six failure modes that hollow out AC-to-assertion mapping. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Structural-only assertions passed off as behavior assertions — assertion_class is filled out but asserted_behavior is a structural claim ("api was called").</description>
+      <detector>asserted_behavior matches the closed list of structural tokens OR test body contains only spy/mock/expect-called assertions with no state or output check</detector>
+      <repair>Reviewer rejects the PR with a specific request: "add a behavior assertion that verifies the AC's effect (state, output, side-effect, or specific failure)". Engineer rewrites the test; reviewer re-walks the mapping.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Missing mapping — PR description has no mapping section, or the mapping is "TBD" / "see tests", evading the discipline.</description>
+      <detector>ac-mapping.yaml empty OR PR description lacks the mapping table OR mapping fields contain TBD / placeholder text</detector>
+      <repair>CI rejects PR-ready transitions without a mapping. extract-acs.py auto-populates the AC list at PR open; engineer fills the rest. Pre-merge gate rejects PRs with empty mapping fields.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Wrong AC tagged — engineer maps an AC to a test that does not actually verify that AC (test exercises a different code path that happens to be in the same module).</description>
+      <detector>reviewer reads the test and finds the assertion does not match the AC text OR test name implies a different behavior than the mapping claims</detector>
+      <repair>Reject the PR with the specific mismatch. Engineer either (a) writes a new test that actually verifies the AC and updates the mapping, or (b) restates the AC if it was the AC text that was unclear.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Mapping out of date — refactor renamed test files / test names, mapping file still points to old paths, validation fails.</description>
+      <detector>scripts/check-mapping-complete.py reports any tests[].file_path or test_name not found in the diff or main</detector>
+      <repair>Run the script as a pre-merge gate. Engineer updates the mapping in the same PR. Long-term: introduce a stable test_id annotation (`@id ac-1-happy-path`) so renames do not break the mapping.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Reviewer rubber-stamps — reviewer skips the 5-minute walk, relies on CI green, structural-only assertions leak through.</description>
+      <detector>review approval comes within &lt; 1 minute of PR-ready OR reviewer-effectiveness metric (assertion-rejection rate) trends to zero</detector>
+      <repair>Track reviewer-effectiveness as a team metric. Re-train reviewers on the structural-vs-behavior distinction; pair reviewer with author for 1 week on a difficult PR to recalibrate.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>AC drift — story's AC list changes mid-PR, mapping is not updated, merged PR claims to cover ACs that the story no longer contains.</description>
+      <detector>linked story's AC count differs from mapping AC count OR mapping references ac_id no longer in the story</detector>
+      <repair>extract-acs.py re-runs at PR-ready and at pre-merge; diff between story ACs and mapping ACs triggers a review request. Story changes mid-PR are merged into the mapping explicitly.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      AI-assisted test generation output frequently labels every test with high-confidence claims of "behavior tested". The mapping's behavior-vs-structural classification is the discipline that prevents this from leaking. Reviewer trusts the test body and the assertion class, not the test name or the engineer's enthusiasm.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      Quarterly: testing lead reviews a sample of past PRs and checks whether the mapping's asserted_behavior claims actually held. Mappings that overpromised (structural assertions described as behavioral) are flagged and used to recalibrate reviewer training.
+    </p>
+  </section>
+</text>
