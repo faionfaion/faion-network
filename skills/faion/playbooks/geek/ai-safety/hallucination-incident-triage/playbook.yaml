@@ -1,0 +1,144 @@
+# =============================================================================
+# faion playbook manifest — P7 llm-agent-developer
+# Generated for F-064 from playbook-index.json entry #9
+# =============================================================================
+
+slug: hallucination-incident-triage
+title: "Hallucination incident triage"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 2b2d3ce919c875d0
+
+tier_min: geek
+complexity: medium
+context: [team]
+persona_hints: [P7]
+
+intent: |
+  Customer-reported fabricated answer → reproduce, attribute, ship fix or guardrail, log to permanent eval-set within the working day.
+
+scope: |
+  Customer reported a fabricated answer. Reproduce, attribute, ship a fix or guardrail, log to permanent eval-set within the working day. Intended as a single-day incident response, not a long investigation.
+
+non_goals:
+  - "Full root-cause forensic — see blameless postmortem playbook"
+  - "Pricing/comms response — out of scope"
+
+prerequisites:
+  - "Trace id from customer report"
+  - "Eval harness reachable"
+
+success_criteria:
+  - "Failure reproduced from trace"
+  - "Cause attributed to layer (model / prompt / tool / context)"
+  - "Fix or guardrail shipped"
+  - "Regression eval row added"
+  - "Customer-facing note drafted"
+
+stages:
+  - name: "Reproduce"
+    intent: "Replay the bad trace."
+    tasks:
+      - "Pull trace by id"
+      - "Replay with record-replay"
+    methodologies:
+      - slug: record-replay-debugging
+        path: geek/ai/ai-agents/record-replay-debugging
+        required: true
+        tier_gate: geek
+      - slug: trajectory-eval-otel
+        path: geek/ai/ai-agents/trajectory-eval-otel
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Reproduced failure"
+    decision_gate: |
+      Advance only when failure reproduces deterministically.
+  - name: "Attribute"
+    intent: "Layer attribution: model vs prompt vs tool vs context."
+    tasks:
+      - "Inspect rerank order"
+      - "Check refusal-field strictness"
+      - "Audit context compaction"
+    methodologies:
+      - slug: rerank-before-reasoning
+        path: geek/ai/ai-agents/rerank-before-reasoning
+        required: true
+        tier_gate: geek
+      - slug: refusal-field-strict-schema
+        path: geek/ai/ai-agents/refusal-field-strict-schema
+        required: true
+        tier_gate: geek
+      - slug: compaction-preserve-refs
+        path: geek/ai/ai-agents/compaction-preserve-refs
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-retrieval-metrics
+        path: geek/ai/rag-engineer/rag-eval-retrieval-metrics
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Attribution note"
+    decision_gate: |
+      Advance only when one layer is clearly implicated.
+  - name: "Mitigate & Log"
+    intent: "Ship guardrail and add regression eval."
+    tasks:
+      - "Wire safety guardrail"
+      - "Check EU AI Act applicability"
+      - "Add row to permanent eval"
+      - "Draft customer-facing note"
+    methodologies:
+      - slug: agents-safety-guardrails
+        path: geek/ai/ml-engineer/agents-safety-guardrails
+        required: true
+        tier_gate: geek
+      - slug: eu-ai-act-compliance
+        path: geek/ai/ai-agents/eu-ai-act-compliance
+        required: true
+        tier_gate: geek
+      - slug: llm-judge-rubric-evidence-first
+        path: geek/missing/llm-judge-rubric-evidence-first
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Guardrail PR"
+      - "Eval row added"
+      - "Customer note"
+    decision_gate: |
+      Close incident only after eval row and guardrail both land.
+
+common_pitfalls:
+  - "Treating eval scores as ground truth without judge calibration"
+  - "Shipping prompt or model changes without a regression gate"
+
+quality_checklist:
+  - "Can I roll back this change in one step?"
+  - "Is the regression eval committed BEFORE the fix?"
+
+related_playbooks:
+  - eval-harness-continuous-benchmark-suite
+  - agent-observability-drift-detection-rollout
+
+token_budget_estimate: 9000
+cli_invocations:
+  human:  "faion get-content hallucination-incident-triage --format md"
+  agent:  "faion get-content hallucination-incident-triage --format context"
+  json:   "faion get-content hallucination-incident-triage --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P7 llm-agent-developer persona"
+
+gaps:
+  - methodology_slug: hallucination-attribution-checklist
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: hallucination-attribution-checklist required by playbook chain"
+  - methodology_slug: agent-postmortem-template
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: agent-postmortem-template required by playbook chain"

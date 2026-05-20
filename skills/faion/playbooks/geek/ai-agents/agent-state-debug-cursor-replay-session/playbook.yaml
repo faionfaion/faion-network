@@ -1,0 +1,166 @@
+# =============================================================================
+# faion playbook manifest — P7 llm-agent-developer
+# Generated for F-064 from playbook-index.json entry #13
+# =============================================================================
+
+slug: agent-state-debug-cursor-replay-session
+title: "Agent-state debug session (cursor + replay)"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 778b5680d9dc49aa
+
+tier_min: geek
+complexity: deep
+context: [team]
+persona_hints: [P7]
+
+intent: |
+  Agent ran 40 turns and lost the plot → reconstruct trajectory, find bad transition, ship a guardrail.
+
+scope: |
+  An agent ran 40 turns and lost the plot. Reconstruct the trajectory, find the bad state transition, ship a guardrail. Intended for one focused debug session per incident.
+
+non_goals:
+  - "Full incident postmortem — see blameless playbook"
+  - "Cost optimization — see daily watch"
+
+prerequisites:
+  - "Full trace of the failing run"
+  - "Local replay environment"
+
+success_criteria:
+  - "Bad state transition isolated"
+  - "Cause categorized: context bleed / tool error / planner divergence"
+  - "Guardrail shipped"
+  - "Regression eval row added"
+
+stages:
+  - name: "Replay"
+    intent: "Reconstruct trajectory locally."
+    tasks:
+      - "Pull trace + OTEL spans"
+      - "Record-replay the full run"
+    methodologies:
+      - slug: trajectory-eval-otel
+        path: geek/ai/ai-agents/trajectory-eval-otel
+        required: true
+        tier_gate: geek
+      - slug: record-replay-debugging
+        path: geek/ai/ai-agents/record-replay-debugging
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Local replay log"
+    decision_gate: |
+      Advance only when local run reproduces the failure.
+  - name: "Inspect"
+    intent: "Find the bad transition."
+    tasks:
+      - "Inspect scratchpad field"
+      - "Inspect filesystem memory state"
+      - "Check auto-eviction history"
+      - "Audit compaction preserve-refs"
+    methodologies:
+      - slug: embedded-scratchpad-field
+        path: geek/ai/ai-agents/embedded-scratchpad-field
+        required: true
+        tier_gate: geek
+      - slug: filesystem-as-working-memory
+        path: geek/ai/ai-agents/filesystem-as-working-memory
+        required: true
+        tier_gate: geek
+      - slug: auto-evict-tool-results
+        path: geek/ai/ai-agents/auto-evict-tool-results
+        required: true
+        tier_gate: geek
+      - slug: compaction-preserve-refs
+        path: geek/ai/ai-agents/compaction-preserve-refs
+        required: true
+        tier_gate: geek
+      - slug: subagent-as-context-firewall
+        path: geek/ai/ai-agents/subagent-as-context-firewall
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Annotated trajectory"
+    decision_gate: |
+      Advance only when a single bad transition is named.
+  - name: "Categorize"
+    intent: "Layer attribution: planner / executor / memory / tool."
+    tasks:
+      - "Check plan-execute vs ReAct mismatch"
+      - "Inspect generator-critic loop bound"
+      - "Check posttool hook firing"
+      - "Verify max-turns circuit breaker"
+    methodologies:
+      - slug: plan-execute-vs-react
+        path: geek/ai/ai-agents/plan-execute-vs-react
+        required: true
+        tier_gate: geek
+      - slug: generator-critic-bounded-loop
+        path: geek/ai/ai-agents/generator-critic-bounded-loop
+        required: true
+        tier_gate: geek
+      - slug: posttool-hook-self-correction
+        path: geek/ai/ai-agents/posttool-hook-self-correction
+        required: true
+        tier_gate: geek
+      - slug: max-turns-circuit-breaker
+        path: geek/ai/ai-agents/max-turns-circuit-breaker
+        required: true
+        tier_gate: geek
+      - slug: chaos-eval-fault-injection
+        path: geek/ai/ai-agents/chaos-eval-fault-injection
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Failure category note"
+    decision_gate: |
+      Advance only when category is decided.
+  - name: "Guardrail"
+    intent: "Ship guardrail + add regression eval."
+    tasks:
+      - "Ship guardrail PR"
+      - "Add row to permanent eval"
+    methodologies:
+      []
+    outputs:
+      - "Guardrail PR"
+      - "Eval row"
+    decision_gate: |
+      Close session only after PR is merged.
+
+common_pitfalls:
+  - "Treating eval scores as ground truth without judge calibration"
+  - "Shipping prompt or model changes without a regression gate"
+
+quality_checklist:
+  - "Can I roll back this change in one step?"
+  - "Is the regression eval committed BEFORE the fix?"
+
+related_playbooks:
+  - eval-harness-continuous-benchmark-suite
+  - agent-observability-drift-detection-rollout
+
+token_budget_estimate: 18000
+cli_invocations:
+  human:  "faion get-content agent-state-debug-cursor-replay-session --format md"
+  agent:  "faion get-content agent-state-debug-cursor-replay-session --format context"
+  json:   "faion get-content agent-state-debug-cursor-replay-session --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P7 llm-agent-developer persona"
+
+gaps:
+  - methodology_slug: agent-replay-harness-cookbook
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: agent-replay-harness-cookbook required by playbook chain"
+  - methodology_slug: context-bleed-detection-recipe
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: context-bleed-detection-recipe required by playbook chain"

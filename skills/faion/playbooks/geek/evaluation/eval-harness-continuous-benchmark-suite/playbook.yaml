@@ -1,0 +1,201 @@
+# =============================================================================
+# faion playbook manifest — P7 llm-agent-developer
+# Generated for F-064 from playbook-index.json entry #1
+# =============================================================================
+
+slug: eval-harness-continuous-benchmark-suite
+title: "Stand up an eval harness + continuous benchmark suite (3 weeks)"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 42574768781fe248
+
+tier_min: geek
+complexity: medium
+context: [team]
+persona_hints: [P7]
+
+intent: |
+  No eval harness → CI-integrated eval harness gating every prompt/tool/model change with regression score, adversarial pack, cost-per-success budget.
+
+scope: |
+  From zero to a CI-integrated eval harness that gates every prompt/tool/model change with a regression score, an adversarial pack, a cost-per-success budget, and trajectory-level OTEL traces. Output: a green-or-red gate on every PR touching agent behavior.
+
+non_goals:
+  - "Online RLHF/preference training — separate playbook"
+  - "Human-in-the-loop UX — covered elsewhere"
+
+prerequisites:
+  - "At least one production agent path with logged traces"
+  - "CI runner with secrets access"
+
+success_criteria:
+  - "Golden eval set ≥50 trajectories with judge labels"
+  - "Adversarial pack ≥20 entries covering injection, refusal, drift"
+  - "Cost-per-success metric tracked per PR"
+  - "CI fails the PR on regression"
+  - "OTEL traces queryable by trajectory id"
+
+stages:
+  - name: "Curate Test Set"
+    intent: "Source golden trajectories from production and synthetic seeds."
+    tasks:
+      - "Sample N production trajectories stratified by intent"
+      - "Add synthetic edge cases from rag-eval test-set generator"
+      - "Tag each trajectory with expected behavior"
+    methodologies:
+      - slug: rag-eval-test-set-generation
+        path: geek/ai/rag-engineer/rag-eval-test-set-generation
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-strategy
+        path: geek/ai/rag-engineer/rag-eval-strategy
+        required: true
+        tier_gate: geek
+      - slug: record-replay-debugging
+        path: geek/ai/ai-agents/record-replay-debugging
+        required: true
+        tier_gate: geek
+      - slug: schema-version-pinning
+        path: geek/ai/ai-agents/schema-version-pinning
+        required: true
+        tier_gate: geek
+    outputs:
+      - "golden-trajectories.jsonl"
+      - "Stratification table"
+    decision_gate: |
+      Advance when the set covers each intent class ≥5 cases.
+  - name: "Build Judges"
+    intent: "Calibrate LLM-judge rubrics and property-based invariants."
+    tasks:
+      - "Write rubric-evidence-first judge prompts"
+      - "Add property-based invariants on outputs"
+      - "Sample-check judge against humans"
+    methodologies:
+      - slug: llm-judge-rubric-evidence-first
+        path: geek/ai/ai-agents/llm-judge-rubric-evidence-first
+        required: true
+        tier_gate: geek
+      - slug: test-property-based-llm-invariants
+        path: geek/sdlc-ai/test-property-based-llm-invariants
+        required: true
+        tier_gate: geek
+      - slug: model-evaluation
+        path: geek/ai/ml-engineer/model-evaluation
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-generation-metrics
+        path: geek/ai/rag-engineer/rag-eval-generation-metrics
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-retrieval-metrics
+        path: geek/ai/rag-engineer/rag-eval-retrieval-metrics
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Judge prompt set"
+      - "Judge calibration report"
+    decision_gate: |
+      Advance when judge κ ≥0.6 against human sample.
+  - name: "Adversarial Pack"
+    intent: "Stress the agent with fault injection and mutation cases."
+    tasks:
+      - "Inject tool failures and rate limits"
+      - "Mutation-test inputs"
+      - "Add A/B harness for prompt versions"
+    methodologies:
+      - slug: chaos-eval-fault-injection
+        path: geek/ai/ai-agents/chaos-eval-fault-injection
+        required: true
+        tier_gate: geek
+      - slug: test-mutation-feedback-loop
+        path: geek/sdlc-ai/test-mutation-feedback-loop
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-ab-testing
+        path: geek/ai/rag-engineer/rag-eval-ab-testing
+        required: true
+        tier_gate: geek
+    outputs:
+      - "adversarial-pack.jsonl"
+      - "A/B fixture"
+    decision_gate: |
+      Advance when pack covers ≥20 named failure modes.
+  - name: "CI Wiring"
+    intent: "Make the suite block every PR touching prompts, tools, or models."
+    tasks:
+      - "Add CI job running suite on every PR"
+      - "Tracker draft-PR on judge regression"
+      - "Wire OTEL trace upload per run"
+    methodologies:
+      - slug: trajectory-eval-otel
+        path: geek/ai/ai-agents/trajectory-eval-otel
+        required: true
+        tier_gate: geek
+      - slug: llm-observability
+        path: geek/ai/ml-engineer/llm-observability
+        required: true
+        tier_gate: geek
+      - slug: mr-error-tracker-draft-pr
+        path: geek/sdlc-ai/mr-error-tracker-draft-pr
+        required: true
+        tier_gate: geek
+      - slug: test-self-healing-locators-audited
+        path: geek/sdlc-ai/test-self-healing-locators-audited
+        required: true
+        tier_gate: geek
+      - slug: evaluation-benchmarks
+        path: geek/ai/ml-ops/evaluation-benchmarks
+        required: true
+        tier_gate: geek
+      - slug: evaluation-framework
+        path: geek/ai/ml-ops/evaluation-framework
+        required: true
+        tier_gate: geek
+      - slug: evaluation-metrics
+        path: geek/ai/ml-ops/evaluation-metrics
+        required: true
+        tier_gate: geek
+    outputs:
+      - "CI workflow YAML"
+      - "Trace dashboard"
+    decision_gate: |
+      Advance only when a known regression PR is correctly blocked.
+
+common_pitfalls:
+  - "Treating eval scores as ground truth without judge calibration"
+  - "Shipping prompt or model changes without a regression gate"
+
+quality_checklist:
+  - "Can I roll back this change in one step?"
+  - "Is the regression eval committed BEFORE the fix?"
+
+related_playbooks:
+  - eval-harness-continuous-benchmark-suite
+  - agent-observability-drift-detection-rollout
+
+token_budget_estimate: 9000
+cli_invocations:
+  human:  "faion get-content eval-harness-continuous-benchmark-suite --format md"
+  agent:  "faion get-content eval-harness-continuous-benchmark-suite --format context"
+  json:   "faion get-content eval-harness-continuous-benchmark-suite --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P7 llm-agent-developer persona"
+
+gaps:
+  - methodology_slug: agent-eval-test-set-curation
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: agent-eval-test-set-curation required by playbook chain"
+  - methodology_slug: judge-calibration-protocol
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: judge-calibration-protocol required by playbook chain"
+  - methodology_slug: eval-as-ci-gate-thresholds
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: eval-as-ci-gate-thresholds required by playbook chain"

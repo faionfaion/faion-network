@@ -1,0 +1,177 @@
+# =============================================================================
+# faion playbook manifest — P7 llm-agent-developer
+# Generated for F-064 from playbook-index.json entry #12
+# =============================================================================
+
+slug: rag-chunking-strategy-bench
+title: "RAG chunking strategy bench"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 8e7782fcb57ffc0f
+
+tier_min: geek
+complexity: deep
+context: [team]
+persona_hints: [P7]
+
+intent: |
+  Fixed corpus + frozen test queries → decide which chunking + retrieval combo wins this week and ship the winner behind a flag.
+
+scope: |
+  On a fixed corpus + frozen test queries, decide which chunking + retrieval combo wins this week and ship the winner behind a flag. Champion-challenger discipline.
+
+non_goals:
+  - "Building the eval set itself — see playbook 1"
+  - "Multi-tenant corpus design"
+
+prerequisites:
+  - "Frozen test set with judge rubrics"
+  - "Indexable corpus snapshot"
+
+success_criteria:
+  - "≥3 chunking + retrieval combos run"
+  - "Champion picked by NDCG + groundedness"
+  - "Pinned schema + version manifest"
+  - "Shipped behind flag with rollback"
+
+stages:
+  - name: "Setup"
+    intent: "Snapshot corpus + queries + judge."
+    tasks:
+      - "Lock corpus snapshot"
+      - "Freeze query set + judges"
+      - "Pin schema version"
+    methodologies:
+      - slug: schema-version-pinning
+        path: geek/ai/ai-agents/schema-version-pinning
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-test-set-generation
+        path: geek/ai/rag-engineer/rag-eval-test-set-generation
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Corpus snapshot id"
+      - "Frozen test set"
+    decision_gate: |
+      Advance only when inputs are frozen.
+  - name: "Chunk Variants"
+    intent: "Build 3+ chunking variants."
+    tasks:
+      - "Document-structure variant"
+      - "Semantic variant"
+      - "Code-AST variant if applicable"
+      - "Production-service chunking variant"
+    methodologies:
+      - slug: chunking-document-structure
+        path: geek/ai/rag-engineer/chunking-document-structure
+        required: true
+        tier_gate: geek
+      - slug: chunking-semantic
+        path: geek/ai/rag-engineer/chunking-semantic
+        required: true
+        tier_gate: geek
+      - slug: chunking-code-ast
+        path: geek/ai/rag-engineer/chunking-code-ast
+        required: true
+        tier_gate: geek
+      - slug: chunking-production-service
+        path: geek/ai/rag-engineer/chunking-production-service
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Variant index set"
+    decision_gate: |
+      Advance only when each variant indexed cleanly.
+  - name: "Retrieve & Rerank"
+    intent: "Hybrid retrieval + rerank for each variant."
+    tasks:
+      - "Run hybrid search"
+      - "Two-stage rerank"
+      - "Diversity rerank with MMR"
+    methodologies:
+      - slug: hybrid-search-implementation
+        path: geek/ai/rag-engineer/hybrid-search-implementation
+        required: true
+        tier_gate: geek
+      - slug: reranking-two-stage
+        path: geek/ai/rag-engineer/reranking-two-stage
+        required: true
+        tier_gate: geek
+      - slug: reranking-diversity-mmr
+        path: geek/ai/rag-engineer/reranking-diversity-mmr
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Per-variant retrieval traces"
+    decision_gate: |
+      Advance only when each variant produces comparable traces.
+  - name: "Score"
+    intent: "Eval each variant on retrieval + generation metrics."
+    tasks:
+      - "Retrieval metrics (recall, NDCG)"
+      - "Generation metrics (groundedness)"
+      - "A/B significance check"
+    methodologies:
+      - slug: rag-eval-retrieval-metrics
+        path: geek/ai/rag-engineer/rag-eval-retrieval-metrics
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-generation-metrics
+        path: geek/ai/rag-engineer/rag-eval-generation-metrics
+        required: true
+        tier_gate: geek
+      - slug: rag-eval-ab-testing
+        path: geek/ai/rag-engineer/rag-eval-ab-testing
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Scorecard"
+    decision_gate: |
+      Advance only when one variant clearly wins or is tied.
+  - name: "Ship Winner"
+    intent: "Promote winner behind feature flag with rollback."
+    tasks:
+      - "Land winner behind flag"
+      - "Document rollback"
+    methodologies:
+      []
+    outputs:
+      - "Flag-gated rollout"
+    decision_gate: |
+      Ship only after rollback is exercised.
+
+common_pitfalls:
+  - "Treating eval scores as ground truth without judge calibration"
+  - "Shipping prompt or model changes without a regression gate"
+
+quality_checklist:
+  - "Can I roll back this change in one step?"
+  - "Is the regression eval committed BEFORE the fix?"
+
+related_playbooks:
+  - eval-harness-continuous-benchmark-suite
+  - agent-observability-drift-detection-rollout
+
+token_budget_estimate: 18000
+cli_invocations:
+  human:  "faion get-content rag-chunking-strategy-bench --format md"
+  agent:  "faion get-content rag-chunking-strategy-bench --format context"
+  json:   "faion get-content rag-chunking-strategy-bench --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P7 llm-agent-developer persona"
+
+gaps:
+  - methodology_slug: rag-bench-harness-template
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: rag-bench-harness-template required by playbook chain"
+  - methodology_slug: champion-challenger-pattern-rag
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: champion-challenger-pattern-rag required by playbook chain"

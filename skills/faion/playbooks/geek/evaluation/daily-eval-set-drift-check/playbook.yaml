@@ -1,0 +1,130 @@
+# =============================================================================
+# faion playbook manifest — P7 llm-agent-developer
+# Generated for F-064 from playbook-index.json entry #6
+# =============================================================================
+
+slug: daily-eval-set-drift-check
+title: "Daily eval-set drift check"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 1d724429ce423580
+
+tier_min: geek
+complexity: light
+context: [team]
+persona_hints: [P7]
+
+intent: |
+  Tomorrow's prompt/version bump might regress → today's run confirms last 24h still passes the golden set.
+
+scope: |
+  Confirm last 24h production traffic still passes the golden eval set; flag any regression class before it ships in tomorrow's prompt/version bump. Designed as a daily ritual, 15-30 min.
+
+non_goals:
+  - "Full eval-set authoring — done in playbook 1"
+  - "Long-term drift research"
+
+prerequisites:
+  - "Eval harness from `eval-harness-continuous-benchmark-suite`"
+  - "OTEL traces queryable for last 24h"
+
+success_criteria:
+  - "Last 24h traffic replayed against golden judges"
+  - "Any regression class identified before today's bump"
+  - "Decision logged: ship / hold / rollback"
+
+stages:
+  - name: "Pull 24h"
+    intent: "Sample last 24h trajectories."
+    tasks:
+      - "Pull stratified sample of traces"
+      - "Confirm schema pin still valid"
+    methodologies:
+      - slug: trajectory-eval-otel
+        path: geek/ai/ai-agents/trajectory-eval-otel
+        required: true
+        tier_gate: geek
+      - slug: schema-version-pinning
+        path: geek/ai/ai-agents/schema-version-pinning
+        required: true
+        tier_gate: geek
+      - slug: llm-observability-stack
+        path: geek/ai/ml-engineer/llm-observability-stack
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Last-24h sample"
+    decision_gate: |
+      Advance once sample covers main intent buckets.
+  - name: "Judge"
+    intent: "Score sample with rubric judge."
+    tasks:
+      - "Run rubric-evidence-first judge"
+      - "Compare scores vs trailing 7-day baseline"
+    methodologies:
+      - slug: llm-judge-rubric-evidence-first
+        path: geek/ai/ai-agents/llm-judge-rubric-evidence-first
+        required: true
+        tier_gate: geek
+      - slug: model-evaluation
+        path: geek/ai/ml-engineer/model-evaluation
+        required: true
+        tier_gate: geek
+      - slug: evaluation-framework
+        path: geek/ai/ml-ops/evaluation-framework
+        required: true
+        tier_gate: geek
+      - slug: evaluation-metrics
+        path: geek/ai/ml-ops/evaluation-metrics
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Daily judge scorecard"
+    decision_gate: |
+      Advance to Decide whether scores fell outside SLO band.
+  - name: "Decide"
+    intent: "Ship / hold / rollback for today."
+    tasks:
+      - "Apply SLO thresholds"
+      - "Write one-line daily log entry"
+    methodologies:
+      []
+    outputs:
+      - "Daily ship/hold decision logged"
+    decision_gate: |
+      If above SLO, ship; else hold and trigger incident playbook.
+
+common_pitfalls:
+  - "Treating eval scores as ground truth without judge calibration"
+  - "Shipping prompt or model changes without a regression gate"
+
+quality_checklist:
+  - "Can I roll back this change in one step?"
+  - "Is the regression eval committed BEFORE the fix?"
+
+related_playbooks:
+  - eval-harness-continuous-benchmark-suite
+  - agent-observability-drift-detection-rollout
+
+token_budget_estimate: 4000
+cli_invocations:
+  human:  "faion get-content daily-eval-set-drift-check --format md"
+  agent:  "faion get-content daily-eval-set-drift-check --format context"
+  json:   "faion get-content daily-eval-set-drift-check --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P7 llm-agent-developer persona"
+
+gaps:
+  - methodology_slug: eval-set-stratified-sampling-recipe
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: eval-set-stratified-sampling-recipe required by playbook chain"
+  - methodology_slug: drift-slo-thresholds-cookbook
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: drift-slo-thresholds-cookbook required by playbook chain"

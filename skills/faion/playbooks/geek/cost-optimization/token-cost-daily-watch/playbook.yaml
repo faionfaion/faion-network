@@ -1,0 +1,136 @@
+# =============================================================================
+# faion playbook manifest — P7 llm-agent-developer
+# Generated for F-064 from playbook-index.json entry #10
+# =============================================================================
+
+slug: token-cost-daily-watch
+title: "Token-cost daily watch"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 49d1263590815ca2
+
+tier_min: geek
+complexity: light
+context: [team]
+persona_hints: [P7]
+
+intent: |
+  Catch cost spikes within 24h → decide if model-routing, caching, or context-engineering change is needed before billing close.
+
+scope: |
+  Catch cost spikes within 24h. Decide if model-routing, caching, or context-engineering change is needed before billing close. ~15 min daily.
+
+non_goals:
+  - "Long-term cost reforecasting — separate playbook"
+  - "Vendor contract negotiation"
+
+prerequisites:
+  - "Per-trajectory cost tagged in OTEL"
+  - "Cost dashboard reachable"
+
+success_criteria:
+  - "Today's $/success measured"
+  - "Spike threshold breached → action picked"
+  - "Daily log line written"
+
+stages:
+  - name: "Read"
+    intent: "Pull last 24h cost-per-success."
+    tasks:
+      - "Pull token usage and success counts"
+      - "Compare against trailing 7-day median"
+    methodologies:
+      - slug: llm-observability
+        path: geek/ai/ml-engineer/llm-observability
+        required: true
+        tier_gate: geek
+      - slug: cost-optimization
+        path: geek/ai/ml-engineer/cost-optimization
+        required: true
+        tier_gate: geek
+      - slug: llm-cost-basics
+        path: geek/ai/ml-ops/llm-cost-basics
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Daily cost line"
+    decision_gate: |
+      Advance to Decide only when above SLO band.
+  - name: "Decide Lever"
+    intent: "Pick lever: routing / caching / context."
+    tasks:
+      - "Audit prompt-cache hit rate"
+      - "Inspect cascade for over-spend on weak path"
+      - "Cap max turns"
+      - "Batch cache where applicable"
+    methodologies:
+      - slug: prompt-cache-prefix-order
+        path: geek/ai/ai-agents/prompt-cache-prefix-order
+        required: true
+        tier_gate: geek
+      - slug: confidence-thresholded-cascade
+        path: geek/ai/ai-agents/confidence-thresholded-cascade
+        required: true
+        tier_gate: geek
+      - slug: weak-model-preselection
+        path: geek/ai/ai-agents/weak-model-preselection
+        required: true
+        tier_gate: geek
+      - slug: max-turns-circuit-breaker
+        path: geek/ai/ai-agents/max-turns-circuit-breaker
+        required: true
+        tier_gate: geek
+      - slug: batch-cache-stack
+        path: geek/ai/ai-agents/batch-cache-stack
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Lever decision note"
+    decision_gate: |
+      Advance only when a single lever is picked.
+  - name: "Ship Or Log"
+    intent: "Ship the cheapest lever or schedule for tomorrow."
+    tasks:
+      - "Land lever PR or schedule"
+      - "Write one-line daily log"
+    methodologies:
+      []
+    outputs:
+      - "Daily cost log entry"
+    decision_gate: |
+      Close ritual only after log entry is written.
+
+common_pitfalls:
+  - "Treating eval scores as ground truth without judge calibration"
+  - "Shipping prompt or model changes without a regression gate"
+
+quality_checklist:
+  - "Can I roll back this change in one step?"
+  - "Is the regression eval committed BEFORE the fix?"
+
+related_playbooks:
+  - eval-harness-continuous-benchmark-suite
+  - agent-observability-drift-detection-rollout
+
+token_budget_estimate: 4000
+cli_invocations:
+  human:  "faion get-content token-cost-daily-watch --format md"
+  agent:  "faion get-content token-cost-daily-watch --format context"
+  json:   "faion get-content token-cost-daily-watch --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P7 llm-agent-developer persona"
+
+gaps:
+  - methodology_slug: cost-slo-per-task-template
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: cost-slo-per-task-template required by playbook chain"
+  - methodology_slug: cache-hit-audit-script
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Gap from brainstorm-2026-05-17: cache-hit-audit-script required by playbook chain"
