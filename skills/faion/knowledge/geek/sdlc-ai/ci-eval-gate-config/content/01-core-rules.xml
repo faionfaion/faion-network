@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="CI Eval Gate Config — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for a robust LLM eval gate in CI. Each addresses a specific failure mode that has bitten teams shipping LLM features.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-baseline-in-vcs" testable="true" depth="essential">
+      <statement>The baseline JSON MUST live in the repo (e.g., `.evals/baseline.json`) and update ONLY via a dedicated PR with title pattern `chore(evals): rebase baseline ...`. Baseline updates from feature branches are rejected by CI itself.</statement>
+      <rationale source="MLOps versioning research, snapshot-test patterns">If the baseline can be updated alongside the feature change, the gate is a fig leaf — devs will smuggle regressions into the baseline. Separating the rebase PR makes the change reviewable and reversible.</rationale>
+    </rule>
+
+    <rule id="r2-per-metric-thresholds" testable="true" depth="essential">
+      <statement>Thresholds are configured per metric, NOT as a single pass/fail. Typical config: accuracy drop &lt;= 2 percentage points OR refusal rate increase &lt;= 1pp OR latency p95 increase &lt;= 10% OR cost-per-eval increase &lt;= 5%. The gate fails if ANY metric exceeds its threshold (AND logic, not OR).</statement>
+      <rationale source="OpenAI Evals + Promptfoo CI docs, internal LLMOps reports">Single-metric gates miss regressions in untracked dimensions. A prompt change that boosts accuracy 1pp but doubles cost is a regression most teams want to catch. Per-metric thresholds force explicit decisions about what you trade.</rationale>
+    </rule>
+
+    <rule id="r3-flaky-case-quarantine" testable="true" depth="essential">
+      <statement>When a case is confirmed flaky (passes ≥ 30% AND fails ≥ 30% across runs on unchanged code), it moves to a quarantine list with a re-evaluation date (max 30 days). Quarantined cases do not gate PRs but appear in a dashboard. After re-evaluation date, case must either return to active set or be retired with rationale.</statement>
+      <rationale source="Flaky-test research from Microsoft and Google CI teams, ML eval reproducibility studies">Without quarantine, flaky cases either block PRs spuriously (devs stop trusting the gate) OR get silently disabled (gate erodes). Time-boxed quarantine forces resolution.</rationale>
+    </rule>
+
+    <rule id="r4-override-with-named-approver" testable="true" depth="essential">
+      <statement>An override of a failing gate requires: explicit override-record file with named approver (NOT the PR author), rationale (sentence), expected revert plan (e.g., "follow-up PR within 7 days to address regression"). Approver MUST be on a documented override-approver list (tech lead, ML lead). Override is audited monthly.</statement>
+      <rationale source="Change-management literature, ITIL break-glass procedures">Without named approver + audit, overrides become routine. With them, overrides are deliberate exceptions. Audit is what prevents the override path from becoming the default path.</rationale>
+    </rule>
+
+    <rule id="r5-mandatory-cost-budget" testable="true" depth="essential">
+      <statement>Cost-per-eval MUST be one of the gated metrics. A prompt or model change that increases cost per eval by &gt; 5% without explicit override is blocked. Includes token cost AND tool-call cost (if agent eval).</statement>
+      <rationale source="LLM cost-surge case studies (multiple post-mortems on GPT-4 -&gt; GPT-4-turbo migrations), unit-economics research">Without a cost gate, prompt engineering quietly inflates per-request cost until unit economics break. Many teams discovered 3x cost increases only at month-end billing. Gating cost makes the trade explicit at PR time.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Per-metric thresholds + override record">
+      <code lang="text"><![CDATA[
+PR #1402: "Switch summary chain from gpt-4o to claude-3-5-haiku"
+
+Baseline vs PR results:
+  accuracy:           87.4% -> 87.1%  (delta -0.3pp, within 2pp threshold)  PASS
+  refusal_rate:        2.1% -> 2.3%   (delta +0.2pp, within 1pp threshold)  PASS
+  latency_p95:         3.2s -> 2.4s   (delta -25%, within 10% threshold)    PASS
+  cost_per_eval:    $0.012 -> $0.004  (delta -67%, within 5% threshold)     PASS
+  json_schema_valid:  99.2% -> 99.1%  (delta -0.1pp, within 0.5pp threshold) PASS
+
+Decision: PASS (all metrics within threshold)
+
+No override needed. PR proceeds; baseline NOT updated by this PR.
+Separate "chore(evals): rebase baseline for haiku switch" PR follows
+to rebaseline so future PRs measure against the new haiku baseline.
+      ]]></code>
+      <note>Illustrates r1, r2, r5: per-metric thresholds, baseline isolation, cost included.</note>
+    </example>
+
+    <example type="bad" title="Single-metric gate + silent flaky">
+      <code lang="text"><![CDATA[
+PR #1403: "Improve prompt for question classifier"
+
+Baseline vs PR:
+  accuracy: 89% -> 91%  -> single-metric gate passes
+
+What was actually true:
+  cost_per_eval: $0.008 -> $0.024  (3x; not gated)
+  latency_p95:   1.8s -> 4.5s      (2.5x; not gated)
+  Three cases flipped between runs (flaky; silently removed by
+    author "to make CI green").
+
+Production impact 2 weeks later: $2.4k/month cost surge, p95
+latency complaints from users.
+
+Repair: enforce r2, r3, r5. Per-metric thresholds catch cost + latency.
+Flaky cases go to quarantine, not deletion.
+      ]]></code>
+      <note>Illustrates r2, r3, r5 violations — single-metric gates miss the slow leaks.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
