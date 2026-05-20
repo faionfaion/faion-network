@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Internal Link Audit Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the rewire plan and audit report. Subagent must satisfy this before applying any changes.</summary>
+
+  <output-contract>
+    <required>
+      <field name="audit_date" type="date"/>
+      <field name="site_url" type="url"/>
+      <field name="total_pages_crawled" type="integer"/>
+      <field name="orphan_count" type="integer" constraint="goal: 0"/>
+      <field name="cluster_coverage" type="array_object"
+             item_required_keys="cluster_name,pillar_url,member_count,cluster_to_pillar_pct,pillar_to_cluster_pct"/>
+      <field name="anchor_distribution_per_cluster" type="object"
+             required_keys="exact_match_pct,partial_match_pct,branded_pct,generic_pct"
+             constraint="exact_match_pct &lt;= 0.40 AND sum == 1.0"/>
+      <field name="over_linked_hubs" type="array_object"
+             item_required_keys="url,incoming_link_count,intentional_navigation_root_bool"/>
+      <field name="rewire_plan" type="array_object"
+             item_required_keys="action,source_url,target_url,anchor_text,cluster,rationale,priority"
+             action_enum="add_link,remove_link,change_anchor,redirect,unpublish"/>
+      <field name="baseline_metrics" type="object"
+             required_keys="impressions_90d,avg_position_90d,ctr_90d,collected_date"/>
+      <field name="post_rewire_metric_commitment" type="object"
+             required_keys="recheck_after_days,success_threshold"
+             constraint="recheck_after_days &gt;= 60"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">orphan_count &gt; 0 with rewire_plan missing actions to address each orphan</pattern>
+      <pattern id="f2">cluster_coverage with any cluster_to_pillar_pct &lt; 0.80 OR pillar_to_cluster_pct &lt; 0.80 without rewire plan addressing it</pattern>
+      <pattern id="f3">anchor_distribution exact_match_pct &gt; 0.40 in any cluster (violates r3)</pattern>
+      <pattern id="f4">over_linked_hubs with incoming_link_count &gt; 200 AND intentional_navigation_root_bool == false AND no rewire plan trim</pattern>
+      <pattern id="f5">baseline_metrics absent OR post_rewire_metric_commitment missing (violates r5)</pattern>
+      <pattern id="f6">rewire_plan actions outside the closed action_enum</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Group multiple anchor-change actions for the same source_url into a single batch entry.</transformation>
+      <transformation>Mark intentional navigation roots (homepage, /resources/) as exempt from over-linked-hub rule with documented rationale.</transformation>
+      <transformation>Stage rewire plan into phases (P1 critical orphans, P2 anchor diversity, P3 over-linked hub trim) for change-control.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/rewire-plan.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Orphan count is 0 in target state</item>
+      <item>Every cluster has ≥ 80% pillar-cluster reciprocity</item>
+      <item>No cluster has &gt; 40% exact-match anchors</item>
+      <item>Over-linked hubs are either trimmed or documented as navigation roots</item>
+      <item>Baseline metrics captured before rewire</item>
+      <item>Post-rewire re-measurement committed at ≥ 60 days</item>
+    </list>
+  </section>
+</text>
