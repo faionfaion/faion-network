@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Compliance-Checklist-by-Domain Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules. They prevent the two recurring patterns of compliance miss: "we're probably not in scope" and "the user story didn't say anything about retention."</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-classify-first" testable="true" depth="essential">
+      <statement>Each feature MUST be classified before the matrix is consulted: data_types (personal / sensitive-personal / payment-card / health / financial), user_jurisdiction (EU / UK / US-state / global), system_role (controller / processor), and payments_involved (yes / no). Classification is committed in the compliance-gate annotation. "We don't know yet" is not a valid classification — escalate to the engagement manager.</statement>
+      <rationale source="GDPR Art. 4 + HIPAA covered-entity definitions">Most compliance failures upstream from a checklist are scope misclassifications. The same feature has different obligations under GDPR (controller vs processor) and under HIPAA (covered entity vs business associate).</rationale>
+    </rule>
+
+    <rule id="r2-matrix-driven" testable="true" depth="essential">
+      <statement>The clause list to check against MUST come from the templates/compliance-matrix.csv, indexed by (regulation, feature-type). Ad-hoc "I think GDPR also requires X" is forbidden. Adding a clause requires updating the matrix with the regulation citation.</statement>
+      <rationale source="Audit-trail discipline">Memory-driven clause lists drift project-by-project and stop being defensible in an audit. A single matrix is the only sustainable source.</rationale>
+    </rule>
+
+    <rule id="r3-must-may-flagging" testable="true" depth="essential">
+      <statement>Each clause carries a MUST or MAY flag in the matrix. The compliance-gate annotation MUST list MUST clauses individually with status (met / not-met / N/A-with-reason). MAY clauses are summarized as a count + the unmet ones highlighted. "Skip MAY" is allowed only if the BA writes the trade-off rationale.</statement>
+      <rationale source="RFC 2119 conformance levels applied to regulatory clauses">MUST/MAY clarifies what is a sign-off blocker vs a recommendation. Treating MAY clauses as MUST creates fake delays; treating MUST clauses as MAY creates compliance breaches.</rationale>
+    </rule>
+
+    <rule id="r4-jurisdiction-explicit" testable="true" depth="essential">
+      <statement>The compliance-gate annotation MUST name the jurisdiction(s) considered. "Worldwide users" is not a jurisdiction — pick the most restrictive applicable AND any sector-specific (HIPAA for US healthcare, PSD2 for EU payments) AND accessibility (WCAG 2.2 AA default for public-facing UI).</statement>
+      <rationale source="Lex specialis principle in regulatory drafting">Stating jurisdiction explicitly forces the right matrix subset to be loaded. Vague "we'll handle international later" is the most common audit gap.</rationale>
+    </rule>
+
+    <rule id="r5-signoff-required" testable="true" depth="essential">
+      <statement>Sign-off on the compliance-gate annotation MUST come from a named human BA, with date. AI-only generated annotations are not sign-off — they are a draft. The sign-off line is the legal/audit anchor.</statement>
+      <rationale source="Common-sense legal practice; AI-generated artifacts have no legal accountability">An audit trail requires a named accountable human. AI assists the BA; the BA signs.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Compliance-gate for a 'delete my account' feature">
+      <code lang="text"><![CDATA[
+Feature: Delete my account
+Classification: data_types=[personal], jurisdiction=[EU,UK], system_role=controller, payments=no
+Regulations: GDPR, UK-GDPR
+
+MUST clauses:
+  - GDPR Art.17 (right to erasure)            -> MET (req-id 4.3 specifies deletion within 30 days)
+  - GDPR Art.30 (records of processing)       -> NOT MET (no audit log for deletion event)
+  - GDPR Art.5(1)(e) (storage limitation)     -> MET (backups deleted within 90 days)
+
+MAY clauses:
+  - Recital 65 grace-period for fraud invest. -> N/A (no fraud-investigation use case)
+
+Sign-off: BA Maria Costa, 2026-05-20
+      ]]></code>
+      <note>Classification, jurisdiction explicit, clauses cited with status, sign-off line.</note>
+    </example>
+
+    <example type="bad" title="Vibes annotation">
+      <code lang="text"><![CDATA[
+Feature: Delete my account
+"Looks GDPR-compliant. Approved."
+      ]]></code>
+      <note>No classification, no clauses, no jurisdiction, no sign-off. Useless as audit evidence.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
