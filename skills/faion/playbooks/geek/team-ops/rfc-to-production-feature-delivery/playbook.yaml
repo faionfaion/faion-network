@@ -1,0 +1,353 @@
+# =============================================================================
+# faion playbook manifest — P6 product-dev team
+# Generated for F-064 from playbook-index.json p6-product-dev-team entry 2
+# =============================================================================
+
+slug: rfc-to-production-feature-delivery
+title: "RFC → Production: feature delivery"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: dbb110685666c855
+
+tier_min: geek
+complexity: deep
+context: [team]
+persona_hints: [P6]
+
+intent: |
+  Approved RFC → live production behind a feature flag with telemetry, runbook, and post-launch review scheduled.
+
+scope: |
+  One product bet travels from an approved RFC to live production. All handoffs (PM brief → BA reqs → Architect design → Dev implementation → QA verification → DevOps deploy → PdM rollout) are auditable. Shipping closes the loop with a feature flag, telemetry, an on-call runbook, and a post-launch review scheduled. The single living artifact under `.aidocs/in-progress/<feature>/` is the unit of work; tracker is the mirror, not the source.
+
+non_goals:
+  - "RFC drafting / approval process — assumed already done upstream"
+  - "Quarter-level prioritisation — handled in quarter-planning-okr-reset"
+  - "Major migrations — see big-migration-postgres-monolith"
+
+prerequisites:
+  - "Approved RFC referencing OKR + bet"
+  - "Feature flag platform in place"
+  - "CI/CD pipeline with progressive delivery + supply-chain scans"
+  - "Repo wired with CLAUDE.md + AGENTS.md context pyramid"
+
+success_criteria:
+  - "spec.md + design.md + implementation-plan.md exist and are coherent"
+  - "Acceptance criteria mapped 1:1 to tests (contract + property + mutation)"
+  - "Feature behind a flag with dark/ramp/GA states defined"
+  - "Telemetry: Grafana dashboards + Prometheus alerts + Sentry/Datadog wiring"
+  - "On-call runbook published with tagged steps"
+  - "Post-launch review scheduled within 14 days"
+
+stages:
+  - name: "RFC → spec"
+    intent: "PM brief + BA elicitation produce a spec with acceptance criteria."
+    tasks:
+      - "Elicit requirements with stakeholders"
+      - "Prioritise + validate against OKRs"
+      - "Draft spec.md (AI-assisted) under `.aidocs/in-progress/<feature>/`"
+      - "Define acceptance criteria + Definition of Ready"
+    methodologies:
+      - slug: elicitation-techniques
+        path: pro/ba/business-analyst/elicitation-techniques
+        required: true
+        tier_gate: pro
+      - slug: requirements-prioritization
+        path: pro/ba/business-analyst/requirements-prioritization
+        required: true
+        tier_gate: pro
+      - slug: requirements-validation
+        path: pro/ba/business-analyst/requirements-validation
+        required: true
+        tier_gate: pro
+      - slug: acceptance-criteria
+        path: pro/ba/business-analyst/acceptance-criteria
+        required: true
+        tier_gate: pro
+      - slug: user-story-mapping
+        path: pro/ba/business-analyst/user-story-mapping
+        required: true
+        tier_gate: pro
+      - slug: use-case-modeling
+        path: pro/ba/business-analyst/use-case-modeling
+        required: true
+        tier_gate: pro
+      - slug: minimum-product-frameworks
+        path: pro/product/product-manager/minimum-product-frameworks
+        required: true
+        tier_gate: pro
+      - slug: mlp-planning
+        path: pro/product/product-manager/mlp-planning
+        required: false
+        tier_gate: pro
+      - slug: ai-assisted-specification-writing
+        path: geek/sdd/sdd-planning/ai-assisted-specification-writing
+        required: true
+        tier_gate: geek
+      - slug: ai-assisted-specification-writing-alt
+        path: geek/sdd/sdd/ai-assisted-specification-writing
+        required: false
+        tier_gate: geek
+      - slug: task-spec-kit-three-step
+        path: geek/sdlc-ai/task-spec-kit-three-step
+        required: true
+        tier_gate: geek
+      - slug: task-agent-drafts-spec-before-coding
+        path: geek/sdlc-ai/task-agent-drafts-spec-before-coding
+        required: true
+        tier_gate: geek
+    outputs:
+      - "spec.md + acceptance-criteria"
+      - "Definition-of-Ready confirmation"
+    decision_gate: |
+      Advance when spec passes Definition of Ready: AC are testable, scope cuts are explicit, dependencies named.
+
+  - name: "Architect → design"
+    intent: "Architect commits a design.md with quality attributes, boundaries, and reuse decisions."
+    tasks:
+      - "Run quality-attributes analysis (perf, sec, reliability, observability)"
+      - "Decide on microservices/event-driven boundaries where applicable"
+      - "Apply clean architecture + DDD principles"
+      - "Author CLAUDE.md updates so agents stay LLM-friendly"
+    methodologies:
+      - slug: quality-attributes-analysis
+        path: pro/dev/software-architect/quality-attributes-analysis
+        required: true
+        tier_gate: pro
+      - slug: event-driven-architecture
+        path: pro/dev/software-architect/event-driven-architecture
+        required: false
+        tier_gate: pro
+      - slug: microservices-architecture
+        path: pro/dev/software-architect/microservices-architecture
+        required: false
+        tier_gate: pro
+      - slug: clean-architecture
+        path: pro/dev/code-quality/clean-architecture
+        required: true
+        tier_gate: pro
+      - slug: domain-driven-design
+        path: pro/dev/code-quality/domain-driven-design
+        required: true
+        tier_gate: pro
+      - slug: claude-md-creation
+        path: geek/dev/code-quality/claude-md-creation
+        required: true
+        tier_gate: geek
+      - slug: llm-friendly-architecture
+        path: geek/dev/code-quality/llm-friendly-architecture
+        required: true
+        tier_gate: geek
+      - slug: kb-agents-md-context-pyramid
+        path: geek/sdlc-ai/kb-agents-md-context-pyramid
+        required: true
+        tier_gate: geek
+    outputs:
+      - "design.md"
+      - "Updated CLAUDE.md + AGENTS.md"
+    decision_gate: |
+      Advance when design.md is reviewed in the weekly architectural review and CLAUDE.md/AGENTS.md updates land.
+
+  - name: "Dev → implementation"
+    intent: "Plan-mode locked, worktree-isolated, red-green-split, contract-tested implementation."
+    tasks:
+      - "Author implementation-plan.md from spec + design"
+      - "Spin worktree per task (runtime isolation)"
+      - "Operate in plan-mode then locked execution"
+      - "Run TDD red-green-split between agents"
+      - "Pre-commit floor + ruff/biome lint gates"
+    methodologies:
+      - slug: task-plan-mode-locked-execution
+        path: geek/sdlc-ai/task-plan-mode-locked-execution
+        required: true
+        tier_gate: geek
+      - slug: task-worktree-runtime-isolation
+        path: geek/sdlc-ai/task-worktree-runtime-isolation
+        required: true
+        tier_gate: geek
+      - slug: test-tdd-red-green-split-agents
+        path: geek/sdlc-ai/test-tdd-red-green-split-agents
+        required: true
+        tier_gate: geek
+      - slug: lint-precommit-floor
+        path: geek/sdlc-ai/lint-precommit-floor
+        required: true
+        tier_gate: geek
+      - slug: lint-ruff-and-biome-as-default
+        path: geek/sdlc-ai/lint-ruff-and-biome-as-default
+        required: true
+        tier_gate: geek
+      - slug: gov-conventional-commits-enforced
+        path: geek/sdlc-ai/gov-conventional-commits-enforced
+        required: true
+        tier_gate: geek
+    outputs:
+      - "implementation-plan.md"
+      - "Merged PRs behind a flag"
+    decision_gate: |
+      Advance when implementation matches spec, all gates green, conventional commits enforced.
+
+  - name: "QA → verification"
+    intent: "Property-based + mutation + contract tests prove the AC. Self-healing locators audited."
+    tasks:
+      - "Generate contract tests from spec"
+      - "Run mutation feedback loop"
+      - "Add property-based invariants for LLM-touched paths"
+      - "Wire self-healing locators with audit log"
+      - "Slash-command surface for reviewers"
+    methodologies:
+      - slug: test-consumer-contract-from-spec
+        path: geek/sdlc-ai/test-consumer-contract-from-spec
+        required: true
+        tier_gate: geek
+      - slug: test-mutation-feedback-loop
+        path: geek/sdlc-ai/test-mutation-feedback-loop
+        required: true
+        tier_gate: geek
+      - slug: test-property-based-llm-invariants
+        path: geek/sdlc-ai/test-property-based-llm-invariants
+        required: true
+        tier_gate: geek
+      - slug: test-self-healing-locators-audited
+        path: geek/sdlc-ai/test-self-healing-locators-audited
+        required: true
+        tier_gate: geek
+      - slug: mr-error-tracker-draft-pr
+        path: geek/sdlc-ai/mr-error-tracker-draft-pr
+        required: false
+        tier_gate: geek
+      - slug: mr-graph-vs-diff-reviewer
+        path: geek/sdlc-ai/mr-graph-vs-diff-reviewer
+        required: true
+        tier_gate: geek
+      - slug: mr-slash-command-surface
+        path: geek/sdlc-ai/mr-slash-command-surface
+        required: true
+        tier_gate: geek
+      - slug: gov-sonarqube-ai-code-gate
+        path: geek/sdlc-ai/gov-sonarqube-ai-code-gate
+        required: true
+        tier_gate: geek
+      - slug: gov-approval-token-signed-jwt
+        path: geek/sdlc-ai/gov-approval-token-signed-jwt
+        required: true
+        tier_gate: geek
+      - slug: requirements-traceability
+        path: pro/ba/business-analyst/requirements-traceability
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Test suite with traceability to AC"
+      - "Reviewer slash-commands wired"
+    decision_gate: |
+      Advance when every AC traces to at least one passing test and code gates are green.
+
+  - name: "DevOps → deploy"
+    intent: "GitOps deploy with progressive rollout behind a flag; telemetry + runbook live."
+    tasks:
+      - "Wire ArgoCD GitOps pipeline"
+      - "Configure progressive delivery"
+      - "Add Prometheus alerts + Grafana dashboards"
+      - "Publish on-call runbook as markdown tagged steps"
+    methodologies:
+      - slug: argocd-gitops
+        path: pro/infra/cicd-engineer/argocd-gitops
+        required: true
+        tier_gate: pro
+      - slug: gitops-progressive-delivery
+        path: pro/infra/cicd-engineer/gitops-progressive-delivery
+        required: true
+        tier_gate: pro
+      - slug: grafana-basics
+        path: pro/infra/cicd-engineer/grafana-basics
+        required: true
+        tier_gate: pro
+      - slug: prometheus-monitoring
+        path: pro/infra/cicd-engineer/prometheus-monitoring
+        required: true
+        tier_gate: pro
+      - slug: inc-runbook-as-markdown-tagged-steps
+        path: geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Live deployment behind a flag"
+      - "Dashboards + alerts + runbook"
+    decision_gate: |
+      Advance when flag is live, dashboards show green telemetry, runbook is committed and discoverable.
+
+  - name: "PdM → rollout"
+    intent: "Ramp the flag, measure adoption, schedule post-launch review."
+    tasks:
+      - "Define ramp criteria + experimentation plan"
+      - "Wire product analytics on the new path"
+      - "Drive feedback loop via PdM's feedback-management methodology"
+      - "Schedule post-launch review within 14 days"
+    methodologies:
+      - slug: experimentation-at-scale
+        path: pro/product/product-manager/experimentation-at-scale
+        required: true
+        tier_gate: pro
+      - slug: feedback-management
+        path: pro/product/product-manager/feedback-management
+        required: true
+        tier_gate: pro
+      - slug: product-analytics
+        path: pro/product/product-manager/product-analytics
+        required: true
+        tier_gate: pro
+      - slug: continuous-discovery-habits
+        path: pro/product/product-manager/continuous-discovery-habits
+        required: true
+        tier_gate: pro
+      - slug: opportunity-solution-trees
+        path: pro/ux/user-researcher/opportunity-solution-trees
+        required: false
+        tier_gate: pro
+    outputs:
+      - "Ramp plan executed"
+      - "Post-launch review scheduled"
+    decision_gate: |
+      Advance once GA criteria are met OR a kill decision is documented. No flag stays dark forever.
+
+common_pitfalls:
+  - "Skipping design.md because spec 'feels small' — coupling accidents bite later"
+  - "Tests added after merge — defeats traceability"
+  - "Deploy without a flag — no rollback path, no ramp"
+  - "Telemetry wired after launch — first incident has no dashboards"
+  - "Runbook lives in someone's head — fails the bus-factor test"
+
+quality_checklist:
+  - "Can a new on-call open the runbook and follow it cold?"
+  - "Does every AC have a test?"
+  - "Is the flag killable in <5 min if telemetry goes red?"
+  - "Is the post-launch review on someone's calendar?"
+
+related_playbooks:
+  - quarter-planning-okr-reset
+  - feature-flag-rollout-decision
+  - sentry-datadog-alert-triage
+  - cross-role-handoff-pm-architect-dev-qa-devops
+
+token_budget_estimate: 30000
+cli_invocations:
+  human:  "faion get-content rfc-to-production-feature-delivery --format md"
+  agent:  "faion get-content rfc-to-production-feature-delivery --format context"
+  json:   "faion get-content rfc-to-production-feature-delivery --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P6 product-dev team persona"
+
+gaps:
+  - methodology_slug: rfc-template-product-dev-team
+    expected_tier: geek
+    blocks_stage: 1
+    note: "RFC → spec stage needs a concrete RFC template tuned for product-dev teams"
+  - methodology_slug: feature-flag-rollout-runbook
+    expected_tier: geek
+    blocks_stage: 6
+    note: "Rollout stage needs a step-by-step runbook for flag ramp / hold / kill decisions"
