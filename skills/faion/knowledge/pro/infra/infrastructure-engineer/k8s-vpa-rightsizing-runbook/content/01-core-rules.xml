@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="K8s VPA Rightsizing Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that govern the VPA-recommend → HPA-reconcile → rightsizing rollout. These prevent the most common failures: eviction storms and HPA conflicts.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-recommend-first-not-auto" testable="true" depth="essential">
+      <statement>Always start VPA in `updateMode: "Off"` (recommend-only). Never enable `updateMode: "Auto"` on production workloads with HPA attached. Reject any plan that skips recommend mode.</statement>
+      <rationale source="VPA + HPA conflict postmortems">VPA Auto mode and HPA on the same workload create scaling oscillation and pod eviction storms. Recommend mode produces the numbers; humans apply.</rationale>
+    </rule>
+
+    <rule id="r2-soak-window-seven-days" testable="true" depth="essential">
+      <statement>Soak VPA recommendations for ≥ 7 days BEFORE acting on them. Reject decisions on recommendations &lt; 7 days old. Production workload patterns include weekly cycles invisible in shorter windows.</statement>
+      <rationale source="utilization analysis studies">Weekly business cycles (Mon vs Sun, daily vs nightly batches) only show in ≥ 7-day windows. Shorter soak undersizes workloads at peak.</rationale>
+    </rule>
+
+    <rule id="r3-hpa-envelope-reconciliation" testable="true" depth="essential">
+      <statement>When applying new per-pod sizing, recompute HPA min/max replicas so the total cluster headroom is preserved. If new per-pod CPU goes from 500m to 200m and HPA min was 3 (1500m headroom), new HPA min should be ≥ 8 (1600m headroom). Reject sizing changes without HPA reconciliation.</statement>
+      <rationale source="HPA scaling theory">Smaller pods + same HPA min = less aggregate headroom = traffic spike causes scaling lag = SLO breach. Reconciliation maintains effective capacity.</rationale>
+    </rule>
+
+    <rule id="r4-canary-ten-percent" testable="true" depth="essential">
+      <statement>Apply rightsizing to a 10% canary cohort first (single AZ or labeled subset). Soak canary ≥ 48 hours. Promote to full rollout ONLY when OOMKill rate, CPU throttle rate, and SLO error budget all stay within pre-canary baseline +/- 10%. Reject promotions skipping canary or with worse-than-baseline metrics.</statement>
+      <rationale source="canary deployment literature">Canary catches workload-specific resource misjudgments before the full cluster is affected. 10% is large enough to surface real load patterns.</rationale>
+    </rule>
+
+    <rule id="r5-oomkill-rollback-gate" testable="true" depth="essential">
+      <statement>If ANY canary workload OOMKills &gt; 1× per pod per 24h during canary window, ROLLBACK that workload's sizing. Document under-recommended workloads as exceptions and revisit after additional soak. No "let it ride" on OOMKills.</statement>
+      <rationale source="memory-pressure incident analyses">OOMKills propagate via cascade restarts and cache loss. Even single events in canary predict cluster-wide instability if promoted as-is.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Reconciled sizing change with HPA envelope">
+      <code lang="text"><![CDATA[
+Workload:    api-svc
+Before:      requests: cpu=500m mem=512Mi; HPA min=3 max=20
+VPA reco:    target: cpu=200m mem=384Mi  (soaked 9 days)
+After:       requests: cpu=200m mem=384Mi; HPA min=8 max=50
+              (per-pod CPU ÷ 2.5 → min × 2.6 to preserve headroom)
+Canary:      10% (1 AZ) — 48h soak, OOMKills=0, throttle within +3%, SLO green
+Promotion:   approved 2026-05-19
+Savings:     -38% CPU requests cluster-wide (~$430/mo)
+      ]]></code>
+      <note>Illustrates r1-r5 in a successful rollout.</note>
+    </example>
+
+    <example type="bad" title="Auto mode + HPA mismatch">
+      <code lang="text"><![CDATA[
+Engineer enables VPA updateMode: Auto on workload with HPA min=3, max=20.
+
+Within 6 hours:
+- VPA evicts pods to apply new requests.
+- HPA sees CPU spike during pod restarts, scales to max=20.
+- VPA flags new pods as over-provisioned, recommends downsize.
+- Cycle repeats. Cluster pods restart 300+ times in 24h.
+      ]]></code>
+      <note>Illustrates r1 violation — the most common VPA failure mode.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

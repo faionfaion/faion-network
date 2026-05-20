@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Prompt Changelog Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every prompt edit must satisfy. Pre-commit hooks enforce them; the discipline only works if it is mechanical.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-one-prompt-one-file" testable="true" depth="essential">
+      <statement>Each prompt lives in its own file (e.g. `prompts/classify-intent.txt`) or its own keyed entry in a YAML registry (`prompts.yaml` with prompt_id keys). Prompts MUST NOT be inlined into source code as string literals or f-strings. A grep for triple-quoted multiline strings in source files surfaces this anti-pattern.</statement>
+      <rationale source="prompt-management research; observability patterns from LMOps tooling">Inline prompts cannot be hashed, cannot be diffed cleanly, and force regression analysis through git-blame on source files that change for unrelated reasons. Externalising prompts is the prerequisite for any changelog discipline.</rationale>
+      <example type="bad" title="Inline prompt anti-pattern">
+        <code lang="python"><![CDATA[
+def classify_intent(user_msg):
+    response = anthropic_client.messages.create(
+        model="claude-opus-4-7-1m",
+        messages=[{
+          "role": "user",
+          "content": f"""You are an intent classifier...
+          (50 lines of prompt inlined here)
+          User: {user_msg}"""
+        }],
+    )
+    return response.content[0].text
+        ]]></code>
+      </example>
+      <example type="good" title="Externalised prompt">
+        <code lang="python"><![CDATA[
+PROMPT = load_prompt("classify-intent")  # reads prompts/classify-intent.txt
+
+def classify_intent(user_msg):
+    response = anthropic_client.messages.create(
+        model="claude-opus-4-7-1m",
+        messages=[{"role": "user", "content": PROMPT.format(user_msg=user_msg)}],
+    )
+    return response.content[0].text
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-hash-on-every-commit" testable="true" depth="essential">
+      <statement>Pre-commit hook computes a stable content hash (SHA-256 truncated to 16 chars, computed after normalising whitespace and stripping comments) of every prompt that changed in the commit. The hash is written into the changelog entry. Commits without an up-to-date hash on every changed prompt are rejected.</statement>
+      <rationale source="content-addressable identity in MLOps; debugging-by-hash patterns">A stable hash lets observability platforms (logs, eval runs, traces) tag each LLM call with the exact prompt version. When a regression surfaces, the hash directly identifies the offending prompt without needing the git SHA.</rationale>
+    </rule>
+
+    <rule id="r3-intent-and-eval-delta-required" testable="true" depth="essential">
+      <statement>Each changelog entry has: a one-sentence `intent` field (what this edit is trying to achieve), and an `eval_delta` field with before/after scores on at least one named eval. Eval delta is computed by the CI eval runner, not hand-typed. Entries missing either field are rejected at PR review.</statement>
+      <rationale source="hypothesis-test discipline; prompt-regression research">Intent without eval is wishful thinking; eval without intent loses the "why" that future readers need. Together they form the minimum useful record. CI-computed eval prevents the failure mode where the engineer claims an improvement without running the suite.</rationale>
+      <example type="good" title="Changelog entry">
+        <code lang="markdown"><![CDATA[
+## 2026-05-19 — prompts/classify-intent.txt
+hash: a7b3f2c189de4501
+prev_hash: 4419c2d80f8a8d2b
+intent: reduce false positives on multi-language refund requests
+eval_delta:
+  refund_intent_classifier_eval_v3:
+    accuracy: 0.876 -> 0.912 (+3.6 pp)
+    false_positive_rate: 0.064 -> 0.041 (-2.3 pp)
+rollout: canary-10pct (week 1) then 100pct (week 2 if false_positive_rate stable)
+rollback_hash: 4419c2d80f8a8d2b
+authors: [ruslan, alex]
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r4-rollback-hash-recorded" testable="true" depth="essential">
+      <statement>Every changelog entry includes a `rollback_hash` pointing to the immediately previous prompt-hash, regardless of how confident the team is in the new edit. The `prompt-rollback.py` script reads the changelog to find the rollback target; if the field is missing, rollback is manual and slow.</statement>
+      <rationale source="incident-response data on prompt regressions; MTTR research">A regression discovered at 3 AM is not the time to figure out what the previous prompt was. The rollback_hash field turns rollback into a one-line command: `prompt-rollback classify-intent --to 4419c2d80f8a8d2b`. MTTR for prompt regressions drops from hours to minutes.</rationale>
+    </rule>
+
+    <rule id="r5-deploy-summary-per-release" testable="true" depth="essential">
+      <statement>Each production deploy produces a `deploy-summary.md` listing every prompt change in the release with its hash, eval delta, and rollout strategy. The summary is committed to the release branch and posted to the team channel. Deploys without a summary are blocked at the release gate.</statement>
+      <rationale source="release-management practice; LLM-observability patterns">Without a per-deploy summary, the team cannot correlate a customer-visible regression to a specific release. The summary is also the artifact that on-call reads first when triaging a quality alert.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Hash normalisation rules">
+    <list>
+      <item>Collapse runs of whitespace inside lines to a single space</item>
+      <item>Strip lines that consist entirely of #-comments</item>
+      <item>Preserve the order of all non-comment lines</item>
+      <item>Use SHA-256 truncated to 16 lowercase hex chars</item>
+      <item>Do NOT lowercase the prompt text; case is semantically meaningful</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

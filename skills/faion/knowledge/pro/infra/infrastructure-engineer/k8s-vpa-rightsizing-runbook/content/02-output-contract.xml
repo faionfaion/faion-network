@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="K8s VPA Rightsizing Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the rightsizing audit log + savings report. Subagent must satisfy this before promoting full rollout.</summary>
+
+  <output-contract>
+    <required>
+      <field name="cluster_id" type="string"/>
+      <field name="rollout_stage" type="closed_enum"
+             value="recommend,soak,reconcile,canary,full_rollout,recompute_scheduled"/>
+      <field name="vpa_recommend_mode_confirmed" type="boolean" constraint="value == true"/>
+      <field name="soak_window_days" type="integer" constraint="value &gt;= 7"/>
+      <field name="per_workload_changes" type="array_object"
+             item_required_keys="workload,namespace,before_cpu,before_mem,after_cpu,after_mem,hpa_before,hpa_after,rationale"/>
+      <field name="hpa_envelope_check" type="object"
+             required_keys="passed,headroom_before,headroom_after"
+             constraint="passed == true (headroom_after &gt;= headroom_before)"/>
+      <field name="canary_results" type="object"
+             required_keys="workload_cohort,duration_hours,oomkill_count,throttle_pct,slo_status"
+             constraint="oomkill_count &lt;= 0 OR rollback_workloads documented"/>
+      <field name="savings_report" type="object"
+             required_keys="cpu_reduction_pct,mem_reduction_pct,monthly_savings_usd,before_total_cost,after_total_cost"/>
+      <field name="recompute_schedule" type="object"
+             required_keys="next_review_date,owner"
+             constraint="next_review_date &lt;= today + 90 days"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">vpa_recommend_mode_confirmed == false OR updateMode == Auto on workloads with HPA (violates r1)</pattern>
+      <pattern id="f2">soak_window_days &lt; 7 (violates r2)</pattern>
+      <pattern id="f3">hpa_envelope_check.passed == false OR headroom_after &lt; headroom_before (violates r3)</pattern>
+      <pattern id="f4">rollout_stage == full_rollout without prior canary_results record (violates r4)</pattern>
+      <pattern id="f5">canary_results.oomkill_count &gt; 0 AND rollback_workloads not documented (violates r5)</pattern>
+      <pattern id="f6">per_workload_changes entries with rationale empty or "VPA said so"</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Extend soak_window_days beyond 7 days for workloads with monthly patterns (close-of-month batches, billing runs).</transformation>
+      <transformation>Bypass HPA envelope check for non-HPA workloads (StatefulSets without HPA) with documented note.</transformation>
+      <transformation>Add per-workload exceptions list (legacy services with anti-VPA exemption) — exceptions must reference an owning ticket.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/rollout-gates.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>VPA started in recommend mode only</item>
+      <item>Soak window ≥ 7 days documented</item>
+      <item>HPA envelope reconciled per workload</item>
+      <item>Canary cohort ran ≥ 48h with metrics captured</item>
+      <item>OOMKills addressed (rollback or exception)</item>
+      <item>Savings report has cluster-level $ delta</item>
+      <item>Recompute schedule set ≤ 90 days</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Shift Log — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every shift log must obey. The rules ensure the log is filled when it matters and read when it matters.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-three-checkpoint-discipline" testable="true" depth="essential">
+      <statement>The log is updated at three explicit checkpoints: start-of-shift (read previous + write carry-over acknowledgement), mid-shift (update active investigations), end-of-shift (write handover). End-only logs are forbidden.</statement>
+      <rationale source="cognitive-load and recall research; field experience with operational logging">End-of-shift logs miss the 8 hours of context that have already faded. Three checkpoints capture the timeline as it unfolds, not as it is reconstructed at 7pm by a tired engineer.</rationale>
+    </rule>
+
+    <rule id="r2-structured-five-sections" testable="true" depth="essential">
+      <statement>Each log has the same five named sections: (1) Carry-over from previous shift, (2) Active investigations, (3) Watch items, (4) Deferred work, (5) Customer escalations. Free-form notes are not allowed as a substitute.</statement>
+      <rationale source="Google SRE Workbook; standard handover formats">Structured sections make the log scannable. The next engineer knows exactly where to look for "what should I be watching today?". Free-form prose forces re-reading every entry.</rationale>
+    </rule>
+
+    <rule id="r3-read-previous-as-start" testable="true" depth="essential">
+      <statement>The shift-start ritual MUST include reading the previous shift's end-of-shift log AND a 5-minute live handover call (or equivalent async ack). The acknowledgement is recorded in the new log's Carry-over section.</statement>
+      <rationale source="Air-traffic-control handover practice; sleep-deprivation research">Reading without acknowledgement leaves the previous engineer uncertain whether information transferred. The acknowledgement is the contract that handover succeeded.</rationale>
+    </rule>
+
+    <rule id="r4-searchable-archive" testable="true" depth="essential">
+      <statement>All shift logs are stored under a predictable path (e.g. `shifts/YYYY/MM/YYYY-MM-DD-shift-N.md`) in a searchable repository. Closed shifts are not deleted; the archive is the team's operational memory.</statement>
+      <rationale source="institutional-memory practice; postmortem-evidence requirements">Six months later when a similar incident recurs, the previous log is the fastest path to recognition. Without an archive, every incident is novel. The path structure makes time-range queries trivial.</rationale>
+    </rule>
+
+    <rule id="r5-no-blame-framing" testable="true" depth="essential">
+      <statement>Shift-log content describes system state and engineer action, not blame. Phrases like "X messed up" or "Y was on shift when it broke" are forbidden.</statement>
+      <rationale source="Westrum culture model; Allspaw blameless-postmortem practice">The log is read by the next engineer and by the team broadly. Blame language poisons the data and discourages honest logging. The factual content is what makes the log valuable.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical template">
+    <code lang="markdown"><![CDATA[
+---
+shift_date: 2026-05-20
+shift_number: 2
+shift_start: 2026-05-20T14:00Z
+shift_end: 2026-05-20T22:00Z
+engineer: jonas
+previous_shift_acknowledged: true
+previous_shift_path: shifts/2026/05/2026-05-20-shift-1.md
+---
+
+## Carry-over from previous shift
+- ack: read the previous log at 14:02
+- open items inherited: investigation of slow query on dashboard (see active)
+
+## Active investigations
+- slow query on /dashboard reporting endpoint; suspect cold cache after deploy.
+  hypothesis being tested via load-test, results expected by 18:00.
+
+## Watch items
+- vendor-api latency creeping up; not yet alerting. Watch p99.
+- TLS cert on api.example.com expires in 9 days; renewal scheduled tomorrow.
+
+## Deferred work
+- run database vacuum during quiet hours (planned 02:00 UTC).
+- review last week's Sentry digest (low priority).
+
+## Customer escalations
+- (none active)
+
+## End-of-shift handover (filled at 22:00)
+- slow query confirmed cache-related, mitigation deployed at 19:30.
+- watch items unchanged.
+- nothing to wake the next shift for.
+    ]]></code>
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Mid-shift update adds new information">
+      <code lang="text"><![CDATA[
+17:42 — mid-shift update added under Active investigations:
+"vendor-api latency now alerting at p99 &gt; 2s. Filed ticket VENDOR-203;
+they confirm degraded service, ETA 22:00 UTC. Adding to watch."
+      ]]></code>
+      <note>Illustrates r1 (mid-shift update) and r2 (structured section update).</note>
+    </example>
+
+    <example type="bad" title="End-only log with blame">
+      <code lang="text"><![CDATA[
+End of shift: "Alex left a mess from the previous shift. Cache was broken.
+Fixed it. Watch for it tomorrow."
+      ]]></code>
+      <note>r1 violated (end-only), r2 violated (no structured sections), r5 violated (blame).</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
