@@ -1,0 +1,165 @@
+slug: deploy-day-staging-to-prod-gate
+title: "Deploy-day staging-to-prod gate"
+version: "1.0.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion-network"]
+content_id: e3ebfbe46c7fdbcc
+
+tier_min: solo
+complexity: medium
+context: [solo]
+persona_hints: [P1]
+
+intent: |
+  Safe push to prod with rollback ready: CI green, smoke pass on staging, feature-flagged where risky, deploy script run, post-deploy health verified, rollback path proven.
+
+scope: |
+  Safe push to prod with rollback ready: CI green, smoke pass on staging, feature-flagged where risky, deploy script run, post-deploy health verified, rollback path proven.
+
+success_criteria:
+  - "Final stage decision-gate is met and committed in writing"
+  - "Every stage produces its named outputs"
+  - "Cycle closes only when a written commitment exists for the next step"
+
+stages:
+  - name: "CI green check"
+    intent: "No deploy without green main."
+    tasks:
+      - "Verify CI green on the target SHA"
+      - "Re-run flakies if needed"
+      - "Block if any required check fails"
+    methodologies:
+      - slug: e2e-testing
+        path: free/dev/testing-developer/e2e-testing
+        required: true
+        tier_gate: solo
+      - slug: health-checks-autoheal
+        path: solo/infra/server-craft/health-checks-autoheal
+        required: true
+        tier_gate: solo
+    outputs:
+      - "CI status snapshot"
+      - "Re-run log"
+      - "Block/proceed call"
+    decision_gate: "Advance only with a fully green CI."
+  - name: "Staging smoke"
+    intent: "Smoke-test the slice end-to-end on staging."
+    tasks:
+      - "Deploy to staging"
+      - "Run smoke pack (auth, payment, primary AC)"
+      - "Verify integrations (Stripe / email) are wired"
+    methodologies:
+      - slug: cd-basics
+        path: solo/dev/automation-tooling/cd-basics
+        required: true
+        tier_gate: solo
+      - slug: monitoring-logging
+        path: solo/infra/server-craft/monitoring-logging
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Staging deploy URL"
+      - "Smoke results"
+      - "Integration check log"
+    decision_gate: "Advance only when every smoke step passes."
+  - name: "Flag decision"
+    intent: "Risky changes go behind a flag."
+    tasks:
+      - "Decide flag posture (off / canary / all-users)"
+      - "Pre-write the canary cohort + kill criteria"
+      - "Confirm the rollback path is automated"
+    methodologies:
+      - slug: cd-pipelines
+        path: solo/dev/automation-tooling/cd-pipelines
+        required: true
+        tier_gate: solo
+      - slug: release-planning
+        path: solo/product/product-planning/release-planning
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Flag config"
+      - "Canary cohort"
+      - "Rollback verification"
+    decision_gate: "Advance only when flag config is committed."
+  - name: "Deploy to prod"
+    intent: "Run the script with eyes on health."
+    tasks:
+      - "Trigger production deploy"
+      - "Watch logs and metrics during the deploy"
+      - "Confirm health checks turn green"
+    methodologies:
+      - slug: feature-flags-rollout-targeting
+        path: solo/dev/automation-tooling/feature-flags-rollout-targeting
+        required: true
+        tier_gate: solo
+      - slug: quality-gates-confidence
+        path: solo/sdd/sdd/quality-gates-confidence
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Deploy receipt"
+      - "Live health snapshot"
+      - "Error budget delta"
+    decision_gate: "Advance only when health checks stay green for 15 minutes."
+  - name: "Verify in production"
+    intent: "Walk the AC against production."
+    tasks:
+      - "Run a manual pass of the acceptance criteria on prod"
+      - "Verify analytics + logs receive the new events"
+      - "Notify channels (TG / status page)"
+    methodologies:
+      - slug: logging-patterns
+        path: solo/dev/automation-tooling/logging-patterns
+        required: true
+        tier_gate: solo
+    outputs:
+      - "AC verification on prod"
+      - "Analytics check"
+      - "Notification posted"
+    decision_gate: "Advance only when every AC passes on prod."
+  - name: "Rollback drill"
+    intent: "Prove the rollback path actually works."
+    tasks:
+      - "Run a synthetic rollback in staging"
+      - "Verify the rollback returns prod-equivalent state"
+      - "Time the rollback (should be <=15 minutes)"
+    methodologies:
+      - slug: feature-flags
+        path: solo/dev/software-developer/feature-flags
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Drill log"
+      - "Rollback timing"
+      - "Updated rollback runbook"
+    decision_gate: "Advance only when rollback completes <=15 minutes."
+  - name: "Close the deploy"
+    intent: "Write the deploy ticket and move on."
+    tasks:
+      - "Close the deploy ticket with notes"
+      - "Update the changelog and release-planning doc"
+      - "Stamp the runbook with todays lessons"
+    methodologies:
+      - slug: deploy-scripts
+        path: solo/infra/server-craft/deploy-scripts
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Deploy ticket closed"
+      - "Changelog entry"
+      - "Runbook delta"
+    decision_gate: "Cycle closes when ticket is closed and changelog is committed."
+
+token_budget_estimate: 12000
+
+cli_invocations:
+  human:  "faion get-content deploy-day-staging-to-prod-gate --format md"
+  agent:  "faion get-content deploy-day-staging-to-prod-gate --format context"
+  json:   "faion get-content deploy-day-staging-to-prod-gate --format json"
+
+changelog:
+  - version: "1.0.0"
+    date: 2026-05-20
+    note: "Initial v2 draft generated from F-059..063 backlog"
