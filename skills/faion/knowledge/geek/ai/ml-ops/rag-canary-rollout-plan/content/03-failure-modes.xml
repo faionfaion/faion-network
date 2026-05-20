@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="RAG Canary Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six failure modes specific to RAG canary rollouts. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Slow kill-switch — the 60-second rollback contract is violated because the gateway requires a deploy or cache warm-up; quality regressions persist for tens of minutes.</description>
+      <detector>rollback_receipt.completed_within_seconds &gt; 60 OR rollback requires CI pipeline run</detector>
+      <repair>Redesign the gateway for atomic version flips (in-memory routing table, hot-reload). Quarterly game-day rehearses the rollback; any failure to meet the 60s contract is a feature-blocking engineering task.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Sampling too thin — online quality scoring runs at 0.5% of traffic, the signal lags 24h behind a quality regression, kill-switch fires too late.</description>
+      <detector>plan.online_quality.sample_rate &lt; 0.02 OR samples per hour &lt; 200 during the 5% step</detector>
+      <repair>Raise sample rate to at least 5% during canary; absolute floor of 200 samples/hour. Cost-control via judge-batching and prompt caching, not by lowering the sample rate.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Eval set stale — golden eval has not been updated for 6 months, no longer represents current user questions, eval pass at the gate gives false confidence.</description>
+      <detector>golden eval refreshed_at older than 90 days OR eval-set composition drift (new question patterns in production that the set lacks) &gt; 30%</detector>
+      <repair>Refresh golden eval before every rollout. Pull fresh questions from production samples; review with a domain expert; commit the new version. The eval is only as good as its representativeness.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>LLM-as-judge drift — the judge model itself changes (provider update), online quality scores shift systematically without underlying answer-quality changes.</description>
+      <detector>judge model version changed AND composite_score baseline shifted &gt; 5% within 24h</detector>
+      <repair>Pin the judge model version explicitly. Reseed baseline scores against the new judge before resuming canary decisions. Document the rebaseline in the rollout plan history.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Step promotion under-sampled — engineer promotes the step before min_samples is reached because hold_hours has elapsed; quality signal is too noisy to support the decision.</description>
+      <detector>step promoted at hold_hours expiry AND samples_collected &lt; plan.steps[].min_samples</detector>
+      <repair>Promotion gate requires BOTH hold_hours AND min_samples. Extend the step when samples are insufficient; the canary curve's value is in the data accumulation, not in the calendar.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>Auto-rollback fires on a false signal — judge had a hiccup, kill-switch triggered, real quality was fine, team loses trust in the auto-rollback.</description>
+      <detector>rollback fired AND post-incident review shows the canary version actually outperformed baseline on the offending dimension</detector>
+      <repair>Add a 5-minute hold on the kill-switch: trigger fires after the criterion holds for 5 consecutive minutes, with at least 50 samples in window. False-positive analysis updates the criterion: longer window, narrower threshold, or judge-confidence weighting.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      Customer or stakeholder pressure to "promote faster, the new version is clearly better" is not a basis for skipping a step. The canary curve is the discipline; subjective conviction is not. Promote only on the data the rollout plan requires.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      Quarterly: run a rollback game-day. Pick a feature in canary, simulate a quality regression, observe the trigger and rollback path. Measure: trigger latency, completion time, customer-comms time. Any breach of the 60-second contract becomes engineering work for the following quarter.
+    </p>
+  </section>
+</text>
