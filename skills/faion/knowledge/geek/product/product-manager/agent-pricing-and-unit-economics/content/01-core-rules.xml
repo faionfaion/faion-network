@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="LLM-Agent Pricing &amp; Unit Economics Core Rules" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Five hard rules for LLM-agent product pricing that respects token-driven COGS.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-measure-cogs-not-estimate" testable="true" depth="essential">
+      <statement>Per-task COGS is computed from MEASURED input + output token distributions across ≥ 100 real tasks. Estimates ("~5k tokens per task") routinely miss by 2-5x. Measurement uses production traces, not dev examples.</statement>
+      <rationale source="a16z LLM cost analyses 2024-2025; Anthropic token economics blog">Estimated token counts under-count by 30-70% because dev examples lack the retry / multi-turn / tool-use overhead of production. 100-sample minimum is the floor for stable mean + p95 estimates. Production traces capture the long tail that breaks pricing assumptions.</rationale>
+    </rule>
+
+    <rule id="r2-gross-margin-floor" testable="true" depth="essential">
+      <statement>Target gross_margin = (price - cogs) / price ≥ 70% for healthy SaaS-like economics, ≥ 50% for early-stage tolerance. Below 50%, the product is a thin pass-through with no resilience to cost changes or heavy users.</statement>
+      <rationale source="SaaS unit economics canon (Bessemer Cloud Index); a16z AI margin research">70%+ gross margin is the SaaS benchmark that allows for CAC payback &lt; 18 months and OpEx funding. 50% is the absolute floor where a 2x cost increase (model price hike, heavy-user surge) doesn't bankrupt the product. Agent products skating &lt; 50% margin live one model-price-change away from death.</rationale>
+    </rule>
+
+    <rule id="r3-pricing-model-fits-variance" testable="true" depth="essential">
+      <statement>Pricing model selection follows task-COGS variance: (a) low variance (p95/p50 ≤ 3) → per-seat with fair-use cap, simple to sell; (b) medium variance (p95/p50 ≤ 8) → per-task or metered, customer pays for what they use; (c) high variance (p95/p50 &gt; 8) OR clear measurable outcome → outcome-based pricing (price per lead generated, per bug fixed, per minute saved). Wrong model = either margin loss on heavy users (low-variance flat) or sales friction (high-variance metered).</statement>
+      <rationale source="Tomasz Tunguz AI pricing analyses 2024; OpenView SaaS pricing benchmark">Variance ratio is the lever. Per-seat is easiest to sell but bankrupts on heavy users. Metered is fair but harder to forecast for customers. Outcome-based is the holy grail but requires shared measurement. Match the model to the cost shape.</rationale>
+    </rule>
+
+    <rule id="r4-cap-protect-heavy-users" testable="true" depth="essential">
+      <statement>Per-seat / flat-rate plans MUST include a fair-use cap (X tasks/month or Y MAU). Cap threshold = p95 of measured usage + 20% buffer. Above cap → automatic upgrade prompt OR metered overage at break-even. Without cap, top 5% of users consume 60-80% of compute and obliterate margin.</statement>
+      <rationale source="public SaaS heavy-user distribution data; AI cost-explosion case studies (Replit, Cursor 2024-2025 retros)">Cursor's well-publicized 2025 cost crisis was textbook: flat-rate plan + no cap + heavy users producing 50-100x average usage. Same pattern killed Manus's early pricing. The cap is the margin guarantee.</rationale>
+    </rule>
+
+    <rule id="r5-reprice-on-model-changes" testable="true" depth="essential">
+      <statement>Pricing tiers carry a "last_repriced_at" timestamp. Model-provider price changes (release of a cheaper / more expensive model, deprecation), token-distribution shifts (longer prompts, more tool calls), and competitor moves all trigger a repricing review. Default cadence: quarterly repricing assessment, ad-hoc on any single-factor &gt; 25% change.</statement>
+      <rationale source="Anthropic / OpenAI pricing history (2023-2026 reductions averaged ~30% YoY); ChartMogul SaaS repricing data">Model prices have dropped 30-70% annually since 2023. Products that didn't reprice gave away the savings to customers and missed margin expansion. Conversely, when output tokens spike with new model behavior, products that didn't notice eroded margins silently.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Per-task COGS measured + pricing fit to variance">
+      <code lang="text"><![CDATA[
+Product: "Bug-finder agent" — reads PR diff, finds issues, suggests fixes.
+
+Measured task distribution (100 real PRs):
+  input_tokens:   p50 = 3.2k,  p95 = 18k,  p99 = 42k
+  output_tokens:  p50 = 800,   p95 = 4.5k, p99 = 9k
+  retrieval:      $0.002 / task (vector DB lookups)
+  tool_calls:     2-15 per task, average $0.003
+
+Variance ratio (input p95/p50): 5.6 → MEDIUM
+Suggested model: per-task metered OR per-seat with strict cap
+
+COGS calculation @ Claude Sonnet pricing (May 2026 hypothetical):
+  $3/M input, $15/M output
+  p50 COGS = 3.2k × $3/M + 0.8k × $15/M + $0.002 + $0.003 = $0.034
+  p95 COGS = 18k × $3/M + 4.5k × $15/M + $0.005 + $0.045 = $0.171
+
+Pricing recommendation:
+  Tier 1: $29/mo, 1500 tasks cap, fair use overage at $0.10/task
+  Tier 2: $99/mo, 6000 tasks cap, fair use overage at $0.10/task
+  Tier 3: $299/mo, unlimited with rate limits
+  Gross margin @ tier 1 average use (500 tasks): 73% ✓
+  Gross margin @ tier 1 cap user (1500 tasks): 49% ⚠ (within 50% floor)
+      ]]></code>
+      <note>Illustrates r1 (measured), r2 (margin check), r3 (variance fit), r4 (cap policy).</note>
+    </example>
+
+    <example type="bad" title="Unmetered flat that bankrupts">
+      <code lang="text"><![CDATA[
+"$19/month, unlimited usage" — same product as above.
+
+Heavy user does 8000 tasks/month (real distribution shape).
+COGS @ p50: 8000 × $0.034 = $272
+Revenue from that user: $19
+Gross margin: -1330% — every heavy user costs $253/mo.
+
+10% of users behave this way (long tail).
+Total margin collapse: -$2,530/mo per 100 customers from heavy tier alone.
+Repair: enforce r4 cap, OR raise price, OR move to metered.
+      ]]></code>
+      <note>The unmetered-flat trap is the #1 cause of AI-product death-spirals in 2024-2025.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

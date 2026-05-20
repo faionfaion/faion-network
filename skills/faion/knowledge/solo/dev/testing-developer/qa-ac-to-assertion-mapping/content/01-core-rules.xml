@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AC-to-Assertion Mapping Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every story's AC-to-assertion mapping must satisfy. The discipline is the only thing that exposes AI-generated structural-only tests at PR review.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-explicit-mapping-artifact" testable="true" depth="essential">
+      <statement>The PR description (or a linked ac-mapping.yaml) contains an explicit mapping: for every AC in the user story, list at least one test file path plus test name. ACs without a mapping line are blockers on merge.</statement>
+      <rationale source="ATDD / specification-by-example research; AI-generated-test PR audit reports">Without an explicit mapping, "I tested it" is unfalsifiable. Reviewers cannot verify coverage from line count alone, and AI-generated tests achieve coverage targets without testing behavior. The mapping is the single artifact that makes coverage verifiable.</rationale>
+      <example type="good" title="AC mapping in PR description">
+        <code lang="markdown"><![CDATA[
+## AC-to-test mapping
+
+| AC | Test path | Test name | Asserted behavior |
+|----|-----------|-----------|-------------------|
+| AC-1: user can submit valid form | tests/form.spec.ts | submits valid form and persists | response 200 AND db row exists |
+| AC-2: invalid email rejected | tests/form.spec.ts | rejects bad email | response 400 AND error.code = INVALID_EMAIL |
+| AC-3: rate-limited at 5/min | tests/form.rate.spec.ts | rate-limits after 5 attempts | 6th call returns 429 AND retry-after header set |
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-behavior-not-structural-assertions" testable="true" depth="essential">
+      <statement>The `asserted_behavior` field must describe what BEHAVIOR was verified, not what code path was exercised. Forbidden: "method was called", "no exception raised", "status 200". Allowed: "response body contains expected user_id", "db row created with correct attributes", "side effect X observable".</statement>
+      <rationale source="testing-pyramid research; AI-generated-test failure analysis">Structural assertions are what AI test-generators produce by default. "method was called" passes whether the method does anything meaningful or not. Behavior assertions test that the system actually delivered the AC's promise.</rationale>
+      <example type="bad" title="Structural assertion">
+        <code lang="typescript"><![CDATA[
+it('submits the form', async () => {
+  const spy = jest.spyOn(api, 'createUser');
+  await submitForm(validData);
+  expect(spy).toHaveBeenCalled();   // structural: was called, but didn't check result
+  expect(spy).toHaveBeenCalledTimes(1);
+});
+        ]]></code>
+      </example>
+      <example type="good" title="Behavior assertion">
+        <code lang="typescript"><![CDATA[
+it('submits the form and persists user', async () => {
+  const res = await submitForm(validData);
+  expect(res.status).toBe(201);
+  expect(res.body.user_id).toMatch(/^usr_/);
+  const persisted = await db.users.find({ email: validData.email });
+  expect(persisted).toBeDefined();
+  expect(persisted.created_at).toBeRecentTimestamp();
+});
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r3-one-ac-many-tests-allowed" testable="true" depth="essential">
+      <statement>An AC may map to multiple tests (happy path, edge case, failure mode), and a single test may cover multiple ACs. What is NOT allowed: an AC with zero tests, OR a test that exists in the diff but is not mapped to any AC.</statement>
+      <rationale source="traceability matrix research; ATDD practice">Many-to-many mapping reflects real testing structure (one test exercises multiple behaviors; one behavior is verified across multiple tests). The rule disallows orphan ACs and orphan tests, which together produce 90% of the coverage gaps the discipline exists to catch.</rationale>
+    </rule>
+
+    <rule id="r4-mapping-at-pr-open-not-after" testable="true" depth="essential">
+      <statement>The mapping is in the PR description from the moment the PR is opened (or pre-populated by `scripts/extract-acs.py`). It is not added retroactively after review comments demand it. CI rejects PR-marks-ready transitions when the mapping is empty or `TBD`.</statement>
+      <rationale source="PR-review research on retrofitted artifacts">Mappings added after review pressure tend to be retrofit jobs that match test names to ACs superficially. Up-front mapping forces the engineer to think about AC coverage while writing the tests, which is the only time it costs nothing.</rationale>
+    </rule>
+
+    <rule id="r5-reviewer-walks-the-map" testable="true" depth="essential">
+      <statement>PR reviewer's mandatory checklist includes: read each AC, locate the listed test, read the asserted_behavior, and reject the PR if the assertion does not actually verify the AC's promise. Reviewer time on this step is ~5 minutes per story; tracked as a review-quality metric.</statement>
+      <rationale source="PR-review-effectiveness research; ATDD coaching practice">Without an enforced reviewer step, the mapping becomes another field nobody reads. The 5-minute walk is the moment the discipline cashes in. Reviewer effectiveness on this step is the leading indicator of whether the practice is real or theatre.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="What counts as behavior">
+    <list>
+      <item>State assertions (db row exists, file written, queue contains message)</item>
+      <item>Output assertions (response body shape and content, returned object fields)</item>
+      <item>Side-effect assertions (email sent, webhook invoked with payload X)</item>
+      <item>Negative assertions (this attempt failed with this specific error code)</item>
+      <item>NOT behavior: "method was called", "no exception", "status 200 alone", "code reached this line"</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

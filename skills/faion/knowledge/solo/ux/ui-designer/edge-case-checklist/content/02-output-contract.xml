@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Edge Case Checklist — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the per-screen resolution-record shape. Designer or supporting agent must satisfy this before handoff or AC commitment.</summary>
+
+  <output-contract>
+    <required>
+      <field name="screen_id" format="screen_slug_or_route"/>
+      <field name="product_in_scope_list" required_keys="dark_mode,rtl,offline,rate_limited,additional_items"
+             value_type="boolean_per_item"/>
+      <field name="items" min="12" required_keys="item_id,item_name,resolution,evidence_link_or_copy_or_reason"/>
+      <field name="resolution" format="enum: state-rendered | copy-rule-only | n/a-with-reason"/>
+      <field name="evidence_link_or_copy_or_reason" condition="required_per_resolution_type" format="link_OR_copy_text_OR_one_sentence_reason"/>
+      <field name="cross_screen_audit_status" format="enum: not-checked | consistent-with-siblings | divergent-with-rationale"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">items.length &lt; 12 (silent omission per r1)</pattern>
+      <pattern id="f2">any item with resolution=null or evidence_link_or_copy_or_reason=null</pattern>
+      <pattern id="f3">resolution=n/a-with-reason where the reason does not reference product_in_scope_list OR a product-specific characteristic (per r4)</pattern>
+      <pattern id="f4">copy-rule-only item with copy text matching /lorem ipsum|TBD|see Figma|TODO/</pattern>
+      <pattern id="f5">state-rendered item with evidence_link unreachable or pointing to deleted Figma node</pattern>
+      <pattern id="f6">error / empty resolution with copy that includes raw HTTP codes / stack traces / debugging info (user-visible)</pattern>
+      <pattern id="f7">product_in_scope_list missing — every project MUST declare its in-scope edge cases up front</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Group multiple edge items that share a single copy rule (e.g., empty and empty-after-search share illustration) but record both items separately.</transformation>
+      <transformation>Reference an existing pattern from the product's edge-case library if an identical resolution applies elsewhere ("uses copy-pattern P-007").</transformation>
+      <transformation>Mark items as n/a-with-reason via product_in_scope_list if the project doesn't support that case (e.g., RTL).</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/resolution-record.json"/>
+  </output-contract>
+
+  <section title="Self-check (run before declaring handoff complete)">
+    <list>
+      <item>All 12 items have resolution + evidence/copy/reason populated (r1, r2)</item>
+      <item>Copy strings are real text, not placeholder (r3)</item>
+      <item>N/A reasons trace back to product_in_scope_list (r4)</item>
+      <item>state-rendered evidence links are fetchable (r5)</item>
+      <item>Error / empty copy does not leak technical details to users (f6)</item>
+      <item>Cross-screen audit performed if 2+ similar screens shipped in this batch</item>
+      <item>Output validates against templates/resolution-record.json</item>
+    </list>
+  </section>
+</text>
