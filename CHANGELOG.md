@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-059 Changed: validate-methodology-v2.py accepts any 01-*.xml as core (not just 01-core-rules.xml).
 - F-059 Added: methodology template v2 (multi-file dir AGENTS.md + content/*.xml).
 - F-059 Added: scripts/validate-methodology-v2.py + scripts/migrate-methodology-to-v2.py.
 - F-059 Added: canonical exemplar at solo/research/researcher/jobs-to-be-done/ (JTBD).

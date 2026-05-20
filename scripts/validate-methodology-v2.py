@@ -200,28 +200,19 @@ def validate_methodology_dir(root: Path, report: Report) -> None:
         report.fail(content_dir, "CONTENT_DIR_MISSING",
                     "content/ subdirectory must exist")
     else:
-        core_path = content_dir / "01-core-rules.xml"
-        if not core_path.exists():
-            report.fail(core_path, "CORE_RULES_MISSING",
-                        "content/01-core-rules.xml is REQUIRED")
-        else:
-            validate_xml_text(core_path, "01-core-rules", report)
+        # Require ≥1 content/01-*.xml (the "core" position). Canonical is
+        # 01-core-rules.xml but domain-specific filenames are accepted as long
+        # as they follow the \d{2}-[a-z0-9-]+ pattern. Each \d{2}- file has its
+        # <text id> validated against its filename stem.
+        core_candidates = sorted(content_dir.glob("01-*.xml"))
+        if not core_candidates:
+            report.fail(content_dir / "01-*.xml", "CORE_RULES_MISSING",
+                        "at least one content/01-*.xml is REQUIRED")
 
-        for fname, expected_id in CONTENT_FILES_KNOWN.items():
-            if fname == "01-core-rules.xml":
-                continue
-            fpath = content_dir / fname
-            if fpath.exists():
-                validate_xml_text(fpath, expected_id, report)
-
-        # Any other content/*.xml that follows the 0N-name pattern must declare
-        # a <text id="0N-name"> matching the filename stem.
-        for extra in sorted(content_dir.glob("*.xml")):
-            if extra.name in CONTENT_FILES_KNOWN:
-                continue
-            stem = extra.stem
+        for fpath in sorted(content_dir.glob("*.xml")):
+            stem = fpath.stem
             if re.fullmatch(r"\d{2}-[a-z0-9-]+", stem):
-                validate_xml_text(extra, stem, report)
+                validate_xml_text(fpath, stem, report)
 
         total_rules = count_testable_rules(content_dir)
         if total_rules < 1:
