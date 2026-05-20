@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ADR Reversibility Tagging Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five hard rules for tagging ADRs with reversibility so approval depth matches the cost of being wrong.</summary>
+
+  <section title="The four-tier taxonomy">
+    <code lang="text"><![CDATA[
+two_way_door            — Rollback cost &lt; 1 day of work, no data loss, no contracts
+                           Examples: linter rule, internal API name, log format, dev tooling
+
+partial_two_way         — Rollback 1-7 days with refactor, no customer-visible impact
+                           Examples: ORM choice in a young module, queue technology in v0,
+                           internal service split that hasn't been called by 3rd parties
+
+one_way_door_costly     — Rollback &gt; 1 week, contractual / data migration / customer-visible
+                           Examples: payment processor, public API contract, primary DB engine,
+                           data model that has been written to by users for &gt; 30 days
+
+one_way_door_irrevocable — Cannot be undone or undone only at strategic cost
+                           Examples: shutting down a product, deleting customer data, open-sourcing
+                           a codebase, naming public APIs, vendor exclusive contracts
+    ]]></code>
+  </section>
+
+  <section title="The five rules">
+
+    <rule id="r1-four-tier-taxonomy" testable="true" depth="essential">
+      <statement>Every ADR is tagged with EXACTLY one of the four reversibility values. No "tbd", no "depends", no custom tiers. The four tiers are deliberately discrete to force the tagger to pick the closest one.</statement>
+      <rationale source="Bezos 1997 shareholder letter (Type 1 vs Type 2); Annie Duke - Thinking in Bets (2018)">Bezos's binary (Type 1 / Type 2) is the canonical version; the 4-tier expansion captures the partial cases that real-world systems produce. A continuous spectrum invites "it's a 5 out of 10" hedging that never produces a clear gate.</rationale>
+    </rule>
+
+    <rule id="r2-reversibility-drives-approval" testable="true" depth="essential">
+      <statement>Approval depth scales with reversibility: two_way_door → solo decision (author may commit), partial_two_way → 1 peer reviewer, one_way_door_costly → architect + product sign-off + 24h cool-off, one_way_door_irrevocable → founder sign-off + pre-mortem + 48h cool-off.</statement>
+      <rationale source="Bezos Type 1 decisions = slow; Amazon "disagree and commit" mechanics">Bezos's original insight: most companies apply Type 1 process to Type 2 decisions, slowing everything down. The fix is matching gate depth to reversal cost. Two-way doors must move at full speed; one-way doors must have a cool-off period that prevents in-meeting commitment to irreversible moves.</rationale>
+    </rule>
+
+    <rule id="r3-pre-mortem-on-one-way" testable="true" depth="essential">
+      <statement>Every ADR tagged one_way_door_costly or one_way_door_irrevocable includes a "pre-mortem" section answering: "It's 12 months from now and this decision was wrong. What went wrong, and what signal could have caught it earlier?" Pre-mortem must name at least 2 reversal-trigger signals.</statement>
+      <rationale source="Gary Klein - pre-mortem technique (2007); Annie Duke">Pre-mortems surface failure modes that the optimistic decision-frame hides. Naming reversal-trigger signals creates accountability: if a signal fires later, the team has a pre-committed protocol instead of denial. Reduces sunk-cost fallacy by 30-50% (Klein research).</rationale>
+    </rule>
+
+    <rule id="r4-evidence-required" testable="true" depth="essential">
+      <statement>The reversibility tag is backed by a "rollback_estimate" field: estimated hours of engineering work + dollars + customer-visible impact. Tagger writes the estimate; reviewer sanity-checks. Tag without estimate is incomplete.</statement>
+      <rationale source="reference-class forecasting; Kahneman/Tversky planning fallacy work">Untagged reversibility relies on gut feel which is systematically optimistic. Writing the estimate forces explicit reasoning. The estimate is auditable when the decision is reconsidered later — "we thought 1 week, took 6, lesson learned".</rationale>
+    </rule>
+
+    <rule id="r5-default-to-two-way-blocked" testable="true" depth="essential">
+      <statement>An ADR missing the reversibility frontmatter field is blocked from merge by CI. There is no "default" — explicit choice required. (Validate via validate-reversibility-frontmatter.py.)</statement>
+      <rationale source="explicit-over-implicit principle; Python Zen">Defaults erode discipline. Blocking on missing field forces every author to consider the dimension. After 5-10 ADRs the team is fluent and the gate becomes invisible.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="ADR with reversibility tag + pre-mortem">
+      <code lang="markdown"><![CDATA[
+---
+adr_id: 023
+title: Migrate primary auth from Auth0 to Clerk
+reversibility: one_way_door_costly
+rollback_estimate:
+  engineering_weeks: 4
+  dollars_contract_exit: 12000
+  customers_affected: all_active
+status: proposed
+---
+
+## Decision
+Switch identity provider from Auth0 to Clerk for new signups starting Q3.
+Existing users migrated via JIT provisioning.
+
+## Pre-mortem
+12 months from now this was wrong because:
+1. Clerk's pricing changed and TCO exceeded Auth0 by 2x — early signal: monthly
+   bill growing faster than MAU growth.
+2. Clerk's enterprise SSO doesn't satisfy a key customer's procurement — early
+   signal: 1+ enterprise deal blocked on SSO compliance.
+
+Reversal triggers (if either fires within 6 months, reopen this ADR):
+- monthly bill / MAU &gt; 2× projected
+- ≥ 1 enterprise sales deal blocked on SSO feature gap
+      ]]></code>
+      <note>Illustrates r1 (4-tier), r2 (cool-off + sign-off), r3 (pre-mortem), r4 (estimate).</note>
+    </example>
+
+    <example type="bad" title="Vendor lock-in tagged two-way">
+      <code lang="markdown"><![CDATA[
+---
+adr_id: 014
+title: Adopt vendor X's proprietary database
+reversibility: two_way_door  ← WRONG
+rollback_estimate: unspecified
+---
+
+Problem: violates r1 (wrong tier), r4 (no estimate), r5 (CI would block if
+estimate field were enforced).
+Repair: re-tag as one_way_door_costly or one_way_door_irrevocable depending
+on whether the data model can be exported. Add pre-mortem. Cool-off + sign-off.
+      ]]></code>
+      <note>Tier inflation downward (toward two-way) is the #1 mistake.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

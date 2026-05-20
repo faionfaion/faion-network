@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="One-Way-Door Flagging Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the decision_class fields in ADRs, the devil's-advocate review, and the quarterly miscall report.</summary>
+
+  <output-contract>
+    <required>
+      <field name="adr.decision_class" type="enum" values="one-way-door|two-way-door"/>
+      <field name="adr.classification_rationale" type="paragraph" min_words="50" max_words="150"/>
+      <field name="adr.reversal_estimate_engineer_weeks" type="number" min="0" notes="0 for trivial two-way; integer or float &gt;= 1 for one-way"/>
+      <field name="adr.reversal_estimate_breakdown" type="object" notes="keys: code, data_migration, vendor_exit, customer_impact, dependent_systems"/>
+      <field name="adr.devils_advocate_reviewer" type="string" notes="required if decision_class = one-way-door"/>
+      <field name="adr.cooldown_start" format="ISO8601" notes="required if decision_class = one-way-door"/>
+      <field name="adr.merged_at" format="ISO8601"/>
+      <field name="devils_advocate_review.objection_or_endorsement" type="paragraph" min_words="60" notes="required if decision_class = one-way-door"/>
+      <field name="miscall_report.period" format="YYYY-Qn"/>
+      <field name="miscall_report.actually_reversed" type="list_of_adr_id"/>
+      <field name="miscall_report.actually_irreversible_two_way" type="list_of_adr_id"/>
+      <field name="miscall_report.calibration_note" type="paragraph"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">decision_class missing from any new ADR (pre-commit lint blocks)</pattern>
+      <pattern id="f2">decision_class = one-way-door AND devils_advocate_reviewer empty</pattern>
+      <pattern id="f3">decision_class = one-way-door AND merged_at less than 48 hours after cooldown_start</pattern>
+      <pattern id="f4">reversal_estimate_engineer_weeks omitted on one-way ADRs OR set to a token like TBD or unknown</pattern>
+      <pattern id="f5">classification_rationale shorter than 50 words (boilerplate label is not a classification)</pattern>
+      <pattern id="f6">devils_advocate_review absent at merge time on a one-way ADR</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Shorten cooldown to 24h if the decision is time-critical (e.g. production-incident-driven) — requires engineering leader written approval logged in the ADR.</transformation>
+      <transformation>Aggregate the reversal_estimate_breakdown into a single number when posting the ADR summary; keep the breakdown in the file for the miscall review.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/adr-template-with-class.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>decision_class field set and matches the rationale paragraph</item>
+      <item>One-way-door ADRs have a 48h cooldown logged</item>
+      <item>Devil's-advocate reviewer named and rotated within quarter limits</item>
+      <item>Reversal estimate is a real number with breakdown, not a placeholder</item>
+      <item>Quarterly miscall report exists for each closed quarter</item>
+      <item>Quick-classification heuristics applied as a sanity check</item>
+    </list>
+  </section>
+</text>
