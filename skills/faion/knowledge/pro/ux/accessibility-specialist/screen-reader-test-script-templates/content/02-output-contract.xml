@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Screen-Reader Scripts — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schema for sr-audit-results.yaml. The engineering hand-off, WCAG rollup, and regression-tracking dashboards all consume this file.</summary>
+
+  <output-contract>
+    <required>
+      <field name="audit_metadata" required_keys="audit_id,target_build_sha,target_url,auditor,started_at,ended_at,versions"/>
+      <field name="versions" required_keys="voiceover_macos,voiceover_ios,nvda,talkback,browser_versions,os_versions"/>
+      <field name="components" type="list"
+             item_required_keys="component_id,archetype,location,script_version,results_per_platform"/>
+      <field name="results_per_platform" type="map"
+             entry_required_keys="platform,steps,overall_status,blockers,wcag_failures"/>
+      <field name="steps" type="list"
+             item_required_keys="step_id,action,expected_utterance_pattern,actual_observed,status,wcag_sc"/>
+      <field name="wcag_rollup" required_keys="failures_by_sc,coverage_by_sc"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">step status == "pass" without `actual_observed` field — no evidence</pattern>
+      <pattern id="f2">component tested on only one platform when ≥2 platforms apply</pattern>
+      <pattern id="f3">versions block missing any tested screen-reader version</pattern>
+      <pattern id="f4">wcag_sc field empty for any step</pattern>
+      <pattern id="f5">overall_status == "pass" while blockers list is non-empty</pattern>
+      <pattern id="f6">audit_id reused across builds — every build gets a new audit_id</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Skip a script step explicitly with `status: "skipped", reason: "not applicable to this build"` — never silently omit.</transformation>
+      <transformation>Add platform variants (e.g. JAWS) by extending versions and results_per_platform with the new platform key.</transformation>
+      <transformation>Aggregate "warning" status for verbose-but-passing utterances; this is informational, not a fail.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every component has results on all applicable platforms</item>
+      <item>Every step has an actual_observed value (recording, screenshot, or transcribed utterance)</item>
+      <item>Every step has wcag_sc populated</item>
+      <item>Versions block captures the exact stack tested</item>
+      <item>Blockers list correctly populated; no "pass with blockers" inconsistencies</item>
+      <item>WCAG rollup matches the per-step failures</item>
+    </list>
+  </section>
+</text>
