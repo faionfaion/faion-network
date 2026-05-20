@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Model Onboarding Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every model-onboarding workflow must enforce. These prevent the most common failure: routing production traffic to a new model on launch-day hype.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-four-phase-sequence" testable="true" depth="essential">
+      <statement>Onboarding proceeds through 4 phases in order: (1) intake (gateway register, auth, smoke), (2) safety + eval (golden, hallucination, jailbreak), (3) integration (cost calibration, router weight design), (4) production gate (canary, full rollout, retirement of fallback). Reject phase skips OR parallel execution past the canary gate.</statement>
+      <rationale source="model-rollout postmortems">Phase parallelism allows untested models to reach production. Strict sequencing makes each phase a known-good before the next.</rationale>
+    </rule>
+
+    <rule id="r2-per-phase-gate-decision" testable="true" depth="essential">
+      <statement>Each phase ends with an explicit go/no-go decision memo signed by the named phase owner. Reject phases that exit without a signed memo. No-go decisions roll back to previous phase, not pause indefinitely.</statement>
+      <rationale source="release-management discipline">Phase gates create explicit accountability + reversibility. Without memo, "we'll come back to it" leaks half-onboarded models into prod traffic.</rationale>
+    </rule>
+
+    <rule id="r3-eval-before-route" testable="true" depth="essential">
+      <statement>No production traffic routes to the new model before eval suite has been run AND the eval-diff vs incumbent is signed off. Reject any router weight &gt; 0 for the new model before phase 2 completes.</statement>
+      <rationale source="LLM regression postmortems">Models with worse accuracy on the team's tasks have been shipped because "the benchmark numbers are better." Eval-on-your-data prevents this.</rationale>
+    </rule>
+
+    <rule id="r4-cost-vs-incumbent-compare" testable="true" depth="essential">
+      <statement>Phase 3 includes an explicit cost-vs-incumbent comparison: $/task at projected route share, monthly cost delta, and a documented break-even reasoning. Reject route changes that flip cost &gt; 30% without explicit business rationale.</statement>
+      <rationale source="cost-incident analyses">Silent cost increases of 2-5× have shipped because the team optimized for accuracy without checking unit economics. Explicit comparison forces the trade-off conversation.</rationale>
+    </rule>
+
+    <rule id="r5-named-approver-prod" testable="true" depth="essential">
+      <statement>Production exposure (canary &gt; 0% OR full rollout) requires a named approver outside the onboarding owner. Default approver: engineering manager OR AI safety lead. Reject self-approval at production gate.</statement>
+      <rationale source="separation-of-duties practice">Onboarding owner has motivated reasoning toward shipping. External approver provides an independent gate without slowing routine onboarding.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Phase 2 exit memo">
+      <code lang="text"><![CDATA[
+Phase 2 exit (eval + safety) — model: claude-4.7-sonnet
+Decision: GO
+
+Evidence:
+  Golden set:        92% pass (vs incumbent 89%). Diff +3% sustained, p&lt;0.01.
+  Hallucination:     pattern-class pass rate within ±2% of incumbent on 6/6 patterns.
+  Jailbreak suite:   no new failures vs incumbent. 1 incumbent failure now fixed.
+  Cost (lab):        $0.0046 / task vs $0.0072 incumbent. -36% per task.
+
+Phase 2 owner: jdoe (ml-eng)
+Sign-off:      asmith (safety lead)
+Next phase:    Integration (router weights, canary plan)
+      ]]></code>
+      <note>Illustrates r2 + r3 + r4 in a phase-2 exit memo with documented evidence.</note>
+    </example>
+
+    <example type="bad" title="Hype-driven instant rollout">
+      <code lang="text"><![CDATA[
+Slack thread:
+  PM: "New model launched! Everyone's talking about it."
+  Eng: "I'll switch our router to 100% new model after lunch."
+  PM: "Sounds great."
+
+12h later: customer reports a 40% spike in citation errors. New model
+hallucinates URLs the incumbent didn't. No eval was run. No rollback plan.
+      ]]></code>
+      <note>Illustrates r1, r2, r3, r5 violations. The exact pattern this methodology blocks.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

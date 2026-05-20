@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="QA Risk Matrix Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every risk matrix must satisfy. These prevent the two dominant failure modes: all-areas-high (matrix has no signal) and stale-matrix (matrix reflects last year's risk landscape).</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-explicit-area-enumeration" testable="true" depth="essential">
+      <statement>The matrix lists product areas at a consistent granularity — neither "Backend" (too coarse, no testing strategy applies) nor "user.controller.create method" (too fine, drowns the signal). Target 8-20 areas. Areas are enumerated explicitly in risk-matrix.yaml; new top-level features add a new area.</statement>
+      <rationale source="risk-decomposition research; sample QA risk matrices from teams of various sizes">Without an explicit enumeration, the matrix becomes an unbounded list that nobody can read. The 8-20 range is the empirical sweet spot for a single team's working memory and for meaningful investment allocation.</rationale>
+      <example type="good" title="Risk-matrix area list">
+        <code lang="yaml"><![CDATA[
+areas:
+  - auth-login-and-signup
+  - billing-subscription-lifecycle
+  - billing-invoice-rendering
+  - search-and-filtering
+  - email-onboarding-flow
+  - notifications-in-app
+  - data-export-csv-and-api
+  - admin-impersonation-and-audit-log
+  - public-api-rate-limiting
+  - tenant-isolation-and-data-residency
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-impact-anchored-to-customer-effect" testable="true" depth="essential">
+      <statement>Impact score (1-5) is anchored to a customer-or-business-effect rubric: 5 = revenue loss in single-digit hours, data loss, or regulatory breach; 4 = visible customer trust loss; 3 = degraded functionality with workaround; 2 = annoyance; 1 = invisible. Impact MUST be backed by a specific worst-case sentence, not a feeling.</statement>
+      <rationale source="business-impact analysis frameworks; ISTQB risk-based testing rubric">Impact-from-feeling produces flat 4s and 5s across the board. A customer-effect anchor forces honesty: "billing-invoice-rendering breaking costs $X/hour in dispute support; impact 4". Different areas now have different scores, which is the entire point.</rationale>
+    </rule>
+
+    <rule id="r3-likelihood-data-anchored" testable="true" depth="essential">
+      <statement>Likelihood score (1-5) is computed from data, not opinion: incident frequency over the past 6 months, commit churn over the same window, novelty (new code in the last 30 days), and complexity proxies (cyclomatic, dependency-graph depth). `scripts/likelihood-from-incidents.py` produces the raw score; the engineer can adjust ±1 with a documented reason.</statement>
+      <rationale source="risk-based testing research; common bias in subjective likelihood ratings">Subjective likelihood ratings cluster around 3. Data-anchored scores spread out and identify the areas that have actually broken or churned recently. Engineers retain final judgment via the ±1 adjustment, but the prior comes from the data.</rationale>
+    </rule>
+
+    <rule id="r4-quadrant-to-investment-map" testable="true" depth="essential">
+      <statement>The matrix divides into 4 quadrants by impact (high/low) × likelihood (high/low). Each quadrant maps to a fixed test-investment pattern: HH = heavy automation + exploratory + monitoring (the team's main investment), HL = automation + targeted exploratory, LH = automation only, LL = monitor-only (no test investment). Areas in HH cannot be moved to LL without explicit risk-acceptance sign-off.</statement>
+      <rationale source="risk-quadrant test-strategy patterns">The quadrant-to-investment map is the load-bearing decision. Without it, the matrix is a heatmap that produces no action. The mapping makes the matrix prescriptive, not descriptive.</rationale>
+      <example type="good" title="Quadrant investment patterns">
+        <code lang="markdown"><![CDATA[
+HH (high impact, high likelihood): billing-subscription-lifecycle
+  → mandatory unit + integration + e2e + monthly exploratory + alerting
+
+HL (high impact, low likelihood): tenant-isolation-and-data-residency
+  → mandatory unit + integration + targeted exploratory + alerting
+
+LH (low impact, high likelihood): search-and-filtering
+  → automation only (unit + light integration), no exploratory
+
+LL (low impact, low likelihood): admin-impersonation-and-audit-log
+  → monitor-only (assertions in logs); no investment until impact or likelihood changes
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r5-per-release-refresh" testable="true" depth="essential">
+      <statement>The matrix is refreshed before every release cycle (sprint, monthly, quarterly — whichever matches the team's cadence). Refresh: recompute likelihood from data, review impact for any area where a new contract / feature / regulatory change applies, regenerate the heatmap and investment plan. A matrix older than the most recent release cycle is stale and blocks new test-strategy commitments.</statement>
+      <rationale source="risk-monitoring research; stale-risk-matrix failure analyses">Risk landscapes shift quickly: a new feature ships, an incident reveals a previously underestimated area, a new regulation lands. A stale matrix is worse than no matrix because it gives false confidence in obsolete priorities. The refresh ritual keeps the artifact current.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Impact rubric examples">
+    <list>
+      <item>5 — Payment processing failure for any tenant; data loss for &gt; 100 users; regulatory breach with named fine</item>
+      <item>4 — Email outage for 24h; auth lock-out for &gt; 5% of customers; visible UI breakage on the landing page</item>
+      <item>3 — Search returns degraded results; export is slow; non-critical feature unavailable with documented workaround</item>
+      <item>2 — Minor UI glitch; small reporting delay; advanced feature degraded</item>
+      <item>1 — Internal admin convenience; never-customer-visible code path</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
