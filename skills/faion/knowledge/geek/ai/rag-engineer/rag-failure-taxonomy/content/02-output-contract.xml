@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="RAG Failure Taxonomy Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of a failure entry and the weekly aggregation report.</summary>
+
+  <output-contract>
+    <required>
+      <field name="entry.failure_id" type="string"/>
+      <field name="entry.observed_at" format="ISO8601"/>
+      <field name="entry.source" type="enum" values="customer_feedback|internal_eval|monitoring_sample|red_team"/>
+      <field name="entry.question" type="paragraph"/>
+      <field name="entry.expected_answer" type="paragraph" notes="source-of-truth answer"/>
+      <field name="entry.actual_answer" type="paragraph"/>
+      <field name="entry.classification" type="enum" values="retrieval-miss|retrieval-misranked|chunk-boundary|generation-grounding-fail|stale-doc|prompt-instruction-leak|downstream-tool-fail|evidence-incomplete"/>
+      <field name="entry.evidence.retrieval_log" type="object" notes="chunk_ids[], ranks[], scores[]"/>
+      <field name="entry.evidence.context_to_model" type="object" notes="prompt template id, retrieved passages included"/>
+      <field name="entry.evidence.model_output_raw" type="paragraph"/>
+      <field name="entry.evidence.source_passage_id" type="string" notes="where the correct answer actually lives"/>
+      <field name="entry.contributing_factors" type="list_of_enum" notes="zero or more secondary tags"/>
+      <field name="entry.recommended_fix_path" type="enum" values="retriever|reranker|chunker|generator_prompt|kb_refresh|system_prompt_audit|tool_use_prompt|hybrid"/>
+      <field name="entry.fix_eta" format="YYYY-MM-DD"/>
+      <field name="weekly_report.period" format="YYYY-MM-DD..YYYY-MM-DD"/>
+      <field name="weekly_report.category_counts" type="object"/>
+      <field name="weekly_report.top_three" type="list_of_object" min="0" max="3"/>
+      <field name="weekly_report.recommended_focus" type="paragraph"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">entry.classification outside the closed seven-category list (plus evidence-incomplete)</pattern>
+      <pattern id="f2">entry.evidence with any required sub-field empty AND classification != evidence-incomplete</pattern>
+      <pattern id="f3">multi-category assignment in entry.classification (use contributing_factors for secondary tags)</pattern>
+      <pattern id="f4">weekly_report missing for more than 2 consecutive weeks</pattern>
+      <pattern id="f5">recommended_fix_path = hybrid (default fix paths exist; hybrid requires written justification)</pattern>
+      <pattern id="f6">entry created with classification but no evidence link to the underlying logs (un-auditable)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Reclassify a failure when new evidence surfaces (e.g. the source passage was found to be stale); record the original classification in entry.history.</transformation>
+      <transformation>Aggregate entries from the same root cause across the same week (e.g. 12 retrievals all failing because the embedding model was wrong) into one parent issue with child references.</transformation>
+      <transformation>Mark entries with classification = evidence-incomplete and route to a backfill queue, not the main weekly report.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/rag-failures.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Classification is one of the seven categories</item>
+      <item>Evidence sub-fields populated (retrieval, context, output, source)</item>
+      <item>Recommended fix path matches the default for the classification (or has justification)</item>
+      <item>Contributing factors recorded when applicable</item>
+      <item>Weekly report published every Friday</item>
+      <item>Reclassifications preserve history</item>
+    </list>
+  </section>
+</text>
