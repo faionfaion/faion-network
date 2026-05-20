@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="IaC PR Review Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the reviewer's PR-comment output. Subagent must satisfy this before posting.</summary>
+
+  <output-contract>
+    <required>
+      <field name="per_axis_verdict" type="object"
+             required_keys="blast_radius,iam,state_safety,secrets,rollback"
+             value_type="object_with_keys=verdict,notes,evidence_links"/>
+      <field name="verdict" type="closed_enum"
+             value="approve,block,request_changes"/>
+      <field name="blockers" type="array_object"
+             item_required_keys="axis,reason,resolution_required"/>
+      <field name="overall_verdict" type="closed_enum"
+             value="approve,block,request_changes"
+             constraint="block if any axis verdict == block; request_changes if any == request_changes; else approve"/>
+      <field name="reviewer_name" type="string"/>
+      <field name="reviewer_role" type="closed_enum"
+             value="devops,sre,security,oncall_secondary"/>
+      <field name="plan_output_link" type="url"/>
+      <field name="iam_diff_link" type="url" required_if="iam_changes_present"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">overall_verdict == approve while any per_axis_verdict has verdict == block</pattern>
+      <pattern id="f2">comment body without per-axis breakdown (e.g., "LGTM" alone)</pattern>
+      <pattern id="f3">verdict == approve for IAM axis when added_permissions contains wildcard "*" on production resources</pattern>
+      <pattern id="f4">verdict == approve for state_safety axis when plan output has destroy-and-recreate on stateful resource WITHOUT linked migration ticket</pattern>
+      <pattern id="f5">verdict == approve for secrets axis when plaintext-secret detector returned positive</pattern>
+      <pattern id="f6">verdict == approve for rollback axis when rollback_plan fields are missing or "revert the commit"</pattern>
+      <pattern id="f7">reviewer_name == PR author (self-review)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Promote verdict from request_changes to approve only after every blocker has a resolution_resolved entry with timestamp.</transformation>
+      <transformation>Mark per_axis_verdict as "n/a" (not applicable) only with explicit reason — e.g., "no IAM changes in this PR"; n/a is never treated as approve.</transformation>
+      <transformation>Append additional reviewers as co-reviewers without overwriting the primary review.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/pr-review-comment.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All five axes have a verdict, none missing</item>
+      <item>Overall verdict is consistent with worst per-axis verdict</item>
+      <item>IAM diff link present whenever IAM changes are detected</item>
+      <item>Rollback plan fields are concrete (no "revert commit" alone)</item>
+      <item>Reviewer ≠ PR author</item>
+      <item>Plan output link is reachable + machine-readable</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="One-Way-Door Flagging Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every ADR must satisfy under the one-way-door flagging protocol. Hard rules; reviewers reject ADRs that fail any of them.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-explicit-decision-class-required" testable="true" depth="essential">
+      <statement>Every ADR header includes the field `decision_class: one-way-door | two-way-door`. The writer adds a one-paragraph justification (8-12 lines) for the chosen class. An ADR without this field is rejected at PR-review.</statement>
+      <rationale source="Bezos 1997 letter; Nygard ADR practice">Implicit classification means the heavy-review path never fires when it should. Making the class explicit at decision time forces the writer to think about reversibility before committing, which is the only point at which reconsideration is cheap. A pre-commit lint rejects missing fields, removing the social pressure to skip the rule.</rationale>
+      <example type="good" title="ADR header with class">
+        <code lang="yaml"><![CDATA[
+---
+adr_id: 0042
+title: Move payments storage from Postgres JSONB to a separate billing service
+date: 2026-05-19
+status: proposed
+decision_class: one-way-door
+reversal_estimate_engineer_weeks: 8
+devils_advocate_reviewer: alex@faion.net
+---
+
+## Classification rationale
+Once payment records live in the billing service, reversing the move requires
+re-importing 18 months of historical records (currently 2.4M rows), running
+a dual-write window of at least 6 weeks, and re-pointing all reconciliation
+jobs and external accountancy exports. Estimated 8 engineer-weeks; in
+practice, no team I have worked with has ever reversed this class of move.
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-cooldown-on-one-way-doors" testable="true" depth="essential">
+      <statement>One-way-door ADRs require a 48-hour cooldown between PR open and merge. During cooldown: the devil's-advocate reviewer posts at least one written objection or written endorsement. Two-way doors have no cooldown.</statement>
+      <rationale source="Kahneman, Thinking Fast and Slow; pre-mortem practice in engineering decision research">High-cost irreversible decisions made under time pressure default to the writer's first framing. The 48h cooldown plus the devil's-advocate prompt forces a second System-2 pass. Two-way doors do not need the cooldown because the cost of being wrong is the cost of reverting, which is by definition acceptable.</rationale>
+    </rule>
+
+    <rule id="r3-reversal-estimate-required-for-one-way" testable="true" depth="essential">
+      <statement>One-way-door ADRs include a `reversal_estimate_engineer_weeks` field with a numeric estimate. The estimate covers: code changes, data migrations, vendor exit (contracts, data exports), customer-facing impact (notifications, breaking-change schedule), and reconciliation of dependent systems. Two-way doors include a one-line "reversal: trivial / standard PR" note.</statement>
+      <rationale source="Cost of Reversal as a forcing function for honest classification">Without a numeric estimate, "one-way-door" becomes a label of severity rather than reversibility. The estimate exposes whether the team is actually facing an irreversible choice or just an inconvenient one. It also produces a calibration dataset for quarterly review.</rationale>
+    </rule>
+
+    <rule id="r4-devils-advocate-reviewer-named" testable="true" depth="essential">
+      <statement>One-way-door ADRs name a single devil's-advocate reviewer in the header. This reviewer is responsible for writing the strongest case AGAINST the decision in the cooldown window, regardless of their personal view. The reviewer is rotated; no single engineer can serve more than 30% of the role-instances in a quarter.</statement>
+      <rationale source="red team / blue team adversarial review patterns; Janis groupthink research">A general PR review defaults to "looks good to me". Naming a single reviewer with an explicit adversarial role produces concrete objections that test the decision. The rotation rule prevents the devil's-advocate role from concentrating on one cynical engineer who is then easy to dismiss.</rationale>
+    </rule>
+
+    <rule id="r5-quarterly-miscall-review" testable="true" depth="essential">
+      <statement>Quarterly, the protocol owner runs a miscall review: which one-way doors were actually reversed (or could have been, cheaply) — the classification was too cautious; which two-way doors turned out to be one-way — the classification was too cavalier. The output is a one-page calibration note that adjusts the team's heuristics for the next quarter.</statement>
+      <rationale source="forecasting research on calibration; team-learning literature">Without calibration the protocol becomes a ritual: writers reach for "one-way-door" defensively, or for "two-way-door" for velocity, with no feedback signal. The quarterly review is the feedback signal and the only place the team learns its own classification skill over time.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Quick classification heuristics">
+    <list>
+      <item>Public API surface change visible to external clients → one-way-door</item>
+      <item>Data-model schema change in the system of record → one-way-door</item>
+      <item>Vendor lock-in with a 12+ month contractual exit clause → one-way-door</item>
+      <item>Migration that requires customer-facing notification or breaking change → one-way-door</item>
+      <item>Internal naming, internal logging format, internal route handler structure → two-way-door</item>
+      <item>Choice of internal library version (with major-version-compatible alternatives) → two-way-door</item>
+      <item>Feature flag default-value choice → two-way-door</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
