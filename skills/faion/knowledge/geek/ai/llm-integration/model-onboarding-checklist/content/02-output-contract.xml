@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Model Onboarding Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the per-model onboarding record. Subagent must satisfy this before production exposure.</summary>
+
+  <output-contract>
+    <required>
+      <field name="model_id" type="string" example="claude-4.7-sonnet"/>
+      <field name="provider" type="string"/>
+      <field name="onboarding_owner" type="string"/>
+      <field name="current_phase" type="closed_enum"
+             value="intake,safety_eval,integration,production_gate,onboarded,rejected"/>
+      <field name="phase_steps" type="array_object"
+             item_required_keys="step_id,phase,description,status,owner,evidence_link"
+             status_enum="pending,in_progress,passed,failed,skipped"/>
+      <field name="phase_gate_memos" type="array_object"
+             item_required_keys="phase,decision,signed_by,evidence_summary,decision_date"
+             decision_enum="go,no_go,deferred"/>
+      <field name="eval_diff" type="object"
+             required_keys="golden_set_pct_delta,hallucination_pattern_diffs,jailbreak_diff,cost_per_task_delta_pct"/>
+      <field name="rollback_plan" type="object"
+             required_keys="rollback_command,prior_model_id,auto_restore_deadline_hours,exec_comms_template"/>
+      <field name="production_approver" type="string"
+             constraint="production_approver != onboarding_owner"/>
+      <field name="canary_plan" type="object"
+             required_keys="percent_traffic,duration_hours,monitored_metrics,promote_criteria"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">current_phase advanced without prior phase_gate_memo entry (violates r1, r2)</pattern>
+      <pattern id="f2">canary_plan.percent_traffic &gt; 0 before phase_gate_memo.phase == safety_eval with decision == go (violates r3)</pattern>
+      <pattern id="f3">eval_diff fields missing OR cost_per_task_delta_pct &gt; 0.30 without business_rationale field (violates r4)</pattern>
+      <pattern id="f4">production_approver == onboarding_owner (violates r5)</pattern>
+      <pattern id="f5">rollback_plan with auto_restore_deadline_hours == null OR &gt; 24h</pattern>
+      <pattern id="f6">phase_gate_memos.decision == go with evidence_summary empty</pattern>
+      <pattern id="f7">parallel phase execution (multiple phases with status == in_progress)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Extend canary duration if metrics are borderline; never shorten it for hype.</transformation>
+      <transformation>Add additional phase steps (multi-modal smoke, agent-loop check) as needed; never remove the mandatory 12 from the master checklist.</transformation>
+      <transformation>Mark a phase step as skipped only with documented reason AND owner sign-off (e.g., "no jailbreak suite exists for this surface — risk accepted").</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/onboarding-checklist.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Phases progressed in order with signed memos at each gate</item>
+      <item>Eval diff captured before any production routing</item>
+      <item>Cost-vs-incumbent comparison documented</item>
+      <item>Production approver is named AND not the onboarding owner</item>
+      <item>Rollback plan has auto-restore deadline ≤ 24h</item>
+      <item>Canary plan has percent + duration + metrics + promote criteria</item>
+    </list>
+  </section>
+</text>

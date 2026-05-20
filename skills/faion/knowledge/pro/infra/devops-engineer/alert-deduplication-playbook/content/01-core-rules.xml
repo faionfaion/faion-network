@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Alert Dedup Playbook Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every alert-dedup engagement enforces. Hard rules; silencing alerts without these guardrails creates worse problems.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-noise-audit-first" testable="true" depth="essential">
+      <statement>Before any rule change, the team MUST audit 30 days of alert history and classify each alert family into actionable / informational / noise. Quantitative threshold: an alert family with &gt; 50% no-op resolutions over 30 days is `noise`. No rule changes without the audit report in hand.</statement>
+      <rationale source="Google SRE workbook Ch.8; PagerDuty alert-fatigue surveys">Silencing alerts without data is dangerous — the silenced alert may be the one that catches the next incident. Data-driven classification is the discipline that makes the cuts safe.</rationale>
+    </rule>
+
+    <rule id="r2-fingerprint-discipline" testable="true" depth="essential">
+      <statement>Every alert family MUST have an explicit fingerprint definition listing the labels that collapse to one incident (e.g. `service`, `instance`, `pod`). Two alerts with the same fingerprint MUST collapse to a single incident; different fingerprints MUST produce different incidents. Implicit fingerprinting (relying on AlertManager defaults) is REJECTED for high-volume alerts.</statement>
+      <rationale source="AlertManager grouping documentation; incident-volume reduction practice">Implicit fingerprinting groups too aggressively (one incident for an entire region outage) or too loosely (one incident per pod). Explicit fingerprints per alert family produce predictable incident counts and let on-call understand the scope at a glance.</rationale>
+    </rule>
+
+    <rule id="r3-page-vs-ticket-gate" testable="true" depth="essential">
+      <statement>Routing MUST split into THREE paths: `page` (on-call rotation), `ticket` (queue reviewed asynchronously), `silenced` (recorded but no human action). Page route is reserved for actionable, customer-impacting issues. Informational and slow-burn alerts MUST go to ticket. Default to ticket when uncertain; promote to page only after evidence.</statement>
+      <rationale source="On-call burnout research; reverse-funnel routing patterns">Pages should wake humans; tickets shouldn't. Routing both to the same channel ensures both are ignored. The three-path split is the cheapest defence against on-call burnout.</rationale>
+    </rule>
+
+    <rule id="r4-suppression-with-expiry" testable="true" depth="essential">
+      <statement>Any alert suppression (silence) MUST include an expiry date &lt;= 90 days out AND a rationale &gt;= 60 characters. Permanent silences are FORBIDDEN. Expired silences re-page automatically; the team revisits at expiry and either fixes the root cause, extends with new rationale, or promotes the silence to a permanent routing decision in alert-routing.yaml.</statement>
+      <rationale source="Configuration-decay studies; SOC 2 change-management criterion">Open-ended silences become organisational amnesia. Bounded silences with expiry produce a tracked debt list; teams either remediate or formalise the decision.</rationale>
+    </rule>
+
+    <rule id="r5-paging-slo" testable="true" depth="essential">
+      <statement>The team MUST set a paging SLO (default: &lt;= 8 pages / week / rotation) and track it weekly. Exceeding the SLO triggers a noise-audit re-run. The SLO is on PAGES, not on alerts (a page-routed alert that fires 100 times counts as one page per fingerprint window).</statement>
+      <rationale source="SRE oncall SLO literature; cognitive-load research">Without a measurable SLO, dedup work has no completion criterion. The 8-pages target is a starting point — tighten as the team improves the stack; loosen only with explicit rationale.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Fingerprint definition for a Kubernetes alert">
+      <code lang="yaml"><![CDATA[
+# alert-routing.yaml fragment
+alerts:
+  PodMemoryPressure:
+    route: page
+    fingerprint: [service, deployment]
+    grouping_window: 5m
+    runbook_url: runbooks/pod-memory-pressure.md
+  PodCrashLooping:
+    route: page
+    fingerprint: [service, deployment]
+    grouping_window: 5m
+    runbook_url: runbooks/pod-crashloop.md
+  PVCSlowFill:
+    route: ticket
+    fingerprint: [namespace, persistent_volume_claim]
+    grouping_window: 6h
+      ]]></code>
+      <note>r2 satisfied (explicit fingerprints per family). r3 satisfied (page-vs-ticket split). Window aligns with remediation time for each class.</note>
+    </example>
+
+    <example type="bad" title="Open-ended silence with no expiry">
+      <code lang="text"><![CDATA[
+silence:
+  alertname: HighLatencyMicroservice
+  expires_at: (none)
+  reason: "we're working on it"
+      ]]></code>
+      <note>r4 violation. Open-ended silence; vague rationale. Six months later no one remembers why; the alert may have a real recurrence.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
