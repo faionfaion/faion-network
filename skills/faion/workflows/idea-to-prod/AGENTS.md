@@ -5,6 +5,12 @@ owner: ruslan
 last_verified: 2026-05-07
 version: 1.0.0
 applies_to: any
+content_id: 35c7522f4958fe07
+success_criteria:
+  - `.product/` on-disk layout (master-prompt, state, decisions, tasks, research) exists before any subagent runs.
+  - Each phase advances only after its outputs land on disk and state.md records the transition.
+  - Orchestrator dispatches subagents by file reference (path), never by inline prompt text.
+  - Phase 6 validation passes before the run is declared production-ready.
 ---
 
 # Idea-to-Prod Workflow
