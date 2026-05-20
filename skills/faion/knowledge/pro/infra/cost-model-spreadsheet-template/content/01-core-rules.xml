@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Cost-Model Spreadsheet Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that turn a cost-model spreadsheet from a coverage gap into a defensible artifact.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-complete-line-items" testable="true" depth="essential">
+      <statement>The sheet MUST include lines for every category in the template, even if the line is zero: Compute (instances, autoscaling overhead, spot/savings-plan), Storage (block, object, backup-tier), Network (egress, NAT data-processing, VPC endpoints, public IPs), Operations (logs, metrics, traces, KMS, secrets manager), and Buffer. Marking a line "0" is allowed; omitting the row is not.</statement>
+      <rationale source="FinOps Foundation cost-allocation principles">The forgotten lines (NAT data-processing, egress, observability storage) are responsible for the typical 30-100% cost overrun. Forcing the row exists, even at zero, prevents the silent omission.</rationale>
+    </rule>
+
+    <rule id="r2-assumptions-explicit" testable="true" depth="essential">
+      <statement>Every line item MUST populate four columns: unit (e.g., GB-month, request, vCPU-hour), monthly volume, unit cost, monthly cost. The volume cell MUST link to the Assumptions tab where the volume comes from (req/sec × 86400 × 30, or storage_GB × backup_count, etc.). Direct hardcoded numbers without source link are rejected.</statement>
+      <rationale source="Audit-defensibility practice from finance/FP&amp;A">Hardcoded numbers in a cost model are unauditable. A reviewer cannot tell whether the number reflects an assumption or a guess; six months later neither can the original author.</rationale>
+    </rule>
+
+    <rule id="r3-cloud-unit-rate-sourced" testable="true" depth="essential">
+      <statement>Unit-cost values MUST come from the per-cloud-rates/ reference files (last_updated within 90 days) or directly from the provider's pricing calculator with the URL recorded. AI-generated unit costs without source are forbidden. Region MUST be specified per line (us-east-1, eu-central-1, etc.).</statement>
+      <rationale source="Cloud pricing volatility — list prices change 1-4x/year, plus regional pricing differs 20-40%">A model with mixed-region or AI-recalled prices is wrong before it's signed. Region-aware sourcing prevents the largest class of unit-cost errors.</rationale>
+    </rule>
+
+    <rule id="r4-three-scenarios" testable="true" depth="essential">
+      <statement>Scenarios tab MUST contain three: Conservative (50% of expected volume), Expected, Aggressive (200% of expected). Each computed from the same line table — not three hand-built columns. A flat single-number cost estimate is rejected.</statement>
+      <rationale source="Decision-analysis best practice; budget owners need a range">Single-number estimates over-fit on one set of assumptions. The 0.5x-2x bracket exposes which lines are most sensitive (usually egress, observability) and informs the architecture itself.</rationale>
+    </rule>
+
+    <rule id="r5-buffer-policy" testable="true" depth="essential">
+      <statement>The Buffer line is 10-15% of subtotal AND has a one-line policy note ("Buffer covers known-unknown unit-rate changes and small auxiliary services; not a hedge against missing line items"). Buffer &gt; 25% is rejected — it indicates structural under-modelling, not contingency.</statement>
+      <rationale source="Project-management cost-contingency norms; cf. PMBOK Cost Management">A large buffer is the architect's way of hiding gaps. Forcing it to be small and accounted for surfaces the missing structure.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Egress line correctly modelled">
+      <code lang="text"><![CDATA[
+Line: AWS data egress to internet
+Unit: GB-month
+Volume: 5,000 (from Assumptions!egress_GB_month, derived 100 GB/day × 50 days/mo)
+Unit cost: $0.09 (us-east-1, AWS list, last_updated 2026-05-01)
+Monthly cost: $450
+Notes: Excludes CloudFront-served traffic; that line is separate.
+      ]]></code>
+      <note>Sourced unit, derived volume, region named, cross-reference to a related line. Reviewer can verify in 30 seconds.</note>
+    </example>
+
+    <example type="bad" title="Hand-wavy line">
+      <code lang="text"><![CDATA[
+Line: "Bandwidth"
+Monthly cost: $200
+Notes: "Approximate"
+      ]]></code>
+      <note>No volume, no unit, no source, no region. Could be off by 10x. Violates r1, r2, r3.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Indie Mini-CRM Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that keep a Notion-based indie CRM healthy through 6+ months of use. Hard rules prevent the most common failure: turning the CRM into a graveyard of half-tagged contacts.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-four-databases" testable="true" depth="essential">
+      <statement>Use exactly four linked Notion databases: Contacts, Outreach (each outreach attempt is a row), Partners (affiliates / promo-swaps), Touches (each interaction is a row). Reject schemas with fewer (collapses; can't track outreach attempts) or more (decays in 30 days).</statement>
+      <rationale source="indie-hacker schema experiments">Three databases miss the distinction between "contact" and "outreach attempt." Five or more drift into unused complexity within a month.</rationale>
+    </rule>
+
+    <rule id="r2-closed-contact-type-enum" testable="true" depth="essential">
+      <statement>contact_type is a closed select-list: subscriber, customer, partner, prospect, VIP. Reject multi-select for contact_type (one human, one type at a time). VIP is reserved for ≤ 5% of contacts who get personal touch monthly.</statement>
+      <rationale source="tag-rot studies">Multi-select tags balloon to 20+ overlapping types in 90 days. Single-select forces a clean rollup and visible filters.</rationale>
+    </rule>
+
+    <rule id="r3-last-touch-tracking" testable="true" depth="essential">
+      <statement>Every contact has a rollup field last_touch_date computed from related Touches. Contacts past type-specific stall thresholds (subscriber 90d, customer 60d, partner 30d, VIP 14d) surface as "stalled" on the today dashboard.</statement>
+      <rationale source="newsletter / community ops">Stalling is type-specific. VIPs need 14d cadence; subscribers tolerate 90d. Without rollup, stalls hide for months.</rationale>
+    </rule>
+
+    <rule id="r4-outreach-response-rate" testable="true" depth="essential">
+      <statement>Each Outreach row carries: template_id, sent_date, response_status (no_reply / replied / not_interested / converted). After every 20 outreach attempts, compute and display per-template response rate. Reject continued use of a template with response rate &lt; 5% over n ≥ 30 attempts.</statement>
+      <rationale source="cold-outreach analytics">Templates degrade as audiences saturate. Forced 5% floor prevents wasting reach on a stale script.</rationale>
+    </rule>
+
+    <rule id="r5-monthly-community-pulse" testable="true" depth="essential">
+      <statement>Once per month, run a one-screen pulse: new subscribers, conversion rate, partner activity, VIP touches, stalled contacts count. If any of the five metrics regress &gt; 25% MoM, schedule a 30-min review the same week.</statement>
+      <rationale source="indie-hacker retention data">Indie operators miss compound declines because each metric individually looks fine. Combined pulse catches the slow-motion crash.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Four-database schema">
+      <code lang="text"><![CDATA[
+Contacts(name, contact_type, source, joined_date, last_touch_date_rollup)
+Outreach(target_contact, template_id, sent_date, response_status, channel)
+Partners(name, deal_type, status, last_renewal_date, MRR_attributed)
+Touches(contact, kind, date, note)
+
+Linked: Contacts ↔ Touches (last_touch_date_rollup)
+        Contacts ↔ Outreach (history)
+        Partners ↔ Contacts (affiliate to subscriber)
+      ]]></code>
+      <note>Illustrates r1 + r3: four databases, last_touch tracked via rollup.</note>
+    </example>
+
+    <example type="bad" title="Single-database mega-table">
+      <code lang="text"><![CDATA[
+Everything(name, tags, multi_select_type, status, note, last_action,
+           outreach_template, response, deal_status, MRR, ...)
+
+Result: 22 fields, half empty, tags balloon to 31 unique values in 60 days.
+Operator abandons in week 11.
+      ]]></code>
+      <note>Illustrates r1 violation. Indie CRMs die from "everything in one big table" architecture.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
