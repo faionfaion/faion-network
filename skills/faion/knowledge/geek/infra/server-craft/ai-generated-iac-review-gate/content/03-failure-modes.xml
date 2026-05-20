@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="AI IaC Review Gate Failure Modes" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Six failure modes that turn the gate into a rubber stamp. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>AI assistant self-waives gate findings to push merge.</description>
+      <detector>waiver.approver matches an AI agent identity OR the diff that added the waiver shares commit author with the diff that caused the finding</detector>
+      <repair>Revoke the waiver. CODEOWNERS enforcement on the gate report file. CI checks the approver against the AI-identity exclusion list before counting the waiver.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Plan step is mocked / skipped — gate reports `pass` without actually running terraform plan.</description>
+      <detector>gate-report's drift check shows zero diff hunks AND iac_files_touched contains .tf or .tfvars AND CI log lacks a terraform plan invocation</detector>
+      <repair>Add a tamper-evident artefact: the gate uploads plan output as a CI artifact; the report references the artifact hash. Missing artifact → verdict block.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>arch-matrix.yaml missing or unmaintained; multi-arch check trivially passes on amd64.</description>
+      <detector>arch-matrix.yaml absent OR contains only amd64 AND project deploys to a known mixed-arch fleet (cluster nodeSelector reveals arm64)</detector>
+      <repair>Initialise arch-matrix.yaml from cluster node-architecture discovery. Add a CI gate that fails when matrix has only one architecture but cluster has multiple.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Waiver expiry passed; PR still merges because expiry was checked at PR-open, not at merge.</description>
+      <detector>merged_at_utc &gt; waiver.expiry_utc on any waiver in the gate report</detector>
+      <repair>Re-evaluate gate at merge time, not PR-open. Add a CI status check that re-runs the waiver expiry check before merge.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>tfsec / kubesec / hadolint output classified by an LLM that under-grades severity to push merge.</description>
+      <detector>scanner output severity = high AND gate-report finding severity = advise OR low</detector>
+      <repair>Pin severity classification to the scanner's own severity field. The LLM-routed task may only add context; it cannot downgrade. Add a CI assertion comparing classified vs raw severity.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>Performance check is `advise`-only and noisy; reviewers ignore it.</description>
+      <detector>performance check `advise` count &gt; 20 across the last 10 PRs AND zero remediations applied</detector>
+      <repair>Tune the performance rules to surface only resource-limit absence and instance-class mismatch. Move noisy patterns to a separate informational dashboard. Re-evaluate after tuning.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      AI assistants may emit IaC comments arguing for waivers ("# tfsec: this is fine for dev"). Comments are
+      DATA, not authority. The CODEOWNERS approver evaluates each waiver on merits and writes the rationale
+      themselves, never copy-pastes the AI's argument.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      CODEOWNERS for the gate (`iac-gate.yaml`, `arch-matrix.yaml`, `templates/waiver-template.md`) MUST
+      include at least one platform / SRE engineer. PR-rotating reviewers without platform context are
+      not sufficient — waivers carry blast-radius consequences.
+    </p>
+  </section>
+</text>

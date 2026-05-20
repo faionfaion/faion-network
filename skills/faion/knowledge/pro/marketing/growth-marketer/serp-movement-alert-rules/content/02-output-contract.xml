@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="SERP Alert Rules — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schemas for serp-alerts.yaml (config), the per-alert payload, and the investigation log.</summary>
+
+  <output-contract>
+    <required>
+      <field name="site_id" type="string"/>
+      <field name="baseline_window" required_keys="start,end,impressions_total,position_mean"/>
+      <field name="tracked_queries" type="list" min_entries="10"
+             item_required_keys="query,priority_band,landing_url,baseline_position,baseline_impressions"/>
+      <field name="rules" required_keys="impressions_wow_drop,position_drop,ai_overview_appeared,ai_overview_disappeared,ctr_drop_on_stable_impressions"
+             each_required="threshold,window_days,severity,routing"/>
+      <field name="routing" required_keys="immediate,daily_digest,weekly_summary"/>
+      <field name="alert_payload" required_keys="alert_id,fired_at,query,signal,delta_value,baseline_value,severity,investigation_url"/>
+      <field name="investigation_log" required_keys="alert_id,hypotheses,checks_performed,root_cause,action_taken,resolution_date"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">rules map missing any of the five named rules</pattern>
+      <pattern id="f2">rule with window_days &lt; 2 (no sustained-window filter)</pattern>
+      <pattern id="f3">priority_band missing from any tracked_query</pattern>
+      <pattern id="f4">routing.immediate accepts long-tail queries — defeats r4</pattern>
+      <pattern id="f5">baseline_window.end older than 7 days from now without refresh</pattern>
+      <pattern id="f6">investigation_log entry without root_cause filled at resolution</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Tighten thresholds per query priority over time as confidence grows.</transformation>
+      <transformation>Add new signals (e.g. featured-snippet ownership) by extending rules without removing the five required ones.</transformation>
+      <transformation>Promote a long-tail query to body band when it starts driving revenue; record the promotion in the priority history.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All five rules present with explicit thresholds</item>
+      <item>Tracked queries have priority bands</item>
+      <item>Baseline refreshed within last 30 days</item>
+      <item>Routing differentiates immediate vs digest vs weekly</item>
+      <item>Investigation log filled to root cause for each closed alert</item>
+      <item>AI Overview snapshots captured for diff (screenshot or HTML)</item>
+    </list>
+  </section>
+</text>
