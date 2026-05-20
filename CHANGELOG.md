@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-061 Added: workflow template v2 schema (envelope ≤80 lines + content_id + success_criteria).
+- F-061 Added: scripts/validate-workflow-v2.py.
+- F-061 Changed: 6 workflows normalized (brainstorm, idea-to-prod, improver, media-ops, poll-agents, sdd-batch-orchestrator).
 - sdd-batch-orchestrator: add Pre-flight branch check section to 04-parallelism.xml (F-056; rule landed after F-050 T09 detached-HEAD incident).
 - chore(skills): feature-044 closeout — bump tier-manifest to v6, refresh `geek/ai/ai-agents/CLAUDE.md` count (26 → 84, with 53-new + 31-legacy split documented), and extend `skills/CLAUDE.md` geek tree with `sdlc-ai (52)`. tier-manifest.json's geek `knowledge_paths` already lists `faion/knowledge/geek/sdlc-ai`; no schema change required (044-T06).
 - feat(workflows): add idea-to-prod — autonomous one-prompt build workflow
