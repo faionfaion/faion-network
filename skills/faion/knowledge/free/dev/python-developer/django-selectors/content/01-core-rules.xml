@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-selectors Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-selectors. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Selector functions MUST use keyword-only arguments (asterisk). List selectors return QuerySet[Model]. Single-object selectors return Model and raise Model.DoesNotExist or NotFoundError if not found — never return None from a "get" selector. Selectors MUST include all prefetch_related and select_related calls needed for the data their callers will access.</statement>
+      <rationale source="v1-source">Returning QuerySet allows the caller to chain additional filters without making a new query. Consistent exception behavior (DoesNotExist raised, not None returned) prevents None-check errors downstream. Bundling all prefetches in the selector guarantees N+1 prevention for every caller.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use select_related for ForeignKey and OneToOne relations (single JOIN). Use prefetch_related for ManyToMany and reverse ForeignKey relations (separate query). Use Prefetch() object when the related queryset needs its own filter, ordering, or prefetch.</statement>
+      <rationale source="v1-source">select_related generates a SQL JOIN — right for FK/OneToOne where one related object per row. prefetch_related generates a separate query — right for M2M / reverse FK where multiple related objects per row. A blanket prefetch_related on an FK wastes round trips; a blanket select_related on a reverse FK causes cartesian product blowup.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use .exists() instead of .count() &gt; 0 or len(queryset) &gt; 0 for existence checks. Use .annotate() for aggregations that should be fetched in the same query. Use F() expressions for field references in filters and annotations.</statement>
+      <rationale source="v1-source">exists() generates SELECT 1 ... LIMIT 1 — O(1) DB cost. count() &gt; 0 generates SELECT COUNT(*) — O(N) DB cost. len(queryset) materializes the entire queryset in Python memory just to check if it's non-empty.</rationale>
+    </rule>
+  </section>
+</text>

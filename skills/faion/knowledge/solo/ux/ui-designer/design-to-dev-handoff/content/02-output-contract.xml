@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Design-to-Dev Handoff — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a handoff package and the dev-side acceptance checklist. Designer (or AI agent) must satisfy this before package is sent to dev. Dev runs the acceptance checklist before merging implementation PR.</summary>
+
+  <output-contract>
+    <required>
+      <field name="feature_id" format="ticket_id_or_url"/>
+      <field name="figma_file_link" format="figma_url_with_node_id"/>
+      <field name="design_system_version" format="semver"/>
+      <field name="screens" min="1" required_keys="frame_link,tokens_used,states_inventory,motion_specs,content_rules,breakpoint_behavior,focus_order"/>
+      <field name="components_referenced" source="design_system_component_id_or_custom_with_reason"/>
+      <field name="i18n_notes" required_keys="languages_in_scope,expansion_factor_per_language"/>
+      <field name="accessibility_specs" required_keys="contrast_pairs,focus_ring_token,aria_landmarks,reduced_motion_fallback"/>
+      <field name="dev_acceptance_checklist" format="reference_to_templates/dev-acceptance-checklist.md_with_per_item_status"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">any color / spacing / radius / typography expressed as raw value (hex, rgb, px) instead of token reference</pattern>
+      <pattern id="f2">interactive element with fewer than the required states rendered AND no explicit N/A annotation</pattern>
+      <pattern id="f3">motion described qualitatively ("smooth", "snappy") without ms + easing + reduced-motion fallback</pattern>
+      <pattern id="f4">text element with Lorem ipsum or "TBD" copy OR with no max-length / truncation rule</pattern>
+      <pattern id="f5">screen with interactive elements but no focus-order annotation</pattern>
+      <pattern id="f6">handoff package created against a Figma file that has unresolved comments / open feedback threads</pattern>
+      <pattern id="f7">custom component used without a registered design-system entry OR a justified reason ("one-off CTA for campaign X, will not be reused")</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Group identical-spec components across screens — record once, reference by ID.</transformation>
+      <transformation>Annotate states inline in Figma OR in the handoff doc; either is acceptable as long as the inventory is complete.</transformation>
+      <transformation>Reference an existing component spec instead of duplicating ("uses ds/Button/Primary spec").</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/handoff-package.md"/>
+  </output-contract>
+
+  <section title="Designer self-check (run before sending to dev)">
+    <list>
+      <item>Token audit passes (scripts/figma-token-audit.py) — no raw values (r1)</item>
+      <item>State inventory complete for every interactive element (r2)</item>
+      <item>Motion specs have duration + easing + reduced-motion (r3)</item>
+      <item>Content rules set per text element (r4)</item>
+      <item>Focus order documented per screen (r5)</item>
+      <item>Accessibility specs filled (contrast pairs verified, ARIA landmarks set)</item>
+      <item>i18n expansion factor recorded for target locales</item>
+      <item>No open Figma comments on the handoff frames</item>
+    </list>
+  </section>
+
+  <section title="Dev acceptance checklist (run before merging implementation PR)">
+    <list>
+      <item>Implementation uses tokens (no raw values in committed CSS / styles)</item>
+      <item>All required states are implemented and visually match the spec</item>
+      <item>Motion uses design-system curves and durations; prefers-reduced-motion is honored</item>
+      <item>Text max-length / truncation matches spec; tested with longest locale string</item>
+      <item>Tab order matches the focus-order annotation; no keyboard traps in non-modal regions</item>
+      <item>ARIA landmarks, labels, and roles match the accessibility spec</item>
+      <item>Screen passes automated a11y check (axe / pa11y) per `solo/dev/testing-developer/a11y-no-regression-pr-gate`</item>
+      <item>Any deviation from spec is documented in the PR with reviewer sign-off</item>
+    </list>
+  </section>
+</text>

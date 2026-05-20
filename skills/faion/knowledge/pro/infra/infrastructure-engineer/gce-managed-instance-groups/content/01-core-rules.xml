@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="gce-managed-instance-groups Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for gce-managed-instance-groups. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Production MIGs MUST be regional (not zonal), MUST set minimum instances to at least 3 (one per zone), and MUST configure distribution_policy_target_shape to EVEN. Zonal MIGs are permitted only for dev/test environments.</statement>
+      <rationale source="v1-source">A zonal MIG becomes fully unavailable during a zone outage. Regional MIGs with EVEN distribution ensure capacity across all three zones; a zone outage reduces capacity to 66% rather than 0%.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every production MIG MUST configure autohealing with an HTTP(S) health check and set initial_delay_sec to at least the full VM startup plus application warmup time. The health check path MUST return HTTP 200 only when the application is fully ready to serve traffic.</statement>
+      <rationale source="v1-source">If initial_delay_sec is too short, the autoheal loop replaces healthy VMs that are still starting, causing a thrashing loop that takes the entire MIG offline. The health check path must reflect true readiness, not just that the process is running.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Rolling updates on production MIGs MUST set max_unavailable_fixed = 0 (or maxUnavailable=0) and max_surge_fixed &gt;= 1 to ensure capacity is never reduced during the update. Update type MUST be PROACTIVE so instances are replaced immediately rather than waiting for natural turnover.</statement>
+      <rationale source="v1-source">maxUnavailable=0 guarantees that the load balancer always has the full target pool available. maxSurge&gt;=1 provides the surge capacity needed to start new-template instances before draining old ones. PROACTIVE mode ensures the update actually completes; OPPORTUNISTIC only replaces on recreation events and can leave the MIG in a mixed state indefinitely.</rationale>
+    </rule>
+  </section>
+</text>

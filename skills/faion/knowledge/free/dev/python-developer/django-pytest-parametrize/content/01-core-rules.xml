@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-pytest-parametrize Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-pytest-parametrize. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use @pytest.mark.parametrize("argnames", [...values]) to run the same test body with different inputs. For multiple arguments, pass a comma-separated string for argnames and tuples for values. Use ids= parameter for descriptive test IDs when tuple values are not self-explanatory. Each combination must be independent and must not share mutable state.</statement>
+      <rationale source="v1-source">Descriptive IDs make test failure messages pinpoint the exact failing case: FAILED test_validation[email-invalid] is clearer than FAILED test_validation[0]. Each combination runs as an independent test, so failures don't cascade. Shared mutable state between combinations creates order-dependent failures.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For API validation tests, parametrize over (field, value, expected_error) tuples. Start from a valid payload dict and override the field under test. Assert on both status code (400) and the presence of the expected error message in response.data[field]. Use descriptive comments or inline variable names in the parameter tuples.</statement>
+      <rationale source="v1-source">The three-tuple pattern (field, value, error) is self-documenting: it reads as "when field has value, expect error". Starting from a valid payload ensures the only variable is the field under test, isolating the validation rule. Asserting on the error message (not just 400) catches cases where validation fails for the wrong reason.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Refactor a group of tests to parametrize when: (1) the tests have the same body structure and differ only in data, (2) there are 3 or more similar tests, (3) adding a new case requires copying an existing test. Keep each parameter combination's intent clear through comments in the tuple or the ids= parameter. Do NOT parametrize tests that have different setup, teardown, or assertion logic.</statement>
+      <rationale source="v1-source">Three identical tests are a maintenance burden: changes must be applied three times. parametrize collapses them to one body, so changes apply to all cases at once. The ids= parameter gives each combination a readable name in pytest output, making failures easy to understand without reading the source.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use request.getfixturevalue(fixture_name) inside a parametrized test to select between fixtures by name. Use @pytest.mark.parametrize("fixture", [...], indirect=True) when you need to pass parameters through a fixture to prepare test objects. Avoid using indirect= for simple cases; prefer explicit fixture composition.</statement>
+      <rationale source="v1-source">getfixturevalue lets you parametrize over client fixtures (api_client, authenticated_client, admin_client) without duplicating the test body for each role. indirect= is a power-user feature for when fixture preparation depends on the parameter value; it's harder to read and should be used sparingly.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="web-scraping-resilience Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for web-scraping-resilience. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Add a random delay of 1–3 seconds between requests to the same domain. Never fire requests in a tight loop. Use p-limit to cap concurrent requests at 3 or fewer for unknown targets.</statement>
+      <rationale source="v1-source">1–3 RPS is below the threshold that triggers most commercial rate-limiters. Jitter prevents synchronized bursts from multiple worker threads that fixed delays can produce.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use exponential backoff with jitter for retry delays: delay = baseDelay * 2^attempt + random(0, 1000ms). Cap at 5 retries. Re-throw on the final attempt so the caller can log and skip rather than silently continue.</statement>
+      <rationale source="v1-source">Exponential backoff gives the target server time to recover from transient overload. The random jitter prevents multiple concurrent workers from retrying in synchronized waves (thundering herd).</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Wrap every page.$eval call in a safeExtract helper that catches timeout errors and returns a default value. Set waitForSelector timeout to 5000ms maximum. Implement browser crash recovery that detects "Target closed" / "Session closed" errors and relaunches the browser.</statement>
+      <rationale source="v1-source">Unguarded $eval calls on absent selectors throw and abort the entire batch. Browser crashes (OOM, renderer crash) are not exceptional on long runs — they must be recoverable automatically.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Set a realistic randomized User-Agent per session. Override navigator.webdriver to undefined. Add Accept-Language, Accept-Encoding, Accept, and Referer headers. For Playwright, prefer playwright-stealth; for Puppeteer, use puppeteer-extra-plugin-stealth.</statement>
+      <rationale source="v1-source">Headless Chrome ships with navigator.webdriver=true and missing system fonts that bot-detection libraries check as first-pass signals. These overrides defeat naive detection; deeper fingerprinting requires a dedicated stealth library.</rationale>
+    </rule>
+  </section>
+</text>

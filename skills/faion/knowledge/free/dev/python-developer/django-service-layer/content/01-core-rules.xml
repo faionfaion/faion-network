@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-service-layer Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-service-layer. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Service functions MUST use keyword-only arguments (asterisk before first param). This means def user_create(*, email: str, name: str) -&gt; User, never def user_create(email: str, name: str) -&gt; User.</statement>
+      <rationale source="v1-source">Keyword-only arguments prevent caller bugs when signature changes. Adding a new parameter never accidentally shifts existing positional arguments. Call sites are also self-documenting: user_create(email=e, name=n) instead of user_create(e, n).</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Services that write to multiple models MUST wrap all writes in a single transaction.atomic() block. The transaction boundary belongs at the service function body — never in the view, never nested in a sub-service without explicit intention.</statement>
+      <rationale source="v1-source">Multi-model writes without transactions risk partial failure: the first model saves, the second fails, and the database is in an inconsistent state. transaction.atomic() rolls back all writes if any exception is raised inside the block.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Services MUST call model.full_clean() before model.save() for any newly constructed model instance. This applies to Model(...) + save() patterns; Model.objects.create() shortcuts are forbidden for new instances that need validation.</statement>
+      <rationale source="v1-source">Model.objects.create() bypasses the clean() method. Model validation defined in clean() (multi-field rules, cross-field constraints) only fires when full_clean() is called explicitly. Agents commonly trust clean() to fire and ship invalid data when using create().</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Services MUST raise domain exceptions (ApplicationError, NotFoundError, ValidationError, PermissionDeniedError from core/exceptions.py) not DRF or HTTP exceptions. The view layer is responsible for mapping domain exceptions to HTTP status codes.</statement>
+      <rationale source="v1-source">Domain exceptions don't know about HTTP. Services reused in Celery tasks, management commands, and admin actions should not carry HTTP semantics. The view's exception handler catches domain exceptions and returns the appropriate status code and error format.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Side effects triggered by a service (Celery tasks, background Django tasks) MUST be dispatched after the transaction commits, using transaction.on_commit(). Never dispatch inside the atomic block because the task may execute before the transaction commits.</statement>
+      <rationale source="v1-source">A Celery task dispatched inside an atomic block can run before the DB transaction commits, causing the task to see stale or non-existent data. transaction.on_commit() guarantees the task only runs after the DB write is visible.</rationale>
+    </rule>
+  </section>
+</text>

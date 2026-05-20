@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-vpc-three-tier Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-vpc-three-tier. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Production VPCs MUST span at least 3 Availability Zones with 3 subnet tiers each (public, private, database) totaling 9 subnets. CIDR blocks MUST be planned to avoid overlaps with other VPCs to permit future Transit Gateway or VPC peering. Enable DNS hostnames and DNS support on every VPC.</statement>
+      <rationale source="v1-source">3 AZs provides N+2 redundancy. Public/private/database isolation is required by PCI-DSS and SOC 2. Non-overlapping CIDRs are a hard requirement for Transit Gateway routing; retrofitting is expensive.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Production environments MUST deploy one NAT gateway per Availability Zone (one_nat_gateway_per_az=true). Dev/staging MAY use a single NAT gateway to reduce cost. NAT gateways MUST be deployed in public subnets only. Each private subnet's route table MUST point to the NAT gateway in the same AZ.</statement>
+      <rationale source="v1-source">A single NAT gateway is a single point of failure and routes all AZ cross-traffic through one AZ (incurring data transfer charges). Per-AZ NAT gateways cost ~$32/month each but eliminate the cross-AZ charge and the SPOF.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>All VPCs MUST have a Gateway endpoint for S3 (free) attached to all private route tables. Interface endpoints for ECR (ecr.api + ecr.dkr) and Secrets Manager MUST be created in private subnets when containers or instances pull images or fetch secrets — this eliminates NAT gateway charges for those traffic flows and removes the public internet from the path.</statement>
+      <rationale source="v1-source">S3 Gateway endpoint is free and eliminates S3 traffic from NAT gateway bandwidth billing. ECR interface endpoints save ~$0.09/GB vs NAT for image pulls. Secrets Manager via interface endpoint keeps credentials fetches entirely private.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Application Load Balancers serving production traffic MUST: be internet-facing with HTTPS listener using TLS 1.2+ (ELBSecurityPolicy-TLS13-1-2-2021-06), have an HTTP listener that redirects to HTTPS, and use ACM-managed certificates. VPC Flow Logs MUST be enabled on all production VPCs, writing to CloudWatch Logs with 30-day retention minimum.</statement>
+      <rationale source="v1-source">HTTP-only ALBs transmit credentials and session tokens in cleartext. TLS policy enforcement prevents TLS 1.0/1.1 downgrade attacks. Flow logs are mandatory for incident investigation and compliance evidence.</rationale>
+    </rule>
+  </section>
+</text>

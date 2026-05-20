@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-gateway-graphql Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-gateway-graphql. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use Apollo Federation v2 for new projects. Never use schema stitching for new federation work — it places all schema ownership at the gateway, creating a bottleneck and coordination overhead for every schema change.</statement>
+      <rationale source="v1-source">Federation v2 allows subgraph teams to add and modify types independently. Stitching requires gateway team involvement for every cross-service type extension.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Define entities with @key(fields: "id") on the primary owning subgraph. Implement __resolveReference to fetch an entity by its key fields. Use @external on fields defined in another subgraph that are referenced via @requires. Use @shareable when a type or field is intentionally defined in multiple subgraphs.</statement>
+      <rationale source="v1-source">Missing @key or incorrect __resolveReference implementations are the most common federation composition failures. Agents mix v1 and v2 directives — always validate with rover.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Configure query depth limit (max_depth: 15), complexity limit, alias limit (max_aliases: 30), and root field limit (max_root_fields: 20). Disable introspection in production. Use persisted queries (APQ or safelisting) to prevent arbitrary query execution against production APIs.</statement>
+      <rationale source="v1-source">Without depth limits, a malicious client can craft deeply nested queries that force the router to fetch exponentially more data. Without introspection disabled, the full schema is exposed as an attack surface map.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Block mutations for anonymous (unauthenticated) users at the router level. Rate limit by query complexity, not just request count — a query with max_depth=15 touching 4 subgraphs costs more than a simple lookup.</statement>
+      <rationale source="v1-source">Anonymous mutations are an obvious abuse vector. Complexity-based rate limiting prevents abuse by clients that craft expensive queries to stay under simple request-count limits.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Run rover supergraph compose --config supergraph.yaml in CI on every subgraph schema change. Never deploy a supergraph composed locally without CI validation. Run rover subgraph check on every subgraph PR to detect breaking changes before merge.</statement>
+      <rationale source="v1-source">Composition failures surface at deploy time without CI checks, causing outages. Subgraph check catches breaking changes (removing fields, changing types) that would break existing clients.</rationale>
+    </rule>
+  </section>
+</text>

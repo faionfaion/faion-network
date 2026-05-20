@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="RAG Feature Acceptance Contract — Output Schema" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the YAML shape of `acceptance-contract.yaml`. Any agent producing or modifying this file MUST satisfy this contract before commit.</summary>
+
+  <output-contract>
+    <required>
+      <field name="feature" format="kebab-case-identifier"/>
+      <field name="version" format="semver"/>
+      <field name="intents" type="map" min_keys="2"/>
+      <field name="intents.&lt;name&gt;.pm_outcome" type="string" min_chars="20"/>
+      <field name="intents.&lt;name&gt;.acceptable_failure" type="string" min_chars="20"/>
+      <field name="intents.&lt;name&gt;.sme_rubric" required_keys="pass,fail" recommended_keys="borderline"/>
+      <field name="intents.&lt;name&gt;.offline" type="map" min_entries="2"/>
+      <field name="intents.&lt;name&gt;.online" type="map" min_entries="1"/>
+      <field name="signatures" required_keys="pm,sme,ml_engineer" value_format="email date version"/>
+      <field name="recontract_triggers" type="list" min_entries="2"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">single-intent contract (intents map has &lt; 2 entries)</pattern>
+      <pattern id="f2">offline metric without paired online metric for the same intent</pattern>
+      <pattern id="f3">threshold value without a baseline citation in a sibling `baseline:` field or inline comment</pattern>
+      <pattern id="f4">signatures field contains "team" / "leadership" / "AI" — must be named human emails</pattern>
+      <pattern id="f5">use of BLEU, ROUGE, METEOR as the sole correctness metric (these correlate poorly with RAG faithfulness)</pattern>
+      <pattern id="f6">"good enough" / "looks fluent" / "vibe-check" appearing in sme_rubric.pass — must cite source-grounded criteria</pattern>
+      <pattern id="f7">recontract_triggers empty or "every quarter" — must be event-based, not calendar-based</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Add new intents in a minor version bump (v1.2 → v1.3) with re-signature.</transformation>
+      <transformation>Tighten thresholds (raise faithfulness floor) in a patch version (v1.2.0 → v1.2.1) with PM + ML signature only; SME signature inherited.</transformation>
+      <transformation>Loosen thresholds requires full three-signature re-sign.</transformation>
+      <transformation>Adding metric pairs to an existing intent does not require resign if both PM and ML co-sign the addendum.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/acceptance-contract.schema.yaml"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>≥2 intents defined with all four PM / acceptable_failure / SME / offline / online fields populated</item>
+      <item>Every offline metric has a paired online metric</item>
+      <item>Every threshold has either a baseline or PM-acceptable-error citation</item>
+      <item>signatures.pm, signatures.sme, signatures.ml_engineer are named humans with dates within the last 90 days</item>
+      <item>recontract_triggers is event-based and machine-detectable</item>
+      <item>BLEU / ROUGE not used as sole metric</item>
+      <item>File validates against templates/acceptance-contract.schema.yaml</item>
+    </list>
+  </section>
+
+  <section title="Downstream consumers">
+    <p>This contract is consumed by:</p>
+    <list>
+      <item>`scripts/contract-to-eval-config.py` — generates Ragas / TruLens config</item>
+      <item>CI gate (per-PR): blocks merges where offline metrics fall below contract thresholds</item>
+      <item>Production monitor: emits PagerDuty alerts when an online metric breaches a contract floor</item>
+      <item>Quarterly recontract review: lists all features whose recontract_triggers fired</item>
+    </list>
+    <p>Therefore any drift between this file and the running eval / monitor is a P1 bug — the file is source of truth.</p>
+  </section>
+</text>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="finops-devops-cost-kubernetes Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for finops-devops-cost-kubernetes. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Replace single-pool Kubernetes clusters with at minimum three node pools: cpu-intensive (compute-optimized: c2/c3 on GCP, c5/c6 on AWS), memory-intensive (high-memory: n2-highmem on GCP, r5/r6 on AWS), and general (cost-optimized: e2 on GCP, m5/t3 on AWS). Enable Cluster Autoscaler on all pools. Configure PodAffinity or NodeSelector to route workloads to matching pools.</statement>
+      <rationale source="v1-source">GKE benchmark: 500 uniform n2-standard-8 nodes at 25% CPU → 280 nodes across workload-specific pools at 55% CPU. Monthly savings: $57,600 (48%). The split allows each pool to autoscale independently based on its actual workload type.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Create a dedicated Spot node pool for batch, ML training, and CI/CD workloads. Taint the pool with `cloud.google.com/gke-spot=true:NoSchedule` (GCP) or `kubernetes.io/arch=spot:NoSchedule` (EKS Spot). Add corresponding Toleration to batch job specs. Ensure batch jobs have pod disruption budgets and restart policies set to OnFailure to handle preemption gracefully.</statement>
+      <rationale source="v1-source">The taint ensures services never land on the Spot pool accidentally. The toleration ensures batch jobs explicitly opt in. OnFailure restart policy handles the 2-minute preemption notice by allowing the scheduler to replace the pod on an On-Demand node if no Spot capacity is available.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Deploy VPA in Recommendation mode on all deployments for 7 days before any other optimization. Review VPA recommendations for pods where current requests exceed actual usage by 50%+ — these are the highest-impact rightsizing candidates. Enable VPA Auto mode only on stateless deployments (not databases, not single-replica stateful sets) after validating Recommendation mode for 7 days.</statement>
+      <rationale source="v1-source">Recommendation mode shows the gap without risk. Auto mode restarts pods to apply new requests — acceptable for stateless services, potentially disruptive for stateful ones. 7-day observation captures weekly traffic patterns before committing to new limits.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>After 30 days of running workload-specific node pools with autoscaling, identify the stable baseline: the minimum node count observed over the 30-day window for each pool. Purchase 1-year Committed Use Discounts covering 80% of this baseline. Leave 20% on On-Demand to absorb measurement error. Review and adjust commitments quarterly.</statement>
+      <rationale source="v1-source">CUDs commit to vCPU and memory amounts, not specific instance types — more flexible than VM-level RIs. Purchasing after 30 days of autoscaling ensures the baseline reflects actual workload requirements post-optimization, not the original over-provisioned size.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="graph-rag-retrieval Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for graph-rag-retrieval. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Classify every query before retrieval using a fast LLM call. Use the four canonical types: GLOBAL (main themes, overall trends), ENTITY (specific entity details), RELATIONSHIP (connections between entities), LOCAL (single-chunk-answerable facts). Fall back to LOCAL on classification failure.</statement>
+      <rationale source="v1-source">Without classification, a system must either run all retrieval paths (3-5x latency) or pick one strategy that degrades accuracy for the wrong query types. Classification adds one cheap LLM call but routes the query to the strategy where it performs best.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For global queries, always use pre-computed hierarchical summaries, not live graph traversal. For relationship queries, wrap every nx.shortest_path call in try/except NetworkXNoPath — disconnected subgraphs are common. Cap relationship query path depth to 3 hops.</statement>
+      <rationale source="v1-source">Live graph traversal at query time is too slow for graphs with more than 50k nodes. nx.shortest_path raises NetworkXNoPath on disconnected subgraphs; uncaught, this crashes the retrieval step for valid relationship queries where the entities happen to be in separate components.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Start with hybrid retrieval (vector + graph expansion) before committing to pure graph-only retrieval. Limit graph neighbor expansion to 3 neighbors per entity to prevent context explosion. Deduplicate by chunk ID before returning the final candidate set.</statement>
+      <rationale source="v1-source">Pure graph retrieval without a vector anchor can return structurally connected but semantically irrelevant chunks. The hybrid approach inherits the precision of embedding similarity and the recall of graph traversal. Unbounded neighbor expansion causes context windows to fill with low-relevance entity chunks.</rationale>
+    </rule>
+  </section>
+</text>

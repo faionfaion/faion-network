@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="rag-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for rag-implementation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Ingest stage: load documents → chunk → embed → upsert to vector store. Query stage: embed question → retrieve top-K → filter by score threshold → generate with context.</statement>
+      <rationale source="v1-source">Separating ingestion and query enables independent scaling. Chunking decisions affect retrieval quality at index time; filtering at query time prevents low-confidence chunks from corrupting context.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Include explicit system prompt instruction: "Answer ONLY from the provided context. If the context does not contain the answer, say so."</statement>
+      <rationale source="v1-source">Without this constraint, the LLM falls back to parametric knowledge and hallucinates. The rule must be stated even when context is present.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Set top_k conservatively (3-7) and measure token usage; top-K chunks must fit in the context window alongside the answer.</statement>
+      <rationale source="v1-source">Over-fetching fills the context, leaving no room for the LLM to generate a quality response. Token budget = context_limit - question - system_prompt - answer_budget.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Filter retrieved chunks below a minimum similarity threshold (e.g., 0.6) before passing to generation.</statement>
+      <rationale source="v1-source">Low-scoring chunks add noise without contributing relevant information and can cause the model to contradict itself.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Strategy selection: fixed-size (500 chars, 50 overlap) for fast, predictable chunking of most prose corpora; sentence-based for factual Q&amp;A where answers align with sentence boundaries; paragraph-based to preserve logical units in blog posts and documentation; semantic (embedding-based splits) for highest quality on complex multi-topic docs (highest cost); Markdown-header for technical docs where headers preserve section context.</statement>
+      <rationale source="v1-source">Each strategy has optimal domains. Test empirically on representative queries before committing to production.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Query expansion: generate 3 alternative phrasings when the original query may not match corpus vocabulary; include the original query in the search set.</statement>
+      <rationale source="v1-source">User queries often use different vocabulary than documents. Multi-phrasing retrieval averages over vocabulary gap and increases recall.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>HyDE (Hypothetical Document Embedding): account for 2x embedding cost per query when enabling; disable for cost-sensitive or low-QPS production workloads.</statement>
+      <rationale source="v1-source">HyDE generates hypothetical answer first, then embeds it. This doubles embedding API calls per request and adds LLM latency.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Load supported formats: .txt (plain text), .md (Markdown), .pdf (PDF text extraction), directory traversal for batch loading. Use appropriate loader per format.</statement>
+      <rationale source="v1-source">Each format has extraction quirks. pypdf fails on scanned PDFs; markdown-loader respects headers.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>For PDFs: detect if scanned (text layer missing) and use OCR fallback (e.g., pytesseract, AWS Textract) rather than silently returning empty text.</statement>
+      <rationale source="v1-source">Silent failures (empty extraction) are dangerous; they may cause zero chunks to be indexed without error.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Add metadata during loading: source filename, page number (for PDFs), section heading (for Markdown), ingestion timestamp, unique source_id for deduplication.</statement>
+      <rationale source="v1-source">Metadata is essential for filtering, citations, and change detection during incremental updates.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Use OpenAI text-embedding-3-small (1536-dim) for cost efficiency or text-embedding-3-large (3072-dim) for maximum quality. Batch embeds in groups of 50 to respect rate limits.</statement>
+      <rationale source="v1-source">Small is 25% cheaper and sufficient for most Q&amp;A; large is industry standard for high-precision retrieval.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Store chunks in Chroma with metadata: {"source": filepath, "chunk_index": N, "page": P, "ingestion_date": ISO8601, "source_id": hash}. Use persistent directory storage (not in-memory) for production.</statement>
+      <rationale source="v1-source">Metadata enables filtering and citations. Persistent storage survives restarts.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>For production with frequent updates: implement soft-delete (mark is_deleted=true) rather than physical deletion to enable rollback. Periodically compact the index by physically deleting old soft-deleted entries.</statement>
+      <rationale source="v1-source">Soft-delete enables recovery from accidental deletions. Periodic compaction prevents index bloat.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Retrieve top_k * 2 (e.g., 10 if targeting top_k=5), apply similarity score threshold (e.g., 0.65), then trim to top_k. This ensures diverse, confident results.</statement>
+      <rationale source="v1-source">Over-fetching and filtering prevents accidentally dropping the best result due to arbitrary top_k cutoff. Threshold filters out low-confidence noise.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>System prompt must explicitly state: "Answer ONLY from the provided context. If the context does not contain enough information, say 'I don't have enough information.'" Do not ask the model to infer beyond context.</statement>
+      <rationale source="v1-source">Explicit constraints + fallback messaging prevent hallucination better than implicit trust in system prompt alone.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Request citations in a parseable format: "Always cite sources as [Source: filename, page N]" or "[1]" for numbered references. Parse citations post-generation and validate against retrieved chunk metadata.</statement>
+      <rationale source="v1-source">Validation catches hallucinated citations (plausible-sounding but unretrieved sources). Post-check is cheaper than trying to enforce formatting in prompt.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Temperature must be low (≤ 0.3) for RAG generation. Higher temps cause model drift off context even with explicit constraints.</statement>
+      <rationale source="v1-source">Higher temperature increases variance and creativity; RAG requires deterministic, context-grounded output.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Set a max_tokens constraint on generation to leave headroom in context window. Default 500 tokens for Q&amp;A, 1000 for summarization.</statement>
+      <rationale source="v1-source">Prevents token overflow and ensures model doesn't fill context with its own output, losing context for next turn.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Default to sentence-boundary chunking over fixed-size; it preserves semantic units and improves retrieval precision. Always include chunk_index and source_id in metadata — they enable parent-document reconstruction and citation.</statement>
+      <rationale source="v1-source">Semantic boundaries are stronger units than arbitrary fixed sizes. Complete metadata enables recovery and audit.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Use 10-20% overlap (not 0) between chunks to avoid losing context at boundaries. Set score_threshold explicitly and tune per corpus; default 0.7 is often too aggressive for domain-specific text.</statement>
+      <rationale source="v1-source">Overlap preserves cross-chunk context. Threshold is corpus-dependent; domain-specific text may score lower than general text.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>HyDE improves recall 10-20% for factual Q&amp;A — worth the extra API call if budget permits. Cache query embeddings for repeated queries using Redis keyed by hash(model + query).</statement>
+      <rationale source="v1-source">HyDE is a proven recall boost. Embedding cache eliminates redundant calls on repeated queries.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Separate ingestion and query pipelines — different scaling profiles and failure modes. Test chunking strategy and top_k empirically on representative queries before committing to production.</statement>
+      <rationale source="v1-source">Separation enables independent scaling and debugging. Empirical tuning is required; no defaults work universally.</rationale>
+    </rule>
+    <rule id="r23" testable="true" depth="essential">
+      <statement>PDF loaders return empty strings for scanned pages silently — agents must validate chunk content length (greater than 50 chars) before embedding. Avoid indexing empty chunks.</statement>
+      <rationale source="v1-source">Silent empty chunks waste embedding cost and can bias retrieval. Validation catches this early.</rationale>
+    </rule>
+    <rule id="r24" testable="true" depth="essential">
+      <statement>response.data[0].embedding is a list, not a numpy array — agents storing to numpy must convert explicitly. Chroma expects list; numpy conversion adds type conversion overhead.</statement>
+      <rationale source="v1-source">Type inconsistency is a common bug in agent-written code. Explicit conversion prevents silent failures.</rationale>
+    </rule>
+    <rule id="r25" testable="true" depth="essential">
+      <statement>Chunking strategy mismatches query type: fixed-size chunks split mid-sentence, causing poor retrieval for factual look-ups; semantic chunking is slower to build. Context window stuffing: top-K chunks can fill LLM context, leaving no room for answer.</statement>
+      <rationale source="v1-source">These are high-impact failures. Agents should iterate on chunking strategy and top_k based on test queries.</rationale>
+    </rule>
+    <rule id="r26" testable="true" depth="essential">
+      <statement>Retrieval recall failures: if relevant chunk not in top-K, LLM cannot answer correctly regardless of generation quality. Document loader accuracy: pypdf fails on scanned PDFs, complex layouts — needs OCR fallback.</statement>
+      <rationale source="v1-source">Retrieval is the bottleneck. Load accuracy is critical; silent failures are dangerous.</rationale>
+    </rule>
+    <rule id="r27" testable="true" depth="essential">
+      <statement>Re-ingestion on document updates requires delete+re-insert; without soft-delete tracking, stale chunks accumulate. Answer generation may hallucinate even with correct context if system prompt doesn't explicitly enforce "answer only from context".</statement>
+      <rationale source="v1-source">Stale data and hallucination are silent failures. Both require explicit safeguards.</rationale>
+    </rule>
+  </section>
+</text>

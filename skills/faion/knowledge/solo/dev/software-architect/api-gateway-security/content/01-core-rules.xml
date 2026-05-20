@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-gateway-security Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-gateway-security. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Select authentication per client type: public API with quotas → API Keys + OAuth; user-facing app → JWT + OAuth 2.0; service-to-service → mTLS; partner integrations → API Keys + IP whitelist. Never use a single mechanism for all client types if their security postures differ.</statement>
+      <rationale source="v1-source">Mixing authentication types per client posture reduces attack surface. A partner with an IP-whitelisted API key cannot use a stolen JWT from a mobile client to access partner-only routes.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Anonymous routes (/health, /metrics, /public/*) MUST be explicitly listed with no-auth declarations. JWT/API-key plugins applied to a service without explicit anonymous-route exceptions silently fail on health checks, breaking HA probe behavior.</statement>
+      <rationale source="v1-source">Agents add JWT plugins on services but forget anonymous routes; health probes fail; load balancers pull the instance; gateway goes down.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Define an authorization matrix: which routes require which roles/scopes. Implement at the gateway for coarse access (method + path + scope). Delegate resource-level checks (ownership, tenancy, field-level) to backend services — they have the domain model.</statement>
+      <rationale source="v1-source">Gateway authorization without scope checks allows any authenticated user to call any endpoint. Backend-only authorization without gateway checks exposes services to unauthenticated requests if the gateway is bypassed.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Terminate TLS at the gateway (HTTPS only). Use TLS 1.3 as minimum (accept TLS 1.2 only for legacy client compatibility). Always re-encrypt to upstream when crossing trust boundaries — never run plaintext past the edge in production.</statement>
+      <rationale source="v1-source">Plaintext between gateway and backend exposes JWTs, user data, and session tokens to anyone with network access inside the cluster or data center. mTLS to backends adds defense-in-depth.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Configure request size limits, schema validation, and input sanitization before requests reach backends. Strip internal headers (X-Internal-*, Authorization after validation, X-Forwarded-* spoofing). Apply SQL injection and XSS protection via WAF managed rule groups rather than custom regex.</statement>
+      <rationale source="v1-source">Backends should not need to defend against malformed requests — that is gateway responsibility. Stripping Authorization headers after validation prevents JWT leakage to backend application logs.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Integrate WAF at the gateway for external-facing APIs. Use managed rule groups (AWS Managed Rules, Cloudflare WAF, ModSecurity CRS) rather than custom rules — custom regex rules are maintenance burden and often bypass-prone. Always require human review before applying any WAF / mTLS / IAM change — one bad regex blocks all traffic.</statement>
+      <rationale source="v1-source">Managed rule groups are maintained by security teams with threat intelligence; custom rules go stale. A misconfigured WAF rule blocking legitimate traffic is a P0 incident equivalent to a DDoS.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Configure audit logging at the gateway for all authenticated API calls: timestamp, method, path, status, consumer identity (user ID or API key ID — never the key itself), IP, user agent, and request ID. Store in a tamper-evident log sink. Define retention policy based on compliance requirements (GDPR: minimum 6 months; PCI-DSS: 1 year).</statement>
+      <rationale source="v1-source">Without gateway-level audit logs, security incidents cannot be reconstructed. Backend logs see internal calls, not the external identity; gateway logs capture both.</rationale>
+    </rule>
+  </section>
+</text>

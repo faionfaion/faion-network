@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="python-async-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for python-async-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use asyncio.TaskGroup for any set of concurrent coroutines; prefer it over gather for new code on Python 3.11+.</statement>
+      <rationale source="v1-source">TaskGroup propagates cancellation automatically — if one task raises, all siblings are cancelled, preventing zombie tasks that gather leaves running.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Wrap every external-call fan-out with asyncio.Semaphore; derive the limit from downstream capacity, not an arbitrary number.</statement>
+      <rationale source="v1-source">Unbounded gather over a queue can spawn 100k tasks, consuming all RAM and crushing downstream services.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Pair every await with a timeout using asyncio.timeout() (3.11+) or asyncio.wait_for(); never await without a deadline.</statement>
+      <rationale source="v1-source">Awaiting without a timeout means a stalled downstream silently hangs the event loop task indefinitely.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use async generators for paginated data streams to avoid loading all pages into memory.</statement>
+      <rationale source="v1-source">Loading all pages first wastes memory and delays first-item processing; generators yield items as they arrive.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Create httpx.AsyncClient, DB pools, and Redis clients once at application startup; never instantiate them per request or inside loops.</statement>
+      <rationale source="v1-source">Creating a client per request leaks sockets, breaks HTTP/2 connection reuse, and exhausts file descriptors under load.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Implement resource cleanup via async context managers (asynccontextmanager or __aenter__/__aexit__); never rely on garbage collection for async resources.</statement>
+      <rationale source="v1-source">GC does not call async close() methods; connections and file handles leak silently without explicit context management.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Store all fire-and-forget tasks in a set and register a done callback to remove them; never discard the task reference immediately after create_task().</statement>
+      <rationale source="v1-source">Unreferenced tasks may be garbage-collected before completion; exceptions are silently swallowed.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Run CPU-bound operations in loop.run_in_executor(None, fn) for tasks under ~50ms; use ProcessPoolExecutor for longer tasks.</statement>
+      <rationale source="v1-source">A CPU-bound synchronous call inside async def blocks the event loop for all concurrent tasks for its full duration.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Treat CancelledError as control flow: catch only to perform cleanup, then re-raise unconditionally.</statement>
+      <rationale source="v1-source">Swallowing CancelledError prevents TaskGroup and timeout() from completing cancellation, leaving zombie tasks.</rationale>
+    </rule>
+  </section>
+</text>

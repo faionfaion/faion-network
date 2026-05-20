@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="langchain-memory Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for langchain-memory. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Conversation Buffer Memory stores the full history and is the simplest memory abstraction. Use for conversations expected to stay under 20 turns and under 8k tokens.</statement>
+      <rationale source="v1-source">Buffer memory provides perfect recall at zero computational cost; the tradeoff is token bloat.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Conversation Summary Memory compresses old messages into a running summary and keeps only recent messages in the prompt. Use for conversations 20-100 turns where progressive summarization is acceptable.</statement>
+      <rationale source="v1-source">Summary memory breaks the linear growth of buffer memory; the cost is that summarization is lossy and irreversible.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Vector Store Memory embeds all past interactions and retrieves top-K semantically similar ones on each turn. Use for conversations 50+ turns where semantic retrieval (not recency) matters most.</statement>
+      <rationale source="v1-source">Vector memory decouples retrieval from token budget; retrieve only relevant snippets rather than all history. The cost is that similarity-based retrieval can surface unrelated turns if the query is ambiguous.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Entity Memory extracts named entities and attributes from each message and maintains a structured entity store. Use when the conversation is entity-centric (e.g., "user preferences," "project parameters," "person details") rather than narrative.</statement>
+      <rationale source="v1-source">Entity memory structures knowledge for precise recall and merging; the cost is that LLM-based entity extraction is noisy for rare or ambiguous names.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Memory type selection follows conversation length: buffer for &lt;10 turns, entity for entity-focused dialogs, vector for &gt;50 turns with semantic search, and summary for 10-50 turns with sequential context.</statement>
+      <rationale source="v1-source">Each memory type has different token costs and retrieval patterns; matching the type to the conversation shape prevents unnecessary latency and cost. Buffer Memory grows linearly; a 200-turn conversation can easily exceed a 128k context window. Summary Memory compresses and may lose details that were not salient to the summarizer but matter later; irreversible loss. Vector Memory embedding a query and retrieving top-K returns semantically similar, not necessarily causally relevant, past interactions; can surface unrelated turns. Entity Memory: LLM extraction of entities is imperfect; rare or ambiguous entity names are merged or lost.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Define workflow state as a flat TypedDict with simple fields and Annotated accumulating fields. Avoid deeply nested dicts.</statement>
+      <rationale source="v1-source">Flat state schemas reduce checkpoint size and improve debuggability. Accumulating fields (e.g., messages: Annotated[List[str], operator.add]) append rather than replace, making it easy to collect outputs across steps.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Each node function receives state, processes it, and returns a partial state dict. Return only the fields the node updates.</statement>
+      <rationale source="v1-source">Partial updates keep nodes decoupled; each node specifies only what it modifies.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use conditional_edges to route based on state. Return the name of the next node or END.</statement>
+      <rationale source="v1-source">Conditional routing keeps the graph data-driven; the routing decision is separate from node logic.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use interrupt_before to pause a workflow before destructive nodes. Resume with workflow.invoke(None, config) after human approval.</statement>
+      <rationale source="v1-source">Interrupts provide atomic pause-and-resume semantics backed by a checkpointer. This is the correct pattern for human approval; in-graph checks cannot guarantee atomicity across distributed systems.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Compose workflows via subgraphs. A node can call another graph (compiled subgraph) as if it were a function.</statement>
+      <rationale source="v1-source">Subgraphs enable modularity and code reuse; large workflows stay readable.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Wrap risky operations in try-except and route based on error state. Never let exceptions kill the workflow.</statement>
+      <rationale source="v1-source">Explicit error handling makes recovery logic visible and testable.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Stream outputs using workflow.stream(). Use stream_mode="values" to get full state snapshots, stream_mode="updates" for partial deltas.</statement>
+      <rationale source="v1-source">Streaming enables real-time agent feedback and progress visualization.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Always use user-scoped session IDs — never a shared or static string. Session ID collisions leak conversation history between users; this is a critical security failure.</statement>
+      <rationale source="v1-source">Session IDs must be unique per user to prevent cross-user data leakage. Predictable IDs (e.g., user email) allow attackers to retrieve another user's history. Use UUIDs instead.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Set TTL on all session history stores. Conversation data should not persist indefinitely by default.</statement>
+      <rationale source="v1-source">Data retention policies require explicit expiration. TTL prevents accidental indefinite storage of sensitive conversation history.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>For conversations &gt;10 turns, switch from buffer to summary memory to cap token cost. For conversations &gt;50 turns or where semantic retrieval matters, switch to vector memory.</statement>
+      <rationale source="v1-source">Buffer memory grows linearly with conversation length; summary and vector memory provide better scalability for longer conversations.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>In LangGraph workflows, keep WorkflowState schemas flat — deeply nested dicts are hard to checkpoint and debug. Accumulating fields (messages: Annotated[List[str], operator.add]) should be compacted every N messages to prevent checkpoint bloat.</statement>
+      <rationale source="v1-source">Flat state schemas reduce checkpoint size and improve debuggability. Checkpoint size grows with accumulating fields; compaction prevents unbounded growth.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Use interrupt_before at destructive LangGraph nodes; never rely on in-graph checks to substitute for human approval of irreversible actions.</statement>
+      <rationale source="v1-source">LangGraph interrupts provide atomic pause-and-resume semantics; in-graph approval checks are insufficient for irreversible operations.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Log memory reads and writes with session ID, timestamp, and token count. Memory is the most common source of cost surprises in production conversational agents.</statement>
+      <rationale source="v1-source">Memory operations drive token consumption; explicit logging prevents unexpected costs and aids debugging.</rationale>
+    </rule>
+  </section>
+</text>

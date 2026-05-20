@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="db-comparison Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for db-comparison. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Default to Qdrant for new self-hosted production RAG systems; it has the best balance of performance, filtering, and operational simplicity.</statement>
+      <rationale source="v1-source">Qdrant exposes HNSW tuning knobs, supports payload-level filtering, and achieves 41 QPS @ 50M vectors with minimal ops overhead relative to managed solutions.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use pgvector when the team already operates PostgreSQL and corpus is under 5M vectors — zero new infra, ACID transactions, SQL filtering.</statement>
+      <rationale source="v1-source">pgvector integrates seamlessly into existing Postgres stacks, eliminating the ops burden of a separate DB. HNSW and IVFFlat indexes provide sub-second queries on well-tuned configs.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Never use Chroma as the only vector store in production; it lacks replication, auth, and backup primitives.</statement>
+      <rationale source="v1-source">Chroma's in-memory mode loses data on restart. PersistentClient uses SQLite, which is single-writer only and prone to corruption under concurrent load.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>HNSW (Hierarchical Navigable Small World) is best for most use cases, balancing speed and accuracy. IVFFlat is better for faster build time when recall@10 &gt; 0.95 is not required.</statement>
+      <rationale source="v1-source">HNSW provides better recall with tunable parameters (M for connections, ef_construction for build quality, ef_search for query quality). IVF builds faster on large datasets but requires careful tuning of probes vs. clusters.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Run a 3-day production load test before committing to a managed SaaS DB — cost curves are non-obvious under real query patterns.</statement>
+      <rationale source="v1-source">Public benchmarks use synthetic datasets; your domain query distribution may differ significantly. Managed SaaS costs scale non-linearly with vector count and query volume — modeling cost before committing prevents budget surprises.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>M parameter (HNSW connections): Higher = better recall, more memory. Recommended: 12-48. ef_construction (build quality): Higher = better index quality, slower build. Recommended: 100-500. ef_search (query quality): Higher = better recall, slower search. Recommended: 50-200.</statement>
+      <rationale source="v1-source">HNSW tuning directly impacts recall-latency tradeoff. Choosing appropriate M, ef_construction, and ef_search values balances memory, build time, and query speed for your workload.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>IVF parameters — nlist (clusters, default sqrt(n)): Higher = more clusters, better accuracy. Recommended: sqrt(n) to 4*sqrt(n). nprobe (search clusters, default 1): Higher = better recall, slower search. Recommended: nlist/10 to nlist/4.</statement>
+      <rationale source="v1-source">IVF is faster to build than HNSW on large datasets but requires careful tuning of clustering granularity and search depth. Choosing nprobe based on recall targets prevents silent performance degradation.</rationale>
+    </rule>
+  </section>
+</text>

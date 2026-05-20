@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-pytest-mocking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-pytest-mocking. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Patch at the import site of the module under test, not at the definition site of the function being patched. If apps.payments.services imports stripe, patch "apps.payments.services.stripe", not "stripe.Charge.create". Always verify mock calls with assert_called_once_with or assert_called_once when the call is part of the contract. Use MagicMock for return values with attributes. Reset mocks between tests automatically (unittest.mock.patch as decorator does this).</statement>
+      <rationale source="v1-source">Python's import system binds names in each module separately. Patching at the definition site (stripe) does not affect the already-imported name in apps.payments.services.stripe. Patching at the import site replaces the name as seen by the code under test. assert_called_once_with verifies both that the call happened and that the arguments are correct — a critical part of the integration contract.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use the responses library (pip install responses) to mock HTTP calls made via the requests library. Decorate the test or test class with @responses.activate to intercept calls. Add expected responses with responses.add() before calling the code under test. Assert on responses.calls to verify the request was made with the correct URL, method, and payload.</statement>
+      <rationale source="v1-source">responses intercepts at the transport level, so the production code uses the real requests library unchanged. Tests can verify the full request shape (URL, headers, body) and simulate various HTTP responses (200, 503, timeouts) without network access. This tests the integration contract without requiring a live server.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use freezegun.freeze_time as a decorator or context manager to fix time in tests that use datetime.now(), timezone.now(), or datetime.date.today(). Pass an ISO datetime string to freeze_time. Use as a decorator for the entire test or as a context manager for part of the test (e.g., to simulate time passing mid-test). Prefer time-machine library (faster) over freezegun for new tests.</statement>
+      <rationale source="v1-source">Tests that compute relative times at run time are flaky: "coupon valid for 7 days from now" passes today but fails in the future. freeze_time makes the clock deterministic. Context-manager use enables "before/after expiry" scenarios in a single test. time-machine is a faster drop-in replacement if runtime is a concern.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Set CELERY_TASK_ALWAYS_EAGER=True in test settings to run Celery tasks synchronously. For tests that assert only that a task was enqueued (not that it ran), patch the task's delay method: @patch("apps.module.tasks.send_task.delay"). Assert with assert_called_once_with to verify the task was called with the correct arguments. Test the task function itself in a separate test class without mocking.</statement>
+      <rationale source="v1-source">CELERY_TASK_ALWAYS_EAGER makes integration tests simple: the task runs inline and you can assert on its side effects. But for service tests where you only want to verify "the service triggered the right task", patching delay is cleaner: it verifies the contract without actually executing the task's side effects.</rationale>
+    </rule>
+  </section>
+</text>

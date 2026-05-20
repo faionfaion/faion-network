@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="lint-staged-only-not-whole-tree Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for lint-staged-only-not-whole-tree. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every linter or formatter invoked by a `pre-commit`, `lefthook`, or `husky+lint-staged` hook MUST receive ONLY the staged file paths. With `pre-commit` this means leaving `pass_filenames: true` (default) and never wrapping the command in a way that drops `$@`. With `lefthook`, every `run:` MUST reference `{staged_files}` (or `{push_files}` for pre-push). With husky, every command MUST go through `lint-staged` matching the relevant glob. Calling the lint or format tool with `.` or no argument from a pre-commit hook is forbidden.</statement>
+      <rationale source="v1-source">The PkgPulse 2026 husky-vs-lefthook benchmark, the lint-staged maintainers' own README, and pre-commit.com's pass_filenames docs all converge: whole-tree linting in a hook is the leading cause of --no-verify adoption. A 1500-file monorepo with `eslint .` per commit yields 8-12 second hooks; the same hook on three staged files runs in 200ms. Whole-tree formatters also rewrite unstaged work, polluting the next commit and breaking `git blame`.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The CI pipeline MUST include a separate job that runs each linter/formatter whole-tree (`eslint .`, `ruff check .`, `biome check .`, `mypy .`) against the merged-tree state of the PR. This job is the final pre-merge gate; it MUST be required in branch protection. The hook and the CI job share the same config but have opposite scopes by design.</statement>
+      <rationale source="v1-source">Hooks catch what the developer just touched; CI catches drift introduced by partial-stage workflows or by cross-file refactors that the hook's per-file scope cannot see. Both are needed; conflating them into one whole-tree hook breaks the local feedback loop.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>For graph-aware tools (`tsc`, `mypy`, `cargo check`, `pyright`), the pre-commit hook MUST run per-project (one tsconfig.json, one pyproject.toml, one Cargo.toml) and MUST set `pass_filenames: false` so the framework does not pass per-file args. The hook MUST be triggered ONLY when files inside that project change (use pre-commit's `files:` regex or lefthook's `glob:`). Whole-monorepo invocations of these tools belong in CI, not in pre-commit.</statement>
+      <rationale source="v1-source">Calling `tsc index.ts` resolves only that file and reports false negatives because cross-file type contracts are missed. Calling `tsc -p tsconfig.json` from a hook that fires on every commit is correct but slow on large projects; gating on the project's own file glob makes the hook a no-op when the user only edited a sibling project. The pre-commit framework's `files:` regex and `pass_filenames: false` flag exist exactly for this case.</rationale>
+    </rule>
+  </section>
+</text>

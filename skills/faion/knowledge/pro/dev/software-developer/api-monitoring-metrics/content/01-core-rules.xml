@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-monitoring-metrics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-monitoring-metrics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Metric labels MUST be bounded: method (GET, POST, etc.), route template (/users/:id, NEVER /users/123), and status class (2xx, 3xx, 4xx, 5xx). Labels MUST NEVER include user_id, request_id, session_id, trace_id, email, IP address, or any high-cardinality identifier.</statement>
+      <rationale source="v1-source">High-cardinality labels create millions of time series. Prometheus stores each series in memory; a label like user_id on an API with 1M users creates 1M series per metric, consuming gigabytes of RAM and crashing Prometheus within hours. This is the single most common Prometheus production incident.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Histogram buckets MUST be tuned to the actual latency profile of the service, not left at Prometheus defaults (0.005s to 10s in 7 buckets). Use the observed p50/p95/p99 from logs to set buckets. On Prometheus 2.40+, prefer native histograms over fixed-bucket histograms for tail percentile accuracy.</statement>
+      <rationale source="v1-source">Default buckets with coarse resolution at the tail mean histogram_quantile(0.99, ...) returns values that are off by a factor of 2 or more. This causes SLO burn-rate alerts to fire late or not at all. Tuned buckets or native histograms give accurate p99 without guesswork.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every service MUST expose a /metrics endpoint in Prometheus text format. The metrics middleware MUST run before authentication and response modification so every request is counted including rejected ones.</statement>
+      <rationale source="v1-source">Metrics missing rejected requests (401, 429) hide real load patterns and error rates. The scrape target must be reachable from the Prometheus server without authentication or with a separate scrape credential.</rationale>
+    </rule>
+  </section>
+</text>

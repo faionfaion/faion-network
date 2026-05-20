@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="backup-verification-dr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for backup-verification-dr. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every backup pipeline MUST include an automated verification step that restores or probes the backup artifact in an isolated environment and checks a quantifiable integrity signal (table count, row count, schema-only diff, file hash, or restic check output). Verification MUST run on a schedule independent of the backup job — a verification failure MUST trigger a page-level alert, not just a log entry.</statement>
+      <rationale source="v1-source">A backup job that exits 0 only proves the write phase succeeded. Corruption, truncation, and logical inconsistency are invisible until restore time. Scheduled verification decouples detection from the crisis moment and gives the ops team a repair window before the backup is actually needed.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Schedule a restore-drill at least weekly. A backup that has never been restored is undefined behavior — not a backup. The drill MUST restore to an isolated environment (separate namespace, separate AWS account) and MUST run an integrity probe (row count, schema diff, or file hash).</statement>
+      <rationale source="v1-source">The gap between a successful backup write and a successful restore is where most backup failures live. Regular drills also exercise the restore documentation and confirm the ops team can execute it under pressure.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Monitor backup size delta AND latency, not just success. Alert on: size drop &gt; 50% (source may be empty or wrong path), size increase &gt; 10x (wrong exclusion filter), duration &gt; 2x 7-day average (infrastructure degradation).</statement>
+      <rationale source="v1-source">A backup that succeeds but backs up an empty directory is worse than a failed backup — it creates false confidence. Size and duration signals reveal these failures before a restore is attempted.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Verify backups in the script that emits them, not in a separate downstream job: `pg_dump | gzip | gunzip -t` on the same pipe, `pg_restore -l` before upload. A downstream verification job can be skipped, misconfigured, or outrun by retention purge.</statement>
+      <rationale source="v1-source">In-pipe verification catches corruption at the producer before the corrupt artifact reaches storage. Downstream verification adds latency to detection and creates a window where the corrupt artifact is the "latest backup" in the catalog.</rationale>
+    </rule>
+  </section>
+</text>

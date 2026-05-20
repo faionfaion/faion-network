@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="reranking-two-stage Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for reranking-two-stage. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Retrieve 3-10x more candidates than the final top-k before reranking. If the final answer requires top-5, retrieve top-50 minimum. The reranker cannot recover relevant documents absent from the candidate pool.</statement>
+      <rationale source="v1-source">Reranker precision is bounded by retrieval recall. A 3-10x oversampling factor provides headroom for the reranker to surface buried relevant documents while keeping reranking latency manageable.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Cross-encoder scores are NOT comparable across different model families. Never mix or average scores from two different rerankers (e.g., ms-marco-MiniLM and Cohere) — the score scales are entirely different.</statement>
+      <rationale source="v1-source">ms-marco models output logits in unbounded range; Cohere returns 0-1 relevance probabilities; Voyage uses its own scale. Treating them as the same quantity produces incorrect rankings.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Cross-encoders MUST NOT be used as first-stage retrieval over large corpora (millions of documents). They have no precomputation capability; scoring every document at query time is O(corpus_size) and infeasible beyond a few thousand documents.</statement>
+      <rationale source="v1-source">A corpus of 1M documents at 50ms per pair = 50,000 seconds per query. The two-stage architecture exists precisely to avoid this.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Truncate documents to 512 tokens before passing to cross-encoder. Inputs longer than the model's max sequence length are silently truncated by the tokenizer, potentially discarding relevant tail content unpredictably. Explicit truncation is deterministic.</statement>
+      <rationale source="v1-source">Predictable truncation at 512 tokens gives the cross-encoder full allowed context while preventing the implicit silent truncation that happens inside the model at arbitrary boundaries.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Log initial_rank vs rerank_rank for every query in production. When documents consistently rank low in initial retrieval but get promoted by the reranker, this indicates an embedding model mismatch that should be fixed at the retrieval layer rather than relying on reranking as a permanent crutch.</statement>
+      <rationale source="v1-source">Systematic rank promotion signals that the bi-encoder embeddings are misaligned with the query distribution. Fixing the embedding model reduces the reranker's load and improves recall before reranking.</rationale>
+    </rule>
+  </section>
+</text>

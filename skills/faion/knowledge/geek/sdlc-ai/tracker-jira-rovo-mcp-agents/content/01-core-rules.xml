@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="tracker-jira-rovo-mcp-agents Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for tracker-jira-rovo-mcp-agents. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every agent action against Jira, Confluence, or JSM MUST pass through the Rovo Remote MCP server using the assignee's OAuth grant. Raw REST API access (PAT, api/2/issue calls with a bot user's token) is forbidden in production agents. The agent MUST never request a scope wider than the assignee's role; if it must perform a destructive action the assignee lacks (e.g., issue:delete), it MUST escalate via JSM approval, not by reading a service-account secret. Audit IDs from MCP responses MUST land in the agent's structured log as the linkable record of "who did what".</statement>
+      <rationale source="v1-source">Atlassian's stated guarantee is that agents inherit the user's permissions, project configurations, workflows, and audit trails. A side-channel REST token defeats every word of that guarantee and is the anti-pattern Rovo MCP was built to retire. Storing audit IDs locally is what makes the inherited audit trail usable for incident review.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Any agent that runs as part of a Jira ticket lifecycle MUST be wired in as an on_enter handler on a specific workflow status (e.g., In Design, Ready for Implementation). The handler MUST declare permissions: inherit_from_assignee so the agent cannot exceed user scope. The next status transition (advancing past the agent's column) MUST require a human approver encoded in the Jira workflow, NOT a Slack reaction or out-of-band ack. Side webhooks that trigger agent work without a workflow handler are forbidden in production projects.</statement>
+      <rationale source="v1-source">Embedding in the workflow makes the agent's role legible to the same people who already maintain the project — admins, project leads, auditors. Routing the human gate through Jira's transition approver list inherits the existing reviewer matrix instead of duplicating it. April 2026 Atlassian docs make this the canonical extension point precisely because side webhooks were the source of audit gaps in pre-Rovo deployments.</rationale>
+    </rule>
+  </section>
+</text>

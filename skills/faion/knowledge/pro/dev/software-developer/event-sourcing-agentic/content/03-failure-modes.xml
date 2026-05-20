@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="event-sourcing-agentic Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for event-sourcing-agentic as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>CRUD-shaped events: agent emits UserUpdated, OrderUpdated, OrderUpdated_v2 — flat state snapshots.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Force naming "what business action happened" and reject Updated/Changed patterns in lint. Snapshot events destroy the audit trail — they carry no business intent.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Mutating state outside apply: agent calls self.status = "placed" in command handlers because it feels natural.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The aggregate must mutate state ONLY in apply handlers. Command handlers emit events; replay invokes apply. State mutation in command methods breaks replay determinism.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Forgotten expected_version: code-gen agent saves events without optimistic-concurrency check. Replays clobber concurrent writes.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always include expected_version parameter in repository save signatures. The lint check for missing expected_version in event-catalog-lint.py catches this pattern.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Hallucinated event-store APIs: agents invent event_store.append_one(...), repo.put_events(...), bus.fire(...) that do not exist in the target library.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Pin the exact API in the prompt and provide the imports. Include a concrete example of the target library's append() call signature.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Snapshot misuse: agent persists current state as a snapshot AND treats it as truth, skipping event replay "if snapshot exists". This breaks event-versioning.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always rebuild snapshot when event schema bumps. Snapshots are a performance cache, never the source of truth. Replay from events after the snapshot version must always be performed.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Projection writes business logic: agent writes if order.total &gt; 1000: send_email(...) in projection handler.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Projections are passive UPSERTs. Emit a domain event for "high-value order" and drive the action from a separate handler. Business logic in projections fires on every rebuild.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>PII leaks into events: agent copies command payload directly into events including shipping_address, email, card_token.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Force a redact step and a per-event PII-classification field. Lint blocks PII without a shred plan. See event-sourcing-versioning for crypto-shredding and PII externalization strategies.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>Cross-aggregate handlers: agent writes place_order(...) that loads Customer, Inventory, Payment, and mutates all four.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>That is a saga, not a command handler. Refactor into a process manager. Cross-aggregate mutations are not atomic and produce ghost states.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Tests on aggregate getters: agent tests aggregate.status == "placed" after replay instead of testing event emission.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Better: test that apply(events) produces the same state as the original aggregate (round-trip) and that command produces the expected events list. This tests the actual event-sourcing contract.</repair>
+    </failure-mode>
+  </section>
+</text>

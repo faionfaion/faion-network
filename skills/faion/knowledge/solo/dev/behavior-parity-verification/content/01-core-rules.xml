@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Behavior Parity Verification Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four testable rules every parity verification must satisfy. They are written for a solo developer who cannot afford a full golden-master harness but needs production-grade confidence before flipping traffic.</summary>
+
+  <section title="The four rules">
+
+    <rule id="r1-define-observable" testable="true" depth="essential">
+      <statement>Before any shadow traffic flows, the developer MUST write down an explicit "observable" list: the named output fields (or side-effects) that count as behavior. Anything not on the list is ignored by the diff. The list is committed to the parity report.</statement>
+      <rationale source="GitHub Scientist principles">Without a written observable list, the diff layer compares incidental fields (response headers, request_id, audit timestamps) and produces noise. The result is either alert fatigue or silently disabled diffing.</rationale>
+    </rule>
+
+    <rule id="r2-normalize-before-diff" testable="true" depth="essential">
+      <statement>Every observable MUST pass through a normalization function before comparison: timestamps quantized to seconds, UUIDs canonicalized, JSON keys sorted, float comparisons use tolerance, lists with no ordering contract are sorted. The normalizer is the same code path for legacy and new outputs.</statement>
+      <rationale source="Diffy paper (Twitter, 2015)">Raw equality on JSON yields 30-90% false-positive diff rate purely from formatting and timestamps. A canonicalizer cuts that to single-digit percent and surfaces the real semantic diffs.</rationale>
+    </rule>
+
+    <rule id="r3-ramp-gates" testable="true" depth="essential">
+      <statement>Ramp percentages MUST step through 1% -> 10% -> 50% -> 100% with a defined minimum window at each stage (typical: 24h prod-traffic at >= 1k requests). The next step is gated on: diff rate &lt; 0.5%, all clusters reviewed and either fixed or accepted with written justification, error rate &lt;= legacy baseline.</statement>
+      <rationale source="LaunchDarkly progressive-delivery practice">Jumping from 1% to 100% has been the recurring cause of "we shadow-tested but still broke prod" reports — small samples miss long-tail traffic shapes. Staged ramping forces the diff sampler to cover the real distribution.</rationale>
+    </rule>
+
+    <rule id="r4-freeze-on-regression" testable="true" depth="essential">
+      <statement>If diff rate or error rate rises during a ramp stage, the developer MUST: revert to the previous stage (not pause at current), record the cluster that caused the regression, and not proceed until the cluster has a fix or a written waiver. "It seemed to settle down" is not a valid reason to continue.</statement>
+      <rationale source="Site Reliability Engineering (Beyer et al., 2016) Ch.16">Reverting on regression is a deterministic safety property. Pausing or watching-it-cool-off is correlated with the worst post-mortems because the underlying cause is unfixed.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Observable list for a pricing endpoint">
+      <code lang="text"><![CDATA[
+Observable fields for /api/v2/quote:
+- response.total_cents       (exact equality)
+- response.line_items[]      (sorted by sku, then exact equality)
+- response.currency           (exact equality)
+- response.tax_breakdown      (tolerance: cents)
+
+Ignored (non-observable):
+- response.request_id
+- response.computed_at_ms
+- response.server_version
+      ]]></code>
+      <note>Concrete and finite. The diff layer can be implemented and reviewed in a PR. The "ignored" list documents why those diffs are not regressions.</note>
+    </example>
+
+    <example type="bad" title="Vague observable definition">
+      <code lang="text"><![CDATA[
+"Compare the responses and alert on any difference."
+      ]]></code>
+      <note>Guarantees alert fatigue. Every release-tag bump or response-time field will trigger. The team will silence the alert within a week.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

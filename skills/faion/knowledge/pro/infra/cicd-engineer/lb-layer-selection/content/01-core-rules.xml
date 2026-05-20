@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="lb-layer-selection Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for lb-layer-selection. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Select L4 (transport) load balancing when: maximum throughput is the primary goal, routing is purely by IP/port, SSL pass-through is required, or the protocol is not HTTP (gaming, streaming, database). Select L7 (application) load balancing when: content-based routing is needed, SSL termination at the load balancer is desired, HTTP header manipulation is required, or API gateway features are in scope.</statement>
+      <rationale source="v1-source">L4 operates on TCP/UDP framing with near-zero inspection cost; L7 must parse HTTP which adds CPU cycles. Picking L4 for an HTTP workload that needs path routing forces hacks; picking L7 for a pure TCP workload wastes CPU and adds latency.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For geographic distribution, prefer anycast-based global load balancers (AWS Global Accelerator, Cloudflare LB, GCP Global LB) over pure DNS-based GSLB. DNS-based failover relies on TTL respect, which clients honor poorly — real failover takes 30 seconds to 5 minutes in practice, not sub-second as DNS TTL implies.</statement>
+      <rationale source="v1-source">Anycast routes at the network layer and fails over in seconds without DNS re-resolution. DNS-based GSLB requires client TTL compliance; corporate DNS resolvers and CDN intermediaries cache aggressively, breaking SLO assumptions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Choose SSL termination strategy at layer-selection time: (1) SSL Termination at LB — decrypt at L7 load balancer, forward plain HTTP to backends; use when backends need HTTP inspection or the LB performs WAF. (2) SSL Pass-through — L4 forwards encrypted TCP to backends; backends hold the private key; use for end-to-end encryption requirements. (3) SSL Re-encryption — terminate at LB, re-encrypt to backend; balances inspection capability with in-transit encryption inside the cluster.</statement>
+      <rationale source="v1-source">Switching SSL strategy post-deployment requires certificate redistribution, backend reconfiguration, and health-check endpoint changes. Deciding at design time avoids late-stage rework. Compliance requirements (PCI-DSS, HIPAA) often mandate specific termination points.</rationale>
+    </rule>
+  </section>
+</text>

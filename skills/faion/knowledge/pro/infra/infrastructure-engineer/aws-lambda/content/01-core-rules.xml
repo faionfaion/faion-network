@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-lambda Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-lambda. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Initialize all SDK clients, database connections, and static configuration outside the handler function; keep the handler itself to business logic only.</statement>
+      <rationale source="v1-source">Code outside the handler runs once per execution environment (cold start). Code inside the handler runs on every invocation. Since August 2025, INIT phase is billed at the same rate as invocation duration — every unnecessary re-initialization now has a direct cost.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use ARM64 (Graviton2) architecture for all new Lambda functions; justify x86_64 explicitly (e.g., native x86 binary dependencies).</statement>
+      <rationale source="v1-source">Graviton2 provides 20% lower cost per GB-second at comparable or better performance for most workloads. No code changes required for Python, Node.js, or Java runtimes.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Enable SnapStart for Java 11+, Python 3.12+, and .NET 8 functions to reduce cold starts by 58-94%; ensure initialization code is safe to snapshot (no unique IDs or time-sensitive data in INIT phase).</statement>
+      <rationale source="v1-source">SnapStart restores a pre-initialized execution environment snapshot instead of running INIT from scratch. Snapshots expire after 14 days of inactivity.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Implement idempotency for all Lambda functions that process business transactions; use a composite idempotency key derived from the event payload and store results with TTL.</statement>
+      <rationale source="v1-source">Lambda can be invoked more than once for the same event due to retries. Without idempotency, duplicate charges, duplicate database inserts, or duplicate notification sends result.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use layers for shared dependencies across functions (pandas, boto3 extensions, custom utilities); limit to 5 layers per function; pin layer versions to specific ARNs in production.</statement>
+      <rationale source="v1-source">Layers reduce deployment package size and allow dependency updates without redeploying all functions. Unpinned layers can introduce unexpected changes when a new version is published.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Enable ReportBatchItemFailures on all SQS event source mappings; return a list of failed messageIds in the response body so only failed messages are retried, not the entire batch.</statement>
+      <rationale source="v1-source">Without ReportBatchItemFailures, a single processing failure causes the entire batch to be retried and eventually sent to the DLQ, multiplying cost and delay by the batch size.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Set SQS visibility timeout to at least 6x the Lambda function timeout; configure a DLQ on the SQS queue; set batching window to 5-30 seconds for non-latency-critical workloads.</statement>
+      <rationale source="v1-source">If visibility timeout is shorter than function timeout, messages become visible mid-processing and get picked up by other consumers. DLQ captures messages that fail all retries for inspection.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Enable BisectBatchOnFunctionError on Kinesis and DynamoDB Streams event source mappings; set MaximumRetryAttempts (10-100) and MaximumRecordAgeInSeconds (3600-86400) to prevent infinite retries on poison messages.</statement>
+      <rationale source="v1-source">Without BisectBatch, a single poison record in a batch causes the entire batch to retry until MaximumRecordAge. Bisect splits the batch in half on error, isolating bad records in O(log n) retries.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Configure a parallelization factor (1-10) per shard for Kinesis streams when per-shard throughput is insufficient; set starting position to LATEST for new consumers and TRIM_HORIZON only for backfill.</statement>
+      <rationale source="v1-source">Default one concurrent invocation per shard limits throughput to batch size × invocation rate per shard. Parallelization factor multiplies throughput without additional shards.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use event source mapping filter criteria to reduce invocations for SQS, Kinesis, and DynamoDB Streams; apply filters at the Lambda service level to avoid paying for unwanted events.</statement>
+      <rationale source="v1-source">Event filtering at the source is free and eliminates Lambda invocations entirely for filtered events. Application-level filtering inside the handler wastes invocation cost on events that will be discarded.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Verify: SDK clients outside handler, no blocking in INIT phase, idempotency implemented, graceful error handling with correct HTTP status codes, structured JSON logging with request ID.</statement>
+      <rationale source="v1-source">These are the five most common Lambda implementation errors — each increases cost, reduces reliability, or degrades debuggability.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Right-size memory using AWS Lambda Power Tuning before production deployment; set timeout with buffer (not at the maximum limit); use ARM64 architecture unless x86-only dependencies exist.</statement>
+      <rationale source="v1-source">Memory over-provisioning wastes GB-second cost. Timeout at limit causes silent hangs instead of fast failures. ARM64 saves 20% per GB-second.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Execution role must follow least privilege with no wildcard (*) resource ARNs; sensitive environment variables must be encrypted with KMS; no hardcoded credentials in code.</statement>
+      <rationale source="v1-source">Lambda execution roles with wildcard resources allow functions to access all AWS resources of that type. KMS-encrypted env vars are protected even if the function configuration is read by an unauthorized party.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>For SQS: ReportBatchItemFailures enabled, DLQ configured, visibility timeout ≥ 6× function timeout. For Kinesis/DynamoDB Streams: BisectBatchOnFunctionError enabled, MaximumRetryAttempts set, on-failure destination configured.</statement>
+      <rationale source="v1-source">These settings collectively ensure no messages are silently dropped on failure and that poison records are isolated without blocking the entire stream shard.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Configure Lambda aliases for environment promotion (dev/staging/prod); use CodeDeploy canary or linear deployment strategies with CloudWatch alarms for automatic rollback.</statement>
+      <rationale source="v1-source">Aliases enable blue-green and canary deployments without URL changes. Alarm-based rollback prevents a bad deployment from reaching 100% traffic if error rate spikes.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Set CloudWatch alarms on: Duration (&gt; 80% timeout), Errors (&gt; 1% rate), Throttles (&gt; 0), ConcurrentExecutions (&gt; 80% limit), IteratorAge for streams (&gt; 60s).</statement>
+      <rationale source="v1-source">Duration near timeout indicates under-provisioned memory or runaway loops. Throttles indicate concurrency limit hit. IteratorAge growth signals stream consumer falling behind.</rationale>
+    </rule>
+  </section>
+</text>

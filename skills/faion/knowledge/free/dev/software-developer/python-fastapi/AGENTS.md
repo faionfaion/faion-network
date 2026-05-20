@@ -1,46 +1,74 @@
+---
+slug: python-fastapi
+tier: free
+group: dev
+domain: software-developer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools.
+content_id: "4d9d16a50e38f204"
+tags: [fastapi, python, async, pydantic, sqlalchemy]
+---
 # FastAPI Standards
 
 ## Summary
 
-Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB
-sessions and auth, async routes call service functions, lifespan events manage connection pools.
-Separate request schemas (`UserCreate`) from response schemas (`UserResponse`); keep business logic
-in services, not routers.
+**One-sentence:** Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools.
 
-## Why
+**One-paragraph:** Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools. Separate request schemas (`UserCreate`) from response schemas (`UserResponse`); keep business logic in services, not routers.
 
-FastAPI's Pydantic + `Depends()` system enforces schema-first design and makes routes thin by
-construction. Async I/O (SQLAlchemy 2.0 async, `httpx.AsyncClient`) avoids blocking the event loop.
-`lru_cache` on settings reads `.env` once. Separating request/response schemas prevents accidental
-write-field exposure and makes partial-update (`PATCH`) clean via `model_dump(exclude_unset=True)`.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Building new REST APIs in Python requiring async/await and auto-generated OpenAPI docs
 - Microservices needing high throughput (async I/O, connection pooling)
 - Replacing synchronous Flask / Django REST Framework endpoints with async equivalents
 - Projects where Pydantic v2 validation and `pydantic-settings` config management are already in use
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Existing Django projects with complex ORM relationships — Django REST Framework fits better
 - Simple CRUD with no async I/O needs — Flask or Django may be simpler to operate
 - Projects where the team is unfamiliar with `async/await` — sync bugs in async code are hard to debug
 - GraphQL APIs — FastAPI's OpenAPI tooling conflicts with GraphQL schema conventions
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-project-structure.xml` | `app/` layout, `main.py` with lifespan, CORS middleware, router inclusion |
-| `content/02-schemas-deps.xml` | Pydantic v2 schema patterns, `pydantic-settings` config, `Depends()`, type aliases |
-| `content/03-service-layer.xml` | Async service functions, SQLAlchemy 2.0 async queries, paginated responses |
-| `content/04-antipatterns.xml` | Sync ops in async routes, business logic in routes, mutable default args |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/main.py` | FastAPI app with lifespan, CORS, and router wiring |
-| `templates/schemas.py` | `UserBase` / `UserCreate` / `UserUpdate` / `UserResponse` Pydantic v2 schema set |
-| `templates/dependencies.py` | `get_db`, `get_current_user`, `CurrentUser` / `DBSession` type aliases |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `free/dev/software-developer/`

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="mq-idempotent-consumers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for mq-idempotent-consumers. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every published message MUST carry an idempotency_key field — a stable, unique identifier for the event (not the message envelope). The consumer uses this key to deduplicate. If the producer cannot generate a natural key (e.g., from the business entity ID + event type + timestamp), it MUST generate a UUID and embed it in the message body, not the broker envelope.</statement>
+      <rationale source="v1-source">Broker message IDs (RabbitMQ delivery_tag, SQS MessageId) change on retry. A stable idempotency_key that survives redelivery is the only reliable deduplication anchor.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Consumers MUST verify idempotency before any side-effect and after the deduplication check passes. The deduplication store MUST be set atomically before the side-effect begins (optimistic lock), not after the side-effect completes, to prevent concurrent duplicate processing.</statement>
+      <rationale source="v1-source">Setting the dedup marker after the side-effect creates a race window: two workers receive the same message simultaneously, both see "not seen", both execute the side-effect. The atomic reserve-before-execute pattern closes this window.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Consumers MUST ack (acknowledge) a message only after the side-effect is committed to the database or durable store. Acking before commit is the primary source of message loss: the broker considers the message processed; if the DB write fails, no retry occurs.</statement>
+      <rationale source="v1-source">The ack signals "I am done with this message and you can delete it." If the DB commit fails after ack, the message is gone and the business operation is lost silently.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Producers MUST NOT publish a message directly inside a DB transaction if the business operation and the publish must be atomic. Instead, write the message to an outbox table inside the same transaction, and have a separate relay process publish from the outbox and delete on broker confirm. This is the transactional outbox pattern.</statement>
+      <rationale source="v1-source">A message published inside a DB transaction before commit can reach the consumer before the DB commit completes. If the DB rolls back, the consumer sees a phantom event — an order that does not exist. Conversely, a message published after a DB commit may not be published if the process crashes between commit and publish. The outbox pattern makes the two operations atomic.</rationale>
+    </rule>
+  </section>
+</text>

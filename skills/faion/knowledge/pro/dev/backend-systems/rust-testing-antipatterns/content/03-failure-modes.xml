@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="rust-testing-antipatterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for rust-testing-antipatterns as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Utc::now() in assertion paths. Agents inject the current timestamp inside the unit under test and inside the assertion. Tests pass at noon, fail at midnight when the day boundary crosses.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Use an injected clock (a Clock trait with a mock) or tokio::time::pause to control virtual time. Never compare Utc::now() to Utc::now() in a test assertion.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>sleep-driven async waits. Agents write tokio::time::sleep(Duration::from_millis(50)) to "give the task time to complete". Flaky in CI under load.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Use tokio::join!, tokio::time::pause + advance, or a channel/oneshot to wait for completion deterministically. If you need to wait for a spawned task, use a JoinHandle.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>#[tokio::test] flavor mismatch. Default flavor is current_thread. Agents call spawn_blocking or tokio::spawn without specifying flavor = "multi_thread" — the test panics under load because the multi-thread scheduler is not running.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Specify #[tokio::test(flavor = "multi_thread", worker_threads = 2)] when the unit under test spawns tasks or calls spawn_blocking. Run both flavors at least sometimes to surface Send/Sync bugs.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Shared lazy_static or once_cell state across test functions without reset. Tests pass locally in isolation, fail under cargo test -- --test-threads=N.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Rust tests run in parallel by default. Global mutable state accumulates across tests. Use a per-test fixture struct or initialize state inside each test function.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Hardcoded ports. Integration tests bind 127.0.0.1:8080; CI runs them in parallel and one fails with "address already in use".</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Bind to :0 and discover the port with local_addr(). Or use tower::ServiceExt::oneshot which requires no socket at all.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Hallucinated mockall::predicate APIs. Agents invent predicates like predicate::eq_ignoring_case, predicate::starts_with, predicate::matches_regex that do not exist in the current crate version.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Pin the mockall version in Cargo.toml and always verify predicate names against docs.rs/mockall for that version. Use predicate::function(|x| ...) as a fallback for custom logic.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>unwrap() in test assertions making failures unreadable. The next agent or developer cannot determine which operation failed.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Replace .unwrap() with .expect("description of what should have succeeded"). The message surfaces immediately in the test failure output.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>Auto-marking flaky tests as #[ignore] without root-cause analysis. Agents flag a flake, mark it ignored, and move on. The hidden bug ships to production.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Never auto-ignore a flake. Quarantine it behind a feature flag or a separate CI job, escalate to a human for triage, and remove the quarantine only after the root cause is fixed.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Doctest on private items. Agents add code blocks to private fn rustdoc; they do not run under cargo test --doc.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Promote to a #[test] in the #[cfg(test)] module or to a public example module. Private-item doctests silently provide no coverage.</repair>
+    </failure-mode>
+  </section>
+</text>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ruby-sidekiq-jobs Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ruby-sidekiq-jobs. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every job must be idempotent: check record.processed? or equivalent at the start of perform and return early if true.</statement>
+      <rationale source="v1-source">Sidekiq delivers at-least-once; network partitions and worker crashes trigger retries. Without a guard, a payment job may charge twice or an email may send twice.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Pass record IDs not ActiveRecord objects to perform; re-fetch inside perform with Model.find(id).</statement>
+      <rationale source="v1-source">Sidekiq 7 strict args mode raises on non-JSON-serializable objects. Even when tolerated, the record may be stale or deleted by the time the job runs. ID re-fetch is always current.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Enable Sidekiq.strict_args!(true) in the initializer to catch non-serializable arguments at enqueue time.</statement>
+      <rationale source="v1-source">Without strict mode, passing an ActiveRecord object serializes silently in legacy versions and raises cryptically in newer ones. Fail fast at enqueue rather than at dequeue.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Set sidekiq_options retry: N, dead: true explicitly on every job class; never rely on the default of 25 retries.</statement>
+      <rationale source="v1-source">25 retries over 21 days is rarely correct for user-facing jobs. Explicit retry: 3 or retry: 5 matches real SLA expectations and keeps the dead set from filling with stale jobs.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Define sidekiq_retry_in per exception class: linear backoff for rate-limit errors, exponential for transient failures.</statement>
+      <rationale source="v1-source">A payment gateway rate-limiting error needs shorter, linear retries to clear the rate limit window; a generic network error benefits from exponential backoff to avoid hammering a recovering service.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Rescue only ActiveRecord::RecordNotFound (log and return) and known transient errors (re-raise). Let all other exceptions propagate to trigger Sidekiq retry.</statement>
+      <rationale source="v1-source">Swallowing StandardError defeats the retry mechanism. Sidekiq retries on exception; a rescued, swallowed error looks like a successful job.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Keep job classes thin: perform calls a service object that holds the logic and is unit-testable without Sidekiq.</statement>
+      <rationale source="v1-source">Service objects can be tested with plain RSpec + Mockery without Sidekiq::Testing infrastructure, making unit tests faster and more isolated.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="tool-migration-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for tool-migration-basics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Complete a pre-migration audit before any data movement: count total issues, attachments (by byte), custom fields, automation rules, and integrations; classify each integration as critical or non-critical.</statement>
+      <rationale source="v1-source">Skipping the audit produces mid-migration surprises — attachment size limits exceed target storage, custom fields have no target equivalent, critical integrations break with no rollback plan.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every source field must be explicitly mapped to a target field OR explicitly marked as "won't migrate" with a documented reason; unmapped fields that silently drop data create post-cutover blame cycles.</statement>
+      <rationale source="v1-source">Documenting every "won't migrate" decision pre-empts post-cutover disputes about missing data. Silence is not agreement.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Preserve source IDs in a "legacy_id" custom field on the target tool; external systems that hardcoded source issue IDs (commit messages, bookmarks, documentation links) still resolve.</statement>
+      <rationale source="v1-source">ID changes (PROJ-1234 → ABC-5) break every external link simultaneously. The legacy_id field is the only safe bridge.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Map status fields explicitly with a lookup table showing source state, target state, and any behavioral differences; "Resolved" in Jira may mean approved-not-yet-deployed while the target tool's "Done" means shipped.</statement>
+      <rationale source="v1-source">Status semantics rarely map 1:1. Reviewing each mapping for behavioral differences prevents silent reinterpretation of work state.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Run the migration three times: dev-environment test, full dry-run with rollback on a clone of production, real cutover; each run catches a different class of bug.</statement>
+      <rationale source="v1-source">Dev test catches logic errors. Full dry-run catches rate limits, size limits, and data-edge cases that only appear at scale. Real cutover catches timing and concurrency issues under live load.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Freeze the source tool 4 hours before cutover; route new tickets created during the window to a known "intake" queue and re-key them by hand after cutover.</statement>
+      <rationale source="v1-source">Issues created during migration create reconciliation complexity. A short freeze with a manual intake queue is simpler and less risky than attempting live-sync.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Validate three numbers before declaring migration successful: total issue count, total comment count, and total attachment volume by byte.</statement>
+      <rationale source="v1-source">Three independent counts at different granularities catch distinct failure modes: issues lost, comments orphaned, and attachments silently dropped at size limits.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Manually sample-validate 50 random issues by hand, comparing source to target field-by-field; automated count validation does not catch field-content corruption.</statement>
+      <rationale source="v1-source">Status mapping bugs, Markdown-to-HTML conversion failures, and @mention resolution failures appear in field content, not in counts.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Keep the source tool read-only for at least 30 days after cutover; users will need to look up historical context for months after the switch.</statement>
+      <rationale source="v1-source">Post-cutover lookup requests are predictable and frequent. Read-only access at no cost is safer than full decommission and cheaper than rebuilding access when needed.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Human-in-the-loop checkpoints are mandatory at: mapping approval, cutover go/no-go decision, and rollback decisions.</statement>
+      <rationale source="v1-source">Each is an irreversible or high-impact decision. Agent errors at these gates compound into expensive remediation.</rationale>
+    </rule>
+  </section>
+</text>

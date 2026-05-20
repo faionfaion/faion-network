@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="hybrid-search-implementation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for hybrid-search-implementation as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Alpha tuning (dense vs sparse weight) is data-dependent; wrong alpha degrades results worse than single-method search — must be measured on a labeled eval set.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Alpha is corpus- and query-set-dependent. Generic defaults almost never match production data.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>BM25 tokenization is language-specific; the default English tokenizer produces poor scores for CJK, Arabic, or other non-whitespace-delimited languages.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Whitespace tokenization produces single-character or meaningless tokens for CJK text, leading to near-zero BM25 scores. Use a language-appropriate tokenizer.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>RRF (Reciprocal Rank Fusion) discards absolute scores, which can surface low-confidence results from both methods at the same rank.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>RRF normalizes all documents to their rank position. A document ranked 5th in both methods gets the same RRF score as one that is clearly top-1 in both. Apply a minimum per-method score filter before fusion.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Pinecone's sparse-dense hybrid requires training BM25Encoder on the full corpus before ingestion; corpus size changes invalidate the encoder.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>BM25Encoder learns corpus-level IDF statistics. If the corpus changes, the encoder's IDF weights become stale and must be retrained.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Qdrant's native hybrid (prefetch + FusionQuery) requires sparse vectors to be pre-computed outside Qdrant — there is no built-in BM25 tokenizer.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Qdrant stores sparse vectors as (indices, values) tuples but does not tokenize text. Tokenization must happen in application code.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Elasticsearch hybrid scoring is sensitive to BM25 score scale vs cosine similarity scale; naive linear combination requires per-corpus normalization.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>BM25 scores are unbounded and corpus-dependent. Cosine similarity is bounded [0, 1]. Directly adding them produces meaningless results. Normalize BM25 scores before combination.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Agents must fit the BM25Encoder on the full corpus before any ingestion — fitting after partial ingestion produces incorrect IDF weights.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Fitting on a partial corpus produces IDF weights that are stale once the corpus grows. This requires retraining.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>Pinecone sparse vector format is {"indices": [...], "values": [...]} — agents must not confuse it with Qdrant's SparseVector(indices=..., values=...).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The two APIs use different Python types and conventions. Mixing them produces type errors.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Weaviate's alpha=0 is pure BM25, alpha=1 is pure vector — the opposite convention from some papers where alpha=0 means full semantic; always verify the client's convention.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Conventions vary. Verify the client library's convention before shipping.</repair>
+    </failure-mode>
+    <failure-mode id="fm-10" severity="medium">
+      <description>RRF k=60 is a heuristic that works well for document search; for code search with hundreds of results, k=30 may be better — agents should expose k as a config param.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The optimal k value depends on the result set size and domain.</repair>
+    </failure-mode>
+    <failure-mode id="fm-11" severity="medium">
+      <description>Multi-language corpora need per-language tokenizers in BM25; a single English BM25 tokenizer on a mixed corpus degrades non-English recall.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>BM25 tokenization is language-specific.</repair>
+    </failure-mode>
+    <failure-mode id="fm-12" severity="medium">
+      <description>Running two retrieval paths has additive latency in serial mode; agents should use asyncio.gather or thread-pool to parallelize dense and sparse searches.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Parallelization reduces P99 latency vs serial execution.</repair>
+    </failure-mode>
+  </section>
+</text>

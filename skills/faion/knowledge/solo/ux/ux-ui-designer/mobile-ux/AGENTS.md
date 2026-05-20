@@ -1,41 +1,75 @@
+---
+slug: mobile-ux
+tier: solo
+group: ux
+domain: ux-ui-designer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Mobile UX requires mobile-first design (smallest screen first, then enhance), touch targets of at least 44x44pt (iOS) or 48x48dp (Android), primary actions in the thumb zone (bottom third of screen), and Core Web Vitals targets of LCP < 2.
+content_id: "88037c489f196607"
+tags: [mobile, ux-design, touch-targets, performance, core-web-vitals]
+---
 # Mobile UX Design Basics
 
 ## Summary
 
-Mobile UX requires mobile-first design (smallest screen first, then enhance), touch targets of at least 44x44pt (iOS) or 48x48dp (Android), primary actions in the thumb zone (bottom third of screen), and Core Web Vitals targets of LCP &lt; 2.5s / CLS &lt; 0.1. Navigation defaults to bottom tab bar (3-5 items); hamburger menus are secondary. One primary action per screen is a hard constraint.
+**One-sentence:** Mobile UX requires mobile-first design (smallest screen first, then enhance), touch targets of at least 44x44pt (iOS) or 48x48dp (Android), primary actions in the thumb zone (bottom third of screen), and Core Web Vitals targets of LCP < 2.
 
-## Why
+**One-paragraph:** Mobile UX requires mobile-first design (smallest screen first, then enhance), touch targets of at least 44x44pt (iOS) or 48x48dp (Android), primary actions in the thumb zone (bottom third of screen), and Core Web Vitals targets of LCP < 2.5s / CLS < 0.1. Navigation defaults to bottom tab bar (3-5 items); hamburger menus are secondary. One primary action per screen is a hard constraint.
 
-Desktop designs scaled down to mobile produce tiny targets, broken layouts, and slow load times that cause abandonment. Mobile context differs fundamentally: partial attention, variable connectivity, touch input, smaller screen. Mobile-first design forces prioritization of essential content and interaction, which also improves the desktop version. 53% of users abandon pages that take more than 3 seconds to load on mobile.
+## Applies If (ALL must hold)
 
-## When To Use
+- Starting a product or feature that must run on mobile (apply mobile-first from the design phase).
+- Auditing an existing web product for mobile usability issues before a campaign or launch.
+- Reviewing PRs that add UI components to ensure touch targets, input types, and thumb-zone placement are correct.
+- Before App Store or Google Play submission — checklist sweep against HIG and Material Design guidelines.
+- Performance audit for mobile: LCP, FID, CLS targets are more critical on mobile than desktop.
 
-- Starting a product or feature that must run on mobile (apply mobile-first from the design phase)
-- Auditing an existing web product for mobile usability issues before a campaign or launch
-- Reviewing PRs that add UI components — verify touch targets, input types, thumb-zone placement
-- Before App Store or Google Play submission — checklist sweep against HIG and Material guidelines
-- Performance audit for mobile: LCP, FID, CLS targets are more critical on mobile than desktop
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Internal tools used exclusively on desktop (admin panels, dashboards accessed via VPN).
+- Projects where mobile is explicitly out of scope for the current phase.
+- Prototyping in high fidelity before mobile constraints are validated — wireframe mobile flows first.
+- Accessibility-only audits — mobile UX overlaps but is not a replacement for dedicated a11y review.
 
-- Internal tools used exclusively on desktop (admin panels, dashboards accessed via VPN)
-- Projects where mobile is explicitly out of scope for the current phase
-- Prototyping in high fidelity before mobile constraints are validated — wireframe mobile flows first
-- Accessibility-only audits — mobile UX overlaps but is not a replacement for dedicated a11y review
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-principles.xml` | Mobile-first approach, thumb zone model, touch target minimums, navigation patterns, form optimization, performance targets (LCP/FID/CLS/TTI) |
-| `content/02-platform.xml` | iOS vs Android differences (navigation, modals, touch targets), gesture standards, progressive enhancement tiers, accessibility requirements |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
-none
+| File | Purpose |
+|------|---------|
+| TBD | TBD |
 
 ## Scripts
 
-| File | Purpose |
-|------|---------|
-| `scripts/mobile-audit.sh` | Lighthouse mobile audit: runs mobile preset, extracts Core Web Vitals + failed audits. Usage: `bash scripts/mobile-audit.sh https://example.com` |
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/ux/ux-ui-designer/`

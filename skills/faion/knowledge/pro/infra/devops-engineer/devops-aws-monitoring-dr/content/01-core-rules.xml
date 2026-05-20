@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="devops-aws-monitoring-dr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for devops-aws-monitoring-dr. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every production service MUST have a CloudWatch dashboard covering: (1) request rate and error rate for each public endpoint, (2) compute metrics (Lambda duration/errors/throttles or ECS/EKS CPU/memory via Container Insights), (3) database consumed capacity or connection count, (4) queue depth for SQS queues. Dashboard widgets MUST use a 5-minute aggregation period and display the last 3 hours by default.</statement>
+      <rationale source="v1-source">Dashboards with consistent time windows across widgets let engineers correlate spikes across tiers in a single view. The 5-minute period smooths noise while being granular enough to identify the onset of an incident within one alarm evaluation cycle.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every production Lambda function and API Gateway MUST have CloudWatch alarms: Lambda Errors threshold 5 over 2 evaluation periods of 5 minutes each; API 5XXError threshold 10 over 2 evaluation periods. Alarms MUST have alarm_actions AND ok_actions both pointing to an SNS topic. SNS topics MUST be KMS-encrypted. Alarm descriptions MUST include a runbook link placeholder.</statement>
+      <rationale source="v1-source">ok_actions on the SNS topic ensures the on-call engineer is notified when an alarm resolves, not just when it fires, preventing unnecessary investigation. KMS on SNS prevents plaintext secrets from leaking in alarm payloads. Runbook links in descriptions reduce MTTD by giving the responder an immediate starting point.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>X-Ray active tracing MUST be enabled on all production Lambda functions (tracing_mode="Active") and all API Gateway stages (xray_tracing_enabled=true). Lambda functions MUST install the aws-xray-sdk and wrap handler entry points with @xray.capture or equivalent for the runtime.</statement>
+      <rationale source="v1-source">Without X-Ray, a slow DynamoDB GetItem appears as a generic high-latency Lambda invocation. With X-Ray, the DynamoDB segment is visible with its own duration, request count, and error breakdown, pointing directly to the root cause.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>DR strategy MUST be selected based on documented RTO/RPO targets: RTO &gt; 24h / RPO &gt; 1h → backup/restore; RTO 1-24h / RPO 1h → pilot light; RTO 15min-1h / RPO &lt; 15min → warm standby; RTO &lt; 15min / RPO near-zero → active-active. The selected DR strategy MUST be tested on a documented schedule (at minimum quarterly for warm standby and active-active).</statement>
+      <rationale source="v1-source">Untested DR is no DR. Recovery procedures that have never been executed will fail at the worst possible moment due to undocumented dependencies, stale credentials, or manual steps that were forgotten. Quarterly DR drills catch drift before it matters.</rationale>
+    </rule>
+  </section>
+</text>

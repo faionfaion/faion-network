@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="prompt-engineering-production Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for prompt-engineering-production. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>All production prompts MUST be stored in source control as Python string constants, dataclasses, or files — not in external prompt management dashboards that are not in the code review path. Each prompt constant MUST include a version comment and the date of last change.</statement>
+      <rationale source="v1-source">External dashboards break the code review workflow — a prompt change that ships without review can cause a production incident with no audit trail. Source control provides diff, blame, and revert for free.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Production LLM calls that require structured output MUST implement retry logic with at least 3 attempts. Each retry MUST escalate specificity — adding an explicit format reminder, then an example. After all retries fail, MUST raise with enough context to debug (prompt, last response, attempt count).</statement>
+      <rationale source="v1-source">Single-attempt calls fail at the first malformed response, causing cascading pipeline failures. Retry-with-escalation recovers ~80% of failures without human intervention by giving the model a second chance with more explicit instructions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Structured output prompts MUST: (1) specify the schema in the prompt (JSON Schema or Pydantic model_json_schema()), (2) instruct the model to output only JSON, (3) validate output against the schema before downstream use, (4) retry on validation failure with the error as feedback.</statement>
+      <rationale source="v1-source">Models hallucinate extra prose, omit fields, or use wrong types. Without schema validation, the downstream system receives a dict that silently fails type checks at runtime.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Tool-use prompts MUST: (1) enumerate every available tool with exact parameter names and types, (2) specify the call format (JSON object), (3) instruct the model to explain reasoning before each tool call. Agentic prompts with tools MUST NOT give the model tools it should never call — the model will eventually call them.</statement>
+      <rationale source="v1-source">Models call tools they should not have access to when those tools are listed "just in case." Minimizing the tool list reduces hallucinated calls and security surface area.</rationale>
+    </rule>
+  </section>
+</text>

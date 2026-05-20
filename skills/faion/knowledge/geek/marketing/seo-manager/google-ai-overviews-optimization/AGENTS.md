@@ -1,14 +1,25 @@
+---
+slug: google-ai-overviews-optimization
+tier: geek
+group: marketing
+domain: seo-manager
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: A methodology for structuring content so Google's AI Overviews extract and cite it.
+content_id: "6d88c5bd70950611"
+tags: [seo, ai-overviews, google, schema-markup, content-optimization]
+---
 # Google AI Overviews Optimization
 
 ## Summary
 
-A methodology for structuring content so Google's AI Overviews extract and cite it. The core rule: place a direct answer (1-2 sentences) immediately after each section heading, add Article + FAQ schema, and update content within 30 days. These three actions account for the largest measurable citation gains.
+**One-sentence:** A methodology for structuring content so Google's AI Overviews extract and cite it.
 
-## Why
+**One-paragraph:** A methodology for structuring content so Google's AI Overviews extract and cite it. The core rule: place a direct answer (1-2 sentences) immediately after each section heading, add Article + FAQ schema, and update content within 30 days. These three actions account for the largest measurable citation gains.
 
-Google AI Overviews reach 2B monthly users; 30% of searches trigger them. Citation frequency is highest in Science (26%), Computers & Electronics (18%), and Health niches. Content updated within 30 days gets 3.2x more citations. Article + FAQ schema adds ~28% citation lift on average. Without structural optimization, well-written content is invisible to the AI extraction pipeline.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Target queries show AI Overview panels but site content is not cited.
 - Launching content for Science, Technology, Health, or Computers & Electronics niches.
@@ -16,7 +27,7 @@ Google AI Overviews reach 2B monthly users; 30% of searches trigger them. Citati
 - Setting up tracking infrastructure for AI Overview impressions in Google Search Console.
 - Preparing FAQ or Q&A content that maps directly to user query patterns.
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - YMYL queries requiring months of domain authority building — quick optimizations won't move citations.
 - Domain authority is too low for Google's citation algorithm — address off-page authority first.
@@ -24,21 +35,42 @@ Google AI Overviews reach 2B monthly users; 30% of searches trigger them. Citati
 - Site is penalized or under manual review.
 - Content is purely promotional with no informational substance.
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-extraction-rules.xml` | Core rules for content structure: answer placement, heading hierarchy, semantic clarity, entity definition. |
-| `content/02-schema-and-freshness.xml` | Schema markup requirements (Article, FAQ, Author), freshness signal rules, and trust signals. |
-| `content/03-tracking-and-antipatterns.xml` | Tracking setup (GSC, Semrush, Otterly), competitive analysis checklist, and antipatterns to avoid. |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/gsc-fetch.sh` | Bash script to fetch AI Overview impression data from Google Search Console API. |
-| `templates/content-audit-prompt.txt` | Prompt for auditing a page for AI Overview optimization readiness. |
+| TBD | TBD |
 
 ## Scripts
 
-None.
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `geek/marketing/seo-manager/`

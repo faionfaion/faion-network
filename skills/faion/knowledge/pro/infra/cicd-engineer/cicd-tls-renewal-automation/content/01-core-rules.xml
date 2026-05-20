@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="cicd-tls-renewal-automation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for cicd-tls-renewal-automation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Select the ACME client before writing any cert-related code: certbot for nginx/apache on Ubuntu/Debian; acme.sh for DNS-01 wildcard certs or minimal-dependency environments; lego for Go-based pipelines or containers. Do NOT mix clients on the same host — competing renewals corrupt the cert store.</statement>
+      <rationale source="v1-source">Each client owns /etc/letsencrypt or its equivalent and writes lockfiles; mixing clients causes race conditions on renewal and inconsistent certificate paths referenced by the web server.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every certbot or acme.sh renewal MUST include a post-hook that reloads the web server (systemctl reload nginx, systemctl reload apache2, etc.). The hook MUST be tested independently before enabling the timer.</statement>
+      <rationale source="v1-source">Auto-renewal silent failure: cert renewed but reverse-proxy not reloaded. The new cert file exists on disk but the running process holds the old one in memory. The outage only appears when the old cert actually expires, making root-cause analysis harder.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>When adopting LE 6-day or 45-day certs, the pipeline MUST automate renewal at least twice the renewal frequency (e.g., renew every 3 days for 6-day certs). Alert thresholds MUST be set at 2 days (warning) and 1 day (critical) rather than the default 30/7 day windows used for 90-day certs.</statement>
+      <rationale source="v1-source">Short-lived certs have reduced compromise windows and no OCSP/CRL URL overhead, improving security posture. But the standard "alert at 30 days" is useless for a 6-day cert — the cert would already be expired.</rationale>
+    </rule>
+  </section>
+</text>

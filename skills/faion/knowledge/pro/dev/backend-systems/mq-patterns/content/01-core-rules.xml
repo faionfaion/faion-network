@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="mq-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for mq-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Before writing any queue code, state the topology explicitly in a contract document: queue name, schema, partition key, ordering requirement, retry policy, DLQ target, and idempotency strategy. The contract is the primary deliverable; code is secondary.</statement>
+      <rationale source="v1-source">Topology decisions have long tails. A schema change or retry-policy change in production requires explicit reviewer approval. Writing the contract first surfaces these decisions while they are cheap to change.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Select the topology based on the consumer relationship: one message, one consumer (work queue); one message, many independent consumers (fan-out); async call expecting a reply (request/reply); all others routed after max failures (DLQ as complement to any of the above).</statement>
+      <rationale source="v1-source">Mixing topologies without explicit intent leads to messages processed by the wrong consumer set or correlation IDs lost between services.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Design every consumer for idempotency. Messages may be delivered more than once under at-least-once delivery semantics; the consumer must produce the same side-effect on the first and every subsequent delivery of the same message.</statement>
+      <rationale source="v1-source">No major broker guarantees exactly-once delivery without application-level cooperation. Building idempotency into the consumer is cheaper and more reliable than trusting broker-level deduplication.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Every queue that can receive a failure must have a DLQ configured before the queue goes live. DLQ depth must be wired to an alert.</statement>
+      <rationale source="v1-source">Without a DLQ, failed messages are either lost or retry forever. A DLQ without an alert is equivalent to no DLQ — messages accumulate silently and business logic stops working.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Monitor queue depth, consumer lag (Kafka), DLQ size, oldest-unacked-age, and processing error rate. These metrics are the earliest incident signals for distributed systems.</statement>
+      <rationale source="v1-source">A growing queue depth indicates the consumer cannot keep up. DLQ growth indicates systematic failures. Without these metrics, incidents surface only after user-visible impact.</rationale>
+    </rule>
+  </section>
+</text>

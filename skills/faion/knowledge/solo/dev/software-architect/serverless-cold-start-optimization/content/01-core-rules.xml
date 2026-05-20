@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="serverless-cold-start-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for serverless-cold-start-optimization. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>AWS SDK clients, database connections, HTTP clients, and model files MUST be initialized at module scope (outside the handler function). Imports that take &gt;10ms MUST also be at module scope.</statement>
+      <rationale source="v1-source">Module scope runs once per container. Handler scope runs on every invocation, adding initialization latency to every request instead of only the first cold start.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Lambda deployment packages MUST exclude test dependencies, documentation, and unused code. Python packages MUST use --no-deps for transitive imports that are already in the runtime. Node packages MUST use tree-shaking (esbuild or webpack) with target=esm.</statement>
+      <rationale source="v1-source">Package size directly correlates with cold start time. The Lambda loader must unzip and initialize the deployment package on cold start. Every MB saved reduces cold start proportionally.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Java and .NET Lambda functions serving synchronous user-facing requests MUST enable SnapStart (Java 11+ or .NET 8+ with Native AOT). SnapStart MUST be combined with a post-deploy warm-up invocation to pre-populate the snapshot cache.</statement>
+      <rationale source="v1-source">JVM and CLR startup dominates Java and .NET cold starts (1-5s). SnapStart restores from a pre-initialized snapshot in &lt;200ms without provisioned concurrency cost.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>All new Lambda functions MUST default to ARM/Graviton (Architectures: [arm64]) unless the runtime or dependency explicitly requires x86. Existing functions MUST be migrated to ARM on the next deployment that changes the function code.</statement>
+      <rationale source="v1-source">ARM/Graviton delivers 10-20% faster cold starts and 20% lower GB-second cost with no code changes for Python, Node.js, and Go. The only exception is native extensions compiled for x86.</rationale>
+    </rule>
+  </section>
+</text>

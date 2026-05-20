@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="google-analytics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for google-analytics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Create one data stream per platform (web, iOS, Android); use a single GA4 property to unify cross-platform data rather than separate properties per platform.</statement>
+      <rationale source="v1-source">Separate properties prevent cross-platform user stitching. A unified property with multiple streams allows unified user_id tracking and cross-platform funnel analysis.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Enable BigQuery export from day 1 — it is free for most traffic volumes and bypasses sampling and thresholding that affects the GA4 UI.</statement>
+      <rationale source="v1-source">Without BigQuery, agents are limited to sampled, rounded UI data. BigQuery gives raw event-level access, enabling accurate cohort, funnel, and retention queries.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Set user properties (subscription_tier, signup_source) via gtag('set', 'user_properties', {...}) before sending events so that all subsequent events in the session carry the properties.</statement>
+      <rationale source="v1-source">User properties must be set before the events they should segment. Setting them after a session starts means those events have null property values in reports.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Prefer recommended event names (login, sign_up, purchase) over custom names when the semantic is identical; Google pre-configures reports and conversion tracking for them.</statement>
+      <rationale source="v1-source">Custom event names require manual report configuration. Recommended events flow into built-in reports and conversion funnels automatically.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Keep event names under 40 characters and parameter names under 40 characters; values under 100 characters; max 25 parameters per event. Build a validator into the codegen step.</statement>
+      <rationale source="v1-source">GA4 silently truncates or drops data that exceeds these limits. There is no error — data just disappears. Agents auto-generating long names from product specs hit this constantly.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Register all custom dimensions in GA4 Admin (Admin → Data display → Custom definitions) BEFORE deploying code that sends them; unregistered params are collected but invisible in reports.</statement>
+      <rationale source="v1-source">GA4 stores raw event params but only surfaces registered custom dimensions in the UI and Data API. Events sent before registration are not backfilled.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>When sending Measurement Protocol events server-side, always pass the client_id from the browser cookie (_ga cookie value); never generate a fresh UUID server-side for existing users.</statement>
+      <rationale source="v1-source">A server-side call with a fresh UUID creates a ghost user in GA4 that is counted separately from the real user. This inflates user counts and breaks funnel attribution.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>"Conversions" in GA4 reports only counts events that were explicitly marked as conversions in Admin; an agent reporting "conversions" from a property where no events are marked returns zero.</statement>
+      <rationale source="v1-source">GA4 does not automatically infer conversion intent from event names. An agent must verify which events are marked as conversions in Admin before interpreting conversion metrics.</rationale>
+    </rule>
+  </section>
+</text>

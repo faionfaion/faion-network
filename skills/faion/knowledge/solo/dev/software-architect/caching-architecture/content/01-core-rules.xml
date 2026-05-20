@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="caching-architecture Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for caching-architecture. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use cache-aside as the default pattern for read-heavy workloads where the application controls cache lifecycle explicitly.</statement>
+      <rationale source="v1-source">Application code controls exactly what is cached and when; cache contains only requested data, avoiding prefill waste. Most flexible — compatible with any storage backend.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use read-through when you want transparent cache management — the cache library handles DB fetches on misses, not application code.</statement>
+      <rationale source="v1-source">Removes cache-population logic from application code; all reads go through a single path. Simplifies code at the cost of flexibility.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use write-through for data that is frequently read immediately after write and where consistency is critical.</statement>
+      <rationale source="v1-source">Every write goes to cache and DB synchronously; cache is always warm and consistent. The latency penalty on writes is the trade-off.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use write-behind only when eventual consistency is acceptable and write throughput is the primary bottleneck. Never use for financial or inventory data without explicit durability guarantees.</statement>
+      <rationale source="v1-source">Async DB persistence risks data loss on cache failure; the throughput gain is only worth it when loss is tolerable.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use hierarchical, predictable key patterns. Include version suffix (v1, v2) for keys tied to a schema; never include unstable attributes (timestamps, request IDs, nonces) in keys.</statement>
+      <rationale source="v1-source">Predictable keys allow prefix-based invalidation (SCAN + DEL pattern), version suffixes enable cheap schema-change rollover without manual key purge.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Never cache user-specific data with a global key. Always include the user or tenant identifier in the key.</statement>
+      <rationale source="v1-source">Global keys for personalized data cause cross-user data leaks; this is a security bug, not just a stale-data bug.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Always add jitter to TTLs (base * (1 + rand(-0.1, 0.1))) to avoid synchronized expiry storms across horizontally scaled instances.</statement>
+      <rationale source="v1-source">Without jitter, all instances that populated the cache at the same time expire simultaneously, causing a thundering herd on the DB.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Cache stampede (thundering herd) must be mitigated with single-flight / request coalescing, not solely with probabilistic early expiration. Both defenses are needed at scale.</statement>
+      <rationale source="v1-source">XFetch (probabilistic early expiration) reduces stampede probability but does not eliminate it at high concurrency; single-flight collapses concurrent misses to one upstream fetch.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Choose Redis unless profiling demonstrates that single-threaded CPU is the bottleneck and Memcached or Dragonfly is validated by a PoC. Do not migrate for theoretical performance gains.</statement>
+      <rationale source="v1-source">Redis ecosystem maturity (client libs, monitoring, Cluster, Sentinel, persistence) reduces operational risk; switching for undemonstrated gains introduces compatibility risk.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>In Django, set KEY_PREFIX to the environment name (prod, staging, dev) in CACHES settings. Without a prefix, a staging deploy can read or pollute production cache keys if they share a Redis instance.</statement>
+      <rationale source="v1-source">Shared Redis instances across environments without key namespacing cause data leaks between environments and unpredictable test results.</rationale>
+    </rule>
+  </section>
+</text>

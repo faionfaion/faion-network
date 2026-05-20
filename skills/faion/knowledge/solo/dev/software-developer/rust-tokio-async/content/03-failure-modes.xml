@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="rust-tokio-async Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for rust-tokio-async as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Calling blocking syscalls (std::fs::read, reqwest::blocking, image processing) directly from an async function.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Blocks the Tokio worker thread for the duration of the syscall. On a 4-thread runtime, 4 simultaneous blocking calls starve all other async tasks until they complete.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Calling tokio::runtime::Handle::block_on or Runtime::block_on from within an async context.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Panics with "cannot block the current thread from within a runtime" — a cryptic error that appears in tests. Test functions must use #[tokio::test] or block_on in a sync context only.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Spawning every task with tokio::spawn without awaiting or aborting the returned JoinHandle.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Orphaned handles keep tasks alive indefinitely. Task panics and errors are silently discarded. Prefer try_join! or JoinSet for structured concurrency; use spawn only for true fire-and-forget background tasks.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Using std::sync::Mutex and holding the guard across an .await point.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The Mutex guard is not Send. The compiler rejects this with a wall of trait-bound errors, but the intent is to block the async thread — which must use tokio::sync::Mutex or restructure to not hold the lock across yield points.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Placing a non-cancel-safe future (DB transaction, multi-step file write) on a tokio::select! branch.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>When a select! branch is not selected, the future is dropped at the next .await point, leaving partial state. Only cancel-safe primitives (recv, sleep, AsyncRead) belong on select branches.</repair>
+    </failure-mode>
+  </section>
+</text>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="go-concurrency Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for go-concurrency as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Generator goroutine without a ctx.Done() exit: go func() { for i := 0; ; i++ { ch &lt;- i } }()</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>If no consumer reads from ch, the goroutine blocks forever. Memory and goroutine count grow unboundedly.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Concurrent write to a plain map without a mutex: go func() { cache[key]++ }()</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Concurrent map access is undefined behaviour in Go. The race detector catches it, but it may silently corrupt data or panic in production.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Calling wg.Add(1) inside the goroutine body: go func() { wg.Add(1); defer wg.Done(); ... }()</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The goroutine may not execute before wg.Wait() is called if the scheduler yields, causing premature completion.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Closing a channel from a goroutine other than the writer: producer sends on ch, but a separate cleanup goroutine closes(ch). If the producer is blocked on send, the receiver gets a panic.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Closing a send-on-closed-channel causes panic. Only the sender can close. If cleanup needs to stop the producer, use a separate done channel: close(done), and the producer selects on done to exit.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Unbuffered channel without a receiver: ch := make(chan int); go func() { ch &lt;- 1; ch &lt;- 2 }() (but main never reads from ch). The goroutine blocks forever on the first send.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>An unbuffered send blocks until there is a receiver. If no goroutine is receiving, the sender leaks. Use a buffered channel if the producer outpaces consumers, or ensure a receiver drains the channel.</repair>
+    </failure-mode>
+  </section>
+</text>

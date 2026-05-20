@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="claude-messages-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for claude-messages-api. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Always set max_tokens explicitly — silent truncation (stop_reason="max_tokens") is the most common cause of corrupted downstream data.</statement>
+      <rationale source="v1-source">max_tokens is required and easy to set too low; truncation produces parseable but incomplete output that passes format checks and fails semantic ones.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Check stop_reason before accessing content[0].text — if stop_reason is "tool_use", content[0] may be a tool_use block, not text.</statement>
+      <rationale source="v1-source">Content blocks are polymorphic; indexing blindly into content[0].text raises AttributeError when the first block is a tool_use or thinking block.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Append the full resp.content list (not just text) as the assistant turn in multi-turn history — tool_use blocks must be preserved or the next turn gets a 400 error.</statement>
+      <rationale source="v1-source">The API reconstructs conversation state from message history; missing tool_use blocks make the history inconsistent and cause an API error.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Place image content before text content in multimodal messages — model processes images better when they come first in the content array.</statement>
+      <rationale source="v1-source">Empirically, image comprehension quality improves when the image precedes the question about it; this is consistent across Claude model versions.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Image URLs are fetched at inference time — if the URL returns a 403 at that moment, the call fails silently with a content error block rather than an API error.</statement>
+      <rationale source="v1-source">URL-based images depend on the URL being accessible at inference time; pre-fetch and base64-encode for reliability in production pipelines.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Validate PDF page count before sending — PDFs exceeding 100 pages produce an API error, not a truncation; validate before sending to prevent pipeline failures.</statement>
+      <rationale source="v1-source">The error surfaces at inference time after the full PDF has been base64-encoded and transmitted; validating first avoids wasting the encoding and transmission.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>For streaming + tool use, accumulate input_json_delta events and parse after content_block_stop — never parse partial JSON inline.</statement>
+      <rationale source="v1-source">input_json_delta events carry fragments of JSON that are not individually parseable; parsing before the block stops raises JSONDecodeError.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Claude SSE format differs from OpenAI SSE — they are not interchangeable without an adapter layer (e.g., LiteLLM).</statement>
+      <rationale source="v1-source">OpenAI uses data: [DONE] to end a stream; Claude uses message_stop event. The delta object structure also differs; treating them as equivalent causes silent parse failures.</rationale>
+    </rule>
+  </section>
+</text>

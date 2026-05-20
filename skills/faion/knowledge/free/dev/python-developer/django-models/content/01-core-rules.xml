@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-models Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-models. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every domain model inherits from BaseModel (uid + created_at + updated_at). Never inherit from models.Model directly for domain entities.</statement>
+      <rationale source="v1-source">Consistent base fields across all models enables audit trails and safe public APIs without per-model boilerplate.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Models must be thin: fields, Meta, and __str__ only. Business logic belongs in services/. Always call full_clean() before save() in service functions.</statement>
+      <rationale source="v1-source">full_clean() is not called automatically by save(). Omitting it silently bypasses model-level validation (clean(), validators, constraints).</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Always use TextChoices or IntegerChoices for enumerated fields. Never use raw string tuples as choices.</statement>
+      <rationale source="v1-source">TextChoices provides .choices, .values, .labels, and .names; raw tuples require parallel string maintenance and are caught by ruff DJ rules.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use Meta.constraints for invariants that span multiple fields. Use CheckConstraint for value-range rules and UniqueConstraint for conditional uniqueness.</statement>
+      <rationale source="v1-source">DB-level constraints enforce invariants even when ORM validation is bypassed (bulk_create, raw SQL). CheckConstraint with condition requires PostgreSQL — pin the backend in a comment.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Choose on_delete deliberately: PROTECT for user/account refs (delete is an event, not silent cascade), CASCADE only for child rows with no meaning without parent, SET_NULL for optional assignees.</statement>
+      <rationale source="v1-source">CASCADE on user references causes irreversible data loss when an account is deleted — a common production incident.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Define domain-specific filter logic as QuerySet methods, not in service functions or views. Use Manager.from_queryset(QuerySet)() — note the trailing () to instantiate.</statement>
+      <rationale source="v1-source">QuerySet methods are chainable; service-level filtering is not. Missing () on from_queryset creates the class object, not an instance — a confusing runtime error.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>If a child model redefines objects, it must replicate the alive() filter or the soft-delete protection is lost.</statement>
+      <rationale source="v1-source">Custom managers override the default; naively replacing objects loses the alive filter and returns deleted rows.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Add db_index or a composite Index for every field combination used in filter()/order_by()/distinct() paths that hit production traffic. Require justification — every index costs write amplification.</statement>
+      <rationale source="v1-source">Missing indexes cause full-table scans at scale. Unnecessary indexes slow writes and bloat storage.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use partial indexes (condition=Q(...)) only on PostgreSQL. Comment the backend requirement next to the index definition.</statement>
+      <rationale source="v1-source">Partial indexes use PostgreSQL-specific SQL. MySQL and SQLite ignore the condition silently or error at migration time.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use select_related for ForeignKey/OneToOne (JOIN), prefetch_related for reverse FK and ManyToMany (second query). Add these at the QuerySet/Manager level for the common access pattern.</statement>
+      <rationale source="v1-source">Per-call select_related is easy to forget; manager-level defaults ensure the optimization is always applied for the most common query shape.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Define cross-field invariants in clean(). Define field-level constraints with validators=[...] on the field. Both require full_clean() to be called explicitly from services.</statement>
+      <rationale source="v1-source">DRF and Ninja do not call clean() automatically. Validation placed only in clean() is invisible to API consumers unless services call full_clean().</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Use db_default for values the database computes at INSERT time (avoids Python-side time skew). Use GeneratedField for columns computed from other columns. Pin PostgreSQL when using GeneratedField(db_persist=True).</statement>
+      <rationale source="v1-source">db_default uses DB NOW() — strictly monotonic in distributed systems. GeneratedField(db_persist=False) is a virtual column unsupported on SQLite.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Do not use SoftDeleteModel for models containing personally identifiable information (PII). PII subject to deletion requests requires hard delete.</statement>
+      <rationale source="v1-source">Soft delete preserves the data — directly contradicting GDPR Article 17 (right to erasure) deletion requests.</rationale>
+    </rule>
+  </section>
+</text>

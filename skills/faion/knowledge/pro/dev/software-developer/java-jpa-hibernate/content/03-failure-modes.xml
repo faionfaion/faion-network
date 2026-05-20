@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="java-jpa-hibernate Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for java-jpa-hibernate as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Calling findById(id).get() directly instead of findById(id).orElseThrow(...).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Optional.get() throws NoSuchElementException with no context when the entity is missing. orElseThrow(() -&gt; new NotFoundException("User " + id + " not found")) provides a meaningful message and is mapped to a 404 by @ExceptionHandler.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>spring.jpa.open-in-view=true (Spring Boot default): the EntityManager session is kept open for the full HTTP request lifecycle, including the view/serialization layer.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>open-in-view allows lazy-loading in controllers and serializers, masking N+1 bugs during development. In production with connection pool pressure, holding sessions through the view layer exhausts the pool within minutes. Set open-in-view=false and use explicit fetch strategies (JOIN FETCH, @EntityGraph).</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>CascadeType.ALL on every @OneToMany and @ManyToMany without justification or analysis of ownership.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>CascadeType.REMOVE with orphanRemoval=true propagates deletes through the owning side. If the child entity is referenced by another entity (e.g., an Order referenced by both User and Invoice), the cascade deletes a row still needed elsewhere, corrupting data.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>equals() and hashCode() implemented on the database-assigned @Id field using Lombok @EqualsAndHashCode(of = "id").</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Before a new entity is persisted, id is null. Two new entities with null id are considered equal by id-based equals, corrupting Sets and Maps. Use a UUID or business key, or the pattern recommended by Vlad Mihalcea (consistent equals based on type + UUID).</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>spring.jpa.hibernate.ddl-auto=update or ddl-auto=create in production to keep the schema in sync with entity changes.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>ddl-auto=update cannot drop columns safely, cannot rename columns, and runs Hibernate's schema validation without a rollback mechanism. Schema changes in production require Flyway or Liquibase migrations with review and rollback scripts.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Changing an @Entity annotation or adding a column without a corresponding Flyway/Liquibase migration file in the same PR.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Schema drift: the entity expects a column that does not exist in the database. ddl-auto=validate (the correct production setting) throws InvalidDataAccessResourceUsageException on startup. CI passes (uses ddl-auto=create for tests) but production deploy fails immediately.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Accessing lazy collections in a controller method or in a @RestController serializer outside a @Transactional boundary.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Hibernate session is closed at the end of the service transaction. Accessing u.getRoles() in the controller triggers a new query on a closed session — LazyInitializationException. Use JOIN FETCH or @EntityGraph inside the service to load required associations before the session closes.</repair>
+    </failure-mode>
+  </section>
+</text>

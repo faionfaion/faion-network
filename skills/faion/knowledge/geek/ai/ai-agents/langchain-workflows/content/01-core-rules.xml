@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="langchain-workflows Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for langchain-workflows. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Define workflow state as a flat TypedDict with simple fields and Annotated accumulating fields. Avoid deeply nested dicts and mutable defaults.</statement>
+      <rationale source="v1-source">Flat state schemas reduce checkpoint size, improve debuggability, and make state evolution explicit. Annotated fields with operator.add semantics accumulate results from multiple nodes without overwriting.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Each node function receives state, processes it, and returns a partial state dict containing only the fields it updates.</statement>
+      <rationale source="v1-source">Partial updates keep nodes decoupled; each node specifies only what it modifies, making the graph more maintainable.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use conditional_edges to route based on state. Define a routing function that returns the next node name or END.</statement>
+      <rationale source="v1-source">Conditional routing makes the graph data-driven; routing decisions are separate from node logic and easier to test.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use interrupt_before to pause a workflow before destructive nodes. Resume with workflow.invoke(None, config) after human approval.</statement>
+      <rationale source="v1-source">Interrupts provide atomic pause-and-resume semantics backed by a checkpointer. This is the correct pattern for human approval; in-graph checks cannot guarantee atomicity.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Compose workflows via subgraphs. A node can call another compiled graph as if it were a function.</statement>
+      <rationale source="v1-source">Subgraphs enable modularity and code reuse; large workflows stay readable and testable.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>For parallel execution, define multiple entry points and converge with a final node. All tasks run in parallel and are joined before the convergence node executes.</statement>
+      <rationale source="v1-source">LangGraph's parallel execution reduces latency compared to sequential node invocation.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Wrap risky operations in try-except and route based on error state. Never let exceptions kill the workflow.</statement>
+      <rationale source="v1-source">Explicit error handling makes recovery logic visible and testable.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Stream outputs using workflow.stream(). Use stream_mode="values" for full state snapshots, stream_mode="updates" for partial deltas, stream_mode="debug" for development.</statement>
+      <rationale source="v1-source">Streaming enables real-time feedback and progress visualization. Debug mode helps identify bottlenecks.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Always use checkpointer for production workflows. Use thread_id for session management; each thread maintains independent state history.</statement>
+      <rationale source="v1-source">Checkpointing enables recovery from failures and long-running workflows. Thread IDs prevent state collision between concurrent executions.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Keep WorkflowState schemas flat. Accumulating fields (messages: Annotated[List[str], operator.add]) should be compacted every N messages to prevent checkpoint bloat.</statement>
+      <rationale source="v1-source">Flat state reduces checkpoint size and improves debuggability. Checkpoint size grows with accumulating fields; compaction prevents unbounded growth.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Node functions MUST be pure functions that return partial state dicts. Never mutate state directly.</statement>
+      <rationale source="v1-source">Pure functions are deterministic, testable, and safe to retry on failure. Mutations break checkpointing semantics.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>For development, enable debug mode: stream_mode="debug" or os.environ["LANGCHAIN_TRACING_V2"] = "true" with LangSmith for production monitoring.</statement>
+      <rationale source="v1-source">Debug output reveals bottlenecks and state transitions. LangSmith provides observability at scale.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Write unit tests for each node. Use pytest to test individual nodes and integration tests for full workflows.</statement>
+      <rationale source="v1-source">Testable workflows catch edge cases early and enable confident refactoring.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>For latency reduction, use parallel nodes where possible and cache expensive operations. For cost optimization, use cheaper models (e.g., gpt-4o-mini) for simple tasks and route complex ones to expensive models.</statement>
+      <rationale source="v1-source">Parallelism reduces overall latency. Model routing reduces LLM costs without sacrificing quality.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Use LangGraph when building stateful, multi-step pipelines where graph nodes represent distinct processing phases (validate → transform → store) and human-in-the-loop approval is required before irreversible actions execute.</statement>
+      <rationale source="v1-source">LangGraph's interrupt_before makes human approval explicit and atomic. Checkpoints enable resumable workflows across process restarts.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Do NOT use LangGraph for simple A → B → C chains without branching, stateless single-shot LLM generation, or real-time partial token streaming where LCEL chain latency matters more than state management.</statement>
+      <rationale source="v1-source">For simple cases, LangGraph state management adds overhead with no benefit. LCEL chains are lighter and easier to debug.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>For production persistence, use AsyncPostgresSaver or RedisSaver. MemorySaver stores state in-process memory and does not survive process restarts.</statement>
+      <rationale source="v1-source">Process crashes lose all in-memory checkpoints. Durable backends enable recovery across restarts.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Parallel nodes in LangGraph execute sequentially by default. Use async node functions and call await workflow.ainvoke() to enable true parallelism.</statement>
+      <rationale source="v1-source">Synchronous parallel execution does not parallelize; async is required for real concurrency.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Model state with TypedDict and use Annotated[List, operator.add] only for fields that genuinely accumulate (message history, log entries). Using add-reducer on non-list fields causes subtle bugs.</statement>
+      <rationale source="v1-source">Accumulators are appropriate for append-only collections; misuse on other types produces unexpected merges.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Export Mermaid diagrams with workflow.get_graph().draw_mermaid() at build time and commit alongside the graph code as documentation.</statement>
+      <rationale source="v1-source">Diagrams clarify routing logic and help onboard new team members.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Every node that can fail must have an explicit conditional edge to an error_handler node. Do not rely on Python exceptions propagating through the graph.</statement>
+      <rationale source="v1-source">Explicit error routing prevents silent failures and makes recovery logic testable.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Always compile the graph with a checkpointer even in development. Catching checkpoint-related bugs early prevents production incidents.</statement>
+      <rationale source="v1-source">Development with checkpoints exposes serialization issues and state mismatches before deployment.</rationale>
+    </rule>
+  </section>
+</text>

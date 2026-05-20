@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="feedback-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for feedback-management. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>All feedback ingest sources (support tickets, NPS, sales calls, app-store reviews) MUST be mapped to standardized fields: source, date, user_id, segment, verbatim. Never ingest raw data without annotation.</statement>
+      <rationale source="v1-source">Annotated ingest lets agents weight by segment and avoid false-positive clustering from identical generic complaints across different sources.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The taxonomy is FIXED and closed. TYPE: [bug|request|enhancement|confusion|praise|complaint]. TOPIC: [onboarding|core-A|core-B|billing|integrations|performance|other]. SEGMENT: [free|solo|pro|geek|unknown]. SENTIMENT: [positive|neutral|negative]. Agents must not invent new tags; violations surface as validation errors.</statement>
+      <rationale source="v1-source">Fixed taxonomy prevents drift. LLMs invent new tags ("UI/UX", "minor bug") even when given an enum — enforce with JSON schema validation, not prompt politeness.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every feedback item MUST include the original verbatim alongside tags. Never let the agent rewrite the user's words — re-tagging later is impossible without the source string.</statement>
+      <rationale source="v1-source">Verbatim preservation is non-negotiable. Close-loop emails must quote the user's original phrasing; paraphrasing erodes trust.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Weight aggregations by ARR / retention risk / segment, not raw mention count. A loud free-tier user is not the same signal as a silent enterprise account.</statement>
+      <rationale source="v1-source">Raw mention count rewards the squeaky wheel. Segment weighting reveals true product priorities beneath noise.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Run the triage agent at single-item granularity, not in batches. Batch prompts hide per-item confidence scores and cause the model to over-cluster.</statement>
+      <rationale source="v1-source">Single-item triage lets the agent report confidence honestly. Batch processing produces false-confidence outputs when the model averages across items.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Require a confidence field; route low-confidence items (confidence less than 0.7) to a human queue, not to auto-action.</statement>
+      <rationale source="v1-source">Confidence routing prevents high-risk mis-categorizations from driving roadmap decisions.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Keep close-loop emails as DRAFTS in the human's inbox, never auto-send. Trust collapses fast if a generated reply misquotes the user.</statement>
+      <rationale source="v1-source">Human review gates all outbound communication. Drafts let the PM fix tone or correct agent errors before customer contact.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Link every backlog item back to its source feedback IDs (foreign key, not free-text). Lets you re-contact requesters when shipped.</statement>
+      <rationale source="v1-source">Traceability lets the team close the loop with specific requesters. Without it, feedback and backlog are disconnected.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Re-run categorization quarterly on the historical corpus when the taxonomy evolves — agents make this cheap, humans don't.</statement>
+      <rationale source="v1-source">Quarterly re-tagging keeps historical data consistent with evolved taxonomy. Cheap agent processing enables this audit.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Keep a "rejected suggestions" log with the honest reason. Builds trust and prevents the same idea recurring through the funnel.</statement>
+      <rationale source="v1-source">Transparency in rejection prevents users from feeling unheard. Public archive of why ideas were rejected builds long-term trust.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Pin the taxonomy in the system prompt and in a JSON schema; reject any agent output with tags outside the enum. Drift kills aggregation.</statement>
+      <rationale source="v1-source">Enum validation is non-negotiable. Agents will drift taxonomy unless the schema blocks unknown tags.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Embedding-based dedup gives false positives on short generic complaints ("slow", "broken"); always require a length floor (~30 chars) or include thread context.</statement>
+      <rationale source="v1-source">Short complaints are generic; dedup requires context. Do not collapse "slow" + "broken" into one data point without evidence they describe the same bug.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Sentiment models read sarcasm wrong ~20% of the time; never use sentiment alone to gate priority.</statement>
+      <rationale source="v1-source">Sentiment is a signal, not a gate. Combine with mention count and segment weighting before making roadmap moves.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Agents conflate prospects, active users, and churned users. Lifecycle stage must be a required input field, not optional.</statement>
+      <rationale source="v1-source">Prospect feedback is signal about messaging, not product. Churned-user feedback is too late for iteration. Separate these signals early.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>"Top requests by mention count" output flatters the agent and the loud minority simultaneously. Force a segment-weighted secondary ranking. Top requests = [sum(mentions × weight_segment × weight_arr)].</statement>
+      <rationale source="v1-source">Weighting prevents loud free-tier users from dominating. Segment weighting + ARR weighting surfaces true product priorities.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Close-loop drafts hallucinate dates ("you mentioned this last quarter") if the source date isn't passed in. Pass it; verify it.</statement>
+      <rationale source="v1-source">Date verification prevents drafts from claiming false recency. Pass source date into the close-loop drafting prompt.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Auto-creating Linear/Productboard items on every feedback-tagged ticket floods the backlog. Require a clustering step (≥3 mentions same theme) before issue creation.</statement>
+      <rationale source="v1-source">Clustering gates backlog creation. Prevents every piece of feedback from becoming a ticket.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Long agent context windows tempt "load all 6 months of feedback at once" — accuracy drops sharply past ~100 items per call. Chunk and reduce.</statement>
+      <rationale source="v1-source">Agent accuracy degrades in long contexts. Chunk feedback by month or theme before synthesis.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Close-the-loop emails MUST quote the user's original verbatim verbatim (not paraphrased), reference the date, and link to the changelog. Do not send — return drafts for human review.</statement>
+      <rationale source="v1-source">Verbatim quotes prove the team was listening. Paraphrase erodes trust. Human review gates tone and correctness.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Central feedback store MUST support REST API and webhooks for ingest. Recommended: Productboard (strongest object model), Canny (public boards + voting), Linear (as backlog destination, not primary store). Notion OK for less than 500 items/month.</statement>
+      <rationale source="v1-source">REST + webhooks let agents push/pull feedback programmatically. Avoid tools that require CSV exports as the primary integration path.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Feedback ingest sources (Intercom, Zendesk, app-store scraper, Slack) all pipe to the triage agent first. Never let raw data bypass categorization.</statement>
+      <rationale source="v1-source">Uniform triage entry ensures consistent taxonomy regardless of source.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Use Linear/Jira as the backlog destination, NOT as the feedback store. Link insights from Productboard/Canny into Linear via custom field. This separation keeps insights queryable and issues focused on execution.</statement>
+      <rationale source="v1-source">Feedback stores are built for clustering and synthesis. Issue trackers are built for execution. Mixing them degrades both.</rationale>
+    </rule>
+    <rule id="r23" testable="true" depth="essential">
+      <statement>Dovetail is strongest for qualitative interview transcripts and coding, not real-time feedback. Use it in tandem with a feedback store: Dovetail for discovery data, Productboard for inbound.</statement>
+      <rationale source="v1-source">Tool specialization. Each tool is best for its domain.</rationale>
+    </rule>
+    <rule id="r24" testable="true" depth="essential">
+      <statement>Custom feedback-triage-agent (Haiku): Categorize one item at a time against a fixed taxonomy. Cheap, fast, parallelizable. Enforce JSON schema validation to block taxonomy drift.</statement>
+      <rationale source="v1-source">Haiku is cost-effective for high-volume triage. Single-item processing lets the agent report confidence honestly.</rationale>
+    </rule>
+    <rule id="r25" testable="true" depth="essential">
+      <statement>Custom feedback-aggregator-agent (Sonnet): Weekly/monthly: cluster, count, weight by segment, output ranked themes with verbatim citations. Never auto-cluster without human review.</statement>
+      <rationale source="v1-source">Sonnet is strong at structured synthesis. Weekly aggregations build PM-visible signal from daily noise.</rationale>
+    </rule>
+    <rule id="r26" testable="true" depth="essential">
+      <statement>faion-mlp-gap-finder-agent: Already referenced in the README; consume aggregated feedback to surface gaps between current MLP and user requests.</statement>
+      <rationale source="v1-source">Feedback → MLP gap is a key PM decision cycle. Automate this synthesis.</rationale>
+    </rule>
+    <rule id="r27" testable="true" depth="essential">
+      <statement>faion-sdd-executor-agent: Once a feedback theme becomes a backlog item, hand to this agent for spec/design generation in `.aidocs/backlog/`.</statement>
+      <rationale source="v1-source">Feedback → spec is the downstream motion. Automation here shortens the loop from discovery to roadmap.</rationale>
+    </rule>
+    <rule id="r28" testable="true" depth="essential">
+      <statement>brainstorm skill: For open-ended "what does this batch of confused-onboarding feedback really mean?" diverge-converge when triage is ambiguous.</statement>
+      <rationale source="v1-source">Brainstorming before categorization sometimes yields better taxonomy or reveals new patterns.</rationale>
+    </rule>
+    <rule id="r29" testable="true" depth="essential">
+      <statement>linear-cli (`@linear/cli`): Create/update issues from feedback themes via Linear API. Never auto-create; require human approval.</statement>
+      <rationale source="v1-source">Backlog automation gates creation. Linear becomes the source of truth for roadmap, not a dump for every feedback mention.</rationale>
+    </rule>
+    <rule id="r30" testable="true" depth="essential">
+      <statement>gh (GitHub CLI): Mine GitHub Issues + Discussions for feedback signal with `gh issue list --label feedback`.</statement>
+      <rationale source="v1-source">GitHub is a feedback source if your product is open-source. CLI lets agents batch-process feedback from GH.</rationale>
+    </rule>
+    <rule id="r31" testable="true" depth="essential">
+      <statement>jq: Parse triage agent JSON output before piping to issue tracker. Validate schema early.</statement>
+      <rationale source="v1-source">jq validation gates bad data from reaching the tracker. Early validation prevents cascading errors.</rationale>
+    </rule>
+    <rule id="r32" testable="true" depth="essential">
+      <statement>intercom-cli (community) / zendesk zcli: Pull conversations tagged `feedback` for batch ingest. Never leave feedback stuck in support tools.</statement>
+      <rationale source="v1-source">Centralization is critical. Feedback locked in support tools becomes orphaned. Ingest into the feedback store.</rationale>
+    </rule>
+    <rule id="r33" testable="true" depth="essential">
+      <statement>play-scraper / app-store-scraper: Pull app-store reviews in JSON. Pipe directly into triage agent.</statement>
+      <rationale source="v1-source">App store reviews are high-signal feedback. Automate their ingestion instead of manual reading.</rationale>
+    </rule>
+    <rule id="r34" testable="true" depth="essential">
+      <statement>slack-cli: Pull `#feedback` channel messages, react with status emoji. Keep team aligned on what's being triaged.</statement>
+      <rationale source="v1-source">Slack channel → feedback store pipeline lets the team see feedback movement in real-time.</rationale>
+    </rule>
+  </section>
+</text>

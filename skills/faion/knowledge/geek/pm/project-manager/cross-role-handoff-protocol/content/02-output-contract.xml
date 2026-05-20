@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Cross-Role Handoff Protocol — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a single handoff sign-off record. The agent assembling or auditing handoffs must produce records that satisfy this contract.</summary>
+
+  <output-contract>
+    <required>
+      <field name="feature_id" format="ticket_system_id_or_url"/>
+      <field name="handoff_pair" format="enum: ba-to-architect | architect-to-dev | dev-to-qa | qa-to-devops | custom-pair"/>
+      <field name="sign_off_owner" format="single_named_individual_with_role"/>
+      <field name="timestamp" format="ISO-8601_with_timezone"/>
+      <field name="status" format="enum: approved | rejected | needs-info | expedite-approved | reversed | amended"/>
+      <field name="bundle_artifacts" min="1" source="link_to_artifact_in_ticket_or_repo"/>
+      <field name="acceptance_gate_items" required_keys="checklist_id,passed,evidence_ref"/>
+      <field name="delta_since_previous" format="ref_to_previous_sign_off_id_plus_diff_or_null_if_first"/>
+      <field name="rejection_reason" condition="required_if_status_is_rejected_or_needs_info"
+             format="specific_missing_artifact_or_failing_gate_item"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">sign_off_owner is a team name, channel name, or group ("the QA team", "#eng")</pattern>
+      <pattern id="f2">status=approved while one or more acceptance_gate_items.passed == false</pattern>
+      <pattern id="f3">rejection_reason is "not ready" / "needs more work" / "see Slack" without a specific artifact or gate-item reference</pattern>
+      <pattern id="f4">edit to an existing sign-off record — new amendments must be a new record with status=amended pointing to prior</pattern>
+      <pattern id="f5">parallel downstream work logged in the ticket BEFORE this handoff's approved status timestamp (excluding documented expedite path)</pattern>
+      <pattern id="f6">delta_since_previous missing when previous_sign_off exists for the same handoff_pair</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Bundle artifacts may be deduplicated (same Figma frame referenced twice) — record only once.</transformation>
+      <transformation>Acceptance-gate items may be grouped into one record entry when the gate template explicitly defines the group (e.g., "OWASP checks (5 items)").</transformation>
+      <transformation>Sign-off may be delegated by the named owner BEFORE the gate is hit, recorded as a "delegated-to" field; the delegate becomes the sign_off_owner.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/handoff-record.json"/>
+  </output-contract>
+
+  <section title="Self-check checklist (run before submitting a sign-off record)">
+    <list>
+      <item>sign_off_owner is a single named individual (r1)</item>
+      <item>timestamp is current UTC (not backfilled)</item>
+      <item>status matches actual gate state — no "approved" with failing items (r4 + f2)</item>
+      <item>bundle_artifacts are all linked / fetchable from the ticket</item>
+      <item>delta_since_previous is filled if this is not the first sign-off for the pair (r2)</item>
+      <item>rejection_reason cites specific items, not vague language (r4)</item>
+      <item>no prior record was modified to produce this submission (r5)</item>
+      <item>Output validates against templates/handoff-record.json</item>
+    </list>
+  </section>
+</text>

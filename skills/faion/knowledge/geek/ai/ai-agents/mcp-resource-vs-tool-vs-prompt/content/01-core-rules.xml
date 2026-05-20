@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="mcp-resource-vs-tool-vs-prompt Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for mcp-resource-vs-tool-vs-prompt. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Question 1: Does the model need to ACT (mutate state, fetch live data, run computation)? If yes, it is a Tool. If no, continue to Question 2.</statement>
+      <rationale source="v1-source">Tools trigger actions with side effects or return dynamic computation. Resources and Prompts do not. If the capability mutates (write file, deploy, send message) or fetches live data (query DB, API call, search index), it must be a Tool so the model can reason about idempotency and side effects.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Question 2: Is this content the model reads, as if it were a file or web page? Is it deterministic per URI and static or semi-static? If yes, it is a Resource. If no, continue to Question 3.</statement>
+      <rationale source="v1-source">Resources are read-only views of content. They are addressed by URI and return deterministic results per URI. The model loads them when relevant and they never cause side effects. Use Resources for docs, runbooks, manifests, schemas, code references — anything the model should be able to read on demand without triggering actions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Question 3: Is this a prompt template the user invokes, typically as a slash command? Does it parameterize the user's intent and launch an interaction? If yes, it is a Prompt. If no, you have classified wrong — restart the test.</statement>
+      <rationale source="v1-source">Prompts are user-facing templates, typically slash commands. The user invokes them, and they return multi-message starters that guide the model through a task. Prompts can compose Tools and Resources (e.g., "/investigate(issue_id)" internally calls search_issues Tool and reads issue://issue_id Resource, then asks the model to analyze). Prompts are not model decisions; they are user UX.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Tools are triggered by the model during reasoning. They can have side effects (mutation, API calls, file writes). The model decides to invoke them based on the task at hand. Tool descriptions are critical — they tell the model when to use the tool.</statement>
+      <rationale source="v1-source">The model is the agent making decisions. Tools are the model's action interface. If a tool doesn't fit the model's task, the model won't call it — so tool naming and description must be precise.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Resources are read-only content the model can request on demand. Resources are deterministic per URI — reading the same resource twice returns the same content (or content with a clear refresh policy). Resources have no side effects. Resources can be pre-injected by the host or fetched by the model when needed.</statement>
+      <rationale source="v1-source">Resources are content, not actions. They are stateless. The model's decision to read a resource has no consequence other than loading that content into context. This determinism lets the model reason about idempotency and avoid re-reading the same resource unnecessarily.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Prompts are user-facing templates the host (e.g., Claude Code IDE) invokes. Prompts can be parameterized ("Onboard engineer X") and return multi-message starters. Prompts are not model decisions; they are user commands. Prompts often compose Tools and Resources in their body text, and the model executes those instructions.</statement>
+      <rationale source="v1-source">Prompts are UX. They give users (and Agentic workflows) a way to launch complex multi-step interactions without typing everything manually. A Prompt like "/investigate-bug" can expand to "read the bug report (Resource), search for similar issues (Tool), then analyze the root cause".</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>List every capability the MCP server will expose. For each, build a decision matrix: Side effect? Static-per-URI? User invokes? Then apply the three-question test.</statement>
+      <rationale source="v1-source">A systematic process prevents ad-hoc decisions and the miscommunications they cause. Document every capability and its classification before implementing.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>For Tools: write verb_object names (search_docs, not docs), precise descriptions (use-when / NOT-use-when), and mark MUTATING tools explicitly. For Resources: stable URI schemes and determinism guarantees. For Prompts: user-facing names (slash commands) and compositions of Tools/Resources.</statement>
+      <rationale source="v1-source">Naming and documentation are critical. Verb-object names tell the model what the tool does. MUTATING markers let the model reason about side effects. URI schemes make Resources discoverable and predictable.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Anthropic MCP (Claude Code) supports Tools, Resources, and Prompts natively. OpenAI Responses API supports Tools and Resources; Prompts collapse to system message snippets. Vercel AI SDK 6 supports Tools; Resources map via fetcher; Prompts as system snippets. LangChain MCP adapter supports all three. If you need maximum portability, design assuming all three exist; any runtime that doesn't support Prompts will collapse them to system messages.</statement>
+      <rationale source="v1-source">MCP is a standard, but runtimes implement it differently. Correct classification ensures your server works anywhere; design with all three primitives in mind, and every runtime benefits.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Prompts can compose Tools and Resources in their body text. Example: a /investigate-bug Prompt returns a message that asks the model to call search_issues Tool and read issue://issue_id Resource, then synthesize.</statement>
+      <rationale source="v1-source">Prompts are orchestration templates. They guide the model through a multi-step process by mentioning Tools and Resources by name in the prompt body. The model sees the instructions and executes them.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Resources with content negotiation (different MIME types per URI suffix) can serve multiple formats. Example: schema://user.json vs. schema://user.ts both return the same schema but in different formats.</statement>
+      <rationale source="v1-source">Content negotiation lets one Resource serve multiple representations. The model or user picks the format via URI; the implementation handles the conversion.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="task-worktree-runtime-isolation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for task-worktree-runtime-isolation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The harness MUST create one git worktree per dispatched agent, on a unique branch named after the task slug. Each worktree MUST carry a file-scope manifest (e.g. `WT-SCOPE`) listing the path globs the agent is allowed to edit; any Edit/Write outside the manifest aborts the agent. The orchestrator MUST NOT dispatch two agents into the same worktree, and MUST NOT reuse a worktree across tasks.</statement>
+      <rationale source="v1-source">Without the manifest, the agent silently broadens scope and the merge conflict surfaces as "agent A and agent B both edited unrelated files in the same worktree" — equivalent to the no-worktree case. Without the unique branch, `git worktree add` refuses (a branch can be checked out by only one worktree at a time), so the contract is enforced by git itself.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For every dispatched worktree the harness MUST emit a per-worktree env file containing PORT, DATABASE_URL (with a worktree-unique database name), REDIS_URL (with a unique key prefix or DB index), and SECRETS_PROFILE (a 1Password / vault profile scoped to this worktree). Ports MUST come from a tracked range (e.g. 4000-4999) with a free-port allocator; DB names MUST encode the worktree slug; cache prefixes MUST include the slug. The agent MUST source this env file before any local service starts.</statement>
+      <rationale source="v1-source">This is the difference between "filesystem isolation" and "runtime isolation". Without per-worktree allocation, parallel test suites step on each other's data, parallel dev servers fail to bind, and parallel CI jobs hold the same external rate limits. The penligent.ai 2026 report names this as the dominant production failure mode for worktree-based parallel agents.</rationale>
+    </rule>
+  </section>
+</text>

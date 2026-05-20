@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-quality-security Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-quality-security. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Production Django MUST set: DEBUG=False, SECURE_SSL_REDIRECT=True, SESSION_COOKIE_SECURE=True, CSRF_COOKIE_SECURE=True, SECURE_BROWSER_XSS_FILTER=True, SECURE_CONTENT_TYPE_NOSNIFF=True, X_FRAME_OPTIONS="DENY", SECURE_HSTS_SECONDS=31536000, SECURE_HSTS_INCLUDE_SUBDOMAINS=True, SECURE_HSTS_PRELOAD=True. Run python manage.py check --deploy --fail-level WARNING before every deploy. Block deployment if any WARNING or ERROR is reported.</statement>
+      <rationale source="v1-source">Each setting is a separate attack mitigation: HTTPS prevents credential sniffing, HSTS prevents downgrade attacks, secure cookies prevent session theft over HTTP, XSS filter enables browser-level protection, NOSNIFF prevents MIME-type confusion, DENY prevents clickjacking. check --deploy catches misconfigurations without manual audit. Blocking on WARNING ensures the baseline is enforced in CI.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>All authentication endpoints (login, password reset, registration, token refresh) MUST have rate limiting of at most 5 attempts per minute per IP. Public API endpoints MUST have per-user and per-IP throttle limits. Use DRF's DEFAULT_THROTTLE_CLASSES for DRF projects (not django-ratelimit decorators — stacking both double-counts). Use django-axes for account lockout after failed login attempts (not just rate limiting — lockout persists across IPs for username-based attacks).</statement>
+      <rationale source="v1-source">A rate limit of 5/min prevents 7200 brute-force attempts per day (versus unlimited with no rate limit). django-axes adds account lockout: even if attackers rotate IPs to bypass per-IP rate limits, repeated failures on the same username lock the account. DRF throttle classes are preferred in DRF projects because they integrate with DRF's 429 response format and can be configured per view class.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>All user input MUST pass through a Django form or DRF serializer before being used in any operation. Never build SQL queries from user input (use ORM always). Validate file uploads for type, size, and content (not just extension). Use specific regex validators for structured inputs (usernames, phone numbers). Call .full_clean() on model instances before save() in service functions to trigger model-level validation.</statement>
+      <rationale source="v1-source">Django's ORM prevents SQL injection when used correctly. Forms and serializers document the expected shape of input and reject unexpected fields (protecting against mass assignment). File content validation prevents polyglot files (.jpg with PHP payload). .full_clean() runs model validators and clean() methods, catching invariant violations before they reach the database.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>NEVER use bare except: or except Exception: in production code. Always catch specific exceptions (User.DoesNotExist, ValidationError, Timeout, etc.). Always log exceptions with logger.error(..., exc_info=True) to include the traceback. Never silently pass on exceptions — re-raise or return a meaningful error. Use exc_info=True on ERROR-level logs to include the full traceback for debugging.</statement>
+      <rationale source="v1-source">Bare except hides programming errors (AttributeError, KeyError, NameError) that should never be swallowed. Specific exceptions document the failure mode and let different callers handle different error types appropriately. exc_info=True includes the traceback in logs, critical for diagnosing production incidents. Silent failures corrupt state silently — bugs become visible only when downstream systems fail.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>SECRET_KEY, database credentials, API keys, and passwords MUST be loaded from environment variables (via django-environ or os.environ). Never hardcode secrets in settings files or commit them to version control. Never log passwords, tokens, credit card numbers, or PII. Add Sentry's before_send filter to scrub PII from error reports. Add a custom system check to validate that SECRET_KEY is not the default "django-insecure-*" value.</statement>
+      <rationale source="v1-source">Secrets in version control are exposed to every developer with repo access and are effectively permanent (git history). Environment variables keep secrets outside code. PII in logs violates GDPR and creates liability. The SECRET_KEY check catches the most common misconfiguration in Django tutorials where developers forget to replace the default.</rationale>
+    </rule>
+  </section>
+</text>

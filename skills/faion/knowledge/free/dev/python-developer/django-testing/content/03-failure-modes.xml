@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="django-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for django-testing as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Writing a test function that accesses the database without the @pytest.mark.django_db marker.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Without the marker, pytest-django blocks all DB access. The test fails with "Failed: Database access not allowed". Always add @pytest.mark.django_db to any test that creates or reads model instances. Module-level pytestmark = pytest.mark.django_db applies to all tests in the module.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Patching Model.objects.filter or Model.objects.get with MagicMock to avoid DB access in service tests.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Mocking the ORM tests the mock, not the code. The mock always returns what you tell it, so the test passes even if the service has a broken queryset. Real DB tests with @pytest.mark.django_db and savepoint rollback are fast enough — use them. Over-mocked tests break when QuerySet chaining order changes.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Patching apps.emails.utils.send_mail instead of apps.orders.services.send_mail — patching where the function is defined rather than where it is used.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Python's patch() replaces a name in a module's namespace. If orders.services does from emails.utils import send_mail, the reference is already bound. Patching emails.utils.send_mail has no effect. Patch the use site: patch('apps.orders.services.send_mail').</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Using @pytest.mark.django_db(transaction=True) on all tests as a default instead of only for tests that specifically test on_commit behavior.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>transaction=True requires full table truncation after each test instead of savepoint rollback — 5-10x slower. A test suite of 500 tests using transaction=True adds minutes to CI for no benefit. Use it only for code paths relying on connection.on_commit(), post-transaction signals, or Celery task visibility.</repair>
+    </failure-mode>
+  </section>
+</text>

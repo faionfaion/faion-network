@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="caching-strategy Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for caching-strategy as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Cache stampede (thundering herd): N concurrent misses all hit the DB simultaneously.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Bare cache-aside with no stampede protection sends every concurrent waiter to the DB on miss. Under load, this can produce N times single-request DB load, exactly reproducing the original problem.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Using pickle to serialize cache values in Redis.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Pickle deserializes arbitrary Python objects. If cache contents are attacker-controlled, deserialization is remote code execution. Use JSON or msgpack with schema validation.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Importing redis.Redis (sync) in async FastAPI code.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Sync Redis calls block the event loop, serializing all concurrent requests. Import redis.asyncio.Redis for async services.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Agent sets TTL=86400 by default without computing it from staleness tolerance.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>24-hour TTL is too long for most user-visible data. Compute TTL from the agreed staleness tolerance (e.g., 1800s for user profile if 30min stale is acceptable). Stale data for 24h produces customer complaints.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Cache key includes mutable or high-cardinality arguments (timestamps, request IDs).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>A key that encodes request_id or current timestamp generates a new key per request, producing 0% hit rate and unbounded key growth in Redis.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Hot key: a single Redis key receiving all traffic (e.g., global feature flag served to every request).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>A single Redis key is bound to one shard. At extreme traffic, it saturates network bandwidth or CPU for that shard. Mitigate with local in-process cache with short TTL + Redis fallback.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Adding a cache layer without Prometheus metrics in the same PR.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Cache effectiveness is invisible without hit-rate monitoring. An unmonitored cache may have 10% hit rate (wasted infrastructure) or cause subtle staleness bugs that are only visible via metrics divergence.</repair>
+    </failure-mode>
+  </section>
+</text>

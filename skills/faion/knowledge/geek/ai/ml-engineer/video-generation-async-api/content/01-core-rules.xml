@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="video-generation-async-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for video-generation-async-api. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Video generation agents MUST poll with a sleep interval (minimum 5s, recommended 10s) and a hard timeout (recommended 10 minutes / 600s). Never block synchronously waiting for a video generation job.</statement>
+      <rationale source="v1-source">All providers are async with 60-300s latency. Blocking synchronously freezes agent threads and wastes compute. A hard timeout prevents infinite hangs when providers silently fail.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>After receiving a SUCCEEDED status, download the video file immediately to local or persistent storage. Do NOT store provider-issued URLs as the final artifact — Runway and Luma URLs expire in 24-72h.</statement>
+      <rationale source="v1-source">Provider-issued video URLs expire, typically within 24-72h. Storing only the URL leads to broken references in downstream pipelines and content delivery.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Always log the full raw API response on every poll cycle, including FAILED states. Generation failures can be silent (status: FAILED with empty failure_message field).</statement>
+      <rationale source="v1-source">Silent failures with empty error messages are common across providers. Without the full raw response logged, debugging production failures becomes impossible.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Implement per-provider rate limiting when generating multiple clips in parallel. Use provider-specific concurrency limits and add per-provider semaphores or queue guards.</statement>
+      <rationale source="v1-source">Parallel generation of many clips may hit provider rate limits (429 errors). Without per-provider rate limiting, all parallel jobs fail simultaneously and retry storms amplify the problem.</rationale>
+    </rule>
+  </section>
+</text>

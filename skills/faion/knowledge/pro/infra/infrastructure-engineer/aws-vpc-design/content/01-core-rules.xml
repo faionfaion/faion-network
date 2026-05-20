@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-vpc-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-vpc-design. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Production VPCs MUST use a minimum /16 CIDR block to allow future growth without re-addressing. Subnets MUST be separated into three tiers: public (/24 per AZ for load balancers and NAT GW), private (/24 per AZ for application workloads), and database (/24 per AZ for RDS, ElastiCache). Workloads MUST NOT be placed in public subnets — only load balancers and NAT Gateways live in public subnets.</statement>
+      <rationale source="v1-source">A /16 gives 65,536 addresses — enough to add AZs, tiers, and service subnets without CIDR conflicts. Placing workloads in private subnets means they have no inbound internet path, reducing attack surface even if a security group is misconfigured.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Production environments MUST deploy one NAT Gateway per AZ (one_nat_gateway_per_az = true). Dev and staging environments MAY use a single NAT Gateway (single_nat_gateway = true) for cost reduction. VPC Flow Logs MUST be enabled in ALL environments, writing to S3 (not CloudWatch — cheaper at scale) with REJECT or ALL capture mode.</statement>
+      <rationale source="v1-source">A single NAT Gateway is an AZ dependency: if that AZ fails, all private subnet egress stops. The cost difference between single and per-AZ NAT is significant but justified for production. Flow Logs to S3 cost less than CloudWatch at the GB scale typical in production and are required for security auditing and incident investigation.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every VPC MUST enable Gateway endpoints for S3 and DynamoDB — they are free and route all traffic to those services through the AWS backbone instead of the NAT Gateway. ECS/EKS workloads that pull container images from ECR or write logs to CloudWatch MUST also enable Interface endpoints for ecr.api, ecr.dkr, and logs to avoid NAT costs at scale.</statement>
+      <rationale source="v1-source">NAT Gateway costs dominate AWS bills for workloads that push large data volumes. Gateway endpoints for S3 and DynamoDB are zero-cost and eliminate that traffic from NAT entirely. Interface endpoints have hourly charges but pay for themselves when ECR image pulls or CloudWatch log volume exceeds a few hundred GB/month.</rationale>
+    </rule>
+  </section>
+</text>

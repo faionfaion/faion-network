@@ -1,14 +1,25 @@
+---
+slug: prototyping
+tier: solo
+group: ux
+domain: ui-designer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development.
+content_id: "f5bac879df67c033"
+tags: [prototyping, interaction-design, usability-testing, design-validation, figma]
+---
 # Prototyping
 
 ## Summary
 
-Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development.
+**One-sentence:** Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development.
 
-## Why
+**One-paragraph:** Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development. Static designs cannot convey how interactions behave, which means usability issues remain hidden until expensive development is underway. Prototypes surface these issues early, align stakeholders on expected behavior, and provide a testable artifact for usability research — at a fraction of the cost of discovering the problem in production.
 
-Static designs cannot convey how interactions behave, which means usability issues remain hidden until expensive development is underway. Prototypes surface these issues early, align stakeholders on expected behavior, and provide a testable artifact for usability research — at a fraction of the cost of discovering the problem in production.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Validating interaction flows before writing production code
 - Presenting design concepts to stakeholders who cannot read wireframes
@@ -16,29 +27,49 @@ Static designs cannot convey how interactions behave, which means usability issu
 - Deciding between two competing UX patterns before committing to development
 - Documenting expected behavior for handoff to engineers
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - When the feature scope is a single static content page with no interaction
 - When a fully working staging environment already exists and can be tested directly
 - When the only unknown is visual aesthetics — use static mockups instead
 - When the timeline is so compressed that prototype iteration would delay the actual build
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-process.xml` | Five-step prototyping process: define goals, choose fidelity, create prototype, test, iterate; fidelity levels and prototype types; handoff artifact list |
-| `content/02-examples.xml` | Paper, clickable (Figma), and interactive prototype examples; antipatterns (over-polishing, no hypothesis, ignoring findings) |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/prototype-plan.md` | Prototype plan: objectives, fidelity rationale, scope, user flows, interactive elements, and testing plan |
-| `templates/testing-notes.md` | Per-participant testing notes: task success, observations, quotes, issues found, and recommendations |
+| TBD | TBD |
 
 ## Scripts
 
-| File | Purpose |
-|------|---------|
-| `scripts/export-frames.sh` | Bash script to export all Figma frames from a named page to PNG via the Figma REST API |
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/ux/ui-designer/`

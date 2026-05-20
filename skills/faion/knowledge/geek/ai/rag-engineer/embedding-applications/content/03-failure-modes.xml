@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="embedding-applications Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for embedding-applications as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Picking text-embedding-3-small because it ranks in the top 5 on MTEB without checking retrieval-specific score.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>text-embedding-3-small ranks 62.3% overall but only 51.7% on retrieval — a 12-15% gap compared to bge-m3's 66.8% retrieval score. In a 1000-document corpus, this can mean 100+ fewer correct results in top-10.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Benchmarking single texts one at a time because "that's the real use case".</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Single-text latency is 5-20x higher than batched latency due to network/server initialization overhead. Production deployments always batch; single-text numbers are not comparable to real-world performance and will misdirect optimization efforts.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Inserting non-normalized vectors into pgvector and using the &lt;=&gt; (cosine) operator without checking index type.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Unnormalized vectors give wrong rankings with cosine distance. The &lt;=&gt; operator requires a vector_cosine_ops index; creating the default L2 (vector_l2_ops) index silently produces incorrect results. Agents commonly introduce this bug because the error is silent — queries return results with no error message, but the ranking is wrong.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Changing the embedding dimension or distance metric after inserting millions of documents.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Most vector databases do not support schema changes on live collections. Changing dimension or metric requires dropping and re-creating the collection, re-embedding all documents, and re-inserting. Always set these parameters at creation time and validate them before upsert.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Running benchmarking and insertion in series without quality gates, assuming "newer models are always better".</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Newer embedding models often degrade on niche vocabularies. Without benchmarking, you can quietly degrade retrieval quality by 10-20% after a model upgrade. Quality gates prevent silent regressions and force explicit measurement.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Embedding documents with input_type="search_query" because "it's all the same function".</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Cohere (and Voyage) specifically train dual spaces for documents vs. queries; using the wrong type breaks symmetry and reduces retrieval quality by 5-15%.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Selecting an embedding model solely based on MTEB leaderboard position #1-3 without checking retrieval-specific scores.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>MTEB aggregates 56 tasks. A model that ranks #1 overall might rank #15 on retrieval if it excels at classification or clustering instead. Domain vocabulary (legal, biomedical, code) is often undertrained in general-purpose embeddings. Custom benchmarking with 50-100 labeled pairs on your domain prevents the costly mistake.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>Assuming embedding API changes are backward-compatible ("it's just embedding").</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>OpenAI changed text-embedding-3-* models silently multiple times; users relying on consistency had to re-embed million-document corpora unannounced. Always store model name, version, and embedding date in collection metadata and re-embed on model changes.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Tuning HNSW parameters (m, ef_construct) after inserting millions of documents.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>HNSW parameters are set at collection creation time; changing them requires re-indexing the entire collection (hours to days for large corpora). Always set these at creation time based on latency/recall SLAs.</repair>
+    </failure-mode>
+  </section>
+</text>

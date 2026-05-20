@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="database-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for database-design. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every table must have: UUID or UUIDv7 primary key, NOT NULL on all required columns, UNIQUE constraints for natural keys, FK with explicit ON DELETE semantics, CHECK constraints for bounded domains (enums, ranges, non-negative quantities).</statement>
+      <rationale source="v1-source">Constraints at the database level cannot be bypassed by application bugs or direct SQL access. Missing FK enforcement allows orphaned rows that cause silent data corruption.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Create indexes derived from stated query patterns only. For skewed data (status IN ('pending', 'processing') where 90% is 'delivered'), use partial indexes. For text search, use GIN with pg_trgm. For time-ordered inserts, prefer UUIDv7 over UUIDv4 to preserve B-tree locality.</statement>
+      <rationale source="v1-source">Over-indexing degrades INSERT/UPDATE/DELETE performance proportionally to the number of indexes. Index for the queries you have, not the queries you might have.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Add a nullable deleted_at TIMESTAMPTZ column. Create a partial index on the unique key filtered WHERE deleted_at IS NULL. Create a view (active_X) for queries that never need deleted records. Every query on soft-deleted tables must include the WHERE filter.</statement>
+      <rationale source="v1-source">Without the partial index on the unique key, soft-deleted records block re-insertion of the same natural key (e.g., a user re-registering with the same email).</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use range partitioning by time column for append-heavy tables (events, logs, orders) where old partitions can be detached and archived. Create indexes on each partition, not just the parent. Document the partition creation and archival schedule in a runbook.</statement>
+      <rationale source="v1-source">Range partitioning allows pg_partman to auto-create future partitions and detach old ones. Without documented partition management, partitions grow unbounded and performance degrades.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use CREATE INDEX CONCURRENTLY outside a transaction block for all index creation on tables with existing data. Standard CREATE INDEX takes an exclusive lock that blocks reads and writes for the duration.</statement>
+      <rationale source="v1-source">On a table with millions of rows, CREATE INDEX can hold an exclusive lock for minutes, causing a complete outage. CONCURRENTLY builds the index without blocking, at the cost of a longer build time.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Always use TIMESTAMPTZ (TIMESTAMP WITH TIME ZONE) for all timestamp columns. Never use TIMESTAMP (without time zone) — it stores values without timezone awareness and causes cross-region data corruption.</statement>
+      <rationale source="v1-source">TIMESTAMP stores local time; TIMESTAMPTZ converts to UTC on store and back to session timezone on read. A server that changes timezone (DST, migration) silently mis-interprets TIMESTAMP values.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Every migration must have both an upgrade and a downgrade path. The downgrade must be tested on a clean copy of the database before merging. A no-op downgrade is forbidden.</statement>
+      <rationale source="v1-source">Without a tested downgrade path, a failed deployment cannot be rolled back. CI must apply the migration, then apply the downgrade, and confirm the schema matches the pre-migration state.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>ALTER TABLE ... ADD COLUMN NOT NULL DEFAULT ... rewrites the entire table on PostgreSQL versions older than 11 and requires an exclusive lock. On PG 11+ with a non-volatile default it is instant. Confirm the PG version before using this form in production.</statement>
+      <rationale source="v1-source">A table rewrite on a 100GB table can take hours and block all access. On older PG, the pattern is: ADD COLUMN nullable → backfill with UPDATE → ADD NOT NULL constraint (deferred).</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Choose a single PK type globally (UUIDv7 for time-ordered inserts, BIGSERIAL for simplicity, ULID for lexicographic sortability) and document it in the schema constitution. Never mix PK types across tables — mixed types make joins ugly and type-mismatch FKs disable index usage.</statement>
+      <rationale source="v1-source">UUIDv4 random primary keys cause B-tree fragmentation on high-insert workloads. UUIDv7 preserves temporal ordering, matching the access pattern of most CRUD tables.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Specify ON DELETE explicitly for every FK. Never rely on the default (NO ACTION / RESTRICT — they are subtly different across PostgreSQL versions). Require human review for every CASCADE before merging.</statement>
+      <rationale source="v1-source">CASCADE silently deletes related rows. On a production database with 10+ years of data, an unexpected CASCADE can wipe terabytes. Review is the only safeguard.</rationale>
+    </rule>
+  </section>
+</text>

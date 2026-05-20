@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="cicd-cert-rotation-pipeline Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for cicd-cert-rotation-pipeline. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>cert-manager Certificate resources MUST set privateKey.rotationPolicy: Always, duration: 2160h (90d for LE; 144h for 6-day), and renewBefore: 720h (for 90d) or 48h (for 6-day). The Ingress secretName MUST match the Certificate spec.secretName exactly — any mismatch is a silent failure.</statement>
+      <rationale source="v1-source">Without rotationPolicy: Always, the private key is reused across renewals, increasing the blast radius of key compromise. secretName mismatches are the most common cert-manager misconfiguration and produce no error log — the Ingress simply continues serving the old cert.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The cert rotation pipeline MUST follow: (1) author cert-manager CRDs or IaC resource, (2) apply to staging cluster/environment first, (3) run testssl.sh or sslyze against staging, (4) promote to production only on clean scan, (5) run scan again against production. Never commit private keys to Git — use SOPS, Vault, or External Secrets for any private material.</statement>
+      <rationale source="v1-source">Agents iterating on cert config can accidentally embed private key material in commit history. The staged scan-before-promote step catches TLS misconfigurations (wrong cipher list, missing chain, expired stapling) before they affect production traffic.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>All new cert-manager Certificate resources and ACME client issuances MUST use ECDSA P-256 (algorithm: ECDSA, size: 256) unless the CA or client explicitly does not support it. RSA is acceptable only as a fallback for legacy CAs.</statement>
+      <rationale source="v1-source">ECDSA P-256 provides 128-bit security with smaller key and signature sizes than RSA-3072, reducing TLS handshake overhead. RSA-2048 only provides 112-bit security. Modern Let's Encrypt, ACM, and cert-manager all support ECDSA P-256.</rationale>
+    </rule>
+  </section>
+</text>

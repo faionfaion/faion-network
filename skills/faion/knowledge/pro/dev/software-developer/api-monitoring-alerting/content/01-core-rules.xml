@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-monitoring-alerting Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-monitoring-alerting. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>SLO MUST be defined before any alert rule is written. The SLO document MUST specify: target percentage, measurement window (e.g., 99.9% over 30 days), and error budget. Alert thresholds MUST be derived from the error budget using burn-rate windows, not chosen arbitrarily.</statement>
+      <rationale source="v1-source">Alert thresholds plucked from air (5xx &gt; 1%) are arbitrary and generate constant false positives. Tying every threshold to a stated SLO means alerts fire only when the business commitment is actually at risk. SLO numbers are business decisions — require PM or ops sign-off before setting targets.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every Prometheus alert rule MUST have: for: clause of at least 2 minutes (never 0s or absent), a severity label with value page or ticket, and a runbook_url annotation. Alert rules without runbook_url MUST be rejected by CI (promtool check rules + grep check).</statement>
+      <rationale source="v1-source">A for: 0s alert fires on a single bad scrape (one anomalous 15s window). At least 2 minutes means the condition must persist across two scrape cycles. Missing runbook_url turns every alert into a context-free interrupt. Block in CI with the lint script.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Multi-window multi-burn-rate pattern MUST be used for all SLO-protecting alert rules. The page-level rule fires when 2% of the 30-day budget burns in 1h AND 5% in 6h. The ticket-level rule fires when 10% burns in 3d AND 10% in 1d. NEVER use single-window threshold alerts as the primary SLO protection.</statement>
+      <rationale source="v1-source">Single-window alerts have two failure modes: too sensitive (fire on transient spikes that don't threaten the SLO) and too slow (miss slow burns that erode the budget over days). Multi-window burn-rate catches both: it is sensitive to fast burns and accumulates signal for slow ones. Reference: Google SRE Workbook chapter 5.</rationale>
+    </rule>
+  </section>
+</text>

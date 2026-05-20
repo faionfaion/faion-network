@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Behavior Parity Verification Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the parity report and the diff store. A migration that has not produced these artifacts has not done parity verification — regardless of how much shadow traffic flowed.</summary>
+
+  <section title="Required artifacts">
+    <list>
+      <item><code>parity-report.md</code> per ramp stage: scope, observable list, ramp window, total compared, diff count, top-5 clusters, sign-off.</item>
+      <item><code>parity_diffs</code> table or equivalent store: one row per non-trivial diff with input fingerprint, legacy output hash, new output hash, normalized diff JSON, sampled-at timestamp.</item>
+      <item><code>normalizer.{py,ts,go}</code> committed and tested — the function MUST exist as code, not only as a doc.</item>
+    </list>
+  </section>
+
+  <section title="Required fields per parity-report">
+    <list>
+      <item><code>scope</code>: endpoint or function path under test.</item>
+      <item><code>observable_fields</code>: array, copied verbatim from r1 list.</item>
+      <item><code>ramp_stage</code>: integer 1..4 (1%, 10%, 50%, 100%).</item>
+      <item><code>window_start</code> / <code>window_end</code>: ISO timestamps.</item>
+      <item><code>total_compared</code>: integer; gate is &gt;= 1000 per stage typical.</item>
+      <item><code>diff_rate</code>: float, percent; gate is &lt; 0.5.</item>
+      <item><code>clusters</code>: list of cluster_id, sample_count, root_cause_or_accepted.</item>
+      <item><code>signed_off_by</code> + ISO date — required to close stage.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Diff store keeps raw request/response bodies including PII (emails, names, tokens).</description>
+      <reason>Parity infra becomes a PII honeypot. Normalize PII fields to hashes or redact before persisting; observable comparison uses the hash.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Skipping the diff store and relying on a single "diff_rate" gauge.</description>
+      <reason>A gauge tells you something diverged; without per-sample storage you cannot find the cluster or the input that triggered it.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Auto-promoting between ramp stages by timer alone.</description>
+      <reason>r3 requires diff-rate + cluster-review gating. A timer-only promoter is r3 violation and will be tripped by long-tail traffic.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Observable list written before any shadow traffic.</item>
+      <item>Normalizer code merged and unit-tested.</item>
+      <item>Diff store schema deployed; PII redaction confirmed.</item>
+      <item>Each ramp stage has its own report with sign-off.</item>
+      <item>Cluster analysis present for every non-zero diff stage.</item>
+    </list>
+  </section>
+</text>

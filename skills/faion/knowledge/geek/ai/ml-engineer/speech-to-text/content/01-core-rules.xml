@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="speech-to-text Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for speech-to-text. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Default to GPT-4o Mini Transcribe for accuracy at low cost; switch to AssemblyAI when diarization or structured output (summaries, chapters) is needed.</statement>
+      <rationale source="v1-source">GPT-4o Mini Transcribe at $0.003/min offers the best accuracy/cost ratio for single-speaker audio. AssemblyAI's LeMUR pipeline adds post-processing (summaries, action items) without extra API calls.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use faster-whisper (Large-v3 Turbo) for self-hosted production; break-even versus API is at ~30,000 minutes/month (~500 hours).</statement>
+      <rationale source="v1-source">Fixed GPU cost is ~$276/mo minimum. Below 30K minutes, APIs are cheaper and have no ops burden. Above that threshold, faster-whisper Large-v3 Turbo delivers 216x real-time on a single A10G.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Validate file format and size before calling any STT API — return a structured error for unsupported inputs rather than letting the API fail mid-transfer.</statement>
+      <rationale source="v1-source">Large file uploads to APIs fail after consuming bandwidth. Pre-validation catches unsupported formats (.wav vs .wav64) and oversized files locally before any network cost is incurred.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Chunk large audio files to 5-minute segments with a 5-second overlap to prevent word truncation at boundaries.</statement>
+      <rationale source="v1-source">Without overlap, words that span a chunk boundary are split and the fragment gets dropped or mis-transcribed. A 5-second overlap ensures every word lands fully in at least one chunk.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Always configure a fallback provider; never let a single-provider outage block a transcription pipeline.</statement>
+      <rationale source="v1-source">OpenAI API has had multiple incidents where audio transcription endpoints were degraded while chat remained up. A fallback to faster-whisper or AssemblyAI eliminates single-point dependency with minimal code overhead.</rationale>
+    </rule>
+  </section>
+</text>

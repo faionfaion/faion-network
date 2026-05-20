@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-quality-linting Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-quality-linting. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every Django project MUST configure Ruff in pyproject.toml with at minimum: target-version matching the Python version, line-length=88 or 100, rule groups E/W/F/I/B/C4/UP/SIM/DJ, and migrations excluded from checks. Run ruff check . --fix and ruff format . before every commit via pre-commit hooks.</statement>
+      <rationale source="v1-source">Ruff enforces consistent code style mechanically so code review focuses on logic. The DJ rule group catches Django antipatterns (null=True on string fields, deprecated URL patterns, missing __str__). T20 prevents print() leaking into production. Excluding migrations avoids false positives on generated code.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Django projects with mypy MUST install django-stubs and configure [tool.django-stubs] with django_settings_module in pyproject.toml. Run mypy with check_untyped_defs=true and warn_unused_ignores=true. Apply mypy --strict incrementally per module (add to [tool.mypy.files] list), not repo-wide from day one. Every # type: ignore MUST include a comment explaining why it is acceptable.</statement>
+      <rationale source="v1-source">mypy + django-stubs catches ORM attribute errors (missing FKs, wrong field types) before runtime. check_untyped_defs=true catches errors in untyped functions. warn_unused_ignores keeps the codebase clean as stubs improve. Incremental strict mode prevents the "everything is broken" problem when enabling mypy on a large codebase.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every Django project MUST have a .pre-commit-config.yaml committed to the repo running at minimum: ruff (lint + fix), ruff-format, and mypy on changed Python files. Django system checks (python manage.py check) MUST run as a local hook. pytest runs on push (pre-push stage), not on commit — commit should complete in under 10 seconds. Use pre-commit install --install-hooks to ensure all developers have hooks installed.</statement>
+      <rationale source="v1-source">Pre-commit gates prevent broken code entering the repo without requiring discipline. Ruff + format on commit takes under 1 second. Django system checks catch misconfigured settings. Running pytest on push (not commit) prevents the 60-second-per-commit cost that causes developers to add --no-verify. CI is the second line of defense — it catches what pre-commit missed on the full diff.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>CI pipelines for Django MUST run: (1) ruff check . --no-fix; (2) ruff format --check .; (3) mypy --strict apps/; (4) python manage.py check --deploy --fail-level WARNING; (5) python manage.py makemigrations --check --dry-run; (6) pip-audit --strict; (7) pytest -n auto --cov=apps --cov-fail-under=80. These MUST run on every pull_request and push to main. Coverage threshold of 80% MUST be enforced as a blocking gate.</statement>
+      <rationale source="v1-source">CI is the authoritative gate. Pre-commit runs on changed files only; CI runs on the full diff. --deploy flag catches production-only misconfigurations. makemigrations --check catches engineers who changed models without generating migrations. pip-audit blocks deployment of vulnerable dependencies. Coverage threshold prevents test debt accumulation.</rationale>
+    </rule>
+  </section>
+</text>

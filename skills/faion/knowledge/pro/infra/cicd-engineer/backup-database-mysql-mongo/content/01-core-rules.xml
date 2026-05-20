@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="backup-database-mysql-mongo Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for backup-database-mysql-mongo. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>MySQL backup scripts using mysqldump MUST include `--single-transaction` for InnoDB databases to avoid table locks. Scripts MUST also include `--routines` and `--triggers` to capture stored procedures and triggers that are silently excluded by default.</statement>
+      <rationale source="v1-source">Omitting --single-transaction on a busy InnoDB database causes a full table lock that blocks writes for the duration of the dump. Omitting --routines/--triggers silently produces an incomplete backup that fails application startup after restore.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>XtraBackup backups MUST run the `--prepare` phase before uploading to remote storage. An unprepared backup directory contains redo log entries that must be applied before the data is consistent — uploading raw backup files without prepare produces a backup that cannot be directly restored.</statement>
+      <rationale source="v1-source">The --backup phase produces a crash-consistent but not transaction-consistent state. --prepare applies the redo log to make it transaction-consistent. Skipping this step is the most common XtraBackup mistake and produces a "backup" that requires the prepare step at restore time — often under pressure.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>MongoDB backups MUST use `mongodump --oplog` when targeting a replica set member to produce a consistent cross-collection snapshot. Restoring without `mongorestore --oplogReplay` on an oplog-captured backup produces an incomplete restore — the flag must be used on both sides.</statement>
+      <rationale source="v1-source">Without --oplog, mongodump dumps collections sequentially; a write to collection B after collection A was dumped produces an inconsistent state where A and B are at different points in time. The oplog captures the delta and replays it to bring all collections to the same timestamp.</rationale>
+    </rule>
+  </section>
+</text>

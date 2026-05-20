@@ -1,45 +1,72 @@
-# Error Recovery (Help Users Recognize, Diagnose, and Recover)
+---
+slug: error-recovery
+tier: solo
+group: ux
+domain: ux-researcher
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Plain language error messages with three components: what happened, why, how to fix it.
+content_id: "207312f33d6aa6e7"
+tags: [error-recovery, error-messages, user-guidance, microcopy, heuristic-9]
+---
+# Error Recovery — Nielsen Heuristic #9
 
 ## Summary
 
-Nielsen's Usability Heuristic #9: error messages must be expressed in plain language, precisely
-indicate the problem, and constructively suggest a solution. Every error message needs three
-components: what happened, why it happened, and how to fix it. Placement must be inline and
-proximate to the problem; recovery actions must be explicit buttons or links — never dead ends.
+**One-sentence:** Plain language error messages with three components: what happened, why, how to fix it.
 
-## Why
+**One-paragraph:** Plain language error messages with three components: what happened, why, how to fix it.
 
-Cryptic or generic error messages (Error 403, "Something went wrong") abandon users at the
-moment they most need guidance. Users who cannot diagnose or fix an error abandon the task,
-generate support tickets, or lose trust in the product. Well-formed error messages with
-concrete recovery paths eliminate the support escalation path for the most common failure
-modes and keep users moving forward without external help.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Auditing any form, API response surface, or system state where errors can occur.
 - Writing microcopy for validation errors, system failures, 404 pages, network errors.
 - During a design review for any new feature that has failure states.
 - When support ticket analysis reveals recurring user confusion about a specific error.
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
-- Do not conflate error recovery with error prevention — prevention (Heuristic #5) eliminates
-  errors before they occur; this methodology handles errors that do occur. Apply both, not
-  one instead of the other.
-- Do not use for success or informational states — the three-component structure (what/why/fix)
-  is specific to failure states.
+- Do not conflate error recovery with error prevention — prevention (Heuristic #5) eliminates errors before they occur; this methodology handles errors that do occur. Apply both, not one instead of the other.
+- Do not use for success or informational states — the three-component structure (what/why/fix) is specific to failure states.
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-principles.xml` | Three-component message structure, five message principles, placement rules per error type |
-| `content/02-examples.xml` | Good (Stripe, GitHub 404, form validation) and bad (cryptic, vague, blame, dead-end) examples |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/error-message.md` | Per-error design doc: trigger, technical cause, user impact, message content, visual design, actions |
-| `templates/error-audit.md` | Audit table: error, current message, issues, improved message, placement, recovery options |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/ux/ux-researcher/`

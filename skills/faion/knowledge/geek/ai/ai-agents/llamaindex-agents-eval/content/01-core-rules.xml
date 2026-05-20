@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="llamaindex-agents-eval Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for llamaindex-agents-eval. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use ReActAgent for agentic reasoning over query engines and custom tools. ReAct loops enable transparent reasoning before each action.</statement>
+      <rationale source="v1-source">ReAct provides interpretable reasoning traces; each "Thought," "Action," and "Observation" are logged for debugging.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use OpenAIAgent for faster, cheaper reasoning via function calling. OpenAI agents delegate reasoning to the model's built-in function-calling logic.</statement>
+      <rationale source="v1-source">Function calling is faster and cheaper than explicit ReAct loops; trade transparency for latency and cost.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Add memory to agents using ChatMemoryBuffer. Agents then recall prior conversations within the token limit.</statement>
+      <rationale source="v1-source">Explicit memory (not part of the tools) enables multi-turn conversations with context recall.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use MultiAgentRunner for orchestrating multiple specialized agents. Route queries to the appropriate agent based on the orchestrator prompt.</statement>
+      <rationale source="v1-source">Specialization improves performance; a research agent queries facts, an analysis agent runs calculations.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use RetrieverEvaluator with metrics (hit_rate, MRR, NDCG) to measure retrieval quality. Generate synthetic Q&amp;A pairs from documents using LLM then evaluate the retriever against them.</statement>
+      <rationale source="v1-source">Retrieval metrics reveal whether the right context is being surfaced. Hit rate (did top-K include correct document?) and MRR (mean reciprocal rank of first correct document) are standard IR metrics.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use FaithfulnessEvaluator to measure whether responses are grounded in retrieved context. RelevancyEvaluator measures whether answers address the question. CorrectnessEvaluator compares against ground truth.</statement>
+      <rationale source="v1-source">These evaluators quantify hallucination, off-topic responses, and factual errors. Use them to detect degradation as the system evolves.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use BatchEvalRunner for batch evaluation of multiple responses. Evaluators run in parallel; collect results and compute aggregate metrics.</statement>
+      <rationale source="v1-source">Batch evaluation scales to hundreds of queries. Aggregate metrics (mean score, pass rate) reveal system-wide quality trends.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Cache embedding operations to avoid recomputing embeddings for unchanged documents. Use EmbeddingCache or built-in caching in LlamaIndex.</statement>
+      <rationale source="v1-source">Embeddings are expensive; caching significantly reduces latency and cost for large document sets.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use streaming to return responses token-by-token. LLMs typically support streaming; stream from the LLM, not just the retriever.</statement>
+      <rationale source="v1-source">Streaming reduces perceived latency — users see partial responses immediately instead of waiting for complete responses.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use async retrieval (aget_relevant_documents or aquery) to retrieve from multiple sources in parallel. Await all retrievals before passing context to the LLM.</statement>
+      <rationale source="v1-source">Parallel async calls reduce latency. Example: query three vector stores and a keyword index simultaneously, then aggregate results.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Enable observability via LangSmith or LlamaIndex Observability. Log queries, retrieved context, LLM inputs/outputs, and evaluation metrics to a centralized trace store.</statement>
+      <rationale source="v1-source">Observability reveals bottlenecks, failure modes, and drift over time. Traces are essential for debugging production issues.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Use LlamaCloud for managed document parsing and indexing. Upload documents; LlamaCloud parses, chunks, and indexes them. Retrieve via the managed index API.</statement>
+      <rationale source="v1-source">Managed parsing handles complex document formats (PDFs, Office, HTML). Eliminates custom parsing code and its maintenance burden.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>An orchestrating agent uses LlamaIndex agents as tools. Route queries to specialized agents (research, analysis, calculation) based on query intent.</statement>
+      <rationale source="v1-source">Specialization improves accuracy; a single generalist agent is less reliable than multiple focused agents.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Wrap LlamaIndex agent.chat() calls in error handling. Agents can fail to parse tool outputs or route incorrectly; catch and retry or escalate.</statement>
+      <rationale source="v1-source">Explicit error handling prevents silent failures. Retries with different prompts or models often succeed.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Log agent reasoning traces (Thought/Action/Observation from ReAct agents) for debugging and auditing. Use LangSmith or LlamaIndex Observability to centralize logs.</statement>
+      <rationale source="v1-source">Reasoning traces reveal where agents make mistakes and enable iterative prompt refinement.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Cache embedding results to avoid recomputing embeddings for identical or similar documents. Use LlamaIndex's built-in embedding cache or Redis backend.</statement>
+      <rationale source="v1-source">Embeddings are expensive (API calls, latency). Caching reduces both cost and latency for repeated queries over the same documents.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Stream token-level output from LLM responses. Use query_engine.query(..., stream=True) or agent.stream_chat() where available.</statement>
+      <rationale source="v1-source">Token-level streaming reduces perceived latency. Users see partial responses immediately instead of waiting for complete generation.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Convert retrieval to async (aget_relevant_documents, aquery) to parallelize multiple document lookups. Retrieve from vector store, keyword index, and database concurrently, then aggregate.</statement>
+      <rationale source="v1-source">Parallel async retrieval significantly reduces latency. Requires proper error handling for partial failures.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Configure LangSmith observability: set LANGSMITH_API_KEY and LANGSMITH_PROJECT to trace every agent.chat() call, every tool invocation, and every evaluation run.</statement>
+      <rationale source="v1-source">Centralized observability reveals performance bottlenecks, error patterns, and drift in evaluation metrics. Essential for production debugging.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Use LlamaCloud for document ingestion. Upload documents; LlamaCloud handles parsing, chunking, and metadata extraction. Query via managed indices.</statement>
+      <rationale source="v1-source">Managed parsing supports complex formats (PDFs, Word, HTML, images with OCR). Eliminates custom parsing code and its maintenance.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Evaluation dataset quality directly impacts metric reliability. Use LLM to generate 2-5 Q&amp;A pairs per document chunk. Validate a sample manually before running full evaluation.</statement>
+      <rationale source="v1-source">Low-quality synthetic Q&amp;A pairs produce misleading metrics. Manual validation catches generation errors early.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>For iterative improvement, track evaluation metrics over time. Store results (hit rate, faithfulness, relevancy) in a database. Monitor for degradation.</statement>
+      <rationale source="v1-source">Metrics trending downward indicate the system is degrading as documents are added or prompts change. Early detection enables rapid fixes.</rationale>
+    </rule>
+    <rule id="r23" testable="true" depth="essential">
+      <statement>Batch evaluation saves costs and enables parallel metric computation. Prepare 50-200 test questions; run BatchEvalRunner with multiple evaluators (faithfulness, relevancy, correctness); aggregate results.</statement>
+      <rationale source="v1-source">Batch evaluation reduces per-query overhead and enables statistical analysis of system behavior. Aggregate metrics reveal system-wide quality trends, not just individual response quality.</rationale>
+    </rule>
+    <rule id="r24" testable="true" depth="essential">
+      <statement>When evaluation shows low hit_rate, the retriever is missing relevant documents. Investigate: improve chunk size, add more documents, or re-train embeddings. When faithfulness is low, the LLM is hallucinating; use stronger models or better prompts.</statement>
+      <rationale source="v1-source">Each metric pinpoints a specific failure mode. Root cause analysis enables targeted fixes rather than blind system tuning.</rationale>
+    </rule>
+    <rule id="r25" testable="true" depth="essential">
+      <statement>Never skip manual validation of synthetic Q&amp;A datasets. Review a random sample of generated questions; if more than 10% are low-quality (ambiguous, unanswerable, off-topic), regenerate with a stronger LLM.</statement>
+      <rationale source="v1-source">Garbage input produces garbage metrics. Manual spot-checks catch generation issues before wasting time on evaluation runs.</rationale>
+    </rule>
+    <rule id="r26" testable="true" depth="essential">
+      <statement>For production, enable LangSmith tracing on every agent.chat() call. Set LANGSMITH_API_KEY and LANGSMITH_PROJECT environment variables. Traces should include: query, tool calls, tool outputs, LLM inputs, LLM outputs, final response.</statement>
+      <rationale source="v1-source">Production systems require observability. Traces enable rapid debugging of agent failures and performance analysis.</rationale>
+    </rule>
+    <rule id="r27" testable="true" depth="essential">
+      <statement>Use MemorySaver for development only. For production, use PostgreSQL (AsyncPostgresSaver) or Redis checkpointing so agent conversations survive process restarts and can be resumed.</statement>
+      <rationale source="v1-source">In-process memory is lost on crashes. Durable storage enables reliable agent state persistence.</rationale>
+    </rule>
+    <rule id="r28" testable="true" depth="essential">
+      <statement>Test agents with adversarial queries: questions outside the domain, contradictory statements, requests for harmful information. Agents should gracefully acknowledge limits rather than hallucinate answers.</statement>
+      <rationale source="v1-source">Agents often fail gracefully under distribution shift. Adversarial testing reveals these failure modes before production deployment.</rationale>
+    </rule>
+    <rule id="r29" testable="true" depth="essential">
+      <statement>Version your agents and evaluation datasets. Tag semantic versions (e.g., agent-v1.2.0, eval-dataset-v2.1.0). Tie metric improvements to specific agent/dataset versions for reproducibility and rollback.</statement>
+      <rationale source="v1-source">Version control enables A/B testing and rollback on regressions. Without versions, it's impossible to correlate metric changes to specific changes.</rationale>
+    </rule>
+  </section>
+</text>

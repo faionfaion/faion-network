@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="caching-invalidation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for caching-invalidation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every Redis key set by application code MUST use setex / SET EX / EXPIRE. SET without TTL is forbidden. TTL values MUST include ±10–20% random jitter to prevent synchronized expiry stampedes.</statement>
+      <rationale source="v1-source">A key without TTL is permanent stale data. Synchronized TTLs cause synchronized cache misses which cause synchronized origin load spikes (thundering herd). Jitter distributes expiry across time.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For every entity with event-based cache invalidation, a write-path audit table MUST exist mapping (file:line, table/collection, mutated_columns) to (expected cache keys to delete). A reviewer agent MUST reject PRs where any write path has an empty invalidation list.</statement>
+      <rationale source="v1-source">LLMs implement cache-aside reads but routinely forget to wire cache.delete() into update/delete RPCs. The write-path audit table makes the invariant machine-checkable rather than relying on human review to catch gaps.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Tag SET keys MUST be given a TTL equal to the longest TTL of any key they reference. When a tagged key expires, it MUST be removed from its tag sets — either eagerly in the expiry hook or lazily by checking key existence before use.</statement>
+      <rationale source="v1-source">Tag SETs without TTL become permanent sets of stale key names as the actual cached keys expire. Memory usage grows indefinitely. Setting tag TTL to the longest member TTL ensures the tag set is at most as long-lived as its longest member.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Cache keys for versioned entities MUST follow the pattern {entity}:v{version}:{id} where version comes from a Redis counter. Version MUST be incremented atomically via INCR before any new writes use the new schema. Old versioned keys MUST have TTL set so orphaned keys do not accumulate.</statement>
+      <rationale source="v1-source">Without version in the key, a deploy that changes the cached data shape produces deserialization errors or silently corrupt cached values. INCR atomicity prevents race conditions between multiple processes reading the new version before the counter is stable.</rationale>
+    </rule>
+  </section>
+</text>

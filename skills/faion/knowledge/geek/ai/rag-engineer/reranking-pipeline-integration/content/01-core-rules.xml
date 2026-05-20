@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="reranking-pipeline-integration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for reranking-pipeline-integration. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>When using the Cohere Rerank API, always map results back to original documents using r.index, never by list position. Cohere returns results in score order, not input order.</statement>
+      <rationale source="v1-source">Cohere's response.results is sorted by relevance score descending. Using list position instead of r.index maps rerank scores to the wrong documents, silently corrupting the ranking.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every production reranking call MUST have a fallback path that returns initial retrieval results when the reranker fails, times out, or is unavailable. Never let a reranker failure propagate as a query failure.</statement>
+      <rationale source="v1-source">The reranker is an accuracy improvement, not a correctness requirement. Initial retrieval results are useful; zero results or an exception is not. Failing silently to initial order preserves user experience.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Cache reranked results by hash(query + sorted(doc_ids)). Identical queries with the same candidate pool recur frequently in chat interfaces where the same context window is reused across turns.</statement>
+      <rationale source="v1-source">Reranking is computationally expensive (100-500ms). Caching avoids redundant scoring when the same query is issued repeatedly within a session or across concurrent users asking similar questions.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>LLM-based reranking prompts MUST constrain output to JSON with a defined schema. Without schema enforcement the agent may produce freeform ranking prose that breaks the downstream parser.</statement>
+      <rationale source="v1-source">LLMs produce variable-format output when unconstrained. A ranking expressed as natural language prose ("the first document seems most relevant...") cannot be parsed into a sorted index. JSON with explicit index and score fields is parseable deterministically.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>For multilingual content, use Cohere rerank-multilingual-v3.0 or Jina jina-reranker-v2-base-multilingual. Never use an English-only model (ms-marco family) on non-English content.</statement>
+      <rationale source="v1-source">English-only models silently produce degraded scores on non-English text. The multilingual variants cover 100+ languages and maintain precision across language boundaries.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>On CPU-only infrastructure, use FlashRank instead of sentence-transformers CrossEncoder. FlashRank is designed for CPU inference and delivers 3-5x faster scoring without requiring GPU.</statement>
+      <rationale source="v1-source">sentence-transformers CrossEncoder defaults to CPU but is not optimized for it. FlashRank uses quantized models and CPU-optimized inference paths, making local reranking viable on commodity servers.</rationale>
+    </rule>
+  </section>
+</text>

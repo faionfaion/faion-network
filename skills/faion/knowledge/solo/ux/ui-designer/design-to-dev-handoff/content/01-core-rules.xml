@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Design-to-Dev Handoff — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that survive AI-generated Figma frames and prevent the most common implementation drift: tokens, states, motion, content rules, focus order.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-tokens-not-values" testable="true" depth="essential">
+      <statement>Every color, spacing, radius, typography style, and elevation in the handoff MUST be specified as a design-token reference (e.g., color/text/primary, space/4), NOT a raw value (#1F2937, 16px). Frames that contain raw values fail the gate.</statement>
+      <rationale source="W3C Design Tokens spec, Material Design / Polaris / Carbon token systems">Raw values destroy theming, dark mode, and brand updates. They also indicate the designer copy-pasted from an AI export without re-binding to the system. Dev who implements raw values creates an immediate tech-debt entry.</rationale>
+    </rule>
+
+    <rule id="r2-every-state-rendered" testable="true" depth="essential">
+      <statement>Every interactive element MUST have all required states rendered or explicitly marked N/A with reason. Required by element type: button (default, hover, focus, active, disabled, loading), input (default, hover, focus, filled, invalid, disabled, loading), card-action (default, hover, focus, pressed), navigation-item (default, hover, focus, active, current-page).</statement>
+      <rationale source="WAI-ARIA Authoring Practices, design-systems state inventories">Missing states are the #1 dev-handoff defect. AI-Figma typically renders only "default" and "hover", silently dropping focus and disabled. Devs then invent states inconsistently across screens.</rationale>
+    </rule>
+
+    <rule id="r3-motion-specs-required" testable="true" depth="essential">
+      <statement>Every transition or animation in the design MUST declare: duration (ms), easing (named curve from design system: ease-out, ease-in-out, spring(stiffness, damping)), trigger (hover / focus / state-change / on-mount / scroll), and prefers-reduced-motion fallback. "Smooth" / "subtle" / "snappy" without numbers fail the gate.</statement>
+      <rationale source="Material Motion / Apple HIG motion guidelines, WCAG 2.3.3 Animation from Interactions">Without numbers, dev guesses. Guesses don't compose into a system. prefers-reduced-motion is a WCAG AAA requirement and an accessibility lawsuit risk if ignored.</rationale>
+    </rule>
+
+    <rule id="r4-content-rules-explicit" testable="true" depth="essential">
+      <statement>Every text element MUST declare: max length OR character budget, truncation strategy (ellipsis / wrap-N-lines / scroll), i18n expansion factor (e.g., German +35%), and empty-state copy if applicable. Lorem ipsum or "real copy" without rules fails the gate.</statement>
+      <rationale source="Material text design, i18n-engineering literature, Smashing Magazine i18n studies">Text that fits in English overflows in German / Russian and breaks layout. Without truncation rules, dev picks one and it's wrong. i18n expansion factor lets dev test the worst case before ship.</rationale>
+    </rule>
+
+    <rule id="r5-focus-order-documented" testable="true" depth="essential">
+      <statement>Every screen MUST include a focus-order annotation (numbered overlay or dev-mode annotation): the sequence in which Tab moves through interactive elements. Keyboard traps (modal scope, custom widgets) MUST be called out with the trap boundary.</statement>
+      <rationale source="WCAG 2.4.3 Focus Order, WAI-ARIA modal patterns">Focus order is invisible in static Figma frames. Without annotation, dev implements DOM order, which often diverges from visual order and breaks keyboard navigation. Lawsuit-grade accessibility defect.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Button spec with tokens, states, motion, content rule">
+      <code lang="text"><![CDATA[
+Element: PrimaryButton
+
+Tokens:
+  bg:        color/action/primary/default      (hover: /hover, disabled: /disabled)
+  text:      color/text/on-primary
+  padding:   space/y/3 + space/x/4
+  radius:    radius/md
+
+States:
+  default, hover, focus, active, disabled, loading
+  loading: spinner uses motion/spin (1.2s linear infinite)
+
+Motion:
+  bg color transition: 150ms ease-out (token: motion/standard)
+  prefers-reduced-motion: skip transition, snap to new color
+
+Content:
+  max length: 22 chars
+  truncation: none (button width adjusts; if &gt; 22, use SecondaryActionMenu instead)
+  i18n expansion: 35% (max 30 chars in DE/RU)
+
+Focus order: receives focus on Tab after the preceding input; visible
+focus ring uses color/focus/ring at 2px.
+      ]]></code>
+      <note>Illustrates r1-r5 all in one element spec.</note>
+    </example>
+
+    <example type="bad" title="AI-Figma frame with no spec">
+      <code lang="text"><![CDATA[
+Element: PrimaryButton
+- background: #4F46E5
+- color: white
+- padding: 12px 16px
+- "smooth hover effect"
+
+States rendered: default, hover (no focus, no disabled, no loading)
+Content: "Submit"
+No motion duration, no i18n note, no focus order.
+
+Dev outcome:
+  - Used inline hex (no theme), invented focus ring color, invented
+    disabled style, omitted loading, picked 300ms ease-in-out for hover.
+  - Three buttons across the app have three different focus rings.
+
+Repair: re-do with r1-r5 applied. Or use the design system component;
+do not author from raw frame.
+      ]]></code>
+      <note>Illustrates r1-r3 + r5 violations — the standard AI-Figma drop.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

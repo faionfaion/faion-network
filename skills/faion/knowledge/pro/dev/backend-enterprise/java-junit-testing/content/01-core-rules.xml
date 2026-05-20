@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="java-junit-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for java-junit-testing. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Controller tests MUST use `@WebMvcTest(ControllerName.class)` with `@MockBean` for service dependencies. Service tests MUST use `@ExtendWith(MockitoExtension.class)` with plain Mockito. Repository tests MUST use `@DataJpaTest` with real Testcontainers database, never H2. Full-stack integration tests MUST use `@SpringBootTest` with Testcontainers only when cross-layer interaction is being tested.</statement>
+      <rationale source="v1-source">Each slice boots only the needed context; context caching in CI is critical for build time. Mixing slice types defeats the cache. Testcontainers ensures behavior parity with production (Postgres-specific SQL, transaction semantics).</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Test method names MUST follow the pattern `methodUnderTest_state_expectedBehavior` (e.g., `findById_whenUserNotExists_throwsException`). Every test MUST have three clearly visible sections: Arrange (set up mocks/data), Act (call the SUT), Assert (verify outcome and interactions).</statement>
+      <rationale source="v1-source">CI failure output shows the test name; `methodUnderTest_state_expectedBehavior` is self-documenting. Humans and agents both find the failing case instantly. Arrange/Act/Assert makes the test intent obvious and prevents assertions buried in setup.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Projects MUST enforce coverage thresholds in CI via Jacoco: minimum 70% line coverage, 60% branch coverage. Repositories MUST run PIT (Pitest) on critical paths (payment, auth) at least quarterly. Test generation agents MUST NOT disable coverage checks or lower thresholds as "quick fixes".</statement>
+      <rationale source="v1-source">Coverage gates prevent accidental blind spots. Mutation testing catches tests that pass without actually asserting (e.g., `service.save(user)` with no `assertThat(result)`). Quarterly mutation scans on critical paths find flaky or missing tests before they hide prod bugs.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Test generation agents MUST NOT mock the same layer twice (e.g., mocking both UserRepository and UserService in a controller test). MUST NOT use H2 database; MUST use Testcontainers with the target database. MUST NOT omit `@Transactional` on repository tests if inserting seed data. MUST NOT mix Hamcrest, AssertJ, and JUnit assertions in the same test class — pick one idiom per repo.</statement>
+      <rationale source="v1-source">Double-mocking defeats the point (tests everything stubbed, real controller flow untested). H2 hides prod bugs. Missing transactional state causes pollution between tests. Mixed assertion idioms make code hard to read and agents copy the wrong style.</rationale>
+    </rule>
+  </section>
+</text>

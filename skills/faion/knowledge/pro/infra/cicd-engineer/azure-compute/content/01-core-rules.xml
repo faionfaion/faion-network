@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="azure-compute Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for azure-compute. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Choose VMs only for legacy applications requiring specific OS versions, custom kernel modules, or licensing tied to VM instances.</statement>
+      <rationale source="v1-source">VMs provide full OS control but require the most operational overhead (patching, scaling, HA configuration). Every other scenario maps to a higher abstraction tier with less burden.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use VMSS Flexible orchestration (not Uniform) for all new scale-out workloads; Uniform mode is being deprecated.</statement>
+      <rationale source="v1-source">Flexible orchestration supports standard VM APIs, mixed instance types, and max zone-spreading. Uniform mode uses a separate scale set VM API surface that Microsoft is retiring.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Choose AKS for containerized workloads that require Kubernetes features: custom operators, advanced scheduling, multi-tenancy, or complex networking.</statement>
+      <rationale source="v1-source">AKS gives full Kubernetes API access with a free managed control plane (99.95% SLA). Teams without Kubernetes expertise should evaluate Container Apps first — AKS operational overhead is significant.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use Container Apps for event-driven microservices that benefit from scale-to-zero; use AKS when you need control plane access, custom operators, or ARM64 nodes.</statement>
+      <rationale source="v1-source">Container Apps is built on Kubernetes (Dapr + KEDA + Envoy) but hides all Kubernetes complexity. It does not support Windows containers or ARM64 as of 2026. AKS supports both.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use App Service for web applications and APIs with predictable traffic where slot-based blue-green deployments are sufficient; prefer Container Apps for event-driven or variable-load services.</statement>
+      <rationale source="v1-source">App Service deployment slots enable zero-downtime swaps with auto-swap for CD pipelines. Container Apps is better for bursty workloads because it can scale to zero, eliminating idle compute cost.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Select B-series VMs for workloads with variable CPU usage (CI agents, dev environments, low-traffic web servers); use D-series for balanced production workloads.</statement>
+      <rationale source="v1-source">B-series accumulates CPU credits during idle periods and uses them during bursts — ideal when average utilization is below 20%. D-series provides consistent CPU without burst limits, suitable for production APIs.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Enable Availability Zones for all production VMs and VMSS (99.99% SLA); Availability Sets provide only 99.95% SLA and do not protect against zone failures.</statement>
+      <rationale source="v1-source">Availability Zones place VMs in physically separate datacenters within a region. A zone failure (rare but documented) takes down all VMs in that zone. Zone-redundant deployments survive such events.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use Standard tier or higher for production App Service plans; Free and Basic tiers lack autoscale, custom domains with TLS, and deployment slots.</statement>
+      <rationale source="v1-source">Standard is the minimum viable tier for production: it includes 5 deployment slots, VNet integration, autoscale, and custom domain TLS. Premium adds more scale-out capacity and improved performance.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use Workload Identity (OIDC federation) for pod-level Azure resource access — never use the deprecated AAD Pod Identity or store service principal credentials in Secrets.</statement>
+      <rationale source="v1-source">Workload Identity uses Kubernetes ServiceAccount token projection with Azure AD OIDC federation. It requires no secret management: the cluster issues a signed JWT that Azure AD verifies directly. Pod Identity is deprecated and will be removed.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Enable the OIDC issuer and Workload Identity add-on before enabling KEDA — KEDA's TriggerAuthentication uses Workload Identity to access Azure queues, Service Bus, and Event Hub without credentials.</statement>
+      <rationale source="v1-source">KEDA's Azure scalers authenticate to Azure via Workload Identity when the cluster has OIDC issuer enabled. Installing KEDA before OIDC/Workload Identity leaves scalers unable to authenticate to Azure backends.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Create a system node pool with small VMs (D2s_v5), taints to prevent user workloads, and a dedicated user node pool with autoscaling across all three availability zones.</statement>
+      <rationale source="v1-source">System node pools run CoreDNS and kube-proxy. Mixing user workloads onto system nodes risks evicting critical cluster components under memory pressure. Separation ensures stable cluster operations regardless of workload load spikes.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Add a Spot node pool (priority=Spot, min=0, max=N) for batch and interruptible workloads to reduce compute costs by up to 90%; add tolerations to workloads that run on Spot nodes.</statement>
+      <rationale source="v1-source">Spot VMs are evicted with 30 seconds notice. Applications that handle preemption gracefully (batch jobs, stateless workers) run correctly on Spot. Applications requiring persistent connections (databases, session-sensitive APIs) must never run on Spot pools.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Set max_surge to 33% for all node pool upgrade settings to control rolling upgrade speed while maintaining capacity during upgrades.</statement>
+      <rationale source="v1-source">33% surge allows one-third of nodes to be upgraded at a time. Lower values slow upgrades unnecessarily; higher values risk under-capacity if surge nodes are slow to provision.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Use Azure CNI Overlay networking for large clusters (hundreds of nodes) to avoid exhausting subnet IP space; use standard Azure CNI for clusters where pod IPs must be directly routable in the VNet.</statement>
+      <rationale source="v1-source">Standard Azure CNI assigns a VNet IP to every pod, consuming IPs rapidly at scale. Overlay mode assigns pod IPs from a private CIDR that is NAT'd at the node level, decoupling pod count from VNet IP consumption.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Enable automatic_channel_upgrade: patch with a maintenance window on off-peak hours to receive automatic patch version upgrades without manual intervention.</statement>
+      <rationale source="v1-source">Unpatched Kubernetes clusters accumulate CVEs. Automatic patch upgrades within the maintenance window keep clusters current without disrupting business hours. Minor version upgrades still require manual approval for testing.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Set min_replicas: 0 for batch and background workloads to enable scale-to-zero; set min_replicas: 1 or higher for latency-sensitive APIs to avoid cold-start latency on first request.</statement>
+      <rationale source="v1-source">Scale-to-zero eliminates idle compute cost. However, a cold start from zero replicas adds 1–5 seconds latency depending on image size. APIs with SLA requirements on first-request latency must maintain at least one warm replica.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Configure KEDA scale rules for event-driven sources (Azure Service Bus, Storage Queue, Event Hub) to scale containers based on queue depth rather than CPU/memory metrics.</statement>
+      <rationale source="v1-source">CPU/memory-based scaling reacts to load after it has already arrived. Queue-depth scaling is proactive: containers are provisioned as messages accumulate, before processing falls behind.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Use revision_mode: Multiple with named revision labels to implement blue-green or canary deployments via traffic weight splitting — never delete the old revision before verifying the new one is healthy.</statement>
+      <rationale source="v1-source">Traffic splitting in Multiple mode allows incremental rollout (e.g., 10% → 50% → 100%) and instant rollback by shifting 100% traffic back to the previous revision. Single revision mode requires a full cutover with no gradual validation.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Enable Dapr sidecar for service-to-service communication and state management in microservices — use Dapr component scopes to limit which containers can access each component.</statement>
+      <rationale source="v1-source">Dapr component scopes enforce least-privilege: a payment service can access the payments state store but not the orders state store, even though both run in the same environment. Without scopes, any app can read/write any Dapr component.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Use Spot Priority Mix on VMSS to maintain a minimum on-demand baseline while running the remainder as Spot VMs; calculate the split using baseRegularPriorityCount + regularPriorityPercentageAboveBase.</statement>
+      <rationale source="v1-source">Pure Spot is unreliable for production — eviction rates can exceed 20% during peak Azure demand. Spot Priority Mix guarantees a minimum on-demand baseline (e.g., 2 VMs) while saving up to 90% on the remaining capacity, making it safe for production stateless workloads.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Purchase Reserved Instances for stable baseline workloads (VMs, AKS system nodes, App Service plans) with 1-year commitments; use Savings Plans for flexible cross-service commitments.</statement>
+      <rationale source="v1-source">Reserved Instances provide up to 72% savings over pay-as-you-go for predictable workloads. Savings Plans offer similar savings but apply across compute services, useful when the mix of VMs vs containers changes over time.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Use Dev/Test pricing for all non-production environments and scale down or stop non-prod resources outside business hours.</statement>
+      <rationale source="v1-source">Dev/Test pricing removes the Windows Server license fee from eligible VMs and App Service plans, reducing cost by up to 55%. Stopping non-prod VMs overnight (16h/day off) reduces compute cost by approximately 67% compared to always-on.</rationale>
+    </rule>
+    <rule id="r23" testable="true" depth="essential">
+      <statement>Use Managed Identity for all Azure resource access from VMs, AKS, Container Apps, and App Service — never store service principal credentials in code, environment variables, or Kubernetes Secrets.</statement>
+      <rationale source="v1-source">Managed Identities are issued and rotated by Azure AD automatically. A stored service principal credential is a permanent secret that can be exfiltrated; a Managed Identity credential expires with the VM/pod and cannot be used outside its assigned resource.</rationale>
+    </rule>
+    <rule id="r24" testable="true" depth="essential">
+      <statement>Configure private endpoints for all PaaS services accessed by compute resources (Azure SQL, Storage, Key Vault, Container Registry) to route traffic over the Azure backbone instead of the public internet.</statement>
+      <rationale source="v1-source">Private endpoints bind a PaaS service to a private VNet IP. Traffic stays on Microsoft's backbone and is not exposed to internet routing, DDoS, or man-in-the-middle risks. NSG rules can then block all outbound internet from compute nodes.</rationale>
+    </rule>
+    <rule id="r25" testable="true" depth="essential">
+      <statement>Enable Microsoft Defender for Containers (AKS) and Defender for VMs for threat detection; enforce Azure Policy assignments to prevent non-compliant resource configurations from being deployed.</statement>
+      <rationale source="v1-source">Defender for Containers scans running images, detects privilege escalation attempts, and alerts on anomalous network activity. Azure Policy prevents teams from deploying resources without required tags, encryption, or network restrictions, shifting security left before deployment.</rationale>
+    </rule>
+  </section>
+</text>

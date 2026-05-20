@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="conversion-tracking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for conversion-tracking. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Mark events as conversions in GA4 Admin → Events by toggling "Mark as conversion"; assign monetary value via the value and currency parameters on every purchase-type event.</statement>
+      <rationale source="v1-source">Events without value make revenue attribution impossible in GA4. Without the conversion toggle, events do not appear in Goals reports or inform bidding in linked Google Ads campaigns.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Define funnels in GA4 Explorations → Funnel exploration with explicit named steps; instrument each step with a distinct event rather than relying on page-view sequence.</statement>
+      <rationale source="v1-source">Page-view funnels break on SPAs and client-side routing. Named events are stable across routing changes and portable to other analytics tools.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Emit an experiment_exposure event at the moment the variant is rendered, and set it as a user property; without exposure tracking, post-hoc segment analysis is unreliable.</statement>
+      <rationale source="v1-source">If exposure is not recorded, any user who saw a variant but did not convert is invisible to the analysis. Survivor bias inflates measured lift.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Track the five lifecycle events — signup, activation, return visit, purchase, referral — with consistent naming across web, mobile, and backend; use server-side Stripe webhook as the authoritative purchase source.</statement>
+      <rationale source="v1-source">Client-side purchase events are lost to ad blockers, ITP, and tab-close race conditions. Server-side purchase events from Stripe webhooks are the only complete record and should override client-side fallbacks.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Track feature usage with a generic feature_usage event carrying feature_name and feature_action; track article read progress at 25/50/75/100% milestones and video progress at 25/50/75% milestones.</statement>
+      <rationale source="v1-source">Milestone-based progress tracking avoids event flooding while preserving the shape of engagement curves needed for content optimization and onboarding analysis.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Maintain a versioned event registry (YAML or JSON) checked into the repo; treat event schema changes like API changes — bump a version, emit a deprecation alias for one release before removing the old name.</statement>
+      <rationale source="v1-source">Renaming events silently breaks all dashboards, alerts, and ML models that depend on them. A registry with CI validation prevents unregistered events from reaching production.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use snake_case for all event names and property names without exception; never mix camelCase mid-project.</statement>
+      <rationale source="v1-source">Inconsistent casing creates duplicate events in analytics tools (sign_up vs signUp vs SignUp are three separate events), inflating acquisition counts and breaking funnel steps.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Store all monetary values as integer cents in a single canonical field (value_cents); document this unit at the top of the event registry and in every code comment that touches the field.</statement>
+      <rationale source="v1-source">Mixed dollar/cent values in purchase events corrupt revenue reporting silently — the error is invisible until a discrepancy is noticed in monthly reconciliation.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Never include email addresses, full names, or other directly identifying fields as event properties; pair each conversion with user-property updates (plan, signup_source) for cohorting instead.</statement>
+      <rationale source="v1-source">PII in event streams violates GDPR/CCPA. User properties stored in the analytics platform are separate from raw events and provide segmentation without raw PII exposure in event logs.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Gate all analytics dispatches behind a CMP consent check; do not fire any events before consent state is resolved.</statement>
+      <rationale source="v1-source">Firing before consent state is resolved is a GDPR violation. Events from unconsented sessions must fall back to aggregate-only metrics without user identifiers.</rationale>
+    </rule>
+  </section>
+</text>

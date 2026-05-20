@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="tracker-gitlab-duo-developer-flow Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for tracker-gitlab-duo-developer-flow. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every coding agent action against a GitLab project MUST be invoked through a named Duo flow declared in `.gitlab/duo-flows.yaml`. Triggers MUST be either (a) issue label transitions (`agent:implement`, `agent:review`) or (b) scheduled pipelines. Direct API calls to `merge_requests` from outside Duo are forbidden in production projects. The flow definition MUST set `require_human_review: true` for any change touching a protected branch and MUST NOT exceed the assignee's project role; protected-branch settings, CODEOWNERS, and approval rules apply to flow output exactly as they apply to human MRs.</statement>
+      <rationale source="v1-source">GitLab Duo's flow contract makes the platform — not external webhooks — the system of record for "an agent did this". Side webhooks or external runners bypass the audit log and protected-branch enforcement, recreating the shared-token anti-pattern Duo was built to retire. Tying triggers to label transitions also gives auditors one surface to review: the project's label history is the agent invocation log.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The canonical Duo pipeline MUST chain Developer Flow into Code Review Flow: the `agent:implement` label triggers Developer Flow, the resulting MR-opened event triggers Code Review Flow with at least the `security` standard enabled. The project MUST run GitLab 18.8 or later before enabling any Duo flow; pre-18.8 deployments are explicitly out of scope because of the locking bug plus feature-flag misconfiguration documented in GitLab incident #21171. A pre-18.8 detection check MUST run on flow-config load and refuse the run with a "version floor not met" error.</statement>
+      <rationale source="v1-source">The composed pipeline is what GitLab's Duo reference architecture targets — Developer alone misses the SAST false-positive filtering that Code Review Flow's `security` standard delivers. The 18.8 floor is non-negotiable: the locking bug in earlier versions causes the Developer Flow to deadlock on MR creation under concurrent label triggers, producing zombie runs the platform cannot clean up. Refusing at config-load time prevents the deadlock from occurring in production.</rationale>
+    </rule>
+  </section>
+</text>

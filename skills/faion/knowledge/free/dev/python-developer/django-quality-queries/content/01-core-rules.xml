@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-quality-queries Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-quality-queries. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every QuerySet that will be iterated MUST declare select_related() for every ForeignKey/OneToOne field accessed in the loop body, and prefetch_related() for every ManyToMany or reverse FK accessed in the loop body, BEFORE the loop. Do not add these in the view — put them in selector/manager methods so the optimization is centrally owned and reused. One query per view is impossible; targets: list endpoints ≤5 queries, detail endpoints ≤10 queries.</statement>
+      <rationale source="v1-source">select_related adds a JOIN — same query, zero additional round trips. prefetch_related issues exactly 2 queries regardless of result size. Centralizing in selectors means every caller (views, admin, Celery, management commands) gets the optimization automatically. Targets give a concrete, testable threshold for code review.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every hot endpoint (list views, dashboard, high-traffic API) MUST have an assertNumQueries regression test that locks the exact query count. Use Django Debug Toolbar (dev) to profile new views. Enable nplusone middleware in development settings to autodetect N+1 without manual inspection. Install django-silk for production profiling of top 10 slow requests.</statement>
+      <rationale source="v1-source">assertNumQueries is a zero-cost regression lock: it fails immediately when someone adds an N+1 and the CI catches it before merge. Without it, N+1 regressions are invisible until load testing. Debug Toolbar is the fastest way to see the problem during development — it shows the full query list with duplicates highlighted.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use bulk_create() when creating multiple model instances in a loop. Use QuerySet.update() or F() expressions when updating the same field on multiple rows. Never iterate with .save() for batch creates or counter increments. Set batch_size in bulk_create to control memory for very large batches.</statement>
+      <rationale source="v1-source">bulk_create issues a single INSERT with multiple values rows — O(1) queries instead of O(N). QuerySet.update() issues a single UPDATE WHERE — O(1) vs O(N). F() expressions are evaluated server-side and are safe from race conditions under concurrent writes.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Add database indexes (models.Index) to every field used in: (1) .filter() clauses in hot paths; (2) .order_by() clauses on large tables; (3) foreign key fields not covered by Django's auto-index. Add composite indexes for common multi-field filter patterns (e.g., is_active + created_at). Verify index usage with EXPLAIN ANALYZE in development.</statement>
+      <rationale source="v1-source">A query on an unindexed field does a sequential scan — O(rows) cost. An index lookup is O(log N). For a 100K-row table the difference is 10,000x. Django's default auto-index covers only the primary key and explicit unique fields; application-specific filter patterns require explicit model indexes.</rationale>
+    </rule>
+  </section>
+</text>

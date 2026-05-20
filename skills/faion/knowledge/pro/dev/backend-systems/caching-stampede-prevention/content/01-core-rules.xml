@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="caching-stampede-prevention Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for caching-stampede-prevention. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Distributed cache locks MUST use SET NX EX (atomic set-if-not-exists with expiry) — never a two-step SETNX then EXPIRE. Lock release MUST use a Lua script for atomic check-and-delete to prevent releasing a lock owned by another process after TTL expiry.</statement>
+      <rationale source="v1-source">A two-step SETNX + EXPIRE has a crash window between the two commands where the lock is held without a TTL — permanent deadlock. The Lua atomic check-and-delete prevents a slow process from deleting the lock that a faster process already reacquired after TTL expiry.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Probabilistic early refresh MUST only be used for entities where serving a value that is at most one TTL period stale is explicitly acceptable. The beta parameter MUST be tuned: beta=1.0 is conservative (refresh in last 30% of TTL), beta=2.0+ is aggressive (starts refreshing at 50% of TTL remaining).</statement>
+      <rationale source="v1-source">Early refresh returns the current (slightly stale) cached value while asynchronously updating it. For entities with strict consistency requirements (financial data, inventory), this is incorrect behavior regardless of how small the stale window is.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Request coalescing MUST set a timeout for the coalescing window (100–500ms). If the in-flight request does not complete within the timeout, waiting requests MUST fall through to their own fetch — never block indefinitely waiting for a coalesced result.</statement>
+      <rationale source="v1-source">An unbounded coalescing window turns a single slow origin request into a cascading queue of blocked requests. The coalescing timeout limits the blast radius: if the in-flight request stalls, waiters degrade to individual origin calls rather than an application-wide hang.</rationale>
+    </rule>
+  </section>
+</text>

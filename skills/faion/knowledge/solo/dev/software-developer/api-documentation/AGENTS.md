@@ -1,36 +1,73 @@
+---
+slug: api-documentation
+tier: solo
+group: dev
+domain: software-developer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog.
+content_id: "01de24b2a9730613"
+tags: [api-docs, openapi, swagger-ui, redoc, documentation]
+---
 # API Documentation
 
 ## Summary
 
-Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog. Host interactive docs via Swagger UI (`/docs`) and readable reference via Redoc (`/redoc`).
+**One-sentence:** Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog.
 
-## Why
+**One-paragraph:** Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog. Host interactive docs via Swagger UI (`/docs`) and readable reference via Redoc (`/redoc`).
 
-Developers abandon APIs that lack copy-paste examples or do not document errors. OpenAPI as source of truth enables auto-generated client SDKs, test stubs, and Swagger UI with zero extra work. A changelog prevents breaking-change surprises for existing consumers.
+## Applies If (ALL must hold)
 
-## When To Use
+- Publishing any API consumed by external developers or third-party integrations.
+- Setting up a new FastAPI or Django project where OpenAPI is auto-generated.
+- Adding examples and error tables to an existing, poorly documented API.
+- Preparing an API for SDK generation.
 
-- Publishing any API consumed by external developers or third-party integrations
-- Setting up a new FastAPI or Django project where OpenAPI is auto-generated
-- Adding examples and error tables to an existing, poorly documented API
-- Preparing an API for SDK generation
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Internal micro-services with no external consumers — a brief AGENTS.md is enough.
+- Prototypes that will be redesigned before any consumer integrates.
+- CLI tools — man pages and --help flags are the right format.
 
-- Internal micro-services with no external consumers — a brief AGENTS.md is enough
-- Prototypes that will be redesigned before any consumer integrates
-- CLI tools — man pages and --help flags are the right format
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-structure.xml` | Required documentation sections: overview, auth, quick start, errors, changelog |
-| `content/02-openapi-examples.xml` | Rules for inline examples in OpenAPI; FastAPI app metadata setup; example schema |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/openapi-examples.yaml` | OpenAPI path with request/response examples and error refs |
-| `templates/doc-structure.md` | Markdown template for a complete API reference page |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/dev/software-developer/`

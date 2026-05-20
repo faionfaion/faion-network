@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="php-eloquent Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for php-eloquent. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Always whitelist $fillable; never use $guarded = [] on any model.</statement>
+      <rationale source="v1-source">Guarded-empty models expose every attribute to mass assignment. Even fields like is_admin or password_hash can be set via $model-&gt;fill($request-&gt;all()) when $guarded is empty — a recurring CVE in agent-generated code.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use Attribute::make() exclusively for accessors and mutators; never mix with legacy getXAttribute() on the same model.</statement>
+      <rationale source="v1-source">Mixing the two APIs on one model produces undefined behavior; the framework resolves accessor priority inconsistently across Laravel versions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Eager-load in repository methods by default; never let controllers or resources trigger lazy associations.</statement>
+      <rationale source="v1-source">N+1 bugs caused by lazy loading in controllers are invisible in code review. Forcing eager loading at the repository boundary makes query cost explicit and reviewable.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Wrap multi-write paths in DB::transaction(); Eloquent does not auto-run transactions for create + relation-&gt;attach combinations.</statement>
+      <rationale source="v1-source">Without an explicit transaction, a failed attach after a successful create leaves an orphaned record with no rollback.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Disable lazy loading in non-production: Model::preventLazyLoading(!$this-&gt;app-&gt;isProduction()) — makes N+1 throw instead of silently slow.</statement>
+      <rationale source="v1-source">Prevents silent N+1 regressions that surface in production.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Always pair a model change with migration + factory + resource; agents that touch only the model cause drift visible in CI hours later.</statement>
+      <rationale source="v1-source">Keeps schema definition, serialization, and test fixtures in sync.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use firstOrCreate / updateOrCreate over manual where-save patterns to avoid race conditions with concurrent writers.</statement>
+      <rationale source="v1-source">These methods handle upsert atomically within a transaction.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Resource classes are the API contract; never return raw models from controllers — leaked password_hash, remember_token, soft-delete columns.</statement>
+      <rationale source="v1-source">Decouples API shape from database schema.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Index every where/orderBy column in migrations; Eloquent makes it cheap to query unindexed columns but the bill arrives in production.</statement>
+      <rationale source="v1-source">Prevents O(n) full table scans on first production query.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="csharp-background-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for csharp-background-services. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Always use a bounded Channel&lt;T&gt; with an explicit FullMode; never use Channel.CreateUnbounded.</statement>
+      <rationale source="v1-source">Unbounded channels build up memory without limit under load. Explicit capacity + FullMode (Wait, DropOldest, or DropWrite) forces the producer to handle backpressure instead of silently growing the heap.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Resolve scoped services inside ExecuteAsync via IServiceProvider.CreateScope() per item; never inject scoped services directly into the singleton BackgroundService.</statement>
+      <rationale source="v1-source">BackgroundService is registered as a singleton. Injecting a scoped service (DbContext, repository) directly causes a scope-mismatch exception at runtime on first access.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Wrap per-item processing in try/catch inside the ReadAllAsync loop; rethrow OperationCanceledException only when stoppingToken is cancelled.</statement>
+      <rationale source="v1-source">An unhandled exception inside ExecuteAsync terminates the hosted service silently in .NET 6+ (the host logs but keeps running). One bad item must not kill the consumer loop.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use PeriodicTimer.WaitForNextTickAsync(stoppingToken) for fixed-interval work; never use Task.Delay in a loop as a timer.</statement>
+      <rationale source="v1-source">Task.Delay ignores the cancellation token after the delay starts if not forwarded explicitly, and loops can leak on shutdown. PeriodicTimer cancels at the next tick boundary cleanly.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Log structured fields per item ({OrderId}) and use ILogger.BeginScope per item for distributed trace correlation.</statement>
+      <rationale source="v1-source">Background service logs without correlation IDs make triage in production impossible; structured fields enable filtering by entity ID.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="django-base-model Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for django-base-model as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Switching PK to UUID retroactively — pretends to be a 5-line change, is actually destructive.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Reject any migration that drops/recreates id. Always go via separate uid column with backfill.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Agents add unique=True and forget partial-index requirement when soft-delete is enabled.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Leads to IntegrityError after restore. Replace every unique=True on a soft-deletable model with UniqueConstraint(condition=Q(deleted_at__isnull=True)).</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Default objects shadowing. Agents put objects = SoftDeleteManager() first and lose access to deleted rows everywhere — including admin and loaddata.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always preserve all_objects and update admin to use it.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>CASCADE through soft-delete silently hard-deletes children.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Force a checklist: list every reverse relation and decide CASCADE/PROTECT/SET_NULL per edge.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Tenant context leaks in Celery tasks because get_current_tenant() reads thread-local set by middleware.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Agents that "just call Model.objects.all()" return cross-tenant rows. Force explicit context with tenant_context(tenant).</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>db_default=Now() confused with auto_now_add=True. They behave differently for bulk_create, update, raw SQL.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Pick one and document in the base model.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>GeneratedField(db_persist=True) generates SQL that errors on SQLite.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Agents that ship SQLite-targeted dev DBs will see migration errors only in CI. Test on the prod DB engine.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>HistoricalRecords(inherit=True) combined with abstract base + 100 child models silently creates 100 extra tables.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Reviewers should always count migrations. Use HistoricalRecords selectively on compliance-required models only.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>.delete() semantic flip. Once SoftDeleteMixin is in, Model.objects.filter(...).delete() no longer hits the row-level override (Django QuerySet delete() bypasses it).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Agents must override the QuerySet too. Use SoftDeleteQuerySet that overrides delete() at the queryset level.</repair>
+    </failure-mode>
+    <failure-mode id="fm-10" severity="medium">
+      <description>objects.update() bypasses signals and save() — soft-delete logic that lives in delete() won't run.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Agents who write "set deleted_at via update" miss that the queryset path needs its own override.</repair>
+    </failure-mode>
+    <failure-mode id="fm-11" severity="medium">
+      <description>uid as URL param without a length-validating regex lets /users/&lt;uid:uuid&gt;/ accept any string.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Use Django's uuid path converter, not &lt;str:uid&gt;.</repair>
+    </failure-mode>
+    <failure-mode id="fm-12" severity="medium">
+      <description>Mass-rename of id references to uid in templates/serializers without migration creates dead URL routes.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Migrate views + URL conf in the same PR as the model change.</repair>
+    </failure-mode>
+  </section>
+</text>

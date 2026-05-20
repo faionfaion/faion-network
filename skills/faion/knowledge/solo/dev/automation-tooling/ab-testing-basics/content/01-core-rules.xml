@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ab-testing-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ab-testing-basics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Define every experiment as a structured object with id, hypothesis, variants, metrics, target_sample_size, and owner before writing any assignment code.</statement>
+      <rationale source="v1-source">Locking the spec before code prevents post-hoc changes to allocation or primary metric, which invalidate statistical guarantees.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Validate before launch: variant allocations must sum to 1.0, at least 2 variants required, exactly 1 primary metric.</statement>
+      <rationale source="v1-source">Multiple primary metrics enable HARKing (Hypothesizing After Results are Known); no primary metric means there is no pre-registered success criterion.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Compute required sample size from baseline rate, MDE (in absolute pp), alpha, and power before setting target_sample_size — never use a round number as the stopping rule.</statement>
+      <rationale source="v1-source">Stopping early on "enough data" without power calculation inflates false positives; round-number stopping rules are not tied to detectability.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Bucket users using hashlib.md5(f"{experiment_id}:{user_id}".encode()).hexdigest() and bucket = (hash_value % 10000) / 10000.0 — never use random.random() or Python's built-in hash().</statement>
+      <rationale source="v1-source">Python's hash() is process-salted (changes per restart). random.random() produces different variants for the same user across requests. Both break session continuity and make analysis impossible.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Gate the variant override path behind is_staff or an env check — never expose it as an unauthenticated query parameter in production.</statement>
+      <rationale source="v1-source">An unauthenticated override lets any user force themselves into a variant, biasing the sample and creating a security bypass.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Emit an exposure event on the first variant evaluation in a session; record separately from conversion — analyses run on exposures, not raw assignments.</statement>
+      <rationale source="v1-source">Assignment is "what would they get"; exposure is "did they actually see it". Diluting analysis with unexposed users underestimates lift.</rationale>
+    </rule>
+  </section>
+</text>

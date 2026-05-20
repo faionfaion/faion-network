@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="rate-limiting Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for rate-limiting. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use sliding window (ZSET-based) or GCRA (redis-cell) for user-facing endpoints. Use fixed window only for low-stakes counters (e.g., internal admin polling). Never default to fixed window without explicit justification.</statement>
+      <rationale source="v1-source">Fixed window allows 2x the limit in a burst at the window boundary (end of old + start of new window). Sliding window distributes evenly. For public APIs, the burst behavior is exploitable.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>All rate limiters in production must be backed by Redis or Valkey. In-memory (dict-based) limiters have independent state per replica and provide no protection once there is more than one process.</statement>
+      <rationale source="v1-source">A fleet of N app replicas with in-memory limiters allows N times the configured limit. Redis provides shared atomic state across all replicas.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>In the sliding window Redis ZSET implementation, compare the count AFTER the zadd, not before. The count must include the current request. Use a Lua script to make the check-and-add atomic.</statement>
+      <rationale source="v1-source">A race condition exists if count is checked before zadd: two concurrent requests both see count less than limit, both add, both succeed despite exceeding the limit. Atomicity via Lua eliminates the race.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Always clamp refilled tokens to min(bucket_size, current + elapsed * rate). Without the clamp, long idle periods accumulate unlimited tokens and allow unbounded bursts.</statement>
+      <rationale source="v1-source">A user idle for 1 hour against a 100 req/s bucket would accumulate 360,000 tokens without the clamp. The min() limits burst to the designed maximum regardless of idle time.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Always emit X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After (on 429) on every rate-limited response. Also support the IETF draft RateLimit-* headers for modern clients.</statement>
+      <rationale source="v1-source">Standard headers allow clients to implement backoff without parsing error bodies. Missing Retry-After causes clients to retry immediately, generating more 429s and increasing load.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Compose multiple keys per request: ip + user + apikey + tenant. Apply the limit on any one key being exceeded. This prevents a single compromised API key from bypassing IP limits and vice versa.</statement>
+      <rationale source="v1-source">Single-key limiters have blind spots. A CGNAT IP behind many users penalizes all of them. A leaked API key with IP rotation bypasses IP limits. Composing keys closes both gaps.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Apply X-Forwarded-For parsing with a trusted-proxy allowlist when the app is behind a CDN. Never use request.client.host directly — it will be the CDN's IP, limiting all traffic as one entity.</statement>
+      <rationale source="v1-source">Behind a CDN, request.client.host is always the CDN edge IP. All users share one rate limit counter, causing all traffic to be throttled simultaneously when any user hits the limit.</rationale>
+    </rule>
+  </section>
+</text>

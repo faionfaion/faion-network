@@ -1,14 +1,25 @@
+---
+slug: process-mining-automation
+tier: pro
+group: ba
+domain: business-analyst
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: A data-driven methodology for discovering actual process execution from IT event logs and identifying automation candidates using objective scoring criteria.
+content_id: "63c361296bd7dd91"
+tags: [process-mining, automation-assessment, rpa, event-logs, data-driven]
+---
 # Process Mining and Intelligent Automation Analysis
 
 ## Summary
 
-A data-driven methodology for discovering actual process execution from IT event logs and identifying automation candidates using objective scoring criteria. Combines process mining tools (Celonis, Disco, ProM) to reconstruct real process flows, conformance checking against documented processes, and an automation readiness matrix that scores candidates on volume, standardization, stability, digital input, error rate, and ROI potential. Produces an automation assessment report with full/partial/no-go recommendations.
+**One-sentence:** A data-driven methodology for discovering actual process execution from IT event logs and identifying automation candidates using objective scoring criteria.
 
-## Why
+**One-paragraph:** A data-driven methodology for discovering actual process execution from IT event logs and identifying automation candidates using objective scoring criteria. Combines process mining tools (Celonis, Disco, ProM) to reconstruct real process flows, conformance checking against documented processes, and an automation readiness matrix that scores candidates on volume, standardization, stability, digital input, error rate, and ROI potential. Produces an automation assessment report with full/partial/no-go recommendations.
 
-Process documentation relies on subjective stakeholder input that diverges from actual execution; RPA initiatives fail because automation is applied to processes that are not sufficiently rule-based or stable. Process mining replaces "interview the process owner" with event-log evidence, and the scoring matrix replaces intuition-based automation selection with a reproducible, auditable decision framework.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Pre-RPA or intelligent automation initiative where automation candidates must be ranked objectively
 - Process variance analysis where conformance checking reveals deviations between documented and actual flows
@@ -16,7 +27,7 @@ Process documentation relies on subjective stakeholder input that diverges from 
 - Audit or compliance context where process evidence must come from system logs, not interviews
 - Digital transformation assessment needing a portfolio of automation opportunities with ROI estimates
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Processes with no digital event trail (fully manual, paper-based) — mining requires event logs
 - Highly creative or judgment-intensive processes (strategy, design) — automation readiness score will be below threshold
@@ -24,16 +35,42 @@ Process documentation relies on subjective stakeholder input that diverges from 
 - Organizations without access to process mining tooling or data engineering capability to extract event logs
 - When the goal is process improvement rather than automation — use BPMN and business process analysis instead
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-process-mining.xml` | Definition, BA competencies required, four-step workflow (extract → discover → conform → enhance), tool landscape |
-| `content/02-automation-assessment.xml` | Automation candidate scoring criteria with weights, RPA vs. intelligent automation comparison, key vendor landscape, market data |
-| `content/03-examples.xml` | Automation assessment matrix scored example, ROI estimate structure, recommendation thresholds |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/automation-assessment.md` | Process overview, 6-criterion readiness scoring table, recommendation bands, and ROI estimate section |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/ba/business-analyst/`

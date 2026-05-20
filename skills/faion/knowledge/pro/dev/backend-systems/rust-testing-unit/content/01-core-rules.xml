@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="rust-testing-unit Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for rust-testing-unit. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Colocate unit tests with production code in #[cfg(test)] mod tests { use super::*; }. Black-box tests that call only the public API go to tests/ at the crate root. Do not mix the two placements.</statement>
+      <rationale source="v1-source">Colocated tests access private items; tests/ tests verify the public contract. Mixing them produces a confusing import surface and prevents the compiler from enforcing visibility boundaries.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Mock trait dependencies with mockall::mock! or #[automock]. Do NOT mock plain structs or types that have a cheap real implementation (chrono, serde_json::Value). When a free function must be mocked, prefer a generic parameter or a function-pointer field over a single-method trait.</statement>
+      <rationale source="v1-source">mockall cycles — auto-mocking a trait that returns a type defined in the same crate with feature flags or async signatures — fail to compile. The README example handles this by mock!-ing a concrete Database rather than a trait.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Always specify the tokio runtime flavor explicitly: #[tokio::test(flavor = "current_thread")] for tests that do not spawn tasks; #[tokio::test(flavor = "multi_thread", worker_threads = 2)] when the unit under test calls spawn or spawn_blocking. Never rely on the default flavor.</statement>
+      <rationale source="v1-source">#[tokio::test(flavor = "multi_thread")] masks Send/Sync bugs that current_thread would surface. Default flavor is current_thread; agents call spawn_blocking and the test panics under load only in CI.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use tokio::time::pause to control virtual time in time-sensitive tests. Never use std::thread::sleep or tokio::time::sleep to "give the task time" — use tokio::join!, tokio::time::pause, or wait on a channel instead.</statement>
+      <rationale source="v1-source">sleep-driven async waits are flaky in CI. tokio::time::pause advances the virtual clock deterministically, giving sub-millisecond tests with full time coverage.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use expect("descriptive message") instead of unwrap() in test assertions. The message is the next agent's starting point when a test fails.</statement>
+      <rationale source="v1-source">unwrap() in a test produces a panic without context. expect("user repository should return user") identifies the intent immediately.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Only add doctests to public items (pub fn, pub struct, pub trait). Doc examples on private functions are silently ignored by cargo test --doc. When an agent adds a doctest to a private fn, flag it in review and promote to a #[test] or integration test.</statement>
+      <rationale source="v1-source">Doctest on private items silently provides no coverage, misleading both developers and coverage reporters.</rationale>
+    </rule>
+  </section>
+</text>

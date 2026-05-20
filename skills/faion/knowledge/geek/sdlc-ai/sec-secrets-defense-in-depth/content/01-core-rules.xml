@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="sec-secrets-defense-in-depth Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for sec-secrets-defense-in-depth. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every repo MUST install `gitleaks` as a `pre-commit` hook scanning staged content. The hook MUST run by default for every contributor (humans and agents). Agents MUST treat a hook failure as a real finding: rotate first, then scrub from the diff. Bypassing with `git commit --no-verify` is forbidden — fix the root cause and recommit.</statement>
+      <rationale source="v1-source">Defense in depth begins where the secret would otherwise originate; CI scanners catch what slips through but cannot un-publish a token that landed on a public branch. Local-first matches the same "shift-left" pattern that made format/lint hooks effective and that GitGuardian's 2026 sprawl report identifies as the highest-leverage point.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every PR MUST run TruffleHog against the diff between `base..head` with `--results=verified` and the job MUST fail the required check on any verified finding. Unverified findings are reported as warnings, not blockers, to keep the gate signal clean. The PR description MUST link the rotation receipt before merge if a verified finding is acknowledged as expected (rare — typically only test fixtures using known invalidated keys).</statement>
+      <rationale source="v1-source">A verified finding is not a "potential secret" — it is a key that the issuer just answered as authentic. Treating it as anything other than P0 is a process bug. Restricting the merge gate to verified findings stops alert fatigue and gives agents a sharp signal they can act on.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>The first action on a verified secret finding MUST be rotation at the issuer (AWS IAM key delete, GitHub token revoke, OpenAI/Anthropic key revoke, Stripe key roll). Only after the issuer confirms revocation does the responder rewrite history if desired. The rotation event MUST be logged in the incident channel with the issuer's confirmation ID and the new secret stored in the team secret manager (Vault, 1Password, AWS Secrets Manager). The PR that introduced the leak MUST be closed without merge until the new secret is wired in.</statement>
+      <rationale source="v1-source">An attacker who clones the repo before a force-push still has the leaked token; a `git filter-repo` on the remote does not delete the value from anyone's local copy or any cache, fork, or backup. Issuer-side revocation is the only operation that breaks the attacker's access.</rationale>
+    </rule>
+  </section>
+</text>

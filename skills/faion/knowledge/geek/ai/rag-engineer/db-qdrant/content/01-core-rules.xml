@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="db-qdrant Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for db-qdrant. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Set on_disk_payload=True for collections storing large text payloads; keeps vectors in RAM while payloads hit disk.</statement>
+      <rationale source="v1-source">Text payloads bloat RAM; moving them to disk reduces memory while maintaining vector search speed.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Create payload indexes before bulk ingestion, not after — adding indexes post-ingest locks the collection during the (hours-long) build for large collections.</statement>
+      <rationale source="v1-source">Payload index creation is synchronous and can stall searches. Building indexes upfront prevents downtime during production bulk loads.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Upsert in batches of 100 points; single-point upserts at scale crush throughput.</statement>
+      <rationale source="v1-source">Each upsert call has per-request overhead. Batching amortizes that cost across 100 points.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Pre-compute BM25 sparse vectors outside Qdrant before upserting; Qdrant stores indices/values but has no built-in tokenizer.</statement>
+      <rationale source="v1-source">Qdrant's sparse vector format expects pre-tokenized (indices, values) pairs. Raw text tokenization must happen in the application layer.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Snapshot restore requires the target collection to be absent first; restoring over an existing collection fails silently.</statement>
+      <rationale source="v1-source">Qdrant uses atomic collection swap. The collection to be restored into must not exist to prevent data corruption.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Enable rescoring (oversampling=2.0) when using quantization to recover the top-k precision loss.</statement>
+      <rationale source="v1-source">Quantization reduces recall. Fetching 2x candidates and rescoring with original float vectors restores near-original precision at the cost of extra memory reads.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Do not use binary quantization for embeddings with fewer than 256 dimensions; recall degrades significantly at low dimensionality.</statement>
+      <rationale source="v1-source">Binary quantization compresses each float to a single bit. Low-dimensional vectors have few bits, making the approximation too coarse for reliable similarity.</rationale>
+    </rule>
+  </section>
+</text>

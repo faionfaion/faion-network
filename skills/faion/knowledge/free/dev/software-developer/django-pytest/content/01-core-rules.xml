@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-pytest Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-pytest. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Set DJANGO_SETTINGS_MODULE in pyproject.toml [tool.pytest.ini_options] to a test-specific settings file with DEBUG=False, in-memory cache, fake email backend, and MD5PasswordHasher.</statement>
+      <rationale source="v1-source">Test settings reduce overhead and prevent accidental real email/payment sends. MD5PasswordHasher speeds up tests by 10-100x but must never leak into dev/prod settings.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Keep conftest.py close to where fixtures are used. Project-root conftest only for truly global fixtures (api_client, user, auth_client, network-blocking).</statement>
+      <rationale source="v1-source">Auto-discovery cascades — nested conftest fixtures shadow each other silently if not scoped.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Add an autouse network-blocking fixture in the root conftest that raises on any socket.create_connection call. Tests that need real network must explicitly opt out.</statement>
+      <rationale source="v1-source">Tests that forget to mock external services produce 30s timeouts, not clear failures. A loud guard makes the gap obvious immediately.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use factory_boy DjangoModelFactory instead of fixture-as-function for test data. Override fields per test with UserFactory(email='x@y.z').</statement>
+      <rationale source="v1-source">factory_boy handles sequences and related objects; plain fixtures-as-functions require manual wiring for each variant.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Mark test classes or functions with @pytest.mark.django_db only when DB access is required. Pure logic tests must not touch the DB.</statement>
+      <rationale source="v1-source">DB setup costs time; pure logic tests run much faster without it. --strict-markers makes missing markers a hard error.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Structure each test: Arrange (set up data) → Act (call code under test) → Assert (verify observable outcome). One logical assertion group per test.</statement>
+      <rationale source="v1-source">Tests with multiple unrelated assertions fail for multiple reasons simultaneously, making the root cause ambiguous.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use APIClient.force_authenticate instead of issuing real login requests in integration tests — much faster and tests the endpoint, not the auth flow.</statement>
+      <rationale source="v1-source">Real login calls include password hashing and token generation — 100-1000ms per test. force_authenticate bypasses all of that.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use @pytest.mark.parametrize for boundary and equivalence-class testing where the same logic runs against multiple inputs.</statement>
+      <rationale source="v1-source">Replaces repetitive test functions with a single declaration; failures show exactly which parameter set failed.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Mock at the I/O boundary (HTTP, mail, payment), test the rest with real DB and real serialization. Over-mocking produces tests that prove nothing.</statement>
+      <rationale source="v1-source">Mocking internal methods tests implementation, not behavior. Tests that mock the wrong import path pass silently with zero real coverage.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use transactional_db (not db) when the code under test calls transaction.on_commit — on_commit callbacks never fire inside a rolled-back transaction.</statement>
+      <rationale source="v1-source">db wraps each test in a savepoint that never commits; on_commit handlers that send emails or dispatch tasks are silently skipped.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Require agents to read tests/conftest.py before generating any test. Prompt: "Read tests/conftest.py first. Reuse existing fixtures."</statement>
+      <rationale source="v1-source">LLMs default to inline creation rather than reuse; reading the file first surfaces the available fixture names.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Require --strict-markers and a lint rule that finds DB-touching code in tests without @pytest.mark.django_db.</statement>
+      <rationale source="v1-source">LLMs omit the marker; the resulting error is clear but wastes tokens iterating. Catch it in lint, not at runtime.</rationale>
+    </rule>
+  </section>
+</text>

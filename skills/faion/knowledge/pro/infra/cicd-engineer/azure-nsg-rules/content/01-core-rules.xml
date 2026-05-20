@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="azure-nsg-rules Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for azure-nsg-rules. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every NSG MUST include an explicit DenyAll inbound rule at priority 4096 with source *, destination *, protocol *, port *. The rule MUST be named following the convention `DenyAllInbound`. Do NOT rely on Azure's implicit default deny — it is invisible in the rule list and easily confused by agents reviewing the Terraform plan.</statement>
+      <rationale source="v1-source">Azure's default rules (priority 65000+) allow VNet-to-VNet and outbound internet. Making the deny explicit ensures it appears in audit logs, Terraform plans, and NSG flow logs. It also prevents accidental removal of the invisible default deny by IaC drift correction tools.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Allow rules MUST specify exact source address prefixes (subnet CIDR or service tag) and exact destination ports. Wildcards (*) in both source and destination on an allow rule are forbidden. The only exception is the AzureLoadBalancer service tag on inbound rules for health probe traffic.</statement>
+      <rationale source="v1-source">NSG rules based on legacy "Allow 80, 443 from 0.0.0.0/0" examples are the most common misconfiguration seen in Azure environments. Exact CIDRs or service tags limit blast radius when a rule is erroneously widened.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>NSG flow logs MUST be enabled (version 2) on every NSG in production. Logs MUST be sent to a Storage Account AND to Log Analytics via Traffic Analytics. Retention MUST be at least 30 days. Network Watcher MUST be enabled in the same region.</statement>
+      <rationale source="v1-source">Without flow logs, east-west incidents are undiagnosable. Version 2 includes byte and packet counts. Traffic Analytics correlates flows with topology for anomaly detection. Flow logs are the evidence required by SOC2 and PCI-DSS for network traffic logging.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="rust-project-structure Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for rust-project-structure. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Organize Rust HTTP services under src/ with: config.rs, error.rs, and domain-split directories: routes/, handlers/, services/, models/, db/, middleware/. Keep main.rs under ~80 lines (config load, state build, router compose, serve).</statement>
+      <rationale source="v1-source">A flat src/ with all code in main.rs hits the 500-line wall quickly and causes circular mod.rs imports. The split enforces a one-way dependency: routes use handlers; handlers use services; services use db; models are shared.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>AppState must derive Clone. Wrap all non-trivially-Clone resources (DB pool, HTTP client, Config) in Arc. Never put &amp;str, non-Send types, or borrowed data in AppState.</statement>
+      <rationale source="v1-source">Axum clones AppState per request. Arc wrapping keeps the clone O(1) (atomic increment). Non-Clone or non-Send types cause compile errors that agents diagnose poorly.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Define per-domain route functions (e.g. users::routes()) that return Router&lt;AppState&gt; without state. Compose them in a top-level api_routes() function. Attach state and layers only once at the top level in main.rs.</statement>
+      <rationale source="v1-source">Attaching state inside domain route functions makes them order-sensitive and hard to test independently. The top-level composition point is the single place where AppState is bound.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Promote to a Cargo workspace when: (a) cargo check takes &gt;30s, or (b) a second binary (worker, admin CLI) is needed, or (c) a shared-types crate is required. Single-crate is correct until then.</statement>
+      <rationale source="v1-source">Premature workspace adds build complexity. The concrete signals above are measurable; "might need it" is not.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Pin all dependencies to exact minor versions in Cargo.toml. Commit Cargo.lock for binary crates (not for libraries). Agents must read the existing Cargo.toml for versions before adding new deps.</statement>
+      <rationale source="v1-source">Axum 0.6 and 0.7 have breaking router-state changes. An agent picking the "latest" version may generate code incompatible with the rest of the codebase.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>After creating a new .rs file in src/dir/name.rs, always add pub mod name; to src/dir/mod.rs. Verify by grepping mod.rs before reporting the task complete.</statement>
+      <rationale source="v1-source">A missing pub mod line produces "unresolved module" errors that are non-obvious and confuse agents into adding duplicate files.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use SQLX_OFFLINE=true and commit .sqlx/ query cache files when sqlx::query! macros are used. CI must not require a running database to compile.</statement>
+      <rationale source="v1-source">sqlx::query! macros connect to DATABASE_URL at compile time. Without offline mode, CI fails on every PR that lacks database connectivity.</rationale>
+    </rule>
+  </section>
+</text>

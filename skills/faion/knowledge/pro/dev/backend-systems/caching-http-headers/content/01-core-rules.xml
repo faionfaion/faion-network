@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="caching-http-headers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for caching-http-headers. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Public API responses MUST use Cache-Control: public, max-age=N, stale-while-revalidate=M where N is the freshness TTL in seconds and M is the background-revalidation window. Private user-specific responses MUST use Cache-Control: private, max-age=0, must-revalidate. Responses that must never be cached MUST use Cache-Control: no-store.</statement>
+      <rationale source="v1-source">Omitting Cache-Control leaves the decision to heuristic caching rules in browsers and CDNs, which vary by implementation and produce unpredictable behavior. Explicit headers make the intent auditable and the behavior deterministic across all intermediaries.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>ETag values MUST be generated from a deterministic hash of the response content (MD5 or SHA-256 of the serialized body). Weak ETags (W/"...") MUST be used when byte-for-byte identity is not required; strong ETags require exact byte equality. Servers MUST respond with 304 when If-None-Match matches the current ETag.</statement>
+      <rationale source="v1-source">ETags based on modification timestamps are unreliable when multiple servers or processes handle requests (clock skew, timestamp granularity). Content hashes are deterministic across servers and correct for conditional request handling regardless of deployment topology.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Any response whose content depends on a request header MUST include that header name in Vary. At minimum: responses with content-negotiation compression MUST set Vary: Accept-Encoding. Responses with per-language content MUST set Vary: Accept-Language. Responses with authentication MUST NOT set Vary: Authorization — use private instead to prevent shared-cache pollution.</statement>
+      <rationale source="v1-source">Missing Vary on a compressed response causes CDN to serve compressed content to clients that cannot decompress it. Vary: Authorization creates one cache entry per auth token — effectively no caching. The correct approach for authenticated content is Cache-Control: private.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>CDN-cached API responses MUST include a Surrogate-Key (Fastly) or Cache-Tag (Cloudflare) header with the entity type and ID so that point-in-time purges can be issued by entity rather than requiring a full cache flush. The purge API call MUST be wired into the write path immediately after the database write.</statement>
+      <rationale source="v1-source">Without tag-based CDN purge, the only option after a data change is to wait for TTL expiry (serves stale data) or flush the entire CDN cache (serves zero cached data, origin takes full traffic). Tag-based purge is selective and instantaneous.</rationale>
+    </rule>
+  </section>
+</text>

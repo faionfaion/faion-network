@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-monitoring-health-checks Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-monitoring-health-checks. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Liveness endpoint (/healthz) MUST check ONLY that the process is alive. It MUST NOT call any downstream service (database, Redis, external API). It returns 200 with a JSON body containing status and timestamp.</statement>
+      <rationale source="v1-source">If liveness calls downstream and that downstream is slow, Kubernetes restarts the healthy process. This turns a dependency outage into a cascading restart loop that takes down your service even though the process itself was fine.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Readiness endpoint (/readyz) MUST check all critical dependencies (database, cache, external APIs). It MUST return 503 with the failing check names in the response body when any dependency is unreachable. It MUST never trigger a container restart — wire to readiness probes only, never liveness.</statement>
+      <rationale source="v1-source">Readiness gates traffic. When readiness fails, the orchestrator removes the pod from load-balancer rotation; the process stays running and can recover when the dependency comes back.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>External dependency URLs in readiness probes MUST be from the vendor's documented health/status contract (e.g., Stripe: https://status.stripe.com/api/v2/status.json) or an in-house canary endpoint. Invented URLs like https://api.stripe.com/health are fictional; the probe will always fail.</statement>
+      <rationale source="v1-source">AI agents and copy-paste culture produce hallucinated vendor health URLs constantly. Agents frequently use README's https://api.stripe.com/health — that URL does not exist. Always verify against vendor docs before wiring.</rationale>
+    </rule>
+  </section>
+</text>

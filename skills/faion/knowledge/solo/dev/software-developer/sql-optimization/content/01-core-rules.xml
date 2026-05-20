@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="sql-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for sql-optimization. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Always run EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) before adding any index or rewriting any query.</statement>
+      <rationale source="v1-source">The planner's chosen plan often differs from developer expectations. Optimization without measurement produces indexes that are never used and rewrites that change nothing.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Investigate when actual rows differ from estimated rows by more than 10x — this signals stale statistics.</statement>
+      <rationale source="v1-source">The planner chooses join order and index use based on row estimates. Large discrepancies cause poor plan choices that cannot be fixed by indexes alone; run ANALYZE first.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>In composite indexes, place equality-filter columns first, range-filter columns last.</statement>
+      <rationale source="v1-source">The B-tree can use prefix columns for equality and then traverse a range on the last column. Placing range columns first makes the index unusable for the equality filter.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use INCLUDE columns to add non-filtered columns to an index to avoid heap lookups for read-heavy queries.</statement>
+      <rationale source="v1-source">A covering index satisfies the query entirely from index pages, eliminating the heap fetch (table lookup) for each matched row.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use partial indexes with a WHERE clause for queries that always filter on a specific value.</statement>
+      <rationale source="v1-source">Partial indexes are smaller (fewer rows indexed) and faster to scan than full indexes. Useful for status columns where only one value (e.g. 'pending') is queried frequently.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Create an expression index when queries apply a function to an indexed column; do not apply functions to indexed columns in WHERE clauses.</statement>
+      <rationale source="v1-source">WHERE LOWER(email) = ? bypasses the regular index on email. An expression index on LOWER(email) makes the query use the index.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use keyset (cursor) pagination instead of OFFSET for any collection larger than ~1000 rows.</statement>
+      <rationale source="v1-source">OFFSET N scans and discards N rows on every page. At page 500 with 20 items per page, the database scans 10,000 rows to return 20. Keyset pagination uses an index seek regardless of page depth.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Replace subqueries in SELECT lists with a single JOIN plus aggregation to eliminate N+1 query patterns.</statement>
+      <rationale source="v1-source">A subquery in the SELECT list executes once per row in the outer result. 1000 rows = 1001 queries. A JOIN executes once regardless of result set size.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use multi-row INSERT for bulk inserts; use CTE with LIMIT for large batch updates to avoid long-running transactions.</statement>
+      <rationale source="v1-source">Individual INSERT per row in a loop causes N round trips and N transaction commits. A batched UPDATE without LIMIT locks all matching rows for the full duration.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use materialized views for expensive aggregations queried frequently; refresh CONCURRENTLY to avoid blocking reads.</statement>
+      <rationale source="v1-source">Re-computing GROUP BY over millions of rows on every dashboard load is wasteful. A materialized view precomputes it; CONCURRENTLY refresh avoids a read lock on the view.</rationale>
+    </rule>
+  </section>
+</text>

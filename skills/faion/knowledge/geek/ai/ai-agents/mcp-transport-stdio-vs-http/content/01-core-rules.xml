@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="mcp-transport-stdio-vs-http Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for mcp-transport-stdio-vs-http. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>For every new MCP server, pick exactly one transport from {stdio, streamable-http}. Choose stdio iff the server runs as a subprocess of a single client on the same machine. Choose streamable-http iff the server is reached over a network OR serves more than one concurrent client. Treat SSE as deprecated — only enable it behind a legacy_sse: true feature flag with a documented sunset date.</statement>
+      <rationale source="v1-source">MCP spec revision 2025-11-25 removed the dual-endpoint SSE transport in favor of a single Streamable HTTP endpoint that can negotiate POST → SSE upgrade per request. stdio remains the only zero-overhead option for local IPC; HTTP is the only option that scales horizontally. SSE is transitional and slated for removal.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>If you choose stdio, document that the server is single-user, in-process-tree, and auth is delegated to the host OS user. Do NOT add OAuth, do NOT bind to a port, do NOT log to a shared file — assume the parent process owns lifecycle and stdout/stderr.</statement>
+      <rationale source="v1-source">stdio servers inherit the client's identity. Adding network auth on top of stdio is wasted work; binding to a port turns a local subprocess into a quasi-network surface that bypasses the client's sandboxing.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>If you choose Streamable HTTP, you MUST implement: (1) OAuth 2.1 with PKCE for client auth, (2) idempotent request handling so a resumed SSE stream does not double-execute side effects, (3) a single /mcp endpoint that accepts POST and upgrades to SSE per request, (4) horizontal-scale-safe session state (Redis or DB, not in-process).</statement>
+      <rationale source="v1-source">The Streamable HTTP transport is designed to support multi-tenant hosted deployments. Skipping OAuth opens the server to anyone; in-process session state makes the deployment a single point of failure.</rationale>
+    </rule>
+  </section>
+</text>

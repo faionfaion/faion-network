@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ddd-domain-events Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ddd-domain-events. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Domain Events MUST be frozen (immutable) value objects. In Python use @dataclass(frozen=True). Each event MUST carry an occurred_at timestamp (set at construction) and an event_id (UUID, for idempotency).</statement>
+      <rationale source="v1-source">Mutable events can be tampered with after dispatch. event_id enables idempotent handlers: if the same event is delivered twice, the handler detects the duplicate and skips processing.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Domain Events MUST be raised inside Aggregate command methods (appended to self._events), NOT in Application Services or Domain Services. The application layer collects events via aggregate.collect_events() only after the DB transaction commits successfully.</statement>
+      <rationale source="v1-source">Raising events before the DB commit creates a dual-write risk: if the commit fails after the event is dispatched, the downstream system reacts to a state change that did not happen. Collect-after-commit ensures events are only dispatched for committed state changes.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Production systems with message brokers (Kafka, RabbitMQ, SNS) MUST use the Outbox pattern: insert an event row into an outbox table in the same DB transaction as the Aggregate state change. A relay process reads unprocessed outbox rows and publishes them to the broker.</statement>
+      <rationale source="v1-source">Without the Outbox, the window between DB commit and broker publish is a failure mode: the process can crash, the network can drop the publish call, or the broker can be temporarily unavailable. The Outbox closes this window by making the event durable in the same DB transaction as the state change.</rationale>
+    </rule>
+  </section>
+</text>

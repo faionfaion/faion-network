@@ -1,38 +1,75 @@
+---
+slug: llm-observability-stack
+tier: geek
+group: ai
+domain: ml-engineer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Production observability stack for LLM systems: tracing, cost analytics, quality evaluation, and alerting via OpenTelemetry.
+content_id: "a62b9df426e45416"
+tags: [llm, observability, tracing, monitoring, otel, langfuse, prometheus]
+---
 # LLM Observability Stack
 
 ## Summary
 
-Production observability stack for AI/LLM systems: tracing (Langfuse/Phoenix/LangSmith), cost analytics (Helicone/Portkey), quality evaluation (LLM-as-judge), and alerting (Prometheus/Grafana). OpenTelemetry is the emerging standard for vendor-neutral LLM tracing in 2026.
+**One-sentence:** Production observability stack for LLM systems: tracing, cost analytics, quality evaluation, and alerting via OpenTelemetry.
 
-## Why
+**One-paragraph:** Production observability stack for LLM systems: tracing, cost analytics, quality evaluation, and alerting via OpenTelemetry. Vendor-neutral approach for 2026.
 
-LLM systems fail in ways invisible to traditional APM: hallucinations, cost spikes, TTFT degradation, and multi-turn context corruption. A dedicated observability stack exposes token cost per conversation, per-request quality scores, and agent reasoning chains — none of which are visible in CPU/memory metrics.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Going to production with an LLM feature — set up tracing before the first real users
 - Diagnosing quality regressions after a model, prompt, or retrieval change
 - Enforcing budget controls: daily spend alerts, cost per team/feature
 - Debugging agentic loops with nested tool calls and multi-step reasoning
 - Compliance contexts requiring audit trails of every LLM interaction
+- Daily LLM call volume crosses ~100 calls/day or monthly cost crosses ~$50
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Prototype/experiment phase where data volume is negligible — add a TODO for later
 - Purely batch offline workloads with no SLA — standard job monitoring suffices
 - Primary bottleneck is something other than LLM calls (DB, network) — profile those first
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-stack-components.xml` | Platform comparison (Langfuse/Phoenix/LangSmith/Helicone), OTEL integration, metrics taxonomy, stack selection decision tree |
-| `content/02-instrumentation-rules.xml` | Instrumentation rules, alert thresholds, cost tracking, agent tracing patterns, antipatterns |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/langfuse-stack.yaml` | Docker Compose: Langfuse + Prometheus + Grafana + OTEL Collector |
-| `templates/alert-rules.yaml` | Prometheus alert rules for error rate, latency, cost, quality, cache hit rate |
-| `templates/pricing.yaml` | Model pricing config (Q1 2026) for cost calculation |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `geek/ai/ml-engineer/`

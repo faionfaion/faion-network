@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Cross-Role Handoff Protocol — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every handoff must enforce. Designed to eliminate the most common multi-week-flow failure: "I thought you signed off" with no record.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-single-sign-off-owner" testable="true" depth="essential">
+      <statement>Every handoff has EXACTLY ONE named sign-off owner on the downstream side. Group sign-off ("the QA team approved") is forbidden — pick the individual who is accountable.</statement>
+      <rationale source="RACI literature, SAFe handoff practices">Group accountability decays to nobody-accountable. When a defect escapes, "the team approved" produces no learning. A single name forces the owner to actually read the bundle and lets retros target a specific decision.</rationale>
+    </rule>
+
+    <rule id="r2-dated-delta" testable="true" depth="essential">
+      <statement>Each sign-off record MUST include the timestamp + the artifact-delta-since-previous-sign-off. If the upstream role re-submitted after rejection, the record references the diff between the rejected submission and the accepted one.</statement>
+      <rationale source="Toyota A3 / hansei practice, postmortem literature">Without the delta, "approved Tuesday" tells the retro nothing. The delta is what makes the gate auditable — it shows WHAT changed to clear the gate. Postmortems that lack this field cannot identify which gate failed.</rationale>
+    </rule>
+
+    <rule id="r3-no-skipping-gates" testable="true" depth="essential">
+      <statement>Downstream role may NOT start work before the upstream gate is signed off. "Parallel work to save time" is forbidden — it converts handoff debt into rework. The only exception: explicit expedite path, which requires a project-manager sign-off with documented risk acceptance.</statement>
+      <rationale source="Project management body of knowledge, "Shape Up" expedite-path discussion">Parallel-start is the #1 source of mid-sprint rework. The expedite exception exists because real emergencies exist; making it explicit + signed prevents creeping normalization of skipping.</rationale>
+    </rule>
+
+    <rule id="r4-rejection-with-reason" testable="true" depth="essential">
+      <statement>A "no" sign-off MUST cite at least one specific missing artifact OR one specific failing acceptance-gate item. Generic "not ready" rejections are forbidden — they create handoff ping-pong with no learning.</statement>
+      <rationale source="Lean software development, blameless-handoff literature">Vague rejection cycles waste 2-3 handoff iterations on clarification. Forcing the reason field makes the upstream role's remediation deterministic.</rationale>
+    </rule>
+
+    <rule id="r5-sign-off-immutability" testable="true" depth="essential">
+      <statement>Once a sign-off record is created, it MUST NOT be edited. Corrections happen via a new sign-off record that explicitly references the prior one (status=reversed or status=amended). The audit trail is append-only.</statement>
+      <rationale source="Audit / compliance practice, ITIL change records">Editable sign-offs break audit trails. If QA signed off Monday and the feature broke Wednesday, the team must be able to see EXACTLY what QA saw Monday — not a quietly-edited version.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Architect->Dev handoff with delta">
+      <code lang="text"><![CDATA[
+Handoff: feat/billing-overhaul, Architect -> Dev
+Sign-off owner: alex.k (named Dev lead)
+Timestamp: 2026-05-14T16:42:00Z
+Status: approved
+Gate items passed:
+  - ADR-2026-014 attached
+  - API contract OpenAPI spec attached + lint passes
+  - Migration plan attached (3-phase, dual-write window 7d)
+  - Cost-latency budget signed by architect lead
+Delta since previous submission (2026-05-13 rejected):
+  - Added missing dual-write rollback procedure
+  - Added per-tenant feature flag plan
+Reason for prior rejection: missing rollback procedure (specific item)
+      ]]></code>
+      <note>Illustrates r1, r2, r4, r5: single named owner, delta logged, prior rejection reason concrete, record append-only.</note>
+    </example>
+
+    <example type="bad" title="Verbal handoff with no record">
+      <code lang="text"><![CDATA[
+Slack message from Architect to #eng: "spec is ready, devs can start"
+Result:
+  - 3 devs started; one used the v1 spec, one used the v2 from doc-edit
+    history, one waited for clarity.
+  - QA could not say which spec the build represents.
+  - Retro outcome: "we need better handoffs" -> no specific change.
+
+Repair: enforce protocol. The Slack message is fine as a NOTIFICATION,
+but it does not replace the handoff-record artifact attached to the
+feature ticket. Without the record, no parallel work begins.
+      ]]></code>
+      <note>Illustrates r1, r3, r5 violations: no named sign-off, parallel-start without gate, no audit trail.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

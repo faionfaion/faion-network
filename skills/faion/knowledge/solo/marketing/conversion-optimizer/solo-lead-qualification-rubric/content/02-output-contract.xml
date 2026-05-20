@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Lead Qualification — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a `QualifiedLead` record. The agent must satisfy this contract before returning to the operator.</summary>
+
+  <section title="Required fields">
+    <list>
+      <item>`lead_id` — string, stable identifier (thread URL / message-ID hash)</item>
+      <item>`source` — enum {linkedin-dm, email-reply, referral, web-form, twitter-dm}</item>
+      <item>`scores.budget_clarity` — integer 1-5 with `evidence_quote` (verbatim)</item>
+      <item>`scores.decision_on_call` — integer 1-5 with `evidence_quote`</item>
+      <item>`scores.timeline_realism` — integer 1-5 with `evidence_quote`</item>
+      <item>`scores.contractor_trauma_history` — integer 1-5 with `evidence_quote` (may be the absence quote)</item>
+      <item>`scores.total` — integer 4-20 (sum)</item>
+      <item>`decision` — enum {book, soft-pass, decline}</item>
+      <item>`reason` — string ≤ 200 chars referencing the decisive dimension</item>
+      <item>`floor_check` — object `{rate_floor_usd_per_hour, prospect_budget_implied_usd_per_hour, below_floor: bool}`</item>
+      <item>`reply_template_id` — enum {discovery-booking, calibration-question, polite-decline}</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Score field populated without an `evidence_quote` (or with the string "implied" / "inferred" / "common sense" instead of a verbatim quote).</description>
+      <reason>Violates r2. The whole rubric depends on falsifiable grounding; ungrounded scores are worse than no score.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Output containing a `decision: book` with `floor_check.below_floor: true`.</description>
+      <reason>Violates r4. If the implied rate is below floor, Budget-clarity is coerced to 1; total can mechanically exceed 14 only if the other three are 5-5-3+, which is fine — but then the operator is BOOKED INTO a known-loss engagement. The contract REJECTS this combination at validation time.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`decision: book` with `scores.contractor_trauma_history == 1`.</description>
+      <reason>Violates r5 veto. The trauma veto is a hard rule that the synthesis layer must not "average away" because the other three scores are high.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`evidence_quote` that paraphrases the prospect's words ("they basically said budget was around 10k").</description>
+      <reason>Paraphrased quotes are LLM confabulation. Quote must be verbatim or NULL.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`reason` field that names a personal characteristic of the prospect ("they seemed cheap", "founder seemed flaky").</description>
+      <reason>Rubric scores SIGNALS, not character. Personal judgments are out of scope and operator-facing only.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Trim `evidence_quote` to ≤ 200 chars, preserving numbers, dates, and named tools.</item>
+      <item>Re-base `lead_id` to a deterministic hash if no thread URL is available.</item>
+      <item>Round implied hourly rate to nearest $5 for `floor_check`.</item>
+    </list>
+  </section>
+
+  <reference path="templates/qualified-lead.json">JSON Schema the output must validate against.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All four score fields present with integer 1-5 and verbatim `evidence_quote`.</item>
+      <item>Total = sum of four scores (no arithmetic error).</item>
+      <item>`decision` consistent with thresholds r3 AND r5 veto AND r4 floor-coupling.</item>
+      <item>`reply_template_id` matches `decision`.</item>
+      <item>Output validates against `templates/qualified-lead.json`.</item>
+    </list>
+  </section>
+</text>

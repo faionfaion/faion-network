@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="gce-spot-vms Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for gce-spot-vms. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Spot VMs MUST be provisioned with provisioning_model = "SPOT" (not preemptible = true, which creates the legacy Preemptible type). The instance_termination_action MUST be set to either STOP (to preserve the disk for resumption) or DELETE (for ephemeral batch workers). automatic_restart MUST be set to false.</statement>
+      <rationale source="v1-source">preemptible = true creates a legacy Preemptible VM with a 24-hour runtime limit. SPOT provisioning_model creates a Spot VM with no runtime limit. automatic_restart = true is incompatible with Spot VMs and causes instance creation to fail.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every Spot VM template MUST include a shutdown script that completes within 30 seconds. The script MUST save checkpointed state to Cloud Storage (or another external store) before the 30-second window closes. The script MUST NOT rely on the VM disk being available after preemption when termination_action = DELETE.</statement>
+      <rationale source="v1-source">GCP sends an ACPI shutdown signal 30 seconds before termination. Any in-memory state not externalized within this window is lost. The shutdown-script metadata key is executed automatically on receiving the preemption signal; it is the only reliable hook for state preservation.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Spot VMs in production MUST run inside a regional MIG with autohealing enabled. The MIG MUST span at least 2 zones so that a zone-level Spot capacity shortage does not eliminate all workers. Critical workloads MUST mix Spot and standard VMs (e.g., 70% Spot, 30% standard) to maintain a guaranteed minimum capacity floor.</statement>
+      <rationale source="v1-source">Spot availability varies by zone and machine type. Zone-level preemption events (capacity reclamation) can affect all Spot VMs in a zone simultaneously. Multi-zone MIGs absorb zone-level events. A standard VM floor ensures the service never reaches zero capacity.</rationale>
+    </rule>
+  </section>
+</text>

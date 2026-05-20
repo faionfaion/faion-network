@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="cicd-tls-validation-gate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for cicd-tls-validation-gate. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>All CI/CD pipelines that deploy TLS-terminated services MUST run testssl.sh --severity HIGH --jsonfile output.json against the staging endpoint before promoting to production. The job MUST fail (exit 1) if any finding with severity HIGH or CRITICAL is present in the JSON output.</statement>
+      <rationale source="v1-source">testssl.sh --severity HIGH covers deprecated protocols (TLS 1.0/1.1), weak ciphers (RC4, 3DES, export-grade), missing HSTS, broken OCSP, and invalid chains. These are all exploitable conditions that automated cert management can accidentally reintroduce through config drift.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>All public-facing HTTPS services MUST achieve A+ on SSL Labs before production launch and MUST maintain A+ through quarterly hygiene scans. A grade downgrade from A+ to A or below triggers an immediate investigation and remediation within 48 hours.</statement>
+      <rationale source="v1-source">SSL Labs A+ requires TLS 1.3, strong ciphers, HSTS with preload eligibility, OCSP stapling, and forward secrecy. It is the industry reference for TLS quality and is checked by security auditors, compliance frameworks (PCI-DSS, SOC2), and automated scanners used by enterprise customers.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Web servers MUST be configured with fullchain.pem (cert.pem + chain.pem concatenated), NOT cert.pem alone. Serving only the leaf certificate causes chain validation failures on clients that do not have the intermediate cached.</statement>
+      <rationale source="v1-source">Mobile clients and non-browser HTTP clients frequently do not have intermediate CA certificates cached. Serving the full chain eliminates this class of certificate validation error entirely.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>All production domains MUST have Certificate Transparency monitoring configured via crt.sh or a commercial CT monitoring service. Alerts MUST fire within 24 hours of any unexpected certificate issuance. DNS CAA records MUST restrict issuance to the approved CAs only.</statement>
+      <rationale source="v1-source">CT log monitoring is often forgotten; rogue issuance goes undetected for months. CAA records provide a declarative CA allowlist that compliant CAs must check before issuance — they are the first line of defense; CT monitoring is the detection layer for CAA bypass or misbehaving CAs.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Certificate expiry monitoring MUST alert at 30, 14, 7, and 3 days remaining validity. For short-lived certs (6-day, 45-day), thresholds MUST be 2 days (warning) and 1 day (critical). TLS version usage MUST be monitored in nginx/load balancer access logs to detect legacy client fallback to TLS 1.2.</statement>
+      <rationale source="v1-source">The standard 30-day alert gives no room for short-lived cert failures. Monitoring TLS version usage in logs surfaces the rare legacy client that forces TLS 1.2 negotiation and lets you plan protocol deprecation with real traffic data.</rationale>
+    </rule>
+  </section>
+</text>

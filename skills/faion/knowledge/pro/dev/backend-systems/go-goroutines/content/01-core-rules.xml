@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="go-goroutines Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for go-goroutines. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Don't communicate by sharing memory; share memory by communicating. Use channels as the primary coordination mechanism. Avoid raw shared mutable state protected only by locks.</statement>
+      <rationale source="v1-source">Channel-based communication is easier to reason about and prevents whole categories of race conditions and deadlock scenarios.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use channels for goroutine coordination. Goroutines communicate via channels; the type system enforces correct usage (send-only, receive-only).</statement>
+      <rationale source="v1-source">Explicit channels in function signatures make dependencies clear and the compiler catches misuse.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Keep critical sections small. When you must use mutex, hold the lock for the minimum time necessary. Do not call blocking functions inside a lock.</statement>
+      <rationale source="v1-source">Long critical sections reduce parallelism and increase contention. Blocking inside a lock can deadlock other goroutines waiting for the lock.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Avoid goroutine leaks. Always provide an exit condition for long-lived goroutines. Include context.Done() checks in every loop that may block on I/O or channels.</statement>
+      <rationale source="v1-source">Goroutine leaks exhaust memory and system resources. They are hard to detect in production. Explicit exit conditions prevent them.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use context for cancellation. Propagate context through function signatures so cancellation and deadlines can cascade down call stacks.</statement>
+      <rationale source="v1-source">Context is the standard Go mechanism for managing request lifecycle, timeouts, and cancellation across function boundaries.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Worker pool MUST use sync.WaitGroup to track completion. Close the results channel only after all workers have exited. Include context.Done() cases in every select to allow cancellation.</statement>
+      <rationale source="v1-source">WaitGroup ensures we don't close results prematurely. Context allows graceful shutdown. Together they prevent goroutine leaks.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Inventory all goroutines spawned in a package. For each: lifetime, exit condition, input owner, output owner, max wait on send, panic policy. Reject any row missing exit condition or panic policy.</statement>
+      <rationale source="v1-source">This audit prevents leaks and makes goroutine lifecycle explicit.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Every test that spawns goroutines MUST use defer goleak.VerifyNone(t) to assert no goroutines leak. Run tests with go test -race to detect data races.</statement>
+      <rationale source="v1-source">Race detector finds timing-dependent bugs at runtime. Goleak ensures test cleanup does not leak goroutines.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Run with -count=10 on any test that checks concurrency. This disables test caching and reruns the test multiple times, surfacing flaky race conditions.</statement>
+      <rationale source="v1-source">Timing-dependent bugs may only manifest under certain scheduling conditions. Multiple runs increase the chance of detecting them.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Include test cases for cancellation, panic in jobs, and slow consumers. Verify the pool shuts down cleanly and no goroutines leak under all scenarios.</statement>
+      <rationale source="v1-source">These edge cases are where most production bugs hide.</rationale>
+    </rule>
+  </section>
+</text>

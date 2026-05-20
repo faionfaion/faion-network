@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="security-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for security-testing. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Run SAST (Semgrep, Bandit) and secret scanning (TruffleHog, Gitleaks) on every commit and every PR — these are fast (&lt;2 min) and catch the majority of static vulnerabilities.</statement>
+      <rationale source="v1-source">Every commit is an attack surface change. Fast gates keep feedback immediate; deferred scanning gives vulnerabilities days to propagate.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Run SCA (Snyk, pip-audit, npm audit) on every build. Block on Critical CVEs or CVEs known to be exploited in the wild; warn on High CVEs with no fix available.</statement>
+      <rationale source="v1-source">Dependencies change on their own schedule. Every build is a new dependency risk surface. Critical exploitable CVEs are production emergencies.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Run DAST (OWASP ZAP, Nuclei) nightly on staging only — never against production or any environment with real user data or billing.</statement>
+      <rationale source="v1-source">DAST simulates attacks; running against production data causes real side effects. Staging must be isolated.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Run container scanning (Trivy) on every image build. Block on CRITICAL/HIGH severity unfixed vulnerabilities in the image.</statement>
+      <rationale source="v1-source">Container base images accumulate CVEs silently. Scanning at build time catches regressions before they reach the registry.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Define a baseline for pre-existing findings. Only new findings (relative to the baseline) block PRs. Pre-existing findings receive a triage decision once and move to an allowlist or backlog.</statement>
+      <rationale source="v1-source">Inheriting thousands of existing findings creates alert fatigue. New findings deserve immediate attention; legacy findings get tracked separately.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Any secret detected by TruffleHog or Gitleaks must block the PR with no exceptions. The secret must be revoked and rotated immediately — removal from git does not expire a leaked secret.</statement>
+      <rationale source="v1-source">Secrets pushed to git history are compromised forever. Rotation is the only mitigation; history scrubbing is secondary cleanup.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Add pre-commit hooks for Gitleaks and detect-secrets in every project. Developers should not be able to commit secrets accidentally.</statement>
+      <rationale source="v1-source">Pre-commit hooks catch the mistake before the git object exists, before the secret is ever visible in the remote.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Run threat modeling on new features before any tool touches them. Tools find known patterns; design flaws hide from scanners.</statement>
+      <rationale source="v1-source">BOLA, IDOR, and business logic abuse are the top API risk categories and are invisible to automated scanning.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>SAST tools (Semgrep, Bandit, CodeQL, Snyk Code) analyze source code without executing the application. Run on every commit and PR.</statement>
+      <rationale source="v1-source">Static analysis is fast and catches the broadest range of code-level vulnerabilities. Multi-language tools like Semgrep enable polyglot coverage.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>DAST tools (OWASP ZAP, Nuclei, Burp Suite, StackHawk) test running applications by simulating attacks. Use on staging environments only — never against production or any environment with real user data or billing.</statement>
+      <rationale source="v1-source">Dynamic testing finds runtime vulnerabilities and configuration issues that static analysis misses. Staging isolation prevents accidental data mutation.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Provide DAST tools with an authenticated session via a custom auth script — unauthenticated DAST misses 80% of the attack surface.</statement>
+      <rationale source="v1-source">Most application logic sits behind authentication. Unauthenticated scans find only public endpoints and misconfiguration.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>SCA tools (Snyk, Trivy, pip-audit, npm audit, osv-scanner) scan dependencies for known CVEs and license issues. Run on every build.</statement>
+      <rationale source="v1-source">Third-party dependencies are attack vectors. Every build introduces new vulnerabilities from upstream releases.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Use reachability analysis (Snyk Code, Semgrep Pro) to distinguish exploitable CVEs from unreachable transitive dependencies. CVSS score alone is a poor triage signal.</statement>
+      <rationale source="v1-source">SCA generates high noise from transitive deps. A CVSS-10 in unreachable code is lower priority than a CVSS-6 in a public endpoint.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Secret detection tools (TruffleHog, Gitleaks, detect-secrets, GitHub Secret Scanning) find hardcoded credentials, API keys, and tokens in source code and git history. Run on every commit with pre-commit hooks.</statement>
+      <rationale source="v1-source">Secrets in git are compromised forever. Pre-commit detection prevents them from entering the repository in the first place.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>For every authenticated endpoint, test: correct credentials (200), missing Authorization header (401), expired token (401), insufficient role (403), and another user's resource ID (403 or 404 — must not be 200).</statement>
+      <rationale source="v1-source">Horizontal privilege escalation (user A accessing user B's data) is the #1 API bug class and requires explicit per-endpoint testing.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>BOLA (API1) and BOPLA (API3) require human review — scanners cannot detect them because the vulnerability is in business logic, not code patterns.</statement>
+      <rationale source="v1-source">Automated tools look for code signatures. BOLA exploits are valid HTTP requests using different IDs — indistinguishable from legitimate traffic to a scanner.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Define a triage process before connecting any scanner to CI. Pre-existing findings get one triage decision; only new findings block PRs.</statement>
+      <rationale source="v1-source">High false-positive rates from DAST and SCA erode trust in the pipeline. A triage process prevents "turn it off" reactions.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Sign artifacts (cosign/sigstore), pin base images by digest, generate SBOM (syft), and scan the SBOM (grype) as part of every container build.</statement>
+      <rationale source="v1-source">Supply chain attacks (OWASP A03 2025) target build artifacts and base images. Signing + SBOM provides provenance verification.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Human-in-loop on every Critical finding. Agents may auto-open PRs for Low/Medium findings with regression tests; Critical findings require human review before merge.</statement>
+      <rationale source="v1-source">The business and legal consequences of Critical vulnerabilities require human judgment about risk acceptance, timing, and disclosure.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Run penetration testing annually and after major architectural changes. Automated scanners do not replace pentesters for logic flaws and novel attack chains.</statement>
+      <rationale source="v1-source">Scanners find what they were programmed to find. Pentesters find what attackers find — including combinations of low-severity findings that chain into critical exploits.</rationale>
+    </rule>
+  </section>
+</text>

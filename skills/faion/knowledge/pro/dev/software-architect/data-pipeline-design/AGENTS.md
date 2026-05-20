@@ -1,14 +1,25 @@
+---
+slug: data-pipeline-design
+tier: pro
+group: dev
+domain: software-architect
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Poor pipeline design causes data quality failures that propagate silently into dashboards and ML models.
+content_id: "ee50bb1e03fb5b85"
+tags: [data, pipeline, etl, orchestration, dbt, airflow, streaming, data-quality]
+---
 # Data Pipeline Design
 
 ## Summary
 
-Designing data ingestion, transformation, and storage pipelines for batch and streaming workloads. Covers ETL vs ELT decision, medallion architecture (Bronze/Silver/Gold), orchestration tool selection (Airflow/Dagster/Prefect), Kafka + Spark streaming patterns, dbt transformation conventions, data quality strategy, and error handling (DLQ, idempotency, retries).
+**One-sentence:** Poor pipeline design causes data quality failures that propagate silently into dashboards and ML models.
 
-## Why
+**One-paragraph:** Poor pipeline design causes data quality failures that propagate silently into dashboards and ML models. The medallion architecture enforces explicit data quality tiers: raw bronze preserves source fidelity, silver enforces schema and deduplication, gold delivers business-ready assets. Idempotent tasks and DLQs ensure reruns after failures produce identical results without duplicates.
 
-Poor pipeline design causes data quality failures that propagate silently into dashboards and ML models. The medallion architecture enforces explicit data quality tiers: raw bronze preserves source fidelity, silver enforces schema and deduplication, gold delivers business-ready assets. Idempotent tasks and DLQs ensure reruns after failures produce identical results without duplicates.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Designing a new analytical or operational data pipeline from scratch
 - Choosing between batch vs streaming processing for a latency requirement
@@ -16,23 +27,48 @@ Poor pipeline design causes data quality failures that propagate silently into d
 - Adding data quality validation gates to an existing pipeline
 - Reviewing pipeline reliability: retries, dead letter queues, schema evolution
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Direct OLTP query optimisation — this is about data movement, not query tuning
 - Real-time API response paths — use caching/CDN patterns instead
 - Small one-off data exports — a SQL script or dbt run is sufficient
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-pipeline-types-and-stack.xml` | Batch vs streaming vs Lambda/Kappa trade-offs, ETL vs ELT decision, medallion architecture layers, modern data stack component map |
-| `content/02-orchestration-and-ingestion.xml` | Airflow vs Dagster vs Prefect selection guide, DAG design rules, incremental vs full vs CDC ingestion patterns, schema registry |
-| `content/03-transformation-and-quality.xml` | dbt model naming conventions, materialisation choice, Great Expectations vs Soda vs dbt tests, data contracts, error handling patterns (DLQ, idempotency, retry strategies) |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/dbt-model-staging.sql` | Canonical staging model with source reference, type casting, and deduplication |
-| `templates/airflow-dag.py` | DAG skeleton with exponential backoff retry, SLA miss callback, and idempotent task pattern |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/dev/software-architect/`

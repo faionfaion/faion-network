@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="grafana-dashboards Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for grafana-dashboards. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use RED (Rate, Errors, Duration) for service dashboards and USE (Utilization, Saturation, Errors) for infrastructure/hardware dashboards. Do not mix them in the same row.</statement>
+      <rationale source="v1-source">RED answers "is the service healthy from the user's perspective?" USE answers "is the infrastructure saturating?" Mixing them creates cognitive overhead for on-call engineers who need fast answers.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Structure dashboards hierarchically: summary row at top (stat panels), detail rows below (time series). Use Grafana 12 Tabs to segment cluster/namespace/pod views without splitting into separate dashboards.</statement>
+      <rationale source="v1-source">On-call engineers need the summary answer in under 5 seconds. Separate dashboards require navigation time; tabs keep context while segregating detail.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every dashboard must have at minimum three variables: datasource (type: datasource), namespace (type: query), and interval (type: interval with auto).</statement>
+      <rationale source="v1-source">Datasource variable enables multi-cluster reuse. Namespace variable enables team-specific scoping. Interval variable prevents fixed time windows from producing misleading rates.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use Stat panels for current values needing instant color-coded status. Use Time series for trends. Use Gauge for percentage values with min/max bounds (SLO compliance, error budget). Use Table for multi-dimensional comparisons.</statement>
+      <rationale source="v1-source">Choosing the wrong panel type forces users to mentally transform data. A Stat panel for a time-based trend loses context; a Time series for a single current value adds unnecessary visual noise.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Provision all production dashboards as Kubernetes ConfigMaps with the grafana_dashboard=1 label. Never rely on UI-created dashboards in production.</statement>
+      <rationale source="v1-source">UI dashboards are lost on pod restart or cluster recreation. ConfigMap-provisioned dashboards are version-controlled, reviewed in PRs, and survive infra events. The label triggers automatic discovery by Grafana's sidecar.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Configure Grafana to load dashboards from a folder mounted via the sidecar. Set allowUiUpdates: false in production to prevent UI drift from the Git-managed source.</statement>
+      <rationale source="v1-source">allowUiUpdates: true allows operators to save UI changes that are then lost on the next pod restart (they are not written back to the ConfigMap). Disabling it enforces the GitOps workflow.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Add deployment and alert annotations to all service dashboards. Annotations correlate metric changes with the events that caused them.</statement>
+      <rationale source="v1-source">Without deployment markers, engineers spend minutes correlating a latency spike to the release that caused it. Annotations make the correlation instant and reduce MTTR.</rationale>
+    </rule>
+  </section>
+</text>

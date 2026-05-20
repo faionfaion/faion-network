@@ -1,14 +1,25 @@
+---
+slug: pm-certification-alignment-2026
+tier: pro
+group: pm
+domain: pm-traditional
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Curriculum and content alignment to the 2026 PMP Exam Content Outline (ECO).
+content_id: "1da3f5567fad9d36"
+tags: [pmp, certification, curriculum, 2026-eco, business-environment]
+---
 # PM Certification Alignment 2026
 
 ## Summary
 
-Curriculum and content alignment to the 2026 PMP Exam Content Outline (ECO). The 2026 exam shifts Business Environment from 8% to 26% of exam weight, reflecting a doctrinal move toward value delivery, governance, sustainability, and AI-in-PM. Study plans, training content, and org-level PM playbooks must be re-mapped against the new domain weights or they under-prepare candidates for the highest-weighted questions.
+**One-sentence:** Curriculum and content alignment to the 2026 PMP Exam Content Outline (ECO).
 
-## Why
+**One-paragraph:** Curriculum and content alignment to the 2026 PMP Exam Content Outline (ECO). The 2026 exam shifts Business Environment from 8% to 26% of exam weight, requiring curriculum realignment and explicit coverage of value delivery, sustainability, and AI-in-PM themes.
 
-Most PM curricula and prep materials were built for the pre-2026 weighting (People 42% / Process 50% / Business Environment 8%). Candidates and organisations using legacy materials will under-invest in Business Environment topics now worth 26% of the exam. A crosswalk against the ECO identifies exactly which topics are under-covered and by how much.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Auditing an existing PM curriculum against the 2026 PMP ECO domain weights
 - Building a corporate "PMP-ready" path for candidates who hold PMP6 or PRINCE2
@@ -16,20 +27,49 @@ Most PM curricula and prep materials were built for the pre-2026 weighting (Peop
 - Aligning internal PM methodology libraries to the new sustainability and AI-in-PM topics
 - Tagging existing content against ECO domain/task IDs for coverage tracking
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - General project execution work — certification alignment is academic; use delivery methodologies directly
 - Candidates whose exam date falls before the 2026 ECO version takes effect (check PMI.org for current form version)
 - Non-PMI certifications (PRINCE2 2025, IPMA, ISO 21502 conformity) with their own content outlines
 - PMP renewal (CCR) planning — that is a separate process from initial exam preparation
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-domain-weights.xml` | 2026 vs prior domain weights, Business Environment coverage requirements, tailoring theme |
-| `content/02-key-themes.xml` | Sustainability, AI-in-PM, governance, value delivery — what each requires and agent gotchas |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
-none
+| File | Purpose |
+|------|---------|
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/pm/pm-traditional/`

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="php-laravel-queues Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for php-laravel-queues as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Missing ShouldQueue interface on a job class: class ProcessOrderJob { use Dispatchable, Queueable... } with no implements ShouldQueue.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>dispatch() runs the job synchronously on the current thread. HTTP tests pass because execution is identical. In production, the queue never receives the work, and the HTTP thread blocks for the job's duration.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Passing Eloquent model instances or DTOs containing closures into job constructors.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>SerializesModels serializes via GlobalID and re-fetches on the worker. If the row was deleted between enqueue and run, findOrFail throws before handle() is called. Closures are never serializable — PHP throws immediately on dispatch().</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Dispatching a job inside a DB::transaction without afterCommit().</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The job is pushed to the queue before the transaction commits. The worker picks it up and calls findOrFail($id) — the row does not exist yet — and the job fails with a ModelNotFoundException.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>No failed() implementation on a job that mutates external state (payment, webhook, inventory).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>When the job exceeds $tries, it enters the dead queue with no application-level record. The user sees no error, the operator sees only a queue depth spike, and the failed state is never surfaced in the UI.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Using Queue::fake() for the only test of a job, never testing failed() behavior.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Queue::fake() asserts that dispatch was called but never runs handle() or failed(). A job whose failed() silently does nothing passes all tests but leaves inconsistent state in production after a queue failure.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Missing failed_jobs migration on a project using queues.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Without the failed_jobs table, when a job exceeds its retry limit Laravel throws a DB error on the storage attempt and the job is silently discarded — no record, no alert, no retry possible.</repair>
+    </failure-mode>
+  </section>
+</text>

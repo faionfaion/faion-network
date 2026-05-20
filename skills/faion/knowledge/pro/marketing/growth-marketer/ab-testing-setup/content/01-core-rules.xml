@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ab-testing-setup Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ab-testing-setup. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use statsmodels NormalIndPower for all sample-size calculations; the simplified n = 16*p*(1-p)/MDE^2 is a teaching aid — it silently assumes 95% two-sided, 80% power, and 50/50 split.</statement>
+      <rationale source="v1-source">Deviations from those defaults (one-sided test, 90/10 split, 90% power) cause 25–50% error in the simplified formula. statsmodels handles all cases correctly.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Always state MDE as relative percentage (e.g. 10% relative lift on a 5% baseline = 0.5pp absolute), and convert explicitly in the calculation output.</statement>
+      <rationale source="v1-source">MDE relative vs absolute confusion is the single biggest sample-size error — an agent told "MDE = 1%" on a 5% baseline can compute for a 1pp absolute lift (doubling the metric) rather than a 10% relative lift.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Account for weekend traffic dips when estimating duration; if daily_users is based on a Monday-Friday average, multiply by 7/5 to get true daily average before dividing into total sample.</statement>
+      <rationale source="v1-source">Agents using weekday-only traffic estimate durations that are 30–50% too short; the test hits its end date before reaching the required sample.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>When using a 90/10 split to limit blast radius, pass ratio=9.0 to NormalIndPower; the small arm needs ~9x more users per-arm than a 50/50 split to achieve the same power.</statement>
+      <rationale source="v1-source">Asymmetric splits blow up sample requirement on the small arm; agents that forget the ratio parameter under-size and produce unreliable results.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use deterministic-hash bucketing (hash(user_id + experiment_id) % 100) so users stay in the same arm across sessions and devices.</statement>
+      <rationale source="v1-source">Session-based random assignment causes the same user to see both variants across sessions, contaminating results.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Reserve a 5% holdout bucket outside all experiments for clean baseline measurement.</statement>
+      <rationale source="v1-source">Without a holdout, long-running experiment programs cannot measure the aggregate effect of the full test calendar on the product metrics.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Configure an SRM check (chi-square on observed split vs expected) on day 1 and alert when p &lt; 0.001; invalidate the test if the alert fires and investigate before resuming.</statement>
+      <rationale source="v1-source">SRM indicates that randomization is broken — the test result cannot be trusted even if the primary metric reaches significance.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Run an A/A test (both arms see control) for 1–2 days before the real experiment; confirm no false positive on the primary metric before introducing the treatment.</statement>
+      <rationale source="v1-source">A/A tests catch tracking bugs, bucketing errors, and pre-existing metric imbalances that would invalidate results even before treatment is introduced.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>If the experiment platform supports sequential testing (Statsig, Optimizely), opt in — it allows valid peeking at any time without inflating false positives.</statement>
+      <rationale source="v1-source">Fixed-horizon tests require committing to an end date and not peeking; sequential designs are more flexible but require the platform to use a valid always-valid inference method.</rationale>
+    </rule>
+  </section>
+</text>

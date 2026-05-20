@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="claude-best-practices Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for claude-best-practices. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use Haiku for formatting, routing, classification, and simple extraction tasks. Use Sonnet for generation, code, and analysis. Use Opus for complex reasoning, architecture, and strategy tasks.</statement>
+      <rationale source="v1-source">Using Opus for a simple routing decision wastes ~10x the budget. Using Haiku for complex reasoning produces lower-quality output that may require re-work.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Pin exact model IDs in production configs (e.g., "claude-sonnet-4-20250514") rather than aliases ("claude-sonnet-4").</statement>
+      <rationale source="v1-source">Aliases can update to a newer model version without notice. A silent model upgrade can change output format or behavior, breaking downstream parsing.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Log the model actually used in every response, not just the model requested. Log this when implementing fallback logic.</statement>
+      <rationale source="v1-source">Fallback to a cheaper model is invisible to the orchestrator unless explicitly logged. Downstream agents may produce worse outputs without knowing the model was downgraded.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Always set max_tokens explicitly on every Messages API call.</statement>
+      <rationale source="v1-source">The default max_tokens is low and silently truncates structured output mid-JSON, producing invalid payloads that are hard to debug because the API returns HTTP 200.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>When stop_reason == "max_tokens" on a structured output call, the JSON is truncated and invalid. Retry with higher max_tokens; do not parse the response.</statement>
+      <rationale source="v1-source">A truncated JSON response from a structured output call will raise a parse error downstream. The correct action is to retry with more headroom, not to handle the parse error.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Place the most stable content at the top of the system prompt with cache_control: ephemeral. Put dynamic instructions last.</statement>
+      <rationale source="v1-source">Cache uses prefix matching. Dynamic content at the top busts the cache on every call. Stable content at the top maximizes the proportion of input tokens that are cached.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Never inject timestamps, request IDs, or user-specific values before the cached block.</statement>
+      <rationale source="v1-source">Even a single character difference in the prefix causes a cache miss. You pay the write cost (25% above regular) with no read benefit.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Measure cache_read_input_tokens / input_tokens ratio per pipeline run. Target above 0.70.</statement>
+      <rationale source="v1-source">Below 70% cache hit rate, write overhead starts eroding the 90% read savings. Low hit rate indicates the cached prefix is being modified per call.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use Batch API for workloads that tolerate up to 24-hour latency to receive 50% cost reduction.</statement>
+      <rationale source="v1-source">Batch API cuts cost in half with no other code changes. The only requirement is that the workload is not real-time: offline enrichment, nightly analysis, evaluation suites.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use client.messages.count_tokens() for pre-flight checks before paying for large-input calls.</statement>
+      <rationale source="v1-source">Token counting is cheap (no generation cost) and prevents paying full generation cost for inputs that exceed the context limit, which fail with an API error.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Parse the retry-after header from RateLimitError instead of guessing the backoff interval.</statement>
+      <rationale source="v1-source">The Anthropic API includes a retry-after header with the exact wait time. Guessing with exponential backoff may wait too long or too short, degrading throughput unnecessarily.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Implement exponential backoff with jitter for 5xx server errors; retry up to 3 times before raising.</statement>
+      <rationale source="v1-source">5xx errors are transient. A single retry captures most transient failures. More than 3 retries risks cascading delays in multi-step pipelines.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>In multi-worker orchestrators, use a shared rate-limit token bucket rather than per-process backoff.</statement>
+      <rationale source="v1-source">Per-process backoff does not account for other workers consuming quota simultaneously. A shared bucket prevents all workers from hammering the API at the same time after a backoff period.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>When falling back from Sonnet to Haiku on rate limiting, log the actual model used in the response.</statement>
+      <rationale source="v1-source">The orchestrator needs to know which model produced a given output. Silent fallback produces unexpected quality variations that are impossible to audit without this log.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Use AsyncAnthropic with asyncio.gather for concurrent batch calls. Do not spawn threads; the SDK is async-native.</statement>
+      <rationale source="v1-source">The Anthropic Python SDK is built on httpx with native async support. Using threads adds overhead and can introduce race conditions. asyncio.gather is the correct concurrency primitive.</rationale>
+    </rule>
+  </section>
+</text>

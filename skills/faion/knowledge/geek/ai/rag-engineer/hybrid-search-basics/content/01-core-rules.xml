@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="hybrid-search-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for hybrid-search-basics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use Reciprocal Rank Fusion (RRF) as the default fusion strategy. Use linear score normalization only after benchmarking shows improvement on the specific corpus.</statement>
+      <rationale source="v1-source">RRF operates on rank positions rather than raw scores, making it robust to scale differences between BM25 (unbounded, corpus-dependent) and cosine similarity (0–1). Linear fusion requires careful per-corpus normalization to avoid BM25 scores dominating.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Never compare raw BM25 scores across different corpora or index configurations.</statement>
+      <rationale source="v1-source">BM25 scores are distribution-dependent. A score of 10 on a small corpus is not comparable to a score of 10 on a large corpus. Always normalize BM25 within the same retrieval call before fusion.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Start alpha at 0.5 (50% semantic / 50% keyword) and tune per domain using a labeled evaluation set of at least 50 queries.</statement>
+      <rationale source="v1-source">There is no universally optimal alpha. Technical corpora with many exact identifiers tend toward lower alpha (more keyword weight). Prose-heavy corpora tend toward higher alpha (more semantic weight).</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Log the alpha value used per query in production to build a calibration dataset for automated tuning.</statement>
+      <rationale source="v1-source">Dynamic alpha selection improves retrieval quality but requires empirical data. Without logging, there is no basis for improving the alpha selection heuristics over time.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use the vector database's native hybrid search endpoint when available (Qdrant, Weaviate, Elasticsearch) rather than calling two endpoints and fusing client-side.</statement>
+      <rationale source="v1-source">Native hybrid search executes both retrievers in a single server-side call, reducing latency. Client-side fusion requires two round-trips and local merge logic.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>For Qdrant sparse vectors, pre-compute BM25 or SPLADE sparse encodings before insert. You cannot pass raw text to a sparse vector endpoint.</statement>
+      <rationale source="v1-source">Qdrant's sparse vector format requires pre-encoded sparse representations. Attempting to pass tokenized text directly produces a type error at the API level.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Apply domain-specific stop words for BM25. Generic English stop words hurt technical corpora where words like "the" may appear in product names.</statement>
+      <rationale source="v1-source">Standard stop word lists remove common words that may carry meaning in technical domains. For example, "The Architect" as a product name would lose its key token.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Rebuild the BM25 index when documents are added incrementally. Some vector databases do not support live BM25 updates.</statement>
+      <rationale source="v1-source">BM25 IDF scores are corpus-wide statistics. Adding documents without rebuilding the BM25 component produces stale IDF values that degrade keyword scoring for both old and new documents.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Compute alpha before the retrieval call, not after. An agent that decides alpha post-retrieval cannot change the already-returned result set.</statement>
+      <rationale source="v1-source">Alpha determines the retrieval mix at query time. It must be computed from the query characteristics before the retrieval call is made.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Start alpha at 0.5 and tune per domain using a labeled evaluation set of 50+ queries.</statement>
+      <rationale source="v1-source">Equal weighting is the starting point, but domain-specific tuning dramatically improves quality.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Use RRF over linear score normalization by default — it is more robust to scale differences between BM25 and cosine scores.</statement>
+      <rationale source="v1-source">RRF eliminates the need for per-corpus score normalization, which is error-prone and corpus-dependent.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Apply BM25 domain-specific stop words; generic English stop words hurt technical corpora.</statement>
+      <rationale source="v1-source">Technical domains have product names and identifiers that overlap with common English stop words.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Run vector search and BM25 independently in parallel, then fuse — do not rely on the database to do this unless the DB offers native hybrid.</statement>
+      <rationale source="v1-source">Parallel execution reduces latency. Many databases do not offer native hybrid, making client-side fusion and parallelization necessary.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Normalize vectors before cosine scoring; un-normalized vectors produce incorrect similarity scores with dot-product indices.</statement>
+      <rationale source="v1-source">Unit-normalized vectors allow dot-product to equal cosine similarity, which is faster.</rationale>
+    </rule>
+  </section>
+</text>

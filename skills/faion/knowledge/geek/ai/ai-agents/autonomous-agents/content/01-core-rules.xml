@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="autonomous-agents Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for autonomous-agents. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>ReAct agents MUST have a hard iteration cap (15 is safe default; lower for production critical paths). Define explicit terminal conditions in the system prompt; vague "stop when done" causes over-running. Log every thought-action-observation triplet to a structured store before the next step; this is your only replay artifact.</statement>
+      <rationale source="v1-source">Infinite loops spiral on ambiguous tasks. Iteration logging is critical for debugging agent behavior and understanding token consumption. Cheaper models (Haiku) should parse tool calls and format output; reserve Sonnet/Opus for reasoning steps to optimize cost.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Plan-and-Execute requires four subagent roles: planner (Opus, decomposes goal into ordered task list), executor pool (Sonnet/Haiku, handles a single subtask with defined inputs/outputs), verifier (checks task output against success criteria, returns pass/fail + reason), and critic (Reflexion pass: compares output against goal, generates improvement suggestions). Each executor runs on separate task; verifier blocks next task until current one passes.</statement>
+      <rationale source="v1-source">Multi-agent decomposition scales to complex goals without context overflow. Executor and verifier are cheaper (Sonnet/Haiku) than planner (Opus). Critic pass improves output quality before writing to persistent storage. Parallelization reduces total wall-clock time for large projects.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Reflexion requires a critic subagent that reads the agent's output and the original goal, returns JSON with quality assessment (pass/fail), critique (list of issues), and improvement suggestions. If quality fails, the agent re-executes relevant steps; if it still fails after 2 cycles, escalate to human review instead of shipping broken output. The critic should also include confidence scores on each issue (high/medium/low) to help prioritize re-execution effort.</statement>
+      <rationale source="v1-source">Agents often complete tasks technically but miss the actual requirement; Reflexion catches this. Re-execution is cheaper than human review for fixable issues. Confidence scores help the agent prioritize which issues matter most.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Write tools to be idempotent — agents retry on failure, so non-idempotent tools cause data corruption. Never give agents write access to production systems without a human approval checkpoint. Code execution agents need OS-level isolation (e2b sandbox); missing this is a critical security failure. Streaming responses break action parsing if you parse before the stream completes — buffer fully before parsing.</statement>
+      <rationale source="v1-source">Agents are non-deterministic and will encounter errors; idempotent tools survive retries. Human-in-the-loop checkpoint is mandatory for irreversible actions (file delete, external API write, email send).</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-architecture-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-architecture-services. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Choose Lambda when traffic is variable or spiky, execution is under 15 minutes, cold start under 2 seconds is acceptable, and GPU is not required.</statement>
+      <rationale source="v1-source">Lambda costs per invocation; idle time costs nothing. Containers cost per provisioned hour regardless of traffic.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Choose containers (EKS or ECS Fargate) for steady 24/7 workloads above 1 million requests per day, long-running processes, GPU requirements, persistent websocket connections, or when the Kubernetes ecosystem is needed.</statement>
+      <rationale source="v1-source">Reserved container capacity is cheaper than Lambda at high sustained throughput. GPU workloads require EC2-backed compute. Lambda has a 15-minute hard timeout and no persistent connections.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Default to a hybrid architecture: Lambda for event-driven and sporadic workloads, containers for always-on services. Document the boundary in an architecture decision record.</statement>
+      <rationale source="v1-source">Most teams run hybrid architectures. The right question is which workload belongs where, not a binary choice.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Choose Fargate (ECS or EKS) when the team lacks Kubernetes expertise or wants to avoid node management overhead.</statement>
+      <rationale source="v1-source">Fargate is fully managed; no patching, scaling, or capacity planning for nodes.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Choose EKS when multi-cloud portability, Helm ecosystem, GitOps with ArgoCD, or advanced scheduling is required.</statement>
+      <rationale source="v1-source">EKS uses standard Kubernetes APIs, enabling migration to other clouds or on-prem clusters.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use RDS Aurora PostgreSQL for relational OLTP; use DynamoDB for key-value or document access patterns requiring single-digit millisecond latency at any scale; use Redshift for analytical queries over &gt;1TB.</statement>
+      <rationale source="v1-source">Aurora provides storage auto-scaling and read replicas. DynamoDB avoids connection pooling limits at high concurrency. Redshift columnar storage is purpose-built for OLAP.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use EventBridge for decoupled cross-service routing; use Step Functions for stateful orchestration; use SQS for async buffering with retry; use SNS for fan-out notifications.</statement>
+      <rationale source="v1-source">Each service solves a distinct coordination problem. Using SQS for routing or SNS for stateful workflows creates operational complexity.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Apply all six Well-Architected pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability.</statement>
+      <rationale source="v1-source">Skipping any pillar creates technical debt: missing Security leads to breaches; missing Cost Optimization leads to uncontrolled spend.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Default to Graviton (ARM64) instances for all new compute resources; require an explicit comment to justify x86 usage.</statement>
+      <rationale source="v1-source">Graviton provides roughly 20% lower cost and comparable or better performance for most workloads.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use a custom event bus (not default) for application events; enable event archive with 30-day retention for replay capability.</statement>
+      <rationale source="v1-source">The default event bus mixes AWS service events with application events. Archiving enables replay during outages.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Always configure a dead-letter queue and retry policy on every EventBridge target rule.</statement>
+      <rationale source="v1-source">Without DLQ, failed event deliveries are silently dropped. EventBridge retries up to 185 times over 24 hours by default.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Use SQS Standard for async decoupling with at-least-once delivery; use SQS FIFO when message ordering matters; use SNS for fan-out to multiple subscribers.</statement>
+      <rationale source="v1-source">SQS provides buffering and retry; SNS delivers immediately to all subscribers without buffering.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Use Step Functions for workflows with more than 2 sequential steps, error handling, or human approval gates.</statement>
+      <rationale source="v1-source">Chaining Lambda functions directly via code creates invisible retry logic and poor observability. Step Functions provides visual state machines with built-in retry/catch.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Use EventBridge choreography for loosely coupled, independently deployable services; use Step Functions orchestration for multi-step transactions requiring compensation (saga pattern).</statement>
+      <rationale source="v1-source">Choreography reduces coupling but makes flow hard to trace. Orchestration centralizes visibility at the cost of coupling to the orchestrator.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Deploy EKS cluster in private subnets with IRSA enabled, secrets encryption via KMS, and managed node groups using Graviton instances.</statement>
+      <rationale source="v1-source">Private subnets prevent direct internet exposure. IRSA eliminates long-lived access keys on nodes. KMS encryption protects secrets in etcd.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Enable at least CoreDNS, kube-proxy, VPC CNI, and EBS CSI driver as managed add-ons.</statement>
+      <rationale source="v1-source">Managed add-ons receive security patches automatically without manual intervention.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Always deploy Aurora with Multi-AZ (minimum 2 instances), encryption at rest via KMS, IAM authentication enabled, and deletion protection on prod.</statement>
+      <rationale source="v1-source">Single-instance Aurora has no automatic failover. Deletion protection prevents accidental data loss in production.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Set backup retention to 30 days in production; enable Performance Insights and Enhanced Monitoring with 60-second granularity.</statement>
+      <rationale source="v1-source">30-day retention meets most compliance requirements. Performance Insights identifies slow queries proactively.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Redirect HTTP port 80 to HTTPS 443 with SSL policy ELBSecurityPolicy-TLS13-1-2-2021-06; enable access logs to S3 with 90-day lifecycle.</statement>
+      <rationale source="v1-source">TLS 1.3 policy disables weak cipher suites. Access logs are required for security audits and debugging.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Use CloudFront Origin Access Control (OAC) for S3 origins, not legacy OAI; enable HTTP/2 and HTTP/3.</statement>
+      <rationale source="v1-source">OAC uses SigV4 signing and supports SSE-KMS, which OAI does not.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Tag all resources with Project, Environment, Owner, and ManagedBy=terraform; enable CloudTrail (multi-region trail) and AWS Config in every account.</statement>
+      <rationale source="v1-source">Tags enable cost allocation and compliance reporting. CloudTrail provides the audit trail required for SOC2/PCI.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Use Spot instances for fault-tolerant batch workloads, Reserved capacity for steady-state, and Instance Scheduler to stop non-prod environments overnight.</statement>
+      <rationale source="v1-source">Instance Scheduler can save up to 75% on non-prod costs. Spot pricing is 60-90% cheaper than On-Demand for interruptible workloads.</rationale>
+    </rule>
+  </section>
+</text>

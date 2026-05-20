@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="terraform-modules-structure Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for terraform-modules-structure. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every Terraform module MUST contain at minimum: main.tf (primary resources), variables.tf (input definitions), outputs.tf (output values), and versions.tf (provider and Terraform version constraints). Optional files: locals.tf for computed values, data.tf for data source lookups.</statement>
+      <rationale source="v1-source">Predictable layout lets agents and engineers locate any construct in O(1) — no file scanning required. versions.tf prevents silent provider upgrades that break consumers.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>main.tf MUST contain only resource and module blocks. Data source blocks belong in data.tf. Local value blocks belong in locals.tf.</statement>
+      <rationale source="v1-source">Keeps main.tf as the authoritative resource inventory; reviewers can audit resource creation without filtering noise.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>variables.tf MUST define every input variable with: a description, a type constraint, and a default value where the variable is optional. Sensitive inputs MUST set sensitive = true.</statement>
+      <rationale source="v1-source">Missing descriptions break terraform-docs automation. Missing type constraints cause runtime panics on type mismatches. Unmarked sensitive variables leak to logs.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>outputs.tf MUST export resource IDs, ARNs, and connection strings needed by callers. Every output MUST have a description. Sensitive outputs MUST set sensitive = true.</statement>
+      <rationale source="v1-source">Callers cannot reference internals of a module — outputs are the only API surface. Undocumented outputs force callers to read the source.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>versions.tf MUST declare required_version for Terraform and required_providers with source and version for every provider the module uses. Child modules MUST NOT contain provider blocks.</statement>
+      <rationale source="v1-source">Provider blocks in child modules cause Terraform to instantiate a duplicate provider configuration, breaking inheritance from the root module and causing apply failures.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Each module MUST have a single responsibility. A module named vpc MUST NOT manage ECS services or RDS instances. A module named ecs-service MUST NOT create VPCs.</statement>
+      <rationale source="v1-source">Single responsibility limits the blast radius of changes. A VPC change should never require touching ECS task definitions.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Modules MUST avoid mega-modules. A module with more than 500 lines across all .tf files is a candidate for splitting into smaller child modules.</statement>
+      <rationale source="v1-source">Large modules have many more reasons to change, require longer plan times, and make it harder for reviewers to verify correctness.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Module dependencies MUST flow through explicit outputs and inputs. Modules MUST NOT reference each other's internal resources by hardcoded names or ARNs.</statement>
+      <rationale source="v1-source">Implicit coupling breaks when either module renames an internal resource. Explicit interfaces survive refactoring.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Modules MUST provide sensible defaults for optional variables, use validation blocks for input constraints, and add descriptions to every variable and output.</statement>
+      <rationale source="v1-source">Without defaults, every caller must specify every input. Without validation, invalid inputs surface as cryptic provider errors instead of readable messages.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use .tfvars files or per-environment directories for environment differences. MUST NOT use terraform workspace as the primary environment isolation mechanism for production infrastructure.</statement>
+      <rationale source="v1-source">Workspaces share state backends and make it easy to accidentally apply the wrong environment. Per-environment directories provide strong isolation with separate state files and explicit variable sets.</rationale>
+    </rule>
+  </section>
+</text>

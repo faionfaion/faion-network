@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-serializers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-serializers. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Define separate Input serializers (named EntityCreateRequest, EntityUpdateRequest) and Output serializers (named EntityResponse, EntityListResponse). Never use ModelSerializer as a shared input-output serializer. Input serializers inherit from serializers.Serializer, not ModelSerializer.</statement>
+      <rationale source="v1-source">Shared serializers accidentally expose sensitive fields (password, is_staff, created_at) in responses because ModelSerializer's fields = '__all__' includes everything. Input serializers that inherit from ModelSerializer also accept fields they shouldn't (id, created_at). Explicit serializers make the API surface auditable and stable against model changes.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Serializers MUST NOT contain business logic. validate_*() and validate() methods may only check input shape and format — not query the database, not enforce business rules, not create or modify model instances.</statement>
+      <rationale source="v1-source">Business logic in validate() is untestable without constructing a full serializer and bypasses the service layer. Any database access in validate() runs outside the service transaction, leading to inconsistent state if the service transaction rolls back.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Output serializers inherit from serializers.Serializer and declare all fields explicitly. Fields that must not be exposed (password, secret tokens, internal flags) MUST be absent from the output serializer. Never use exclude = [...] in ModelSerializer as protection — it is too easy to miss new fields.</statement>
+      <rationale source="v1-source">Explicit field lists ensure new model fields are not accidentally exposed. exclude = ['password'] fails silently when a new sensitive field is added — the developer must remember to add it to the exclude list. An explicit include list is safe by default.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Set required, allow_blank, allow_null, and default explicitly on every field of Input serializers. Do not rely on DRF defaults — they are not obvious and change between DRF versions.</statement>
+      <rationale source="v1-source">Explicit field options make the API contract visible in code. When a field is optional with a default, set required=False, default=value. When blank strings are allowed, set allow_blank=True. Implicit DRF defaults can silently accept or reject fields in unexpected ways.</rationale>
+    </rule>
+  </section>
+</text>

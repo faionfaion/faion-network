@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="sec-trivy-pinned-supply-chain-scan Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for sec-trivy-pinned-supply-chain-scan. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every CI workflow MUST reference aquasecurity/trivy-action by its full 40-character commit SHA, and MUST pass version: with an explicit Trivy release that has been verified by cosign signature against aquasecurity/trivy keys. Floating refs (@main, @v0, @latest) and the known-bad versions trivy@v0.69.4 and trivy-action@v0.30.0 MUST NOT appear anywhere in the repo, including in archived branches and example documentation.</statement>
+      <rationale source="v1-source">SHA pins are immutable; tag pins are not. The 2026 compromise reused legitimate tags after the attacker pushed malicious commits, so pipelines pinned to @v0.30.0 ran the malicious code while believing they were on a known release. SHA pin + signature verification breaks that path.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Each PR MUST run trivy fs --severity HIGH,CRITICAL --exit-code 1 . against the source tree and, when the PR builds a container, trivy image --severity HIGH,CRITICAL --exit-code 1 &lt;image-ref&gt; against the built artifact. Either non-zero exit MUST block merge. CVE allowlist entries in .trivyignore MUST include a one-line justification, an owner, and a # sunset:YYYY-MM-DD comment; CI MUST fail if any allowlist entry is past its sunset.</statement>
+      <rationale source="v1-source">Filesystem-only scans miss vulnerabilities introduced by the base image; image-only scans miss source-level CVEs in tooling that never lands in the container. Running both is cheap (seconds in cache) and closes both gaps. Sunset dates prevent the allowlist from becoming a graveyard of forgotten exceptions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every git tag matching the release pattern (for example v*.*.*) MUST trigger a workflow that generates a CycloneDX SBOM with trivy sbom --format cyclonedx, signs the SBOM with cosign, and uploads both the SBOM and the signature to the GitHub Release as release assets. The release MUST NOT be marked non-draft until the SBOM upload step succeeds.</statement>
+      <rationale source="v1-source">Tying SBOM generation to the tag event guarantees the SBOM matches the exact artifact shipped, which is what auditors verify. Cosign signing prevents downstream consumers from being fed a swapped SBOM.</rationale>
+    </rule>
+  </section>
+</text>

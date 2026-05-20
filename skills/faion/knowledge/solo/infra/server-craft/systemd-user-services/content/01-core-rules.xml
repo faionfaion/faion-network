@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="systemd-user-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for systemd-user-services. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Place application unit files in ~/.config/systemd/user/ and control them with systemctl --user. Never run application code as root via system services.</statement>
+      <rationale source="v1-source">User services are scoped to one user account, need no sudo to manage, and are isolated from system services. They work with the deploy script (rsync + venv) pattern and produce logs in journalctl --user -u name.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every unit file has [Unit] (metadata + dependencies), [Service] (execution + limits), and [Install] (boot integration). ExecStart must use an absolute path.</statement>
+      <rationale source="v1-source">systemd resolves ExecStart before starting the service and rejects relative paths. A relative path silently fails with an uninformative error. Always use the full path from the venv: /srv/nero/nero-core/.venv/bin/celery.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Run loginctl enable-linger once per user account. Without it, user services stop when the last login session ends and do not start at boot.</statement>
+      <rationale source="v1-source">By default, the user's systemd manager exits when the last login session (SSH, TTY, sudo) ends. Linger keeps a permanent user session alive from boot to shutdown, regardless of login state.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Set MemoryMax, MemoryHigh, CPUQuota, and LimitNOFILE on every production service. Without limits, a runaway worker can starve all other services on the VPS.</statement>
+      <rationale source="v1-source">MemoryHigh triggers memory reclaim before the hard cap; the service is throttled but not killed. MemoryMax is the hard backstop. LimitNOFILE=65536 ensures the limit is applied even if PAM is misconfigured.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use systemd timer units instead of cron for scheduled tasks. Timers log to journald, support Persistent=true (catch up after downtime), and can be managed with systemctl --user.</statement>
+      <rationale source="v1-source">cron sends output to email (usually lost) and silently misses runs after reboots. Persistent=true on a timer runs the missed execution once after boot. journalctl --user -u backup.service gives the full run history with timestamps.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>When a service fails to start, check journalctl --user -u name -n 50 --no-pager first, then systemctl --user status name. Most startup failures are captured in the last 10 log lines.</statement>
+      <rationale source="v1-source">The status output truncates logs. journalctl shows the full stderr/stdout from ExecStart, including Python tracebacks and missing module errors.</rationale>
+    </rule>
+  </section>
+</text>

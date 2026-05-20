@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="nosql-neo4j-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for nosql-neo4j-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Model domain entities as labeled nodes and domain relationships as typed, directed relationships with properties. Node labels (User, Product, Order) are categories. Relationship types (PURCHASED, FRIEND, VIEWED) describe the semantic connection. Properties on relationships (date, quantity, weight) capture the context of the connection. Do NOT store connection data as node properties — it belongs on the relationship.</statement>
+      <rationale source="v1-source">Neo4j traversal efficiency comes from relationship pointers. Storing connection metadata as node properties (e.g., a JSON list of friend IDs on the User node) breaks pointer traversal and reintroduces the join problem. The graph model's power comes from relationships being first-class citizens with their own properties and indexes.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every Cypher traversal query MUST specify a maximum hop depth using the *..N syntax (e.g., [:FRIEND*..3]) and MUST include a LIMIT clause on the result. Before deploying any traversal query, run EXPLAIN and then PROFILE on a representative sample of the graph to verify the estimated rows and actual db hits are within acceptable bounds. Queries with db hits &gt; 10x the expected result size need optimization.</statement>
+      <rationale source="v1-source">An unbounded traversal (:FRIEND*) on a graph with high-degree nodes (celebrities, hubs) can expand to millions of paths before the LIMIT is applied — the expansion happens before filtering. The *..N bound prevents the query from following the long tail of the power-law degree distribution. PROFILE measures actual database hits, not estimates.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Create node property indexes (CREATE INDEX) on every property used in WHERE clauses that filter by node label and property value. Create uniqueness constraints (CREATE CONSTRAINT) on node properties that must be globally unique (user_id, email, product_id). Without indexes, node lookups by property require full label scans.</statement>
+      <rationale source="v1-source">Neo4j label scans (without an index) iterate over all nodes with a given label. For a User label with 10M nodes, a WHERE u.email = '...' without an index scans all 10M users. Indexes convert this to O(log N) lookup. Uniqueness constraints create an implicit index and prevent duplicate data at the database level.</rationale>
+    </rule>
+  </section>
+</text>

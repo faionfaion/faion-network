@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="ruby-sidekiq-jobs Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for ruby-sidekiq-jobs as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Passing ActiveRecord model instances as perform arguments: Sidekiq 7 strict mode raises on enqueue; legacy versions serialize via GlobalID but the object may be stale on dequeue.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>JSON-only serialization is Sidekiq's contract; GlobalID round-trips re-fetch on dequeue but fail on soft-deleted or destroyed records. Always pass the ID.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Rescuing StandardError inside perform and not re-raising: the job always appears to succeed, retry never fires, and failures are invisible in the dead set.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Sidekiq retries a job when perform raises. Swallowing the exception removes the signal. Only rescue exceptions you intend to recover from; always re-raise the rest.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Using perform_now or queue_as from the ActiveJob API instead of perform_async or sidekiq_options from the native Sidekiq API.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>ActiveJob wraps Sidekiq; its adapter serializes differently, adds adapter overhead, and has different retry semantics. For non-trivial Sidekiq use, the native API gives full control of queue weighting, retry curves, and dead-set behavior.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Omitting sidekiq_options retry: N and dead: true, relying on the default 25 retries over 21 days.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>21 days of retries is meaningless for an order confirmation email; it fills the retry set and makes monitoring noisy. Always declare intent explicitly.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Using WithoutOverlapping as if it were a Sidekiq built-in; it is a Laravel term — Sidekiq requires sidekiq-unique-jobs or a hand-rolled Redis lock for deduplication.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>LLMs cargo-cult Laravel queue middleware syntax into Sidekiq code; WithoutOverlapping does not exist in Sidekiq core and will raise a NoMethodError.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Assuming perform_in with a past timestamp defers the job to "never" — it runs immediately.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Sidekiq executes jobs scheduled in the past immediately on the next worker poll. Only future timestamps create a deferral; past timestamps are treated as "run ASAP."</repair>
+    </failure-mode>
+  </section>
+</text>

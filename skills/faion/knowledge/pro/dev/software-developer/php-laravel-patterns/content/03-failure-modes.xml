@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="php-laravel-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for php-laravel-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Eloquent calls inside Controller methods: User::where(...)-&gt;get(), Order::find($id), $model-&gt;save() directly in a controller action.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Business logic in the controller cannot be tested without the HTTP kernel. When the query logic changes, it must be found and changed in every controller that duplicates it.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Validation via $request-&gt;validate() or Validator::make() inside a controller method instead of a FormRequest class.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Inline validation duplicates rules across methods, makes authorize() logic invisible, and cannot be unit-tested without a real Request object.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>UserRepository wrapping Eloquent::query() without a second backing implementation (e.g., no ElasticSearch or Redis projection).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Eloquent is already a repository. A wrapper class that delegates to User::query() adds a layer of indirection with no benefit and confuses schema changes (two classes must change instead of one).</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>request() helper inside Service classes.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Services called from queue workers or CLI commands have no HTTP request context. request() returns null or a partial request and the service crashes silently.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Magic facades (Cache::, Mail::, Notification::) inside Service classes.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Facades are hard to mock without facade swap boilerplate. Injected contracts (Mailer, CacheRepository) swap cleanly in unit tests and express the dependency explicitly.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>DB::transaction wrapping external HTTP calls (Stripe::charge, Http::post, Mail::send).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Locks are held for the full duration of the network call. A Stripe timeout at 5s holds a DB row locked for 5s, potentially deadlocking concurrent requests on the same row.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>firstOrCreate / updateOrCreate without explicit lockForUpdate under concurrent load.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Two concurrent requests both miss the existing row, both attempt insert, and the second hits a unique constraint violation. Use upsert() or wrap in DB::transaction + lockForUpdate().</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>Resource accessing relations not eager-loaded by the caller: $this-&gt;profile-&gt;name inside toArray() without with('profile') in the controller.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Lazy-loads one query per model item in a paginated list. A page of 20 users triggers 20 additional queries. Telescope flags it; CI passes because tests run with a single model.</repair>
+    </failure-mode>
+  </section>
+</text>

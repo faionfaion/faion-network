@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="finops-devops-cost-tagging Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for finops-devops-cost-tagging. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every cloud resource that incurs cost MUST have four mandatory tags: `project` (^[a-z0-9-]{3,30}$), `environment` (prod|staging|dev|sandbox|dr), `owner` (team email or team slug), `cost-center` (finance allocation code). Enforce via SCP (AWS), Azure Policy (Azure), or Terraform label policy (GCP). Report tag compliance weekly; target 95%+.</statement>
+      <rationale source="v1-source">Four tags cover allocation to business unit, SDLC stage, accountable team, and finance. More than 6 mandatory tags causes compliance fatigue and drop-off. Regex validation prevents free-text values that fragment cost reports (e.g., "Prod", "prod", "PROD" treated as three environments).</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>AWS accounts MUST have a Service Control Policy that denies `ec2:RunInstances`, `ec2:CreateVolume`, `rds:CreateDBInstance`, `s3:CreateBucket` when mandatory tags are absent. Additionally, deploy `REQUIRED_TAGS` AWS Config rules covering EC2, EBS, RDS, S3, and Lambda to detect any existing non-compliant resources. Review Config rule findings weekly.</statement>
+      <rationale source="v1-source">SCPs block new violations at the API level — no human can bypass them even with admin IAM roles. Config rules catch legacy untagged resources created before the SCP was in place.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>When tag compliance is below 90%, run a bulk tagging sprint before switching SCP/Policy to deny mode. Identify top 20 untagged resources by cost, assign owners, tag them. Switch enforcement policy from "audit" to "deny" only after compliance exceeds 90%. Communicate to engineering leads 2 weeks before switching to deny.</statement>
+      <rationale source="v1-source">Switching to deny before tagging the existing backlog blocks deployments for teams that were never informed of the requirement. Audit-first surfaces the backlog; communication-then-deny prevents a deployment outage on day one of enforcement.</rationale>
+    </rule>
+  </section>
+</text>

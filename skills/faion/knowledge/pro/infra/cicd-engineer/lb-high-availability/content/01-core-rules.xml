@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="lb-high-availability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for lb-high-availability. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Production load-balanced services MUST deploy at minimum 2 load balancer instances in active-active or active-passive configuration, AND distribute backend instances across at least 2 availability zones, AND maintain a minimum of 2 healthy backend instances in each zone. A configuration with 1 LB instance is not HA regardless of how many backends exist behind it.</statement>
+      <rationale source="v1-source">A single load balancer instance fails (process crash, instance host failure, network partition) and takes down the entire service. Zone spreading for backends ensures an AZ failure eliminates at most half the capacity rather than all of it. The 2-instance minimum for both LB and backend tiers is the smallest configuration that provides N-1 redundancy.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For multi-region HA, prefer anycast-based global load balancers (AWS Global Accelerator, Cloudflare Load Balancing, GCP Global Load Balancer) over DNS-based GSLB (Route 53 latency/geo routing, NS1, Akamai GTM) when the availability SLA is 99.99% or higher. DNS-based failover relies on client TTL compliance; actual failover time is 30 seconds to 5 minutes, not sub-second. Anycast failover is under 30 seconds at the routing layer.</statement>
+      <rationale source="v1-source">DNS TTLs are honored unevenly: corporate resolvers, mobile carrier DNS, and CDN intermediaries cache aggressively and ignore low TTLs. A DNS record change with TTL=30 may take 5 minutes to propagate to all clients. Anycast routing happens at the BGP layer — traffic reroutes when a PoP withdraws routes, independent of DNS caching.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>For zero-downtime deployments: (1) mark the backend as draining in the LB before stopping the process; (2) wait for in-flight requests to complete (deregistration_delay or drain timeout, typically 30s); (3) only then stop the process. The application's /health/ready endpoint MUST return 503 immediately when a SIGTERM is received, before the process starts draining — this signals the LB to stop sending new requests within one health check interval.</statement>
+      <rationale source="v1-source">Without connection draining, stopping a backend immediately terminates in-flight requests, causing 502 errors at the client. Without the readiness probe returning 503 on SIGTERM, the LB continues routing new requests to the shutting-down instance after the process stops accepting them, creating a window of 502 errors equal to the health check interval (10-30s).</rationale>
+    </rule>
+  </section>
+</text>

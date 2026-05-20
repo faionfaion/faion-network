@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-gateway-observability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-gateway-observability. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Configure per-route, per-consumer, and per-service metrics with consistent label sets: service, route, method, status_code, consumer. Aggregate at the dashboard; never store only aggregated metrics — label granularity enables root cause isolation.</statement>
+      <rationale source="v1-source">Without per-route metrics, a spike in errors on /api/payments is indistinguishable from a spike on /api/users in aggregated views. Label granularity is the difference between a 1-minute and 30-minute incident.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Log in JSON with these mandatory fields: timestamp (ISO8601), request_id/correlation_id, method, path, status, latency_ms, client_ip, user_agent, consumer (user ID or API key ID — never the raw key), upstream_latency_ms, response_size. Disable access logging for /health to avoid noise. Log at error level for 5xx with upstream error details.</statement>
+      <rationale source="v1-source">Without correlation_id, a client complaint about a failed request cannot be found in distributed logs. Without consumer identity, security incidents cannot be attributed. Without upstream_latency_ms, distinguishing gateway overhead from backend slowness is impossible.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Propagate W3C trace context (traceparent, tracestate) to all backend upstreams. Configure the gateway as the root span producer. Export traces via OTLP to a collector (Jaeger, Tempo, Zipkin). Sample at 10% by default; 100% for 5xx responses and requests exceeding p99 latency SLO.</statement>
+      <rationale source="v1-source">Without trace context propagation, distributed traces break at the gateway boundary — backend spans are orphaned. Without error-biased sampling, slow requests and failures are underrepresented in trace samples.</rationale>
+    </rule>
+  </section>
+</text>

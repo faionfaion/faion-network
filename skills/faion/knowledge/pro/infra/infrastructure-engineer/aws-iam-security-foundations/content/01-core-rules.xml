@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-iam-security-foundations Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-iam-security-foundations. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>IAM Identity Center MUST be the only human entry point to AWS accounts. Long-lived IAM user access keys MUST NOT exist for human users. Root accounts MUST have MFA enabled and root access management enabled for all member accounts. All human sessions use temporary credentials via IAM Identity Center role assumption with a maximum session duration of 1–8 hours depending on the permission set sensitivity.</statement>
+      <rationale source="v1-source">Long-lived access keys are the primary vector for credential compromise — they don't expire, they get checked into git, they are copied to laptops. IAM Identity Center sessions are time-bounded and federated from the IdP (Okta, Entra ID, Google Workspace), so revoking an employee in the IdP immediately revokes AWS access. Root account MFA prevents org-level takeover.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>EKS pod workloads MUST use IRSA (IAM Roles for Service Accounts) — an OIDC provider configured for the cluster, with service account annotations pointing to a scoped IAM role. Instance profiles MUST NOT be used for pod-level AWS access. IAM policies attached to IRSA roles MUST scope Resource to specific ARNs — no Resource: "*" in production IRSA policies.</statement>
+      <rationale source="v1-source">Instance profiles grant all pods on a node the same permissions, violating least privilege. IRSA binds a specific IAM role to a specific Kubernetes service account in a specific namespace; a compromised pod cannot steal another pod's credentials. Scoped resources prevent lateral movement within the account if one pod is compromised.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>All storage at rest MUST be encrypted: S3 default encryption enabled, EBS encryption by default enabled at the account level, RDS and Aurora storage encryption enabled at cluster creation. Customer-managed KMS keys (CMKs) MUST be used for all sensitive data — do not use AWS-managed keys for data classified as confidential or restricted. Key rotation MUST be enabled on all CMKs.</statement>
+      <rationale source="v1-source">AWS-managed keys are shared across accounts in the same region; customer-managed keys give exclusive control and a per-key audit trail in CloudTrail. Key rotation reduces the blast radius of a key compromise. EBS default encryption ensures no developer accidentally creates an unencrypted volume.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>All credentials and sensitive configuration MUST be stored in Secrets Manager with automatic rotation configured. No secrets in environment variables, no secrets in code, no secrets in Parameter Store standard tier (which has no encryption at rest). ALBs MUST enforce TLS 1.2 as the minimum protocol. Database connections from applications MUST use TLS.</statement>
+      <rationale source="v1-source">Environment variables are visible in ECS task definitions, CloudFormation templates, and container inspection commands. Secrets Manager encrypts at rest with KMS, audits every access in CloudTrail, and automates rotation for RDS, Redshift, and Elasticsearch without downtime.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,14 +1,25 @@
+---
+slug: user-research-at-scale
+tier: pro
+group: research
+domain: researcher
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: AI-augmented research operations for N >= 500 sessions/week or >= 50 unmoderated tests, running a 9-stage pipeline: intake → sampling → instrumentation → collection → transcription → coding → synthesis → review → publish.
+content_id: "6ff97c201f0b5419"
+tags: [user-research, research-ops, qualitative-analysis, research-at-scale, ai-augmented-research]
+---
 # User Research at Scale
 
 ## Summary
 
-AI-augmented research operations for N >= 500 sessions/week or >= 50 unmoderated tests, running a 9-stage pipeline: intake → sampling → instrumentation → collection → transcription → coding → synthesis → review → publish. Uses a frozen codebook with a separate `proposed_codes` overflow channel to prevent theme drift, and human-in-the-loop checkpoints before synthesis is published.
+**One-sentence:** AI-augmented research operations for N >= 500 sessions/week or >= 50 unmoderated tests, running a 9-stage pipeline: intake → sampling → instrumentation → collection → transcription → coding → synthesis → review → publish.
 
-## Why
+**One-paragraph:** AI-augmented research operations for N >= 500 sessions/week or >= 50 unmoderated tests, running a 9-stage pipeline: intake → sampling → instrumentation → collection → transcription → coding → synthesis → review → publish. Uses a frozen codebook with a separate proposed_codes overflow channel to prevent theme drift, and human-in-the-loop checkpoints before synthesis is published.
 
-Traditional manual research does not scale with product velocity. AI handles throughput (transcription, pattern detection, codebook tagging); humans handle strategy, interpretation, and empathy. The separation is enforced by model assignment: Haiku for mechanical tasks, Sonnet for structured synthesis, Opus for cross-segment pattern mining. Mixing them collapses the quality/cost trade-off.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - N >= 500 sessions/week or >= 50 unmoderated tests where manual coding is the bottleneck.
 - Continuous discovery teams needing a weekly pulse (Teresa Torres cadence).
@@ -16,29 +27,50 @@ Traditional manual research does not scale with product velocity. AI handles thr
 - Localization at scale — same study across 5+ languages, AI handles transcription + translation.
 - Survey + behavior + interview triangulation when a single researcher cannot read everything.
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
-- Small N (< 10 deep interviews) — AI noise overwhelms signal; human coding is faster and richer.
+- Small N (less than 10 deep interviews) — AI noise overwhelms signal; human coding is faster and richer.
 - Strategic generative discovery where pattern-recognition beats throughput.
 - Sensitive/regulated topics (health, finance, minors) requiring manual consent chains.
-- Early-stage startups with < 100 users — you do not have scale problems yet.
+- Early-stage startups with less than 100 users — you do not have scale problems yet.
 - Studies where rapport, body language, or longitudinal trust is the data.
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-pipeline-and-subagents.xml` | 9-stage pipeline, 10-subagent table (roles/models/inputs/outputs), prompt pattern for theme-coder. |
-| `content/02-tools-and-services.xml` | CLI tools (whisperx, ffmpeg, bertopic, presidio), services table, best practices. |
-| `content/03-gotchas.xml` | AI limitations: sentiment on non-English, codebook drift, transcript hallucination, cost traps, privacy rules. |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/codebook.yaml` | Frozen taxonomy: codes with id/label/valence_default/examples, segment axes. |
-| `templates/code-batch.sh` | Batch-codes transcript directory via claude CLI, deduplicates, outputs parquet. |
+| TBD | TBD |
 
 ## Scripts
 
-none
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/research/researcher/`

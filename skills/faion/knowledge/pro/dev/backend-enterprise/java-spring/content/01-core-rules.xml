@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="java-spring Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for java-spring. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Controllers MUST be thin: receive HTTP request, call service, return `ResponseEntity`. Services MUST contain business logic and MUST annotate write methods with `@Transactional` (non-write methods default to `@Transactional(readOnly=true)` at class level). Repositories MUST be `JpaRepository` subinterfaces with custom JPQL queries only when needed; use `Specification` for complex filters. Controllers MUST NEVER return entity types; always return DTOs.</statement>
+      <rationale source="v1-source">Layering isolates database schema changes from HTTP API contracts. `@Transactional` on writes ensures multi-step operations succeed-or-rollback atomically. Testability is maximized: slice tests can mock service, unit tests can mock repository. DTOs prevent lazy-loading exceptions and Hibernate proxy leaks.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Entities MUST use constructor injection via `@RequiredArgsConstructor` (Lombok). Entities MUST have an `@Id` field of type `Long` and MUST use `@CreationTimestamp` / `@UpdateTimestamp` for audit columns. Entities MUST NOT be returned from controllers; always map to DTO via MapStruct. Lazy-loaded fields (e.g., `@OneToMany`) MUST be fetched explicitly via `LEFT JOIN FETCH` or converted in the service layer.</statement>
+      <rationale source="v1-source">Audit columns track data mutations for compliance and debugging. MapStruct generates efficient mapping code at compile time. Explicit fetch prevents N+1 and LazyInitializationException. Controlling what's serialized prevents information leaks.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every list endpoint MUST accept `Pageable` as a parameter and MUST return `Page&lt;DTO&gt;`. Queries returning multiple rows MUST use `LEFT JOIN FETCH` or separate queries to prevent N+1. Missing database indexes on frequently queried columns MUST be flagged in code review.</statement>
+      <rationale source="v1-source">Pagination prevents scanning multi-million-row tables in a single query, avoiding OOM and timeout. `Pageable` leverages Spring Data's limit/offset and page size defaults. N+1 queries cause latency cascades in prod; `JOIN FETCH` solves it at the repository layer.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Request DTOs MUST use Bean Validation annotations (`@NotBlank`, `@Email`, `@Size`, etc.). Controllers MUST NOT manually check validation; rely on `@Valid` to trigger `MethodArgumentNotValidException`. Services MUST throw domain exceptions (e.g., `ResourceNotFoundException`, `ConflictException`). A global `@RestControllerAdvice` MUST map exceptions to `ResponseEntity` with structured error payloads (status, message, field errors).</statement>
+      <rationale source="v1-source">Bean Validation is declarative and reusable. Global advice ensures consistent error format across endpoints. Exceptions propagate intent without explicit try-catch boilerplate. Field errors in the response help clients pinpoint validation failures.</rationale>
+    </rule>
+  </section>
+</text>

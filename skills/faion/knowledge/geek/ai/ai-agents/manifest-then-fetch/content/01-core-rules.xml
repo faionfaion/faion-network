@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="manifest-then-fetch Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for manifest-then-fetch. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every tool result returned to the model MUST be a JSON object with keys execution_id, preview, size_tokens, and storage_uri. The full body MUST be stored externally and referenced by execution_id.</statement>
+      <rationale source="v1-source">Decouples decision-making (small envelope, always in context) from data loading (large body, on-demand). Holds effective context flat across loops, regardless of tool throughput.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The agent MUST call a separate get_full_result(execution_id) tool to load the body. Never inline the body into the manifest.</statement>
+      <rationale source="v1-source">Forces an explicit decision before paying the context cost. The model's autonomy stays — it can fetch — but the default is cheap.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Preview MUST be ≤200 tokens AND MUST be structured per tool type: row count + columns for SQL, status + content-type + first 200 chars for HTTP, line count + first/last 5 lines for logs.</statement>
+      <rationale source="v1-source">Fixed schema lets the agent parse the preview reliably; a free-text "summary" tempts the model to hallucinate that the body says something it doesn't.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Preview MUST NOT contain the answer the user asked for, even if it fits. If the answer is in the preview, the contract is broken — the tool should have returned a structured answer directly.</statement>
+      <rationale source="v1-source">Mixing the answer into the preview short-circuits the protocol: the agent stops fetching but also never learns whether its answer is grounded in the body.</rationale>
+    </rule>
+  </section>
+</text>

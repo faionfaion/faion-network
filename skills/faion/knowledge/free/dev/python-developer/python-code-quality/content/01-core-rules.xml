@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="python-code-quality Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for python-code-quality. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use Ruff as the single linter and formatter for a Python project. Do not use Black, isort, flake8, pyupgrade, autoflake, or pydocstyle alongside Ruff.</statement>
+      <rationale source="v1-source">Ruff is 10-100x faster than the traditional stack, bundles 800+ rules (E/W/F/I/B/C4/UP/SIM/T20 rule groups), and consolidates config into one pyproject.toml section. It is adopted by FastAPI, pandas, pydantic, and Apache Airflow.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use mypy or pyright for static type checking, not both. Mypy for CI/CD pipelines and large codebases; pyright for IDE integration and rapid prototyping (50x faster on large files).</statement>
+      <rationale source="v1-source">Mypy is slower (~5s on large files) but more configurable. Pyright is faster (~50ms) and more strict by default. Using both creates noise; pick one and stick with it per project.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use pre-commit hooks to run Ruff, mypy, and bandit before every commit. Configure .pre-commit-config.yaml with pinned tool versions matching pyproject.toml.</statement>
+      <rationale source="v1-source">Pre-commit hooks are the first gate — they catch 80% of fixable violations before code review. Pinned versions ensure contributors and CI agree on rules.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use pytest + pytest-cov for testing and coverage, with a minimum target of 80% branch coverage (not line coverage).</statement>
+      <rationale source="v1-source">Branch coverage forces agents and humans to test both the happy and sad paths. Line coverage is gamed too easily and gives false security.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use bandit for security scanning (AST-based, not just pattern matching). Run it in CI on the full codebase; suppress false positives per-line with # nosec B###, not bulk-disable.</statement>
+      <rationale source="v1-source">Bandit catches assert in test files (safe), hardcoded secrets, SQL injection patterns, and weak crypto. Per-line suppressions keep the signal-to-noise ratio high for audits.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Enable core Ruff rule groups: E (errors), F (pyflakes), I (isort), B (bugbear), UP (pyupgrade), C4 (comprehensions), T20 (no-print), and DJ if using Django.</statement>
+      <rationale source="v1-source">E/W are PEP 8 style. F catches undefined names and unused imports. I sorts imports idomatically. B catches common bugs (mutable defaults, `requests` inside asyncio). UP auto-upgrades deprecated typing. T20 blocks accidental print() in production. DJ enforces Django patterns.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Set target Python version to the minimum version your codebase supports (target-version = "py311" for new projects).</statement>
+      <rationale source="v1-source">Ruff uses target-version to enable syntax upgrades safely. Setting it to 3.11 allows UP rules to suggest | unions and asyncio.TaskGroup instead of Optional/Union and gather.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Exclude non-code directories in Ruff config: .venv, .git, migrations/, .pytest_cache, __pycache__, node_modules/.</statement>
+      <rationale source="v1-source">Generated code and virtual environments pass through unchecked. Migrations are auto-generated Django code; linting them wastes time and creates noise.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Run ruff check . --fix before committing to auto-fix all safe violations. Set ruff format . in pre-commit hooks.</statement>
+      <rationale source="v1-source">Auto-fix eliminates manual style correction. Pre-commit hooks enforce consistency. CI runs ruff check without --fix to catch unfixable violations and prevent regression.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use ruff check --unsafe-fixes cautiously. B008 (mutable default arg) and UP rewrites can change runtime behavior; always run tests after auto-fix.</statement>
+      <rationale source="v1-source">Unsafe fixes are auto-fixable but alter semantics. The human must verify behavior is preserved.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Configure mypy with strict = true for new projects. Start strict from day one.</statement>
+      <rationale source="v1-source">Strict mode enables disallow_untyped_defs, warn_return_any, and no_implicit_optional — the most impactful flags. Adding strict to existing code all at once creates hundreds of errors; use per-module [[tool.mypy.overrides]] to migrate incrementally.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Exclude migrations/ and tests/ from strict mode via mypy overrides. Tests use dynamic fixtures; migrations are generated code.</statement>
+      <rationale source="v1-source">Django migrations use dynamic field references that mypy cannot resolve without django-stubs. Test files use pytest.fixture and conftest patterns that produce false untyped-def errors. Focusing strict mode on production code provides the best signal.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Install and configure mypy plugins for your dependencies: django-stubs for Django, fastapi-stubs for FastAPI, pydantic-stubs for Pydantic.</statement>
+      <rationale source="v1-source">Plugins teach mypy about framework patterns (ORM dynamic attrs, dependency injection, validation). Without them, strict mode produces cascading false positives.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Use # type: ignore sparingly and with a comment explaining why. Run mypy --warn-unused-ignores in CI to audit accumulation.</statement>
+      <rationale source="v1-source">Type ignores are technical debt. Once a few are added, the count compounds. Auditing drives the count down and prevents rot.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Single Responsibility: Each class, function, and module has one reason to change. A UserService should handle user business logic only; email sending and logging belong in separate services.</statement>
+      <rationale source="v1-source">Single responsibility makes code testable, reusable, and maintainable. Classes with multiple reasons to change are harder to reason about and more prone to bugs.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Open/Closed: Classes are open for extension (via inheritance, composition, or strategy patterns) but closed for modification (adding new types should not require editing existing code).</statement>
+      <rationale source="v1-source">Open/closed prevents cascading edits when requirements change. A new payment method should add a class, not modify the PaymentProcessor.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Liskov Substitution: Subtypes must be substitutable for their base type without breaking the contract. If a subclass overrides a method, it must accept the same inputs and produce compatible outputs.</statement>
+      <rationale source="v1-source">Violating LSP causes runtime surprises when code treats a subclass as its parent type. Type checkers can catch some LSP violations; tests catch others.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Interface Segregation: Many specific interfaces are better than one general interface. Use Protocol for structural duck typing instead of large ABC base classes.</statement>
+      <rationale source="v1-source">Specific interfaces force clear contracts. Large ABCs become grab-bags and violate SRP. Protocol allows ad-hoc structural typing without coupling.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Dependency Inversion: Depend on abstractions (interfaces, Protocols), not concrete implementations. Inject dependencies at construction time, not inside methods.</statement>
+      <rationale source="v1-source">Dependency inversion makes code testable (mock injections) and decoupled. Concrete dependencies inside methods create tight coupling and are hard to test.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Use meaningful, intention-revealing names. Functions should be verbs (calculate_total, send_email); classes should be nouns (UserService, OrderRepository).</statement>
+      <rationale source="v1-source">Meaningful names reduce cognitive load. Readers should understand intent without reading the body.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Keep functions small: max 20-30 lines, single purpose. If a function does multiple things, split it.</statement>
+      <rationale source="v1-source">Small functions are easier to test, name, and reason about. The "one thing" rule forces clarity.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Avoid magic numbers. Use named constants instead. MAX_RETRIES = 3 is clearer than if retries &lt; 3.</statement>
+      <rationale source="v1-source">Magic numbers are unexplained context. Named constants document intent and are easier to refactor.</rationale>
+    </rule>
+    <rule id="r23" testable="true" depth="essential">
+      <statement>Use early returns (guard clauses) to reduce nesting. If a condition fails, return/raise immediately instead of nesting the happy path.</statement>
+      <rationale source="v1-source">Early returns flatten the code and reduce cognitive load. max 3 levels of nesting is a reasonable target.</rationale>
+    </rule>
+    <rule id="r24" testable="true" depth="essential">
+      <statement>Avoid code smells: long functions (&gt;50 lines), deep nesting (&gt;3 levels), god classes (too many responsibilities), primitive obsession (use dataclasses/models), feature envy (method using other class's data excessively), dead code (unused imports/functions).</statement>
+      <rationale source="v1-source">Code smells are warning signs of deeper issues. Addressing them early prevents technical debt.</rationale>
+    </rule>
+    <rule id="r25" testable="true" depth="essential">
+      <statement>Use early returns and guard clauses to avoid nesting.</statement>
+      <rationale source="v1-source">Nested code is harder to read. Early exit patterns flatten structure.</rationale>
+    </rule>
+    <rule id="r26" testable="true" depth="essential">
+      <statement>Document all public functions, classes, and modules with docstrings. Use Google or NumPy style consistently.</statement>
+      <rationale source="v1-source">Docstrings make code self-documenting. Consistent style helps tools and readers. Google style is most readable for small projects; NumPy for scientific code.</rationale>
+    </rule>
+    <rule id="r27" testable="true" depth="essential">
+      <statement>Implement a four-stage quality gate in CI: (1) format check (ruff format --check), (2) lint (ruff check), (3) type check (mypy), (4) security (bandit). Each stage must pass before the next runs.</statement>
+      <rationale source="v1-source">Staged gates catch issues early. Fast stages (format, lint) run first to fail fast; slow stages (type, security) run last only if earlier checks pass.</rationale>
+    </rule>
+    <rule id="r28" testable="true" depth="essential">
+      <statement>Require zero Ruff errors, zero mypy errors, zero high/critical bandit findings, and 80%+ test coverage for all PRs. Use branch protection rules to enforce.</statement>
+      <rationale source="v1-source">Strict thresholds prevent regression. Branch protection prevents merging until all gates pass.</rationale>
+    </rule>
+    <rule id="r29" testable="true" depth="essential">
+      <statement>Run pre-commit.ci or GitHub Actions to auto-fix style and format issues in PRs. Agents can then focus on logic and architecture review.</statement>
+      <rationale source="v1-source">Auto-fixing style noise keeps diffs focused on meaningful changes. Reviewers spend less time on "remove trailing whitespace" comments.</rationale>
+    </rule>
+    <rule id="r30" testable="true" depth="essential">
+      <statement>Use Dependency Injection (constructor injection, not service locator) to provide dependencies. This makes code testable and decouples modules.</statement>
+      <rationale source="v1-source">Constructor injection is explicit and transparent. Service locators hide dependencies and make code harder to test and reason about.</rationale>
+    </rule>
+    <rule id="r31" testable="true" depth="essential">
+      <statement>Use Protocol for duck typing instead of ABC inheritance when possible. Protocols satisfy Open/Closed: a class satisfies a protocol without importing it.</statement>
+      <rationale source="v1-source">ABC requires explicit inheritance, creating import coupling. Protocol allows structural typing without coupling. Use @runtime_checkable only if isinstance() checks are needed at runtime.</rationale>
+    </rule>
+    <rule id="r32" testable="true" depth="essential">
+      <statement>Composition over inheritance. Prefer aggregating behavior via dependency injection over inheriting from base classes.</statement>
+      <rationale source="v1-source">Inheritance creates tight coupling and fragile base class problems. Composition is more flexible and makes behaviors reusable independently.</rationale>
+    </rule>
+    <rule id="r33" testable="true" depth="essential">
+      <statement>Document all public functions, classes, and modules with docstrings. Use Google or NumPy style consistently.</statement>
+      <rationale source="v1-source">Docstrings make code self-documenting. Consistent style helps tools and readers. Google style is most readable for small projects; NumPy for scientific code.</rationale>
+    </rule>
+    <rule id="r34" testable="true" depth="essential">
+      <statement>Docstring formats: Google style for most projects (most readable), NumPy style for scientific/data projects (matrix notation support), Sphinx style for complex API documentation.</statement>
+      <rationale source="v1-source">Google style is the most readable for non-mathematical code. NumPy style works well for data science where matrix dimensions matter. Sphinx is verbose but integrates with Sphinx documentation generators.</rationale>
+    </rule>
+    <rule id="r35" testable="true" depth="essential">
+      <statement>Set test coverage target to 80% branch coverage (not line coverage). Branch coverage forces testing of both happy and sad paths.</statement>
+      <rationale source="v1-source">Line coverage is easy to game (touch every line without testing behavior). Branch coverage (if X, then Y and else Z) forces real test cases. 80% is a reasonable minimum; 90%+ for critical paths.</rationale>
+    </rule>
+    <rule id="r36" testable="true" depth="essential">
+      <statement>Use pytest + pytest-cov as the test runner and coverage tool. Configure pytest with strict configuration: no legacy assertions, no bare except, typed fixtures.</statement>
+      <rationale source="v1-source">pytest is the standard Python test framework. pytest-cov integrates coverage reporting. Strict config prevents common testing bugs.</rationale>
+    </rule>
+    <rule id="r37" testable="true" depth="essential">
+      <statement>For advanced coverage measurement, combine pytest-cov with mutmut (mutation testing). mutmut runs your tests against mutated code (changed operators, deleted lines) to find weak tests.</statement>
+      <rationale source="v1-source">Mutation testing reveals tests that pass but don't actually validate behavior. A mutation like &lt; → &lt;= should fail existing tests; if not, coverage is false. mutmut is the gold standard for coverage quality.</rationale>
+    </rule>
+    <rule id="r38" testable="true" depth="essential">
+      <statement>Never commit code with warnings from ruff, mypy, or bandit. All warnings must be either fixed or suppressed with a justification comment.</statement>
+      <rationale source="v1-source">Warnings compound like technical debt. Today's "warnings are ok" becomes tomorrow's "which warnings are real?". Suppression comments force intentionality.</rationale>
+    </rule>
+    <rule id="r39" testable="true" depth="essential">
+      <statement>Monitor cyclomatic complexity (CC) as a metric for testability. CC &gt; 10 is a code smell; refactor into smaller functions.</statement>
+      <rationale source="v1-source">Cyclomatic complexity counts the number of independent code paths. High CC means more test cases are needed to cover all paths. Tools: radon, xenon.</rationale>
+    </rule>
+    <rule id="r40" testable="true" depth="essential">
+      <statement>Watch for long functions (&gt; 50 lines). Split into smaller, single-purpose functions. Long functions are harder to test, name, and reason about.</statement>
+      <rationale source="v1-source">Functions over 50 lines often do multiple things. The "one thing" rule forces clarity. 20-30 lines is ideal.</rationale>
+    </rule>
+    <rule id="r41" testable="true" depth="essential">
+      <statement>Avoid deep nesting (&gt; 3 levels). Use guard clauses and early returns to flatten control flow.</statement>
+      <rationale source="v1-source">Deep nesting is hard to read. Early returns keep the happy path at the top level, reducing cognitive load.</rationale>
+    </rule>
+    <rule id="r42" testable="true" depth="essential">
+      <statement>God classes (too many responsibilities) are a code smell. If a class has &gt; 3-4 public methods doing unrelated things, split it.</statement>
+      <rationale source="v1-source">God classes violate SRP and are hard to test and extend. They accumulate features over time. Refactor early.</rationale>
+    </rule>
+    <rule id="r43" testable="true" depth="essential">
+      <statement>Feature envy: a method that uses another class's data more than its own is a smell. Move the method or consolidate the classes.</statement>
+      <rationale source="v1-source">Feature envy violates encapsulation. The envious method should live with the data it operates on.</rationale>
+    </rule>
+    <rule id="r44" testable="true" depth="essential">
+      <statement>Dead code (unused functions, imports, variables) should be removed immediately. Vulture can find it; ruff catches some via F (pyflakes).</statement>
+      <rationale source="v1-source">Dead code confuses readers and rots. Keep only what is actively used. If it's needed later, version control has it.</rationale>
+    </rule>
+    <rule id="r45" testable="true" depth="essential">
+      <statement>Primitive obsession: using primitives (int, str, dict) instead of typed structures. Use dataclasses or Pydantic models instead.</statement>
+      <rationale source="v1-source">Typed structures (dataclasses, models) are self-documenting and type-checkable. Dicts and tuples hide structure.</rationale>
+    </rule>
+    <rule id="r46" testable="true" depth="essential">
+      <statement>Ruff configuration lives in pyproject.toml under [tool.ruff] and [tool.ruff.lint]. Never create .flake8 or setup.cfg alongside Ruff.</statement>
+      <rationale source="v1-source">Single config file prevents version mismatch. pyproject.toml is the PEP 517/518 standard.</rationale>
+    </rule>
+    <rule id="r47" testable="true" depth="essential">
+      <statement>Set target-version to the minimum Python version your project supports. For new projects, use target-version = "py311".</statement>
+      <rationale source="v1-source">target-version lets Ruff enable syntax upgrades safely. py311 target enables | unions, asyncio.TaskGroup suggestions, and removal of typing imports.</rationale>
+    </rule>
+    <rule id="r48" testable="true" depth="essential">
+      <statement>Set line-length = 88 (default Black length). This is widely adopted and balances readability with modern screen widths.</statement>
+      <rationale source="v1-source">88 chars is a good default. 120+ lines are harder to read on split screens. 79 is too restrictive for modern code.</rationale>
+    </rule>
+    <rule id="r49" testable="true" depth="essential">
+      <statement>Enable quote-style = "double" for consistency. Single quotes are less readable for multi-char strings and URLs.</statement>
+      <rationale source="v1-source">Double quotes are the Python standard (per PEP 257 examples). Consistency matters more than the choice itself.</rationale>
+    </rule>
+    <rule id="r50" testable="true" depth="essential">
+      <statement>Exclude common non-code directories from Ruff scanning: .venv, .git, migrations, __pycache__, build, dist, node_modules, .mypy_cache, .pytest_cache.</statement>
+      <rationale source="v1-source">Excluding non-code directories speeds up linting and avoids false positives in generated code and dependencies.</rationale>
+    </rule>
+    <rule id="r51" testable="true" depth="essential">
+      <statement>Use per-file-ignores to suppress rules where they don't apply: __init__.py: ["F401"], tests/*: ["S101", "ARG001"].</statement>
+      <rationale source="v1-source">__init__.py imports are re-exports, not unused. Test files use assert and unused parameters for fixtures — both are intentional and should not flag.</rationale>
+    </rule>
+    <rule id="r52" testable="true" depth="essential">
+      <statement>For FastAPI projects, add B008 to ignore list (function calls in default arguments). FastAPI Depends() must be in defaults.</statement>
+      <rationale source="v1-source">B008 catches real bugs in most code, but FastAPI patterns require callable defaults. Suppress with a comment on the rule itself, not in the ignore list.</rationale>
+    </rule>
+    <rule id="r53" testable="true" depth="essential">
+      <statement>Start new projects with strict = true. For legacy codebases, use [[tool.mypy.overrides]] to enable strict incrementally per module or directory.</statement>
+      <rationale source="v1-source">Strict mode enables the most impactful checks: disallow_untyped_defs, warn_return_any, no_implicit_optional, disallow_any_unimported. Adding all at once to legacy code is overwhelming; per-module overrides let you gradually raise the bar.</rationale>
+    </rule>
+    <rule id="r54" testable="true" depth="essential">
+      <statement>Set python_version to match your project's minimum supported version. For 3.11+ projects, set python_version = "3.11".</statement>
+      <rationale source="v1-source">mypy uses python_version to know which language features are available. Mismatching it causes false positives/negatives.</rationale>
+    </rule>
+    <rule id="r55" testable="true" depth="essential">
+      <statement>Exclude tests/ and migrations/ from strict mode. Use [[tool.mypy.overrides]] to set strict = false for these directories.</statement>
+      <rationale source="v1-source">Test files use pytest fixtures and conftest patterns that produce false untyped-def errors. Migrations are generated Django code. Focusing strict on src/ maximizes signal.</rationale>
+    </rule>
+    <rule id="r56" testable="true" depth="essential">
+      <statement>For Django projects, install django-stubs and mypy-django-plugin. Enable the plugin in mypy config: plugins = ["mypy_django_plugin.main", "pydantic.mypy"].</statement>
+      <rationale source="v1-source">Without these plugins, mypy cannot understand ORM queryset methods, ForeignKey reverse accessors, or request.user typing. Strict mode becomes unusable.</rationale>
+    </rule>
+    <rule id="r57" testable="true" depth="essential">
+      <statement>Run mypy --warn-unused-ignores in CI to audit # type: ignore accumulation. Require justification comments for each ignore.</statement>
+      <rationale source="v1-source">Type ignores are technical debt. Once a few are added, the count compounds without audits. Auditing drives the count down.</rationale>
+    </rule>
+    <rule id="r58" testable="true" depth="essential">
+      <statement>Create .pre-commit-config.yaml with hooks for Ruff, mypy, bandit, trailing-whitespace, end-of-file-fixer, check-yaml, check-toml, and no-commit-to-branch.</statement>
+      <rationale source="v1-source">Pre-commit hooks are the first gate. They catch 80% of issues before code review. The no-commit-to-branch hook prevents accidental commits to main/master.</rationale>
+    </rule>
+    <rule id="r59" testable="true" depth="essential">
+      <statement>Pin tool versions in .pre-commit-config.yaml and keep them in sync with pyproject.toml. Use pre-commit autoupdate to bump versions, but review and test before committing.</statement>
+      <rationale source="v1-source">Version mismatch between .pre-commit-config.yaml and pyproject.toml causes contributors and CI to report different errors. Syncing prevents this.</rationale>
+    </rule>
+    <rule id="r60" testable="true" depth="essential">
+      <statement>After creating .pre-commit-config.yaml, run pre-commit install locally, then pre-commit run --all-files to auto-fix the entire codebase in one pass.</statement>
+      <rationale source="v1-source">This is the "zero initial violations" checkpoint. If the run produces diffs, commit them separately. After that, all commits will fail if they violate rules.</rationale>
+    </rule>
+    <rule id="r61" testable="true" depth="essential">
+      <statement>Set test coverage target to 80% branch coverage (not line coverage). Branch coverage requires testing both the True and False paths of every condition.</statement>
+      <rationale source="v1-source">Line coverage can be gamed by touching every line without testing behavior. Branch coverage forces real test cases that exercise both paths.</rationale>
+    </rule>
+    <rule id="r62" testable="true" depth="essential">
+      <statement>Use pytest + pytest-cov as the standard testing stack. Configuration goes in pyproject.toml under [tool.pytest.ini_options].</statement>
+      <rationale source="v1-source">pytest is the Python standard. pytest-cov integrates coverage measurement. Configuration in pyproject.toml keeps setup centralized.</rationale>
+    </rule>
+    <rule id="r63" testable="true" depth="essential">
+      <statement>For advanced coverage validation, add mutmut (mutation testing) to your CI pipeline. mutmut runs your tests against mutated code (changed operators, deleted lines) to find weak tests.</statement>
+      <rationale source="v1-source">Mutation testing reveals tests that pass but don't validate behavior. Example: if a test doesn't fail when &lt; changes to &lt;=, the test is weak. mutmut is the gold standard for coverage quality assurance.</rationale>
+    </rule>
+    <rule id="r64" testable="true" depth="essential">
+      <statement>Never commit code with uncovered lines or branches. If a code path is unreachable, delete it. If it's reachable but untested, write a test.</statement>
+      <rationale source="v1-source">Uncovered code rots and becomes a liability. Dead code should be deleted. Real code must be tested.</rationale>
+    </rule>
+    <rule id="r65" testable="true" depth="essential">
+      <statement>Run bandit on every commit via pre-commit hooks and in CI. bandit is an AST-based security linter that catches hardcoded secrets, weak crypto, SQL injection patterns, and dangerous stdlib calls.</statement>
+      <rationale source="v1-source">bandit catches 80% of common security bugs automatically. The remaining 20% require code review and domain expertise.</rationale>
+    </rule>
+    <rule id="r66" testable="true" depth="essential">
+      <statement>Suppress bandit false positives per-line with # nosec B###, not bulk-disable. Always include a comment explaining why the rule is suppressed.</statement>
+      <rationale source="v1-source">Suppressing by line keeps the signal-to-noise ratio high. Bulk disables hide real issues. Comments force intentionality and help future maintainers.</rationale>
+    </rule>
+    <rule id="r67" testable="true" depth="essential">
+      <statement>Common bandit false positives: assert in tests (B101, safe), subprocess with constructed args (B602, often safe if args are validated), MD5 for non-crypto hashing (B324, acceptable for checksums).</statement>
+      <rationale source="v1-source">Knowing common false positives helps you write correct suppressions instead of ignoring the whole rule.</rationale>
+    </rule>
+    <rule id="r68" testable="true" depth="essential">
+      <statement>Implement a full quality gate in CI: matrix testing on Python 3.9+, format check, lint, type check, security scan, tests + coverage, and optional mutation testing.</statement>
+      <rationale source="v1-source">Each stage is a hard gate. Fast stages (format, lint) run first to fail fast. Slow stages (type, tests) run last and only if earlier stages pass.</rationale>
+    </rule>
+    <rule id="r69" testable="true" depth="essential">
+      <statement>Use GitHub Actions with the astral-sh/ruff-action, setup-python, and actions/cache for dependency caching.</statement>
+      <rationale source="v1-source">Caching dependencies speeds up CI significantly. ruff-action integrates Ruff with PR comments and annotations.</rationale>
+    </rule>
+    <rule id="r70" testable="true" depth="essential">
+      <statement>Require zero Ruff errors, zero mypy errors, zero high/critical bandit findings, and 80%+ test coverage for all PRs. Use branch protection rules to enforce.</statement>
+      <rationale source="v1-source">Strict thresholds prevent regression. Branch protection prevents merging until all gates pass.</rationale>
+    </rule>
+    <rule id="r71" testable="true" depth="essential">
+      <statement>Optional: Use codecov, Coveralls, or SonarCloud to track coverage trends over time and report PR coverage diffs.</statement>
+      <rationale source="v1-source">Coverage tracking prevents gradual degradation. PR reports make coverage drops visible at review time.</rationale>
+    </rule>
+    <rule id="r72" testable="true" depth="essential">
+      <statement>To migrate from flake8 + black + isort + pyupgrade to Ruff: (1) create pyproject.toml with [tool.ruff] config, (2) run ruff check . --fix, (3) run ruff format ., (4) run tests to verify behavior, (5) commit as "chore: migrate to Ruff", (6) remove old tool configs in a follow-up.</statement>
+      <rationale source="v1-source">Ruff's auto-fixes are safe for most rules. Running tests validates that behavior is unchanged. Splitting commits keeps history clean.</rationale>
+    </rule>
+    <rule id="r73" testable="true" depth="essential">
+      <statement>For pyright vs mypy migrations, pick one and stick with it. Running both creates noise from disagreements (Optional narrowing, generics, TypedDict partials).</statement>
+      <rationale source="v1-source">Both tools are good; the key is consistency. Pyright is faster for IDE integration. mypy is more configurable for legacy code.</rationale>
+    </rule>
+    <rule id="r74" testable="true" depth="essential">
+      <statement>To add strict type checking to a legacy codebase: (1) enable mypy strict on src/ only, (2) use [[tool.mypy.overrides]] to carve out directories/modules that are not yet strict, (3) incrementally migrate modules to strict mode over multiple PRs.</statement>
+      <rationale source="v1-source">All-at-once strict on legacy code generates hundreds of errors. Per-module overrides let you raise the bar gradually without blocking other work.</rationale>
+    </rule>
+    <rule id="r75" testable="true" depth="essential">
+      <statement>Depend on abstractions (interfaces, Protocols), not concrete implementations. Inject dependencies at construction time, not inside methods.</statement>
+      <rationale source="v1-source">Dependency inversion makes code testable (mock injections) and decoupled. Concrete dependencies inside methods create tight coupling and are hard to test.</rationale>
+    </rule>
+    <rule id="r76" testable="true" depth="essential">
+      <statement>Use custom exception hierarchies to enable selective error handling. A base exception per domain allows callers to catch all domain errors with one clause while still distinguishing specific cases.</statement>
+      <rationale source="v1-source">Custom exception hierarchies make error handling explicit and testable. Generic Exception is not selective — it catches everything.</rationale>
+    </rule>
+    <rule id="r77" testable="true" depth="essential">
+      <statement>E/W (pycodestyle) — PEP 8 style errors and warnings. E is hard errors (indentation, syntax), W is warnings (whitespace, line length).</statement>
+      <rationale source="v1-source">pycodestyle compliance makes code consistent and readable. Ruff's formatter handles most E/W violations automatically.</rationale>
+    </rule>
+    <rule id="r78" testable="true" depth="essential">
+      <statement>F (pyflakes) — Logical errors: undefined names, unused imports, duplicate dictionary keys, invalid syntax. These are real bugs, not style.</statement>
+      <rationale source="v1-source">Pyflakes catches actual mistakes. Unused imports bloat code. Undefined names cause runtime errors. This rule group should never be ignored.</rationale>
+    </rule>
+    <rule id="r79" testable="true" depth="essential">
+      <statement>I (isort) — Import organization and sorting. Organizes imports into sections (stdlib, third-party, local) and sorts within each section alphabetically.</statement>
+      <rationale source="v1-source">Consistent import order reduces merge conflicts and makes diffs cleaner. isort's default configuration is widely adopted.</rationale>
+    </rule>
+    <rule id="r80" testable="true" depth="essential">
+      <statement>B (bugbear) — Common Python bugs: mutable default arguments, assert in production code, requests/time.sleep calls in async def, swallowed exceptions, shadowed built-ins.</statement>
+      <rationale source="v1-source">Bugbear catches the most frequent Python footguns. These rules prevent entire classes of runtime bugs.</rationale>
+    </rule>
+    <rule id="r81" testable="true" depth="essential">
+      <statement>C4 (comprehensions) — Detects inefficient loops that should be list/dict/set comprehensions or generator expressions. Example: [x for x in y if f(x)] is idiomatic.</statement>
+      <rationale source="v1-source">Comprehensions are both faster and more Pythonic than loops for simple transforms. This rule helps developers write idiomatic Python.</rationale>
+    </rule>
+    <rule id="r82" testable="true" depth="essential">
+      <statement>UP (pyupgrade) — Suggests and auto-fixes deprecated Python syntax. Examples: List → list, Optional[X] → X | None, Union[X, Y] → X | Y, u"str" → "str".</statement>
+      <rationale source="v1-source">pyupgrade helps modernize code incrementally. Enabling it on projects using 3.11+ catches outdated typing patterns and encourages modern syntax.</rationale>
+    </rule>
+    <rule id="r83" testable="true" depth="essential">
+      <statement>ARG (unused-arguments) — Flags unused function parameters. Useful for detecting incomplete implementations or functions that don't need all their arguments.</statement>
+      <rationale source="v1-source">Unused arguments signal incomplete implementations or stale signatures. Removing them clarifies intent. Can be suppressed for intentional placeholders.</rationale>
+    </rule>
+    <rule id="r84" testable="true" depth="essential">
+      <statement>SIM (simplify) — Detects complex code that can be simplified. Examples: if/else returning bools → return condition, nested if → elif, unnecessary list() wrapping.</statement>
+      <rationale source="v1-source">Simplified code is more readable. SIM catches patterns that are technically correct but harder to understand than the equivalent simple form.</rationale>
+    </rule>
+    <rule id="r85" testable="true" depth="essential">
+      <statement>TCH (type-checking) — Identifies imports used only in type annotations. Move them to a TYPE_CHECKING block to avoid runtime overhead.</statement>
+      <rationale source="v1-source">Imports in TYPE_CHECKING blocks are not evaluated at runtime, reducing startup time and circular import issues. Helpful for large type stubs.</rationale>
+    </rule>
+    <rule id="r86" testable="true" depth="essential">
+      <statement>PTH (pathlib) — Recommends pathlib.Path over os.path string operations. pathlib is more Pythonic and cross-platform.</statement>
+      <rationale source="v1-source">pathlib is the modern Python standard for filesystem paths. os.path is legacy. Switching eliminates string path manipulation bugs.</rationale>
+    </rule>
+    <rule id="r87" testable="true" depth="essential">
+      <statement>ERA (eradicate) — Finds and flags commented-out code. Commented code rots and confuses readers. Delete or uncomment it.</statement>
+      <rationale source="v1-source">Version control has the history if you need it. Live code should not be commented. Commented code is visual clutter.</rationale>
+    </rule>
+    <rule id="r88" testable="true" depth="essential">
+      <statement>PL (pylint) — High-level code complexity smells: too-many-arguments, too-many-branches, too-many-locals, too-many-statements.</statement>
+      <rationale source="v1-source">These smells are correlated with bugs and maintenance cost. Addressing them improves testability and readability.</rationale>
+    </rule>
+    <rule id="r89" testable="true" depth="essential">
+      <statement>RUF (ruff-specific) — Ruff's own extended rules for patterns not in other linters. Examples: unnecessary async, explicit f-string conversions.</statement>
+      <rationale source="v1-source">RUF rules are high-confidence patterns discovered during Ruff's development. They complement other rule groups.</rationale>
+    </rule>
+    <rule id="r90" testable="true" depth="essential">
+      <statement>T20 (no-print) — Blocks print() and pprint.pprint() in production code. Use logging instead. T201 and T202 are the specific rules.</statement>
+      <rationale source="v1-source">print() statements are debugging noise that should never reach production. logging provides structured, configurable output. Blocking print() forces best practices.</rationale>
+    </rule>
+    <rule id="r91" testable="true" depth="essential">
+      <statement>S (security) — Bandit rules: hardcoded secrets, weak crypto (MD5, SHA1), SQL injection, unsafe eval/exec, unsafe deserialization, insecure random.</statement>
+      <rationale source="v1-source">Security issues are hard to spot by code review alone. Bandit catches common vulnerability patterns automatically.</rationale>
+    </rule>
+    <rule id="r92" testable="true" depth="essential">
+      <statement>DJ (django) — Django-specific rules: use of on_delete in ForeignKey, correct use of QuerySet methods, ORM transaction handling, settings access.</statement>
+      <rationale source="v1-source">Django has framework-specific patterns that are easy to get wrong. DJ rules enforce best practices.</rationale>
+    </rule>
+    <rule id="r93" testable="true" depth="essential">
+      <statement>Never suppress an entire rule group. Suppress specific violations with # noqa: E501 if the violation is intentional and documented.</statement>
+      <rationale source="v1-source">Bulk suppression hides real violations. Per-violation suppressions with comments force intentionality.</rationale>
+    </rule>
+    <rule id="r94" testable="true" depth="essential">
+      <statement>Set up the quality gate from day one. Bootstrap projects with Ruff + mypy + pre-commit + pytest. The friction is minimal compared to retrofitting later.</statement>
+      <rationale source="v1-source">Quality gates are easiest to establish at project start. Retrofitting on thousands of existing LOC is painful and error-prone. Invest the first 2-4 hours upfront and reap returns for months or years.</rationale>
+    </rule>
+  </section>
+</text>

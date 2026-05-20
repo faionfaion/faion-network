@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="argocd-gitops Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for argocd-gitops. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Never create Applications manually in the UI for production — manage all Application manifests in Git (App of Apps or ApplicationSet pattern).</statement>
+      <rationale source="v1-source">Manually created Applications cannot be version-controlled or reviewed. A deleted ArgoCD instance with manual Applications means starting from scratch. Git as the single source of truth applies to ArgoCD's own configuration, not just application deployments.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Enable selfHeal: true on all environments to prevent configuration drift; use syncWindows to restrict automated syncs to maintenance windows for production.</statement>
+      <rationale source="v1-source">Without self-heal, a manual kubectl apply in production creates drift that is invisible until the next sync. Self-heal corrects this within seconds. syncWindows prevent ArgoCD from syncing production during incidents by restricting automated syncs to designated maintenance windows (e.g., 2-4 AM UTC).</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use folders to model environments, not branches — one repository with overlays/ for each environment is simpler than branch-per-environment.</statement>
+      <rationale source="v1-source">Branch-per-environment requires cherry-picking changes across branches and makes diff between environments difficult. Folder-per-environment shows environment differences as a clear Kustomize overlay diff. Operators can understand production setup by reading the production overlay without merging branches mentally.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Create an AppProject per team with explicit sourceRepos, destinations, and roles — do not deploy all applications to the default project.</statement>
+      <rationale source="v1-source">The default project has no restrictions. An AppProject scopes a team to their repos and namespaces, preventing accidental or malicious cross-team deployments. A misconfigured Application owned by team-A cannot deploy to team-B's namespace because the Project boundary forbids it.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use sync-wave annotations to order resource creation: namespaces and CRDs at wave -1, ConfigMaps and Secrets at wave 0, Deployments at wave 1, Ingress at wave 2.</statement>
+      <rationale source="v1-source">Dependency ordering prevents transient sync failures. A CRD must exist before a Custom Resource that uses it. A ConfigMap must be created before a Deployment that mounts it.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Do not store Kubernetes Secrets directly in the GitOps repository. Use External Secrets Operator, Sealed Secrets, or Vault integration instead.</statement>
+      <rationale source="v1-source">Git is not a secure secret store. Use a dedicated secrets backend (HashiCorp Vault, AWS Secrets Manager, etc.). External Secrets Operator syncs secrets from the backend into the cluster; Sealed Secrets encrypts secrets in Git so only the cluster can decrypt them.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Configure notifications for on-sync-failed and on-health-degraded triggers at minimum; send to both Slack and a ticketing system for production.</statement>
+      <rationale source="v1-source">Sync failures without notification go undetected. ArgoCD self-heals configuration drift but cannot fix broken images or missing dependencies — human alert is required. Production deployments must have an audit trail (on-deployed notifications with Git commit info).</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Keep revisionHistoryLimit: 5+ in Applications to enable easy rollback. A rollback is a Git revert + ArgoCD sync, not a manual re-deployment.</statement>
+      <rationale source="v1-source">ArgoCD tracks the last N revisions (commits) that were synced. Rollback is selecting a previous revision and syncing. This is declarative and audited in Git.</rationale>
+    </rule>
+  </section>
+</text>

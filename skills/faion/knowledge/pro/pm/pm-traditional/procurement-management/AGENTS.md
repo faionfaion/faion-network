@@ -1,14 +1,25 @@
+---
+slug: procurement-management
+tier: pro
+group: pm
+domain: pm-traditional
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Structured vendor engagement: make-or-buy decisions, Statement of Work authoring, contract type selection, vendor evaluation scoring, and ongoing performance monitoring.
+content_id: "c2d78ba7772d57bb"
+tags: [procurement, vendor-management, contracts, sow, sourcing]
+---
 # Procurement Management
 
 ## Summary
 
-Structured vendor engagement: make-or-buy decisions, Statement of Work authoring, contract type selection (FFP / T&M / CPFF), vendor evaluation scoring, and ongoing performance monitoring. Every external engagement needs a written SOW with testable acceptance criteria before a contract is signed — without it scope disputes are inevitable.
+**One-sentence:** Structured vendor engagement: make-or-buy decisions, Statement of Work authoring, contract type selection, vendor evaluation scoring, and ongoing performance monitoring.
 
-## Why
+**One-paragraph:** Structured vendor engagement: make-or-buy decisions, Statement of Work authoring, contract type selection, vendor evaluation scoring, and ongoing performance monitoring. Every external engagement needs a written SOW with testable acceptance criteria before a contract is signed.
 
-Vague SOWs and wrong contract types are the leading causes of vendor disputes and cost overruns. Fixed-price contracts with poorly defined scope push vendors to minimise effort; T&M contracts without caps leave buyers with open-ended risk. A structured procurement process forces clarity upfront and transfers the right level of risk to the right party.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Engaging external vendors, agencies, or contractors for work worth more than a minor purchase
 - Choosing between building internally versus buying a service or product
@@ -16,23 +27,49 @@ Vague SOWs and wrong contract types are the leading causes of vendor disputes an
 - Selecting contract type given scope clarity and risk tolerance
 - Monitoring vendor deliverables against signed SOW milestones
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Sub-$1k one-off SaaS purchases — overhead exceeds value; use a credit card and receipt
 - Open-source dependencies with no vendor relationship — treat as supply-chain risk, not procurement
 - Internal cross-charging between business units — uses transfer pricing rules, not procurement contracts
 - Highly regulated public-sector procurements (FAR/DFARS/EU directives) — methodology omits mandatory regulatory clauses
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-process.xml` | Make-or-buy decision, SOW elements, contract type selection, vendor sourcing methods |
-| `content/02-evaluation.xml` | Weighted vendor scoring, sensitivity analysis, antipatterns in selection |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/sow.md` | Statement of Work skeleton with scope, deliverables, acceptance criteria, payment schedule |
-| `templates/vendor-scoring.py` | Weighted vendor score calculator with sensitivity check |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/pm/pm-traditional/`

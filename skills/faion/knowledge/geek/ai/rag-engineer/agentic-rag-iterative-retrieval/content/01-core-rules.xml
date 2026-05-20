@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="agentic-rag-iterative-retrieval Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for agentic-rag-iterative-retrieval. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Iterative retrieval MUST cap the loop at max_iterations (recommended 3, hard cap 5). When the cap is reached without a sufficient verdict, log the failure and route to human review rather than continuing to burn budget.</statement>
+      <rationale source="v1-source">Unbounded loops diverge: the sufficiency check LLM may never return "sufficient", burning unlimited API budget. A hard cap keeps latency and cost predictable.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use a cheaper model (Haiku or Sonnet) for the sufficiency check and query refinement steps. Reserve Opus for final answer synthesis.</statement>
+      <rationale source="v1-source">Sufficiency checks are yes/no judgements that do not require reasoning depth; routing them to Haiku reduces per-iteration cost by ~10x vs Opus.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Deduplicate context chunks between iterations using chunk IDs before passing context to the sufficiency judge or generator.</statement>
+      <rationale source="v1-source">The same chunk can surface in multiple retrieval passes; duplicating it inflates token usage and can bias the sufficiency judge.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Detect query drift: compute cosine similarity between the original query embedding and the refined query embedding. If similarity drops below 0.7, reset the refined query to the original.</statement>
+      <rationale source="v1-source">After 2+ iterations the refinement can drift from the original intent — the refined query answers a different question than the one the user asked.</rationale>
+    </rule>
+  </section>
+</text>

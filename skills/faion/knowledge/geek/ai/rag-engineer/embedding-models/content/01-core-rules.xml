@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="embedding-models Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for embedding-models. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Sort batch response by item.index before mapping back to inputs; the OpenAI API may return embeddings out of order.</statement>
+      <rationale source="v1-source">Skipping the sort step produces misaligned embeddings for shuffled input batches, a silent correctness bug.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The dimensions parameter is only valid for text-embedding-3 models; applying it to ada-002 raises an error.</statement>
+      <rationale source="v1-source">ada-002 does not support Matryoshka dimension reduction; the parameter is silently rejected in some SDK versions and raises in others.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Mistral embed has a 512-token context limit on some versions; longer texts are silently truncated.</statement>
+      <rationale source="v1-source">Truncation without error means the embedding represents only the first 512 tokens. Pre-chunk long texts.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Always pass input_type to Cohere embed-v3; omitting it defaults to generic mode and degrades retrieval NDCG by ~5-10%.</statement>
+      <rationale source="v1-source">Cohere v3 models are trained with asymmetric input types. The generic default underperforms the asymmetric search_document/search_query split.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Instantiate SentenceTransformer once per process; do not create multiple instances on the same GPU.</statement>
+      <rationale source="v1-source">Each instance loads the full model into GPU RAM. Two bge-large-en-v1.5 instances on a 16 GB GPU will OOM.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>BGE-M3 sparse embeddings are dict[token → weight], not dense arrays; adapt before storing in vector DBs that expect dense float arrays.</statement>
+      <rationale source="v1-source">Most vector DB clients (Qdrant, Chroma) expect float lists for dense vectors. The sparse dict format requires special sparse-vector handling.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Pin the exact model name (including version suffix if the provider uses them) in config — providers silently update model weights.</statement>
+      <rationale source="v1-source">Pinning guarantees reproducible results across ingestion runs. Unpinned models silently pick up provider updates, invalidating cached embeddings.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Run MTEB benchmark scores for your specific task type (retrieval vs. clustering vs. classification) — aggregate MTEB rank ≠ RAG retrieval rank.</statement>
+      <rationale source="v1-source">MTEB leaderboard aggregates results across 56 tasks. Your specific task (e.g., legal document retrieval) may have different winner than the overall leaderboard.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>For OpenAI text-embedding-3 models, start with dimensions=512; benchmark vs. full 1536/3072 before paying for extra storage.</statement>
+      <rationale source="v1-source">Dimension reduction via Matryoshka is trained and lossless up to a point. 512 dims captures ~98% of semantic quality while reducing storage by 6.7x vs 3072 dims.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Always use Cohere input_type="search_document" at index time and input_type="search_query" at query time — asymmetric embedding is a significant quality lever.</statement>
+      <rationale source="v1-source">Asymmetric embeddings align the embedding space to the retrieval task, improving NDCG by 5-10% vs generic embedding.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Pre-normalize all embeddings to unit length before storing; dot product then equals cosine similarity and is faster in most vector DBs.</statement>
+      <rationale source="v1-source">Normalized vectors allow dot-product similarity to equal cosine similarity, which is faster to compute. Many vector DBs optimize for unit-normalized vectors.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Track the model name as metadata on every vector — if you ever need to migrate, you can identify which vectors need re-embedding.</statement>
+      <rationale source="v1-source">Multi-model indexes allow gradual migration and A/B testing. Single-model metadata on storage makes full-corpus re-embedding the only option.</rationale>
+    </rule>
+  </section>
+</text>

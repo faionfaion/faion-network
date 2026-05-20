@@ -1,20 +1,25 @@
+---
+slug: pwa-development
+tier: solo
+group: dev
+domain: software-developer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Methodology for turning a web app into an installable Progressive Web App with offline capability via Workbox service workers, a compliant Web App Manifest, and a user-driven install/update prompt.
+content_id: "f0d906087eec25c3"
+tags: [pwa, service-worker, offline, web-app, installability]
+---
 # PWA Development
 
 ## Summary
 
-Methodology for turning a web app into an installable Progressive Web App with offline
-capability via Workbox service workers, a compliant Web App Manifest, and a user-driven
-install/update prompt. Core rule: default to `registerType: 'prompt'` — never silent
-`skipWaiting()` for app shells with in-flight state; ship a working `offline.html` from day one.
+**One-sentence:** Methodology for turning a web app into an installable Progressive Web App with offline capability via Workbox service workers, a compliant Web App Manifest, and a user-driven install/update prompt.
 
-## Why
+**One-paragraph:** Methodology for turning a web app into an installable Progressive Web App with offline capability via Workbox service workers, a compliant Web App Manifest, and a user-driven install/update prompt. Core rule: default to registerType: 'prompt' — never silent skipWaiting() for app shells with in-flight state; ship a working offline.html from day one.
 
-PWAs combine the reach of the web with near-native install and offline UX. Service-worker bugs
-are sticky — clients can be locked on a broken SW for weeks — so the update handshake must be
-explicit and tested. Workbox's per-resource caching strategies (NetworkFirst for APIs,
-CacheFirst for images) prevent stale data from killing freshness.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Adding installability and offline support to an existing SPA
 - Mobile-first apps where skipping the App Store gate is valuable
@@ -22,7 +27,7 @@ CacheFirst for images) prevent stale data from killing freshness.
 - Apps needing push notifications without a native rewrite
 - Internal tools that must feel native on field devices and survive flaky networks
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Background-heavy apps needing native features (Bluetooth LE, geofencing, CallKit)
 - iOS-first products where push and install UX still lag (iOS Web Push only since 16.4)
@@ -30,16 +35,42 @@ CacheFirst for images) prevent stale data from killing freshness.
 - Apps requiring exact filesystem access, USB/HID, or low-level audio — use Capacitor/Tauri
 - Single-session tools (one-time forms) where caching adds risk without payoff
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-manifest-sw.xml` | Web App Manifest fields, Workbox caching strategies, SW registration |
-| `content/02-install-update.xml` | Install prompt hook, update notification, vite-plugin-pwa config |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/manifest.json` | Complete Web App Manifest with required fields and icon sizes |
-| `templates/vite-pwa-config.ts` | Minimal Vite PWA plugin config with NetworkFirst API caching |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/dev/software-developer/`

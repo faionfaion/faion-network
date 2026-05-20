@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="monorepo-turborepo Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for monorepo-turborepo. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Place applications under apps/ and shared packages under packages/; never mix app and library code in the same directory.</statement>
+      <rationale source="v1-source">Turborepo's filter syntax and task graph require a predictable location to distinguish deployable apps from reusable packages.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use workspace:* for all internal dependencies and never floating semver ranges like ^, ~, or &gt;=.</statement>
+      <rationale source="v1-source">workspace:* resolves to local symlinks; floating ranges can accidentally resolve to a published npm version, breaking workspace isolation.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use the tasks field (not pipeline) in turbo.json v2; always declare outputs for every task even if empty for side-effect-only tasks.</statement>
+      <rationale source="v1-source">Turborepo 2.x renamed pipeline to tasks. Missing outputs means the task is never cached; Turborepo runs it on every invocation without skipping.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Pin packageManager to a specific pnpm version in root package.json and set engines.node to enforce the runtime Node version.</statement>
+      <rationale source="v1-source">Mismatched pnpm versions produce lockfile churn; mismatched Node versions cause silent behavior differences across local and CI environments.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>App packages depend on workspace:* packages via devDependencies for config and dependencies for shared runtime code; never import from apps/ — only from packages/.</statement>
+      <rationale source="v1-source">Importing from another app creates an implicit coupling that Turborepo cannot model as a task dependency, causing stale builds and build order violations.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Build library packages with tsup (esm + cjs + dts); declare all export conditions in the exports field — types, import, require.</statement>
+      <rationale source="v1-source">Consumers need correct module resolution for bundler, Node CJS, and TypeScript type-checking. Missing conditions cause silent any-type fallback.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Extend a single packages/config/tsconfig/base.json in every package; never diverge per-package tsconfig settings without extending the base.</statement>
+      <rationale source="v1-source">Per-package divergence leads to type desync: the same symbol compiles differently in different packages, causing subtle runtime bugs.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Publish an eslint-preset.js from packages/config with main and exports pointing to the file; reference it via @monorepo/config/eslint-preset in each package.</statement>
+      <rationale source="v1-source">Without exports, eslint cannot resolve the preset path across workspace symlinks and different resolution contexts.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Always use the tasks field in new turbo.json; treat any pipeline field as a migration signal to update to v2 syntax.</statement>
+      <rationale source="v1-source">Most training data for agents predates Turborepo 2.x. Agents will generate pipeline-based config that silently produces wrong behavior on v2.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Store TURBO_TOKEN in GitHub Secrets, never in vars; set signature: true in turbo.json remoteCache only when secretKey is also configured.</statement>
+      <rationale source="v1-source">Token in vars is readable by any workflow run; signature: true without a secretKey is a no-op that provides false security assurance.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Use workspace:* for internal deps; never floating ranges. Lockfile resolves to local symlinks.</statement>
+      <rationale source="v1-source">Floating ranges can resolve to published npm versions if workspace:* is missing, breaking isolation.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Keep package boundaries strict: a UI package never imports from an app. Enforce via eslint-plugin-import no-restricted-paths or dependency-cruiser.</statement>
+      <rationale source="v1-source">Loose boundaries create implicit couplings that Turborepo cannot model, causing stale builds.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Output declarations from libraries (tsc --emitDeclarationOnly or tsup --dts) and consume types from dist, not src. Avoids massive type-graph rebuilds.</statement>
+      <rationale source="v1-source">Importing types from src triggers recompilation of entire type graphs; consuming from dist breaks the dependency chain.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Hash-aware caching: list every input that affects build under inputs in turbo.json (e.g., *.css, prisma/schema.prisma); otherwise cache rot or false hits.</statement>
+      <rationale source="v1-source">Turborepo's hash ignores inputs outside the listed globs; missing inputs cause stale caches.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Pin Node + pnpm via engines + packageManager so agent runs and CI runs match local. Mismatched pnpm = lockfile churn.</statement>
+      <rationale source="v1-source">Version mismatch causes silent behavior differences and lockfile corruption.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Use Changesets for versioning even private packages — generates per-package CHANGELOGs that humans/agents can reason about.</statement>
+      <rationale source="v1-source">Per-package changelogs track who changed what and why, enabling better code review and release notes.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Don't hand-edit per-package tsconfigs; extend a single base. Agents diverge configs subtly per package, then types desync.</statement>
+      <rationale source="v1-source">Type desync across packages causes silent bugs where the same symbol compiles differently depending on the package.</rationale>
+    </rule>
+  </section>
+</text>

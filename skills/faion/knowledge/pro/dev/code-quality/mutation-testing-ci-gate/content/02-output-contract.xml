@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Mutation Testing Gate Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Pins the shape of the per-PR mutation report the gate emits. Agent must satisfy this before posting a PR comment or failing the build.</summary>
+
+  <output-contract>
+    <required>
+      <field name="tool" type="enum" values="stryker|mutmut|pitest|stryker-net|infection|cosmic-ray"/>
+      <field name="run_scope" type="enum" values="diff|module|full-repo"/>
+      <field name="changed_files" type="list_of_path" min="0"/>
+      <field name="modules_evaluated" type="list_of_object" min="1">
+        <field name="module_glob" type="string"/>
+        <field name="mutants_total" type="integer"/>
+        <field name="mutants_killed" type="integer"/>
+        <field name="mutants_survived" type="integer"/>
+        <field name="mutants_equivalent_logged" type="integer"/>
+        <field name="mutants_timeout" type="integer"/>
+        <field name="mutation_score_on_covered_lines" type="float_0_to_100"/>
+        <field name="threshold_break" type="float_0_to_100"/>
+        <field name="threshold_low" type="float_0_to_100"/>
+      </field>
+      <field name="surviving_mutants" type="list_of_object" min="0">
+        <field name="mutant_id" type="string"/>
+        <field name="file" type="path"/>
+        <field name="line" type="integer"/>
+        <field name="operator" type="string" example="ConditionalsBoundary|MathMutator|StringReplacement"/>
+        <field name="original_snippet" type="string"/>
+        <field name="mutated_snippet" type="string"/>
+        <field name="suspected_equivalent" type="bool"/>
+      </field>
+      <field name="gate_mode" type="enum" values="observe|block"/>
+      <field name="gate_verdict" type="enum" values="pass|fail|observe-only"/>
+      <field name="run_duration_seconds" type="integer"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">mutation_score reported across uncovered lines (denominator includes mutants on lines with zero test coverage)</pattern>
+      <pattern id="f2">equivalent-mutant count claimed without entries in mutation-equivalents.yml with reviewer + date</pattern>
+      <pattern id="f3">gate_verdict=fail issued during the 4-week stabilization window when gate_mode=observe</pattern>
+      <pattern id="f4">surviving_mutants list truncated to under 10 entries when the actual surviving count is higher — must paginate or link to full report</pattern>
+      <pattern id="f5">run_scope=full-repo on a per-PR run when --since / --paths-to-mutate is available for the chosen tool</pattern>
+      <pattern id="f6">repo-wide single mutation_score reported as the headline number — must be per-module</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Cap surviving_mutants list at top-50 by file size impact when posting a PR comment; link to full JSON artifact for the rest.</transformation>
+      <transformation>Group surviving mutants by file path when more than 20 mutants share a single file (collapsed view).</transformation>
+      <transformation>Round mutation_score_on_covered_lines to one decimal place; two decimals only when comparing to the threshold and the delta is &lt; 1 point.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/mutation-report.schema.json"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>tool field matches the binary actually run (no stale reports)</item>
+      <item>run_scope=diff on PR runs when the tool supports incremental mode</item>
+      <item>Every module in modules_evaluated has both threshold_break and threshold_low set</item>
+      <item>mutants_equivalent_logged matches the entries added to mutation-equivalents.yml this run</item>
+      <item>gate_verdict is observe-only when stabilization_window_remaining_days &gt; 0</item>
+      <item>run_duration_seconds is recorded; if &gt; 600s on a PR, suggest narrowing scope before next run</item>
+    </list>
+  </section>
+</text>

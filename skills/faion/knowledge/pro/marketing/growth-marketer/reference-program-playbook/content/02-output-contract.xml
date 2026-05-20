@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Reference Program — Output Schema" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the structure of `references.yaml` and the per-asset record. Sales ops and the reference router both consume this file.</summary>
+
+  <output-contract>
+    <required>
+      <field name="reference_id" format="slug-or-uuid"/>
+      <field name="client_company" type="string"/>
+      <field name="contact_name" type="string"/>
+      <field name="contact_role" type="string"/>
+      <field name="archetype" required_keys="industry,headcount_band,decision_maker_role,deal_shape"/>
+      <field name="outcome_class" type="string" example="cost-reduction|revenue-acceleration|risk-mitigation|tech-modernisation"/>
+      <field name="assets" type="list" min_entries="1"
+             item_required_keys="type,permitted_uses,consent_date,expires_on"/>
+      <field name="fatigue" required_keys="last_used_date,uses_this_quarter"/>
+      <field name="freshness" required_keys="status,last_health_check"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">asset.permitted_uses contains paid_ads or PR_release without consent_date within the last 12 months</pattern>
+      <pattern id="f2">fatigue.uses_this_quarter &gt; 2 — block any new deployment</pattern>
+      <pattern id="f3">reference deployed cross-archetype (industry or headcount mismatch) without explicit override note</pattern>
+      <pattern id="f4">reference reused after client churn without renewed consent (client status != active AND last asset use after churn date)</pattern>
+      <pattern id="f5">asset.type == "logo" appears on the website with consent_date older than 12 months</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Renew consent extends `expires_on` by 12 months; record the renewal event in the audit log.</transformation>
+      <transformation>Aggregate multiple peer calls under one reference_id; each call counts toward fatigue.</transformation>
+      <transformation>Demote a reference from "active" to "rest" when fatigue reaches the cap; auto-restore at the next quarter.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/references.schema.yaml"/>
+  </output-contract>
+
+  <section title="Sales-cycle deployment rules">
+    <list>
+      <item><b>Discovery</b>: do not deploy a named reference; share aggregated outcome stats only.</item>
+      <item><b>Proposal</b>: 1-2 case studies matched to archetype; no peer call yet.</item>
+      <item><b>Late-stage / champion building</b>: 1 peer call, matched by archetype, prepped with the brief in `templates/peer-call-brief.md`.</item>
+      <item><b>Procurement</b>: 1 quote in proposal, never a logo on slide 1 without consent for procurement context.</item>
+      <item><b>Post-sale onboarding</b>: invite the new client to peer-call cohort; this is how the next reference is grown.</item>
+    </list>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every active reference has consent_date within 12 months</item>
+      <item>Every active reference has fatigue.uses_this_quarter ≤ 2</item>
+      <item>Every active reference is tagged with all four archetype keys</item>
+      <item>Every asset has a permitted_uses list — no implicit assumptions</item>
+      <item>Expired assets are flagged and removed from website / decks</item>
+    </list>
+  </section>
+</text>

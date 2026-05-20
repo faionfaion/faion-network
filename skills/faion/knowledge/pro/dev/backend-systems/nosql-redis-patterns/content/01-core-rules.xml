@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="nosql-redis-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for nosql-redis-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Select the Redis data type that matches the access pattern: String for atomic cache values with SETEX; Hash for objects where individual fields are read or incremented without deserializing the whole object; List for FIFO queues (LPUSH + BRPOP) or recent-N stacks; Set for unique membership tests and set operations (SINTER, SUNION); Sorted Set for ranked data and sliding-window rate limits; Stream for ordered, replayable event logs with consumer groups.</statement>
+      <rationale source="v1-source">Each Redis type maps to a specific server-side data structure with distinct time complexity guarantees. Using String + JSON serialization for an object prevents field-level atomic operations (HINCRBY). Using a List when uniqueness matters silently allows duplicates.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Implement sliding-window rate limiting using a Sorted Set per user/IP with the request timestamp as both member and score. Use a pipeline to atomically remove expired entries, add the new request, count the window, and reset the TTL. Never implement rate limiting with a single counter (String INCR) — it resets at fixed clock boundaries and allows burst at window edges.</statement>
+      <rationale source="v1-source">A fixed-window counter (INCR + EXPIRE) allows up to 2x the rate limit at window boundaries: all requests in the last second of window N and all in the first second of window N+1. The sliding-window Sorted Set prevents this by evicting entries older than the window on every check.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use Redis Pub/Sub for ephemeral real-time fan-out where message loss is acceptable (at-most-once). Use Redis Streams (XADD + XREADGROUP) for durable ordered event logs where consumers must process every message exactly once and may lag behind producers. Consumer groups in Streams provide distributed processing with per-consumer pending-entry lists for failure recovery.</statement>
+      <rationale source="v1-source">Pub/Sub messages are not stored — a subscriber that disconnects misses all messages sent while offline. Streams store every message in order until explicitly acknowledged (XACK) or trimmed; a consumer that crashes can re-read its pending entries on restart.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Every Redis key MUST have an expiry set at write time (via SETEX, EXPIRE, or the px/ex option) or belong to a key namespace that is periodically swept by a maintenance job. Document the TTL or sweep interval next to the key pattern in the schema file. Never write keys with no expiry unless the data must survive indefinitely (e.g., permanent user records stored in Redis as primary store, which is itself an antipattern).</statement>
+      <rationale source="v1-source">Keys without TTLs accumulate silently. Redis does not warn when memory grows; it evicts data when maxmemory is reached using the configured eviction policy (often LRU), which may evict keys the application still considers live. Silent data loss under load is the result.</rationale>
+    </rule>
+  </section>
+</text>

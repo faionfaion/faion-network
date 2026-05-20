@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="docker-compose Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for docker-compose. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Omit the top-level `version:` field. Modern Compose V2 ignores it; it causes version-mismatch rejections with older tooling.</statement>
+      <rationale source="v1-source">The Compose spec no longer requires a version field. Including it creates confusion and can block valid files in some older CI tools.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Set `container_name` explicitly on every service so log queries and exec commands use a stable name.</statement>
+      <rationale source="v1-source">Without a fixed name, Compose generates names from project + service + index, which changes across recreations.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Set `restart: unless-stopped` (staging) or `restart: always` (production) on every long-running service.</statement>
+      <rationale source="v1-source">Without a restart policy, a crashed container stays down until manually restarted.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Define a `healthcheck` on every service that is referenced by another service's `depends_on` with `condition: service_healthy`. If healthcheck is absent, the condition is silently ignored and the dependent starts immediately.</statement>
+      <rationale source="v1-source">Race conditions on startup (app tries to connect to DB before it is ready) are the leading cause of intermittent Compose failures.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Bind exposed ports to `127.0.0.1:HOST_PORT:CONTAINER_PORT` for services that must not be publicly reachable. Docker rewrites iptables directly and bypasses UFW.</statement>
+      <rationale source="v1-source">A port bound to `0.0.0.0` is reachable from the internet regardless of UFW rules, because Docker inserts ACCEPT rules before UFW's DROP rules.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Mark backend networks as `internal: true` so containers on that network cannot reach the internet directly.</statement>
+      <rationale source="v1-source">Limits blast radius of a compromised container — it cannot exfiltrate data or download payloads.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use named volumes for all persistent data in production. Bind mounts are only for config files (`:ro`) or development source sync.</statement>
+      <rationale source="v1-source">Named volumes are managed by Docker, survive container recreation, and have better performance on Linux than bind mounts on macOS/Windows.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Set `deploy.resources.limits.memory` and `.cpus` on every service. Without limits a runaway container can OOM-kill the host.</statement>
+      <rationale source="v1-source">Docker on Linux applies cgroup limits only when they are declared; no limit means unbounded resource use.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Configure log rotation on every service: `driver: json-file` with `max-size: "10m"` and `max-file: "3"`. Without rotation, container logs fill the disk indefinitely.</statement>
+      <rationale source="v1-source">The default json-file driver writes unbounded logs to `/var/lib/docker/containers/`.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Store all secrets in `.env` (gitignored). Commit only `.env.example` with placeholder values. Never put plaintext secrets in the compose file's `environment:` block.</statement>
+      <rationale source="v1-source">`docker compose config` and `docker inspect` expose `environment:` values in plain text.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Use profiles (`profiles: [dev]`) for optional services (adminer, mailhog, monitoring) so `docker compose up -d` starts only the production set.</statement>
+      <rationale source="v1-source">Eliminates the need for separate compose files for dev vs prod optional services.</rationale>
+    </rule>
+  </section>
+</text>

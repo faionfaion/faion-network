@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="csharp-aspnet-core Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for csharp-aspnet-core. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Controllers MUST NOT access DbContext directly; they MUST call service methods. Services implement IService and contain domain logic. Repositories expose FindByIdAsync, CreateAsync, UpdateAsync, DeleteAsync — no complex queries in controllers. DTOs (record types) map domain entities at the service boundary; controllers never return tracked EF entities.</statement>
+      <rationale source="v1-source">Direct DbContext access in controllers leaks data access patterns (N+1 queries, lazy loading), spreads domain logic, and makes testing hard. Services encapsulate logic; repositories encapsulate queries. DTOs prevent circular references and information leaks (e.g., internal columns like HashedPassword).</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>DbContext MUST be registered as scoped (services.AddDbContext&lt;T&gt;(...)), never as singleton or transient. A scoped DbContext lives for the HTTP request duration; multiple requests get independent DbContexts. If you inject DbContext into a singleton, you have a captive dependency and concurrent requests will interfere with each other's state.</statement>
+      <rationale source="v1-source">DbContext is not thread-safe; each request needs its own instance. Singleton injection of a scoped dependency causes the singleton to hold a stale DbContext reference, leading to Use-After-Dispose and concurrency bugs at scale.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every async method MUST accept a CancellationToken parameter and pass it to EF Core calls (ToListAsync(ct), SaveChangesAsync(ct), etc.). Without it, a client disconnect leaves database queries running to completion, wasting resources and obscuring timeout bugs.</statement>
+      <rationale source="v1-source">CancellationToken allows the HTTP layer to signal a timeout or client disconnect, so the database query stops early. Without it, a fast timeout response to the client is followed by a slow query completing and wasting database work.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Errors MUST be returned as ProblemDetails (RFC 7807) with consistent shape: { type, title, status, detail, instance }. Implement a global IExceptionHandler that catches domain exceptions and maps them to ProblemDetails. Never return raw exception messages or stack traces to the client. Use HTTP status codes correctly (400 for validation, 404 for not found, 500 for server errors).</statement>
+      <rationale source="v1-source">Consistent error shape makes client error handling reliable. Hiding implementation details (stack traces, SQL errors) improves security. A global exception handler centralizes error logic; controllers stay focused on happy paths.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>DTOs MUST be record types (immutable) with required init properties. Mappers (AutoMapper profile, Mapperly source-gen, or manual) convert domain entities to DTOs at the service boundary. Return DTOs from service methods, never tracked EF entities. Services MUST NOT return navigation properties; if a client needs related data, add a separate request or a BFF-style aggregation.</statement>
+      <rationale source="v1-source">Record DTOs are immutable and strongly typed. Mappers enforce a boundary between internal domain models and external API contracts. Navigation properties leak internal data access patterns (e.g., accessing User.Orders triggers a query) and expose unrelated data.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Inject TimeProvider instead of calling DateTime.UtcNow. TimeProvider is testable; you can inject a FakeTimeProvider in tests to control the current time and test time-based logic (expiry, scheduling). Avoid static DateTime.UtcNow; it cannot be mocked.</statement>
+      <rationale source="v1-source">DateTime.UtcNow is hard-coded system time, making time-dependent tests flaky and hard to debug. TimeProvider is an abstraction; tests inject a fake instance and control time.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Write integration tests using WebApplicationFactory&lt;Program&gt; + Testcontainers Postgres. Never use EF InMemory for tests of real logic — InMemory is not relational and allows queries that fail on real databases. Testcontainers is slower (spins up a real database) but catches real bugs.</statement>
+      <rationale source="v1-source">EF InMemory allows LINQ queries that don't translate to SQL, leading to test-green production-red failures. WebApplicationFactory spins up the real DI container; Testcontainers gives a real database. Testing against a real database catches N+1 queries, index selection, and transaction bugs that InMemory misses.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use keyset pagination (WHERE id &gt; @after ORDER BY id LIMIT 20), not Skip/Take. Skip materializes all skipped rows on the database; on a large table, skipping to page 1000 loads 20k rows only to discard them. Keyset pagination is O(1).</statement>
+      <rationale source="v1-source">Skip/Take performance degrades as the page number grows. Keyset pagination (also called "seek") is O(1) because the database can seek directly to the id boundary.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Avoid lazy loading. Always use .Include() or .ThenInclude() to eagerly load related data in a single query. If a navigation property is loaded implicitly (e.g., accessing user.Orders in a disconnected DbContext), you will get a use-after-dispose exception or a new query fire unexpectedly.</statement>
+      <rationale source="v1-source">Lazy loading is convenient in REPL contexts but a footgun in production. Accidental queries (N+1) degrade performance. Eager loading via .Include() makes queries explicit and visible in code reviews.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use explicit transactions for multi-step writes. Begin a transaction, do multiple SaveChanges calls, then commit. Without a transaction, a failure partway through leaves the database partially updated.</statement>
+      <rationale source="v1-source">EF Core's SaveChanges is not atomic across multiple calls. If you save, then do a second save and it fails, the first save is not rolled back. Transactions ensure all-or-nothing semantics.</rationale>
+    </rule>
+  </section>
+</text>

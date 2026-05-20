@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="structured-tool-errors Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for structured-tool-errors. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every tool error response MUST be a JSON object with these required fields: code (UPPER_SNAKE machine code), message (one human sentence, no stack trace), recoveryHint (one of RETRY_LATER | CHECK_INPUT | TRY_ALTERNATIVE | REPORT_TO_USER | NEEDS_AUTH), traceId (correlation ID). Optional: retry_after_seconds, details (sanitised, no stack frames).</statement>
+      <rationale source="v1-source">SHIELDA and Kumaran's MCP error-design study measured a 30%+ drop in dead-end retry loops when tools emit a closed recoveryHint enum vs free-form messages. The closed enum is what makes the policy mapping deterministic.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The agent runner MUST map each recoveryHint value to exactly one action: RETRY_LATER → wait retry_after_seconds (clamped 1-300s) and retry the same call up to a per-tool retry budget; CHECK_INPUT → return the error to the model with no automatic retry; TRY_ALTERNATIVE → return to the model, signal to pick a different tool; REPORT_TO_USER → halt the loop, surface to user; NEEDS_AUTH → halt the loop, request credentials.</statement>
+      <rationale source="v1-source">Without an explicit mapping, the model invents its own retry policy each turn, often retrying INVALID_ARGUMENT (waste) or escalating RATE_LIMITED (premature). Explicit dispatch is cheaper and safer.</rationale>
+    </rule>
+  </section>
+</text>

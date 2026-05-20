@@ -1,14 +1,25 @@
-# Firewall Management
+---
+slug: firewall-management
+tier: solo
+group: infra
+domain: server-craft
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Configure UFW (Uncomplicated Firewall) with nftables backend on Ubuntu 24.
+content_id: "e22fe5f3d04bf05d"
+tags: [firewall, ufw, nftables, docker, security]
+---
+# Firewall Management with UFW on Ubuntu 24.04
 
 ## Summary
 
-Configure UFW (Uncomplicated Firewall) with nftables backend on Ubuntu 24.04 VPS: deny-by-default policies, service rules, SSH rate limiting, and Docker port binding to prevent UFW bypass. The critical rule: Docker publishes ports by binding to 0.0.0.0 which bypasses UFW — always bind Docker services to 127.0.0.1.
+**One-sentence:** Configure UFW (Uncomplicated Firewall) with nftables backend on Ubuntu 24.
 
-## Why
+**One-paragraph:** Configure UFW (Uncomplicated Firewall) with nftables backend on Ubuntu 24.04 VPS: deny-by-default policies, service rules, SSH rate limiting, and Docker port binding to prevent UFW bypass. The critical rule: Docker publishes ports by binding to 0.0.0.0 which bypasses UFW — always bind Docker services to 127.0.0.1.
 
-Every public VPS faces constant automated scanning. Without a firewall, every listening port is exposed. The most common misconfiguration is Docker silently bypassing UFW by injecting iptables/nftables rules directly — UFW cannot block what Docker publishes at 0.0.0.0.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Setting up a new VPS for the first time
 - Adding a new service that listens on a port
@@ -16,31 +27,48 @@ Every public VPS faces constant automated scanning. Without a firewall, every li
 - Restricting web traffic to Cloudflare IPs only
 - Diagnosing unexpected port exposure
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Managed cloud environments with their own security groups (AWS SGs, GCP firewall rules) — use those instead of or in addition to UFW
 - When iptables is managed by another tool (docker rootless mode, k8s) — verify no conflicts before enabling UFW
 - Rate-limiting HTTP/HTTPS at the firewall level — use nginx limit_req for that; UFW rate limit is for SSH only
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-ufw-rules.xml` | Default policies, common rules, rate limiting SSH, UFW logging levels |
-| `content/02-docker-security.xml` | Why Docker bypasses UFW, four solutions, bind to 127.0.0.1 pattern, SSH tunnel for internal access |
-| `content/03-examples.xml` | NERO production rules, multi-domain setup, debugging exposed Docker ports, blocked traffic analysis |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ufw-setup-webserver.sh` | Standard web server + Docker host initial UFW setup script |
-| `templates/ufw-setup-cloudflare.sh` | Restrict HTTP/HTTPS to Cloudflare IPs only |
-| `templates/docker-compose-secure.yml` | Docker Compose with all services bound to 127.0.0.1 |
-| `templates/update-cloudflare-ufw.sh` | Monthly cron script to refresh Cloudflare IP ranges in UFW |
+| TBD | TBD |
 
 ## Scripts
 
-| File | Purpose |
-|------|---------|
-| `scripts/ufw-report.sh` | Status report: rules, listening ports, Docker mappings, exposed 0.0.0.0 ports, recent blocks |
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/infra/server-craft/`

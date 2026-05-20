@@ -1,40 +1,77 @@
+---
+slug: container-orchestration
+tier: pro
+group: dev
+domain: software-architect
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius.
+content_id: "17e82a4e721cefe2"
+tags: [kubernetes, container, orchestration, pod, deployment, autoscaling, security, storage]
+---
 # Container Orchestration
 
 ## Summary
 
-Kubernetes architecture patterns, pod design, deployment strategies, autoscaling, persistent storage, RBAC, and security best practices for production workloads. Covers the sidecar/ambassador/adapter/init-container pod patterns, rolling/blue-green/canary deployment strategies, HPA/KEDA/VPA autoscaling, and 2025 security standards (distroless images, eBPF runtime security, External Secrets Operator).
+**One-sentence:** Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius.
 
-## Why
+**One-paragraph:** Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius. Each pattern addresses a specific operational failure mode.
 
-Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius. Each pattern addresses a specific operational failure mode.
+## Applies If (ALL must hold)
 
-## When To Use
+- Authoring or reviewing a Deployment / StatefulSet / DaemonSet manifest before merge — apply the pre-merge checklist below.
+- Deploying a new service to a Kubernetes cluster (select pod pattern, set probes, set resource limits).
+- Choosing a deployment strategy for a high-risk release (canary vs blue-green) — use the decision tree in the deployment-strategies section.
+- Configuring autoscaling for queue-backed or event-driven workloads — use KEDA flowchart.
+- Hardening a Kubernetes workload: RBAC, network policies, pod security standards (PSS).
+- Migrating Docker Compose to Kubernetes manifests — run `kompose convert` then apply this methodology over the output.
+- Investigating an incident: OOMKilled pod, CrashLoopBackOff, ImagePullBackOff, traffic hitting unready pod — use the verify section as a triage runbook.
 
-- Deploying a new service to a Kubernetes cluster (select pod pattern, set probes, set resource limits)
-- Choosing a deployment strategy for a high-risk release (canary vs blue-green)
-- Configuring autoscaling for queue-backed or event-driven workloads (KEDA)
-- Hardening a Kubernetes workload: RBAC, network policies, pod security standards
-- Migrating Docker Compose to Kubernetes manifests
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Single-VM or bare-metal deployment without container runtime — use systemd/supervisor instead.
+- Serverless function with sub-second invocation pattern — K8s cold-start overhead is not justified.
+- Development environment where Docker Compose is sufficient — K8s adds operational overhead with no benefit.
+- Stateful workloads requiring POSIX file locking across nodes — ReadWriteMany volumes add complexity.
 
-- Single-VM or bare-metal deployment without container runtime — use systemd/supervisor instead
-- Serverless function with sub-second invocation pattern — K8s cold-start overhead is not justified
-- Development environment where Docker Compose is sufficient — K8s adds operational overhead with no benefit
-- Stateful workloads requiring POSIX file locking across nodes — ReadWriteMany volumes add complexity
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-architecture-and-pod-patterns.xml` | Control plane / worker node components, resource hierarchy, sidecar/ambassador/adapter/init-container patterns with use cases |
-| `content/02-deployments-and-autoscaling.xml` | Rolling update parameters, blue-green vs canary trade-offs, HPA vs KEDA vs VPA selection, QoS classes, resource quota |
-| `content/03-security-and-storage.xml` | RBAC least-privilege, network policies, pod security standards, 2025 security practices (distroless, eBPF, External Secrets), storage access modes, CSI best practices |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/deployment.yaml` | Production Deployment with liveness/readiness/startup probes, resource limits, non-root security context |
-| `templates/hpa.yaml` | HPA with CPU + custom metric (requests_per_second) targets |
-| `templates/keda-scaledobject.yaml` | KEDA ScaledObject for Kafka consumer lag scaling with scale-to-zero |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/dev/software-architect/`

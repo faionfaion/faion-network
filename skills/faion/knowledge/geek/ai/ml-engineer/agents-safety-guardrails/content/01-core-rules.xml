@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="agents-safety-guardrails Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for agents-safety-guardrails. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every agent loop MUST enforce: (1) max_iterations limit (20-50), (2) timeout_seconds per run (60-300), (3) max_tool_calls_per_iteration (5), (4) same-argument deduplication guard (max 3 calls with identical args). These MUST be enforced in code, not only in the system prompt.</statement>
+      <rationale source="v1-source">Infinite loops are the most common agent failure. The iteration limit stops the loop before it exhausts the budget. The timeout handles deadlocks. The per-iteration tool call limit prevents a single confused step from calling 20 tools. Same-argument deduplication stops "stuck retry" patterns.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Agents MUST require explicit human approval before executing any of the following: sending external messages (email, Slack, SMS), making financial transactions, deleting records, overwriting production data, or running shell commands with write access. The approval request MUST describe what will happen, why, the risk if declined, and offer APPROVE / MODIFY / DECLINE options.</statement>
+      <rationale source="v1-source">These actions are irreversible or have significant external impact. An agent that autonomously sends emails or deletes database records based on a misunderstood goal is catastrophically unsafe. The approval gate is the last line of defense between agent logic and real-world consequences.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>All tool inputs MUST be validated against a JSON Schema before execution. Tool implementations MUST NOT raise unhandled exceptions — all errors MUST be returned as structured text ("Error: &lt;reason&gt;"). Sandboxed code execution MUST use an isolated environment (E2B, Docker with no network, or subprocess with resource limits) — never exec() on the host directly.</statement>
+      <rationale source="v1-source">JSON Schema validation prevents tool argument hallucination from causing unexpected side effects. Text error returns let the agent recover gracefully. Sandboxed execution prevents a code-generation agent from running rm -rf or exfiltrating credentials.</rationale>
+    </rule>
+  </section>
+</text>

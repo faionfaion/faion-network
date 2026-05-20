@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="feature-flags Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for feature-flags as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Flag debt: releasing flags that are never removed after full rollout.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Each permanent flag multiplies code paths. 10 flags create up to 2^10 theoretical combinations; testing all of them is impossible.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Nested flags: checking flag A inside a block already gated by flag B.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Nested flags create an exponential state space. Combinations quickly become untestable and the interaction behavior is unpredictable.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Using feature flags for configuration values (timeouts, limits, feature counts).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Flags are boolean or variant gates. Configuration values belong in environment variables or config files with typed schemas, not flag systems.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Flag debt: ~80% of projects have flags older than six months still in code, raising cyclomatic complexity and obscuring intent.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Without aggressive cleanup policies and CI enforcement, flags accumulate indefinitely.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Cross-service drift: same flag key, different semantics in service A vs service B, leading to user-visible split states.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Flags must be evaluated consistently across all services touching a user session. Use a centralized flag service or strict documentation.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Missing default in config: undefined flag → is_enabled returns False → feature stays dark in prod indefinitely.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Every flag must have an explicit default value recorded in the registry. Config loading must fail loudly if a flag is referenced but not defined.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Auth-coupled flags: gating premium features off user.role lookup — when the role lookup fails, paying users get blocked.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Separate flag evaluation from authentication. If auth fails, fall back to the previous state, do not flip all permission flags to OFF.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>A/B leakage: user opens two tabs and gets two variants; analytics treats it as one user with conflicting events.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Bucketing is deterministic per user, but a single user in two tabs should get the same variant. Store bucket assignment server-side or enforce session-level consistency.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Provider outage = your outage if no fail-safe default per call (LaunchDarkly / Statsig down → all flags evaluate to OFF, breaking premium customers).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always have a local cache and fallback default. Evaluate flags against stale cached data rather than failing open or closed.</repair>
+    </failure-mode>
+    <failure-mode id="fm-10" severity="medium">
+      <description>PII leakage: passing entire user objects to the flag service is common; it's a hidden compliance risk (GDPR, HIPAA).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Only pass user ID and a small set of targeting attributes (plan, region, cohort). Never pass email, name, or raw user objects.</repair>
+    </failure-mode>
+    <failure-mode id="fm-11" severity="medium">
+      <description>Test coverage usually stops at the ON branch; OFF branch rots and causes ghost bugs when the flag is removed.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Treat both branches as equally important. Enforce test coverage gates that require both ON and OFF tests.</repair>
+    </failure-mode>
+    <failure-mode id="fm-12" severity="medium">
+      <description>Agents add if flag_enabled("foo") everywhere instead of at one decision point — multiplies branches and makes cleanup hard.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Concentrate flag checks at decision boundaries. Use a decorator or context manager, not scattered conditionals.</repair>
+    </failure-mode>
+    <failure-mode id="fm-13" severity="medium">
+      <description>LLMs forget the OFF-branch tests. Force the gate at PR-review time.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Treat untested OFF branches as coverage gaps, not acceptable. Require both _on_test.py and _off_test.py.</repair>
+    </failure-mode>
+    <failure-mode id="fm-14" severity="medium">
+      <description>When generating an eval client, agents often hardcode default=True so tests pass locally — leaks features to prod.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always set default=False unless the flag is explicitly a kill-switch. Fail loudly if no default is defined.</repair>
+    </failure-mode>
+    <failure-mode id="fm-15" severity="medium">
+      <description>Removal asymmetry: agents may delete the if check but leave the now-dead OFF branch (or vice versa). Use piranha or strict review.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Pair the removal with both-branch cleanup or use automated tools like piranha that handle the full transformation.</repair>
+    </failure-mode>
+    <failure-mode id="fm-16" severity="medium">
+      <description>Targeting attribute leak: agents pass entire user objects to the flag service. Whitelist attributes (id + plan + region) at the SDK boundary.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Only pass the minimum required attributes. Create a DTO or whitelist that prevents full object serialization to the flag service.</repair>
+    </failure-mode>
+    <failure-mode id="fm-17" severity="medium">
+      <description>Flag-name drift: agents create new_checkout_v2 then new_checkout_v3 instead of editing the existing flag. Lock the registry; agents must rename, not duplicate.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Enforce a naming convention and require human approval for new flag definitions. Prevent agent-driven proliferation of similar flags.</repair>
+    </failure-mode>
+    <failure-mode id="fm-18" severity="medium">
+      <description>Incident response: agents asked to disable feature X sometimes flip the wrong flag. Require explicit flag key + dry-run + diff before applying in prod.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always ask for the exact flag key and show the dry-run (which flags will flip and their current values) before executing.</repair>
+    </failure-mode>
+    <failure-mode id="fm-19" severity="medium">
+      <description>Rollback ambiguity: when an agent flips a flag back, it may not record the reason in the audit log — make the reason field mandatory on every flag change.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Every flag change (enable, disable, rollout percentage) must have a reason recorded. Use this for post-incident reviews.</repair>
+    </failure-mode>
+  </section>
+</text>

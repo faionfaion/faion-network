@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="argocd-gitops Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for argocd-gitops. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The GitOps flow is one-directional: CI pipeline pushes to the GitOps config repo; ArgoCD detects the change and applies it to the cluster. CI must never run kubectl apply or helm upgrade directly against production clusters.</statement>
+      <rationale source="v1-source">Direct kubectl or helm commands from CI bypass GitOps audit trail, disable self-healing (ArgoCD would immediately revert them), and create a split-brain where Git state and cluster state diverge. All cluster changes must flow through Git to maintain a single source of truth.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Keep application source code and Kubernetes manifests in separate Git repositories; CI updates the manifests repo after building and pushing the image.</statement>
+      <rationale source="v1-source">Separate repos break the CI/ArgoCD trigger loop and enforce a clean separation of concerns: the app repo owns code and tests, the GitOps repo owns deployment state. This also allows different access controls: developers push to the app repo; only CI and platform team push to the GitOps repo.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use Kustomize overlays or Helm value files with separate directories for each environment (e.g., apps/myapp/overlays/staging, apps/myapp/overlays/production) — never use Git branches for environment separation.</statement>
+      <rationale source="v1-source">Folders in the same branch allow side-by-side diff of staging vs production configuration. Branch-based environments require cross-branch comparisons that are difficult in Git and error-prone during promotion.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Enable automated.selfHeal: true for staging environments to auto-revert manual cluster changes; evaluate carefully for production where some manual interventions (emergency patches) must not be reverted.</statement>
+      <rationale source="v1-source">Self-healing enforces Git as source of truth by reverting any drift. In production, self-heal should be enabled but teams must have a documented emergency procedure for temporarily pausing ArgoCD sync during incident response (use sync windows or application suspend).</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Configure sync windows to block automated syncs to production during weekends and high-traffic periods; use deny windows rather than allow windows for flexibility.</statement>
+      <rationale source="v1-source">Deny windows block syncs during defined periods while allowing syncs at all other times. Allow windows require defining every valid sync slot, which is overly restrictive and often leads to teams bypassing ArgoCD for urgent deployments.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Set syncOptions: [ServerSideApply=true] for all applications to use Kubernetes server-side apply instead of client-side apply, avoiding field manager conflicts on shared resources.</statement>
+      <rationale source="v1-source">Client-side apply writes the full object into the kubectl.kubernetes.io/last-applied-configuration annotation. Multiple tools managing the same resource (ArgoCD + Helm operator) cause apply conflicts. Server-side apply uses field managers to resolve ownership, eliminating these conflicts.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use sync wave annotations (argocd.argoproj.io/sync-wave) to order resource deployment within an application: CRDs (-2), Namespaces (-1), ConfigMaps/Secrets/ServiceAccounts (0), StatefulSets/Databases (1), Deployments (2), Services/Ingress (3).</statement>
+      <rationale source="v1-source">Without sync waves, ArgoCD applies all resources simultaneously. If a Deployment is applied before its ConfigMap exists, it starts with missing configuration. Sync waves ensure prerequisites are healthy before dependents are created.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use List generator for a fixed set of known environments (staging, production); use Git Directory generator for auto-discovery of microservices from directory structure; use Pull Request generator for ephemeral preview environments.</statement>
+      <rationale source="v1-source">List generator is deterministic and easy to audit — the environments are explicitly enumerated in the ApplicationSet manifest. Git Directory generator scales to many services without manual registration. Pull Request generator creates and cleans up preview environments automatically, preventing orphaned namespaces.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use Matrix generator to combine generators (e.g., List of environments × Git Directory of services) to create N×M applications without manual enumeration.</statement>
+      <rationale source="v1-source">Without Matrix generator, deploying 5 microservices to 3 environments requires 15 separate Application manifests. With Matrix, one ApplicationSet generates all 15 applications from two generators, and adding a new service or environment automatically creates the missing applications.</rationale>
+    </rule>
+  </section>
+</text>

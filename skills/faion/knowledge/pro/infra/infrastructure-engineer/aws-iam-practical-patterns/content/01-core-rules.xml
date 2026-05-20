@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-iam-practical-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-iam-practical-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>IAM policies for application workloads MUST scope every Action to the minimum set required and every Resource to the specific ARN or ARN prefix (not "*"). Add Condition blocks to restrict to specific resource tags (aws:ResourceTag) or account paths. Never allow Action: "*" or Resource: "*" in application policies.</statement>
+      <rationale source="v1-source">Wildcard actions on wildcard resources grant an attacker full account access if the credential is compromised. Resource-level constraints limit the blast radius to only the resources the service legitimately touches.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every EC2 instance MUST have an IAM instance role (not access keys) that includes at minimum AmazonSSMManagedInstanceCore. Attach CloudWatchAgentServerPolicy for metrics/logs. Add application-specific inline policies scoped to the resources the instance actually needs. Create an instance profile and associate it with the role before attaching to an instance.</statement>
+      <rationale source="v1-source">Instance roles provide auto-rotating credentials via IMDS. Access keys embedded in instances never rotate automatically and survive AMI copies. SSM Core policy enables Session Manager, Patch Manager, and Run Command without SSH.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Cross-account AssumeRole trust policies MUST require MFA (aws:MultiFactorAuthPresent: true) for human access and MUST include a unique ExternalId condition for third-party tool access. The source account principal MUST be scoped to a specific role ARN or account, never "arn:aws:iam::*:root".</statement>
+      <rationale source="v1-source">Without MFA enforcement, a compromised long-term credential in the source account can assume cross-account roles. ExternalId prevents the confused deputy problem where a third-party SaaS tool is tricked into accessing the wrong customer account.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>When delegating IAM role creation to a team, attach a permission boundary to every role they create. The boundary MUST explicitly Deny iam:CreateUser, iam:DeleteUser, iam:CreateRole, iam:DeleteRole, iam:AttachRolePolicy, iam:DetachRolePolicy, iam:PutRolePermissionsBoundary, iam:DeleteRolePermissionsBoundary, and all organizations:* actions. The delegated admin SCP or IAM policy MUST require iam:PermissionsBoundary on role creation.</statement>
+      <rationale source="v1-source">A delegated admin without a permission boundary can create a role with AdministratorAccess and assume it, escaping all delegation constraints. The boundary is the only hard limit on effective permissions.</rationale>
+    </rule>
+  </section>
+</text>

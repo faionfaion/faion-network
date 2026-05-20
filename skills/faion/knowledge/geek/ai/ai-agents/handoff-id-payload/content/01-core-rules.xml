@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="handoff-id-payload Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for handoff-id-payload. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The handoff payload from agent A to agent B MUST be a structured object with at minimum: task_id (string, key into the shared store), target_agent (string, role name), decision_metadata (object, the small set of facts B needs to plan its first action). It MUST NOT contain the raw user input, the conversation history, or A's reasoning.</statement>
+      <rationale source="v1-source">If B needs the input, it loads from the store using task_id. Forwarding the conversation forces every agent to read the cumulative trace, which scales O(n²) in chain length.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Supervisor agents that route between workers MUST return a SupervisorDecision object (target_agent, reason, decision_metadata) as structured output — NOT a free-form message naming the next worker.</statement>
+      <rationale source="v1-source">Free-form routing is fragile (model picks a worker name that doesn't exist, the orchestrator has to re-prompt). Structured output makes routing a typed dispatch.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>The receiving agent MUST load task state from the shared store on first action — not from the handoff payload. The payload's decision_metadata is for routing decisions only, not for reconstructing inputs.</statement>
+      <rationale source="v1-source">Single source of truth. If the metadata and the store disagree, the store wins; otherwise duplication causes drift between what the agent thinks the task is and what it actually is.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>The store MUST expose at least three operations: get(task_id) → state, append_event(task_id, event), set_status(task_id, status). State updates MUST be append-only events, never overwrites of prior fields, so a downstream agent or a re-run can replay history.</statement>
+      <rationale source="v1-source">Append-only state lets a failed handoff be retried without losing the prior agent's output; overwrite stores destroy evidence on retry.</rationale>
+    </rule>
+  </section>
+</text>

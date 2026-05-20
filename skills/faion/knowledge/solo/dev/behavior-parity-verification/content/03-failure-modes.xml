@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Behavior Parity Verification Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six failure modes seen when solo developers run shadow parity tests, especially with AI-written normalizers. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>PII (emails, names, tokens) lands in the diff store unredacted.</description>
+      <detector>Sample 100 rows from parity_diffs; grep for "@", common name patterns, or token prefixes ("sk_", "tok_"). If any match without hashing, contract violated.</detector>
+      <repair>Add a redaction pass in the diff sampler BEFORE persistence. Wipe the existing store. Document the redaction list in the parity report.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Timestamp false-positives dominate diff rate. The normalizer leaves request-time or server-rendered times in observable fields.</description>
+      <detector>diff_rate &gt; 5% AND top cluster shows only timestamp-shaped values diverging</detector>
+      <repair>Move the timestamp fields out of observables OR canonicalize them (round to second, replace with placeholder). Re-run from current ramp stage with the fix.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Ramp jumped from 1% to 100% without intermediate stages because "diff rate was zero."</description>
+      <detector>parity-report stage sequence does not include 10% AND 50% records OR sample count at 1% &lt; 1000</detector>
+      <repair>Re-do staged ramp. Zero diffs at 1% with 100 requests is uninformative — many real bugs only fire on input shapes that occur once per 10k requests.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Async side-effects (queued jobs, emitted events) are not on the observable list, so the new path silently fires duplicate or missing emails / webhooks.</description>
+      <detector>Service emits events to a queue OR DB triggers, AND observable list contains only synchronous response fields</detector>
+      <repair>Add event/job observables: compare queue-message bodies between legacy and new with the same normalization rules. Use a no-op consumer in shadow to capture without acting.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Normalizer is permissive enough to mask real diffs (e.g., tolerance set to "any int within 100" of legacy total).</description>
+      <detector>tolerance &gt; 0.1% of value, OR normalizer rewrites entire field to a constant</detector>
+      <repair>Tighten tolerance to the business-meaningful threshold (cents for money, milliseconds for SLAs). If tolerance must be wide, document why and treat the field as untested.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="medium">
+      <description>Cluster analysis is skipped — diff samples are stored but never grouped, so the team ramps past stage 2 with hundreds of unread diff rows.</description>
+      <detector>parity_diffs count at stage_end &gt; 10 AND no cluster table in parity-report</detector>
+      <repair>Run `scripts/parity-summarize.py`. For each cluster: produce root cause OR write an accepted-divergence justification. No silent acceptance.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>AI agents writing the normalizer must not invent canonicalization rules that change semantic meaning ("strip negative signs to match", "replace nulls with zero"). Such rules MUST be flagged and human-reviewed before deployment; they are silent semantic rewrites, not normalization.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Sign-off on the final 100% parity report is the human gate. The developer (or a peer reviewer) confirms: zero unresolved clusters, all accepted divergences have written justification, error rate at parity with legacy. Only then is the legacy code path scheduled for removal.</p>
+  </section>
+</text>

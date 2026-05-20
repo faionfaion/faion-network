@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="nginx-configuration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for nginx-configuration. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Set worker_processes to auto and worker_connections to 4096 or higher for production servers.</statement>
+      <rationale source="v1-source">auto matches CPU core count. Each worker handles worker_connections simultaneous connections; 4096 supports high-traffic workloads without tuning per server type.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Enable gzip for all text content types with comp_level 6 and min_length 256. Always include gzip_vary on.</statement>
+      <rationale source="v1-source">Level 6 gives the best compression-to-CPU ratio. min_length 256 avoids compressing tiny responses where overhead exceeds gain. gzip_vary ensures proxies cache both compressed and uncompressed variants.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Allow TLSv1.2 and TLSv1.3 only. Disable session tickets. Use ssl_session_cache shared. Let's Encrypt no longer supports OCSP (deprecated August 2025) — remove ssl_stapling directives.</statement>
+      <rationale source="v1-source">TLS 1.0 and 1.1 are deprecated by RFC 8996 and fail PCI DSS compliance. ssl_session_tickets off prevents reuse of session keys that compromise forward secrecy. OCSP stapling is now unsupported by Let's Encrypt.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Add all five required security headers to every HTTPS server block: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.</statement>
+      <rationale source="v1-source">Each header mitigates a specific attack class: HSTS forces HTTPS, X-Frame-Options prevents clickjacking, X-Content-Type-Options prevents MIME sniffing, Referrer-Policy limits information leakage, Permissions-Policy disables unneeded browser APIs.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Always pass X-Forwarded-For, X-Forwarded-Proto, X-Real-IP, and Host headers when proxying. Set proxy_read_timeout and proxy_connect_timeout explicitly.</statement>
+      <rationale source="v1-source">Without these headers, the backend application cannot determine the client's real IP or whether the original request was HTTP or HTTPS — critical for security logging and redirect logic.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use least_conn for API backends where request duration varies. Use ip_hash only when sticky sessions are required and session-level state cannot be externalized.</statement>
+      <rationale source="v1-source">Round-robin distributes requests evenly but sends long requests to already-busy servers. least_conn routes to the server with fewest active connections, producing more even load in heterogeneous workloads. ip_hash creates an uneven distribution when clients are behind NAT.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>WebSocket proxying requires upgrading the connection. Set Upgrade and Connection headers explicitly; set proxy_read_timeout to at least 3600s for long-lived connections.</statement>
+      <rationale source="v1-source">HTTP/1.1 WebSocket upgrades use the Upgrade header. Without Connection: upgrade, Nginx drops the connection. Short proxy_read_timeout kills idle WebSocket connections.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Define rate limit zones in http{} block. Apply limit_req with burst and nodelay to sensitive endpoints (login, API keys, password reset).</statement>
+      <rationale source="v1-source">Zones defined once and referenced in multiple locations. nodelay serves burst requests immediately rather than queuing them, preventing legitimate users from seeing delays during momentary traffic spikes.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Run nginx -t before every reload or deploy. Never reload without passing -t — a broken config silently keeps the old config running but the next reload will fail.</statement>
+      <rationale source="v1-source">nginx -t validates syntax and checks include paths without restarting. On managed systems, an invalid config on reload can leave the server running stale configuration for hours until noticed.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Run SSL Labs test (ssllabs.com/ssltest) for every new domain. Aim for A+ grade. Resolve any warnings before going live.</statement>
+      <rationale source="v1-source">SSL Labs checks protocol versions, cipher strength, certificate chain, HSTS, and 40+ other criteria. A+ grade means all current best practices are met and no known vulnerabilities are present.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="nosql-mongodb-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for nosql-mongodb-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Write the access-pattern list (query shape, filters, sort, QPS, latency budget) BEFORE choosing embedding vs referencing. Embedding is correct when the child is always fetched with the parent and the child count is bounded (&lt;100). Referencing is correct when the child is queried independently, the list is unbounded, or many-to-many relationships exist.</statement>
+      <rationale source="v1-source">The embedding vs referencing decision determines whether reads are single-document (fast) or require multiple round-trips (slow). Without a written access-pattern list, agents default to relational normalization and propose cross-collection lookups that MongoDB cannot perform in one query.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every field that appears in a query filter, sort, or range scan MUST have an index. Compound indexes must match the query's field order (equality fields first, range fields last, sort fields last). Add a TTL index on any collection that stores sessions, caches, or ephemeral data; set expireAfterSeconds at creation time.</statement>
+      <rationale source="v1-source">Missing indexes cause collection scans (COLLSCAN in explain output), which degrade from O(index entries) to O(total documents) as the collection grows. TTL indexes automate cleanup; agents forget to add expiry logic otherwise.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every MongoDB collection document MUST include a schemaVersion integer field. Migration agents that change document shape MUST increment schemaVersion and write both a forward migration script and a backward (rollback) script. The version field must be indexed if queries use it to filter during incremental migrations.</statement>
+      <rationale source="v1-source">Without schemaVersion, agents cannot distinguish old-shape from new-shape documents during rolling migrations. Incremental background migrations read schemaVersion to skip already-migrated documents and process the rest in batches without locking the collection.</rationale>
+    </rule>
+  </section>
+</text>

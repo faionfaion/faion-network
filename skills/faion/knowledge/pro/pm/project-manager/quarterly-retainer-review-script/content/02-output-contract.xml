@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Quarterly Retainer Review Script Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the QBR artifact bundle: deck, decision-record, and follow-up email. Subagent must satisfy this before the call is considered complete.</summary>
+
+  <output-contract>
+    <required>
+      <field name="qbr_deck" format="markdown" max_slides="6">
+        <subfield name="slides[].title" type="string"/>
+        <subfield name="slides[].data_chart_or_table" required="true_for_slides_2_3_4"/>
+      </field>
+      <field name="utilization_metrics" required_keys="hours_used,hours_bought,sla_met_percent,deliverables_shipped">
+        <subfield name="hours_used" type="number"/>
+        <subfield name="hours_bought" type="number"/>
+        <subfield name="sla_met_percent" type="number" min="0" max="100"/>
+      </field>
+      <field name="decision_record" format="json">
+        <subfield name="decision" enum="continue,scale_up,scope_down,terminate,deferred_with_date"/>
+        <subfield name="effective_date" type="iso_date"/>
+        <subfield name="scope_delta" required_if="decision IN [scale_up, scope_down]"/>
+        <subfield name="client_decision_maker" type="string"/>
+      </field>
+      <field name="follow_up_email" format="markdown">
+        <subfield name="sent_at" type="iso_datetime" max_lag_from_call="24h"/>
+        <subfield name="recap_sections" required_keys="decision,scope_delta,next_steps,review_date"/>
+      </field>
+      <field name="call_duration_minutes" type="integer" max="50"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">qbr_deck with &gt; 6 slides — kills the 45-min cap</pattern>
+      <pattern id="f2">decision_record.decision == "deferred" without a follow-up date set</pattern>
+      <pattern id="f3">scope_delta missing when decision is scale_up or scope_down</pattern>
+      <pattern id="f4">follow_up_email.sent_at &gt; 24h after call</pattern>
+      <pattern id="f5">utilization_metrics computed from estimates rather than tracked data (Toggl, Harvest, Clockify export)</pattern>
+      <pattern id="f6">qbr_deck slides containing narrative paragraphs &gt; 50 words — should be data + headline only</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>"deferred_with_date" decision is allowed if the client names a specific date by which they'll commit to one of the 4 options; that date binds the next call.</transformation>
+      <transformation>If a slide's data shows red status, an "options" bullet list may accompany the chart on that slide — does not violate the no-narrative rule.</transformation>
+      <transformation>Multilingual clients: deck may be bilingual; talking-points template stays in agency's working language.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/decision-record.json"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>deck ≤ 6 slides; data on slides 2-4</item>
+      <item>utilization_metrics sourced from a tracking tool (named in deck)</item>
+      <item>decision_record.decision is one of {continue, scale_up, scope_down, terminate, deferred_with_date}</item>
+      <item>scope_delta populated when decision is scale_up / scope_down</item>
+      <item>follow_up_email scheduled with timestamp ≤ 24h post-call</item>
+      <item>call_duration_minutes ≤ 50 (5 min grace)</item>
+    </list>
+  </section>
+</text>

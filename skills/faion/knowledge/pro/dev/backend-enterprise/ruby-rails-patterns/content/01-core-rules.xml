@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ruby-rails-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ruby-rails-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Define exactly one ServiceResult at app/services/service_result.rb. All service objects return it from #call. CI must fail if a second definition is found. Use success?/failure? as the only API — never ok?, result?, or error?.</statement>
+      <rationale source="v1-source">LLMs invent slightly different ServiceResult shapes per service file (sometimes result.ok?, sometimes result.success?, sometimes result.failure?). A divergent API means every controller must handle multiple shapes. Lock the API in CI with a simple grep.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Service objects accept params: and current_user: in initialize. The public API is #call returning ServiceResult. All private helpers are private. Namespace by domain: Users::CreateService.</statement>
+      <rationale source="v1-source">A consistent interface means every service is discoverable and can be tested the same way. Namespacing by domain avoids collisions and makes the service directory navigable.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Move mailers, webhook HTTP calls, and search index updates to after_commit callbacks, an outbox, or chained Sidekiq jobs. Never call deliver_later or external HTTP inside ActiveRecord::Base.transaction.</statement>
+      <rationale source="v1-source">deliver_later inside a transaction enqueues the job before the transaction commits. If the transaction rolls back, the worker runs against a non-existent record. The race window is small but real under load.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Controllers call params.require(...).permit(...) before passing to the service. Services receive an already-permitted hash. Services must not call params directly.</statement>
+      <rationale source="v1-source">Strong Parameters enforce an allowlist at the HTTP boundary. Services receiving a raw params object bypass the allowlist, enabling mass assignment attacks on any field the service writes.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>ApplicationController must call verify_authorized and verify_policy_scoped (Pundit). Every controller action must call authorize @resource or policy_scope(Resource) explicitly.</statement>
+      <rationale source="v1-source">Pundit does not enforce authorization automatically. Without verify_authorized, an agent adding a new action may forget to call authorize, leaving it unprotected.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Never generate drop_column or change_column migrations without a backfill plan. Require reversible migrations — every change_table block must have a reversible counterpart.</statement>
+      <rationale source="v1-source">Irreversible migrations cannot be rolled back. Agents generate destructive migrations routinely without checking if the column has data or if the rollback is needed during a deploy.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>One canonical ServiceResult (app/services/service_result.rb); all services return it. CI fails on duplicates.</statement>
+      <rationale source="v1-source">Prevents API divergence across the codebase.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Side effects (mailers, webhooks, search-index updates) live in after_commit callbacks, an outbox, or chained Sidekiq jobs — never mid-transaction.</statement>
+      <rationale source="v1-source">Prevents rolled-back side effects.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Mailers and outbound HTTP calls go through .deliver_later / perform_async so the request thread stays fast.</statement>
+      <rationale source="v1-source">Synchronous external calls block request completion.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use Pundit policies; controllers call authorize @resource on every action and policy_scope on collection endpoints.</statement>
+      <rationale source="v1-source">Explicit authorization prevents agent-generated authorization gaps.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Strong Parameters in controllers; services receive an already-permitted hash.</statement>
+      <rationale source="v1-source">Enforces allowlist at HTTP boundary.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Keep ActiveRecord callbacks for invariants only (before_validation :normalize_email); business logic stays in services.</statement>
+      <rationale source="v1-source">Callbacks are invisible and hard to test when they contain business logic.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Run Bullet, Brakeman, and bundler-audit in CI; gate merges on green.</statement>
+      <rationale source="v1-source">Catches N+1, security issues, and CVEs at CI time.</rationale>
+    </rule>
+  </section>
+</text>

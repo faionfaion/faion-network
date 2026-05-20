@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="gov-approval-token-signed-jwt Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for gov-approval-token-signed-jwt. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>An approval token MUST be a JWT (RS256 / EdDSA) with at minimum these claims: `iss` (approval service), `sub` (human approver identity from SSO/IdP), `aud` (agent identity), `iat`, `exp` (≤300 seconds from `iat`), `jti` (unique, recorded for replay protection), `scope` (object: `tool`, `target`, `args_hash`), `correlation_id` (incident or task ID). The agent's tool layer MUST verify signature, `aud` match, `exp` not passed, `jti` not seen before, `scope.tool` matches the call, `scope.target` matches the call, and `scope.args_hash` matches `sha256(canonical(args))`. Failing any check, the call MUST be refused and an audit record emitted.</statement>
+      <rationale source="v1-source">Short expiry plus single-use plus args-hash binding means a token leaked or socially harvested cannot be replayed against a different call — the cryptographic envelope is the audit evidence.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The agent MUST request approval via a workflow that posts a unique URL to a chat thread; the URL MUST require the approver's SSO/IdP login, MUST display the exact `tool`, `target`, and `args_hash` before signing, and MUST issue a JWT whose `sub` matches the SSO subject. The agent MUST present the JWT on the tool call; verification MUST happen at the policy enforcement point, NOT cached in the agent's memory. `jti` MUST be recorded in a tamper-evident store (signed append-only log or HSM-backed DB); replay attempts MUST be denied AND alerted. Approvals MUST NOT be self-issued by the agent's identity, and the approver's identity MUST NOT match `aud` (no self-approval). All denials and approvals MUST be retained per the org's compliance window.</statement>
+      <rationale source="v1-source">Chat surfaces are mutable and unsigned; SSO + KMS-signed callback turns a 3-second human action into a non-repudiable, auditable artifact that satisfies SOC2 CC6 and EU AI Act post-deployment monitoring.</rationale>
+    </rule>
+  </section>
+</text>

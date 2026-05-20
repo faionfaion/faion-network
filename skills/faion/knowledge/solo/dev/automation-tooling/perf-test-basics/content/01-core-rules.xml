@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="perf-test-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for perf-test-basics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use load tests to verify system behavior under expected traffic; run for an extended period (hours) at normal-to-peak users.</statement>
+      <rationale source="v1-source">Load tests establish the production-shaped baseline and confirm SLOs hold under representative concurrency.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use stress tests to find the breaking point; run until failure with users exceeding maximum expected capacity.</statement>
+      <rationale source="v1-source">Knowing where the system breaks informs autoscaling thresholds and circuit-breaker settings.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use spike tests to validate behavior under sudden load jumps (low to high in seconds); run in short bursts.</statement>
+      <rationale source="v1-source">Marketing campaigns and viral events produce spike shapes, not gradual ramps.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use endurance (soak) tests at normal load for 12-72 hours to detect memory leaks and resource exhaustion.</statement>
+      <rationale source="v1-source">Memory leaks and file-descriptor leaks are invisible in short runs; only sustained load makes the trend measurable.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use scalability tests with incrementally increasing users to verify that horizontal/vertical scaling produces proportional throughput gains.</statement>
+      <rationale source="v1-source">A system that does not scale linearly has a bottleneck that must be found before capacity planning is trustworthy.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Record p50, p95, p99, error rate, RPS, concurrent users, and duration for every load-test run. A single average latency number lies.</statement>
+      <rationale source="v1-source">Tail latency (p99) is where users churn; aggregate averages hide bimodal distributions caused by slow endpoints or N+1 queries.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Never load-test from the same machine as the system under test — observer effect dominates the results.</statement>
+      <rationale source="v1-source">CPU and network contention on the test machine competes with the target, producing artificially low throughput numbers.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Warm caches and connection pools before measuring (one full pass at low concurrency) so JIT/connection-pool effects do not dominate.</statement>
+      <rationale source="v1-source">Cold-start numbers are not representative of sustained production behavior and will produce misleading baselines.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Store raw results (not summaries) so you can re-aggregate later with different percentile cuts.</statement>
+      <rationale source="v1-source">Summarized results cannot be re-analyzed; raw results survive SLO changes and retrospective root-cause work.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Run all load tests against a staging environment that mirrors production in hardware, data volume, and network topology.</statement>
+      <rationale source="v1-source">Perf numbers from a weak-hardware or empty-database environment are not transferable to production.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Hard-code an environment allowlist in every load-test script (e.g., assert "prod" not in TARGET_URL) to prevent accidental production load.</statement>
+      <rationale source="v1-source">Agents running automated load tests will target production by accident without this guard.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>For Locust, enforce a gradual spawn-rate profile (e.g., 10 users/second) rather than setting spawn_rate = total_users.</statement>
+      <rationale source="v1-source">Spawning all users simultaneously overwhelms the target before the test starts, invalidating the measurement.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Use sampling profilers (py-spy, pyinstrument) on running services; use deterministic profilers (cProfile) on offline reproductions. Sampling overhead is bounded; deterministic overhead can distort results.</statement>
+      <rationale source="v1-source">On a running production-like service, cProfile's instrumentation overhead can exceed 30% and hide the real bottleneck.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Profile a single representative request before load-testing a change — flame graphs narrow hypothesis space before any optimization attempt.</statement>
+      <rationale source="v1-source">Load-testing without a flame graph leads to optimizing cold paths because they look messy, not because they are hot.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Use memray (not memory_profiler) for allocation tracking on the whole process; memory_profiler only instruments the decorated function and misses leaks elsewhere.</statement>
+      <rationale source="v1-source">memory_profiler's @profile decorator scope is too narrow for leak hunting; memray tracks all allocations process-wide.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>For memory leaks, run an endurance test for hours and watch RSS slope over time — do not rely on single-snapshot peak values.</statement>
+      <rationale source="v1-source">A leak produces a gradual slope in RSS; a single snapshot cannot distinguish a one-time allocation spike from a continuous leak.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Sort cProfile stats by cumulative time (stats.sort_stats('cumulative')) and inspect the top 20 functions to find the dominant hotspot.</statement>
+      <rationale source="v1-source">Cumulative time shows total cost including callee chains; per-call time alone misses deep recursive or high-fanout call sites.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Use py-spy record -f speedscope for 30 seconds on the target PID, then open in speedscope.app to identify top-3 hot functions by total time.</statement>
+      <rationale source="v1-source">Speedscope's left-heavy view makes it easy to identify the dominant call tree without reading raw text output.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Simulate realistic network latency when profiling localhost (e.g., tc qdisc add dev lo root netem delay 20ms) to avoid concluding the service is fast due to zero-latency loopback.</statement>
+      <rationale source="v1-source">Without artificial latency, profiling results show CPU time only and hide serialization/IO-wait hotspots that dominate in production.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Run pytest-benchmark with --benchmark-min-rounds=20; the default rounds produce noisy results on short functions.</statement>
+      <rationale source="v1-source">Statistical noise in micro-benchmarks is dominated by system interrupts and GC pauses; more rounds reduce variance enough to distinguish signal from noise.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Gate CI on --benchmark-compare-fail=mean:5% against the previous main commit to catch performance regressions automatically.</statement>
+      <rationale source="v1-source">Without a CI gate, benchmark results accumulate in reports nobody reads; a fail threshold makes regressions visible at merge time.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Read benchmark stats.mean and stats.stddev together; agents that read mean and ignore stddev will merge regressions hidden by high variance.</statement>
+      <rationale source="v1-source">A benchmark with mean 10ms and stddev 8ms is not better than one with mean 12ms and stddev 0.5ms — the former result is unreliable.</rationale>
+    </rule>
+    <rule id="r23" testable="true" depth="essential">
+      <statement>Use an SQLAlchemy before_cursor_execute event listener fixture to count queries, not caplog log-scraping. caplog misses queries when log level is INFO.</statement>
+      <rationale source="v1-source">Log-level-dependent query counting is fragile; the event listener fires on every cursor execution regardless of log configuration.</rationale>
+    </rule>
+    <rule id="r24" testable="true" depth="essential">
+      <statement>Assert query_counter["n"] &lt;= expected_count (typically 1-3 for a paginated list endpoint), not a static threshold like 5.</statement>
+      <rationale source="v1-source">A static threshold of 5 passes an N+1 that fires on every item in a list of 4; the threshold must be tied to the expected query plan.</rationale>
+    </rule>
+    <rule id="r25" testable="true" depth="essential">
+      <statement>Define per-endpoint thresholds (p95, error rate, minimum RPS) in a versioned config file; fail the CI pipeline when any threshold is breached.</statement>
+      <rationale source="v1-source">Reviewing perf graphs manually is unreliable; a failing CI step creates an actionable artifact tied to a specific commit.</rationale>
+    </rule>
+    <rule id="r26" testable="true" depth="essential">
+      <statement>Require human approval to increase a threshold; agents that push thresholds up after every regression to keep CI green destroy the regression signal.</statement>
+      <rationale source="v1-source">Threshold drift is the most common way performance monitoring becomes a rubber stamp.</rationale>
+    </rule>
+    <rule id="r27" testable="true" depth="essential">
+      <statement>Always capture: p50, p95, p99, error rate, RPS, concurrent users, duration. A single "average latency" number lies.</statement>
+      <rationale source="v1-source">Aggregate averages hide tail latency where users churn and bimodal distributions caused by slow code paths.</rationale>
+    </rule>
+    <rule id="r28" testable="true" depth="essential">
+      <statement>Compare runs on identical hardware/data — perf numbers are not transferable across environments.</statement>
+      <rationale source="v1-source">Different hardware, empty vs full data, and network topology produce incomparable baseline.</rationale>
+    </rule>
+    <rule id="r29" testable="true" depth="essential">
+      <statement>For micro-benchmarks, run pytest-benchmark with --benchmark-min-rounds=20; default rounds give noisy results.</statement>
+      <rationale source="v1-source">More rounds reduce variance enough to distinguish signal from noise.</rationale>
+    </rule>
+    <rule id="r30" testable="true" depth="essential">
+      <statement>Set explicit thresholds in CI per critical endpoint; fail the pipeline on regression rather than reviewing graphs.</statement>
+      <rationale source="v1-source">Manual review is unreliable; failing CI creates an actionable artifact tied to a commit.</rationale>
+    </rule>
+    <rule id="r31" testable="true" depth="essential">
+      <statement>Use sampling profilers (py-spy, pyinstrument) over deterministic (cProfile) on running services — overhead is bounded.</statement>
+      <rationale source="v1-source">Deterministic profilers can have 30%+ overhead and hide the real bottleneck.</rationale>
+    </rule>
+    <rule id="r32" testable="true" depth="essential">
+      <statement>For memory leaks, run an endurance test for hours and watch RSS slope, not single-snapshot peak.</statement>
+      <rationale source="v1-source">A leak produces gradual slope; single snapshots cannot distinguish spikes from continuous leaks.</rationale>
+    </rule>
+    <rule id="r33" testable="true" depth="essential">
+      <statement>Never load-test from the same machine as the system under test — observer effect dominates.</statement>
+      <rationale source="v1-source">CPU and network contention on test machine competes with target, producing artificially low throughput.</rationale>
+    </rule>
+  </section>
+</text>

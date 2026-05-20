@@ -1,45 +1,77 @@
+---
+slug: perf-test-basics
+tier: solo
+group: dev
+domain: automation-tooling
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Establish measurable performance baselines for services and detect regressions in CI.
+content_id: "00c60a55e984a92c"
+tags: [performance-testing, load-testing, profiling, benchmarking, locust, k6]
+---
 # Performance Testing Basics
 
 ## Summary
 
-Establish measurable performance baselines for services and detect regressions in CI. Covers load testing with Locust/k6, function-level profiling with cProfile/py-spy/memray, micro-benchmarks with pytest-benchmark, and N+1 query detection via SQLAlchemy event listeners. The core rule: never optimize without a captured baseline from a dedicated environment.
+**One-sentence:** Establish measurable performance baselines for services and detect regressions in CI.
 
-## Why
+**One-paragraph:** Establish measurable performance baselines for services and detect regressions in CI. Covers load testing with Locust/k6, function-level profiling with cProfile/py-spy/memray, micro-benchmarks with pytest-benchmark, and N+1 query detection via SQLAlchemy event listeners. The core rule: never optimize without a captured baseline from a dedicated environment.
 
-Without baselines, performance work is guesswork. A single load-test run under realistic concurrency (p50/p95/p99/error-rate/RPS) gives a falsifiable target: "change X should improve p95 by Y ms." pytest-benchmark gates CI against regressions on hot paths. Profiling narrows the hypothesis space before any code changes.
+## Applies If (ALL must hold)
 
-## When To Use
+- Establishing a first performance baseline for a service that has none — generating Locust/k6 scripts, capturing p50/p95/p99, error rate, throughput.
+- Adding profiling (cProfile, py-spy, memory_profiler) to investigate a localized slowdown.
+- Wiring pytest-benchmark micro-benchmarks into CI to gate on regressions for hot paths.
+- Detecting and asserting against N+1 queries and slow-query thresholds in tests.
+- Writing a CI check that fails the build when p95 latency or error rate breaches a threshold.
 
-- Establishing a first performance baseline for a service that has none.
-- Adding `pytest-benchmark` micro-benchmarks to CI for critical hot paths.
-- Profiling a localized slowdown with cProfile, py-spy, or memray.
-- Detecting N+1 queries via SQLAlchemy event-listener fixture in tests.
-- Writing a CI check that fails when p95 latency or error rate breaches a threshold.
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- For full load-testing tool comparison (k6 vs Locust vs Gatling vs Artillery vs JMeter) — use perf-test-tools/ instead.
+- For frontend Web Vitals (LCP, INP, CLS) — that's a Lighthouse/RUM domain, not backend perf.
+- For chaos engineering / fault injection — separate discipline (Chaos Mesh, Litmus, Gremlin).
+- For continuous production load testing without a safety story — agents should not be flooding prod.
+- For trading systems / sub-millisecond latency tuning — needs CPU pinning, NUMA, kernel tuning beyond this scope.
+- When the bottleneck is clearly architectural (synchronous calls, single-threaded worker) — fix the architecture first; perf-test second.
 
-- Full load-tool comparison (k6 vs Locust vs Gatling) — use `perf-test-tools/`.
-- Frontend Web Vitals (LCP, INP, CLS) — Lighthouse/RUM domain, not backend perf.
-- Chaos engineering / fault injection — separate discipline.
-- Sub-millisecond latency tuning (trading systems) — needs CPU pinning and kernel tuning.
-- When the bottleneck is clearly architectural — fix the architecture first, perf-test second.
-- Never load-test shared production resources; require a staging env allowlist.
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-test-types.xml` | Load, stress, spike, endurance, scalability test types with purpose and duration. |
-| `content/02-profiling.xml` | cProfile decorator, py-spy, memray/tracemalloc usage rules and gotchas. |
-| `content/03-benchmarks-and-queries.xml` | pytest-benchmark setup, N+1 detection via SQLAlchemy event listener, CI threshold gates. |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/query-counter-fixture.py` | SQLAlchemy before_cursor_execute fixture for N+1 assertion in pytest. |
-| `templates/perf-threshold-check.py` | CI script to parse load-test JSON results and fail on p95/error-rate breaches. |
+| TBD | TBD |
 
 ## Scripts
 
-none
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/dev/automation-tooling/`

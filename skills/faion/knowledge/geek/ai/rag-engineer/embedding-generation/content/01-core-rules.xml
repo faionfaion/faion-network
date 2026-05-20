@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="embedding-generation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for embedding-generation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use the same embedding model for indexing and querying; never mix models within a single collection. Pin the model name and provider in a config file before indexing begins; treat any model change as a full re-index event. For OpenAI text-embedding-3 models, prefer native dimension reduction over post-hoc PCA when storage is constrained.</statement>
+      <rationale source="v1-source">Each model defines its own vector space. Querying with a different model than was used for indexing produces incorrect similarity scores because the vectors live in incompatible spaces. Config-pinning makes model changes explicit and prevents accidental drift. Native reduction (via the dimensions parameter) preserves the model's internal geometry; PCA applied after the fact discards directions the model considers important.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Always batch embedding requests; never call the API once per text in a loop. Cap OpenAI embedding batches at 2048 items; validate before sending to avoid a 400 error. Sort OpenAI batch response by item.index before mapping back to inputs.</statement>
+      <rationale source="v1-source">API round-trip latency dominates at small batch sizes. The API enforces a hard 2048-item-per-request limit and may return embeddings out of order. Skipping the sort step produces misaligned embeddings for shuffled input lists.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Cache embeddings keyed by hash(model + text); retrieve from cache before calling the API. Use SHA-256 for cache keys in production; MD5 has non-zero collision probability at billion-document scale.</statement>
+      <rationale source="v1-source">Repeated texts (common in RAG pipelines that re-ingest updated documents) waste API budget without caching. MD5 collisions exist in practice. A collision silently returns the wrong embedding for a text.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Normalize embeddings to unit length before storing when cosine similarity is the intended metric. Guard against zero-length vectors before normalizing; skip or flag them rather than dividing by zero.</statement>
+      <rationale source="v1-source">Pre-normalization reduces query-time computation to a dot product, which is faster than the full cosine formula and numerically identical for unit vectors. Empty strings and whitespace-only texts can produce near-zero vectors that cause division-by-zero or NaN propagation.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>For OpenAI, use text-embedding-3-small for cost ($0.02/1M tokens) and text-embedding-3-large for quality. For Cohere, always pass input_type parameter: "search_document" for indexing, "search_query" for query embedding; omitting this degrades retrieval quality by 5-10%. For local embedding (SentenceTransformers), instantiate the model once per process — multiple instances OOM on GPU. For Ollama, use SentenceTransformers instead of Ollama's per-text embedding loop, which is O(n) API calls.</statement>
+      <rationale source="v1-source">text-embedding-3-small is the best cost/quality ratio for most RAG systems. Cohere's input_type tunes embeddings for asymmetric retrieval and is a free 5-15% quality boost. SentenceTransformer instances load multi-GB models into RAM; duplicates cause OOM. Ollama's per-call overhead makes single-text embedding 10-50x slower than batched local models.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Pre-check all texts for empty strings, whitespace-only, and token-limit violations before embedding — all three produce zero or truncated vectors. Embedding texts that exceed the model's token limit without truncation loses the tail content. Instantiate SentenceTransformer models once per process; multiple instances load multi-GB models and OOM on limited RAM. Do not instantiate multiple SentenceTransformer model instances in the same process.</statement>
+      <rationale source="v1-source">Empty texts produce near-zero vectors that fail normalization. Token truncation is silent in some SDKs but loses tail content. SentenceTransformer instances load multi-GB models into GPU/CPU RAM; two instances of bge-large-en-v1.5 on 16 GB GPU will OOM. Model version changes invalidate stored vectors; agents must version collections and re-embed on deprecation.</rationale>
+    </rule>
+  </section>
+</text>

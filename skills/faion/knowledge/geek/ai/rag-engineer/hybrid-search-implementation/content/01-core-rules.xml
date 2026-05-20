@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="hybrid-search-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for hybrid-search-implementation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use Weaviate's hybrid() query method with alpha parameter for clean, built-in hybrid search.</statement>
+      <rationale source="v1-source">Weaviate handles BM25 preprocessing internally, reducing implementation complexity vs other databases.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Pre-compute sparse vectors outside Qdrant; the DB stores (indices, values) but has no built-in tokenizer.</statement>
+      <rationale source="v1-source">Qdrant's sparse vector format requires application-layer tokenization. Raw text cannot be passed to the sparse vector field.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Train BM25Encoder on the full corpus before ingestion; corpus changes invalidate the encoder and require retraining.</statement>
+      <rationale source="v1-source">Pinecone's BM25Encoder learns corpus-level IDF statistics. If the corpus changes significantly, the encoder's IDF weights become stale.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Prefer RRF over linear combination when the two search methods return scores on different scales (e.g., BM25 vs cosine similarity).</statement>
+      <rationale source="v1-source">RRF uses rank position, not raw scores, so it is immune to score scale mismatches. Linear combination requires explicit per-corpus normalization to avoid one signal dominating the other.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Measure alpha on a labeled eval set before deploying; wrong alpha degrades results worse than using a single search method alone.</statement>
+      <rationale source="v1-source">Alpha is data-dependent. A value tuned for one corpus can invert the quality ordering on a different corpus.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Default to RRF over linear combination: RRF is robust to scale differences between BM25 and cosine scores, requires no normalization.</statement>
+      <rationale source="v1-source">RRF eliminates the need for per-corpus score normalization.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Always fetch 2-3x more candidates from each method than the final top-K before fusion — fusion can promote documents not in top-10 of either method alone.</statement>
+      <rationale source="v1-source">Fusion can surface documents that rank moderately in both methods but not in the top-10 of either alone. Pre-fetching more candidates allows this promotion.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Build a labeled evaluation set (50-200 query/relevant-doc pairs) before tuning alpha — intuition about the right alpha is usually wrong.</statement>
+      <rationale source="v1-source">Alpha tuning requires empirical data. Intuition is unreliable.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>For Weaviate, HybridFusion.RELATIVE_SCORE generally outperforms RANKED for corpora with high score variance.</statement>
+      <rationale source="v1-source">RELATIVE_SCORE is more robust to outlier scores.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use the determine_alpha pattern (detect quotes, codes, query length) to route query types automatically rather than one global alpha.</statement>
+      <rationale source="v1-source">Dynamic alpha improves quality on mixed query sets.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>For Elasticsearch, normalize BM25 scores with `/max(bm25_scores)` and cosine similarity is already [0,1] before linear combination.</statement>
+      <rationale source="v1-source">Score normalization is essential for linear combination in Elasticsearch.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,37 +1,75 @@
+---
+slug: code-review-cycle
+tier: solo
+group: sdd
+domain: sdd
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report.
+content_id: "84ffc4248a451289"
+tags: [code-review, quality-gates, ai-assistance, sdd, reflexion]
+---
 # Code Review Cycle
 
 ## Summary
 
-A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report. Humans address BLOCK items; reflexion feeds review findings back into `patterns.md` and `mistakes.md`. AI assists but never replaces human judgment on business logic, architecture decisions, and security context.
+**One-sentence:** A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report.
 
-## Why
+**One-paragraph:** A structured human-AI collaboration for code review running as a 3-step pipeline: (1) AI pre-screen flags style, anti-patterns, and missing tests; (2) parallel review agents (Claude + cross-model) produce structured BLOCK/WARN/NOTE finding lists; (3) a merge step deduplicates findings and produces a unified report. Humans address BLOCK items; reflexion feeds review findings back into patterns.md and mistakes.md. AI assists but never replaces human judgment on business logic, architecture decisions, and security context.
 
-Over 30% of senior developers now ship mostly AI-generated code, and PRs are 18% larger on average. Change failure rates increase 30% when AI output exceeds human verification capacity. AI pre-screening cleans up style issues before human review, reducing review fatigue. A separate review model catches blind spots the generation model cannot — the model that wrote the code is unreliable for reviewing its own output.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - After any SDD task execution, before marking the task done — run AI pre-screen + human spot-check
 - When PRs consistently exceed 300 lines — AI pre-review reduces noise before human review
 - Setting up a multi-model review pipeline (write with Claude, review with a separate model)
-- Integrating SDD reflexion: post-review findings feed into `patterns.md` and `mistakes.md`
+- Integrating SDD reflexion: post-review findings feed into patterns.md and mistakes.md
 - After detecting a spike in change failure rates — add AI review as a quality gate in CI/CD
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Single-file configuration changes — linter is sufficient
 - Trivial one-line bug fixes — peer review + merge is faster
 - First pass in a new codebase where patterns are not yet established — establish patterns first
 - When the human reviewer has deep domain knowledge and AI review produces high false positives
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-principles.xml` | Review type taxonomy, AI assistance levels (L1/L2/L3), multi-model strategy, AI tool comparison table |
-| `content/02-workflow.xml` | Step-by-step review pipeline, SDD integration (task completion checkpoints), reflexion learning loop |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/prompt-review.txt` | Prompts for AI pre-screen, independent code review, and finding merge/deduplication |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/sdd/sdd/`

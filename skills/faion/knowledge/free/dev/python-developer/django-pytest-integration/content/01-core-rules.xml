@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-pytest-integration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-pytest-integration. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Test each DRF endpoint for: 401 (anonymous), 403 (wrong permissions), 200/201 (happy path), 400 (validation errors), 404 (not found). Use parametrize for validation test matrices. Always use format='json' and assert response.data shape, never browsable API HTML. Use authenticated_client and admin_client fixtures from conftest.py.</statement>
+      <rationale source="v1-source">API tests need to verify all security layers (authentication, authorization, validation). Parametrized test matrices cover edge cases without test duplication. format='json' enforces API contract, not HTML rendering. Asserting only on status code lets payload bugs through; always assert at least one field from the response body.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Test service methods directly, not through the view layer. Group tests in classes named Test{ServiceName}. Each test covers one scenario: happy path, error case, side effect, or edge case. Mock Celery tasks and external API calls at the boundary using unittest.mock.patch. Use pytest.raises(ExceptionType) with match= parameter to assert on error messages.</statement>
+      <rationale source="v1-source">Testing the service directly is faster (no HTTP overhead) and more precise (test exactly the service boundary). Class grouping keeps related tests together. Mocking Celery at the boundary tests that the task was enqueued with the right arguments without actually running it. match= prevents false passes where a different exception with the same type is raised.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Test all permission combinations for each endpoint: anonymous (401), regular user (200 or 403), admin (200), and cross-user access (403). Group permission tests in a class named Test{Resource}Permissions. Use separate API clients (api_client, authenticated_client, admin_client) from fixtures to represent each role.</statement>
+      <rationale source="v1-source">Permission tests are the security layer of the test suite. Missing a single combination (e.g., failing to test that regular users cannot access other users' resources) leaves a security hole. Class grouping makes it easy to audit which combinations are covered. Using fixtures for clients avoids setup duplication.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use @pytest.mark.django_db(transaction=True) or the transactional_db fixture for tests that assert on transaction commit behavior, rollback on exception, or concurrent access patterns. Use refresh_from_db() after the operation to verify database state. Simulate concurrent access with explicit transaction.atomic blocks inside the test.</statement>
+      <rationale source="v1-source">The default db fixture wraps everything in a savepoint that is rolled back, so commit-dependent behavior (post_commit signals, ON COMMIT triggers) never fires. transactional_db uses real commits, enabling verification of rollback behavior. refresh_from_db() avoids asserting on stale in-memory state.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Run CI tests against PostgreSQL (same engine as production), not SQLite. Use a GitHub Actions services block for the Postgres container. Run pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80. Upload coverage XML to Codecov or equivalent. Cache pip dependencies to reduce CI time.</statement>
+      <rationale source="v1-source">Tests passing on SQLite can fail on Postgres due to JSONField ordering differences, FK integrity timing, partial index behaviour, and case sensitivity. Running CI against the production engine prevents surprise failures on deployment. Coverage upload enables PR coverage diff comments.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>One logical concept per test. Multiple assertions on the same concept are allowed. Asserts on different concerns should split into separate tests. Use the Arrange-Act-Assert (AAA) pattern: Arrange (setup), Act (call the unit under test), Assert (verify the result). Each test should have one clear reason to fail. Test behavior, not implementation: verify observable outcomes, not internal method calls.</statement>
+      <rationale source="v1-source">Tests with multiple concerns fail for multiple reasons, making debugging harder. AAA clarifies test intent. One assertion focus makes test names precise and prevents masking of multiple bugs. Testing observable behavior makes tests survive refactoring; testing internals makes tests break on every refactor.</rationale>
+    </rule>
+  </section>
+</text>

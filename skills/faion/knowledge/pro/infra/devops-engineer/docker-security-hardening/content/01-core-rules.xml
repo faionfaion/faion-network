@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="docker-security-hardening Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for docker-security-hardening. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every production Dockerfile MUST create a dedicated non-root user and switch to it with the USER directive before the CMD or ENTRYPOINT. The user MUST be created with useradd -r (system account, no home, no password) or the Alpine equivalent adduser -S. Files copied into the image MUST be owned by that user via --chown.</statement>
+      <rationale source="v1-source">Running as root means a container escape gives the attacker root on the host. A non-root user limits blast radius: the escaped process has the privileges of the app user only, and the host will reject most syscalls that require CAP_SYS_ADMIN or higher.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Docker runtime MUST start containers with --security-opt no-new-privileges to prevent SUID/SGID binaries inside the container from elevating to a higher UID at runtime even if a privilege escalation vulnerability exists.</statement>
+      <rationale source="v1-source">Without this flag, a setuid binary in the image or a volume mount can promote a non-root process back to root post-startup, defeating the USER directive.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Production containers MUST be started with --cap-drop ALL. Capabilities MUST be re-added one at a time (--cap-add) only when required and documented. Web application containers serving HTTP typically require no additional capabilities after dropping all.</statement>
+      <rationale source="v1-source">Default capabilities include NET_RAW (raw sockets, used for ICMP floods), SYS_CHROOT, AUDIT_WRITE, and others that web apps never use. Dropping them removes whole classes of privilege escalation and network attack surface.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Stateless containers (web servers, API services, worker processes) MUST be run with --read-only and --tmpfs /tmp:rw,noexec,nosuid. Stateful containers that write to volumes MUST mount the volume explicitly; the root filesystem MUST still be read-only.</statement>
+      <rationale source="v1-source">A writable root filesystem allows an attacker who achieves code execution to install tools (curl, nc, python) that persist across restarts. Read-only eliminates this persistence vector and prevents modification of the application binary.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Secrets (API keys, database passwords, certificates) MUST NOT appear in Dockerfile ENV, ARG, or COPY instructions. They MUST be injected at runtime via Docker Secrets (Swarm), Kubernetes Secrets (with encryption at rest enabled), HashiCorp Vault agent, or cloud-native secret managers (AWS Secrets Manager, GCP Secret Manager). Environment variable injection from a secrets manager at container startup is acceptable; hardcoding in the image is not.</statement>
+      <rationale source="v1-source">Secrets in Dockerfile instructions appear in every layer of the image, in docker history output, and in any registry the image is pushed to. Even if the Dockerfile layer is squashed, the secret exists in every cache hit. There is no safe way to remove a secret from a published image.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>CI pipelines MUST include a vulnerability scan step (Trivy or Docker Scout) that runs after docker build and MUST fail the build on HIGH or CRITICAL CVEs. The scan MUST run against the full final image tag, not the build stage. SBOM generation MUST be enabled and the SBOM artifact MUST be stored alongside the image.</statement>
+      <rationale source="v1-source">Base images accumulate CVEs between their release date and when your pipeline pulls them. Scanning at build time catches these before deployment. Failing on HIGH/CRITICAL forces timely base image updates and prevents known-exploitable images reaching production.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Production registries MUST have image signing enabled. CI pipelines MUST sign images after push using Docker Content Trust (DOCKER_CONTENT_TRUST=1) or Cosign. Kubernetes clusters MUST enforce image signature verification via an admission controller before allowing unsigned images to run.</statement>
+      <rationale source="v1-source">Without signing, a registry compromise or DNS hijack can substitute a malicious image for the legitimate one. Signing creates a cryptographic chain from CI to runtime that cannot be forged without the signing key.</rationale>
+    </rule>
+  </section>
+</text>

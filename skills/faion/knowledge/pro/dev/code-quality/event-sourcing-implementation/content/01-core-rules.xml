@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="event-sourcing-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for event-sourcing-implementation. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every append must include an expected_version. If the stream's current version does not match, raise ConcurrencyError and force a retry — never silently overwrite.</statement>
+      <rationale source="v1-source">Without optimistic concurrency, two handlers reading version N both succeed at appending version N+1; one silently overwrites the other, violating aggregate invariants.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Events are stored with: event_id (UUID, unique), stream_id, version (per-stream monotonic), event_type (class name), event_data (JSON), metadata, occurred_at. The (stream_id, version) pair has a UNIQUE constraint.</statement>
+      <rationale source="v1-source">The UNIQUE constraint on (stream_id, version) is the database-level optimistic concurrency enforcement — the INSERT fails if another writer already claimed that version.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Take a snapshot every N events (50 is a common starting point). Load the latest snapshot, then replay only the events after its version.</statement>
+      <rationale source="v1-source">Without snapshots, replay time grows linearly with the number of events. Long-lived aggregates (thousands of events) cause unacceptably slow command handling.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Snapshots are an optimization, not the source of truth. The event log remains authoritative. If a snapshot is corrupt or missing, fall back to full replay.</statement>
+      <rationale source="v1-source">Relying on snapshots as the primary source of truth defeats the event-sourcing model and loses the audit trail.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Projection handlers must be idempotent — called with the same event twice must produce the same read-model state as called once.</statement>
+      <rationale source="v1-source">At-least-once event delivery guarantees duplicates will occur, especially during replay. Non-idempotent projections create corrupted read models on retry.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use a unique constraint, not a SELECT-then-INSERT. Optimistic concurrency belongs in the database (UNIQUE(stream_id, version)) — anything else races.</statement>
+      <rationale source="v1-source">Database constraints are atomic and enforce across concurrent writers. Application-level checks are racy under load.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Outbox or bust. Don't publish projections from the command handler; write events + outbox row in one transaction; a separate worker drains the outbox. This decouples write availability from projection availability.</statement>
+      <rationale source="v1-source">Publishing from the command path ties the command's availability SLI to the projection's availability. Outbox pattern breaks this coupling.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Idempotent projections. Every projection upsert must use ON CONFLICT … DO UPDATE keyed on event id, so re-replays don't double-count.</statement>
+      <rationale source="v1-source">Projection rebuilds replay the same events; non-idempotent upserts lead to double-counted aggregates and corrupted read models.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Versioned event types. Store event_type=OrderPlaced.v2; deserialization keys on (type, version). Add an upcaster registry from day one — retrofitting it later is brutal.</statement>
+      <rationale source="v1-source">Schema evolution is inevitable. Explicit versioning from day one avoids the cost of retrofitting upcasters when the first schema change arrives.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Partition events at scale. Use pg_partman by occurred_at once events exceeds ~50M rows; otherwise vacuum and bloat eat you alive.</statement>
+      <rationale source="v1-source">Large event tables without partitioning experience runaway VACUUM costs and bloat that slows queries. Partitioning by time is the standard solution.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Snapshot in a separate transaction. Snapshot is a cache; if it fails, hydration falls back to full replay. Never block command commit on snapshot writes.</statement>
+      <rationale source="v1-source">Snapshots are an optimization, not essential. Blocking the command on snapshot write makes snapshots a availability liability.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Replay must be a CLI. "Just rerun the projector" only works if there's an idempotent CLI with --from, --projection, --shadow flags and structured logs.</statement>
+      <rationale source="v1-source">Ad-hoc replay from notebooks or one-off scripts is error-prone. A robust CLI makes replay a repeatable operation.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Backup is non-negotiable. Events are forever; lose them and you lose the company. Continuous archive (wal-g) + monthly restore tests.</statement>
+      <rationale source="v1-source">Events are the source of truth. Loss is catastrophic. Continuous archival with restore tests is the only acceptable pattern.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Schema registry for cross-service events. If events leave the bounded context, register them — at minimum a JSON Schema in a events-contracts/ repo, ideally Confluent Schema Registry or Buf BSR.</statement>
+      <rationale source="v1-source">Cross-service events are contracts. Registration makes them discoverable and enables breaking-change detection in CI.</rationale>
+    </rule>
+  </section>
+</text>

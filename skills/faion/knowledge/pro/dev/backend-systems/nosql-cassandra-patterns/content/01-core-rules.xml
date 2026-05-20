@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="nosql-cassandra-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for nosql-cassandra-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The partition key MUST have high cardinality (at least thousands of distinct values) and MUST distribute writes evenly across the cluster. Monotonically increasing partition keys (timestamps, auto-increment IDs) MUST be combined with a high-cardinality prefix (sensor_id, user_id, tenant_id) to prevent sequential writes hitting a single token range. Partition size MUST stay under 100 MB and under ~100k rows; validate with nodetool tablehistograms before deploying.</statement>
+      <rationale source="v1-source">Cassandra places all rows sharing a partition key on the same replica set. A single large partition cannot be split post-creation; it must be re-keyed. Unbounded time-series partitions grow until the node runs out of memory during compaction. Time-bucketing (composite partition key: entity_id + date) caps partition size and keeps it predictable.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Each distinct query access pattern MUST have a dedicated table (or materialized view) designed for that query. Do NOT add secondary indexes (Cassandra secondary indexes require a full cluster scan on read). Do NOT use ALLOW FILTERING in production queries. When two access patterns need the same data, write to both tables or use a materialized view.</statement>
+      <rationale source="v1-source">Cassandra's secondary indexes are node-local and require coordinator fan-out to all nodes on read — they perform worse than a full table scan at scale. ALLOW FILTERING is syntactic sugar for "scan every row in every partition that matches the partition key constraints" — it degrades to O(total rows) and blocks coordinator threads.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use lightweight transactions (LWT: INSERT IF NOT EXISTS, UPDATE IF) only when true compare-and-swap semantics are required. LWT uses Paxos internally and has 4x the latency of a regular write; avoid it on hot paths. For counters, use Cassandra counter columns (COUNTER type) rather than read-modify-write. Use conditional writes (ConditionExpression in DynamoDB) anywhere the application logic says "read-then-write".</statement>
+      <rationale source="v1-source">Cassandra defaults to eventual consistency (ONE or LOCAL_QUORUM tunable). Read-modify-write without LWT has a race condition under concurrent writes: two agents can read the same value and both apply their update, causing lost writes. The COUNTER column type uses server-side delta accumulation to avoid this race.</rationale>
+    </rule>
+  </section>
+</text>

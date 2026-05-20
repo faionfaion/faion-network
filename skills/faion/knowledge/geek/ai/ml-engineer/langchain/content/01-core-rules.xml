@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="langchain Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for langchain. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use `langchain-core` only in production agents, not the full `langchain` package — core is stable; full langchain pulls 200+ transitive dependencies.</statement>
+      <rationale source="v1-source">Dependency bloat creates version conflicts and larger container images. Core contains everything needed for LCEL chains and structured output.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use `.with_structured_output(PydanticModel)` instead of output parsers; structured output is enforced by the API, not fragile string parsing.</statement>
+      <rationale source="v1-source">String parsers break silently when the model changes its output format. Structured output fails with a clear error that is easier to debug.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Test chains by invoking each component individually before wiring with `|`; isolates bugs before they compound in full chain traces.</statement>
+      <rationale source="v1-source">LCEL `|` produces hard-to-debug stack traces when intermediate steps fail; error messages point to internal chain internals rather than your code.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Enable LangSmith tracing from day 1 on new projects; retrofitting observability into existing chains is painful.</statement>
+      <rationale source="v1-source">LangSmith traces every `|` step with full input/output. Without it, debugging unexpected chain outputs requires print-statement archaeology.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Disable LangSmith tracing (`LANGCHAIN_TRACING_V2=false`) in latency-critical paths; tracing adds ~30ms per chain call.</statement>
+      <rationale source="v1-source">At high throughput, 30ms per call compounds. In a 10-step chain, tracing adds 300ms — measurable in user-facing endpoints.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Store LangGraph state as flat JSON-serializable dicts — nested custom objects silently fail serialization in checkpoint backends.</statement>
+      <rationale source="v1-source">Checkpoint backends (PostgreSQL, Redis) require JSON serialization. Custom Python objects cause silent serialization failures; the state appears to persist but is actually lost on process restart.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Always set `max_iterations` on agents using `RunnableConfig` or graph loop bounds — the default is unlimited.</statement>
+      <rationale source="v1-source">`create_react_agent()` has no built-in iteration cap. Agents loop indefinitely on ambiguous tasks without custom `stop_sequence` or `max_iterations` config.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use `with_structured_output(PydanticModel)` for routing decisions in conditional edge functions; return the next node name as a typed field.</statement>
+      <rationale source="v1-source">String parsing of free-text routing decisions fails silently when the model produces unexpected phrasing. Structured output enforces exact node name values.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use `interrupt_before=["action_node"]` for nodes that perform irreversible actions (send email, write to DB, call payment API); never rely on agent self-restraint.</statement>
+      <rationale source="v1-source">Agents cannot undo executed side effects. A misrouted task dispatched to a worker that calls an external API is irreversible without a human checkpoint.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use `Annotated[list, operator.add]` for accumulated results fields in SupervisorState; direct list assignment discards previous worker outputs.</statement>
+      <rationale source="v1-source">LangGraph merges partial state updates with the accumulator. Plain list assignment replaces the list on every update, causing earlier worker results to be lost.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Test tool routing explicitly: invoke the agent with a sample query, inspect which tool was selected, and verify it's the expected one.</statement>
+      <rationale source="v1-source">Tool selection errors compound silently through the rest of the pipeline.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Sanitize user input before injecting into prompts; validate retrieved content before including in RAG chains to prevent prompt injection.</statement>
+      <rationale source="v1-source">A malicious document in the corpus or a crafted user input can override agent instructions. Retrieved content must be treated as untrusted data, not trusted instructions.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Use `create_react_agent(model, tools, checkpointer=MemorySaver())` for simple agent tasks driven by Claude subagents.</statement>
+      <rationale source="v1-source">This covers the common case and requires minimal boilerplate.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>For complex workflows, define a LangGraph `StateGraph` where each node is a Claude subagent call with a specific role (planner, executor, critic).</statement>
+      <rationale source="v1-source">This separates concerns and makes the workflow explicit and testable.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Route between nodes with `add_conditional_edges` based on structured output from the previous node.</statement>
+      <rationale source="v1-source">Structured routing prevents silent failures from ambiguous or unparseable outputs.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Use `interrupt_before` for human-in-the-loop checkpoints at high-risk action nodes.</statement>
+      <rationale source="v1-source">This prevents irreversible actions without human approval.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Chain observability through LangSmith by setting `LANGCHAIN_TRACING_V2=true` — every subagent call is automatically traced with full input/output.</statement>
+      <rationale source="v1-source">This provides visibility into the entire workflow for debugging and optimization.</rationale>
+    </rule>
+  </section>
+</text>

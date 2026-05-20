@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="notion-pm Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for notion-pm. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use a single Tasks database with Sprint as a relation field; never create a new database per sprint.</statement>
+      <rationale source="v1-source">Per-sprint databases fragment task history and prevent cross-sprint velocity computation; a single Tasks database with a Sprint relation supports all views and rollups without data migration.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Keep each task as a separate database page, not as a sub-bullet inside a sprint document.</statement>
+      <rationale source="v1-source">Only database pages are queryable via the Notion API; sub-bullets cannot be filtered, sorted, or updated by agents.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Limit database properties to 15–20 maximum; archive unused properties rather than accumulating them.</statement>
+      <rationale source="v1-source">Complex formulas and many properties slow Notion database loading; unused properties add visual noise and agent confusion.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Tasks database required properties: Task (title), Status (status type — not select), Priority (select: Urgent/High/Medium/Low), Assignee (person), Project (relation), Sprint (relation), Estimate (number), Due Date (date), Tags (multi_select), Blocked By (self-relation).</statement>
+      <rationale source="v1-source">Status type (vs select) enables Notion's built-in kanban grouping; self-relation on Blocked By enables dependency tracking without a separate database.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use bidirectional relations between Tasks and Projects; add rollup properties on Projects for: task count, completed task count, and total estimate sum.</statement>
+      <rationale source="v1-source">Bidirectional relations allow navigation both ways; rollups give Projects a live progress indicator without formulas that break when relations change.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use formulas for derived display fields only (days until due, overdue flag, priority emoji) — never use formulas for metrics that require cross-database aggregation.</statement>
+      <rationale source="v1-source">Notion formulas cannot aggregate across databases; cross-database metrics require relation + rollup chains, which are more reliable and auto-update.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Create four purpose-driven views per database: Board (sprint execution, group by Status), Table (all tasks, sort by priority), Timeline (roadmap, group by Project), Calendar (deadlines, filter: Status not Done).</statement>
+      <rationale source="v1-source">Each view serves a distinct PM function; proliferating views with overlapping purposes creates confusion about which view is authoritative.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use native Notion automations only for property-triggered actions: set Completion Date when Status is Done, notify Assignee when Priority is Urgent, set Status to Backlog on page creation.</statement>
+      <rationale source="v1-source">Native automations are limited to property triggers — they cannot run on a schedule. For time-based jobs (daily standup digest, sprint closure), use n8n, Make, or a cron-based agent.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Never delete sprint pages — archive them by setting a Status property to "Completed". Deleted sprint pages break any task's Sprint relation field that pointed to them.</statement>
+      <rationale source="v1-source">Notion relation fields that point to deleted pages become null silently; rollup properties that count sprint tasks stop working. Archived pages preserve all existing relations.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use n8n (self-hostable) or Make for time-triggered Notion workflows: daily standup digest (query tasks in sprint where Status = Blocked or In Progress → post to Slack), sprint closure (compute metrics → fill Sprint page).</statement>
+      <rationale source="v1-source">n8n is compatible with the NERO stack and can be self-hosted; it handles the Notion API rate limit (3 req/sec) with built-in retry logic.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Notion API rate limit is 3 requests per second per integration token; paginate all database queries with start_cursor (max 100 items per request regardless of page_size); add 350ms delay between write requests during bulk operations.</statement>
+      <rationale source="v1-source">3 req/sec limit is hit quickly during sprint planning with 100 tasks; 350ms delay stays safely under the limit; pagination is mandatory — Notion never returns more than 100 items per query regardless of page_size setting.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>After writing a relation field, wait 1–2 seconds before querying rollup properties that depend on it — rollups recalculate asynchronously after relation writes.</statement>
+      <rationale source="v1-source">Rollup recalculation is not synchronous with the relation write response; an immediate query returns stale values that do not reflect the newly assigned sprint or project.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Resolve relation values to human-readable text by fetching related pages via pages.retrieve — the API returns [{id: "page-uuid"}], not page titles.</statement>
+      <rationale source="v1-source">Sprint names, assignee names, and project titles must be resolved from page IDs before producing any human-readable report; UUID arrays are meaningless to report consumers.</rationale>
+    </rule>
+  </section>
+</text>

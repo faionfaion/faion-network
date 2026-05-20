@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="llamaindex-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for llamaindex-basics. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every LlamaIndex pipeline MUST initialize Settings (LLM and embedding model) globally at startup, not per-index, to avoid accidental model mixing and to ensure consistent behavior across multiple retrieval sessions.</statement>
+      <rationale source="v1-source">Default `gpt-4o` / `text-embedding-3-small` hardcodes OpenAI; you must override Settings.llm and Settings.embed_model explicitly to use Claude or other providers. Initializing once prevents bugs where different indices use different models.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Recursive document loading via SimpleDirectoryReader MUST set `recursive=True` and specify `required_exts` to include only supported file formats. After loading, log the document count and fail-fast if count is zero (silent skipping of unsupported files is a common bug).</statement>
+      <rationale source="v1-source">SimpleDirectoryReader silently skips unsupported formats (e.g., .docx if python-docx is not installed). Zero documents passed to an embedding model wastes tokens and creates an empty index that returns no results.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Chunk size MUST be tuned to the embedding and LLM context window. For typical RAG with Claude or GPT-4: use 512-1024 tokens (approximately 2000-4000 characters). Overlap SHOULD be 10-20% of chunk_size. For tasks dominated by Q&amp;A, smaller chunks (256-512) improve precision; for summarization, larger chunks (1024-2048) preserve context.</statement>
+      <rationale source="v1-source">Too-small chunks fragment information; too-large chunks dilute signal in retrieval. The rule of thumb: chunk_size ≈ context_window / top_k / 2. For a 128k context window and top_k=5, chunk_size ≈ 12,800 tokens. In practice, 512-1024 is the safe middle ground and avoids over-indexing.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Semantic chunking via SemanticSplitterNodeParser MUST only be used in offline ingestion pipelines, not in online query loops. Semantic splitting requires an embedding call per sentence boundary; on large corpora (&gt;10k nodes), this cost is 10-100x an embedding call per document.</statement>
+      <rationale source="v1-source">Semantic splitting improves retrieval quality by respecting topic boundaries, but the cost (one embedding per potential chunk boundary) makes it expensive at query time. Reserve semantic splitting for batch ingestion and use simpler SentenceSplitter at query time if needed.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Hierarchical chunking (HierarchicalNodeParser) SHOULD be used when documents have multi-level structure (sections, subsections, paragraphs) and retrieval needs to balance specificity with context. Parent nodes preserve full section context; child nodes provide granular match points.</statement>
+      <rationale source="v1-source">Hierarchical parsing creates a tree of nodes (coarse → fine-grained). Retrievers can choose parent nodes for context-rich results or child nodes for precise matches. This flexibility is particularly valuable for long documents (100+ pages) where a flat chunk list loses structure.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Metadata extraction via TitleExtractor, SummaryExtractor, and KeywordExtractor MUST run as an offline batch ingestion step, not inline during agent queries. LLM extraction is expensive (one LLM call per node); amortize the cost by running extraction once at ingestion time.</statement>
+      <rationale source="v1-source">Running extraction per query multiplies latency and API costs. Extract metadata once during ingestion, persist it alongside nodes, and use it for filtering and re-ranking during retrieval.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>VectorStoreIndex held in memory MUST be persisted to disk via `index.storage_context.persist(PERSIST_DIR)` after first build. Re-embedding the same corpus on every run wastes tokens and time. Always load from persistent storage if it exists; only re-index if source documents change.</statement>
+      <rationale source="v1-source">In-memory indices are lost on restart. Persisting to disk (local files or a remote vector store) avoids re-embedding and lets multiple agents reuse the same index. Check for persisted index existence before ingesting.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>For large corpora (&gt;10k documents), MUST use a remote vector store (Qdrant, Pinecone, Weaviate) instead of in-memory storage. In-memory indices will run out of RAM and queries will slow linearly with corpus size.</statement>
+      <rationale source="v1-source">Vector stores like Qdrant provide: (a) disk-backed storage that doesn't exhaust RAM, (b) approximate nearest-neighbor search (HNSW, IVF) that scales to millions of vectors, and (c) metadata filtering to narrow search space. LlamaIndex integrates all via `vector_store` parameter to `VectorStoreIndex`.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Query engines SHOULD add a SimilarityPostprocessor with a cutoff (typically 0.7) to drop low-confidence nodes before synthesis. This prevents hallucination from weak context and improves response precision.</statement>
+      <rationale source="v1-source">Vector similarity is a soft ranking; a node with score 0.5 is not meaningfully similar. Dropping nodes below a cutoff ensures the synthesizer only sees confident matches. Tuning the cutoff trades recall (fewer results) for precision (higher confidence).</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Response mode MUST be chosen per task: use `compact` (default) for Q&amp;A when context fits in model window, use `tree_summarize` for long documents (&gt;10k tokens) where truncation risks losing critical content, use `accumulate` for exhaustive multi-step reasoning.</statement>
+      <rationale source="v1-source">Compact mode truncates context to fit the model window without warning, risking data loss. Tree summarize recursively summarizes retrieved nodes before synthesis. Accumulate loops through all retrieved nodes. Wrong choice silently truncates or explodes latency.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>For pipeline tasks, use a subagent that owns the full ingestion step  -  load → parse → index → persist  -  and returns the storage path. Another subagent then loads the persisted index and queries it. This separation keeps each agent's responsibility narrow and testable.</statement>
+      <rationale source="v1-source">Monolithic agents that ingest and query in one pass are harder to debug and reuse. Splitting into (ingestion agent, query agent) makes it easy to re-ingest when source documents change, and to reuse the index across multiple query agents.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Query agents MUST validate response.source_nodes to ensure the synthesizer received good context. If top sources are below a similarity threshold, return a "low confidence" response instead of hallucinating from weak context.</statement>
+      <rationale source="v1-source">Agents are expected to recognize when they don't have enough information and say so. Blindly returning a response synthesized from weak context erodes trust.</rationale>
+    </rule>
+  </section>
+</text>

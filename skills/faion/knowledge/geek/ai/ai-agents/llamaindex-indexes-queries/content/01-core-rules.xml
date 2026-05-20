@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="llamaindex-indexes-queries Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for llamaindex-indexes-queries. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>VectorStoreIndex MUST be the default for semantic search over documents. Use Qdrant (or Pinecone/Weaviate) for production; in-memory is only for development. Always set similarity_top_k=20, then post-process with reranking or similarity cutoff to narrow to top-5.</statement>
+      <rationale source="v1-source">VectorStore scales to millions of documents and supports filtering by metadata. Retrieving top-20 then reranking recovers matches that vector similarity alone would miss. In-memory indices lose data on restart.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>KeywordTableIndex (BM25) SHOULD be paired with VectorStoreIndex in a QueryFusionRetriever for hybrid search. Use keyword-only when exact phrase matching is critical and corpus size is under 100k documents. Configure max_keywords_per_chunk (typically 5-10) based on document domain.</statement>
+      <rationale source="v1-source">Hybrid search (vector - keyword fusion) recovers matches that either approach alone would miss. Keyword search is fast and cheap; vector search is semantically smart. Combining with reciprocal rank fusion balances precision and recall. BM25 excels at exact-match retrieval; vector search at semantic similarity.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>KnowledgeGraphIndex MUST specify explicit relationship schemas in the extraction prompt; unconstrained LLM extraction produces noisy, hallucinated relationships. Use only when entity relationships are core to the task (e.g., "Who did X work with?"). Avoid for document Q&amp;A.</statement>
+      <rationale source="v1-source">KnowledgeGraphIndex relies on an LLM to extract entities and relationships from text. Without schema constraints, the LLM may invent relationships. Graphs are best used for structured knowledge (people, companies, projects) where relationships are well-defined. Relationship hallucination is common without schema constraints.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>TreeIndex (hierarchical summarization) SHOULD only be used when the task is summarization over large documents (100+ pages) and you have budget for many LLM calls. For typical RAG, TreeIndex is overkill; use VectorStoreIndex instead. Configure num_children to control branching factor (default 10 children per node).</statement>
+      <rationale source="v1-source">TreeIndex recursively summarizes nodes in a tree, which is expensive (one LLM call per internal node) and slow. For Q&amp;A, VectorStore with reranking is faster and cheaper. TreeIndex shines when the goal is to distill a massive document into a short summary and cost is secondary to quality.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>SummaryIndex (pass all nodes to LLM) MUST only be used for tiny corpora (under 100 small nodes). Exceeding context window causes silent truncation; for large document sets, use VectorStoreIndex or TreeIndex. SummaryIndex is best for small documents where comprehensive answers require all context.</statement>
+      <rationale source="v1-source">SummaryIndex loads every node into the LLM context. This is affordable for ~20 documents but fails for 1000. If you need comprehensive coverage of large corpora, use TreeIndex (expensive but guaranteed coverage) or VectorStore (fast, approximate, good enough). SummaryIndex passes ALL nodes to LLM, making it unusable beyond ~100 small documents before context overflow.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Always retrieve more nodes than needed (similarity_top_k=20), then rerank or filter down to top-5. Retrieval recall (getting all relevant nodes) is more important than precision; synthesis precision (good answer from good context) is then up to the LLM. Configure basic query engine with similarity_top_k, response_mode, and streaming parameters.</statement>
+      <rationale source="v1-source">Vector similarity is a soft ranking; rank 20 may still be relevant. Reranking with a cross-encoder refines the ranking. Dropping to top-5 after reranking is faster and cheaper for synthesis than including all 20. Retrieval recall (missing relevant nodes) is worse than retrieval noise (extra irrelevant nodes); synthesis can handle noise.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Response mode MUST match the task: use `compact` (default) for Q&amp;A and short contexts, use `refine` for legal/medical (high fidelity required), use `tree_summarize` for large retrievals (&gt;10k tokens), use `accumulate` for multi-perspective answers. Compact compresses chunks and makes a single LLM call (fast). Refine iteratively refines the answer with each chunk (accurate but slow). Tree summarize recursively summarizes large retrievals.</statement>
+      <rationale source="v1-source">Compact truncates without warning; refine iteratively refines one passage at a time; tree_summarize hierarchically summarizes large contexts; accumulate produces separate answers per node. Wrong choice silently degrades quality or explodes latency. Refine mode is most accurate but multiple LLM calls; tree_summarize is middle ground; compact is fastest.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>SubQuestionQueryEngine MUST only be used when the main question logically decomposes into independent sub-questions (e.g., "Compare X and Y" becomes "What is X?", "What is Y?"). Avoid for simple questions; it doubles token cost with no quality gain. Always use use_async=True for parallel query execution.</statement>
+      <rationale source="v1-source">SubQuestionQueryEngine uses an LLM to decompose the query, then queries specialized indices in parallel. This is powerful for research but wasteful for simple lookups. Test decomposition output before deploying. Synchronous sub-question execution is a latency killer; async execution parallelizes queries across tools.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>RouterQueryEngine (LLM routing) MUST use precise, non-overlapping tool descriptions. If two tools have similar descriptions, the LLM router may pick the wrong one. Test routing decisions with a unit test suite. Use LLMSingleSelector for one tool per query; use other selectors for multi-select.</statement>
+      <rationale source="v1-source">LLM routing is a full LLM call and introduces non-determinism. Clear tool descriptions ("Product documentation" vs. "Financial reports") help routing; ambiguous descriptions ("Documents") cause errors. LLM router is a full LLM call — at high QPS, routing alone becomes a bottleneck; cache routing decisions for repeated query patterns.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Hybrid retrieval (BM25 - Vector fusion) MUST use QueryFusionRetriever with reciprocal rank fusion and configurable weights. Start with weights [0.3, 0.7] (vector favored); tune per task and corpus.</statement>
+      <rationale source="v1-source">Hybrid search combines sparse (keyword) and dense (semantic) retrieval. Reciprocal rank fusion avoids assuming scores are comparable across retrievers. Different corpora and tasks benefit from different weights.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>AutoMergingRetriever (hierarchical node merging) MUST use HierarchicalNodeParser with matching chunk sizes. Mismatched sizes silently produce no merges. Test merge behavior explicitly before production use.</statement>
+      <rationale source="v1-source">AutoMerging checks if enough child nodes are retrieved, then merges them back to their parent for context. This works only if the parser created explicit parent-child relationships. Broken setup silently fails (no merges occur).</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Reranking MUST use either a local cross-encoder (SentenceTransformerRerank) or Cohere API (CohereRerank). Apply AFTER vector retrieval to refine top-k. Cost is ~$0.001/query for Cohere; use locally if QPS permits.</statement>
+      <rationale source="v1-source">Reranking improves precision (fewer false positives) at the cost of a second ranking pass. Local cross-encoders are free but single-threaded; Cohere is parallelizable and handles edge cases better. Trade off cost vs. quality.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Structured output via Pydantic output parsers MUST match the query task. For open-ended questions use simple text; for fact extraction use a schema with required fields and validation.</statement>
+      <rationale source="v1-source">Pydantic parsing enforces output shape; the LLM is prompted to follow the schema. If the schema is wrong, the parser fails and the agent gets an error. Design schemas carefully.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Custom QA prompts MUST be tested with real queries before deployment. Prompt injection (user input in the prompt) requires careful escaping. Always use PromptTemplate with placeholder names, never string concatenation.</statement>
+      <rationale source="v1-source">Poorly designed prompts cause the LLM to ignore context or produce hallucinations. Template placeholders ({context_str}, {query_str}) are auto-escaped; manual concatenation risks injection.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Refine response mode (iterative refinement) SHOULD only be used when source fidelity is critical (legal, medical). For typical Q&amp;A, `compact` is sufficient and 10x faster.</statement>
+      <rationale source="v1-source">Refine mode processes passages sequentially, refining the answer with each one. This is slow (multiple LLM calls) but ensures all context is incorporated. Compact mode is approximate but fast.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Wrap query engines in QueryEngineTool with precise descriptions. Register with the agent. The agent routes questions to the right tool and validates output. Test tool routing with unit queries before production.</statement>
+      <rationale source="v1-source">Tools are the agent's interface to retrieval. Clear descriptions enable routing; ambiguous ones cause wrong-tool selection. Unit testing routing prevents silent failures in production.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>For high-QPS agents, cache routing decisions and retrieved node IDs. Log every query with a request ID and log retrieved node IDs for debugging wrong answers. Set up alerts for low confidence (top node score &lt; 0.7).</statement>
+      <rationale source="v1-source">At scale, routing becomes a bottleneck (each route is an LLM call). Caching routes for repeated patterns saves cost. Logging node IDs enables post-hoc analysis of bad answers.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>When agents use NLSQLTableQueryEngine (SQL generation), ALWAYS show the generated SQL to a human before executing on write-capable connections. Test on read-only schema first.</statement>
+      <rationale source="v1-source">LLM-generated SQL can be syntactically valid but semantically wrong (e.g., dropping the wrong table). Human-in-the-loop prevents data loss.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="RAG Feature Acceptance Contract — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that must hold for any RAG feature acceptance contract. These are the HARD rules — stakeholder pressure to ship does not override them.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-per-intent-decomposition" testable="true" depth="essential">
+      <statement>A single contract MUST decompose the RAG feature into ≥2 named intent classes (e.g. policy-lookup, troubleshooting, comparison). One global metric set across all intents is forbidden.</statement>
+      <rationale source="Pinecone — Why your RAG fails in production (2024); Anthropic — Building effective agents (2024)">Different intents tolerate different failure modes. A policy lookup MUST be faithful (no hallucination); a brainstorming intent MUST be relevant but may diverge from sources. Averaging metrics across intents hides class-specific failures and ships features that are correct on average but broken on the intent that actually matters to revenue.</rationale>
+    </rule>
+
+    <rule id="r2-three-signatures" testable="true" depth="essential">
+      <statement>The contract is invalid until three roles have explicitly signed: Product Manager (user outcome + acceptable failure mode), Subject-Matter Expert (correctness rubric with examples), ML engineer (offline metric thresholds + online metric pair). No proxy signatures.</statement>
+      <rationale source="Google PAIR — People + AI Guidebook; Microsoft Responsible AI Standard v2">Without PM, thresholds disconnect from business outcome. Without SME, "correct" defaults to LLM-judge consensus which drifts toward fluent-but-wrong. Without ML engineer, thresholds are aspirational, not measurable. All three signatures must be in version control, dated, with names.</rationale>
+    </rule>
+
+    <rule id="r3-offline-paired-with-online" testable="true" depth="essential">
+      <statement>Every offline metric threshold in the contract MUST be paired with at least one online metric. Offline-only contracts are forbidden because offline metrics on a fixed eval set predict shipped quality poorly.</statement>
+      <rationale source="Shankar et al. — Who validates the validators? (2024); industry post-mortems from Bing, Notion AI">Eval-set overfit is the dominant RAG failure pattern. Offline faithfulness ≥ 0.85 on a 200-query golden set does not predict whether real users escalate to humans. The contract MUST list the production telemetry signal (CSAT, deflection rate, thumbs-down rate, follow-up-query rate) that confirms the offline gate held in reality.</rationale>
+      <example>
+        <pair offline="faithfulness ≥ 0.85" online="thumbs-down rate ≤ 4%"/>
+        <pair offline="answer-relevance ≥ 0.75" online="follow-up-rephrase rate ≤ 15%"/>
+        <pair offline="retrieval-recall@5 ≥ 0.9 on labelled queries" online="zero-result rate ≤ 2%"/>
+      </example>
+    </rule>
+
+    <rule id="r4-threshold-defensibility" testable="true" depth="essential">
+      <statement>Every numerical threshold MUST cite either (a) the baseline number it improves over (current system, human baseline, or competitor), or (b) the user-acceptable error rate from PM. "0.85 because it sounds high" is invalid.</statement>
+      <rationale source="DORA — Accelerate (measure what matters); classical industrial QC">A threshold without a baseline is unfalsifiable. The contract MUST capture: "Current human-handled deflection is X%. We accept shipping at ≥0.7X% deflection because SME judges the answer quality at that point matches a junior agent." This makes the bar negotiable in writing.</rationale>
+    </rule>
+
+    <rule id="r5-recontract-trigger" testable="true" depth="essential">
+      <statement>The contract MUST define explicit recontract triggers: query-distribution drift threshold, model upgrade event, SME availability for re-rubric, or detected online-vs-offline divergence ≥ 20%. When triggered, the contract is opened, not silently revised.</statement>
+      <rationale source="Anthropic — Evals (2024); production ML drift literature (Tabular, EvidentlyAI)">Without a recontract trigger, the contract becomes wallpaper. The most common production failure is the silent drift: query mix shifts, embeddings model is updated, the offline eval set still passes, but online metrics fall. The recontract trigger turns drift into a calendar event with named owners.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Two-intent contract excerpt">
+      <code lang="yaml"><![CDATA[
+feature: support-rag
+intents:
+  policy-lookup:
+    pm_outcome: "Resolve customer policy questions without human escalation"
+    acceptable_failure: "Refuse to answer (route to human) is acceptable; hallucinated policy text is NOT"
+    sme_rubric:
+      pass:   "Cites correct policy section; quoted text matches source verbatim"
+      borderline: "Cites correct section; paraphrases instead of quoting"
+      fail:   "No citation OR cited section does not contain the claim"
+    offline:
+      faithfulness: ">= 0.92"            # baseline: junior agent 0.94
+      context-precision: ">= 0.85"
+    online:
+      thumbs-down-rate: "<= 3%"          # baseline: today 7%
+      escalation-rate: "<= 12%"          # baseline: today 22%
+  troubleshooting:
+    pm_outcome: "Walk user through fix; partial diagnosis is acceptable"
+    acceptable_failure: "Wrong-but-safe step is acceptable; destructive wrong step is NOT"
+    sme_rubric:
+      pass:   "Steps in correct order; no destructive step before confirmation"
+      fail:   "Recommends data-destructive action without prior backup step"
+    offline:
+      answer-relevance: ">= 0.80"
+      destructive-step-detector: "== 0"  # hard zero
+    online:
+      follow-up-rephrase-rate: "<= 18%"
+      data-loss-incidents: "== 0"
+signatures:
+  pm:          "alice@co  2026-04-12  v1.2"
+  sme:         "ravi@co   2026-04-12  v1.2"
+  ml_engineer: "jonas@co  2026-04-12  v1.2"
+recontract_triggers:
+  - "query_intent_distribution_shift_chi2_p < 0.01"
+  - "embedding_model_upgrade"
+  - "online_vs_offline_divergence >= 0.20"
+      ]]></code>
+      <note>Illustrates r1 (two intents), r2 (three signatures with dates), r3 (offline+online pairs), r4 (baselines cited), r5 (explicit triggers).</note>
+    </example>
+
+    <example type="bad" title="Single-intent vanity-metric contract">
+      <code lang="yaml"><![CDATA[
+feature: support-rag
+metrics:
+  bleu: ">= 0.4"
+  rouge_l: ">= 0.5"
+signed_off_by: "team lead"
+      ]]></code>
+      <note>r1 violation (no intents), r2 violation (no PM / SME / ML triad), r3 violation (no online metric), r4 violation (no baseline; BLEU/ROUGE are notoriously poor proxies for RAG quality), r5 missing.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

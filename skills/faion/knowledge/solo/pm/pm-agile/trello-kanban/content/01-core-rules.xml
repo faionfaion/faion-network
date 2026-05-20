@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="trello-kanban Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for trello-kanban. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Keep boards to 5–7 lists maximum; embed WIP limits directly in list names.</statement>
+      <rationale source="v1-source">Visual scanning degrades beyond 7 lists; embedding WIP limits ("In Progress [WIP:3]") makes limits visible to humans and queryable by agents without a separate config file.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use custom fields (Story Points, Sprint) instead of encoding metadata in card titles.</statement>
+      <rationale source="v1-source">Agents can query custom fields directly via API with customFieldItems=true; parsing metadata from titles requires fragile string matching.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>One deliverable per card; use checklists for subtasks, not separate cards.</statement>
+      <rationale source="v1-source">Atomic cards keep WIP limits meaningful and flow metrics accurate.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Limit labels to 8–12; use one type label per card (Feature OR Bug, not both).</statement>
+      <rationale source="v1-source">Over-labeling creates noise; type exclusivity makes pie-chart reporting accurate.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Define custom fields: Story Points (number), Sprint (dropdown), Estimate (dropdown: XS/S/M/L/XL), Component (dropdown), PR Link (text).</statement>
+      <rationale source="v1-source">Custom fields enable agent queries and reporting without text parsing; dropdown fields prevent free-text variants.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use Butler rules for mechanical card moves; use Butler buttons for triggered multi-step workflows that require human initiation (Start Work, Submit for Review, Archive Completed).</statement>
+      <rationale source="v1-source">Rules run automatically and should be reserved for deterministic transitions; buttons give humans control over multi-step state changes that should not run without intent.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Enable these Power-Ups in order of value: Butler (automation), Custom Fields (metadata), Card Aging (stale detection), Calendar (due date visualization). Add GitHub and Slack only if the team actively uses both.</statement>
+      <rationale source="v1-source">Free and Standard plans allow 1 Power-Up on free tier; prioritize automation and metadata over visualization. Card Aging surfaces stale work passively without a separate process.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Always request customFieldItems=true when fetching cards that need custom field values; resolve member IDs to names via GET /1/members/{id} before producing human-readable reports.</statement>
+      <rationale source="v1-source">The default card response omits custom field values; member IDs are UUIDs that agents must resolve to names for any report a human will read.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Archive cards via PUT /1/cards/{id}?closed=true; never delete cards.</statement>
+      <rationale source="v1-source">Archived cards remain queryable via GET /boards/{id}/cards?filter=closed for history and metrics; deleted cards are unrecoverable.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Agents must request customFieldItems=true in card list queries and resolve member IDs to names before producing any human-readable output.</statement>
+      <rationale source="v1-source">Default card responses omit custom fields; member IDs (UUIDs) are meaningless to humans in reports. Both require extra API calls that must be built into the agent pipeline, not added ad-hoc.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Register webhooks at board level, not per-card; always compare incoming webhook payloads against cached state to determine what changed — Trello sends the full card object on every event, not a diff.</statement>
+      <rationale source="v1-source">Board-level webhooks survive card copies and board recreations; without diff comparison an agent cannot determine whether the label changed, the due date changed, or both.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Require human approval before bulk label changes or bulk archiving — there is no bulk undo in Trello.</statement>
+      <rationale source="v1-source">Bulk operations without human review are irreversible; a single bad filter can archive hundreds of active cards.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>When an agent creates a card and immediately queries it, add a 2-second delay before the query — Butler rules run asynchronously and the card may not yet reflect applied labels or moves.</statement>
+      <rationale source="v1-source">Butler rule execution is async; the agent's read immediately after write may see the pre-Butler state, producing incorrect validation results.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Trello API rate limit is 300 requests per 10 seconds per token. When looping over 500+ cards with custom field fetches, implement batching with a 100ms delay between requests to stay under the limit.</statement>
+      <rationale source="v1-source">Each custom-field fetch is a separate request; 500 cards with custom fields = 1000+ requests. Hitting the limit causes 429 errors that break the pipeline mid-run.</rationale>
+    </rule>
+  </section>
+</text>

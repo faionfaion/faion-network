@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="gha-workflow-structure Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for gha-workflow-structure. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Design the job dependency graph (needs: relationships) as a DAG BEFORE writing YAML. Jobs without needs: run in parallel; jobs with needs: run after their dependencies. Never serialize jobs that can run in parallel.</statement>
+      <rationale source="v1-source">Sequential jobs on GHA-hosted runners waste wall-clock time and runner-minutes. A lint + test + build chain that could be lint → (test || build) in parallel cuts CI time by 30-50%.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Concurrency groups for PR/push CI workflows MUST use group: ${{ github.workflow }}-${{ github.ref }} with cancel-in-progress: true. Concurrency groups for deployment workflows MUST use group: deploy-${{ inputs.environment }} with cancel-in-progress: false.</statement>
+      <rationale source="v1-source">A shared global concurrency group cancels production deploys when a new commit to a feature branch triggers a CI run with the same group name. Per-ref grouping for CI and per-environment grouping for deploys prevents cross-contamination.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every scheduled workflow MUST also have a workflow_dispatch trigger so operators can run it manually outside the cron schedule during incidents.</statement>
+      <rationale source="v1-source">A scheduled backup or security scan that only runs at 02:00 UTC cannot be manually triggered after an incident that happened at 14:00. workflow_dispatch is a zero-cost safety valve.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-cost-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-cost-optimization. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Before purchasing any Reserved Instances or Savings Plans, run a 30-day utilization baseline from Cost Explorer for each instance family. Purchase Compute Savings Plans first (most flexible — covers EC2, Fargate, Lambda across all regions and instance families) at a 1-year no-upfront commitment for the proven baseline only. Cover the remaining stable compute with EC2 Instance Savings Plans or Regional RIs. Leave 20–30% on-demand for burst. Do NOT commit based on a single-day or same-day spend figure — Cost Explorer data is delayed up to 24h.</statement>
+      <rationale source="v1-source">Compute Savings Plans provide up to 66% discount with maximum flexibility — changing instance family, region, or OS does not void the plan. RIs are cheaper (up to 72%) but lock instance family, region, and OS. Buying too much commitment leaves unused reservation that cannot be refunded. Leaving 20–30% on-demand accommodates traffic spikes without over-committing.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Every S3 bucket MUST have a lifecycle policy defined at creation time. Buckets holding variable-access data MUST use S3 Intelligent Tiering with a monitoring threshold of 128KB (objects smaller than this are never tiered and incur only Standard cost). Compliance archives MUST use S3 Glacier Instant Retrieval or Glacier Deep Archive after a defined retention boundary. EBS snapshots older than 30 days for non-prod and 90 days for prod MUST be reviewed and deleted if not required for recovery.</statement>
+      <rationale source="v1-source">S3 Standard tier is billed for all stored bytes regardless of access frequency. Intelligent Tiering automatically moves infrequently accessed objects to cheaper tiers without retrieval fees. EBS snapshots are charged per GB stored and accumulate without lifecycle policies — a common source of unexplained storage costs in accounts older than 6 months.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>All VPCs MUST have Gateway VPC endpoints for S3 and DynamoDB enabled — they are free and eliminate NAT processing charges for traffic to those services. EKS/ECS workloads pulling images from ECR or writing logs to CloudWatch MUST use Interface endpoints for ecr.api, ecr.dkr, and logs. Dev and staging VPCs SHOULD use a single NAT Gateway instead of one per AZ — the cost difference for non-production environments with lower traffic is significant relative to the HA benefit.</statement>
+      <rationale source="v1-source">NAT Gateway charges $0.045/GB for all processed data. A EKS node pulling a 1GB container image generates $0.045 in NAT costs. Interface endpoints for ECR cost $0.01/hour plus $0.01/GB — at moderate image pull volume, endpoints pay for themselves. CloudFront reduces data transfer costs from S3 by up to 50% and improves latency for geographically distributed users.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="hooks Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for hooks as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Exit code 2 blocks the tool — if your hook crashes unexpectedly (Python exception), it exits non-zero and blocks silently.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always wrap JSON parsing in try/except. Malformed input should default to allowing (exit 0), not blocking. Test hooks manually before deploying.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Hooks run synchronously; a slow hook (API call, heavy computation) adds latency to every tool call it matches.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Set aggressive timeouts: "timeout": 10 for simple checks, never leave default 60s. Keep hook logic under 30 lines. Delegate complex logic to agents or background scripts.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>suppressOutput: true in the hook JSON response hides the permission prompt — accidentally suppressing all output makes debugging hard.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Use suppressOutput sparingly. When suppressing, always log the decision to a file (~/.claude/hook-audit.log) for visibility.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Regex matchers in matcher field must be valid JavaScript regex; PCRE syntax doesn't work.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Test matcher patterns in JavaScript environment first. Prefer simple exact matches ("Bash") over complex regex when possible.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Hooks defined in component frontmatter (skills/agents) run only while that component is active — not globally.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>For global hooks, register in ~/.claude/settings.json or .claude/settings.json. Document component-scoped hooks clearly in the skill/agent README.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>The CLAUDE_ENV_FILE trick (persist env vars) only works in SessionStart hooks; other hooks cannot persist env between calls.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>For persistent state, write to a file or use a shared JSON config. SessionStart is the only hook that can persist environment variables across sessions.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>An agent that writes hook scripts and registers them cannot use them in the same session — hooks load at startup only.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Document that agents must restart the session or continue with a new session to use newly-installed hooks. Plan multi-session workflows when hook installation is part of the task.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>If a PreToolUse hook blocks a tool the agent considers essential, the agent may enter a retry loop.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Design hooks to provide actionable error messages explaining what alternative to use. Never block without guidance.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Hooks with permissionDecision: "allow" bypass the normal permission prompt — this is powerful but means the user has no visibility into what was auto-approved.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Log these approvals to ~/.claude/hook-audit.log so the user can audit what was auto-approved and revoke it if needed.</repair>
+    </failure-mode>
+    <failure-mode id="fm-10" severity="medium">
+      <description>The updatedInput field in PreToolUse output lets a hook rewrite the command Claude executes — powerful but can cause unexpected behavior if the agent doesn't know the command was modified.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Use updatedInput sparingly. Always log or display what modification was made. Never silently modify input in ways that change semantics.</repair>
+    </failure-mode>
+    <failure-mode id="fm-11" severity="medium">
+      <description>Stop hooks that return {"decision": "block"} prevent the agent from completing.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always include a "reason" so the agent knows why it was blocked and what to do next.</repair>
+    </failure-mode>
+    <failure-mode id="fm-12" severity="medium">
+      <description>UserPromptSubmit hooks run before Claude sees the prompt — a hook that blocks here silently drops the user's message.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Always show a reason in stopReason so the user knows what happened.</repair>
+    </failure-mode>
+  </section>
+</text>

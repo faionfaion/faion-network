@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ruby-rails Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ruby-rails. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every endpoint that touches the database MUST delegate to a Service Object (Users::CreateService, Orders::ProcessService). The service MUST wrap database operations in ActiveRecord::Base.transaction and return a ServiceResult (success/failure with data or errors).</statement>
+      <rationale source="v1-source">Services isolate business logic from HTTP, making it testable without a request and reusable across API/web/CLI. Transactions ensure data consistency. ServiceResult provides an explicit contract so callers don't have to catch exceptions.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>A Service MUST raise ActiveRecord::RecordInvalid on validation failures (save!) and catch it to return a ServiceResult.failure. It MUST NOT swallow exceptions; catch specific errors (RecordInvalid, PaymentGatewayError) and re-raise unexpected errors so they bubble to error tracking (Sentry, etc.).</statement>
+      <rationale source="v1-source">save! raises when validations fail. Catching RecordInvalid and converting to ServiceResult.failure is idiomatic Rails. Re-raising unexpected errors ensures they bubble to monitoring so on-call engineers know a service is broken.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every model MUST have a model spec using shoulda-matchers (validate_presence_of, validate_uniqueness_of, have_one, have_many) to document and test constraints. Scope specs MUST isolate the WHERE clause: create(:user, active: true) and create(:user, active: false), then assert User.active returns only the active one.</statement>
+      <rationale source="v1-source">Shoulda matchers read as documentation. Scope specs catch regressions when someone refactors the WHERE logic. Model specs are fast (no HTTP, no full Rails setup) and isolated.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Service specs MUST cover the happy path (valid params → success result, data persisted, side effects dispatched) and error cases (invalid params → failure result with errors, no data persisted).</statement>
+      <rationale source="v1-source">Service specs verify the contract: given input, the service returns success/failure. Error cases are as important as happy paths — they document what the service does when things go wrong.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Every async operation (email, export, data sync) MUST be enqueued as a Sidekiq Job (include Sidekiq::Job, sidekiq_options queue: ..., retry: ...). Jobs MUST catch specific exceptions (PaymentGatewayError) with custom retry logic and re-raise unexpected errors so monitoring systems catch them.</statement>
+      <rationale source="v1-source">Sidekiq decouples async work from the request lifecycle. If email dispatch fails, the job retries; the user's account creation is not rolled back. Retry policies ensure transient failures (network blips) are retried; permanent failures (invalid email) fail fast.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Job perform methods MUST handle missing records gracefully (ActiveRecord::RecordNotFound). Jobs MUST log via Sidekiq.logger, not puts, so logs appear in the job queue monitoring system.</statement>
+      <rationale source="v1-source">A job may be enqueued for an object that is later deleted. Logging via Sidekiq.logger ensures the message appears in job monitoring dashboards (Sidekiq Pro, ContractuallyObliged, etc.).</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="go-backend Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for go-backend. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use internal/ to prevent external imports; use cmd/ for multiple binaries; keep pkg/ flat and package-focused.</statement>
+      <rationale source="v1-source">The internal/ directory enforces module boundaries at the Go compiler level. Anything exposed in pkg/ becomes a public contract and can never be removed without breaking external consumers. Keep exports minimal.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Define interfaces at the consumer (handler defines service.UserService, not the service package).</statement>
+      <rationale source="v1-source">This keeps internal/service swappable in tests and prevents circular dependencies. The handler owns its dependency contract.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Always pass ctx := c.Request.Context() into the service layer; never call DB drivers without a context.</statement>
+      <rationale source="v1-source">Context propagation enables timeouts, cancellation, and request-scoped values throughout the call chain. Missing context causes requests to hang on shutdown or context deadline events.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Always use binding:"required" and other validator tags on request struct fields; never validate in handler logic.</statement>
+      <rationale source="v1-source">Declarative validation keeps handlers thin and makes constraints visible at the type level. Validator errors are JSON-safe already.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Centralize the error handler middleware and forbid c.JSON(http.StatusXXX, err.Error()) directly in handlers — it leaks internal errors.</statement>
+      <rationale source="v1-source">One place to handle errors prevents inconsistent response formats and info leaks. All errors go through the middleware to a standardized response shape.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use errgroup.WithContext over hand-rolled WaitGroup+errCh whenever there's an error to bubble up; it composes with cancellation.</statement>
+      <rationale source="v1-source">errgroup handles context cancellation and error propagation automatically. Manual patterns are verbose, error-prone, and hard to test. errgroup provides both synchronization and error collection in one API.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Define interfaces at the consumer (handler defines service.UserService, not the service package) — this keeps internal/service swappable in tests.</statement>
+      <rationale source="v1-source">Dependency inversion prevents circular imports and makes testing trivial with interface mocks.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Always pass ctx := c.Request.Context() into the service layer; never call DB drivers without a context.</statement>
+      <rationale source="v1-source">Context propagation enables timeouts, cancellation, and request-scoped values throughout the call chain.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Centralize the error handler middleware and forbid c.JSON(http.StatusXXX, err.Error()) directly in handlers — it leaks internal errors.</statement>
+      <rationale source="v1-source">One place to handle errors prevents inconsistent response formats and info leaks.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Run golangci-lint run --new-from-rev=HEAD~1 in CI so agents only have to fix what they touched.</statement>
+      <rationale source="v1-source">Incremental linting reduces noise and focuses on actual changes, not pre-existing issues.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Keep go.mod clean: agents that add a dep must justify it in the commit body. Prefer stdlib + Gin/Echo + sqlx/pgx + zap.</statement>
+      <rationale source="v1-source">Each dependency increases maintenance burden and attack surface. Stick to a curated set.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Handlers receive HTTP requests, validate input, call service methods, and format responses. They must never touch the database directly or access repositories.</statement>
+      <rationale source="v1-source">Keeping the handler focused on HTTP contract makes it easy to test in isolation and switch between web frameworks without changing service code.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Services contain business logic and coordinate repositories. They must accept context and propagate it to all I/O operations.</statement>
+      <rationale source="v1-source">Business logic isolated in the service layer is testable without a database or web server, and reusable across HTTP handlers, gRPC, CLI, etc.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Repositories handle data access. They must be the only code that imports DB drivers and SQL directly.</statement>
+      <rationale source="v1-source">Centralizing data access makes it easy to swap implementations (e.g., swap Postgres for SQLite in tests) and audit all database operations in one place.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Place recovery and logging middleware early (registered first) so they wrap all subsequent middleware. Place auth and validation middleware specific to routes (via groups).</statement>
+      <rationale source="v1-source">Recovery must wrap everything to catch panics. Logging at the outer layer captures the complete request cycle. Route-specific middleware attached to groups keeps auth constraints visible at the routing level.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>Place the error handler middleware last so it wraps handlers that set c.Errors. Always call c.Next() in your middleware to continue the chain.</statement>
+      <rationale source="v1-source">Error handlers sitting outside the middleware chain never see errors set inside handlers. Missing c.Next() breaks the chain — subsequent handlers don't run.</rationale>
+    </rule>
+    <rule id="r17" testable="true" depth="essential">
+      <statement>Write unit tests for service and repository logic using interface mocks (mockgen). These tests should run in milliseconds and need no database setup.</statement>
+      <rationale source="v1-source">Fast unit tests enable rapid iteration. Mocking repositories makes the service testable in complete isolation.</rationale>
+    </rule>
+    <rule id="r18" testable="true" depth="essential">
+      <statement>Write integration tests for handlers using an in-memory test database (SQLite). These verify the handler → service → repo → DB flow end-to-end.</statement>
+      <rationale source="v1-source">Integration tests catch issues at boundaries and ensure the contract between components actually works. In-memory databases run in seconds.</rationale>
+    </rule>
+    <rule id="r19" testable="true" depth="essential">
+      <statement>Use go test -race to detect data races and -cover to track coverage. Keep coverage &gt;80% for service and repository layers.</statement>
+      <rationale source="v1-source">Race detection catches concurrency bugs that are hard to reproduce. Coverage metrics prevent untested code paths shipping to production.</rationale>
+    </rule>
+    <rule id="r20" testable="true" depth="essential">
+      <statement>Every goroutine you start must have a path to exit. Use context.Done(), close(channel), or select to ensure the goroutine receives a shutdown signal.</statement>
+      <rationale source="v1-source">Leaked goroutines accumulate over time and eventually exhaust system resources. Graceful shutdown requires all goroutines to exit on signal.</rationale>
+    </rule>
+    <rule id="r21" testable="true" depth="essential">
+      <statement>Use sync.WaitGroup or errgroup.Group to track running goroutines. Call wg.Wait() before shutdown to ensure all workers have exited.</statement>
+      <rationale source="v1-source">WaitGroup provides a synchronization barrier. errgroup additionally handles error propagation, which is common in worker pools.</rationale>
+    </rule>
+    <rule id="r22" testable="true" depth="essential">
+      <statement>Test for goroutine leaks with go test -race. CI should fail if the test suite leaves goroutines running.</statement>
+      <rationale source="v1-source">Race detection catches leaks in tests. If tests leak goroutines, production code will too.</rationale>
+    </rule>
+  </section>
+</text>

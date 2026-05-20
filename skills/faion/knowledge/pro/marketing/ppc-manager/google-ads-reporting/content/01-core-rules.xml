@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="google-ads-reporting Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for google-ads-reporting. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Divide cost_micros and cost_per_conversion by 1,000,000 close to the data source in the ETL layer; never pass raw micros to downstream consumers.</statement>
+      <rationale source="v1-source">Every layer that receives raw micros is a potential off-by-1,000,000 bug. Converting once at the source eliminates the entire class of error.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use search_stream for any query that could return more than 10,000 rows; use search (unary) only for small bounded result sets.</statement>
+      <rationale source="v1-source">The search endpoint has a response size cap and paginates; large queries time out. search_stream returns batches and handles large data sets without pagination.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Always include segments.date in the WHERE clause; omitting it returns lifetime totals, not the period you intend.</statement>
+      <rationale source="v1-source">Without segments.date, GAQL returns all-time aggregates. Agents summing "daily" data on lifetime totals will produce wildly inflated reports.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Pin api_version in client config and bump on a calendar schedule every 9 months or fewer; subscribe to Google Ads API release notes.</statement>
+      <rationale source="v1-source">Google deprecates API versions every ~9 months. Hardcoded version strings break silently on rollover without any warning in the response.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>segments.date uses the account timezone; normalize to UTC manually when joining with GA4 or server logs that use a different timezone.</statement>
+      <rationale source="v1-source">Multi-account agents computing a single "today" across accounts in different timezones will produce off-by-one date gaps in reports.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Process mutations in batches of up to 5,000 operations per request; never issue one API call per row.</statement>
+      <rationale source="v1-source">The Google Ads API allows up to 5,000 operations per mutate call. Single-operation loops exhaust quota and are orders of magnitude slower than batching.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Before auto-pausing any keyword or ad group: enforce a minimum impression threshold (5,000+), minimum spend threshold, minimum age (7+ days), account allow-list, and emit a paused-list log per run.</statement>
+      <rationale source="v1-source">Auto-pause agents that trip on day-1 of a fresh campaign or on low-data keywords kill momentum without evidence. Each guardrail prevents a distinct failure mode.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Build a change_event archive job from day one; run it daily because change_event only retains 30 days of history.</statement>
+      <rationale source="v1-source">When something unexpectedly breaks, the first diagnostic question is "who changed what and when." Missing even a single day of change_event creates permanent audit gaps.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Filter the change_event query to the specific resource type needed; broad queries on large accounts return thousands of rows and burn quota.</statement>
+      <rationale source="v1-source">change_event queries without a resource_type filter return all changes across all entity types. On large accounts this easily exceeds result limits and wastes daily quota.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>One agent run equals one query batch equals one sink write; do not multiplex tasks in a single API session.</statement>
+      <rationale source="v1-source">Multiplexed sessions complicate retry logic, make partial-failure handling ambiguous, and produce inconsistent snapshots when one query succeeds and another fails.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Include account-level filters (customer.status = ENABLED) when iterating MCC trees; cancelled accounts return malformed shapes.</statement>
+      <rationale source="v1-source">MCC trees contain accounts in various states. Cancelled or suspended accounts return partial data that breaks downstream aggregations without obvious errors.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Retry QUOTA_ERROR and INTERNAL_ERROR with exponential backoff (initial delay 1s, multiply by 2, max 3 attempts); never retry AUTHENTICATION_ERROR or AUTHORIZATION_ERROR.</statement>
+      <rationale source="v1-source">Quota and internal errors are transient. Auth errors will not resolve without intervention and retrying them wastes quota and delays diagnosis.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Track API calls with a per-day token bucket (max 15,000 operations/day for Basic Access); share the bucket across all workers for the same account.</statement>
+      <rationale source="v1-source">Basic Access tier has a 15,000 operations/day limit per account. Reporting agents pulling data hourly can consume the daily limit before mutation agents can execute.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Reporting agents must be read-only; mutations (pause, budget change, status flip) require a separate agent with explicit human approval before execution.</statement>
+      <rationale source="v1-source">Mixing read and write in one agent increases blast radius. A reporting bug that accidentally triggers a mutation can pause campaigns or deplete budgets before anyone notices.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>Always store raw GAQL output to BigQuery or disk before transformation; Google occasionally backfills metrics retroactively and raw snapshots are needed to reproduce historical reports.</statement>
+      <rationale source="v1-source">Without raw snapshots, retroactive metric changes produce unexplained discrepancies between current reports and cached dashboards, destroying trust in the data.</rationale>
+    </rule>
+  </section>
+</text>

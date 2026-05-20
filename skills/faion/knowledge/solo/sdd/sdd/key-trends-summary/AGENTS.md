@@ -1,35 +1,76 @@
+---
+slug: key-trends-summary
+tier: solo
+group: sdd
+domain: sdd
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Orientation reference covering six major shifts relevant to SDD practitioners: SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); docs-as-code and LLM-optimized documentation; ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; LLM-first workflows (context packing, spec-first, agentic MCP); platform engineering growth (45% → 80% of large orgs by 2026); OpenTelemetry as the #2 CNCF project for observability.
+content_id: "957157a8f69bccfc"
+tags: [sdd, trends, architecture, platform-engineering, observability]
+---
 # Key Trends Summary 2025-2026
 
 ## Summary
 
-Orientation reference covering six major shifts relevant to SDD practitioners: (1) SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); (2) docs-as-code and LLM-optimized documentation; (3) ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; (4) LLM-first workflows (context packing, spec-first, agentic MCP); (5) platform engineering growth (45% → 80% of large orgs by 2026); (6) OpenTelemetry as the #2 CNCF project for observability. Load at the start of architectural planning sessions, not per-task.
+**One-sentence:** Orientation reference covering six major shifts relevant to SDD practitioners: SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); docs-as-code and LLM-optimized documentation; ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; LLM-first workflows (context packing, spec-first, agentic MCP); platform engineering growth (45% → 80% of large orgs by 2026); OpenTelemetry as the #2 CNCF project for observability.
 
-## Why
+**One-paragraph:** Orientation reference covering six major shifts relevant to SDD practitioners: SDD becoming the dominant paradigm for AI-assisted development (intent → spec → plan → execute → review); docs-as-code and LLM-optimized documentation; ADRs as standard practice at AWS, Google Cloud, and Microsoft Azure; LLM-first workflows (context packing, spec-first, agentic MCP); platform engineering growth (45% → 80% of large orgs by 2026); OpenTelemetry as the #2 CNCF project for observability. Load at the start of architectural planning sessions, not per-task.
 
-The bottleneck has shifted from implementation to specification — LLMs generate code at scale, but quality specifications remain a human-centric skill. Adoption metrics: 65% of developers use AI tools weekly, 25% of YC W25 codebases are 95%+ AI-generated, MCP has become the standard protocol for agent-tool interaction. Teams that treat specs as programming interfaces for AI agents ship faster with lower defect rates than teams that rely on narrative requirements.
+## Applies If (ALL must hold)
 
-## When To Use
+- At the start of an architectural planning session, before drafting constitution.md, roadmap.md, or any new spec.md
+- When a human asks what tools to use for SDD/documentation in 2025-2026 (Kiro, Tessl, Spec Kit, MCP, Backstage, Port, Cortex)
+- As context before quarterly roadmap or constitution-revision sessions
+- When evaluating whether to adopt a new tool category (developer portal, observability stack, LLM workflow)
+- When an ADR cites a market-share or adoption claim — load this doc to verify the claim has a recorded source date
 
-- When an agent needs to orient itself on current SDD, observability, and platform tooling before advising on architecture
-- When a human asks what tools to use for SDD/documentation in 2025-2026
-- As a context document before quarterly roadmap sessions
-- When evaluating whether to adopt a new tool (Kiro, Tessl, MCP, etc.)
-
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - As a replacement for methodology-specific docs — use dedicated methodology folders for actionable guidance
 - For time-sensitive tool decisions — this is a snapshot; verify market share data currency before committing
 - For domains not covered here (the doc covers SDD, ADRs, living docs, platform engineering, observability)
-- When the agent already has current context from a more specific source
+- When the agent already has current context from a more specific source loaded this session
+- Per-task — loading on every TASK_ execution wastes tokens; load once per session and rely on planning-time context
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-sdd-and-docs.xml` | SDD core workflow and effectiveness table; living documentation and docs-as-code patterns; developer portal landscape |
-| `content/02-adrs-and-llm-workflows.xml` | ADR lifecycle, storage pattern, best practices; LLM-first adoption metrics and workflow patterns; agentic MCP standard |
-| `content/03-platform-observability.xml` | Platform engineering trajectory; portal vs platform distinction; OpenTelemetry three pillars + profiling |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
-none
+| File | Purpose |
+|------|---------|
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/sdd/sdd/`

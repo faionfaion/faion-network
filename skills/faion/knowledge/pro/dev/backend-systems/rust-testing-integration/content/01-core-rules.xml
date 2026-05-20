@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="rust-testing-integration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for rust-testing-integration. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use tower::ServiceExt::oneshot to drive Axum routers in integration tests. Never bind a real TCP listener on a fixed port (e.g., 127.0.0.1:8080) for HTTP integration tests. If a real listener is needed, bind to :0 and discover the assigned port with local_addr().</statement>
+      <rationale source="v1-source">Hardcoded ports cause CI failures when tests run in parallel — two tests bind the same address and one panics. oneshot drives the router in-process with no socket allocation.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use testcontainers-rs for any integration test that requires a real database. Never point integration tests at a shared dev or staging database. Provide per-test schema isolation (CREATE SCHEMA test_&lt;uuid&gt; + DROP after) when sharing a container across a test suite.</statement>
+      <rationale source="v1-source">Integration tests that share a real Postgres container without isolation fail in CI in random order because one test's INSERT is visible to another's SELECT. Per-test schema or transaction rollback prevents state leak.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Run database migrations (sqlx migrate run or diesel migration run) inside the integration test setup before any assertions. Tests MUST NOT assume migrations are pre-applied in the container.</statement>
+      <rationale source="v1-source">A freshly-started Postgres container has no schema. Tests that skip migration setup produce confusing "relation does not exist" errors that are hard to diagnose in CI.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use insta for snapshot tests of complex structured output (HTML, large JSON, AST). Do not hand-write multi-line assert_eq! strings for outputs longer than ~10 lines.</statement>
+      <rationale source="v1-source">Hand-written expected strings break on every whitespace or ordering change, producing noisy diffs. insta stores the expected value in a .snap file that git tracks and reviews cleanly.</rationale>
+    </rule>
+  </section>
+</text>

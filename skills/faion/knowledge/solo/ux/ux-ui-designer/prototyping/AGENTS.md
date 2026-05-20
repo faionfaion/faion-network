@@ -1,39 +1,77 @@
+---
+slug: prototyping
+tier: solo
+group: ux
+domain: ux-ui-designer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Interactive product representation before code.
+content_id: "f5bac879df67c033"
+tags: [prototyping, ux-design, user-testing, validation, fidelity]
+---
 # Prototyping
 
 ## Summary
 
-A prototype is an interactive representation of a product that simulates the user experience before development. Choose fidelity (low/medium/high) based on what you need to learn — concept validation needs paper, flow testing needs clicks, experience testing needs high-fidelity. Always define learning objectives before choosing a tool.
+**One-sentence:** Interactive product representation before code.
 
-## Why
+**One-paragraph:** Interactive product representation before code. Pick fidelity by learning goal: concept → paper, flow → clickable, experience → high-fi. Plan, build, test, iterate.
 
-Static designs cannot convey interactions. Usability issues stay hidden until development, when fixing them is expensive. Prototyping surfaces interaction gaps with real users before a single line of production code is written.
+## Applies If (ALL must hold)
 
-## When To Use
+- A risky design assumption needs validation before development starts (navigation, onboarding, checkout, auth).
+- Stakeholders disagree on how a flow should work, not just how it looks.
+- The design brief contains 3+ open questions about user behaviour the team cannot answer from data.
+- The team must choose between two or more interaction patterns and needs evidence.
+- Generating a structured prototype plan and usability test script from a design brief.
+- Code prototype is needed to validate technical feasibility (animation perf, gesture handling).
 
-- Validating whether users can complete a critical flow before development starts
-- Aligning stakeholders on how something will work, not just how it looks
-- Testing a risky design assumption (navigation structure, onboarding, checkout)
-- Deciding fidelity level given project constraints and open questions
-- Generating a structured prototype plan and usability test script from a design brief
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- The interaction is motion-dependent or too nuanced for text-based planning (agent can plan, not build).
+- A live coded prototype is required and crosses from UX planning into implementation.
+- No clear testing hypothesis exists — prototyping without defined learning goals wastes cycles.
+- Post-launch optimization where A/B testing or analytics provide faster signal at lower cost.
+- The flow already ships and quantitative product analytics (heatmaps, funnel data) are available.
 
-- The interaction is motion-dependent or too nuanced for text-based planning (agent can plan, not build)
-- A live coded prototype is required — that crosses from UX planning into implementation
-- No clear testing hypothesis exists — prototyping without defined learning goals wastes cycles
-- Post-launch optimization where A/B testing or analytics provide faster signal
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-process.xml` | Fidelity decision matrix, five-step prototype process, handoff artifacts |
-| `content/02-rules.xml` | Concrete rules for scope, testing, and agent-usage gotchas |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/prototype-plan.md` | Prototype plan: objectives, fidelity, scope, interactive elements, test script |
-| `templates/testing-notes.md` | Per-session observation log: tasks, quotes, issues, recommendations |
-| `templates/scaffold-prototype.sh` | Bash script to scaffold a minimal HTML click-through prototype |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/ux/ux-ui-designer/`

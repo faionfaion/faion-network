@@ -1,49 +1,76 @@
+---
+slug: competitive-analysis
+tier: solo
+group: ux
+domain: ux-researcher
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products in the market, and cannot answer stakeholder questions like "what do competitors do?" Analyzing direct competitors surfaces the baseline users already expect; analyzing indirect competitors reveals alternative approaches; analyzing aspirational examples (best-in-class UX from adjacent industries) reveals what "best practice" looks like.
+content_id: "4fb6bb2338696437"
+tags: [competitive-analysis, competitor-research, market-research, ux-design, strategy]
+---
 # Competitive Analysis (UX)
 
 ## Summary
 
-A systematic examination of 3-5 direct competitors, 2-3 indirect competitors, and 1-2
-aspirational examples across predefined criteria (features, user flows, UI patterns, IA,
-content, accessibility). Output is a feature comparison matrix, per-competitor profiles with
-annotated flows, and prioritized recommendations: must-have (table stakes), should-have
-(parity), differentiation opportunities, and anti-patterns to avoid.
+**One-sentence:** Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products in the market, and cannot answer stakeholder questions like "what do competitors do?" Analyzing direct competitors surfaces the baseline users already expect; analyzing indirect competitors reveals alternative approaches; analyzing aspirational examples (best-in-class UX from adjacent industries) reveals what "best practice" looks like.
 
-## Why
+**One-paragraph:** Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products in the market, and cannot answer stakeholder questions like "what do competitors do?" Analyzing direct competitors surfaces the baseline users already expect; analyzing indirect competitors reveals alternative approaches; analyzing aspirational examples (best-in-class UX from adjacent industries) reveals what "best practice" looks like. The structured output converts observations into actionable prioritization: must-have (table stakes), should-have (competitive parity), could differentiate (opportunity gaps), and avoid (observed failure modes).
 
-Without competitive analysis, design teams reinvent solved problems, miss user expectations set
-by other products, and cannot answer stakeholder questions about industry standards. Analyzing
-direct competitors surfaces the baseline users already expect; analyzing aspirational examples
-reveals what "best-in-class" looks like. The structured output converts observations into
-actionable prioritization (table stakes vs. differentiators) rather than a list of screenshots.
+## Applies If (ALL must hold)
 
-## When To Use
+- Trigger: starting a new product or feature where baseline expectations are unclear — run before opening Figma.
+- Trigger: entering a new market segment or geo where user expectations are unknown — run during discovery.
+- Trigger: a competitor ships a significant update (changelog, press release, App Store update note) — run a focused delta-check within 1 week.
+- Trigger: stakeholder asks "what do others do?" and the answer is blocking a design decision — run a 1-day focused pass on the specific flow.
+- Trigger: scheduled cadence — major refresh annually, minor refresh quarterly, focused delta on competitor-update events.
 
-- Before starting a new product or feature — establish the baseline before designing.
-- When entering a new market segment where user expectations are unknown.
-- When a competitor ships a significant update — evaluate whether it shifts user expectations.
-- When stakeholders ask "what do others do?" as a blocker to a design decision.
-- Annually, or after competitor launches, to keep the baseline current.
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Do not substitute competitive analysis for user research — competitors' choices may also be wrong; validate with your own users before adopting patterns.
+- Do not analyze more than 8 competitors in a single pass — depth of analysis degrades; narrow scope or run multiple focused rounds.
+- Do not treat findings as requirements — use them as input to design decisions, not as specifications.
+- When your product targets a problem with no direct competitors — use analogous domain research instead.
+- When the competitive landscape changes faster than you can act (e.g., fast-moving AI tools) — snapshot analysis becomes stale within weeks; update frequently or choose a slower-moving domain.
 
-- Do not substitute competitive analysis for user research — competitors' choices may also be
-  wrong; validate with your own users before adopting patterns.
-- Do not analyze more than 8 competitors in a single pass — depth of analysis degrades; narrow
-  scope or run multiple focused rounds.
-- Do not treat findings as requirements — use them as input to design decisions, not as specs.
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-process.xml` | 6-step procedure: scope, criteria, data gathering, documentation, pattern analysis, insight generation |
-| `content/02-examples.xml` | E-commerce checkout and SaaS onboarding examples; gap analysis framework |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/analysis-plan.md` | Plan skeleton: objective, competitor list with types, evaluation criteria, flows to analyze |
-| `templates/feature-matrix.md` | Comparison matrix: features × competitors with rating legend |
-| `templates/competitor-profile.md` | Per-competitor profile: overview, key screens, flows, strengths/weaknesses, opportunities |
-| `templates/summary-report.md` | Executive report: key findings, feature comparison, UX pattern analysis, recommendations |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/ux/ux-researcher/`

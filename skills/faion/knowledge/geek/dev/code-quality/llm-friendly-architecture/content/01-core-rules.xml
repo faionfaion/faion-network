@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="llm-friendly-architecture Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for llm-friendly-architecture. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Keep source files between 100-300 lines. Files over 300 lines require splitting; files over 800 lines are blocked.</statement>
+      <rationale source="v1-source">LLMs produce off-by-one line errors, missed dependencies, and dropped code when editing large files due to context truncation. Small files are not a style preference — they are an accuracy requirement for AI-assisted work.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Page/Route components: target 30-50 lines, max 100. Feature components: target 80-150, max 250. UI components: target 50-100, max 150. Hooks: target 30-80, max 120. Utilities: target 20-50, max 80. Data files: target 50-200, max 300.</statement>
+      <rationale source="v1-source">Different file types have different natural sizes; enforcing one limit for all types creates unnecessary splits.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Limit directory nesting to 3 levels maximum. Prefer flat layouts within each level.</statement>
+      <rationale source="v1-source">LLMs navigate by globbing and grepping. Deep nesting (6+ levels) requires more tool calls to find files and increases the probability of targeting the wrong path.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Name files after what they do, not where they live. Use pattern {what-it-does}.ts or {domain}-{what}.ts.</statement>
+      <rationale source="v1-source">Agents grep filenames to find code. Ambiguous names (utils.ts, helpers.ts, index.ts) cause agents to open the wrong file and make edits in the wrong location.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use direct imports that reference the actual file, not barrel re-exports. Exception: barrel exports are acceptable at public API boundaries of library packages.</statement>
+      <rationale source="v1-source">Barrel re-exports (export * from './Button') cause agents to edit the barrel file thinking it is the implementation. Direct imports make the file location unambiguous.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Extract static data arrays and objects from components into dedicated files under src/data/. Import them in components.</statement>
+      <rationale source="v1-source">Data co-located with rendering inflates component files to 800+ lines. Extracting to src/data/ reduces the component to 50 lines and makes the data independently editable without touching rendering logic.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Colocate types used in one component with that component. Move types used in 3 or more files to a centralized types/ directory.</statement>
+      <rationale source="v1-source">Centralizing all types creates a large types/index.ts that agents must scan entirely. Colocation reduces the search space for the agent when modifying a component.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Add JSDoc to complex or non-obvious functions. Include param descriptions, return type explanation, and business-domain context.</statement>
+      <rationale source="v1-source">Agents read doc comments before reading implementation when planning edits. A clear JSDoc allows the agent to understand intent without loading the full function body.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>When splitting a file via an agent, verify the original code is removed after creating new files. Agents frequently create the new files but leave duplicate code in the original.</statement>
+      <rationale source="v1-source">Agents executing multi-step refactors lose track of deletion steps when context fills up. The review pass must diff the original against the new files explicitly.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>After a large restructure, explicitly update tsconfig.json path aliases. Agents frequently miss tsconfig changes, leaving path aliases pointing to old file locations.</statement>
+      <rationale source="v1-source">TypeScript path aliases like @/components resolve at compile time. Agents that move files but do not update tsconfig produce code that compiles locally with old cached paths but fails in CI.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Run madge --circular in CI to catch circular dependencies introduced when splitting files.</statement>
+      <rationale source="v1-source">Splitting a large file into sub-modules can accidentally create circular imports if the new modules cross-reference each other. Agents do not reliably detect this during refactoring.</rationale>
+    </rule>
+  </section>
+</text>

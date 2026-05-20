@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="lint-autofix-vs-flag-decision-rule Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for lint-autofix-vs-flag-decision-rule. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>For each finding F surfaced by ruff, biome, eslint, prettier, semgrep, codeql, or any equivalent, the agent MUST auto-apply the autofix iff: (a) kind(F) ∈ {format, import-sort, type-annotation, dead-code, unused-import}; AND (b) tool(F) exposes --fix, --write or --autofix AND the rule for F carries a deterministic fix: block; AND (c) the test suite passes (exit 0) after the fix is applied; AND (d) len(diff) &lt; 50 lines OR every change in the diff carries the same rule ID. If any condition fails, the agent MUST flag the finding via a PR review comment or a draft-PR suggestion and MUST NOT land the change in the same commit.</statement>
+      <rationale source="v1-source">BitsAI-Fix and Factory.ai both confirm pure-syntax autofix is near-100% safe; CodeMender validates by running tests before submitting. The four-condition predicate aligns with that empirical floor and removes "the agent thought it was fine" from the failure modes.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The agent MUST flag (PR review comment or draft PR, never an in-loop commit) any finding belonging to: (1) SAST findings (CodeQL, Semgrep without fix:, Snyk Code) — propose a patch as a suggestion, human reviews; (2) secrets (gitleaks, trufflehog) — ROTATE first via 1Password CLI or vault before any cleanup commit; (3) CVEs (Snyk, Dependabot, Trivy) with no patched version — human picks: replace dep, accept risk with sunset date, or defer; (4) license conflicts (FOSSA, licensee) — ALWAYS human escalation, never bypass; (5) SonarQube cognitive-complexity hotspots — propose refactor as draft PR, human approves.</statement>
+      <rationale source="v1-source">These five classes share a property: the cost of an incorrect autofix is non-local (security exposure, legal liability, dependency-chain breakage) and cannot be reverted by git revert cleanly. The five-class list mirrors faion-network's existing memory rules feedback_no_publish_without_image (always-human gate) and feedback_granular_commits (one logical change per commit), and it is the same boundary CodeMender, Snyk Agent Fix, and Sonar's MCP loop already enforce.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="aws-networking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for aws-networking. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Deploy every production VPC across 3 Availability Zones with three subnet tiers: public (ALB, NAT Gateway), private (application), and data (RDS, ElastiCache); use /20 subnets per tier per AZ inside a /16 VPC.</statement>
+      <rationale source="v1-source">Three tiers enforce network segmentation — data subnets have no route to the internet, only from private subnets. Three AZs survive a single AZ outage with automatic failover. /20 yields 4091 usable IPs per subnet, sufficient for most enterprise workloads with headroom.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use /16 VPC CIDR for production to allow future growth; plan CIDR ranges to avoid overlap with on-premises networks or peered VPCs; use AWS IPAM for multi-account environments.</statement>
+      <rationale source="v1-source">VPC CIDR cannot be changed after creation without recreation. /16 provides 65,536 addresses. Overlapping CIDRs block VPC peering and Transit Gateway attachment. IPAM provides real-time overlap detection across an Organization.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Keep main route table with no routes except local; use explicit subnet associations for public, private, and data route tables; deploy a NAT Gateway per AZ (never shared across AZs).</statement>
+      <rationale source="v1-source">A shared NAT Gateway is a single point of failure — if that AZ goes down, all private subnets in other AZs lose internet access. Per-AZ NAT Gateways maintain egress during zone failures.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Allow 0.0.0.0/0 inbound only on ALB ports 80/443; all other security group ingress rules must reference specific CIDRs or security group IDs; audit monthly via AWS Config rule vpc-sg-open-only-to-authorized-ports.</statement>
+      <rationale source="v1-source">Every open inbound rule is an attack surface. Security groups are the primary perimeter control — overly permissive rules are the most common cause of AWS breaches according to AWS security reports.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use Gateway VPC endpoints for S3 and DynamoDB (free); use Interface endpoints for Secrets Manager, SSM, ECR, CloudWatch Logs, STS, and Monitoring to keep AWS service traffic on the AWS backbone.</statement>
+      <rationale source="v1-source">Without VPC endpoints, traffic to AWS services leaves the VPC via NAT Gateway, incurring data processing charges (USD 0.045/GB). Endpoints eliminate this cost and keep traffic private. Interface endpoints cost ~USD 7.20/month per AZ but break even quickly above ~160 GB egress.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Enable VPC Flow Logs on all VPCs; send to CloudWatch Logs for real-time query or S3 for cost-optimized long-term storage; configure 30-90 day retention; use the v5 format with pkt-srcaddr and pkt-dstaddr custom fields.</statement>
+      <rationale source="v1-source">Flow Logs are the primary forensic tool for network incidents. Without them, there is no record of which IPs communicated with which resources, making incident investigation impossible. Custom fields capture original packet addresses before NAT/proxy translation.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use security group references (not CIDR blocks) between application tiers; reference the ALB security group in app tier, and app security group in RDS tier.</statement>
+      <rationale source="v1-source">Security group references dynamically include all instances in the referenced group. CIDR-based rules require updates whenever instance IPs change, creating maintenance burden and potential security gaps.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Add a description to every security group rule; name security groups with the convention {env}-{app}-{tier}-sg; schedule monthly audits via AWS Config rule vpc-sg-open-only-to-authorized-ports.</statement>
+      <rationale source="v1-source">Descriptions make audit reviews actionable — reviewers understand intent without reverse-engineering from context. AWS Config automates compliance monitoring and alerts on rule violations.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use the default NACL (allow all) as baseline; create custom NACLs only for additional subnet-level guardrails; always configure ephemeral port ranges (1024-65535) in egress rules for stateless NACLs.</statement>
+      <rationale source="v1-source">NACLs are stateless — return traffic must be explicitly allowed. Missing ephemeral port egress rules block all TCP response traffic. Security groups handle most access control more maintainably.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Create Gateway endpoints for S3 and DynamoDB in all private route tables; create Interface endpoints for Secrets Manager, SSM (3 endpoints: ssm, ssmmessages, ec2messages), ECR (dkr and api), CloudWatch Logs, and STS.</statement>
+      <rationale source="v1-source">Gateway endpoints are free and eliminate all NAT Gateway charges for S3/DynamoDB traffic. SSM Session Manager requires 3 specific Interface endpoints to work — missing any one prevents connections.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Attach endpoint policies to Interface endpoints restricting access to specific resources and principals; enable private DNS on all Interface endpoints.</statement>
+      <rationale source="v1-source">Without endpoint policies, any principal in the VPC can use the endpoint to access any resource of that service type. Private DNS ensures existing SDK code automatically routes through the endpoint without code changes.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Use VPC Peering for 2-3 VPCs in the same region; use Transit Gateway for 4+ VPCs, cross-region connectivity, or hybrid on-premises connectivity via Direct Connect or VPN.</statement>
+      <rationale source="v1-source">VPC Peering is simpler and has no per-hour attachment cost — ideal for small deployments. Transit Gateway uses a hub-and-spoke model that scales to thousands of attachments without N x (N-1)/2 peering connections.</rationale>
+    </rule>
+    <rule id="r13" testable="true" depth="essential">
+      <statement>Configure Transit Gateway route tables segmented by environment (prod/non-prod isolation); disable DefaultRouteTableAssociation and DefaultRouteTablePropagation; use blackhole routes for deprecated networks.</statement>
+      <rationale source="v1-source">Default route tables associate all attachments together, creating unintended connectivity between production and development VPCs. Explicit route table assignment enforces environment isolation.</rationale>
+    </rule>
+    <rule id="r14" testable="true" depth="essential">
+      <statement>Use VPC Lattice for application-layer service-to-service connectivity across VPCs and accounts; prefer over VPC Peering when services need built-in auth, routing, and observability.</statement>
+      <rationale source="v1-source">VPC Lattice provides per-service access controls, request-level observability, and HTTP/gRPC routing without managing security groups across peered VPCs. It replaces complex PrivateLink setups for internal service meshes.</rationale>
+    </rule>
+    <rule id="r15" testable="true" depth="essential">
+      <statement>For VPC Peering: enable DNS resolution across peers, reference peer VPC security groups by ID, configure specific routes (not full CIDR), verify no transitive routing assumptions.</statement>
+      <rationale source="v1-source">VPC Peering is not transitive — VPC A peered to VPC B and B peered to VPC C does not create A-to-C connectivity. Teams frequently discover this misconfiguration in production when services cannot communicate.</rationale>
+    </rule>
+    <rule id="r16" testable="true" depth="essential">
+      <statement>For all multi-VPC deployments: use IPAM for central IP planning and overlap detection; document all CIDR allocations; reserve expansion ranges in each VPC.</statement>
+      <rationale source="v1-source">CIDR overlaps block all peering and TGW attachment options. IPAM provides real-time overlap detection and prevents allocation conflicts in multi-account Organizations.</rationale>
+    </rule>
+  </section>
+</text>

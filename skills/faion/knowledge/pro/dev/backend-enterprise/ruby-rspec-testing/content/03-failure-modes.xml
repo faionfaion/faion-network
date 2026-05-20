@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="ruby-rspec-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for ruby-rspec-testing as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Stubbing the method under test: agent stubs the very service method being spec'd — spec always passes regardless of the implementation.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Stubbing the SUT detaches the test from the real code path. Force prompts to explicitly name what is mocked vs real before generating the spec.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>let shadowing: inner context redefines let(:user) with different attributes; outer spec examples silently use the wrong user.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>RSpec resolves let from the nearest enclosing scope, not the outermost. Lint via rubocop-rspec ContextLeakCheck to catch redefined lets.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>before(:all) for DB setup: seed records created before the suite but within a transactional spec — transaction rolls back the seed, second run finds nothing.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>before(:all) runs outside the per-example transaction. Use before(:each) or let! for records that must exist per example. Use shared_context for reusable setup.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>build_stubbed with AR associations queried via count: user.posts.count issues a SQL query; build_stubbed does not persist to DB, so count returns 0 or errors.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>build_stubbed stubs AR persistence methods but not all query interfaces. For association assertions, allow(user).to receive(:posts).and_return([post]) or use create.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>travel_to without the block form: time freezes and never resets; subsequent specs run with stale frozen time.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Without travel_back or the block form, ActiveSupport::Testing::TimeHelpers leaves time pinned globally for the rest of the suite.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Factory cascade bloat: create(:order) triggers user → profile → avatar creation; one spec inserts 5 records, slowing the suite by an order of magnitude.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Factory traits and associations compose automatically; agents copy the nearest factory call. Use build_stubbed or define traits without auto-associations.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Shoulda-matchers on uncalled validators: validate_uniqueness_of(:email) passes even without a DB unique index, giving false confidence.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Shoulda-matchers check model validations in memory; they do not probe the DB constraint. Pair with a request spec that hits the actual constraint.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>VCR cassette drift: cassettes recorded against staging, replayed in CI, miss new fields; specs pass while integration is broken.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Cassettes capture a snapshot of the response. When API contracts change, cassettes are stale but tests pass. Periodically re-record and review diffs.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Shared contexts hide behavior. A shared_context "as admin" mutates state in 8 ways; agent reading the spec sees only 1 line.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Hidden setup makes debugging failures harder. Use shared examples for cross-cutting behavior assertions, shared contexts for reusable setup.</repair>
+    </failure-mode>
+    <failure-mode id="fm-10" severity="medium">
+      <description>should-style matchers mixed with expect-style: codebases end up bilingual. RSpec disabled should for new specs but legacy lingers.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Inconsistent style makes it harder for agents to generate matching code. Enforce expect-style only.</repair>
+    </failure-mode>
+    <failure-mode id="fm-11" severity="medium">
+      <description>Slow suite drift: naïve let! + before(:each) patterns rebuild the world per spec; suite hits 10+ min after a few hundred specs.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Eager setup with let! creates DB writes per spec. Lazy let and build_stubbed keep suites under 1 min.</repair>
+    </failure-mode>
+    <failure-mode id="fm-12" severity="medium">
+      <description>Mock-heavy specs that pass when refactored wrong. Agents stub everything; tests assert on stubs, not behavior. Mutation testing exposes.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Stubbing the SUT detaches tests from real code paths. Mock at boundaries, not internals. Verify real behavior not stubbed behavior.</repair>
+    </failure-mode>
+  </section>
+</text>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-quality-logging Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-quality-logging. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Django projects MUST use structlog + django-structlog for structured JSON logging in production. Configure structlog in settings with: contextvars merge, filter_by_level, add_logger_name, add_log_level, TimeStamper(fmt="iso"), and JSONRenderer for production / ConsoleRenderer for development. Add django_structlog.middlewares.RequestMiddleware to MIDDLEWARE to auto-bind request context. NEVER mix structlog.get_logger() and logging.getLogger() in the same module — pick one per file.</statement>
+      <rationale source="v1-source">structlog's processor chain ensures every log event is JSON-serialized with consistent fields. django-structlog's middleware adds request_id, user_id, and ip automatically — without it, every service function must manually bind context. Mixing structlog and stdlib loggers in the same module produces hybrid output where half the logs are structured and half are plain text, making log queries unreliable.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>All Django production applications MUST configure Sentry with: DjangoIntegration(), CeleryIntegration() if using Celery, RedisIntegration() if using Redis. Set traces_sample_rate=0.1 and profiles_sample_rate=0.1 (not 1.0 — full tracing is expensive). Set send_default_pii=False. Configure before_send to scrub sensitive data. Load SENTRY_DSN from environment variable, never hardcode. Use a custom system check to warn when SENTRY_DSN is missing in production.</statement>
+      <rationale source="v1-source">DjangoIntegration hooks into Django's signal system to capture every 500 error with request context automatically. traces_sample_rate=0.1 captures 10% of transactions — sufficient for performance monitoring without the cost of full tracing. send_default_pii=False prevents automatic capture of cookies, session data, and IP addresses that may violate GDPR. The custom system check catches missing DSN configuration before deployment.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>When using LLMs to generate Django code, always provide: (1) Django + Python version, (2) API framework (DRF or Django Ninja), (3) whether service layer pattern is used, (4) quality requirements (type hints, docstrings, exception handling, query optimization, logging). Generic "write Django code" requests produce untypeable, unoptimized output that requires full rewrite. Provide the function signature and models involved for service generation tasks.</statement>
+      <rationale source="v1-source">LLMs default to the most common Django patterns they've seen, which often lack type hints, use bare except, and miss query optimization. Explicit requirements produce code that passes ruff, mypy, and review without iteration. Function signature + models constrains the LLM to the correct interface instead of inventing its own.</rationale>
+    </rule>
+  </section>
+</text>

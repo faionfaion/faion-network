@@ -1,14 +1,25 @@
-# Customer Success Basics
+---
+slug: ops-customer-success-basics
+tier: pro
+group: marketing
+domain: gtm-strategist
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: A proactive framework for ensuring customers achieve their goals with your product before they churn.
+content_id: "8337f3c3ab716dc4"
+tags: [customer-success, retention, churn, expansion, health-scoring]
+---
+# Customer Success Basics for Solopreneurs
 
 ## Summary
 
-A proactive framework for ensuring customers achieve their goals with your product before they churn. Five stages: Define (one north-star success metric per product), Measure (per-account health score from usage + sentiment + billing), Engage (event-triggered lifecycle touchpoints, not calendar dates), Enable (knowledge base + self-serve resources built before lifecycle emails), Expand (upgrade signals → expansion prompts). Core rule: trigger touchpoints on behavior events, cap automated re-engagements at one per week per account, and never let an agent issue refunds, downgrades, or credits autonomously.
+**One-sentence:** A proactive framework for ensuring customers achieve their goals with your product before they churn.
 
-## Why
+**One-paragraph:** A proactive framework for ensuring customers achieve their goals with your product before they churn. Five stages: Define (one north-star success metric per product), Measure (per-account health score from usage + sentiment + billing), Engage (event-triggered lifecycle touchpoints, not calendar dates), Enable (knowledge base + self-serve resources built before lifecycle emails), Expand (upgrade signals → expansion prompts). Core rule: trigger touchpoints on behavior events, cap automated re-engagements at one per week per account, and never let an agent issue refunds, downgrades, or credits autonomously.
 
-Reactive support addresses problems after they cause churn. Customer success cuts churn by catching low-usage, low-adoption, and low-sentiment signals before the cancellation decision is made. For SaaS, reducing monthly churn from 5% to 3% doubles LTV. Expansion (net revenue retention above 100%) is only reachable when customers are genuinely successful — expansion motions fail on unsuccessful accounts.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Defining success metrics for the first time on a SaaS, course, membership, or service product
 - Building lifecycle email sequences (Day 1/3/7/14/30) with product-event triggers
@@ -16,7 +27,7 @@ Reactive support addresses problems after they cause churn. Customer success cut
 - Designing self-serve enablement: knowledge base, onboarding guides, video library
 - Building expansion playbooks: detect upgrade signals, trigger relevant offers
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Reactive support tickets — use ops-customer-support
 - Detailed health-score modeling and CS KPIs — use ops-customer-success-metrics
@@ -24,17 +35,42 @@ Reactive support addresses problems after they cause churn. Customer success cut
 - Enterprise named-account QBRs — framework covers structure; agents should not drive strategic conversations
 - Pre-sales / SDR motion — use gtm-strategy or growth-cold-outreach
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-framework.xml` | Success definition by product type, touchpoint cadence table, high-touch vs tech-touch model, expansion trigger signals |
-| `content/02-playbooks.xml` | Onboarding playbook, at-risk intervention, expansion path template |
-| `content/03-agent-rules.xml` | Agent safety rules: re-engagement caps, billing autonomy prohibition, sentiment brittleness, PII handling |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/health-score.py` | Minimal health score: usage (40), adoption (30), sentiment (20), billing (10) → score + band |
-| `templates/cs-playbook.md` | Customer success playbook: onboarding table, ongoing triggers, at-risk intervention |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/marketing/gtm-strategist/`

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="ruby-sidekiq-jobs Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for ruby-sidekiq-jobs as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Passing full ActiveRecord objects or hashes containing AR objects into perform_async arguments.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>AR objects serialize via GlobalID and re-fetch on the worker. If the record was deleted between enqueue and execution, findOrFail raises before your idempotency logic runs. Large AR objects also bloat Redis memory. Pass primitive IDs only.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Calling perform_async inside an ActiveRecord transaction: User.transaction { user.save!; SendWelcomeJob.perform_async(user.id) }.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Sidekiq picks up the job before the transaction commits. The worker calls User.find(id) — the row does not exist yet — and the job fails. Use after_commit :enqueue_welcome, on: :create or call perform_async after the transaction block.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>sidekiq_options retry: false to "keep things simple" on jobs touching user-facing state.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>retry: false means the first failure permanently discards the job into the Dead set. A transient network blip deletes a user's welcome email, order confirmation, or subscription activation with no recovery path. Default to retry: 3-5 with dead: true.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Testing with Sidekiq::Testing.inline! as the only test mode without supplementing with fake! + drain.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>inline! runs perform synchronously in the test process, which masks enqueueing-order bugs and prevents testing retry behavior. Use fake! + WorkerClass.drain to test the enqueue-then-drain lifecycle, and inline! only for integration-style tests.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Logging full perform arguments that include API tokens, payment details, or user PII.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Sidekiq logs job arguments by default. Arguments containing secrets appear in log files, Sidekiq Web dashboard (visible to anyone with dashboard access), and error tracker payloads. Redact secrets before logging or use Sidekiq Pro argument encryption.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Long-running jobs (&gt;30s) that process all records in a single perform call without chunking.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Sidekiq worker timeout kills the job mid-run. Without chunking, the job restarts from the beginning on retry, re-processing already-completed records (idempotency risk) or exceeding the retry window. Split into chunks of ≤1000 records per job.</repair>
+    </failure-mode>
+  </section>
+</text>

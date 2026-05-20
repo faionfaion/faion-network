@@ -1,43 +1,74 @@
+---
+slug: semantic-xml-content
+tier: geek
+group: ai
+domain: llm-integration
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: A convention for authoring methodology content as semantic XML — not as XML for formatting, but as a tag vocabulary where each tag carries meaning the agent can act on.
+content_id: "1025869626d4c73e"
+tags: [xml, semantic, agents, content]
+---
 # Semantic XML Content for Agents
 
 ## Summary
 
-A convention for authoring methodology content as semantic XML — not as XML for formatting, but as a tag vocabulary where each tag carries meaning the agent can act on. Replaces free-form Markdown bodies with structured, machine-parseable elements (`<rule>`, `<example>`, `<antipattern>`, `<reference>`) that Claude was fine-tuned to recognize. Layout, indentation, and prose flow are irrelevant — what matters is the tag hierarchy and attribute values.
+**One-sentence:** A convention for authoring methodology content as semantic XML — not as XML for formatting, but as a tag vocabulary where each tag carries meaning the agent can act on.
 
-## Why
+**One-paragraph:** A convention for authoring methodology content as semantic XML — not as XML for formatting, but as a tag vocabulary where each tag carries meaning the agent can act on. Replaces free-form Markdown ...
 
-Anthropic explicitly recommends XML tags as Claude's preferred input structure: tags reduce misinterpretation, separate instructions from data, and let the model apply different policies per content type. Markdown can only signal headings and lists; semantic XML tells the agent "this is a rule, this is an antipattern, this is a code example" — distinctions Claude already knows how to honor. Result: more reliable rule-following, fewer hallucinations, easier validation, and a closed grammar that can be checked by a script.
+## Applies If (ALL must hold)
 
-## When To Use
+- Authoring content/*.xml
+- Writing agent-facing docs
+- Migrating Markdown
+- Tool-use prompts
 
-- Authoring `content/*.xml` files inside any new methodology under `faion-network/skills/`.
-- Writing reference docs that an agent will load and apply (rules, checklists, examples).
-- Migrating an old Markdown methodology when its content needs to be agent-actionable.
-- Designing tool-use prompts where input data must be cleanly separated from instructions.
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Routing docs
+- Human READMEs
+- Code files
+- One-off prompts
 
-- Routing docs (`AGENTS.md`, `SKILL.md`) — humans read these too; Markdown stays.
-- README files for humans — XML hurts readability without giving the agent anything new.
-- Code files (`.py`, `.json`, `.sh`) — keep native syntax; never wrap working code in XML.
-- One-off prompts that are not loaded by any skill — overhead is not justified.
+## Prerequisites
 
-## Texts
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-principles.xml` | Why semantic XML works for Claude; semantic vs formatting tags; the four guarantees XML gives an agent. |
-| `content/02-tag-design.xml` | Tag naming rules, attribute conventions, nesting rules, when to add a new tag vs reuse an existing one. |
-| `content/03-anti-patterns.xml` | Concrete anti-patterns: formatting tags, inconsistent naming, over-nesting, mixing CDATA with prose. |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/methodology-text.xml` | Skeleton for a `content/*.xml` file with all standard tags wired up. |
-| `templates/tag-glossary.xml` | Closed vocabulary of recommended tags with one-line semantics for each. |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
 
 ## Related
 
-- `knowledge/geek/ai/claude-code/` — Claude Code skill authoring
-- `docs/skill-authoring.md` — methodology folder structure (the parent spec that requires this convention)
+- parent skill: `geek/ai/llm-integration/`

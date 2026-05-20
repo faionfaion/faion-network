@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="backup-database-postgres Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for backup-database-postgres. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every pg_dump script MUST verify the dump file with `pg_restore -l "$BACKUP_PATH" &gt; /dev/null` before uploading to remote storage. A backup that fails pg_restore -l is corrupt and must trigger an alert — not a silent upload.</statement>
+      <rationale source="v1-source">pg_dump can produce a partial file when the source crashes mid-export or when disk fills. Silent uploads create the illusion of a backup without the substance. The verification adds under one second for most database sizes.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Repositories using WAL archiving for PITR MUST monitor `pg_stat_archiver.failed_count` and alert when it increases. Silently failed WAL segments create invisible gaps that make the PITR chain unrestorable from the point of the first failure forward.</statement>
+      <rationale source="v1-source">archive_command failures are transient (network blip, S3 throttle) and often recover silently in production without any log noise. Without explicit monitoring, the failure is discovered only during a restore attempt — the worst possible moment.</rationale>
+    </rule>
+  </section>
+</text>

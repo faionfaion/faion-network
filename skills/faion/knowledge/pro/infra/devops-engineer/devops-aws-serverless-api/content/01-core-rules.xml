@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="devops-aws-serverless-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for devops-aws-serverless-api. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Lambda functions MUST use architectures=["arm64"], tracing_mode="Active", and runtime python3.12 or nodejs22.x. API Gateway MUST be HTTP API (protocol_type="HTTP"), configure CORS with explicit allow_origins (not "*"), and use a custom domain with an ACM certificate. Default throttling MUST be set (throttling_burst_limit, throttling_rate_limit).</statement>
+      <rationale source="v1-source">arm64 is ~20% cheaper and faster. Active X-Ray tracing is required for distributed tracing across Lambda + API Gateway + DynamoDB. CORS "*" is a security risk. Throttling prevents runaway Lambda invocations from a burst of requests driving up cost or triggering DDoS.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>DynamoDB tables MUST use billing_mode="PAY_PER_REQUEST" unless sustained throughput above 1000 RCU/WCU is proven by load testing. Tables MUST enable point_in_time_recovery_enabled=true and server_side_encryption_enabled=true. TTL attribute MUST be declared even if not used initially.</statement>
+      <rationale source="v1-source">On-demand billing avoids throttling spikes during traffic bursts and removes capacity planning toil. Point-in-time recovery is the last line of defense against accidental bulk deletes. TTL is required for GDPR data-retention compliance and to avoid unbounded table growth.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>SQS queues MUST configure a dead_letter_queue with maxReceiveCount=3. visibility_timeout_seconds MUST be at least 6x the Lambda timeout. Long polling MUST be enabled (receive_wait_time_seconds=20). EventBridge rules MUST use structured event patterns with source and detail-type filters; wildcard patterns are forbidden.</statement>
+      <rationale source="v1-source">DLQ with maxReceiveCount=3 prevents poison-pill messages from blocking the queue forever. Visibility timeout 6x Lambda timeout prevents duplicate processing while Lambda is still running. Wildcard event patterns route every event to every consumer, breaking event isolation.</rationale>
+    </rule>
+  </section>
+</text>

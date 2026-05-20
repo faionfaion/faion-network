@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="rust-tokio-async Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for rust-tokio-async. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Before implementing any concurrent async code, classify the workload into one of four classes and pick the corresponding primitive. Do not use a heavier primitive when a lighter one fits.</statement>
+      <rationale source="v1-source">Choosing buffer_unordered for two parallel futures is over-engineering; choosing try_join! for 10,000 items is an OOM risk. The right primitive matches the workload size and semantics.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use tokio::try_join! to run a fixed, small number of futures in parallel and collect all results, short-circuiting on the first error. Do not use it for collections with unknown or large N.</statement>
+      <rationale source="v1-source">try_join! resolves all futures simultaneously. For N &gt; ~20 simultaneous futures it may overload connection pools. For N known at compile time it is the cleanest syntax.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Wrap any CPU-heavy operation (Argon2, bcrypt, regex compilation, image processing, zip compression) in tokio::task::spawn_blocking. Await the result with .await?? to propagate both the join error (panic) and the inner Result.</statement>
+      <rationale source="v1-source">CPU-heavy futures block the async executor thread, starving all other tasks on that thread. spawn_blocking runs the closure on a dedicated blocking thread pool, keeping the async threads free.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Process large collections with futures::stream::buffer_unordered(N) combined with tokio::sync::Semaphore for precise concurrency control. Use Semaphore::acquire_owned() so the permit lives as long as the task, not as long as a borrow.</statement>
+      <rationale source="v1-source">buffer_unordered(N) limits in-flight futures to N, but the Semaphore adds an explicit capacity token that can be inspected, logged, and adjusted without changing the stream topology.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use tokio::task::JoinSet instead of Vec&lt;JoinHandle&lt;T&gt;&gt; for groups of spawned tasks. JoinSet cancels all remaining tasks on drop, preventing leaks when the parent scope exits early.</statement>
+      <rationale source="v1-source">A Vec&lt;JoinHandle&gt; requires explicit abort() loops on early exit; forgetting them leaves tasks running indefinitely. JoinSet cancellation is automatic and unconditional on drop.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Wrap every external IO call in tokio::time::timeout. There is no safe default for a missing timeout — every external call must have an explicit one.</statement>
+      <rationale source="v1-source">A hung external service with no timeout holds a Tokio task thread indefinitely. Under load this exhausts the worker thread pool and stalls the entire runtime.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>When using tokio::select! with non-cancellation-safe futures (e.g., AsyncReadExt::read_to_end, AsyncWriteExt::write_all), document the cancel-safety status of each branch with a comment. Cancelling a non-safe future at an arbitrary .await point drops partial state silently.</statement>
+      <rationale source="v1-source">tokio::select! drops the losing future at the next .await point. If the future has partially written state (a half-flushed buffer, an uncommitted transaction), the partial state is silently lost with no error.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Never hold std::sync::MutexGuard across a .await point. Use tokio::sync::Mutex only when the critical section itself must .await. For most cases, prefer message-passing (tokio::sync::mpsc) over shared mutable state.</statement>
+      <rationale source="v1-source">std::sync::MutexGuard is not Send. Holding it across .await causes a compile error if the type is caught, or a deadlock if the executor tries to move the future to another thread. The compiler does not always catch this; clippy::await_holding_lock does.</rationale>
+    </rule>
+  </section>
+</text>

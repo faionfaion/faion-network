@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="graph-rag-production Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for graph-rag-production. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>When using LlamaIndex KnowledgeGraphIndex, set max_triplets_per_chunk to at least 10 and verify extraction coverage on a sample of dense chunks. LlamaIndex is tightly coupled to the OpenAI API format — migrating to Anthropic requires a custom LLM adapter; do not assume provider portability.</statement>
+      <rationale source="v1-source">The default max_triplets_per_chunk silently truncates dense academic or legal text at chunk extraction time, producing an incomplete graph without any error. OpenAI API coupling is not documented prominently; discovering it after a large index has been built on OpenAI keys and then switching providers is expensive.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>When running Microsoft graphrag CLI in automated pipelines: checkpoint the generated config after the first run, pin the graphrag version, and track indexing cost by counting chunks before running. Do not run graphrag index without a cost estimate when the corpus exceeds 10,000 chunks.</statement>
+      <rationale source="v1-source">graphrag CLI rewrites config on first run and the config format changes between minor versions. A version bump mid-pipeline can force a full re-index. At $0.004/chunk (gpt-4o extraction), 100k chunks = $400 per index run; cost visibility before execution is mandatory.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>For single-process Graph RAG pipelines with no concurrent access requirement, prefer Kuzu (embedded, zero server cost) over Neo4j. For multi-process or multi-user deployments, use Neo4j self-hosted (Docker) or Neo4j AuraDB. Do not use Amazon Neptune unless already committed to the AWS ecosystem — cost is 5-10x Neo4j AuraDB for equivalent workloads.</statement>
+      <rationale source="v1-source">Kuzu eliminates the operational overhead of running and maintaining a graph database server for workloads that do not need concurrent access. For most RAG indexing pipelines that index once and read from a single query process, the embedded pattern is the simplest and cheapest path.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="php-phpunit-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for php-phpunit-testing. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every new API endpoint requires at minimum five test methods: happy path, missing required field validation, type/format validation failure, unauthenticated (no token → 401), and forbidden (wrong policy → 403).</statement>
+      <rationale source="v1-source">Tests that only cover the happy path miss the most common production failures: validation gaps let invalid data through, missing auth checks expose endpoints to unauthenticated access.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Always call Http::fake(), Mail::fake(), Queue::fake(), and Notification::fake() before the action under test when the feature dispatches outgoing calls. Assert on what was sent with Http::assertSent(), Mail::assertSent(), etc.</statement>
+      <rationale source="v1-source">Tests that hit real external services are network-dependent, slow, and may have side effects (real emails sent, real charges made). Fake helpers intercept calls in-process and enable assertion on what would have been dispatched.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use $response-&gt;assertOk() instead of assertEquals(200, $response-&gt;status()). Use assertCreated(), assertUnprocessable(), assertNotFound(), assertForbidden() — never raw status code integers.</statement>
+      <rationale source="v1-source">Laravel's assertion methods produce error messages that show the full response body on failure. assertEquals(200, ...) produces only "Expected 200, got 422" with no indication of what validation failed.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Use assertJsonPath('data.email', 'john@example.com') for field-level assertions. Reserve assertJson([...]) for exact-shape contracts only. Never use assertJsonStructure() as the sole assertion — it only checks key presence, not values or types.</statement>
+      <rationale source="v1-source">assertJsonStructure passes even if the response contains unexpected extra fields or wrong values. assertJsonPath asserts the specific field value, catching regressions where a field is present but contains wrong data.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Unit tests for service classes must use RefreshDatabase only when the test exercises a real DB operation. For pure business-rule tests (password hashing, event dispatch, transformation logic), use a concrete repository with an in-memory SQLite DB or mock the repository via Mockery.</statement>
+      <rationale source="v1-source">RefreshDatabase runs all migrations per test class. For unit tests that only verify logic (not persistence), this is unnecessary overhead. Mockery lets you verify service behavior without any DB at all.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>To verify password hashing: assert that $user-&gt;password is not equal to the plaintext input AND that Hash::check($plaintext, $user-&gt;password) returns true. Do not assert a specific bcrypt hash string — it changes per invocation.</statement>
+      <rationale source="v1-source">bcrypt output is non-deterministic (random salt per call). assertNotEquals + Hash::check verifies the invariant (the plaintext was hashed correctly) without coupling to a specific hash value.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Test event dispatch with Event::fake() before the action, then Event::assertDispatched(UserCreated::class). Do not assert event count unless the exact number of dispatches is a business rule.</statement>
+      <rationale source="v1-source">assertDispatched checks that the event was dispatched at least once with matching criteria. Count assertions are fragile — internal implementation changes that dispatch an event twice for optimization break the count without breaking the business rule.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Call Carbon::setTestNow(Carbon::parse('2025-01-01')) in setUp() or at the start of any test that depends on the current time. Reset in tearDown() or use Carbon::setTestNow(null).</statement>
+      <rationale source="v1-source">Tests that use now()-&gt;addDay() without freezing time fail intermittently at midnight UTC boundaries. Frozen time makes the assertion deterministic regardless of when CI runs the test.</rationale>
+    </rule>
+  </section>
+</text>

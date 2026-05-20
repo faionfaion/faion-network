@@ -1,42 +1,76 @@
+---
+slug: minimum-product-frameworks
+tier: solo
+group: product
+domain: product-planning
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: A decision matrix for choosing the right "minimum X product" framework for a given market context.
+content_id: "dc964a3963bcc535"
+tags: [mvp, frameworks, product-scoping, market-fit, release-strategy]
+---
 # Minimum Product Frameworks
 
 ## Summary
 
-A decision matrix for choosing the right "minimum X product" framework for a given
-market context. Nine frameworks — MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC —
-each suited to a different combination of market uncertainty, competitive density,
-and buyer type. The core rule: picking the wrong framework wastes validation budget
-and may guarantee failure in crowded markets where users already have "good enough"
-alternatives.
+**One-sentence:** A decision matrix for choosing the right "minimum X product" framework for a given market context.
 
-## Why
+**One-paragraph:** A decision matrix for choosing the right "minimum X product" framework for a given market context. Nine frameworks — MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC — each suited to a different combination of market uncertainty, competitive density, and buyer type. The core rule: picking the wrong framework wastes validation budget and may guarantee failure in crowded markets where users already have "good enough" alternatives.
 
-"Just build an MVP" is an underspecified instruction in 2026. In a blue-ocean market
-with unvalidated demand, MVP is correct. In a red-ocean consumer market, shipping
-a barely-functional product against polished incumbents drives immediate churn. The
-framework choice determines whether your first release creates learning or reputation
-damage.
+## Applies If (ALL must hold)
 
-## When To Use
+- Trigger: starting a new product and deciding how much to build before first release.
+- Trigger: switching market context (e.g. moving from B2C to B2B) and re-scoping.
+- Trigger: team debate "is this MVP or MLP?" — use the decision matrix to resolve.
+- Trigger: competitive analysis reveals incumbent products are already polished.
+- Trigger: spec.md / SDD feature kickoff before writing implementation-plan.md.
+- Trigger: pivot decision — last release missed adoption KPI; re-scope with a different framework.
 
-- Starting a new product and deciding how much to build before first release.
-- Switching market context (e.g. moving from B2C to B2B) and re-scoping.
-- Team debate: "is this MVP or MLP?" — use the decision matrix to resolve.
-- Competitive analysis reveals incumbent products are already polished.
-
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Framework already chosen and validated — don't re-litigate mid-build.
 - Pure technical feasibility spikes — use MFP by default, no matrix needed.
 - Internal tooling with a captive user base — minimal standards differ.
+- Bug-fix or maintenance release — framework choice does not apply.
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-frameworks.xml` | All nine frameworks with acronym, purpose, and when-to-use signal. |
-| `content/02-decision-matrix.xml` | Market-condition → recommended framework mapping with rationale. |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
-None — content is reference-only; no reusable artifact templates required.
+| File | Purpose |
+|------|---------|
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/product/product-planning/`

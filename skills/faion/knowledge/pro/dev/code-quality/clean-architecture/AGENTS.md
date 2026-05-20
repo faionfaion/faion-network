@@ -1,14 +1,25 @@
+---
+slug: clean-architecture
+tier: pro
+group: dev
+domain: code-quality
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Clean Architecture: four concentric layers with inward-only dependencies.
+content_id: "acc09df9033210e2"
+tags: [architecture, layering, clean-code, ddd, testing]
+---
 # Clean Architecture
 
 ## Summary
 
-Clean Architecture organizes code into four concentric layers — Entities, Use Cases, Interface Adapters, Frameworks — where dependencies point only inward. The concrete rule: nothing in `domain/` may import from `infrastructure/`, `application/`, or any framework (SQLAlchemy, FastAPI, Django). Violations make the domain untestable and couple business logic to deployment choices.
+**One-sentence:** Clean Architecture: four concentric layers with inward-only dependencies.
 
-## Why
+**One-paragraph:** Clean Architecture: four concentric layers with inward-only dependencies. Domain layer has no framework imports. Dependencies point inward; frameworks point outward.
 
-When domain entities depend on ORM models or HTTP frameworks, changing the database or web framework forces changes to business logic. Dependency inversion (domain defines the repository interface; infrastructure implements it) keeps business rules stable while infrastructure is swappable. This also enables pure unit tests of business logic without a running database.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Complex business logic that must survive infrastructure changes (DB migration, framework upgrade)
 - Long-lived enterprise system where testability and onboarding speed justify the layer overhead
@@ -16,27 +27,49 @@ When domain entities depend on ORM models or HTTP frameworks, changing the datab
 - Applications that may need to run in multiple delivery mechanisms (REST API + CLI + event handler)
 - Teams that need to enforce layer boundaries via architecture tests (import-linter, ArchUnit)
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
-- CRUD apps with trivial logic — four layers for a `GET /users` endpoint is over-engineering
+- CRUD apps with trivial logic — four layers for a GET /users endpoint is over-engineering
 - Rapid prototypes where the goal is feature exploration, not stability
 - Teams not willing to enforce the dependency rule via tests — without enforcement it degrades into a layered monolith with import cycles
 - Small scripts or ETL jobs where a single file is appropriate
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-layer-rules.xml` | Dependency rule, layer definitions, forbidden import directions, folder layout |
-| `content/02-domain-layer.xml` | User entity, Email value object, UserRepository interface, domain events |
-| `content/03-application-layer.xml` | CreateUserUseCase, GetUserUseCase, UnitOfWork interface, UserDTO |
-| `content/04-infrastructure-layer.xml` | SQLAlchemyUserRepository, SQLAlchemyUnitOfWork, ORM model mapping |
-| `content/05-antipatterns.xml` | Domain logic in controller, ORM in domain entity — bad/good examples |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/use-case.py` | Use case skeleton with Input/Output dataclasses and dependency injection |
-| `templates/repository-interface.py` | Abstract repository interface for a domain entity |
-| `templates/import-linter.ini` | import-linter contracts enforcing layer dependency rules |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `pro/dev/code-quality/`

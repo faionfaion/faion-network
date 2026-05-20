@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="ruby-rails Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for ruby-rails. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Define exactly one ServiceResult at app/services/service_result.rb. All service objects return it from #call. CI must fail if a second definition is found. Use success?/failure? as the only API.</statement>
+      <rationale source="v1-source">LLMs invent slightly different ServiceResult shapes per service file. A divergent API means every controller must handle multiple shapes. Lock the API in CI with a simple grep for class ServiceResult.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Service objects accept params: and current_user: in initialize. The public API is #call returning ServiceResult. All private helpers are private. Namespace by domain: Users::CreateService.</statement>
+      <rationale source="v1-source">A consistent interface means every service is discoverable and can be tested the same way. Namespacing by domain avoids collisions and makes the service directory navigable.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Move mailers, webhook HTTP calls, and search index updates to after_commit callbacks, an outbox, or chained Sidekiq jobs. Never call deliver_later or external HTTP inside ActiveRecord::Base.transaction.</statement>
+      <rationale source="v1-source">deliver_later inside a transaction enqueues the job before the transaction commits. If the transaction rolls back, the worker runs against a non-existent record. The race window is small but real under load.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Controllers call params.require(...).permit(...) before passing to the service. Services receive an already-permitted hash. Services must not call params directly.</statement>
+      <rationale source="v1-source">Strong Parameters enforce an allowlist at the HTTP boundary. Services receiving a raw params object bypass the allowlist, enabling mass assignment attacks on any field the service writes.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Query objects take an optional relation and return self from filter methods to enable chaining. Provide a #results method that returns the final ActiveRecord::Relation.</statement>
+      <rationale source="v1-source">Chainable builder pattern matches the fluent style of ActiveRecord scopes and keeps query assembly readable. Returning self enables functional composition without intermediate variables.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use before_validation for invariants only: normalizing email, formatting phone numbers. Never use callbacks for business logic like mailers or webhooks.</statement>
+      <rationale source="v1-source">Callbacks are invisible and run in unpredictable order; business logic in callbacks is hard to test and reason about in services. Callbacks for invariants are acceptable because they preserve data constraints.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use after_create_commit for side effects that need the row persisted (mailers, jobs). Never use after_save for these.</statement>
+      <rationale source="v1-source">after_create_commit runs only after the transaction commits, guaranteeing the row exists. after_save runs inside the transaction and can roll back, leaving side effects dangling.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Sidekiq jobs accept primitives (IDs, strings) — never AR objects. Load fresh records inside perform to avoid stale state serialization.</statement>
+      <rationale source="v1-source">AR objects serialize as YAML and load a potentially stale record when the worker runs. Passing IDs ensures the worker always fetches the latest state.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Configure retry: &lt;N&gt; and dead: true on every job. Use sidekiq_retry_in to define backoff strategy per exception type.</statement>
+      <rationale source="v1-source">Missing retry counts cause message loss on transient errors. Dead-letter handling surfaces permanent failures for investigation.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>One describe per public method, one context per branch, one it per assertion.</statement>
+      <rationale source="v1-source">Diagnostic failure messages: "Users::CreateService#call with valid params creates a user" pinpoints behavior without reading test body.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Prefer build_stubbed over create for model tests. Use create only when persistence is required.</statement>
+      <rationale source="v1-source">build_stubbed skips the database; model unit tests are 10-100x faster with no schema dependency.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Human-in-loop checkpoint: any migration with remove_column, rename_column, or down block must be reviewed before db:migrate in non-dev envs.</statement>
+      <rationale source="v1-source">Irreversible migrations cannot be rolled back. Agents generate destructive migrations without checking if the column has data.</rationale>
+    </rule>
+  </section>
+</text>

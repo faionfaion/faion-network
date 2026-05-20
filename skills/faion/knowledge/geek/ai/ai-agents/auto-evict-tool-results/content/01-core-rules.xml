@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="auto-evict-tool-results Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for auto-evict-tool-results. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Configure the agent runtime so any tool result whose token count exceeds a fixed threshold N (default 20,000) is written to disk at a unique path and substituted with a JSON object containing at minimum {path, preview_first_n_chars, total_tokens, evicted: true} before being added to the message history.</statement>
+      <rationale source="v1-source">LLMs cannot reliably self-truncate large outputs; LangChain Deep Agents shipped this exact policy (toolTokenLimitBeforeEvict, default 20k) after observing context corruption from oversized tool returns on long-horizon agents.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Implement eviction as a runtime decorator with three components: (1) tokeniser-based size check on every tool return value, (2) deterministic write to a scratch directory keyed by tool-call-id, (3) a paired read_file(path, lines) tool the agent can call to recover slices on demand.</statement>
+      <rationale source="v1-source">Splitting these concerns mirrors LangChain Deep Agents' filesystemMiddleware and Manus's context-engineering write-up: the decision (evict or not) is deterministic, the storage is recoverable, and the agent only ever sees pointers — so the same architecture works whether the storage backend is local disk, S3, or an in-process content store.</rationale>
+    </rule>
+  </section>
+</text>

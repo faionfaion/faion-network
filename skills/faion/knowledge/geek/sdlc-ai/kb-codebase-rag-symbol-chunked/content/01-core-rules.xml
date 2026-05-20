@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="kb-codebase-rag-symbol-chunked Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for kb-codebase-rag-symbol-chunked. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>The codebase RAG indexer MUST emit ONE chunk per top-level function, class, or method as parsed by tree-sitter (or equivalent AST tooling). Each chunk MUST carry the metadata record {path, symbol, kind, signature, start_line, end_line, sha} where sha is sha256(symbol_body_text). The chunk body MUST be padded with the file path, enclosing class signature (if any), and any preceding doc-comment block, but MUST NOT cross symbol boundaries. The index MUST reject and refuse to ingest any chunk that does not parse as a complete symbol per the language's tree-sitter grammar.</statement>
+      <rationale source="v1-source">Sub-symbol splits make the top hit unusable; cross-symbol windows make the top hit ambiguous. The SHA-keyed record turns "did this code change" into a constant-time check that drives incremental embedding. The signature-padding gives the embedding model the strongest cheap signal: a function called verify_jwt(token: str) -&gt; Claims is closer in vector space to "verify a token" than the body alone.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>The indexer MUST maintain a manifest index/manifest.json listing every committed (path, symbol, sha) triple. On every commit, the indexer MUST: (a) re-extract symbols for files in the diff, (b) embed ONLY chunks whose sha is new, (c) remove chunks whose sha is no longer in the manifest, (d) append manifest.json to the commit. Retrieval MUST be exposed to agents as an MCP tool code_search(query, *, kind=None, path_glob=None, top_k=5) returning the metadata record + body; agents MUST NOT issue raw vector queries against the underlying store.</statement>
+      <rationale source="v1-source">Incremental rebuild keeps embed cost proportional to diff size, not repo size — required for any repo over ~50k LOC where full reindex is minutes-to-hours. The MCP tool abstraction lets the index swap (Qdrant → pgvector → Turbopuffer) without touching agent prompts, and the structured kind / path_glob filters give the agent the same hybrid-search win shown in Cursor's and Cody's published numbers (30-50% precision lift over pure top-k).</rationale>
+    </rule>
+  </section>
+</text>

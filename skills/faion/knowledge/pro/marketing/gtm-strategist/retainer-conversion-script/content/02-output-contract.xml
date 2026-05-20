@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Retainer Conversion Script Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the artifact bundle of a conversion attempt: 3 touchpoint messages, a tiered proposal, a decision record.</summary>
+
+  <output-contract>
+    <required>
+      <field name="atrophy_list" min="3" max="5">
+        <subfield name="items[].what_atrophies" type="string"/>
+        <subfield name="items[].timeframe_weeks_until_visible" type="integer"/>
+        <subfield name="items[].source_deliverable" type="string"/>
+      </field>
+      <field name="touchpoint_1" format="email_or_message">
+        <subfield name="sent_at" type="iso_date" relative_to="project_end" max_offset_weeks="-4"/>
+        <subfield name="contains_pitch" type="boolean" expected="false"/>
+        <subfield name="contains_atrophy_items" min="3"/>
+      </field>
+      <field name="touchpoint_2" format="proposal_document">
+        <subfield name="sent_at" type="iso_date" relative_to="project_end" max_offset_weeks="-2"/>
+        <subfield name="tiers" min="3" max="3" required_keys="good,better,best"/>
+        <subfield name="tiers[].monthly_price" type="number"/>
+        <subfield name="tiers[].scope" type="string"/>
+      </field>
+      <field name="touchpoint_3" format="conversation_log">
+        <subfield name="held_at" type="iso_date" relative_to="project_end" max_offset_weeks="0"/>
+        <subfield name="decision" enum="signed,deferred_with_date,no_with_referral_ask,no_clean"/>
+      </field>
+      <field name="post_attempt_status" enum="retainer_signed,deferred,clean_no,ghosted"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">touchpoint_1.sent_at before week N-5 or after week N-3</pattern>
+      <pattern id="f2">touchpoint_1 containing price, discount, or "sign now" language</pattern>
+      <pattern id="f3">touchpoint_2 with fewer than 3 OR more than 3 tiers</pattern>
+      <pattern id="f4">touchpoint_2 offering a discount before the client has objected</pattern>
+      <pattern id="f5">post_attempt_status == "ghosted" without at least one follow-up sent in touchpoint 3 window</pattern>
+      <pattern id="f6">a 4th, 5th touchpoint after a clean "no" at touchpoint 2 or 3</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Touchpoint 1 may be a 15-min call instead of an email — must still satisfy the no-pitch and atrophy-items constraints.</transformation>
+      <transformation>If the client preempts with a retainer ask before touchpoint 1, skip to touchpoint 2 and document the early signal.</transformation>
+      <transformation>"deferred_with_date" is valid IF the date is named and within 30 days; track it in the pipeline as "warm".</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/touchpoint-1-seed.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>atrophy_list has 3-5 items sourced from real project deliverables</item>
+      <item>touchpoint_1 is no-pitch and timed at week N-4 ± 5 days</item>
+      <item>touchpoint_2 has exactly 3 price tiers with monthly_price + scope</item>
+      <item>touchpoint_3 records a named decision OR a specific deferred date ≤ 30 days</item>
+      <item>no 4th touchpoint after a clean no</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="bun-runtime Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for bun-runtime. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Pin the Bun version in package.json packageManager field and in CI (oven-sh/setup-bun@v2 with bun-version). Never use "latest".</statement>
+      <rationale source="v1-source">Reproducibility requires identical Bun versions across developer machines, CI, and production containers. LLMs default to "latest" which breaks builds across teams.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Define dev, start, test, and build scripts in package.json. Use bun --watch for dev (full restart) not bun --hot (persists state).</statement>
+      <rationale source="v1-source">--hot keeps top-level singletons alive across reloads; edited config does not take effect until a full restart. Always prefer --watch for development to ensure clean module reloads.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Set frozen-lockfile = true under [install] in bunfig.toml. Enable coverage under [test].</statement>
+      <rationale source="v1-source">Frozen lockfile in CI detects lockfile drift, identical to npm ci behavior.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Set moduleResolution to "bundler" in tsconfig.json. This is required for Bun's native module resolution.</statement>
+      <rationale source="v1-source">Bun handles modern resolution natively; "bundler" mode enables Bun-specific path resolution without ts-node shims.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use Bun.serve (or a framework like Hono on top of it) for HTTP servers. Do not use node:http when running on Bun.</statement>
+      <rationale source="v1-source">Bun.serve is measurably faster than node:http for I/O-heavy routes due to JavaScriptCore optimizations. The API is web standard — takes a Request, returns a Response, making it compatible with edge runtimes and HTTP specs.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use Bun.file() for static reads — it is lazy-loaded and faster than fs.readFileSync.</statement>
+      <rationale source="v1-source">Bun.file returns a lazy Blob; data is only read when text()/json()/arrayBuffer() is called.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Wrap Bun.env access in a typed validation function using Zod. Never access Bun.env directly in business logic.</statement>
+      <rationale source="v1-source">Bun.env values are strings; Zod coercion handles number/boolean conversion and provides helpful missing-var errors at startup.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use Bun.password.hash / Bun.password.verify for password hashing. Do not import bcrypt.</statement>
+      <rationale source="v1-source">Bun.password uses bcrypt or argon2 natively; no npm dependency needed.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Use describe/it/expect from bun:test. Avoid jest.mock — use mock.module() for ESM mocking in Bun.</statement>
+      <rationale source="v1-source">bun:test is Jest-compatible at the describe/it/expect level but ESM module mocking uses a different API.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Use --frozen-lockfile in all CI bun install calls. Commit bun.lockb. Do not run npm/yarn/pnpm in the same project.</statement>
+      <rationale source="v1-source">Frozen lockfile in CI detects drift immediately rather than silently updating dependencies.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Prompt pattern for server scaffold: "You are a Bun 1.1.x + Hono engineer. Generate src/index.ts: Hono app with routes: GET /health, POST /api/users; Validate body with zod (UserCreateSchema); Use Bun.serve via Hono adapter, port from process.env.PORT; Logging: console.info {method, path, status, latencyMs}; Tests in src/index.test.ts using bun:test. Do NOT import 'node:cluster' or 'node:worker_threads'. Run: bun install &amp;&amp; bun test &amp;&amp; bun --watch run src/index.ts".</statement>
+      <rationale source="v1-source">TBD</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Prompt pattern for compat audit: "Scan src/ for Node-only API usage that breaks under Bun: node:cluster, node:vm, node:async_hooks (custom hooks), process.binding(*), native packages requiring node-gyp. Output: file:line, API, risk (high/med/low), workaround."</statement>
+      <rationale source="v1-source">TBD</rationale>
+    </rule>
+  </section>
+</text>

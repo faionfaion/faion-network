@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="api-gateway-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for api-gateway-patterns. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Polyglot gateways MUST be stateless and operate only on request headers, path, and auth tokens. Rate-limit state lives in a shared Redis (not memory). Auth state lives in tokens (JWT, signed cookies); never cache user context in the gateway. No business logic in plugins (Lua, JS, WASM) — reserve plugins for auth, rate-limit, request-tracing, and CORS. Any use case requiring business logic (request aggregation, transformation) belongs in a Backend-for-Frontend (BFF) service, not the gateway.</statement>
+      <rationale source="v1-source">Stateless gateways scale horizontally; state in shared Redis survives restarts. Business logic in plugins ties the gateway to domain knowledge only the backend team owns, causing coordination overhead every time a rule changes. BFF services are explicit, versionable, and testable; the gateway stays boring and stable.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Rate limiting MUST be per-consumer (API key, authenticated user ID) or per-plan (free/pro tier), never per-IP behind a load balancer or CDN. If the gateway sits behind a CDN, rate-limit by the value of the X-Forwarded-For header (the client's IP) or by authenticated user, never by the CDN's IP.</statement>
+      <rationale source="v1-source">Per-IP rate limiting behind a load balancer or CDN fails because all traffic appears to come from a small set of IPs; every user gets rate-limited globally. Consumer-based rate limiting (API key or user ID from the token) works correctly regardless of network topology.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Every inbound request MUST receive a unique X-Request-ID header (generated at ingress if missing) and propagate that ID to all downstream services. Structured logs at every hop MUST include the request ID so traces can be correlated end-to-end.</statement>
+      <rationale source="v1-source">Request IDs are the only reliable way to debug production issues spanning multiple services. Without them, a user reports "my request failed" and operations has no way to find the matching log entries across five services. This is low-cost at gateway level (one header assignment) and invaluable downstream.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Timeouts at the gateway MUST be shorter than timeouts at the client. Gateway timeout 5s, client timeout 10s, so the gateway returns 504 cleanly before the client gives up. Upstream service timeouts MUST be even shorter (2s per hop) so late responses fail fast.</statement>
+      <rationale source="v1-source">If the gateway times out after the client, the client thinks the request hung (may retry) while the gateway is also retrying upstream; cascading requests and thundering herd. Short gateway timeouts fail fast and give the client a clear 504 to handle.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Circuit breakers MUST be configured per upstream service, not globally. If one service is down, the gateway returns 503 for that service's routes but continues routing to healthy services. Implement via Kong's `proxy-cache` + `request-termination` or Envoy's `outlier_detection`.</statement>
+      <rationale source="v1-source">A global circuit breaker is a total outage; one slow service brings down the whole platform. Per-service circuit breakers degrade gracefully and let users access unaffected parts of the system while operations fixes the failing service.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>For declarative, version-control-friendly gateways, use Kong (with deck for config sync) or AWS API Gateway (via Terraform). Nginx is for expert operators; it lacks dynamic config without lua-resty or OpenResty. Envoy is for service-mesh deployments. For simple single-region backends, Kong + PostgreSQL or Kong DB-less is the safest default. For multi-region or serverless, use AWS API Gateway + Terraform.</statement>
+      <rationale source="v1-source">Kong's deck tool gives CI/CD integration; config diffs are reviewable. Nginx lacks dynamic config reloads (requires nginx -s reload + downtime). Envoy is powerful but adds orchestration complexity. AWS API Gateway is managed but lock-in; Terraform makes it reviewable.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>If using Kong, pick either DB mode (PostgreSQL with live updates) or DB-less mode (config from a ConfigMap, redis, or file). Do not switch mid-flight — Kong loses state during the migration. For high-volume deployments (&gt;10k req/s), use DB mode so multiple Kong instances stay in sync; for static config, DB-less is simpler.</statement>
+      <rationale source="v1-source">DB mode has a slight latency penalty (config reads from DB) but handles dynamic updates. DB-less is read-only (faster) but requires a deployment to change config. Mixing them mid-flight loses state.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>A BFF MUST aggregate multiple upstream services in parallel (via asyncio.gather, Promise.all, goroutines) and timeout per-service (2s per hop), not globally. Partial failures are handled: if the user service times out, return the user data as null and the rest of the aggregated response; never fail the entire BFF request if one upstream is slow. BFF MUST NOT cache responses; caching belongs at the gateway.</statement>
+      <rationale source="v1-source">Parallel aggregation is faster than serial. Per-service timeouts prevent one slow service from blocking the entire BFF. Partial responses degrade gracefully. Caching at the gateway (not BFF) saves both the aggregation cost and the upstream service cost.</rationale>
+    </rule>
+  </section>
+</text>

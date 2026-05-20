@@ -1,44 +1,75 @@
-# Monorepo Setup (Turborepo)
+---
+slug: monorepo-turborepo
+tier: solo
+group: dev
+domain: automation-tooling
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos.
+content_id: "5c20a5f49e87d519"
+tags: [monorepo, turborepo, pnpm, build-orchestration, typescript]
+---
+# Monorepo Setup with Turborepo
 
 ## Summary
 
-Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos. Structure code as `apps/` + `packages/` under pnpm workspaces, declare task dependencies in `turbo.json` (`tasks` field in v2), and let Turborepo cache and parallelize builds. Internal deps use `workspace:*`; shared config lives in `packages/config`.
+**One-sentence:** Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos.
 
-## Why
+**One-paragraph:** Turborepo is a high-performance build orchestrator for JavaScript/TypeScript monorepos. Structure code as apps/ and packages/ under pnpm workspaces, declare task dependencies in turbo.json tasks field (v2), and let Turborepo cache and parallelize builds. Internal deps use workspace:*; shared config lives in packages/config.
 
-Without a task graph, CI rebuilds everything on every push. Turborepo's content-addressable cache (local or remote) skips unchanged tasks, cuts CI time by 60-90%, and enforces correct build ordering via `dependsOn: ["^build"]`. Parallel execution and remote cache sharing across branches compound the savings.
+## Applies If (ALL must hold)
 
-## When To Use
+- Bootstrapping a JS/TS monorepo from scratch with multiple apps and shared packages.
+- Migrating several npm repos into a single workspace to reduce duplication and improve shared code reuse.
+- Adding remote caching to an existing Turborepo or multi-package repo to speed up CI pipelines.
+- Standardizing tsconfig, eslint, and prettier across packages via packages/config.
+- CI builds taking longer than 2 minutes because unchanged packages rebuild unnecessarily.
 
-- Multiple JS/TS apps that share UI components, types, or utilities.
-- Migrating several npm repos into one workspace to reduce duplication.
-- Adding remote caching to an existing multi-package repo.
-- Standardizing tsconfig/eslint/prettier across packages via `packages/config`.
-- CI builds taking > 2 min because unchanged packages rebuild.
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Polyglot monorepos that are not JS-dominant (Python + Go + JS) — use Bazel, Pants, or Nx with custom executors instead.
+- Tiny single-app projects with only one apps/web — Turborepo overhead is not justified; pnpm workspaces alone suffice.
+- Serverless-first projects where each function deploys independently and shared code is minimal — workspace symlinks complicate deployment bundlers.
+- Teams without a remote cache strategy — local-only caching gives less than 50% of the benefit; remote cache is mandatory for ROI.
 
-- Polyglot monorepos dominated by Python/Go/Rust — use Bazel or Pants.
-- Single-app projects (no shared packages) — pnpm workspaces alone suffice.
-- Serverless-first stacks where each function deploys independently and shared code is minimal.
-- Teams with no remote cache strategy — local-only gives < 50% of potential savings.
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-setup.xml` | Directory layout, `turbo.json` (v2 `tasks`), workspace config, root `package.json`. |
-| `content/02-packages.xml` | Per-app and per-library `package.json` + `tsconfig.json` patterns, shared ESLint config. |
-| `content/03-antipatterns.xml` | Circular deps, missing task outputs, caching non-deterministic tasks, v1/v2 field confusion. |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/turbo-v2.json` | Minimal `turbo.json` using `tasks` (v2) with build/lint/typecheck/test/dev. |
-| `templates/tsconfig-base.json` | Strict shared base tsconfig for library packages. |
-| `templates/ci-cache.yml` | GitHub Actions cache step for `node_modules/.cache`, `.turbo`, `.next/cache`. |
+| TBD | TBD |
 
 ## Scripts
 
-none
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/dev/automation-tooling/`

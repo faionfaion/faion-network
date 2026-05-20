@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="azure-app-gateway-waf Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for azure-app-gateway-waf. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Application Gateway MUST use a dedicated subnet with minimum /26 CIDR (recommended /24). The subnet MUST have a delegation to `Microsoft.Network/applicationGateways` (required since 2025 — Terraform will fail at apply without it). No other resource types (VMs, AKS nodes, Private Endpoints) may share the App Gateway subnet.</statement>
+      <rationale source="v1-source">App Gateway v2 autoscaling claims multiple IPs as instances scale out. A /26 (64 IPs minus 5 Azure reserved = 59) leaves room for up to 10 instances. A /28 (11 usable IPs) runs out at scale. Subnet delegation is enforced at the Azure API level; missing it produces a clear error: "Subnet is not delegated to applicationGateways."</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>WAF policy MUST start in Detection mode. After one week of production traffic review (check ApplicationGatewayFirewallLog for false positives), switch to Prevention mode. WAF policy MUST use OWASP 3.2 as the base managed ruleset. Bot protection ruleset (Microsoft_BotManagerRuleSet 1.0) SHOULD be added for internet-facing gateways.</statement>
+      <rationale source="v1-source">WAF Prevention mode blocks requests that match rules. Without a Detection phase, legitimate API payloads containing SQL-like strings or large JSON bodies are silently blocked, causing cryptic 403 errors in production. One week of Detection gives enough signal to tune exclusions before prevention starts.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>SSL certificates MUST be managed via Azure Key Vault and referenced by `key_vault_secret_id` in the `ssl_certificate` block. Do NOT upload PFX files directly to App Gateway. The App Gateway's managed identity MUST have `get` and `list` permissions on Key Vault certificates. SSL policy MUST specify minimum TLS 1.2 (AppGwSslPolicy20220101S or custom policy).</statement>
+      <rationale source="v1-source">Direct PFX uploads create certificate drift — the App Gateway config diverges from Key Vault on renewal. Key Vault integration auto-syncs on renewal. Agents frequently update the Key Vault certificate but forget to grant the new certificate version's permissions to the Managed Identity, causing the gateway to fall back silently to the old cert.</rationale>
+    </rule>
+  </section>
+</text>

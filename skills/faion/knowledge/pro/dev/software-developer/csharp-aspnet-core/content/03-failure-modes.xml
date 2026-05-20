@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="csharp-aspnet-core Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for csharp-aspnet-core as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>Injecting DbContext into singleton services, causing a captive dependency where one DbContext is shared across requests.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>DbContext is not thread-safe and is tied to an HTTP request scope. Singleton services hold a single DbContext reference, breaking concurrency. Always use dependency injection with the correct scope (scoped for services, not singleton).</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>Using Skip/Take for pagination on large tables.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Skip materializes all skipped rows; page 1000 with page size 20 loads 20k rows only to discard them. Use keyset pagination instead.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>Returning DbContext-tracked entities from service methods; client accesses navigation properties after DbContext is disposed.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Explicit eager loading via .Include() or DTO mapping prevents this. Never return tracked entities.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Agents inject DbContext directly into singleton services.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>DbContext is scoped, not singleton. Verify the DI registration and service scope in Program.cs. If an agent injects a scoped service into a singleton, it creates a captive dependency.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Agents forget await using var transaction = await db.Database.BeginTransactionAsync(ct) for multi-step writes. One SaveChanges fails, but the first is not rolled back.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Require explicit transactions for any operation that involves multiple SaveChanges calls. Make it a linting rule.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Agents wrap every method in Result&lt;T&gt; (success/failure), then controllers check if (result.IsSuccess) return Ok(...). Mixed paradigm: neither full Result&lt;T&gt; pattern nor exception-based error handling.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Pick one paradigm: either full Result&lt;T&gt; with explicit handling, or exception-based with a global IExceptionHandler. Mixing both is error-prone.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Agents generate tests using EF InMemory and assume they match production behavior. Tests pass, but real database queries fail (e.g., missing index, translation failure).</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Mandate WebApplicationFactory + Testcontainers for critical tests. InMemory is acceptable for unit tests of services (with mocked DbContext), but integration tests must use a real database.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>Agents return EF tracked entities directly to clients, exposing internal columns or causing circular reference serialization errors.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Require DTO mapping at the service boundary. Make it a linting rule: no direct return of EF entities.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Agents shuffle middleware order in Program.cs (e.g., UseAuthorization before UseAuthentication), breaking auth silently.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Human checkpoint: review middleware order. Provide a template with correct ordering.</repair>
+    </failure-mode>
+  </section>
+</text>

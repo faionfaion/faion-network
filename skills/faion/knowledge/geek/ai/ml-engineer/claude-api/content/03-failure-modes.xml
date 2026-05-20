@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="claude-api Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Migrated antipatterns for claude-api as failure modes. Add detector + repair clauses where missing.</summary>
+
+  <section title="Failure modes">
+    <failure-mode id="fm-01" severity="medium">
+      <description>An agent without a MAX_TURNS guard calls tools indefinitely. Claude never reaches end_turn when a tool always returns an error, an ambiguous result, or a prompt that drives Claude to call more tools.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Unbounded loops burn tokens at tool_use call rates plus tool result input rates. At Sonnet pricing a 1,000-turn runaway costs ~$5 before hitting rate limits.</repair>
+    </failure-mode>
+    <failure-mode id="fm-02" severity="medium">
+      <description>A tool's input_schema is updated without updating the agent loop handler. Claude generates inputs matching the new schema; the handler expects the old field names and silently ignores or crashes on unknown fields.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Schema validation is not automatic — the API passes Claude's tool inputs directly without checking them against the registered schema on the server side.</repair>
+    </failure-mode>
+    <failure-mode id="fm-03" severity="medium">
+      <description>An agentic loop executes irreversible side effects (database mutations, email sends, API POST calls) without a human confirmation step. Claude cannot undo executed side effects.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Claude may misinterpret ambiguous instructions or act on stale context, triggering writes the user did not intend.</repair>
+    </failure-mode>
+    <failure-mode id="fm-04" severity="medium">
+      <description>Prompt Caching TTL is 5 minutes. Long gaps between requests invalidate the cache. Applications with fewer than ~12 requests per hour may never benefit from caching.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>The cache TTL is fixed and not configurable. Low-traffic services pay cache write overhead on every cold request.</repair>
+    </failure-mode>
+    <failure-mode id="fm-05" severity="medium">
+      <description>A cached block is prepended with a dynamic prefix (timestamp, request ID, user name) that changes between requests, invalidating the cache on every call.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Cache matching is prefix-based. Any content before the cached block that changes between requests breaks the prefix.</repair>
+    </failure-mode>
+    <failure-mode id="fm-06" severity="medium">
+      <description>Streaming handler only listens for text_delta events. thinking blocks arrive before text blocks as thinking_delta events. The handler discards thinking tokens while still paying for them.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Extended Thinking tokens are billed at the full model input rate. Ignoring them in the handler does not skip their billing.</repair>
+    </failure-mode>
+    <failure-mode id="fm-07" severity="medium">
+      <description>Extended Thinking is enabled for a task that requires a short answer (under 200 tokens). The minimum 1,024-token budget makes every call expensive regardless of response length.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Budget tokens are always billed even if the model does not use the full budget.</repair>
+    </failure-mode>
+    <failure-mode id="fm-08" severity="medium">
+      <description>ANTHROPIC_API_KEY is hardcoded in source code or committed to version control. Key exposure leads to unauthorized usage and billing.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>API keys in code are frequently leaked via git history, container images, or CI logs.</repair>
+    </failure-mode>
+    <failure-mode id="fm-09" severity="medium">
+      <description>Agent makes parallel requests without exponential backoff. HTTP 429 responses crash the loop instead of being retried.</description>
+      <detector>TBD — observable signal that this antipattern is happening</detector>
+      <repair>Default tier rate limits (requests/minute, tokens/minute) are hit quickly in parallel agentic loops.</repair>
+    </failure-mode>
+  </section>
+</text>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Research Repo Naming — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Folder layout, manifest schema, and the participant-id map. Synthesis agents (LLM tagger, RAG store) consume the manifest, not the raw files.</summary>
+
+  <output-contract>
+    <required>
+      <field name="folder_tree" must_contain="recruit/, run/, tag/, synth/, archive/, participants/"/>
+      <field name="manifest" path="research/manifest.json"
+             required_keys="version,generated_at,files,total_count,language_counts,type_counts"/>
+      <field name="participant_map" path="research/participants/map.json"
+             required_keys="version,entries[participant_id,name_hash,recruited_on,study_ids]"
+             access="restricted (do not commit to public repos; symlink from secret store)"/>
+      <field name="every_artefact.has_filename_matching_grammar" type="bool" must_be="true"/>
+      <field name="every_artefact.has_lang_suffix_if_repo_is_mixed" type="bool" must_be="true"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">filename contains capital letters, spaces, or non-ascii characters</pattern>
+      <pattern id="f2">filename contains the participant's real name, email, phone, or employer</pattern>
+      <pattern id="f3">manifest.json missing OR last_generated &gt; 7 days ago</pattern>
+      <pattern id="f4">participants/map.json committed to a public repo OR to git history of the same repo</pattern>
+      <pattern id="f5">file in `synth/` with no source files cited in its frontmatter</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Add a new study-type to the enum requires version bump of manifest schema; do not silently expand.</transformation>
+      <transformation>Renumber participants is forbidden after first publication of synthesis; allocate new P### codes for new participants.</transformation>
+      <transformation>Rename a file requires both the file rename and a manifest rebuild; never one without the other.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Canonical folder tree">
+    <code lang="text"><![CDATA[
+research/
+├── recruit/          -- screeners, outreach, scheduling
+├── run/              -- raw artefacts: transcripts, audio, video, exports
+├── tag/              -- per-artefact tagged versions (frontmatter + tags)
+├── synth/            -- synthesis outputs (themes, jobs, jtbd statements, reports)
+├── archive/          -- closed studies, read-only
+├── participants/
+│   └── map.json      -- P### → name_hash + private metadata (NOT committed)
+├── manifest.json     -- generated, RAG-readable index
+└── README.md
+    ]]></code>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`scripts/lint-research-repo.py` returns zero violations</item>
+      <item>`scripts/build-manifest.py` produced manifest within the last 7 days</item>
+      <item>No filename contains real names or PII</item>
+      <item>Every synth/ file cites its source artefacts in frontmatter</item>
+      <item>participants/map.json is excluded from public commits (.gitignore + signed verification)</item>
+    </list>
+  </section>
+</text>

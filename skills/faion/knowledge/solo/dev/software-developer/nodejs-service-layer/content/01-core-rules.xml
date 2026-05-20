@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="nodejs-service-layer Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for nodejs-service-layer. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Controllers do exactly four things: validate input (Zod/TypeBox), call one service method, map errors via central ErrorMapper, return DTO. Any logic beyond this belongs in the service.</statement>
+      <rationale source="v1-source">Thin controllers are stateless and trivially testable; fat controllers resist unit testing because they require an HTTP context.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Services accept and return domain types; they never import Express/Fastify Request or Response, and they throw typed domain errors — not HTTP status codes.</statement>
+      <rationale source="v1-source">Framework-agnostic services can be called from HTTP handlers, gRPC, queue consumers, and CLIs without modification.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Repositories expose intention-revealing methods (findActiveByUserId) over generic find(filter); they own all ORM/SQL logic and never leak query builders to callers.</statement>
+      <rationale source="v1-source">Generic find(filter) enables callers to compose unindexed filters at runtime, causing silent full-table scans.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Dependencies must only flow downward: Controller → Service → Repository. Cross-layer imports (controller → repository, service → framework) are a hard violation caught by eslint-plugin-boundaries.</statement>
+      <rationale source="v1-source">Upward or cross-layer imports break testability and couple business logic to transport details.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Wire dependencies through constructor injection; never use module-level singletons or static service locators in files that need to be unit-tested.</statement>
+      <rationale source="v1-source">Constructor injection makes dependencies explicit and replaceable with mocks in unit tests.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Define a typed AppError hierarchy (NotFoundError, ConflictError, UnauthorizedError, ValidationError); services throw domain errors, never raw Error or HTTP status codes.</statement>
+      <rationale source="v1-source">Typed domain errors give the central ErrorMapper precise mapping targets; raw errors produce generic 500s and lose observability.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Translate domain errors to HTTP responses in a single Express errorHandler middleware; never translate domain errors inside individual controllers.</statement>
+      <rationale source="v1-source">Per-handler translation diverges over time; a central mapper ensures consistent status codes, response shapes, and logging across all endpoints.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Run dependency-cruiser and eslint-plugin-boundaries in CI to block controller→repository and service→framework imports automatically.</statement>
+      <rationale source="v1-source">Human review alone misses import violations in large PRs; automated tools enforce the contract on every change.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="dev-methodologies-architecture Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for dev-methodologies-architecture. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use expand-then-contract for every schema change in a CD pipeline: first add the new column/table (expand), migrate data, then remove the old column (contract) in a separate deploy.</statement>
+      <rationale source="v1-source">Combining add + drop in one migration causes zero-downtime deployment to fail: the app version that reads the new column deploys while old pods still query the old schema.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Run EXPLAIN (ANALYZE, BUFFERS) on every suspected slow query on representative data volume; add an index only after confirming the plan switches from Seq Scan to Index Scan.</statement>
+      <rationale source="v1-source">Indexes on write-heavy columns raise write cost; adding indexes before profiling may not change the query plan if statistics are stale or row counts are small.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Prefetch related objects in ORM queries that iterate over a collection; write a query-count assertion in tests to catch N+1 regressions.</statement>
+      <rationale source="v1-source">An N+1 that works fine in dev with 10 rows produces thousands of queries in production. Query-count assertions catch regressions far cheaper than profiling later.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Centralize the API response envelope in one module (Pydantic model or TypedDict); success responses wrap data under a data key, errors under an error key with code, message, and details.</statement>
+      <rationale source="v1-source">Inconsistent envelope shapes force every API consumer to handle different structures; a single module makes the shape a code-reviewable contract that prevents drift.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Choose auth pattern based on statefulness requirement: JWT for stateless API auth, session cookies for server-side state, OAuth2 for third-party login, API keys for server-to-server.</statement>
+      <rationale source="v1-source">Using JWT where session revocation is needed (e.g., security incident) requires a token blacklist, which negates the stateless advantage.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Never let an agent rotate production signing keys, OAuth client secrets, or password-hash parameters; those changes require human approval and coordinated deployment.</statement>
+      <rationale source="v1-source">Auth key rotation is a coordinated security operation; autonomous rotation without a deployment window invalidates all active sessions and can lock users out.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>For cache-aside (the most common pattern), always pair set+get with a documented TTL, jitter (TTL ± 10%), and a single-flight guard against stampede.</statement>
+      <rationale source="v1-source">Without jitter, a cache expiry wave causes all callers to miss simultaneously and hammer the database. Without single-flight, N concurrent misses each trigger a DB query.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Store idempotency keys and created_at on every background job; design job handlers to be idempotent so failed jobs can be re-driven without duplication.</statement>
+      <rationale source="v1-source">Networks and workers fail; a non-idempotent job re-driven after failure charges customers twice or sends duplicate emails.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Never let an agent promote a replica autonomously; require human approval for any failover or topology change.</statement>
+      <rationale source="v1-source">Automatic promotion without quorum check risks split-brain: both primary and promoted replica accept writes, leading to diverged data that is difficult to reconcile.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Every log entry must include: event (snake_case verb), actor (who triggered it), object (what was affected), latency_ms (for I/O operations), and correlation_id (request or trace ID).</statement>
+      <rationale source="v1-source">Without a standard field set, logs are unsearchable in Datadog/Grafana. The field contract must be documented and code-reviewed just like an API schema.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>Use INFO for expected business events, WARNING for recoverable anomalies, ERROR for actionable failures, and CRITICAL for service-threatening conditions only.</statement>
+      <rationale source="v1-source">Over-logging at ERROR saturates alerting and desensitizes on-call responders; under-logging at INFO hides the breadcrumb trail needed for post-incident analysis.</rationale>
+    </rule>
+    <rule id="r12" testable="true" depth="essential">
+      <statement>Enforce no print() in production code via ruff T20 rule; agents that add print() for debugging must remove it before committing.</statement>
+      <rationale source="v1-source">print() bypasses the log aggregation stack, lacks structured fields, and clutters stdout in containers where stdout is parsed as structured JSON.</rationale>
+    </rule>
+  </section>
+</text>

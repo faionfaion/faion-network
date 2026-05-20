@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="lb-algorithms Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for lb-algorithms. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Use round-robin only when all backend servers have equal capacity AND request processing time is uniform (short-lived, homogeneous requests). Use weighted round-robin when servers have different capacities but request time is still uniform. Never use round-robin or weighted round-robin for workloads with variable-cost endpoints (mixed fast/slow API routes, large file uploads alongside simple reads).</statement>
+      <rationale source="v1-source">Round-robin distributes by connection count, not CPU cost. A server handling one long-running request alongside many short ones accumulates queue depth while receiving equal new connections. Least-connections handles this correctly at the cost of per-connection tracking.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Do not use IP hash in autoscaling environments or behind NAT/VPN. IP hash routes all traffic from a client IP to one backend; when backends scale in/out, all existing sessions redistribute. When clients share a NAT IP (corporate networks, mobile carriers), one backend receives disproportionate load.</statement>
+      <rationale source="v1-source">IP hash + frequent autoscale events causes constant wholesale re-distribution — the sticky property breaks on every scale event. NAT collapses many real users to one IP, creating a thundering-herd effect on a single backend. Cookie-based persistence handles both problems correctly.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use least-connections (or weighted least-connections for heterogeneous capacity) as the default algorithm for any workload with variable request processing time: WebSocket connections, database proxies, long-running HTTP uploads/downloads, streaming endpoints, or mixed fast/slow API routes. Use least-response-time only when a load balancer health probe provides accurate per-backend latency measurements.</statement>
+      <rationale source="v1-source">Least-connections adapts to request cost naturally — a backend processing a slow request accumulates connection count and receives fewer new requests. Weighted least-connections extends this to heterogeneous fleets. Least-response-time is the most accurate but requires active probing; its benefit over least-connections is measurable only when backends have significantly different computational power or cache hit rates.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>When adding a new load balancer to a production system, measure actual backend response time distribution before picking an algorithm. If p50 and p99 differ by more than 2x (evidence of variable-cost requests), default to least-connections. If they are within 20%, round-robin is acceptable.</statement>
+      <rationale source="v1-source">Algorithm decisions made without traffic data produce subtle load imbalances that are invisible until a backend falls behind and starts dropping requests under peak load. Measuring first eliminates guesswork.</rationale>
+    </rule>
+  </section>
+</text>

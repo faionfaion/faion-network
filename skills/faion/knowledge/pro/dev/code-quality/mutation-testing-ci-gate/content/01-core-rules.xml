@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Mutation Testing CI Gate Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every mutation-testing-as-CI-gate adoption must satisfy. These prevent the two failure modes that kill mutation-testing rollouts in practice: CI-runtime explosion and false-precision in the kill-rate number.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-kill-rate-floor-per-module" testable="true" depth="essential">
+      <statement>Set per-module kill-rate floors, never a single repo-wide floor. Start at the module's first-run baseline minus 5 percentage points; ratchet the floor up by 2 points per release once green for 4 consecutive PRs.</statement>
+      <rationale source="Petrović and Ivanković, State of Mutation Testing at Google (ICSE-SEIP 2018)">A single global floor punishes new code that lives in a low-coverage module and rewards stable modules that already over-tested. Per-module floors track the actual quality vector and avoid the political fight of who has the higher number.</rationale>
+      <example type="good" title="Per-module floor with ratchet">
+        <code lang="json"><![CDATA[
+{
+  "thresholds": {
+    "src/billing/**":  { "high": 85, "low": 75, "break": 70 },
+    "src/admin-ui/**": { "high": 55, "low": 45, "break": 40 },
+    "src/scripts/**":  { "high": 0,  "low": 0,  "break": 0  }
+  },
+  "ratchet_per_release": 2
+}
+        ]]></code>
+        <note>billing carries money — high floor. admin-ui is internal — moderate floor. scripts are excluded (operations code, mutation-test ROI is negative). Floors ratchet up automatically, with a release cycle as the unit.</note>
+      </example>
+    </rule>
+
+    <rule id="r2-incremental-only-in-pr-ci" testable="true" depth="essential">
+      <statement>PR-time mutation runs MUST mutate only files in the PR diff. Full-repo mutation runs on a nightly / weekly schedule, never on PRs. Use Stryker's `--since`, Mutmut's `--paths-to-mutate` with a diff list, or Pitest's `--includeLaunchClasspath=false` + diff-scoped target classes.</statement>
+      <rationale source="Stryker documentation; observed CI-runtime patterns">Mutation runtime scales as O(mutants × test_runtime). Full-repo mutation on a 50-file PR can hit 30-60 minutes; diff-scoped runs typically stay under 5 minutes. Without this rule, mutation testing gets disabled in the first sprint after rollout because developers refuse to wait.</rationale>
+    </rule>
+
+    <rule id="r3-no-mutation-without-coverage" testable="true" depth="essential">
+      <statement>Mutate only lines that are covered by at least one test. Lines with zero coverage are excluded from the mutator's scope. The metric reported is "mutation score on covered lines", not "mutation score over all lines".</statement>
+      <rationale source="canonical mutation-testing practice">Mutating uncovered code produces 100% survivors that say nothing about test quality and inflate the surviving-mutants list, drowning the real signals. Tying mutation to covered lines also forces the surviving-mutant report to surface ONLY "test exists but does not assert", which is the exact pattern AI-generated tests produce.</rationale>
+    </rule>
+
+    <rule id="r4-equivalent-mutants-tracked-not-discarded" testable="true" depth="essential">
+      <statement>When a surviving mutant is labelled equivalent (semantically equal to original code, e.g. `&lt;` → `&lt;=` on a strictly bounded loop), log it to `mutation-equivalents.yml` with reviewer name, date, and one-sentence reason. Equivalent mutants are excluded from the kill-rate denominator but auditable.</statement>
+      <rationale source="Madeyski et al., Overcoming the Equivalent Mutant Problem (Empirical Software Engineering, 2014)">Equivalent mutants are the most-cited reason developers abandon mutation testing. Silently discarding them inflates kill-rate. Logging them with a reviewer name preserves auditability and prevents an "everything is equivalent" denial-of-quality-gate pattern.</rationale>
+      <example type="good" title="Equivalent-mutant log entry">
+        <code lang="yaml"><![CDATA[
+- mutant_id: "billing/invoice.ts:line 42:LessThanToLessThanOrEqual"
+  original: "for (let i = 0; i < items.length; i++)"
+  mutated:  "for (let i = 0; i <= items.length; i++)"
+  reviewer: ruslan@faion.net
+  date: 2026-05-18
+  reason: "Loop bounded by .length; iteration past array end is unreachable
+           because items.length is captured before the loop; mutated and original
+           produce identical observable behavior."
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r5-non-blocking-stabilization-then-block" testable="true" depth="essential">
+      <statement>For the first 4 weeks after introducing mutation testing, the CI step posts a PR comment but does NOT fail the build. After 4 weeks of green readings on the floor, flip to blocking. Never enable the gate as blocking on day one.</statement>
+      <rationale source="Google Beyond Coverage engineering blog (Petrović, 2018); rollout patterns from Stryker community">Day-one blocking gates on a metric the team has not seen before generate immediate carve-out requests (skip mutation for now) that become permanent. A 4-week observation window lets teams find the real floor for their codebase before being held to it.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Tool-pick decision table">
+    <list>
+      <item>JavaScript / TypeScript → Stryker (best incremental support, dashboard reporter)</item>
+      <item>Python → Mutmut for fast adoption, Cosmic-Ray for high-rigor (more operators, slower)</item>
+      <item>Java / Kotlin → Pitest (mature, incremental mode via SCM module)</item>
+      <item>C# / .NET → Stryker.NET</item>
+      <item>PHP → Infection (PIT-inspired, incremental supported)</item>
+      <item>Ruby → Mutant (paid licence for production use; check budget before adopting)</item>
+      <item>Rust → cargo-mutants (newer, fewer operators; treat as preview)</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

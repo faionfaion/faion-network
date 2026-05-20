@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="java-junit-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for java-junit-testing. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every controller test class MUST be annotated @WebMvcTest(YourController.class) and inject MockMvc. Mock the service layer via @MockBean. Never load the full application context in a controller test — use @SpringBootTest only for full integration tests that need multiple layers.</statement>
+      <rationale source="v1-source">@WebMvcTest is fast (sub-second startup) and isolates the controller from database and external service complexity. @SpringBootTest is for end-to-end verification, not controller unit tests.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Controller test assertions MUST use fluent assertion libraries (AssertJ: assertThat(...).isEqualTo(...)) rather than JUnit's Assert.assertEquals. MockMvc's andExpect methods use AssertJ matchers internally.</statement>
+      <rationale source="v1-source">Fluent assertions produce readable diffs when assertions fail. Assert.assertEquals on complex objects is hard to debug.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Service unit tests MUST use @ExtendWith(MockitoExtension.class) and inject mocks via @Mock and @InjectMocks. Never instantiate service dependencies manually in the test; let Mockito inject them.</statement>
+      <rationale source="v1-source">@InjectMocks automatically constructs the service with mocked collaborators, reducing boilerplate. MockitoExtension handles setup/teardown, ensuring mocks are reset between tests.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Mock return values MUST be set up with precise argument matchers (when(mock.method(any(Type.class))).thenReturn(...)) inside the test, not globally. Use ArgumentCaptor to verify the exact arguments passed to a mock.</statement>
+      <rationale source="v1-source">Precise matchers catch accidental divergence between test setup and code. ArgumentCaptor reveals what the code actually passed, vs. what the test expected.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Repository unit tests MUST use @DataJpaTest to spin up only the data layer. Test custom @Query methods, Specification predicates, and lazy-loading behavior. Use an in-memory H2 database by default, or Testcontainers PostgreSQL for tests that depend on dialect-specific behavior (JSONB, window functions).</statement>
+      <rationale source="v1-source">@DataJpaTest is fast and isolates the repository from service and controller logic. H2 is lightweight; Testcontainers gives real PostgreSQL/MySQL for dialect-dependent tests.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Every repository test that loads a lazy collection MUST assert the collection is populated, catching N+1 bugs and LazyInitializationException. If lazy loading is expected, the test MUST use JOIN FETCH or @EntityGraph.</statement>
+      <rationale source="v1-source">Lazy collections loaded outside a transaction throw LazyInitializationException in production. Tests must catch this.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Integration tests MUST use @SpringBootTest(webEnvironment = RANDOM_PORT) with @Testcontainers and @Container static Postgres container. This spins up a real database and the full application context. Do NOT use in-memory H2 for production dialect verification.</statement>
+      <rationale source="v1-source">Real PostgreSQL/MySQL verify dialect-specific behavior (JSONB, sequences, transactions). H2 is fast but silently skips relational constraints, producing false-positive test passes.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Boundary tests and validation tests MUST use @ParameterizedTest + @ValueSource or @CsvSource instead of multiple [Fact]-style test methods.</statement>
+      <rationale source="v1-source">@ParameterizedTest eliminates copy-paste and clearly documents the test matrix in one place.</rationale>
+    </rule>
+  </section>
+</text>

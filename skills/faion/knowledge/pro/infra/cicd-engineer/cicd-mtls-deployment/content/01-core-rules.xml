@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="cicd-mtls-deployment Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for cicd-mtls-deployment. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Internal CA MUST issue short-lived client certificates (24h–7d) and MUST expose an ACME or API endpoint for automated renewal. Long-lived shared client certs (validity &gt; 30d) shared across multiple services are forbidden — key compromise requires mass rotation with no revocation guarantee.</statement>
+      <rationale source="v1-source">Revocation (CRL/OCSP) is operationally hard to operate reliably at scale — clients cache CRL responses, OCSP responders are single points of failure, and many implementations silently accept certs if the OCSP check fails (soft-fail). Short-lived certs replace revocation with expiry as the primary security boundary.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>nginx mTLS configurations MUST pass $ssl_client_s_dn (client Distinguished Name) and $ssl_client_verify to the backend via X-SSL-Client-DN and X-SSL-Client-Verify headers. The backend MUST validate $ssl_client_verify == SUCCESS before trusting the identity in X-SSL-Client-DN.</statement>
+      <rationale source="v1-source">Without passing $ssl_client_verify, the backend cannot distinguish between a verified client cert and an unauthenticated connection that somehow reached the proxy. A backend trusting X-SSL-Client-DN without checking the verify status is a critical authentication bypass.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>When a service mesh is present (Linkerd, Istio, or Cilium), MUST NOT hand-roll mTLS by injecting client certs into application pods. The mesh's identity plane handles cert issuance, rotation, and revocation automatically per pod identity (SPIFFE/X.509 SVIDs). Hand-rolling on top of a mesh creates two competing PKI systems with conflicting root trust.</statement>
+      <rationale source="v1-source">Service mesh mTLS is transparent, automatic, and operates at the sidecar level with cryptographic identity bound to the pod service account. Adding application-level client certs on top introduces two PKIs with different roots, rotation schedules, and failure modes — all of which manifest as intermittent authentication failures that are extremely hard to diagnose.</rationale>
+    </rule>
+  </section>
+</text>

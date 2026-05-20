@@ -1,43 +1,73 @@
+---
+slug: recognition-over-recall
+tier: solo
+group: ux
+domain: ux-ui-designer
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Nielsen Heuristic #6: minimize memory load by making options, actions, and context visible rather than requiring users to remember them.
+content_id: "c767d6692d17824a"
+tags: [recognition, recall, usability-heuristics, cognitive-load, accessibility]
+---
 # Recognition Rather Than Recall
 
 ## Summary
 
-Nielsen Heuristic #6: minimize memory load by making options, actions, and context visible
-rather than requiring users to remember them. Users should recognize what to do from
-visible cues rather than recall it from memory. Apply when auditing UIs, reviewing
-component specs, or designing multi-step flows.
+**One-sentence:** Nielsen Heuristic #6: minimize memory load by making options, actions, and context visible rather than requiring users to remember them.
 
-## Why
+**One-paragraph:** Nielsen Heuristic #6: minimize memory load by making options, actions, and context visible rather than requiring users to remember them. Users should recognize what to do from visible cues rather than recall it from memory. Apply when auditing UIs, reviewing component specs, or designing multi-step flows.
 
-Recognition requires seeing and choosing; recall requires remembering without a cue.
-Recognition is faster, more accurate, and available to all user populations including
-occasional users, older users, and users with cognitive disabilities. Every recall burden
-adds cognitive load that increases errors, slows task completion, and reduces adoption.
+## Applies If (ALL must hold)
 
-## When To Use
+- Auditing an existing UI for hidden options, icon-only toolbars, or multi-step flows with no context carry-over.
+- Reviewing wireframes or component specs for places where users must remember prior screen content.
+- Designing search, navigation, or command interfaces — autocomplete and recents are high-ROI here.
+- Reviewing AI chat or developer-tool UIs for missing help text, suggestions, or history.
 
-- Auditing an existing UI for hidden options, icon-only toolbars, or multi-step flows with no context carry-over
-- Reviewing wireframes or component specs for places where users must remember prior screen content
-- Designing search, navigation, or command interfaces — autocomplete and recents are high-ROI here
-- Reviewing AI chat or developer-tool UIs for missing help text, suggestions, or history
+## Skip If (ANY kills it)
 
-## When NOT To Use
+- Power-user tools where recall is intentional (vim, SQL terminals, CAD shortcuts) — violating recall norms breaks expert efficiency.
+- Micro-optimization on a product not past alpha — this heuristic is for refining, not architecting.
+- When the interface is already fully recognition-based and validated — audit adds no value.
 
-- Power-user tools where recall is intentional (vim, SQL terminals, CAD shortcuts) — violating recall norms breaks expert efficiency
-- Micro-optimization on a product not past alpha — this heuristic is for refining, not architecting
-- When the interface is already fully recognition-based and validated — audit adds no value
+## Prerequisites
 
-## Content
+- TBD — list concrete input artifacts and where they come from
 
-| File | What's inside |
-|------|---------------|
-| `content/01-principles.xml` | Recognition vs. recall distinction; four design principles; cognitive load mechanism |
-| `content/02-patterns.xml` | Implementation patterns: visible options, contextual info, recognition aids, autocomplete, recent items |
-| `content/03-examples.xml` | Good examples (Google Search, Spotify, VS Code); bad examples (codes, hidden features, no context) |
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/recognition-audit.md` | Audit table: task, recall required, recognition alternative, priority |
-| `templates/prompt-audit.txt` | LLM prompt for auditing a screen description against this heuristic |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `solo/ux/ux-ui-designer/`

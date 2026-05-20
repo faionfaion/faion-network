@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="jira-workflow-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for jira-workflow-management. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Limit workflows to 5-7 statuses maximum; use one shared workflow per issue type across projects rather than bespoke per-project workflows.</statement>
+      <rationale source="v1-source">Per-project workflow proliferation creates scheme sprawl, breaks cross-project JQL queries, and slows the entire Jira instance through scheme-lookup overhead.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Place required field validators on transitions, not on issue creation; this reduces friction for bulk imports and agent-driven flows without sacrificing data quality at the stage where it matters.</statement>
+      <rationale source="v1-source">Creation-time required fields block bulk migrations and bot-driven flows unless service accounts are explicitly exempted.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Resist creating new issue types for every workflow nuance; add a custom field or label instead.</statement>
+      <rationale source="v1-source">New issue types require scheme updates, affect all projects using the shared scheme, and multiply configuration complexity without proportional value.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Limit custom fields aggressively; share them via Global context rather than project-scoped context; Jira has a 200-field issue-view cap and performance degrades well before it.</statement>
+      <rationale source="v1-source">Custom field sprawl is the most common cause of Jira performance degradation in large instances. Each field adds a database column that is loaded even when not displayed.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Test automation rules in a sandbox project with a copy of production schemes before promoting; tag every automation-created issue with an "automation" label for audit.</statement>
+      <rationale source="v1-source">Automation rules that fire in production before testing can transition thousands of issues incorrectly in seconds. Sandbox validation catches logic errors safely.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Add cycle guards to all automation rules; a rule that triggers rule B that triggers rule A creates infinite loops that burn the monthly automation budget instantly.</statement>
+      <rationale source="v1-source">Jira Cloud enforces per-tier monthly automation execution limits. Loops exhaust the budget within minutes, silencing all automations for the rest of the month.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Validate JQL queries with "validateQuery=strict" in the REST API before storing or executing them; never assume a JQL string from an LLM is valid.</statement>
+      <rationale source="v1-source">LLMs frequently hallucinate Jira field names. The strict validator returns field-level errors that allow targeted correction before silent failures in production.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Use "smart commits" to link branches via "PROJ-123" in commit messages; do not rely on humans to manually link PRs to issues after the fact.</statement>
+      <rationale source="v1-source">Manual PR-to-issue linking has near-zero compliance on active teams. Smart commits wire the link at source without workflow friction.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Convert agent-generated Markdown to ADF (Atlassian Document Format) before writing to Jira description or comment fields; Markdown written directly produces empty or malformed fields.</statement>
+      <rationale source="v1-source">Jira's description field accepts HTML/ADF, not Markdown. Agents writing raw Markdown silently produce fields with visible Markdown syntax or empty content.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>Human-in-the-loop checkpoints are mandatory at: workflow promotion to production, automation rule promotion, schema changes, and bulk transitions affecting more than 100 issues.</statement>
+      <rationale source="v1-source">These operations affect all team members simultaneously and are expensive or impossible to reverse.</rationale>
+    </rule>
+  </section>
+</text>

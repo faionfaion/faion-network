@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-models Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-models. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>All domain models must inherit from BaseModel. BaseModel provides integer PK (implicit id), a UUID external identifier (uid), created_at, and updated_at.</statement>
+      <rationale source="v1-source">Consistent base eliminates boilerplate. Integer PK is used for internal joins; uid is the stable external identifier exposed to APIs and clients.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Supply on_delete= explicitly on every ForeignKey. Use PROTECT for data you must not lose, CASCADE only for owned children, SET_NULL for optional references.</statement>
+      <rationale source="v1-source">The default is not safe; omitting on_delete causes a migration error in Django 2.0+ and signals unclear intent in code review.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Add related_name= to every ForeignKey. If the reverse accessor is not needed, use related_name='+'.</statement>
+      <rationale source="v1-source">Without related_name, Django generates a default name that clashes when two models share a parent, causing migration errors.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Define all indexes in Meta.indexes with an explicit name following the pattern appname_model_columns_idx. Do not rely on db_index=True for composite indexes.</statement>
+      <rationale source="v1-source">Named indexes in Meta.indexes are visible in migrations and reviewable. Pair with EXPLAIN against representative data — don't add indexes speculatively.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use UniqueConstraint(fields=[...], name="...") instead of deprecated unique_together.</statement>
+      <rationale source="v1-source">unique_together is deprecated and will be removed in a future Django version.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Use db_default for database-level defaults (computed at INSERT by the DB). Use default= for application-level defaults (computed by Python). Do not mix them.</statement>
+      <rationale source="v1-source">db_default generates different SQL migrations and applies at a different layer. Confusing them produces migrations that fail on older DB versions (requires Postgres 12+ / SQLite 3.38+).</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Define all field choices as TextChoices subclasses in a per-app constants.py. Reference them from models, admin, forms, and serializers via the same import.</statement>
+      <rationale source="v1-source">Single source of truth prevents drift between the choices used in the model definition and those used in forms/serializers.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Import constants using the module alias pattern: from apps.users import constants as user_constants. Do not do from apps.users.constants import UserType.</statement>
+      <rationale source="v1-source">Module alias makes the origin explicit at call sites and prevents ambiguous name collisions when multiple apps have a UserType.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Each app follows the standard structure with models/, services/, tests/, constants.py, and migrations/. Split models into individual files under models/ for apps with more than 2 models.</statement>
+      <rationale source="v1-source">Flat models.py becomes unwieldy; splitting into models/user.py, models/order.py keeps each file focused and reduces merge conflicts.</rationale>
+    </rule>
+  </section>
+</text>

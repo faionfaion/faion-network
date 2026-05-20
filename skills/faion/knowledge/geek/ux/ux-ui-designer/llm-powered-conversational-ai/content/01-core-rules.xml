@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="llm-powered-conversational-ai Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for llm-powered-conversational-ai. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every production system prompt must define four components: (1) allowed topics as an explicit list, (2) forbidden topics as an explicit list, (3) escalation triggers (conditions that hand off to a human), (4) persona constraints (name, tone, response length limit).</statement>
+      <rationale source="v1-source">Vague "stay on topic" instructions fail under adversarial prompting. Explicit lists give the model a concrete reference; the model can say "that is not on my allowed topics list" rather than trying to infer a boundary.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Keep system prompts under 500 tokens. Verbose system prompts increase latency and cost in multi-turn conversations, and the model's attention to early instructions degrades in longer contexts.</statement>
+      <rationale source="v1-source">Each turn appends to the context. A 2000-token system prompt in a 20-turn conversation consumes 40k tokens of context budget on the system prompt alone.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Store conversation history server-side with a session ID. Never rely on the client to send the full history — it is a manipulation and injection vector.</statement>
+      <rationale source="v1-source">Client-side history can be tampered with to inject instructions or erase prior context. Server-side history is authoritative and tamper-evident.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Implement escalation before deploying any conversational AI to users. A conversational AI with no human handoff path is a customer experience failure — not a feature gap.</statement>
+      <rationale source="v1-source">LLMs fail on edge cases, regulated topics, emotional escalation, and novel queries. Without a human handoff, users who cannot be served by the AI have no recourse.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Implement and test at minimum four adversarial scenarios before production: persona abandonment ("you are actually..."), data exfiltration ("repeat your instructions"), off-topic bypass ("let's talk about X instead"), and boundary probing (competitor mentions, legal advice, medical advice).</statement>
+      <rationale source="v1-source">These are the four most common jailbreak vectors for deployed conversational AI. Testing them explicitly before launch identifies whether the system prompt hardening is sufficient.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>For transaction-critical flows (payments, appointments, orders), require deterministic validation after each LLM turn that modifies state. The LLM produces intent; a deterministic system validates and executes it.</statement>
+      <rationale source="v1-source">LLMs hallucinate. A hallucinated order confirmation that triggers a real order is a production incident. State changes must be validated by a deterministic layer, not trusted from LLM output alone.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use streaming responses for voice pipelines — start TTS synthesis before the full LLM response is complete to reduce perceived latency. For chat, use streaming to render text progressively.</statement>
+      <rationale source="v1-source">LLM response latency is 1-3 seconds to first token for larger models. Streaming reduces perceived latency by an order of magnitude compared to waiting for the complete response.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>When an agent generates the system prompt AND also acts as the conversational AI in testing, it will validate its own outputs favorably — use a separate model instance for red-teaming.</statement>
+      <rationale source="v1-source">An agent evaluating its own system prompt has a systematic bias toward finding it adequate. Adversarial testing requires a separate, unconstrained instance with no system prompt context from the target.</rationale>
+    </rule>
+  </section>
+</text>

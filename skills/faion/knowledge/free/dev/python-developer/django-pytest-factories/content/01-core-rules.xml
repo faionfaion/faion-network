@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-pytest-factories Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-pytest-factories. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Define Django model factories in tests/factories/ using factory.django.DjangoModelFactory. Use factory.SubFactory for foreign keys. Use factory.Faker for realistic data. Use @factory.post_generation for M2M relationships and password hashing. Include skip_postgeneration_save=True in Meta for Django 4.2+ to avoid double save on post_generation. Register every factory in root conftest.py via pytest_factoryboy.register().</statement>
+      <rationale source="v1-source">DjangoModelFactory handles database save and cleanup. SubFactory creates dependent objects automatically and resolves circular dependencies. Faker ensures test data looks realistic (valid emails, real names) without hard-coded values. post_generation covers cases factory fields cannot express, such as M2M adds and password hashing. pytest-factoryboy.register auto-creates user and user_factory fixtures from UserFactory with no extra code.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Register all factories in root conftest.py using pytest_factoryboy.register(). register(UserFactory) creates two fixtures: 'user' (singular model instance) and 'user_factory' (callable for batch or custom creation). Use _name parameter to register multiple factories of the same model under different names (e.g., register(AdminUserFactory, _name="admin_user")). Do NOT manually define @pytest.fixture def user if you have registered UserFactory — silent override will occur.</statement>
+      <rationale source="v1-source">pytest-factoryboy eliminates fixture boilerplate: no @pytest.fixture def user(db): return UserFactory() in every conftest. The auto-created fixtures request the db fixture automatically, so tests just declare 'user' as a parameter and get a saved User instance. The _name parameter avoids collisions when registering multiple factories for the same model.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Use factory.django.mute_signals(post_save) as a decorator on factory classes or test functions when the factory creates a model that triggers email sending, Celery task enqueuing, or other side effects via post_save signals. Verify the side effect in separate, dedicated tests that specifically test the signal handler.</statement>
+      <rationale source="v1-source">Unmuted signals make unrelated tests fail when the email backend or Celery queue is not configured for them. Muting signals in the factory keeps test scope focused. Separate signal tests verify the handler independently of factory-creation tests.</rationale>
+    </rule>
+  </section>
+</text>

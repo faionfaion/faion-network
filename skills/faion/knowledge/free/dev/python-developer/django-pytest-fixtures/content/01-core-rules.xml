@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-pytest-fixtures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Migrated testable rules for django-pytest-fixtures. Verify and refine before relying on for production.</summary>
+
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Any test that accesses the database MUST be marked with @pytest.mark.django_db. Fixtures that create database objects MUST explicitly request the 'db' fixture. Use transactional_db only when the test asserts on transaction commit/rollback semantics, post-commit hooks, signals, or select_for_update. Default to 'db' for all other cases.</statement>
+      <rationale source="v1-source">The db fixture wraps each test in a transaction and rolls back after the test, ensuring isolation. Omitting the marker causes "no database access allowed" errors. Mismatching db and transactional_db creates flaky tests that depend on transaction semantics but are not marked for it. transactional_db commits real transactions and requires explicit cleanup.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use function scope (default) for mutable data. Use module scope for shared test data within a file. Use session scope only for immutable, expensive-to-create data (e.g., static categories loaded once). Session-scoped fixtures MUST be immutable — creating copies for each test unless explicitly intending shared state. Session-scoped DB fixtures combined with function-scoped Factory Boy fixtures work only if every write rolls back.</statement>
+      <rationale source="v1-source">Function-scoped fixtures guarantee test isolation: each test gets a fresh copy. Session-scoped fixtures amortize one-time expensive operations but must be read-only — mutations accumulate across tests and create order dependencies. Scope mismatch is hard to debug because failures appear random.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Create api_client, authenticated_client, and admin_client fixtures in root conftest.py. Use APIClient.force_authenticate(user=...) instead of login flows. Use yield to clear authentication after each test. Never use credentials() for test authentication unless the test is specifically about the token exchange flow.</statement>
+      <rationale source="v1-source">force_authenticate bypasses the authentication middleware, making API tests 10-100x faster and independent of the authentication backend. yield ensures cleanup (force_authenticate(user=None)) even when tests fail. credentials() tests the token pipeline, not the business logic; mix them only when the test is about authentication itself.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Compose fixtures by declaring them as function parameters. Use pytest_plugins to modularize fixtures across subdirectories. Avoid class attributes for fixture state — use yield fixtures with explicit teardown. Each conftest.py only contains fixtures relevant to its directory and below.</statement>
+      <rationale source="v1-source">Explicit composition makes test dependencies visible and searchable. pytest_plugins lets domain-specific fixtures live near domain-specific tests without polluting the root conftest. Class attributes for state are reset between test methods but not between fixture invocations, causing subtle leaks.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Root conftest.py holds fixtures shared across all tests: API clients, factory registration, global settings overrides. Each subdirectory (unit/, integration/, e2e/) MAY have its own conftest.py with directory-specific fixtures. Use pytest_plugins inside a conftest.py to load modular fixture files. Avoid duplicating fixtures across conftest files.</statement>
+      <rationale source="v1-source">The conftest hierarchy follows pytest's natural file system scoping: root conftest is visible everywhere, subdirectory conftest is visible only to that subtree. Keeping shared fixtures in one root file prevents drift. pytest_plugins breaks a large conftest into domain files without losing automatic loading.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Create config/settings/test.py inheriting from base settings. Override: DATABASES to in-memory SQLite (or Postgres in CI via test_postgres.py), PASSWORD_HASHERS to MD5PasswordHasher, EMAIL_BACKEND to locmem, CELERY_TASK_ALWAYS_EAGER=True, CACHES to locmem. Set MEDIA_ROOT via autouse fixture (not settings file) so each test run gets a fresh temp dir.</statement>
+      <rationale source="v1-source">In-memory SQLite is faster than Postgres for unit tests. MD5PasswordHasher is ~200x faster than bcrypt. locmem email captures outgoing mail for assertions. Eager Celery makes tasks run synchronously, enabling assertions immediately after the call. autouse fixture for MEDIA_ROOT ensures tmp_path cleanup per test.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Run tests in parallel with pytest-xdist: pytest -n auto. Use --reuse-db to skip migrations on subsequent local runs (use --create-db on first run or after schema change). Session-scope immutable data fixtures. Profile test duration with pytest --durations=10. Mark slow tests with @pytest.mark.slow and run them in a separate CI job.</statement>
+      <rationale source="v1-source">Parallel execution scales with CPU cores (2-4x speedup on quad-core). Database reuse skips migration cost (20-50% savings on suites with many apps). Profiling reveals unexpected slowdowns. Slow markers let CI run fast tests on every PR and slow tests on merge only.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Organize tests as: tests/conftest.py (root fixtures), tests/factories/ (Factory Boy classes), tests/fixtures/ (complex composed fixtures), tests/unit/ (unit tests, no DB), tests/integration/ (DB + API), tests/e2e/ (end-to-end). Each subdirectory MAY have its own conftest.py for directory-specific fixtures.</statement>
+      <rationale source="v1-source">This structure scales from small projects to monorepos. Unit tests run fastest (no DB). Integration tests share factories. conftest inheritance (root → unit/ → module) manages fixture scope cleanly. Developers know immediately where a test belongs and what setup it requires.</rationale>
+    </rule>
+  </section>
+</text>

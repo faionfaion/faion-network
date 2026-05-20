@@ -1,36 +1,74 @@
+---
+slug: record-replay-debugging
+tier: geek
+group: ai
+domain: ai-agents
+version: 1.0.0
+status: draft
+last_reviewed: 2026-05-20
+maintainers: [faion-net]
+summary: Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO.
+content_id: "32db7a60667c7e6f"
+tags: [debugging, determinism, testing, reproducibility, agents]
+---
 # Record / Replay — Deterministic Agent Debugging
 
 ## Summary
 
-Architect every agent with two interchangeable modes: **record** captures every LLM call, every tool input/output, and every state transition into a single trace file; **replay** re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO. Replay is the only way to debug a 1-in-N production failure deterministically and the only way to mutate one variable (prompt, tool stub, system message) and verify the fix.
+**One-sentence:** Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO.
 
-## Why
+**One-paragraph:** Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO. Replay is the only way to debug a 1-in-N production failure deterministically and the only way to mutate one variable (prompt, tool stub, system message) and verify the fix.
 
-Logs and OTel traces tell you what happened, not why a specific LLM decision was made. Non-deterministic agents (temperature > 0, retries, race conditions in parallel tool calls, MCP server flakiness) cannot be debugged by re-running the same input — you get a different decision tree every time. Record/replay is the standard answer in trustworthy-AI literature (Sakura Sky 2026, debugg.ai 2025) and is implemented natively by LangGraph time-travel checkpoints, Phoenix replay sessions, and AgentOps. Without it, post-mortems devolve into log archaeology and "could not reproduce" tickets.
-
-## When To Use
+## Applies If (ALL must hold)
 
 - Production debugging of intermittent agent failures.
 - Building eval sets from real traffic — record once, replay many times with mutations.
 - Fix verification — change one prompt token, replay, confirm the bug path is gone.
 - Regression testing across model versions — replay last month's traces against the new model.
 
-## When NOT To Use
+## Skip If (ANY kills it)
 
 - Pure stateless single-call generators (one LLM call, no tools) — replay overhead is not justified.
 - Outputs containing PII you cannot persist — either redact in record, or skip.
 - Quick prototypes where you have not yet stabilised the agent shape — instrument once the API surface is fixed.
 - Tools that must hit external state (sending email, taking payment) — record but mark sideeffects as non-replayable.
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-modes-contract.xml` | The record/replay contract: what each mode MUST capture and serve, what counts as nondeterminism, how to mark side-effects. |
-| `content/02-mutation-replay.xml` | Mutation-replay loop: change one variable in a recorded trace and re-run to confirm a fix; the canonical use of replay beyond reproduction. |
+- TBD — list concrete input artifacts and where they come from
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `TBD/path` | TBD — what upstream output this consumes |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| TBD | sonnet | TBD |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/trace-schema.json` | JSON-schema for a single recorded run — events, ordering, nondeterminism markers. |
+| TBD | TBD |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| TBD | TBD | TBD |
+
+## Related
+
+- parent skill: `geek/ai/ai-agents/`

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="OKR Cascade Multi-Squad Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Defines the exact shape of the cascade artifacts. Subagent must satisfy this before returning a quarter-ready bundle.</summary>
+
+  <output-contract>
+    <required>
+      <field name="company_okr_set" required_keys="objectives,signed_off_by,quarter_label">
+        <subfield name="objectives" min="1" max="3"/>
+        <subfield name="objectives[].key_results" min="3" max="5"/>
+      </field>
+      <field name="squad_okr_set_per_squad" min="3" max="6">
+        <subfield name="squad_name" type="string"/>
+        <subfield name="mission" type="string" max_words="20"/>
+        <subfield name="objectives" min="1" max="3"/>
+        <subfield name="objectives[].key_results" min="3" max="5"/>
+        <subfield name="objectives[].key_results[].baseline_value" type="number"/>
+        <subfield name="objectives[].key_results[].target_value" type="number"/>
+        <subfield name="objectives[].key_results[].measurement_source" type="string"/>
+      </field>
+      <field name="dependency_graph" format="markdown_adjacency_list">
+        <subfield name="edges[].from_squad" type="string"/>
+        <subfield name="edges[].to_squad" type="string"/>
+        <subfield name="edges[].artifact" type="string"/>
+        <subfield name="edges[].due_week" type="integer" min="1" max="13"/>
+      </field>
+      <field name="checkin_cadence" required_keys="monday_standup_time,friday_vote_deadline"/>
+      <field name="ownership_map" format="company_kr_id -> single_squad_name"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">company_okr_set with &gt; 3 objectives OR any objective with &gt; 5 key_results</pattern>
+      <pattern id="f2">ownership_map where a company_kr_id maps to a list / multiple squads</pattern>
+      <pattern id="f3">key_results that read as tasks ("ship feature X", "launch Y") instead of measurable outcomes</pattern>
+      <pattern id="f4">dependency_graph empty OR fewer edges than (squad_count - 1) — almost certainly hidden dependencies</pattern>
+      <pattern id="f5">squad OKR document with no Inbound or Outbound section</pattern>
+      <pattern id="f6">aspirational language without baseline_value and target_value numbers</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>A company KR may be "split" into 2 squad KRs at different layers (e.g., a leading + lagging pair) provided each has its own measurement source.</transformation>
+      <transformation>Stretch KRs may carry a "stretch" flag with target_value separate from a "commit" target_value; both must be numeric.</transformation>
+      <transformation>Contributor squads may list a company KR in their "supporting" section without being Owner — does not violate single-threaded ownership.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/squad-okr.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>company set ≤ 3 Os, each ≤ 5 KRs</item>
+      <item>every squad has 1-3 Os, each O has 3-5 KRs with numeric baseline + target</item>
+      <item>ownership_map is a function (one squad per company KR), not a relation</item>
+      <item>dependency_graph edges count ≥ squad_count - 1</item>
+      <item>each dependency edge has from, to, artifact, due_week populated</item>
+      <item>weekly check-in cadence specifies exact times, not "weekly"</item>
+      <item>previous quarter retro is referenced (if not Q1) with date</item>
+    </list>
+  </section>
+</text>
