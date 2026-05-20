@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Margin Defense — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a weekly `MarginBleedReport` and the alert events it may trigger.</summary>
+
+  <section title="Required fields">
+    <list>
+      <item>`project_id` — string</item>
+      <item>`week_iso` — ISO week</item>
+      <item>`baseline_margin_pct` — number (from quote)</item>
+      <item>`current_realised_margin_pct` — number</item>
+      <item>`bleeds` — array of `{pattern_id, severity_pct_of_margin, evidence: array, hours_or_dollars, first_detected_at}`</item>
+      <item>`cumulative_bleed_pct` — number</item>
+      <item>`alerts_triggered` — array of alert events (may be empty)</item>
+      <item>`recommended_actions` — array of `{action, owner, due_by}`</item>
+      <item>`comms_drafted` — boolean (whether client message generated)</item>
+    </list>
+  </section>
+
+  <section title="Alert event required fields">
+    <list>
+      <item>`alert_id` — string</item>
+      <item>`project_id` — string</item>
+      <item>`trigger` — enum {single_pattern_gt_5pct, cumulative_gt_10pct, margin_negative}</item>
+      <item>`pattern_id` — enum {silent_scope_creep, free_analysis, missing_change_request, ai_rework_loop, gold_plating, sympathy_discount}</item>
+      <item>`evidence` — array (time log refs, comms quotes)</item>
+      <item>`recommended_conversation` — string (draft client message)</item>
+      <item>`due_by` — ISO-8601 (≤ 48 business hours from alert)</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Bleed reported with `severity_pct_of_margin == 0` AND `hours_or_dollars &gt; 0`.</description>
+      <reason>Inconsistent — either bleed has cost (calculate %) or not (don't report).</reason>
+    </antipattern>
+    <antipattern>
+      <description>Alert with `due_by &gt; 48 business hours`.</description>
+      <reason>Violates r3 alert-SLA.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Recommended action "increase rate next quarter" for an active project bleed.</description>
+      <reason>Recommended action must be project-scoped (CR, scope reset, pause). Rate decisions belong in `solo-rate-floor-calculator`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Pattern `ai_rework_loop` flagged without ≥ 3 billed iterations of the same task.</description>
+      <reason>Single rework is normal; loop pattern needs ≥ 3 to differentiate from iteration.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Report emitted but `comms_drafted: false` AND any bleed &gt; 5%.</description>
+      <reason>Violates r3 implementation; alert without draft is reporting theatre.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Roll up multiple instances of the same pattern within a week (e.g. 4 free analysis calls → one entry with frequency: 4).</item>
+      <item>Anonymise client name when sharing report with team.</item>
+      <item>Convert bleed to dollars OR percentage depending on stakeholder.</item>
+    </list>
+  </section>
+
+  <reference path="templates/bleed-report.json">MarginBleedReport JSON Schema.</reference>
+  <reference path="templates/change-request.md">CR template referenced by recommended_actions.</reference>
+  <reference path="templates/margin-alert-message.md">Diplomatic client message template.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>6-pattern coverage: array can be empty per pattern but the model evaluated all 6.</item>
+      <item>Severity math: sum of bleed % matches cumulative.</item>
+      <item>Alert SLA ≤ 48 business hours.</item>
+      <item>Recommended actions are project-scoped.</item>
+      <item>Comms drafted for any alert.</item>
+    </list>
+  </section>
+</text>
