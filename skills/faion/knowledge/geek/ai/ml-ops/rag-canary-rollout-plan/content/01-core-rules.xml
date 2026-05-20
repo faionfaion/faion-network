@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="RAG Canary Rollout Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every RAG-feature canary rollout must satisfy. These prevent the dominant failure: quality regressions that latency and error-rate canaries do not see.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-canary-curve-fixed" testable="true" depth="essential">
+      <statement>The canary curve is fixed: 1% (24h hold) → 5% (24h) → 25% (48h) → 100%. No step is skipped; each hold must elapse before promotion. Holds can be extended if quality data is inconclusive, but never shortened.</statement>
+      <rationale source="canary-deployment research; RAG-quality drift analysis">A 1% step catches catastrophic regressions; the 5% step catches subtle ones that 1% sample missed; the 25% step exercises real traffic volume. Skipping steps removes a layer of protection; shortening holds prevents enough quality samples from accumulating to compute a reliable score.</rationale>
+      <example type="good" title="Canary curve in plan">
+        <code lang="yaml"><![CDATA[
+rollout_plan:
+  feature_id: support-bot-rag-v3
+  steps:
+    - percent: 1   ; hold_hours: 24  ; min_samples: 200
+    - percent: 5   ; hold_hours: 24  ; min_samples: 1000
+    - percent: 25  ; hold_hours: 48  ; min_samples: 5000
+    - percent: 100 ; hold_hours: 168 ; soak_window: true
+        ]]></code>
+      </example>
+    </rule>
+
+    <rule id="r2-golden-eval-gate-per-step" testable="true" depth="essential">
+      <statement>Before each step promotion, the golden eval suite runs against the canary configuration. The eval must show: (a) no regression on the primary quality metric vs the live baseline, (b) no regression &gt; 5% on any secondary metric, (c) latency p95 within +20% of baseline. Step promotion is blocked until golden eval passes.</statement>
+      <rationale source="offline-vs-online evaluation research; RAG-quality-gate practice">Golden eval catches regressions that have not yet manifested in the small canary sample. Combining it with online quality monitoring is defense-in-depth: golden eval is fast and complete; online quality is slow but exercises real distributions.</rationale>
+    </rule>
+
+    <rule id="r3-online-quality-scoring-sampled" testable="true" depth="essential">
+      <statement>A sample (typically 5-10% of canary traffic, bounded at 200-1000 samples per hour) is scored online for answer quality using a rubric: groundedness (claims supported by retrieved passages), relevance (answer addresses the question), completeness (covers the user's intent), no-hallucination (no fabricated facts). The judge is either an LLM-as-judge or a human review queue; rubric weights are documented.</statement>
+      <rationale source="LLM-as-judge research; production RAG quality measurement">Latency and error rate are silent on RAG quality. A sampled rubric-based score is the only signal that catches "the answer was returned with status 200 but it was wrong". 5-10% sampling balances cost against statistical reliability.</rationale>
+    </rule>
+
+    <rule id="r4-kill-switch-criteria-pre-committed" testable="true" depth="essential">
+      <statement>Auto-rollback fires when: (a) online quality score drops &gt; 10% below baseline for 5 consecutive minutes, OR (b) hallucination rate exceeds 2% of sampled answers, OR (c) latency p95 exceeds +50% of baseline, OR (d) error rate exceeds 3x baseline. Each criterion is pre-committed in rollout-plan.yaml; the rollback fires automatically without human approval.</statement>
+      <rationale source="auto-rollback patterns from progressive-delivery research">Manual rollback during a quality incident loses 10-30 minutes to "wait, let me check the dashboard". Auto-rollback restores the baseline immediately; human review of the incident comes after the user impact is stopped. Pre-committed criteria prevent the post-hoc rationalisation pattern.</rationale>
+    </rule>
+
+    <rule id="r5-sixty-second-rollback" testable="true" depth="essential">
+      <statement>Rollback completes in &lt; 60 seconds from trigger to traffic restored to the previous version. Gateway routes shift atomically; no rebuild, no deploy, no cache-bust. Rollback execution is rehearsed quarterly via game-day exercise. Receipts are recorded automatically with trigger reason, executed_at, completed_within_seconds.</statement>
+      <rationale source="MTTR research; chaos-engineering practice for LLM rollback">A rollback that takes 5 minutes might as well not exist when customer impact is accumulating per second. The 60-second contract forces the gateway and the deployment system to support atomic flips. Game-day exercises catch the rot that turns a working rollback into a broken one over months.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Online quality rubric (default)">
+    <list>
+      <item>groundedness 0-3 — claims supported by retrieved passages</item>
+      <item>relevance 0-3 — answer addresses the question</item>
+      <item>completeness 0-3 — covers the user's intent</item>
+      <item>no-hallucination 0-3 — no fabricated facts or sources</item>
+      <item>composite_score = mean of the four; floor at 2.0/3.0 by default</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
