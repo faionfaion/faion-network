@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Thumbs Down → Eval — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of an `EvalCandidate` (intermediate) and an admitted eval-suite row.</summary>
+
+  <section title="EvalCandidate required fields">
+    <list>
+      <item>`interaction_id` — string</item>
+      <item>`prompt_redacted` — string (PII scrubbed)</item>
+      <item>`response_redacted` — string (PII scrubbed)</item>
+      <item>`signal` — enum {down, report}</item>
+      <item>`user_comment_redacted` — string (may be empty)</item>
+      <item>`scrub_passed` — boolean (true only if no entity remained)</item>
+      <item>`judge_votes` — array of 3 `{judge_id, wrong, representative, reproducible, model}`</item>
+      <item>`admit_decision` — enum {admit, reject, queue, drop}</item>
+      <item>`admit_reason` — string</item>
+      <item>`cluster_id` — string (for stop-the-bleed grouping)</item>
+    </list>
+  </section>
+
+  <section title="Admitted row required fields">
+    <list>
+      <item>`row_id` — string</item>
+      <item>`prompt` — redacted string (assertion input)</item>
+      <item>`expected_behavior` — string (NOT a hard expected output; behaviour assertion e.g. "should refuse to invent records")</item>
+      <item>`assertion_type` — enum {refuses, retrieves, abstains, structured-output, no-pii, citation-present}</item>
+      <item>`added_at` — ISO-8601</item>
+      <item>`origin_interaction_id` — string (link back)</item>
+      <item>`severity` — enum {low, medium, high, blocker}</item>
+      <item>`tags` — array of strings (failure categories)</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`admit_decision: admit` AND `scrub_passed: false`.</description>
+      <reason>Violates r2 PII gate. Rejection is non-negotiable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`judge_votes.length != 3`.</description>
+      <reason>Violates r3 three-judge requirement.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Admitted rows raw prompt contains entity-tagged tokens like `[PER_1]`'s value (e.g. literal "John") leaking through.</description>
+      <reason>Indicates scrub did not actually redact; PII contamination of eval suite.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Week's admitted count exceeds 50.</description>
+      <reason>Violates r4 cap. Surplus must queue.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Admitted row sets `expected_behavior` as an exact string output ("must return: 'I cannot help'").</description>
+      <reason>Brittle assertions overfit to wording. Use behaviour assertions (refuses, retrieves, abstains) instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Shorten prompts &gt; 4k tokens to first 1.5k + "[...]" + last 500 for storage.</item>
+      <item>Anonymise tenant identifiers behind hashes.</item>
+      <item>Coalesce identical clustered failures into one row with `frequency_count` field.</item>
+    </list>
+  </section>
+
+  <reference path="templates/eval-candidate.json">EvalCandidate JSON Schema.</reference>
+  <reference path="templates/admitted-row.json">Admitted row JSON Schema.</reference>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>scrub_passed before admit.</item>
+      <item>3 judges, ≥ 2 admit votes.</item>
+      <item>Behaviour assertion (not exact-string).</item>
+      <item>Weekly cap respected.</item>
+      <item>cluster_id present for stop-the-bleed correlation.</item>
+    </list>
+  </section>
+</text>

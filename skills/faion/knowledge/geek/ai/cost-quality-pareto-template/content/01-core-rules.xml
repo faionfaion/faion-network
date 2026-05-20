@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Cost-Quality Pareto Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules that make a Pareto eval replayable and trustworthy across model generations.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-fixture-freeze" testable="true" depth="essential">
+      <statement>The fixture set MUST be frozen and versioned before any candidate is evaluated. Each fixture has a stable ID. Adding or removing fixtures requires bumping the version and re-running all candidates — partial re-runs are forbidden because they bias the comparison.</statement>
+      <rationale source="Holistic Evaluation of Language Models (HELM, Liang et al.)">Adding "this one tricky case the new model handled" mid-eval is the most common bias source. A frozen fixture set is what makes a Pareto chart a comparison instead of a confirmation.</rationale>
+    </rule>
+
+    <rule id="r2-multi-dim-scoring" testable="true" depth="essential">
+      <statement>Scoring MUST use at least 3 dimensions chosen from: correctness (factual / functional), faithfulness (grounded vs hallucinated), helpfulness (intent satisfaction), safety (no harmful output), format compliance. Single-dimension "is this good?" is rejected. Rater (human or LLM-as-judge) is recorded per dimension.</statement>
+      <rationale source="LLM-as-judge research (Zheng et al., MT-Bench; Anthropic's faithfulness work)">Single-dimension scoring hides systematic failure on one axis behind aggregate "okay." Multi-dim surfaces the trade (e.g., opus higher correctness, sonnet higher format compliance).</rationale>
+    </rule>
+
+    <rule id="r3-full-cost-capture" testable="true" depth="essential">
+      <statement>Per-call data MUST include input tokens, output tokens, cost (USD), wall-clock latency, and any cache-hit flag. Cost cannot be derived from token count alone for cached/uncached prompts. Latency is part of "cost" for user-facing paths.</statement>
+      <rationale source="Anthropic prompt-caching pricing + provider-specific cost differences">A Pareto without latency mis-represents the user experience trade. A Pareto using "per 1k tokens" published rate misses caching discounts that flip the winner.</rationale>
+    </rule>
+
+    <rule id="r4-replay-metadata" testable="true" depth="essential">
+      <statement>Each eval run MUST persist: candidate name + provider + version + temperature + tools enabled + prompt SHA + fixture-set version + date. Decisions made from the run reference this metadata. A run without replay metadata is research, not evidence.</statement>
+      <rationale source="ML reproducibility research (NeurIPS reproducibility checklist)">Without metadata, a decision cannot be re-evaluated when a new model releases. The "we tested this 6 months ago" claim collapses under scrutiny.</rationale>
+    </rule>
+
+    <rule id="r5-pareto-frontier" testable="true" depth="essential">
+      <statement>The decision artifact MUST show the cost-quality scatter with the Pareto frontier marked. Candidates inside the frontier are dominated and rejected. The decision picks a frontier candidate AND records the reason for that point vs other frontier points (e.g., "chose sonnet over opus: $0.30 cheaper per task, 0.05 quality gap acceptable").</statement>
+      <rationale source="Multi-objective optimization theory">The frontier visualizes the actual decision space. Picking dominated candidates ("opus because it's the smartest") wastes money. Picking from the frontier with a written reason makes the choice defensible.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Frontier-driven decision line">
+      <code lang="text"><![CDATA[
+Decision: claude-3.5-sonnet (cached) for production
+Frontier candidates considered:
+  - haiku (cached):    $0.001/task, quality 0.71
+  - sonnet (cached):   $0.012/task, quality 0.89   <-- chosen
+  - opus  (cached):    $0.058/task, quality 0.92
+Rationale: 0.03 quality gap vs opus does not justify 4.8x cost on 100k tasks/mo.
+Replay: fixtures v3 (20 cases) × 2026-05-15 × prompt-sha c4f...
+      ]]></code>
+      <note>All three rules satisfied: frontier shown, reason explicit, replay metadata.</note>
+    </example>
+
+    <example type="bad" title="Vibes decision">
+      <code lang="text"><![CDATA[
+"After testing, opus seems best."
+      ]]></code>
+      <note>No fixtures referenced, no cost numbers, no frontier. Violates r1, r3, r5.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

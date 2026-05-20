@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI Code Lint Presets Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the lint-summary shape, the noqa-floor discipline, and the per-PR exemption rule.</summary>
+
+  <section title="Required lint-summary fields">
+    <list>
+      <item><code>preset_version</code> (string; matches the version of the presets file checked in)</item>
+      <item><code>scope</code> (string: `staged` | `full-tree` | `scope-diff`)</item>
+      <item><code>counts_by_category</code> (object: no_op_tests, broad_excepts, magic_literals, debug_statements, fabricated_imports, other)</item>
+      <item><code>noqa_floor</code> (object: total_noqa_lines, per_file_max, justified: bool)</item>
+      <item><code>recommendation</code> (enum: ship, revise)</item>
+    </list>
+    <reference path="templates/pr-comment.md">PR comment template indexed by category.</reference>
+  </section>
+
+  <section title="Baseline-noqa rule">
+    <list>
+      <item>Pre-existing violations are tagged with explicit `# noqa: RULE-CODE  # baseline` on adoption via `scripts/adopt.sh`. NEVER blanket-disable a rule.</item>
+      <item>Every noqa MUST include a reason comment after the `#`. Bare `# noqa` is FORBIDDEN by a secondary check.</item>
+      <item>Baseline noqa count MUST trend down over time; CI emits a `noqa_count` metric and a target reduction rate.</item>
+    </list>
+  </section>
+
+  <section title="Per-PR exemption rule">
+    <list>
+      <item>Exemptions in new code (`# noqa` added in the PR) MUST come with a `because: <reason>` annotation.</item>
+      <item>More than 3 new noqa lines in a single PR triggers an `escalate` review tag.</item>
+      <item>Per-rule disablement at file or repo level requires a CODEOWNERS sign-off; AI assistants are FORBIDDEN from editing the presets.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Lint passes because the AI added `# noqa` to silence the rule it failed.</description>
+      <reason>r1 violation. Rule downgrading via noqa is the dominant escape route. CI must detect added-noqa-by-AI commits.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bare `# noqa` without a reason.</description>
+      <reason>Defeats the baseline rule; future maintainers cannot evaluate the exemption.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`counts_by_category` empty when scope is `full-tree` on a non-trivial repo.</description>
+      <reason>Suggests lint did not run or output was discarded.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>preset_version matches checked-in file.</item>
+      <item>noqa_floor.justified is `true` for the adoption commit.</item>
+      <item>Every category count is &gt;= 0 (zeros are recorded, not omitted).</item>
+      <item>Recommendation matches the rule: any nonzero category → `revise`.</item>
+    </list>
+  </section>
+</text>
