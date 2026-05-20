@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 - F-059 Added: methodology template v2 (multi-file dir AGENTS.md + content/*.xml).
 - F-059 Added: scripts/validate-methodology-v2.py + scripts/migrate-methodology-to-v2.py.
 - F-059 Added: canonical exemplar at solo/research/researcher/jobs-to-be-done/ (JTBD).
+- F-060 Added: playbook template v2 (playbook.yaml manifest + body.md).
+- F-060 Added: scripts/validate-playbook-v2.py + scripts/migrate-playbook-to-v2.py.
+- F-060 Added: canonical exemplar at solo/product-planning/idea-to-validated-mvp/.
 - F-061 Added: workflow template v2 schema (envelope ≤80 lines + content_id + success_criteria).
 - F-061 Added: scripts/validate-workflow-v2.py.
 - F-061 Changed: 6 workflows normalized (brainstorm, idea-to-prod, improver, media-ops, poll-agents, sdd-batch-orchestrator).
