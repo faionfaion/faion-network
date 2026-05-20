@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Engagement Pattern Memory — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for maintaining a per-engagement memory layer that prevents cross-client convention leak and re-learn cost.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-per-engagement-scope" testable="true" depth="essential">
+      <statement>Each active engagement MUST have a dedicated memory file at a fixed, isolated location (e.g., `~/engagements/<client>/memory.md`). Conventions, reviewer preferences, glossary terms, traps, and deploy quirks are scoped to that file. Forbidden: shared "tips for all clients" file that mixes engagement-specific knowledge.</statement>
+      <rationale source="Conway's-law-applied-to-knowledge, multi-tenant data-isolation patterns">Shared memory leaks: a reviewer-preference for Client A ("prefers shorter PR descriptions") leaks into Client B and gets you flagged for missing detail. Per-engagement scope prevents this at the file level.</rationale>
+    </rule>
+
+    <rule id="r2-session-end-write-discipline" testable="true" depth="essential">
+      <statement>At the end of each working session, the contractor MUST spend 10-15 min updating the engagement memory: new repo conventions observed, new reviewer feedback, deploy quirks encountered, traps hit, glossary terms learned. Write happens at session end, NOT in the next session — by then the patterns have decayed.</statement>
+      <rationale source="Memory decay research, GTD ubiquitous-capture practice">Write delay loses 40-60% of session-specific learnings within 24h. Session-end write captures while memory is fresh. The 10-15 min cost pays back many-fold by avoiding re-learn next session.</rationale>
+    </rule>
+
+    <rule id="r3-glossary-isolated" testable="true" depth="essential">
+      <statement>Engagement glossary terms MUST live in the per-engagement file, not in a global glossary. The same word ("customer", "active", "shipped") often means different things across engagements. The engagement memory's glossary section is the source of truth for THIS engagement.</statement>
+      <rationale source="DDD bounded-context per project, glossary-leakage research">Glossary leak is the most expensive cross-engagement memory failure — using the wrong meaning of "shipped" once produces a customer-visible defect. Per-engagement isolation matches the bounded-context pattern.</rationale>
+    </rule>
+
+    <rule id="r4-decay-cleanup-quarterly" testable="true" depth="essential">
+      <statement>Quarterly, the contractor runs scripts/decay-cleanup.py to flag entries older than 90 days with no recent reference. Stale entries are either: kept with explicit "still current" annotation, retired (moved to archive section), or deleted. Forbidden: indefinite append-only memory that grows without prune.</statement>
+      <rationale source="Information hygiene research, GTD review cadence">Without prune, the file grows to 10k+ tokens of mostly-stale content; loading it at session start becomes counterproductive. Quarterly prune keeps the memory current and load-efficient.</rationale>
+    </rule>
+
+    <rule id="r5-no-cross-engagement-leak" testable="true" depth="essential">
+      <statement>The agent loaded for engagement A MUST NOT have engagement B's memory in its context. Session-start hook loads ONLY the active engagement's file. If contractor mid-session realizes they're in the wrong engagement context, they restart the session — they do NOT continue with mixed context.</statement>
+      <rationale source="LLM context-isolation patterns, security-of-context research">Mixed context leads to recommending Client A's conventions on Client B's code. The cost of restart (a few minutes) is far less than the cost of cross-leak (PR rework, reviewer trust loss).</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Engagement memory file structure + session-end update">
+      <code lang="text"><![CDATA[
+~/engagements/acme-corp/memory.md
+---
+Last updated: 2026-05-19
+Active since: 2026-02-01
+---
+
+## Repo conventions
+- Branch naming: feature/TICKET-NNN-short-desc
+- Commits: imperative voice, max 72 chars, no body required
+- TS strict mode; no `any`; explicit return types on exported functions
+- Tests colocated: foo.ts next to foo.test.ts
+- ESLint config: `.eslintrc.json` extends @acme/eslint-config-strict
+
+## Reviewer preferences
+### Maria (Tech Lead)
+- Prefers SHORT PR descriptions (1-line summary + bullets)
+- Strict on test coverage for new logic (asks for tests if missing)
+- Pings on Slack if PR sits &gt; 24h
+
+### Diego (Senior Eng)
+- Likes architectural ADR links in PR if change touches /core
+- OK with longer PRs but expects clear commit history
+
+## Deploy quirks
+- Staging auto-deploys main branch
+- Production: manual via /ops/deploy.sh; requires Maria's approval token
+- Rollback: not push -f; revert PR + redeploy
+
+## Recurring traps
+- 2026-04-12: tried to use `Promise.allSettled` — codebase is Node 14, only `Promise.all` supported. (FIXED by upgrade ticket #1245)
+- 2026-05-03: assumed user_id was UUID; it's bigint per legacy schema. Glossary updated.
+
+## Glossary (this engagement only)
+- "active customer" = billing_status IN ('active', 'past_due'); last_login &lt; 60d
+- "shipped" = deployed to production AND post-deploy smoke-tests passed; NOT just merged
+- "platform" = monorepo top-level; NOT a tier of customer
+
+## Resolved-q-log
+- 2026-05-12: "Can I use new ESM-only deps?" — Maria: yes, but pin versions explicitly.
+
+## Session-end (2026-05-19)
+- Added trap: tried to use @acme/utils v2; tree-shaking issue. Use v1.x.
+- Diego asked for ADR on new caching strategy — drafted in /docs/adr-2026-014.
+      ]]></code>
+      <note>Illustrates r1-r5: per-engagement file, session-end write, glossary isolated, structured sections.</note>
+    </example>
+
+    <example type="bad" title="Shared scratch file across clients">
+      <code lang="text"><![CDATA[
+~/notes/dev-tips.md (one file for all clients)
+- "Use Promise.allSettled" (works on most, NOT acme-corp Node 14)
+- "Reviewer prefers detailed PRs" (TRUE for client-X, FALSE for Maria @ acme)
+- "Active customer = ..." (definition from client-X, WRONG for acme)
+
+Outcome: contractor pastes "active customer" SQL from notes into acme
+codebase; PR fails review because acme's definition is different.
+
+Repair: enforce r1, r3. Per-engagement file; per-engagement glossary.
+Shared notes are for tooling / general dev tricks only, NEVER client-specifics.
+      ]]></code>
+      <note>Illustrates r1, r3, r5 violations — the classic single-notes-file leak.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
