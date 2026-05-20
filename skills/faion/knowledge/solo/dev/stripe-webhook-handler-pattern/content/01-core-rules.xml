@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Stripe Webhook Handler Pattern Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every Stripe Webhook Handler Pattern application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-verify-signature-first" testable="true" depth="essential">
+      <statement>Verify Stripe-Signature header BEFORE any processing. Reject on mismatch with 400. Use Stripe SDK's verification helper.</statement>
+      <rationale source="Industry consensus + practitioner experience">Without verification, webhook endpoint is a public DoS + injection surface; verification is non-negotiable.</rationale>
+    </rule>
+
+    <rule id="r2-idempotency-by-event-id" testable="true" depth="essential">
+      <statement>Use event.id as idempotency key. Reject duplicate events from prior delivery.</statement>
+      <rationale source="Industry consensus + practitioner experience">Stripe retries on 5xx; without idempotency, duplicates re-process payments / fulfill orders multiple times.</rationale>
+    </rule>
+
+    <rule id="r3-return-2xx-fast" testable="true" depth="essential">
+      <statement>Return 2xx within 5 seconds. Heavy work goes to a queue. Slow handlers cause Stripe retries + duplicates.</statement>
+      <rationale source="Industry consensus + practitioner experience">Stripe times out at 30s; slow handlers create retry storms + duplicate processing.</rationale>
+    </rule>
+
+    <rule id="r4-dead-letter-on-fail" testable="true" depth="essential">
+      <statement>Failed processing → dead-letter queue with manual review. Do NOT just 5xx and rely on Stripe retries (limited).</statement>
+      <rationale source="Industry consensus + practitioner experience">Stripe retries 3 days then gives up; without DLQ, failed events are lost.</rationale>
+    </rule>
+
+    <rule id="r5-replay-safe" testable="true" depth="essential">
+      <statement>Handler is replay-safe: re-processing the same event produces the same outcome. State checked before mutation.</statement>
+      <rationale source="Industry consensus + practitioner experience">Replay safety is the foundation of webhook reliability; without it, ops cannot safely re-deliver events.</rationale>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
