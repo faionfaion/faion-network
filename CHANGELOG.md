@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-064 final wave: playbook batch 6 (+20 files).
 - F-064 final wave: playbook batch 5 (+100 files).
 - F-064 final wave: playbook batch 4 (+100 files).
 - F-064 final wave: playbook batch 3 (+100 files).
