@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Edge Case Checklist — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for applying the edge-case checklist so screens don't ship with happy-path-only states.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-twelve-item-enumeration" testable="true" depth="essential">
+      <statement>The checklist contains 12 enumerated edge cases: (1) Empty (no data yet), (2) Empty-after-search (search returned nothing), (3) Long content (3x typical), (4) Very-short content, (5) Slow-network (data taking 3+ sec), (6) Offline, (7) Partial-load (some items loaded, others failed), (8) Error (HTTP 4xx / 5xx / network), (9) Permission-denied / unauthorized, (10) Rate-limited, (11) Dark mode (if supported), (12) RTL (if supported). Adding new items per-project is allowed; subtracting from the 12 requires an explicit in-scope-list reason.</statement>
+      <rationale source="NN/g empty-state research, Smashing Magazine real-world-browser studies">The 12 items come from empirical post-release defect analysis — these are the states that ship broken because designers and AI defaults skip them. The enumerated list prevents "I'll think about edges later" — every item is named.</rationale>
+    </rule>
+
+    <rule id="r2-resolution-per-item" testable="true" depth="essential">
+      <statement>Every in-scope item MUST resolve to one of three: STATE-RENDERED (with link to the rendered state in the design file), N/A-WITH-REASON (one-sentence why the case doesn't apply here, e.g., "screen has no async data, no slow-network case"), or COPY-RULE-ONLY (when no separate render needed but copy / truncation / i18n rule applies, e.g., "long content → ellipsis after 60 chars + tooltip"). Items left null are forbidden.</statement>
+      <rationale source="Handoff-quality research, post-release-defect tracebacks">Null items are the silent killers — they ship as undefined behavior. Forcing one of three explicit resolutions prevents the gap.</rationale>
+    </rule>
+
+    <rule id="r3-copy-rules-explicit" testable="true" depth="essential">
+      <statement>For empty / long-content / error / partial-load items, the copy MUST be concrete: empty state has actual text + optional illustration ID + optional primary action; long-content has truncation rule (ellipsis at N chars, "show more" at N items, etc.); error has user-facing message (not the raw HTTP code or stack trace), recovery path, and support-contact if relevant. Lorem ipsum / "TBD" / "see Figma" is forbidden in the handoff.</statement>
+      <rationale source="NN/g error-message guidelines, FlowMapp UX-copy research">Copy invented at dev time produces inconsistent UX (different empty-state messages across screens). Concrete copy at handoff time creates a copy library that scales across the product.</rationale>
+    </rule>
+
+    <rule id="r4-in-scope-list-up-front" testable="true" depth="essential">
+      <statement>At project start, the team MUST declare which of the 12 items are in-scope for this product (e.g., "RTL: yes, we ship to Arabic markets"; "dark mode: yes; offline: yes; rate-limited: only for the admin dashboard"). The in-scope list is referenced by every screen's checklist. Forbidden: per-screen invented N/A reasons that the broader product would actually serve.</statement>
+      <rationale source="Cross-screen consistency research, design-ops methodology">Per-screen N/A reinvention creates inconsistency — one screen marks "RTL N/A" while a sibling renders RTL. Project-level in-scope list creates one source of truth; per-screen decisions are filtered against it.</rationale>
+    </rule>
+
+    <rule id="r5-evidence-link-required" testable="true" depth="essential">
+      <statement>Every STATE-RENDERED resolution MUST include a fetchable evidence link (Figma frame URL, Storybook story URL, or screenshot path). Every COPY-RULE-ONLY resolution MUST include the actual copy strings (not a "see copy file" handwave). Every N/A-WITH-REASON must include a one-sentence reason that references either the in-scope list OR a product-specific characteristic.</statement>
+      <rationale source="Handoff-quality + post-release-defect research">Unverifiable resolutions devolve into unspecified-behavior. Evidence links keep the dev (and the QA, the AI codegen) anchored to actual design intent.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="Resolution record for a list-of-orders screen">
+      <code lang="text"><![CDATA[
+Screen: /orders
+Product in-scope list: dark_mode=yes, RTL=no, offline=yes, rate-limited=yes (admin)
+
+1. Empty: STATE-RENDERED
+   Figma: /file/abc?node=orders-empty
+   Copy: "No orders yet" + "Once you place an order, it appears here"
+   Primary action: "Browse catalog" button.
+
+2. Empty-after-search: STATE-RENDERED
+   Figma: /file/abc?node=orders-empty-search
+   Copy: "No orders match 'XYZ'" + "Try a different keyword or clear filters"
+
+3. Long content: COPY-RULE-ONLY
+   - Order ID: max 18 chars (none expected longer)
+   - Customer name: ellipsis at 32 chars + tooltip on hover
+   - Item names: wrap at 2 lines + ellipsis at 80 chars
+
+4. Very-short content: N/A-WITH-REASON
+   Schema enforces non-empty fields for orders; no very-short risk.
+
+5. Slow-network: STATE-RENDERED
+   Figma: /file/abc?node=orders-loading (skeleton 8 rows, no spinner)
+
+6. Offline: STATE-RENDERED
+   Figma: /file/abc?node=orders-offline
+   Copy: "You're offline. Showing cached orders from {timestamp}."
+
+7. Partial-load: STATE-RENDERED
+   Figma: /file/abc?node=orders-partial
+   Copy: "Some orders couldn't be loaded. Refresh to try again."
+
+8. Error: STATE-RENDERED
+   Figma: /file/abc?node=orders-error
+   Copy: "Couldn't load orders. {error_id} — Refresh or contact support."
+
+9. Permission-denied: N/A-WITH-REASON
+   Logged-in users always see their own orders; route-level guard
+   handles the auth case at a different layer.
+
+10. Rate-limited: COPY-RULE-ONLY
+    In admin context only: "Too many requests. Slowing down…" toast.
+    Auto-retry with backoff.
+
+11. Dark mode: COPY-RULE-ONLY (uses token-based theming, no separate frame)
+
+12. RTL: N/A-WITH-REASON (product in-scope list excludes RTL)
+      ]]></code>
+      <note>Illustrates r1-r5: full 12-item, in-scope list referenced, evidence per item, concrete copy.</note>
+    </example>
+
+    <example type="bad" title="Happy-path-only handoff">
+      <code lang="text"><![CDATA[
+Screen: /orders
+Edge cases: "we'll figure out empty / error states later"
+
+Outcome:
+  - Empty state: dev invented "No orders" with no recovery action.
+  - Error state: dev showed raw 500 error message.
+  - Slow load: no spinner, page looked broken for 4 sec.
+  - Offline: page showed blank.
+  - Dark mode: dev used inline colors (theme broken).
+
+Customer support: 12 tickets in first week about "broken orders page".
+
+Repair: enforce r1, r2, r3. Resolve all 12 items at handoff time;
+"later" is not a resolution.
+      ]]></code>
+      <note>Illustrates r1, r2, r3 violations — the standard "ship without edge cases" failure.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

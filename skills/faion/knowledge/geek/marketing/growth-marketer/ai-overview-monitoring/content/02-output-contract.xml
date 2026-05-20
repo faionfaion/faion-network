@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI Overview Monitoring Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the weekly snapshot shape, trend report, and action-log structure.</summary>
+
+  <section title="Required weekly-snapshot fields">
+    <list>
+      <item><code>week_iso</code> (string, ISO week label e.g. 2026-W23)</item>
+      <item><code>scrape_started_at_utc</code> + <code>scrape_completed_at_utc</code></item>
+      <item><code>queries</code> (object: query_text → status_per_source)</item>
+      <item><code>queries.<q>.aio</code>: enum {cited, not_cited, partial, error}</item>
+      <item><code>queries.<q>.perplexity</code>: enum {cited, not_cited, partial, error}</item>
+      <item><code>queries.<q>.chatgpt_search</code>: enum {cited, not_cited, partial, error}</item>
+      <item><code>queries.<q>.evidence</code>: { citation_snippet, citation_url } per source where cited</item>
+      <item><code>adapter_versions</code>: object with each scraper's version</item>
+    </list>
+    <reference path="templates/weekly-snapshot.json">Authoritative JSON Schema for the weekly snapshot.</reference>
+  </section>
+
+  <section title="Trend report shape">
+    <list>
+      <item>4-week rolling window per query and per source.</item>
+      <item>Deltas tagged: new_citation, lost_citation, sustained_citation, sustained_absence.</item>
+      <item>Cross-source quorum: queries cited by &gt;= 2 of 3 are flagged "stable"; queries with mixed cite/no-cite across sources flagged "volatile".</item>
+    </list>
+  </section>
+
+  <section title="Action-log shape">
+    <list>
+      <item><code>action_id</code> + <code>taken_at_utc</code></item>
+      <item><code>query</code></item>
+      <item><code>ladder_step</code>: enum L1..L6</item>
+      <item><code>trigger</code>: reference to the snapshot delta</item>
+      <item><code>expected_outcome</code>: which source / status the action should restore by which date</item>
+      <item><code>marketer_signoff</code>: name + timestamp</item>
+      <item><code>validation_status</code>: pending | validated | failed (set after the next snapshot)</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Snapshot overwritten after the scheduled scrape; mtime &gt; scrape_completed_at_utc by &gt;= 1 day.</description>
+      <reason>r3 violation. Snapshots are immutable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Action taken without ladder_step set.</description>
+      <reason>r4 violation. Off-ladder action must update the ladder before becoming routine.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Auto-rewrite triggered without marketer_signoff.</description>
+      <reason>r5 violation. Human gate is required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>queries object missing one of {aio, perplexity, chatgpt_search} per row.</description>
+      <reason>r2 violation. Three sources are required.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every priority query has data from all three sources.</item>
+      <item>Adapter version is recorded.</item>
+      <item>Trend report is generated within 24h of snapshot.</item>
+      <item>Every action carries ladder_step + expected_outcome + signoff.</item>
+      <item>Snapshots committed to git; never edited after the fact.</item>
+    </list>
+  </section>
+</text>
