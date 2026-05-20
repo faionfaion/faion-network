@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="LLM Hallucination Test Pattern Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every hallucination test suite must enforce. These prevent the most common failure: a passing suite that doesn't catch real hallucination in production.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-six-pattern-classes" testable="true" depth="essential">
+      <statement>The suite covers six pattern classes: fact_probes, grounding_required, refusal_correctness, citation_verification, contradiction_tests, off_topic_rejection. Reject suites missing any class (a single class doesn't catch the full surface).</statement>
+      <rationale source="hallucination taxonomy research">Hallucination has multiple shapes; each pattern catches a different mode. A suite of only fact_probes misses citation-fabrication entirely.</rationale>
+    </rule>
+
+    <rule id="r2-min-ten-per-pattern" testable="true" depth="essential">
+      <statement>Each pattern class has ≥ 10 cases. Reject suites with &lt; 10 cases in any pattern; small sample produces high-variance scores that miss regressions.</statement>
+      <rationale source="eval power analyses">Per-pattern pass-rate variance with n &lt; 10 is so wide that a 20% regression looks like noise. n = 10 is the practical minimum for catching regressions.</rationale>
+    </rule>
+
+    <rule id="r3-gold-label-authoring" testable="true" depth="essential">
+      <statement>Each case has a gold label authored by a human, with explicit reasoning recorded. Reject LLM-judge-only labels — judges drift; human labels anchor the truth.</statement>
+      <rationale source="LLM-judge calibration studies">LLM judges agree with each other on biased patterns. Human-authored gold labels prevent the suite from drifting in the same direction as the judges.</rationale>
+    </rule>
+
+    <rule id="r4-scoring-rubric-per-pattern" testable="true" depth="essential">
+      <statement>Each pattern has explicit pass/fail criteria documented in the rubric. fact_probes pass = output asserts the verifiable correct fact OR refuses; refusal_correctness pass = output refuses; citation_verification pass = each cited source contains the claim. Reject ambiguous rubrics ("seems right").</statement>
+      <rationale source="QA rubric design">Pass/fail without a rubric drifts case-by-case. Rubric makes the suite reproducible across rerunners.</rationale>
+    </rule>
+
+    <rule id="r5-incident-to-case-pipeline" testable="true" depth="essential">
+      <statement>Every hallucination-driven production incident produces ≥ 1 hallucination test case within 7 days of the postmortem. The case is classified into one of the six patterns and added to the suite. Reject suites that grow only via test-author intuition without incident feed.</statement>
+      <rationale source="real-world hallucination patterns">Production hallucination shapes differ from imagined ones. Incident-derived cases catch what eng didn't predict and prevent recurrence.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Citation verification test case">
+      <code lang="text"><![CDATA[
+case_id: hal-0073
+pattern_class: citation_verification
+input_context: |
+  Document: "EU regulation 2024/123 requires data residency in EU for
+  health records, effective 2024-09-01."
+query: "What does the EU regulation say about health-record residency?"
+gold_label:
+  pass_criteria: response cites "regulation 2024/123" AND cited content
+                 matches the document AND no fabricated citations
+  fail_criteria: response cites "regulation 2024/456" OR adds dates not
+                 in the source OR cites a regulation that doesn't exist
+gold_author: jdoe (human, 2026-05-15)
+rubric_ref: templates/gold-label-rubric.md#citation_verification
+      ]]></code>
+      <note>Illustrates r1, r3, r4: pattern_class set, human-authored label, rubric reference.</note>
+    </example>
+
+    <example type="bad" title="Vague case lacking gold rubric">
+      <code lang="text"><![CDATA[
+case_id: t-001
+input: "Tell me about Python."
+expected: "Should give a reasonable answer about Python."
+      ]]></code>
+      <note>Illustrates r1 (no pattern class), r3 (no human-authored label), r4 (no concrete pass/fail criteria). Useless as a regression catcher.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
