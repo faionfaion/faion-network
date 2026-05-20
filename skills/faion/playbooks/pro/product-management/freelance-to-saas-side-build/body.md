@@ -1,0 +1,122 @@
+# Freelance-to-SaaS transition (6-month side build)
+
+**Persona:** P3 Technical Freelancer · **Tier:** pro · **Complexity:** deep · **Angle:** global
+
+## Why this playbook exists
+
+Across two quarters, parallel to delivery work: pick one client-pain pattern, validate it as a productized SaaS, ship a paid v1 to 5-10 customers, and decide whether to scale, sunset, or fold into the freelance offer.
+
+Most technical freelancers improvise this flow. That works at low volume and breaks at scale. This playbook fixes the chain: explicit stages, explicit decision-gates, written artifacts at every step, no silent absorption of work, no vague pricing.
+
+## How to run it
+
+Run the stages in order. Each stage has a decision-gate; do not advance until the gate condition is met in writing. A stranger should be able to read the artifacts and understand both *what* you did and *why* you advanced.
+
+## Stage map
+
+### Stage 1 — Pick the pain pattern
+
+**Intent:** From client work, isolate one repeating pain that could be a product.
+
+**Tasks**
+- Audit last 12 months of client requests for repeating asks
+- Validate with 5 prospect interviews (not current clients)
+- Write a 1-page idea brief
+
+**Outputs**
+- Idea brief
+- 5 prospect interview notes
+
+**Decision gate**
+
+Advance once ≥3 of 5 interviewees confirm pain is top-3 and recurring.
+
+### Stage 2 — Side build
+
+**Intent:** Ship a paid v1 in fixed weekly time-box without harming client cadence.
+
+**Tasks**
+- Time-box product work to N hours/week
+- Ship a paid v1 to 5-10 design partners
+- Run weekly product retro
+
+**Outputs**
+- v1 deployed
+- 5-10 paying design partners
+- Weekly retro notes
+
+**Decision gate**
+
+Advance when 5 paying customers + retention >2 months. Otherwise re-scope.
+
+### Stage 3 — Validate growth
+
+**Intent:** Acquire + activate + retain enough users to test scalability.
+
+**Tasks**
+- Set activation + retention metrics
+- Run 2 acquisition experiments
+- Track cohorts weekly
+
+**Outputs**
+- Activation funnel doc
+- Cohort dashboard
+- 2 experiment results
+
+**Decision gate**
+
+Advance when MoM growth ≥20% AND M2 retention ≥40%. Otherwise iterate.
+
+### Stage 4 — Decide: scale / sunset / fold
+
+**Intent:** Written decision: scale, sunset, or fold into freelance offer.
+
+**Tasks**
+- Compile evidence: MRR, churn, founder energy
+- Choose scale, sunset, or fold
+- Communicate decision to design partners
+
+**Outputs**
+- Decision doc
+- Comms to design partners
+
+**Decision gate**
+
+Required artifact: written decision with explicit next steps. No 'maybe'.
+
+## Common pitfalls
+
+- Treating decision_gate as a suggestion — playbook collapses to a checklist if gates are not enforced
+- Skipping written artifacts because 'it's in my head' — kills traceability and future re-use
+
+## Quality self-review
+
+- Did every stage produce a written artifact a stranger could read?
+- Did I actually advance only when the decision_gate criterion was met?
+
+## Gaps in the methodology chain
+
+This playbook is **draft** because the methodology chain references slugs that are not yet authored:
+
+- `freelancer-to-saas-time-box` (stage 2) — Stage 2 (Side build) references this; no methodology exists yet.
+- `design-partner-program-template` (stage 2) — Stage 2 (Side build) references this; no methodology exists yet.
+- `freelance-saas-billing-decision` (stage 4) — Stage 4 (Decide: scale / sunset / fold) references this; no methodology exists yet.
+- `sunset-vs-fold-framework` (stage 4) — Stage 4 (Decide: scale / sunset / fold) references this; no methodology exists yet.
+- `spec-writing` (stage 1) — Stage 1 (Pick the pain pattern) cites pro/product/product-planning/spec-writing but path does not resolve under KNOWLEDGE_ROOT.
+- `micro-mvps` (stage 2) — Stage 2 (Side build) cites pro/product/product-planning/micro-mvps but path does not resolve under KNOWLEDGE_ROOT.
+- `minimum-product-frameworks` (stage 2) — Stage 2 (Side build) cites pro/product/product-planning/minimum-product-frameworks but path does not resolve under KNOWLEDGE_ROOT.
+- `mvp-scoping` (stage 2) — Stage 2 (Side build) cites pro/product/product-planning/mvp-scoping but path does not resolve under KNOWLEDGE_ROOT.
+- `ops-automation-workflow` (stage 2) — Stage 2 (Side build) cites solo/dev/automation-tooling/ops-automation-workflow but path does not resolve under KNOWLEDGE_ROOT.
+- `best-practices-2026` (stage 2) — Stage 2 (Side build) cites solo/dev/software-developer/best-practices-2026 but path does not resolve under KNOWLEDGE_ROOT.
+- `dev-methodologies-architecture` (stage 2) — Stage 2 (Side build) cites solo/dev/software-developer/dev-methodologies-architecture but path does not resolve under KNOWLEDGE_ROOT.
+- `product-launch` (stage 3) — Stage 3 (Validate growth) cites pro/product/product-planning/product-launch but path does not resolve under KNOWLEDGE_ROOT.
+- `growth-hacker-news-launch` (stage 3) — Stage 3 (Validate growth) cites solo/marketing/growth-marketer/growth-hacker-news-launch but path does not resolve under KNOWLEDGE_ROOT.
+- `growth-indiehackers-strategy` (stage 3) — Stage 3 (Validate growth) cites solo/marketing/growth-marketer/growth-indiehackers-strategy but path does not resolve under KNOWLEDGE_ROOT.
+- `growth-product-hunt-launch` (stage 3) — Stage 3 (Validate growth) cites solo/marketing/growth-marketer/growth-product-hunt-launch but path does not resolve under KNOWLEDGE_ROOT.
+- `ops-subscription-models` (stage 3) — Stage 3 (Validate growth) cites solo/marketing/growth-marketer/ops-subscription-models but path does not resolve under KNOWLEDGE_ROOT.
+
+BLOCK policy: this playbook cannot move to `published` until `gaps[]` is empty.
+
+## How this connects to the wider Faion catalog
+
+The methodology chain links into `solo/comms/communicator`, `solo/marketing/*`, `pro/ba/business-analyst`, `pro/pm/project-manager`, `pro/marketing/*`, `pro/product/*`. Run `faion get-content <slug> --format context` to pull the full set into an agent-readable payload.
