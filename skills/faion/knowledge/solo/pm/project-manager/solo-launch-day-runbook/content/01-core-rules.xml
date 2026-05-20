@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Solo Launch Day — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every solo launch day must obey. The rules eliminate the canonical first-day failures that every solo founder hits exactly once.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-pre-checked-smoke-tests" testable="true" depth="essential">
+      <statement>The full smoke-test suite (sign-up, payment, welcome email, support email, password reset, key flows) MUST be executed at T-24h AND T-2h, against the production environment, with results recorded. Skipping either is forbidden.</statement>
+      <rationale source="Stripe go-live checklist; field experience">A T-24h smoke test catches issues with time to fix; a T-2h smoke test catches anything that broke since (DNS propagation, last-minute deploy, expired cert). Skipping the T-2h test is the canonical "launch reveals a bug from yesterday's deploy" failure.</rationale>
+    </rule>
+
+    <rule id="r2-stripe-live-2h-before-announce" testable="true" depth="essential">
+      <statement>Stripe (or equivalent payment) MUST be switched to live keys AND verified with a real $1 charge ≥2h before the announce time. Live-key swaps within 2h of announce are forbidden.</statement>
+      <rationale source="Stripe production-deployment best practice; payment-launch postmortems">Live-key swap is the most failure-prone single operation in a launch. Doing it under time pressure 30 min before announce is how founders end up with Stripe in test mode while emails go out. The 2h buffer absorbs the inevitable hiccup.</rationale>
+    </rule>
+
+    <rule id="r3-fallback-content-in-place" testable="true" depth="essential">
+      <statement>Fallback content MUST be ready before launch: holding page if the app goes down, status page URL communicated, refund-and-apology email template, support-canned responses. Fallbacks deployed mid-incident on launch day are forbidden.</statement>
+      <rationale source="incident-management practice; solo-founder retrospectives">Writing apology copy at 02:00 while the site is down is when the worst comms decisions get made. Pre-written fallbacks reduce the founder's cognitive load to "deploy the prepared response", not "compose a response under stress".</rationale>
+    </rule>
+
+    <rule id="r4-no-live-key-changes-mid-launch" testable="true" depth="essential">
+      <statement>From T-2h to T+12h, NO infrastructure or key changes are made (no deploys, no DNS swaps, no env-var edits) unless triggered by an incident requiring rollback. Improvements wait until T+24h.</statement>
+      <rationale source="change-freeze pattern; finance-industry release-window practice">Even small changes (a typo fix, a copy tweak, an env-var update) carry risk that compounds with launch traffic. The change freeze prevents self-inflicted incidents during the highest-traffic window of the quarter.</rationale>
+    </rule>
+
+    <rule id="r5-rollback-le-10-min" testable="true" depth="essential">
+      <statement>A documented rollback path that completes in ≤10 minutes MUST exist and have been rehearsed in the T-24h dry run. If the rollback runbook is &gt;10 min OR has never been tested, the launch is NOT ready.</statement>
+      <rationale source="canary / blue-green deployment best practice; field experience">A 30-minute rollback is functionally never used because by the time the founder considers it, "it might fix itself" wins. A ≤10-minute rollback gets used and limits damage. Untested rollbacks fail at the worst possible moment.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Sample launch-day timeline">
+    <code lang="text"><![CDATA[
+T-24h:  Full smoke test. Rollback dry-run. Fallback content frozen. Stripe live keys provisioned (not yet swapped).
+T-2h:   Smoke test rerun. Stripe key swap + $1 verify charge. Final scan: monitoring armed, mailer not rate-limited.
+T-30m:  Final breath. Coffee. tg-bot ping armed.
+T-0:    Announce burst (mailing list first, then X / LinkedIn / IndieHackers). Plausible live-counter open.
+T+15m:  Checkpoint: error rate, signup count, first refund? Update launch log.
+T+1h:   Checkpoint: any Sentry spike? Mailer ratelimit? Stripe webhook healthy? Update log.
+T+4h:   Checkpoint: traction signal (signup ratio, conversion to paid). Refresh support inbox.
+T+12h:  Final-day checkpoint. Write closeout note.
+T+24h:  Postmortem: what went right, what to add to next launch's runbook.
+    ]]></code>
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Stripe-key swap done early">
+      <code lang="text"><![CDATA[
+T-2h: Stripe keys swapped from test to live. $1 test charge from the founder's
+own card succeeds. Webhook event verified in Stripe dashboard. Test charge
+refunded. Launch is now payment-ready.
+
+T-0: Mailing list goes out. First customer signs up at T+11min. Charge succeeds
+visibly in Stripe dashboard. Welcome email delivered.
+      ]]></code>
+      <note>Illustrates r2 (Stripe live with buffer). The launch's most-important moment (first paying customer) is undramatic because the payment path was already proven.</note>
+    </example>
+
+    <example type="bad" title="The 9pm key-swap classic">
+      <code lang="text"><![CDATA[
+T+15min: announce burst sent. T+30min: first signup attempt fails — Stripe
+in test mode. Founder swaps keys hastily, makes a typo, breaks the
+webhook. Next 40 minutes spent debugging. Mailer queued 80 welcomes
+with broken activation links. Recovery takes 3 hours of support work.
+      ]]></code>
+      <note>r2 violated (no Stripe live pre-launch), r4 violated (key change during launch window), r1 implied (smoke test didn't catch the test-mode state).</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
