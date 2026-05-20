@@ -1,0 +1,158 @@
+# =============================================================================
+# faion playbook manifest — P6 product-dev team
+# Generated for F-064 from playbook-index.json p6-product-dev-team entry 9
+# =============================================================================
+
+slug: sentry-datadog-alert-triage
+title: "Sentry / Datadog alert triage (in-hours)"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: f905f54b90e07d31
+
+tier_min: geek
+complexity: medium
+context: [team]
+persona_hints: [P6]
+
+intent: |
+  Alert fires → on-call triages within minutes → every alert closes with a verdict (noise / known / new incident) + audit log.
+
+scope: |
+  An alert lands in production during business hours. On-call engineer triages within minutes using AI-classified context, decides: noise / known / new incident. Noise → mute with documented reason. Known → cross-link to existing thread + delta. New incident → enter the incident-postmortem-preventive-backlog playbook. Every alert closes with a written verdict + audit log entry.
+
+non_goals:
+  - "Out-of-hours paging escalation — runbook handles that"
+  - "Full postmortem flow — see incident-postmortem-preventive-backlog"
+  - "Alert engineering / reducing noise upstream — separate workstream"
+
+prerequisites:
+  - "Sentry / Datadog alerts wired with service-ownership map"
+  - "AI triage classifier in front of the alert stream"
+  - "Runbook system (markdown tagged steps)"
+
+success_criteria:
+  - "Every alert reaches a verdict within target SLA"
+  - "Audit log entry per alert with verdict + reasoning"
+  - "Noise alerts have a mute justification logged"
+  - "Known issues cross-linked to canonical thread"
+  - "New incidents handed off to postmortem flow"
+
+stages:
+  - name: "Receive + classify"
+    intent: "AI classifier routes; on-call reads service-ownership map."
+    tasks:
+      - "Read AI triage classification + suggested category"
+      - "Confirm against service ownership"
+      - "Check api-monitoring metrics + logs for context"
+      - "Decide entry path: noise / known / new"
+    methodologies:
+      - slug: tracker-ai-triage-classify-route
+        path: geek/sdlc-ai/tracker-ai-triage-classify-route
+        required: true
+        tier_gate: geek
+      - slug: task-agent-fixable-triage-gate
+        path: geek/sdlc-ai/task-agent-fixable-triage-gate
+        required: true
+        tier_gate: geek
+      - slug: api-monitoring-alerting
+        path: pro/dev/software-developer/api-monitoring-alerting
+        required: true
+        tier_gate: pro
+      - slug: api-monitoring-metrics
+        path: pro/dev/software-developer/api-monitoring-metrics
+        required: true
+        tier_gate: pro
+      - slug: api-monitoring-logging
+        path: pro/dev/software-developer/api-monitoring-logging
+        required: true
+        tier_gate: pro
+    outputs:
+      - "Triage decision (noise / known / new)"
+    decision_gate: |
+      Advance only with an explicit verdict; "we'll see what it does" is not a verdict.
+
+  - name: "Investigate under read-only default"
+    intent: "If 'new', investigate read-only; respect approval-gate boundaries."
+    tasks:
+      - "Enter read-only-investigation default"
+      - "Walk runbook tagged steps for the service"
+      - "Cross-reference past incidents via mistake-memory"
+      - "Apply tool-tier approval gate for any write"
+    methodologies:
+      - slug: inc-read-only-investigation-default
+        path: geek/sdlc-ai/inc-read-only-investigation-default
+        required: true
+        tier_gate: geek
+      - slug: inc-runbook-as-markdown-tagged-steps
+        path: geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps
+        required: true
+        tier_gate: geek
+      - slug: inc-tool-tier-approval-gate
+        path: geek/sdlc-ai/inc-tool-tier-approval-gate
+        required: true
+        tier_gate: geek
+      - slug: mistake-memory
+        path: solo/sdd/sdd/mistake-memory
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Investigation trail in tagged runbook"
+    decision_gate: |
+      If escalation is needed, hand off to incident-postmortem-preventive-backlog cleanly. Don't keep investigating solo past 15 minutes.
+
+  - name: "Close with verdict"
+    intent: "Document verdict; trigger postmortem flow if needed."
+    tasks:
+      - "Write verdict + reasoning to audit log"
+      - "For noise → log mute justification"
+      - "For known → cross-link to canonical thread"
+      - "For new → trigger inc-postmortem-auto-draft-no-publish"
+    methodologies:
+      - slug: inc-postmortem-auto-draft-no-publish
+        path: geek/sdlc-ai/inc-postmortem-auto-draft-no-publish
+        required: true
+        tier_gate: geek
+    outputs:
+      - "Audit log entry"
+      - "Linked artefacts (mute, thread, or postmortem draft)"
+    decision_gate: |
+      Required: written verdict. An alert that closes silently is a future trap.
+
+common_pitfalls:
+  - "Muting a 'noise' alert without documenting why — next on-call re-investigates from scratch"
+  - "Skipping read-only default — accidental writes during investigation"
+  - "Stretching investigation past 15 min instead of escalating"
+  - "Closing alerts in chat-only without an audit log"
+
+quality_checklist:
+  - "Can I point to every alert from yesterday and read its verdict?"
+  - "Did any noise mute carry an explicit reason and expiry?"
+  - "Did the new incidents hand off cleanly to the postmortem flow?"
+
+related_playbooks:
+  - incident-postmortem-preventive-backlog
+  - daily-standup-ai-prebrief
+  - rfc-to-production-feature-delivery
+
+token_budget_estimate: 12000
+cli_invocations:
+  human:  "faion get-content sentry-datadog-alert-triage --format md"
+  agent:  "faion get-content sentry-datadog-alert-triage --format context"
+  json:   "faion get-content sentry-datadog-alert-triage --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P6 product-dev team persona"
+
+gaps:
+  - methodology_slug: alert-triage-decision-tree
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Classify stage needs a written decision tree for noise / known / new"
+  - methodology_slug: service-ownership-map-template
+    expected_tier: geek
+    blocks_stage: 1
+    note: "Classify stage references service ownership map but no concrete template exists"
