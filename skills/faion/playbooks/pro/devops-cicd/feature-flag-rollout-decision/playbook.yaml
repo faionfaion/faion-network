@@ -1,0 +1,152 @@
+# =============================================================================
+# faion playbook manifest — P6 product-dev team
+# Generated for F-064 from playbook-index.json p6-product-dev-team entry 10
+# =============================================================================
+
+slug: feature-flag-rollout-decision
+title: "Feature flag rollout decision (weekly)"
+version: "0.1.0"
+status: draft
+last_reviewed: 2026-05-20
+maintainers: ["faion"]
+content_id: 52f7b553e94abd28
+
+tier_min: pro
+complexity: medium
+context: [team]
+persona_hints: [P6]
+
+intent: |
+  Drifting feature flags → weekly tech-lead+PM review with explicit per-flag verdict (dark / ramp / GA / kill).
+
+scope: |
+  Tech lead + PM review every open feature flag once a week. For each flag, the verdict is one of: keep dark / ramp / GA / kill. Decision criteria are explicit (SLO impact, error rate, adoption metric, business intent). Flags that drift out of lifecycle get auto-flagged for deletion. The session ends with a written log of decisions and a flag-killswitch list.
+
+non_goals:
+  - "Flag implementation choice — covered by feature-flags-* methodologies"
+  - "Feature delivery — see rfc-to-production-feature-delivery"
+  - "Engineering of the kill-switch — assumed already implemented"
+
+prerequisites:
+  - "Flag inventory tracked in version control"
+  - "SLO + error-rate metrics wired per flag"
+  - "Trunk-based + flag-aware development discipline"
+
+success_criteria:
+  - "Every open flag carries a verdict each week"
+  - "Drifting flags flagged for deletion"
+  - "Decision log appended with reasoning"
+  - "Killswitch path verified for any GA-pending flag"
+
+stages:
+  - name: "Inventory + classify"
+    intent: "List flags by lifecycle stage; spot drift."
+    tasks:
+      - "Pull open flags from code + flag platform"
+      - "Classify each by lifecycle stage"
+      - "Flag any stale / orphaned flags for kill"
+    methodologies:
+      - slug: feature-flags-types-lifecycle
+        path: solo/dev/automation-tooling/feature-flags-types-lifecycle
+        required: true
+        tier_gate: solo
+      - slug: feature-flags-core-implementation
+        path: solo/dev/automation-tooling/feature-flags-core-implementation
+        required: true
+        tier_gate: solo
+      - slug: trunk-based-feature-flags
+        path: solo/dev/automation-tooling/trunk-based-feature-flags
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Flag inventory with lifecycle stage tags"
+    decision_gate: |
+      Advance once every flag is mapped to one of: dark / ramp / GA-pending / drifting.
+
+  - name: "Apply decision criteria"
+    intent: "Walk SLO + error + adoption + business-intent signals per flag."
+    tasks:
+      - "Pull SLO + error-rate + adoption metrics per flag"
+      - "Validate against ramp criteria (targeting rules)"
+      - "Check release-planning fit"
+      - "Confirm test coverage on flagged paths"
+    methodologies:
+      - slug: feature-flags-rollout-targeting
+        path: solo/dev/automation-tooling/feature-flags-rollout-targeting
+        required: true
+        tier_gate: solo
+      - slug: feature-flags-services-testing
+        path: solo/dev/automation-tooling/feature-flags-services-testing
+        required: true
+        tier_gate: solo
+      - slug: release-planning
+        path: pro/product/product-manager/release-planning
+        required: true
+        tier_gate: pro
+      - slug: quality-gates-confidence
+        path: solo/sdd/sdd/quality-gates-confidence
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Signals table per flag"
+    decision_gate: |
+      Advance when each flag has at least one quantitative signal supporting the proposed verdict. No vibes-only decisions.
+
+  - name: "Verdict + commit"
+    intent: "Write the verdict per flag; remove dead flags."
+    tasks:
+      - "Per-flag verdict: dark / ramp / GA / kill"
+      - "Schedule deletion for killed flags"
+      - "Verify killswitch for any GA-pending"
+      - "Append decision log"
+    methodologies:
+      - slug: feature-flags-types-lifecycle
+        path: solo/dev/automation-tooling/feature-flags-types-lifecycle
+        required: true
+        tier_gate: solo
+      - slug: feature-flags-core-implementation
+        path: solo/dev/automation-tooling/feature-flags-core-implementation
+        required: true
+        tier_gate: solo
+    outputs:
+      - "Decision log entry"
+      - "Killed-flags deletion schedule"
+    decision_gate: |
+      Required: written verdict per flag. Unresolved flags carry forward but must be tagged 'unresolved-prev-week'.
+
+common_pitfalls:
+  - "Flags marked 'GA' but the killswitch was never tested — discovers at first incident"
+  - "Dark flags accumulate quarter-over-quarter — code rot"
+  - "Decisions live in head-of-lead — bus-factor failure"
+  - "Kill verdicts that aren't scheduled — flag never actually disappears"
+
+quality_checklist:
+  - "Can I name every open flag's owner and lifecycle stage?"
+  - "Did any flag get killed this week?"
+  - "Was the kill-switch on any GA-pending flag verified inside 24h?"
+
+related_playbooks:
+  - rfc-to-production-feature-delivery
+  - backlog-grooming-pm-tech-lead
+  - sprint-planning-sdd-task-expansion
+
+token_budget_estimate: 10000
+cli_invocations:
+  human:  "faion get-content feature-flag-rollout-decision --format md"
+  agent:  "faion get-content feature-flag-rollout-decision --format context"
+  json:   "faion get-content feature-flag-rollout-decision --format json"
+
+changelog:
+  - version: "0.1.0"
+    date: 2026-05-20
+    note: "Initial draft for F-064 P6 product-dev team persona"
+
+gaps:
+  - methodology_slug: feature-flag-weekly-review-template
+    expected_tier: pro
+    blocks_stage: 3
+    note: "Verdict stage needs a written weekly-review template (agenda + decision log shape)"
+  - methodology_slug: flag-killswitch-decision-criteria
+    expected_tier: pro
+    blocks_stage: 2
+    note: "Criteria stage needs an explicit kill-switch rubric so weekly decisions are repeatable"
