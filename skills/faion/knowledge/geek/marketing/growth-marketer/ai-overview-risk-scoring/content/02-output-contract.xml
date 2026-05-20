@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AIO Risk Scoring Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the per-query decision-row shape, action-mapping rule, and re-score cadence.</summary>
+
+  <section title="Required decision-row fields">
+    <list>
+      <item><code>query</code> (string)</item>
+      <item><code>scored_at_utc</code> (ISO timestamp)</item>
+      <item><code>scored_by</code> (named human OR named agent identity with human approver)</item>
+      <item><code>axes</code> (object with six keys, each integer 0-4)</item>
+      <item><code>risk_index</code> (integer 0-24 with default weights)</item>
+      <item><code>action</code> (enum: skip, target, hedge)</item>
+      <item><code>rationale</code> (string &gt;= 60 chars)</item>
+      <item><code>next_review_utc</code> (ISO date; &lt;= 90 days from scored_at_utc)</item>
+      <item><code>tracker_snapshot_ref</code> (reference to the AIO presence snapshot used)</item>
+    </list>
+    <reference path="templates/decision-row.json">Authoritative JSON Schema for the decision row.</reference>
+  </section>
+
+  <section title="Action-mapping rule (default weights)">
+    <list>
+      <item><code>skip</code>: risk_index &gt;= 16 OR monetisation_potential == 0.</item>
+      <item><code>target</code>: 10 &lt;= risk_index &lt; 16 AND our_citation_eligibility &gt;= 2.</item>
+      <item><code>hedge</code>: otherwise — write, with middle-funnel CTA emphasis.</item>
+    </list>
+    <reference path="templates/scoring-rubric.json">Weighted-sum formula and threshold rationale.</reference>
+  </section>
+
+  <section title="Re-score cadence">
+    <list>
+      <item>Quarterly batch re-score for all decision rows.</item>
+      <item>Threshold-triggered re-score when the sibling tracker reports a &gt; 25 point presence shift on the query.</item>
+      <item>Decisions older than next_review_utc are flagged `expired` and excluded from the topic-cluster plan until re-scored.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>action != skip while monetisation_potential == 0.</description>
+      <reason>r4 violation. Zero-monetisation queries default to skip; exceptions require explicit override in rationale.</reason>
+    </antipattern>
+    <antipattern>
+      <description>axes object missing any of the six keys.</description>
+      <reason>r1 violation. Six-axis scoring is non-negotiable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>rationale text &lt; 60 chars or contains only "gut feel" / "feels right".</description>
+      <reason>r5 violation. Documented rationale required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>action mapping defies the rule table (e.g. risk_index=20 with action=hedge).</description>
+      <reason>r2 violation. Mapping must follow the rubric.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every axis score is 0-4 integer.</item>
+      <item>risk_index = computed weighted sum, not hand-edited.</item>
+      <item>tracker_snapshot_ref points to a real snapshot within last 30 days.</item>
+      <item>next_review_utc set within 90 days.</item>
+      <item>Action consistent with the rule table.</item>
+    </list>
+  </section>
+</text>

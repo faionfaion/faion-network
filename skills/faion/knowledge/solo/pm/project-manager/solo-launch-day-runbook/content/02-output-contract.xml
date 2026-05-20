@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Launch Day — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Schema for the per-launch execution log + rollback decision log.</summary>
+
+  <output-contract>
+    <required>
+      <field name="launch_id" type="string"/>
+      <field name="product" type="string"/>
+      <field name="announce_at" type="datetime"/>
+      <field name="founder_name" type="string"/>
+      <field name="pre_checks" required_keys="smoke_t_minus_24h,smoke_t_minus_2h,stripe_live_swap_at,stripe_verify_charge_id,fallback_content_ready,rollback_dry_run_at"/>
+      <field name="checkpoints" type="list" min_entries="5"
+             item_required_keys="at,label,observations,errors_count,signups_count,paid_count,actions_taken"/>
+      <field name="rollback_log" type="list"
+             item_required_keys="triggered_at,reason,steps_taken,reverted_at"/>
+      <field name="closeout" required_keys="paid_signups,total_signups,errors,top_3_learnings,runbook_updates"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">pre_checks.smoke_t_minus_2h is null OR returned errors AND announce_at proceeded as planned</pattern>
+      <pattern id="f2">pre_checks.stripe_verify_charge_id is null AND product is paid</pattern>
+      <pattern id="f3">infrastructure change recorded between T-2h and T+12h that is NOT a rollback action</pattern>
+      <pattern id="f4">checkpoints missing T+15m, T+1h, T+4h, T+12h, or T+24h checkpoint</pattern>
+      <pattern id="f5">rollback action listed without "reverted_at" or "outcome" field</pattern>
+      <pattern id="f6">closeout.top_3_learnings empty</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Compress checkpoints to T+15m, T+1h, T+6h, T+24h for shorter launch windows (free product, etc.).</transformation>
+      <transformation>Add channel-specific checkpoints (e.g. Product Hunt page-rank check at T+2h).</transformation>
+      <transformation>Note alternative announce times (e.g. mailing-list first, social at T+30m) per pre-agreed schedule.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Both smoke tests run; results captured</item>
+      <item>Stripe live swap done ≥2h before announce; verify charge id recorded</item>
+      <item>Fallback content paths exist and tested</item>
+      <item>Rollback rehearsed within last 24h</item>
+      <item>All five checkpoints captured</item>
+      <item>Closeout completed within 24h post-launch</item>
+    </list>
+  </section>
+</text>
