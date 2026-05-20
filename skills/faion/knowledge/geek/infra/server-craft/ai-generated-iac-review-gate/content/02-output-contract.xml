@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="AI IaC Review Gate Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the gate-report shape, the waiver record, and the merge-block rule.</summary>
+
+  <section title="Required gate-report fields">
+    <list>
+      <item><code>pr_number</code> (integer)</item>
+      <item><code>commit_sha</code> (string)</item>
+      <item><code>iac_files_touched</code> (array of repo-relative paths)</item>
+      <item><code>ai_authorship_signals</code> (array; same set as in `ai-base-image-cve-triage`)</item>
+      <item><code>checks</code> (object with four keys: drift, security, performance, multi_arch)</item>
+      <item><code>checks.<name></code> shape: {status: pass | block | advise, findings: [], waivers: []}</item>
+      <item><code>verdict</code> (enum: pass, block)</item>
+      <item><code>codeowners_approver</code> (string or null; required when verdict==pass AND any waiver present)</item>
+    </list>
+    <reference path="templates/gate-report.json">Authoritative JSON Schema for the gate report.</reference>
+  </section>
+
+  <section title="Waiver record structure">
+    <list>
+      <item><code>check_id</code>: stable id of the finding being waived</item>
+      <item><code>rationale</code>: free text, &gt;= 80 chars</item>
+      <item><code>expiry_utc</code>: ISO date, &lt;= 90 days from now</item>
+      <item><code>approver</code>: CODEOWNERS username, never an AI agent</item>
+      <item><code>approved_at_utc</code>: ISO timestamp</item>
+    </list>
+    <reference path="templates/waiver-template.md">Required structure with example.</reference>
+  </section>
+
+  <section title="Merge-block rule">
+    <list>
+      <item><code>verdict=pass</code> when every check is status `pass` OR every block-finding has a non-expired waiver with all required fields.</item>
+      <item><code>verdict=block</code> when ANY: a check is status `block` without waiver; a waiver is expired; a waiver lacks rationale / expiry / approver; codeowners_approver is empty when waivers present.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Gate-report status `pass` while waivers list is non-empty and codeowners_approver is null.</description>
+      <reason>r5 violation. Waivers require human approval.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Plan output contains `apply` or `destroy` commands instead of plan diff.</description>
+      <reason>r2 violation. Gate must be plan-only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>multi_arch check status `pass` with only amd64 in the build matrix while arch-matrix.yaml lists arm64.</description>
+      <reason>r4 violation. Arch-matrix declares the floor.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Waiver expiry date &gt; 90 days from now.</description>
+      <reason>r3 violation. Expiry must be bounded.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All four checks have a status field, even if `advise` only.</item>
+      <item>Every waiver has the five required fields.</item>
+      <item>Expiry dates are in the future.</item>
+      <item>multi_arch check ran on every architecture from arch-matrix.yaml.</item>
+      <item>verdict matches the merge-block rule.</item>
+    </list>
+  </section>
+</text>
