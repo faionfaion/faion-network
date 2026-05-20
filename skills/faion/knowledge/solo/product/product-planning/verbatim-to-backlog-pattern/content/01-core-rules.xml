@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Verbatim → Backlog — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules covering the 4-step transform, verbatim attachment, and the Job-Story framing.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-four-step-transform" testable="true">
+      <statement>The transform is EXACTLY 4 steps in order: (1) EXTRACT pain statements with timestamps and source IDs, (2) CLUSTER by embedding similarity (threshold 0.78 default), (3) FRAME each cluster as a Job-Story, (4) PRIORITISE with RICE. Skipping CLUSTER produces 50+ duplicate cards; skipping FRAME loses the user-context.</statement>
+      <rationale source="Teresa Torres — Continuous Discovery Habits / Rob Fitzpatrick — The Mom Test">Each step removes a class of failure: extract removes implicit pain inference, cluster removes duplication noise, frame restores user-context, prioritise creates a working order. Skipping any of the four collapses the pipeline.</rationale>
+    </rule>
+
+    <rule id="r2-verbatim-attachment" testable="true">
+      <statement>Every backlog card MUST have ≥ 2 verbatim quotes attached, each with `source_id`, `source_type ∈ {interview, support, discord, dm, review}`, and `timestamp`. Cards with &lt; 2 quotes are quarantined as `evidence_insufficient`.</statement>
+      <rationale source="Bob Moesta JTBD / Mom-Test compliance research">Two quotes establish that the pain is non-idiosyncratic. Single-quote cards drive feature-thrash (build for one loud user). Attached source IDs allow re-listening when planning.</rationale>
+    </rule>
+
+    <rule id="r3-cluster-threshold" testable="true">
+      <statement>Clustering uses cosine similarity threshold 0.78 by default; tuning allowed ∈ [0.72, 0.85] per operator. Clusters smaller than 2 statements are HELD as "watch-list" (not cards); clusters &gt; 12 statements are SPLIT (likely 2 jobs merged).</statement>
+      <rationale source="Embedding cluster-quality research (BERTopic, top2vec papers)">0.78 is the empirically robust threshold for English customer feedback (above 0.85 over-splits, below 0.72 over-merges). Tuning band reflects domain variation.</rationale>
+    </rule>
+
+    <rule id="r4-job-story-framing" testable="true">
+      <statement>Card title MUST use Job-Story format: "When &lt;trigger&gt;, I want &lt;motivation&gt;, so I can &lt;outcome&gt;." Forbidden alternatives: "As a &lt;persona&gt;..." (loses trigger), "Improve onboarding" (no who/when), "Fix bug XYZ" (not a story).</statement>
+      <rationale source="Alan Klement — Replacing the User Story / Intercom Jobs Stories framework">Persona-based user stories embed assumed buyer roles; Job-Stories center the trigger and circumstance, matching the verbatim pain in the source quote.</rationale>
+    </rule>
+
+    <rule id="r5-rice-prioritisation" testable="true">
+      <statement>Cards score on RICE: REACH (% of users affected, from cluster size / active users), IMPACT (per-user severity 1-3), CONFIDENCE (% based on quote count + recency), EFFORT (T-shirt sizes XS=0.5 / S=1 / M=3 / L=8 / XL=21 person-days). RICE = (R × I × C) / E. All four inputs MUST be sourced.</statement>
+      <rationale source="Sean McBride / Intercom RICE primer (2017)">RICE is the simplest model that survives founder pressure to over-weight any single dimension. Untyped inputs lead to manipulation; sourced inputs preserve the rigor.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Example transform">
+
+    <example type="good" title="From inbox → cluster → card">
+      <code lang="text"><![CDATA[
+EXTRACT (3 statements from a single week):
+  S1 [support#214, 2026-05-12]:
+    "I had to export the dashboard to PDF for my CFO; took
+     20 minutes manually."
+  S2 [interview#7, 2026-05-13]:
+    "Every Friday I export the dashboard and share it. PDF
+     option is buried."
+  S3 [discord#1402, 2026-05-15]:
+    "Can we get a one-click PDF export? My weekly report
+     takes longer than the analysis itself."
+
+CLUSTER (cosine sim 0.82, above 0.78 threshold):
+  Cluster: "weekly-pdf-export"  (3 statements)
+
+FRAME (Job-Story per r4):
+  Title: "When I prepare my weekly report, I want a
+          one-click PDF export, so I can spend time on
+          analysis instead of formatting."
+
+PRIORITISE:
+  R = 3/120 active users this week = 2.5%
+    (3 distinct mentions in trailing 7d; 120 actives)
+  I = 2 (productivity loss, not blocker)
+  C = 80% (3 quotes, all within 7d → high recency)
+  E = M (3 person-days for PDF render + email)
+  RICE = (2.5 × 2 × 0.80) / 3 = 1.33
+
+Card: backlog/CARD-447 with R, I, C, E sourced.
+Quotes S1-S3 attached with source URLs.
+      ]]></code>
+      <note>r1-r5 all visible: ordered transform, verbatim, cluster, frame, scored.</note>
+    </example>
+
+    <example type="bad" title="PM-language card without verbatim (r2 + r4 violation)">
+      <code lang="text"><![CDATA[
+Card title: "Improve export functionality"
+
+No quotes attached. No source IDs. Persona = "user".
+RICE: R=10% (made up), I=3, C=50%, E=L → RICE = 1.875.
+
+6 weeks later: nobody remembers why this was prioritised.
+The actual pain (Friday-CFO-PDF) is lost; team builds CSV
++ XLS + JSON exports instead.
+      ]]></code>
+      <note>Generic backlog rot. The verbatim attachment is what saves the original signal.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

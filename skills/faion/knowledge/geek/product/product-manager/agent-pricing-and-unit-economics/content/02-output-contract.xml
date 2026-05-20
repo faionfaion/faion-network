@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="LLM-Agent Pricing &amp; Unit Economics Output Contract" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>Defines the unit economics report and the pricing-tier set artifact.</summary>
+
+  <output-contract>
+    <required>
+      <field name="task_measurement">
+        <subfield name="sample_count" type="integer" min="100"/>
+        <subfield name="input_tokens_p50" type="integer"/>
+        <subfield name="input_tokens_p95" type="integer"/>
+        <subfield name="output_tokens_p50" type="integer"/>
+        <subfield name="output_tokens_p95" type="integer"/>
+        <subfield name="retrieval_cost_per_task_usd" type="number"/>
+        <subfield name="tool_call_cost_per_task_usd" type="number"/>
+        <subfield name="measurement_date" type="iso_date"/>
+      </field>
+      <field name="cogs_per_task">
+        <subfield name="cogs_p50_usd" type="number"/>
+        <subfield name="cogs_p95_usd" type="number"/>
+        <subfield name="model_pricing_source" type="string"/>
+        <subfield name="cogs_breakdown" required_keys="input_token_cost,output_token_cost,retrieval_cost,tool_call_cost,infra_cost"/>
+      </field>
+      <field name="variance_ratio" type="number"/>
+      <field name="recommended_pricing_model" enum="per_seat_with_cap,per_task_metered,outcome_based,hybrid"/>
+      <field name="pricing_tiers" min_items="2">
+        <subfield name="pricing_tiers[].name" type="string"/>
+        <subfield name="pricing_tiers[].monthly_price_usd" type="number"/>
+        <subfield name="pricing_tiers[].cap_tasks_per_month" type="integer" required_if="recommended_pricing_model includes cap"/>
+        <subfield name="pricing_tiers[].overage_price_per_task_usd" type="number" required_if="cap defined"/>
+        <subfield name="pricing_tiers[].expected_gross_margin_at_average_use" type="number" min="0.5" max="0.95"/>
+        <subfield name="pricing_tiers[].gross_margin_at_cap_use" type="number" min="0.4"/>
+      </field>
+      <field name="repricing_metadata">
+        <subfield name="last_repriced_at" type="iso_date"/>
+        <subfield name="next_review_date" type="iso_date" max_offset_months="3"/>
+        <subfield name="triggers_log[]" type="object"/>
+      </field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">task_measurement.sample_count &lt; 100</pattern>
+      <pattern id="f2">cogs values derived from estimates without production measurement</pattern>
+      <pattern id="f3">pricing_tier flat-rate / per-seat with no cap defined</pattern>
+      <pattern id="f4">expected_gross_margin_at_average_use &lt; 0.50 on any tier</pattern>
+      <pattern id="f5">gross_margin_at_cap_use &lt; 0.40 on any tier (cap is meaningless)</pattern>
+      <pattern id="f6">variance_ratio &gt; 8 with per_seat_with_cap model selected (forbidden mismatch — use metered or outcome)</pattern>
+      <pattern id="f7">repricing_metadata.last_repriced_at &gt; 6 months ago without an explicit "no change needed" entry</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Hybrid pricing (e.g., per-seat base + metered overage) is allowed and often optimal for medium-variance products.</transformation>
+      <transformation>Outcome-based pricing may use a shared measurement event (e.g., "qualified lead recorded in CRM") as the billing unit; the metric must be auditable by both sides.</transformation>
+      <transformation>"Infinite tier" with rate limits (RPS / per-day) is allowed as a top tier IF the rate limit guarantees gross margin ≥ 0.4 in worst case.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/unit-economics-report.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>≥ 100 real tasks measured for token distributions</item>
+      <item>cogs_breakdown sums to total cogs</item>
+      <item>variance ratio computed → matches pricing model selection</item>
+      <item>every flat-rate tier has a fair-use cap AND overage price</item>
+      <item>gross_margin_at_cap_use ≥ 0.4 on every tier</item>
+      <item>repricing review scheduled within 3 months</item>
+      <item>customer-facing pricing page matches the internal pricing_tiers field</item>
+    </list>
+  </section>
+</text>
