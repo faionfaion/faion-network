@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="AI PM Recipes Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules every recipe MUST satisfy. Hard rules; an LLM-driven PM integration that violates them is a liability.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-scoped-tokens" testable="true" depth="essential">
+      <statement>Every recipe uses TOKENS SCOPED to the minimum needed: Jira read-only on the relevant project keys, GitHub read on the relevant repos, Slack post-only on the digest channel. Admin-scoped tokens are FORBIDDEN. Tokens are stored in a secrets manager / env vars — NEVER committed.</statement>
+      <rationale source="OAuth scope-minimisation; SOC 2 access-control criterion">A compromised PM recipe with admin scope is a project-wide incident; with read-only scope on specific resources the blast radius is bounded. Routine misuse is the dominant pattern; scope discipline is the cheapest defence.</rationale>
+    </rule>
+
+    <rule id="r2-structured-output-required" testable="true" depth="essential">
+      <statement>Every LLM call in every recipe MUST use structured output (Anthropic JSON mode, OpenAI structured output, or per-call JSON schema validation post-hoc). Free-text LLM output piped into downstream systems is FORBIDDEN. Output validates against the schema before any Slack post / Jira update / risk register write.</statement>
+      <rationale source="Faion product policy `feedback_agent_output`; LLM-output-driven integration failures">Free-text output regularly contains malformed JSON, Markdown that breaks Slack parsing, or hallucinated entity names. Schema validation is the cheapest gate; recipes that skip it produce surprise downstream failures.</rationale>
+    </rule>
+
+    <rule id="r3-digest-budget" testable="true" depth="essential">
+      <statement>The Jira-digest recipe MUST cap output at 800 words and 8 risk callouts per run. Larger digests train the team to skim. Per-run cost MUST be capped (default $1 / run); exceeding the cap halts the recipe with an alert rather than burning quota silently.</statement>
+      <rationale source="Slack signal-vs-noise studies; LLM cost-control patterns">A 4,000-word digest is read by no one. A 600-word digest with eight clearly-labelled risk callouts changes behaviour. The cost cap protects against prompt-explosion or upstream data spikes that would otherwise create a surprise bill.</rationale>
+    </rule>
+
+    <rule id="r4-retro-note-template" testable="true" depth="essential">
+      <statement>The Loom-retro recipe outputs MUST follow the four-section template: what_worked, what_didnt, actions, blockers. Output without all four sections is REJECTED. Each action MUST have an owner + due date inferred from transcript context OR marked `owner_TBD`.</statement>
+      <rationale source="Retrospective best practice (Norm Kerth) + structured-output discipline">Free-form retro notes lose action items; structured retro notes produce a tracked work queue. The four sections cover the canonical retro questions and force the LLM to attribute statements to one of them.</rationale>
+    </rule>
+
+    <rule id="r5-pm-signoff-on-mutations" testable="true" depth="essential">
+      <statement>Recipes that MUTATE remote state (post to Slack, update Jira fields, comment on a PR) MUST include a `dry_run` flag and a `pm_signoff` flag. Default is dry_run=true. Flipping to live mode requires PM-recorded signoff. Auto-mutation without recorded signoff is FORBIDDEN.</statement>
+      <rationale source="Faion product policy `feedback_orchestrator_self_drive`; agent-blast-radius incidents">PM-tool mutations affect humans (team members, stakeholders). The dry-run gate keeps the recipe testable; the signoff gate makes the PM accountable for live behaviour.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Dry-run digest with structured output">
+      <code lang="python"><![CDATA[
+# recipe-1-jira-digest.py (key fragment)
+DRY_RUN = os.environ.get("DRY_RUN", "true").lower() == "true"
+client = anthropic.Anthropic()
+resp = client.messages.create(
+    model="claude-sonnet-4-7-20260120",
+    max_tokens=1500,
+    messages=[{"role": "user", "content": prompt}],
+    response_format={"type": "json_schema", "schema": load_schema("digest-schema.json")},
+)
+digest = json.loads(resp.content[0].text)
+validate(digest, load_schema("digest-schema.json"))
+if not DRY_RUN and PM_SIGNOFF:
+    slack_post(channel=DIGEST_CHANNEL, text=render(digest))
+else:
+    print(render(digest))   # dev review
+      ]]></code>
+      <note>r1 (scoped key in env), r2 (structured output + validate), r5 (dry_run + signoff) satisfied. Mutating step gated.</note>
+    </example>
+
+    <example type="bad" title="Free-text digest piped to Slack">
+      <code lang="python"><![CDATA[
+resp = client.messages.create(..., max_tokens=8000)
+slack_post(channel=ALL_HANDS, text=resp.content[0].text)
+      ]]></code>
+      <note>r2, r3, r5 violations. No structured output, no cap, no dry-run, posted to all-hands. Classic "looked great in dev, scary in prod" failure.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

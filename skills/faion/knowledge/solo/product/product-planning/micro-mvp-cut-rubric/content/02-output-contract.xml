@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Micro-MVP Cut Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of the day-sized slice spec. Subagent must satisfy this before slice enters SDD task queue.</summary>
+
+  <output-contract>
+    <required>
+      <field name="user_outcome" type="string"
+             format="User can [verb] [noun]"
+             max_length="120"/>
+      <field name="cut_per_axis" type="object"
+             required_keys="data_model,surface,permissions,persistence,tests,ui_polish"
+             value_type="object_with_keys=minimum_slice,deferred"/>
+      <field name="estimated_hours" type="float"
+             constraint="value &lt;= 8"/>
+      <field name="deferral_list" type="array_object"
+             item_required_keys="axis,deferred_item,reason,next_slice_candidate_bool"/>
+      <field name="smoke_test_cases" type="array_object"
+             length="2"
+             item_required_keys="case_id,path_type,description"
+             path_type_enum="happy_path,error_path"/>
+      <field name="ui_polish_explicit_minimum" type="string"
+             constraint="contains 'default styles', 'no animation', 'no responsive polish' OR explicit minimum description"/>
+      <field name="slice_owner" type="string"/>
+      <field name="planned_ship_date" type="date"
+             constraint="value == today"/>
+      <field name="parent_feature_id" type="string"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">cut_per_axis missing any of the 6 axis keys (violates r1)</pattern>
+      <pattern id="f2">estimated_hours &gt; 8 (violates r2)</pattern>
+      <pattern id="f3">deferral_list empty OR deferrals with reason == "later" / "TBD" (violates r3)</pattern>
+      <pattern id="f4">smoke_test_cases length &gt; 2 OR includes integration / e2e tests (violates r4)</pattern>
+      <pattern id="f5">ui_polish_explicit_minimum mentions animations, transitions, dark mode, responsive design (violates r5)</pattern>
+      <pattern id="f6">planned_ship_date != today (slice should ship same day; non-today indicates the cut failed)</pattern>
+      <pattern id="f7">user_outcome contains multiple verbs ("user can do X AND Y") — that's 2 slices</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Mark an axis as "N/A" with explicit reason when it genuinely doesn't apply (e.g., no permission model in single-user app).</transformation>
+      <transformation>Extend ceiling to 12 hours only when slice cannot decompose further AND operator declares; track in retro.</transformation>
+      <transformation>Pre-promote a deferred item to next-slice queue immediately if it would benefit user validation.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/slice-spec.md"/>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All 6 cut axes have minimum + deferred entries</item>
+      <item>Estimated hours ≤ 8</item>
+      <item>Deferral list non-empty with reasons</item>
+      <item>Smoke tests are exactly 2 (happy + error)</item>
+      <item>UI polish explicit minimum is raw</item>
+      <item>planned_ship_date is today</item>
+      <item>User outcome is a single verb (one slice)</item>
+    </list>
+  </section>
+</text>
