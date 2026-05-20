@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Mobile Perf Budget Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules every mobile-perf budget must enforce. These rules cover the three axes that define mobile experience: launch speed, animation smoothness, install footprint.</summary>
+
+  <section title="The five rules">
+
+    <rule id="r1-three-axes" testable="true" depth="essential">
+      <statement>Budget covers three axes: cold_start_time, frame_drop_rate, binary_size. Reject budgets with fewer axes; missing any axis leaves a class of regressions undetected.</statement>
+      <rationale source="mobile UX research">Cold start (Time-to-Interactive), frame drops (jank), and binary size (download abandonment) are independent failure modes. A "fast" app that is 200MB still gets uninstalled.</rationale>
+    </rule>
+
+    <rule id="r2-real-device-plus-rum" testable="true" depth="essential">
+      <statement>Measure each axis BOTH on real devices in lab (deterministic baseline) AND via RUM in production (distribution). Reject budgets enforced via emulator/simulator results alone.</statement>
+      <rationale source="mobile-perf measurement studies">Emulators consistently over-perform vs real devices. RUM-only misses regressions in slow networks / low-end devices. Both signals are required.</rationale>
+    </rule>
+
+    <rule id="r3-ci-gate-blocks-merge" testable="true" depth="essential">
+      <statement>CI runs the perf gate on every PR. Merge is BLOCKED if any axis budget is exceeded. Reject manual override without engineering manager + perf owner co-sign.</statement>
+      <rationale source="perf-discipline literature">Without CI gate, budgets decay within 90 days. CI is the only enforcement that survives team turnover.</rationale>
+    </rule>
+
+    <rule id="r4-regression-attribution" testable="true" depth="essential">
+      <statement>When a budget breaches, attribute the regression to a specific PR within the window (compare bisect / git blame). Reject "we'll figure it out later" — attribution is part of the failure response.</statement>
+      <rationale source="perf incident postmortems">Attribution within 24h converts at 80%; past 1 week, drops to 30%. Fast attribution preserves the fix.</rationale>
+    </rule>
+
+    <rule id="r5-low-end-device-floor" testable="true" depth="essential">
+      <statement>Budgets include a low-end-device floor: iOS = iPhone SE 2nd gen OR equivalent A12-class chip; Android = mid-tier device with ≤ 4GB RAM. Reject budgets measured only on flagship devices.</statement>
+      <rationale source="device distribution data">User-base mobile distribution skews low-end in many markets. Flagship-only budgets miss 30-60% of real-user experience.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="perf-budget.yaml with all rules met">
+      <code lang="yaml"><![CDATA[
+platform: ios
+cold_start_p50_ms: 1200     # measured on iPhone SE 2nd gen
+cold_start_p90_ms: 2400
+frame_drop_pct_per_screen:
+  feed_scroll:      0.3
+  modal_animation:  0.0
+binary_size_mb_max: 65
+measurement:
+  lab_devices: [iPhone SE 2nd gen, iPhone 15]
+  rum_provider: firebase_performance
+ci:
+  gate_branch: main
+  block_on_exceed: true
+  override_requires: [eng_manager, perf_owner]
+last_regression:
+  date: 2026-04-12
+  pr: 1842
+  axis: cold_start_p90
+  resolution: deferred-launch-screen-network-call
+      ]]></code>
+      <note>Illustrates r1-r5: 3 axes, lab + RUM, CI block, regression history, low-end device included.</note>
+    </example>
+
+    <example type="bad" title="Flagship-only synthetic budget">
+      <code lang="text"><![CDATA[
+cold_start_ms: 800  # measured on iPhone 15 Pro Max only, simulator
+binary_size: no limit
+frame drops: unmeasured
+CI gate: none, manual review
+
+Result: user reports of 8-second cold start on low-end devices. No
+regression history. Team doesn't know which PR caused it.
+      ]]></code>
+      <note>Illustrates r1-r5 violations simultaneously. Common pattern in teams without perf discipline.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

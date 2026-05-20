@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Multi-Tenancy Patterns — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules for choosing and operating a multi-tenancy model in SaaS. Each rule has bitten teams that ignored it.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r1-decision-matrix-driven" testable="true" depth="essential">
+      <statement>The model choice (shared-everything / schema-per-tenant / DB-per-tenant / hybrid) MUST be made via the documented decision matrix scoring (tenant count, isolation requirement, compliance scope, noise tolerance, cost ceiling). Picking by founder preference OR by "what the previous startup did" without scoring is forbidden.</statement>
+      <rationale source="AWS SaaS Lens, Microsoft SaaS Patterns case studies">Empirical multi-tenancy failures cluster around two anti-patterns: shared-everything used when compliance demanded isolation (data leak risk), and DB-per-tenant used when tenant count was thousands (operational collapse). The matrix prevents both — its inputs force the team to make the actual trade explicit.</rationale>
+    </rule>
+
+    <rule id="r2-isolation-guarantee-documented" testable="true" depth="essential">
+      <statement>The chosen model MUST come with a documented isolation guarantee that lists explicitly: what isolation IS guaranteed (e.g., "tenant data accessed only via service layer with RLS-enforced tenant_id in every query"), what is NOT guaranteed (e.g., "shared compute resources; CPU / memory noise possible between tenants"), and the test that verifies the guarantee (e.g., scripts/audit-tenant-isolation.py).</statement>
+      <rationale source="OWASP SaaS security patterns, compliance audit research">Implicit isolation guarantees fail audits AND fail in incidents. Explicit guarantees set the contract; an explicit "NOT guaranteed" list lets sales / customer-success answer enterprise security questionnaires honestly. The verification test is what keeps the guarantee from decaying.</rationale>
+    </rule>
+
+    <rule id="r3-blast-radius-quantified" testable="true" depth="essential">
+      <statement>For each major failure class (full-DB-outage, slow query, bad migration, ransomware, accidental DROP TABLE, compromised credentials), the chosen model's BLAST RADIUS MUST be quantified: how many tenants affected, recovery RTO, recovery RPO. The model is chosen knowing these costs, not assumed-away.</statement>
+      <rationale source="SRE chaos-engineering patterns, ransomware case studies">Blast-radius math reveals trade-offs invisible at design time. Shared-everything has small blast-per-tenant but unlimited blast-on-shared-failure; DB-per-tenant has zero cross-tenant blast but higher operational burden. Knowing the cost of each failure class lets the team plan mitigations.</rationale>
+    </rule>
+
+    <rule id="r4-migration-path-documented" testable="true" depth="essential">
+      <statement>The ADR MUST document the migration path FROM the chosen model to the next-likely-target if assumptions change (e.g., "if tenant count grows past 10x or compliance scope adds HIPAA, we'd migrate to schema-per-tenant via this path: ..."). Forbidden: assuming the current model is permanent.</statement>
+      <rationale source="Strangler-pattern migration literature, SaaS scaling stories (Shopify, Stripe, Salesforce histories)">Every successful SaaS reaches a point where it needs to migrate isolation models — usually for compliance, sometimes for cost. Teams that planned for migration upfront move in 3-6 months; teams that didn't take 18-24 months and disrupt customers. The migration path is part of the original design.</rationale>
+    </rule>
+
+    <rule id="r5-data-residency-explicit" testable="true" depth="essential">
+      <statement>Per-tenant data residency MUST be explicit in the ADR: where each tenant's data physically lives (region, cloud provider, encryption-key custody). If "anywhere" is acceptable, document that explicitly. Forbidden: silent "wherever the cloud provider put it" — which fails GDPR / data-residency requirements without warning.</statement>
+      <rationale source="GDPR enforcement actions, data-residency case studies (Schrems II, EU DPC enforcement)">Data residency is the most expensive multi-tenant blind spot — a single misplaced tenant can trigger a regulatory inquiry. Explicit per-tenant residency lets the model choice account for it (DB-per-tenant in customer region, vs shared-everything in one region).</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Canonical example">
+
+    <example type="good" title="ADR excerpt: schema-per-tenant chosen for B2B mid-market">
+      <code lang="text"><![CDATA[
+ADR-2026-018: Multi-tenancy isolation model
+Decision: Schema-per-tenant on shared Postgres cluster
+
+Requirements scored (per decision matrix):
+  Tenant count expected: 50-500 within 24 months   -> schema-fit
+  Isolation required: tenant data segregation (SOC 2 Type II)
+                                                    -> schema-fit
+  Compliance: SOC 2; not HIPAA / FedRAMP            -> schema-fit
+  Noise tolerance: low for enterprise tier;
+                  medium for SMB                    -> schema-fit (with conn pool tuning)
+  Cost ceiling: under $5/tenant/month for SMB       -> schema-fit (DB-per-tenant would breach)
+
+Isolation guarantees:
+  YES: per-tenant schema; queries scoped via search_path
+       set at connection acquisition; tenant_id stamped in audit log;
+       backup per-schema (granular restore).
+  NO:  shared compute (one slow query can impact others);
+       shared connection pool (capacity contention);
+       cross-schema access blocked at app layer NOT at DB privileges
+       — relies on app-layer enforcement.
+
+Blast radius:
+  Full DB outage:         all tenants down; RTO 30 min; RPO 5 min
+  Bad migration:          all tenants affected (mitigation: phased migration script per N schemas)
+  Compromised app credential: full data exposure (mitigation: per-tenant audit logs catch volume anomaly)
+  Single-tenant data corruption: contained to one schema; restore from per-schema backup
+
+Migration path (if assumptions change):
+  Trigger: HIPAA scope added OR tenant count &gt; 1000
+  Path: each tenant's schema migrated to dedicated DB instance,
+        traffic routed via tenant_id -&gt; DB-instance map,
+        cutover per cohort over 3-month rolling window.
+  Pre-built artifact: scripts/migration-runbook.md (template)
+
+Data residency:
+  Default: EU customer schemas in eu-central-1; US customers in us-east-1.
+  Per-tenant override available at onboarding (charged separately).
+      ]]></code>
+      <note>Illustrates r1-r5: matrix-scored decision, explicit guarantees, blast-radius math, migration path documented, residency explicit.</note>
+    </example>
+
+    <example type="bad" title="Shared-everything chosen by founder reflex">
+      <code lang="text"><![CDATA[
+ADR-2026-006 (informal):
+"We'll use Postgres with a tenant_id column on every table. Add a
+WHERE tenant_id = X to every query. Standard SaaS pattern."
+
+Outcomes 18 months later:
+- One missing tenant_id in a new query leaked 4k records across
+  37 tenants (no RLS, no app-layer enforcement audit).
+- Enterprise customer demanded SOC 2 + data isolation; team
+  realized RLS retrofit needed (3-month project).
+- HIPAA prospect lost (would have required schema or DB isolation).
+- No migration path documented; everything is now intertwined.
+
+Repair: enforce r1-r5. Decision matrix would have surfaced compliance
+risk; explicit guarantees + blast math would have caught the missing
+RLS; migration-path-documented would have made the SOC 2 retrofit
+a planned multi-week task instead of a 3-month crisis.
+      ]]></code>
+      <note>Illustrates r1-r5 violations — the standard "pick the simplest pattern" failure mode.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>
