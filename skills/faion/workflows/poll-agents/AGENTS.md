@@ -5,6 +5,12 @@ owner: ruslan
 last_verified: 2026-05-02
 version: 2.0.0
 applies_to: any
+content_id: 4561f8360a60223f
+success_criteria:
+  - Parent never writes, commits, or merges — only pops the queue, dispatches subagents, and records DONE.
+  - In-flight count stays ≤15 at all times (strict cap enforced before every dispatch).
+  - State lives on disk (`QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt`) so the parent survives context compaction.
+  - Pool stays full via both signals (cron tick keepalive + per-completion replacement) until the queue drains.
 ---
 
 # Poll-Agents Workflow
