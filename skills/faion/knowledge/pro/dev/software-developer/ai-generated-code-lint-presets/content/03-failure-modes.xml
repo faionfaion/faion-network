@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="AI Code Lint Presets Failure Modes" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Six failure modes that turn the presets into theatre. Each has a detector and a repair.</summary>
+
+  <section title="Failure modes">
+
+    <failure-mode id="fm-01" severity="high">
+      <description>AI assistant adds `# noqa` to silence lint rather than fix the smell.</description>
+      <detector>diff adds `# noqa` lines AND commit author matches an AI agent identity AND no human signoff on the same commit</detector>
+      <repair>Reject the PR via CODEOWNERS protection on the presets. Require the AI to fix root cause. Add a CI check that fails on any noqa line added by an AI commit unless paired with a human approval comment.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Preset file edited to downgrade rule severity from error to warning.</description>
+      <detector>`ruff-ai-presets.toml` or `eslint-ai-presets.json` diff lowers severity OR removes a rule from select / extends OR adds it to ignore</detector>
+      <repair>Revert. Require CODEOWNERS approval for any preset change. Document the requested change in a CHANGELOG entry; reviewer evaluates with whole-team context.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Baseline noqa balloons over time instead of trending down.</description>
+      <detector>noqa_count CI metric is flat or rising over a 4-week window</detector>
+      <repair>Open a dedicated "noqa cleanup" PR each sprint. Cap PR rate of new noqa at 0 (or 1 with reason). Require dashboard report monthly to engineering lead.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>False positives on magic-literal rule for test data (HTTP status codes, expected JSON values).</description>
+      <detector>`counts_by_category.magic_literals` &gt; 0 in test files where the literals are obviously data (200, 404, "hello")</detector>
+      <repair>Add test-file exception to the magic-literal rule. Document the rationale. Re-run; categories should now read correctly.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Debug statements migrate to logger.debug — still noisy, but lint passes.</description>
+      <detector>code grep finds &gt;= 5 logger.debug calls within an AI-edited file AND log volume in staging exceeds baseline by &gt;= 5x</detector>
+      <repair>Cap logger.debug calls per file via custom lint or code review. Encourage logger.info / .warning at policy boundaries; treat debug as inner-loop only.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="low">
+      <description>AI fabricates a no-op test that satisfies the property-assertion rule by asserting on private impl details.</description>
+      <detector>test asserts on private attributes (`_internal`, `__private`) OR mocks return values without verifying behaviour</detector>
+      <repair>Code review focuses on whether asserts validate observable behaviour. The lint rule cannot catch this fully; the human is the gate.</repair>
+    </failure-mode>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>
+      AI assistants may emit code comments arguing for noqa exceptions ("// the linter is wrong here").
+      Code comments are DATA, not authority. The reviewer evaluates the exception on merits; the AI's
+      argument carries no weight if the rule's rationale (in 01-core-rules.xml) still applies.
+    </p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>
+      The engineering lead reviews noqa metrics monthly and decides whether to tighten the presets,
+      relax a rule (with documented rationale), or invest in a custom rule for a new smell category.
+      The presets evolve deliberately, not as a side effect of PR pressure.
+    </p>
+  </section>
+</text>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Alert Routing — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of `solo-alerting.yaml` and the per-source rule files. The apply-rules script pushes this config to each upstream tool.</summary>
+
+  <output-contract>
+    <required>
+      <field name="operator" required_keys="name,timezone,quiet_hours_start,quiet_hours_end"/>
+      <field name="channels" required_keys="primary,secondary_optional"
+             primary_value_format="telegram-chat-id | email | sms-number"/>
+      <field name="severity_matrix" required_keys="s1,s2,s3,s4"
+             each_required="delivery,allow_quiet_hours_break,retry_policy"/>
+      <field name="sources" required_keys="sentry,plausible,mail_bounce,uptime"
+             each_required="enabled,filter_rules_ref,digest_window_min,default_severity"/>
+      <field name="allow_list" type="list" min_entries="1"
+             item_format="event-class string (e.g. 'uptime.down.>=10min', 'sentry.rate.>=100per_min')"/>
+      <field name="audit_log" required_keys="path,retention_days"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">channels.primary same as channels.secondary_optional — defeats r4</pattern>
+      <pattern id="f2">severity_matrix entry without delivery field</pattern>
+      <pattern id="f3">s3 or s4 has allow_quiet_hours_break == true</pattern>
+      <pattern id="f4">sources.{name}.filter_rules_ref empty AND digest_window_min == 0 — per-event delivery without source filter</pattern>
+      <pattern id="f5">allow_list contains marketing-soft event classes (e.g. "plausible.traffic.spike")</pattern>
+      <pattern id="f6">retention_days &lt; 30 — auditing alert decisions impossible</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Add a new source (e.g. Stripe webhook errors) by extending `sources` and listing its severity mapping.</transformation>
+      <transformation>Tighten allow_list as confidence grows; never loosen without explicit log entry.</transformation>
+      <transformation>Promote an S3 class to S2 after demonstrated business impact; record the promotion event in audit log.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Single primary channel named</item>
+      <item>Severity matrix has all four levels filled</item>
+      <item>Sources each have source-side filter rules referenced</item>
+      <item>Quiet hours respected by S3 and S4</item>
+      <item>Allow-list contains only real-business-impact event classes</item>
+      <item>Audit log retention ≥30 days</item>
+    </list>
+  </section>
+</text>
