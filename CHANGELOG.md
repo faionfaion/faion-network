@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-063 harvest +322.
 - F-063 harvest +14.
 - F-063 Added: chunk-00 P2 harvest (79 entries).
 - F-063 harvest +8.

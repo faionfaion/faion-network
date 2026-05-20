@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Definition of Ready — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins per-story DoR record + sprint-level ready-set shape. PM, agent, or refinement-session facilitator must satisfy these.</summary>
+
+  <output-contract>
+    <required>
+      <field name="story_id" format="ticket_id_or_url"/>
+      <field name="checked_at" format="ISO-8601_timestamp"/>
+      <field name="checker" format="single_named_individual"/>
+      <field name="per_item_results" required_keys="acs,design,dependencies,sizing,owners,success_metric,nfr_coverage"
+             value_type="enum: pass | fail | n/a-with-reason"/>
+      <field name="failures" type="array" condition="required_if_any_per_item_result=fail"
+             required_keys="item,specific_gap,fix_required"/>
+      <field name="decision" format="enum: ready | not-ready"/>
+      <field name="sprint_ready_set" required_keys="stories,sum_of_points,velocity_median,capacity_used_pct"/>
+      <field name="capacity_used_pct" type="number" max="85"/>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">decision=ready with any per_item_results=fail</pattern>
+      <pattern id="f2">sprint_ready_set with capacity_used_pct &gt; 85 (r3)</pattern>
+      <pattern id="f3">per_item_results.acs without referencing AC-quality-rubric score per AC</pattern>
+      <pattern id="f4">per_item_results.nfr_coverage marked pass without per-NFR-category status (silent skip)</pattern>
+      <pattern id="f5">failures field with fix_required = "discuss with dev during sprint" (r2 + r4)</pattern>
+      <pattern id="f6">checker is the dev who will implement the story (PM/PO must be checker per r4)</pattern>
+      <pattern id="f7">decision=ready without a checked_at timestamp within the last 7 days (stale check)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Cluster multiple sub-stories that share NFR coverage into one NFR statement for the cluster.</transformation>
+      <transformation>Mark "n/a-with-reason" for an entire NFR category if the story does not touch the relevant surface (e.g., a11y N/A for pure backend; document why).</transformation>
+      <transformation>Reference a prior DoR record from the same story if it was previously ready but bumped sprints — re-check only items that may have decayed (dependencies, capacity).</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/dor-record.json"/>
+  </output-contract>
+
+  <section title="Self-check (run before sprint planning meeting)">
+    <list>
+      <item>Every candidate story has a DoR record with checked_at &lt;= 7 days ago (r1)</item>
+      <item>Every per_item_result is pass OR fail OR n/a-with-reason (no nulls) (r1)</item>
+      <item>capacity_used_pct &lt;= 85 (r3)</item>
+      <item>NFR coverage section has per-category status for relevant NFRs (r5)</item>
+      <item>Failed stories have specific fix_required, owned by PM (r4)</item>
+      <item>Output validates against templates/dor-record.json and templates/sprint-ready-set.json</item>
+    </list>
+  </section>
+</text>
