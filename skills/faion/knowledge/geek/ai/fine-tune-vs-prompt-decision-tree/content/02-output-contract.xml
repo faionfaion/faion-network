@@ -1,44 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Fine-tune vs Prompt+RAG Decision Tree Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Fine-tune vs Prompt+RAG Decision Tree output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Fine-tune vs prompt decision tree — output contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema + examples for the 4-axis decision artefact.</summary>
 
-  <output-contract>
-    <required>
-      <field name="alternatives_tried" type="list" required="true">[{alternative, eval_lift_pp, decision_date}]</field>
-      <field name="decision" type="string" required="true">fine-tune|prompt-rag|route|distill|hybrid</field>
-      <field name="decision_rationale" type="string" required="true">≥3 sentences citing eval evidence</field>
-      <field name="eval_baseline" type="object" required="true">{n_cases, score, latency_ms, cost_per_call}</field>
-      <field name="budget_labor_hours" type="integer" required="true">≥3× initial estimate</field>
-      <field name="revisit_trigger" type="string" required="true">next model major version OR 6 months</field>
-      <field name="owner" type="string" required="true">named ML/AI engineer</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ft-vs-prompt-decision-tree",
+  "type": "object",
+  "required": ["workload", "owner", "created_at", "axes", "alternatives_tried", "recommendation", "revisit_triggers"],
+  "properties": {
+    "workload": {"type": "string"},
+    "owner": {"type": "string", "not": {"enum": ["team", "everyone", "TBD"]}},
+    "created_at": {"type": "string", "format": "date"},
+    "axes": {
+      "type": "object",
+      "required": ["quality", "cost", "latency", "maintenance"],
+      "properties": {
+        "quality":     {"type": "object", "required": ["score", "note"], "properties": {"score": {"type": "integer", "minimum": 1, "maximum": 5}, "note": {"type": "string", "minLength": 5}}},
+        "cost":        {"type": "object", "required": ["score", "note"], "properties": {"score": {"type": "integer", "minimum": 1, "maximum": 5}, "note": {"type": "string", "minLength": 5}}},
+        "latency":     {"type": "object", "required": ["score", "note"], "properties": {"score": {"type": "integer", "minimum": 1, "maximum": 5}, "note": {"type": "string", "minLength": 5}}},
+        "maintenance": {"type": "object", "required": ["score", "note"], "properties": {"score": {"type": "integer", "minimum": 1, "maximum": 5}, "note": {"type": "string", "minLength": 5}}}
+      }
+    },
+    "alternatives_tried": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["alt", "lift", "status"],
+        "properties": {
+          "alt": {"enum": ["prompt-improve", "rag", "routing", "distillation"]},
+          "lift": {"type": ["number", "null"]},
+          "status": {"enum": ["tried", "untried", "skipped"]}
+        }
+      }
+    },
+    "recommendation": {"enum": ["no-change", "prompt-improve", "rag", "routing", "distillation", "fine-tune", "hybrid"]},
+    "revisit_triggers": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 10}}
+  }
+}]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">decision == fine-tune AND alternatives_tried.length &lt; 2</pattern>
-      <pattern id="f2">eval_baseline.n_cases &lt; 100</pattern>
-      <pattern id="f3">budget_labor_hours &lt; 1.5× initial estimate</pattern>
-      <pattern id="f4">revisit_trigger missing</pattern>
-    </forbidden>
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "workload": "support-classifier",
+  "owner": "alice@example.com",
+  "created_at": "2026-05-22",
+  "axes": {
+    "quality":     {"score": 3, "note": "F1 0.78, target 0.82"},
+    "cost":        {"score": 2, "note": "$/req 1.5c, target 0.8c"},
+    "latency":     {"score": 4, "note": "p95 280ms, target 400ms — fine"},
+    "maintenance": {"score": 3, "note": "two prompts, no FT yet"}
+  },
+  "alternatives_tried": [
+    {"alt": "prompt-improve", "lift": 0.02, "status": "tried"},
+    {"alt": "rag", "lift": 0.0, "status": "tried"},
+    {"alt": "routing", "lift": 0.03, "status": "tried"},
+    {"alt": "distillation", "lift": null, "status": "untried"}
+  ],
+  "recommendation": "routing",
+  "revisit_triggers": ["volume crosses 100k req/day", "Sonnet 4.6 ships at -50% price", "F1 falls below 0.74 for 2 days"]
+}]]></code>
+    </example>
+  </section>
 
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/fine-tune-vs-prompt-decision-tree.json"/>
-  </output-contract>
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "workload": "x",
+  "owner": "team",
+  "created_at": "2026-05-22",
+  "axes": {
+    "quality": {"score": 2, "note": "bad"}
+  },
+  "alternatives_tried": [],
+  "recommendation": "fine-tune",
+  "revisit_triggers": []
+}]]></code>
+      <note>Missing axes (r1), owner=team (r5), no alternatives_tried (r2), no triggers (r4), recommendation FT despite missing data (r3).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>alternatives_tried populated with a typed value</item>
-      <item>decision populated with a typed value</item>
-      <item>decision_rationale populated with a typed value</item>
-      <item>eval_baseline populated with a typed value</item>
-      <item>budget_labor_hours populated with a typed value</item>
-      <item>revisit_trigger populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>axes has quality + cost + latency + maintenance, each with score and note.</item>
+      <item>alternatives_tried has all four entries.</item>
+      <item>revisit_triggers.length ≥ 2.</item>
+      <item>owner is a person, not a team alias.</item>
     </list>
   </section>
 </text>
