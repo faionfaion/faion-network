@@ -3,7 +3,7 @@ slug: model-gateway-endpoint-addition
 tier: geek
 group: llm-integration
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft

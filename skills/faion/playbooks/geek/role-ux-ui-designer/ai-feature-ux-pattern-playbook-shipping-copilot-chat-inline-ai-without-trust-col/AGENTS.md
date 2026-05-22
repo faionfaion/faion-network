@@ -3,7 +3,7 @@ slug: ai-feature-ux-pattern-playbook-shipping-copilot-chat-inline-ai-without-tru
 tier: geek
 group: role-ux-ui-designer
 persona: Designer shipping an AI feature (chat, copilot, inline-AI, agentic action)
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

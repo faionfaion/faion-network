@@ -3,7 +3,7 @@ slug: blameless-agent-incident-postmortem
 tier: geek
 group: ai-agents
 persona: P7
-goal: TBD
+goal: fix-incident
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: cross-role-handoff-pm-architect-dev-qa-devops-v2
 tier: geek
 group: product-team
 persona: p6-product-dev-team
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

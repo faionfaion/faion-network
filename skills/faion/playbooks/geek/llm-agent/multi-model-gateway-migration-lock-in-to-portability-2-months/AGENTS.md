@@ -3,7 +3,7 @@ slug: multi-model-gateway-migration-lock-in-to-portability-2-months
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

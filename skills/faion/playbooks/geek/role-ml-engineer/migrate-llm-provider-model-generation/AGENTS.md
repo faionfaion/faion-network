@@ -3,7 +3,7 @@ slug: migrate-llm-provider-model-generation
 tier: geek
 group: role-ml-engineer
 persona: ML / AI engineer shipping a production LLM / RAG / agent feature.
-goal: TBD
+goal: migrate-rebuild
 complexity: medium
 version: 1.0.0
 status: draft

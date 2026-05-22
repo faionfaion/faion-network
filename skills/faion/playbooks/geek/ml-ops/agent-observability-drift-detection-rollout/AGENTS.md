@@ -3,7 +3,7 @@ slug: agent-observability-drift-detection-rollout
 tier: geek
 group: ml-ops
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft

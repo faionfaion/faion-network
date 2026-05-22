@@ -3,7 +3,7 @@ slug: annual-seo-audit-refresh-6-weeks
 tier: geek
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: multi-team-coordination-program-continuous-weekly-checkpoints
 tier: geek
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 1.0.0
 status: draft

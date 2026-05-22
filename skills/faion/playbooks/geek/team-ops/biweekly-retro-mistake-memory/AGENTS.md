@@ -3,7 +3,7 @@ slug: biweekly-retro-mistake-memory
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-065 phase 2: L2 INDEX.xml for dev/pm/infra/marketing (1267 methodologies).
+- F-065 phase 4: playbook goal classification chunk 1 (91 dirs).
 - F-065 phase 4: playbook goal classification chunk 3 (91 dirs).
 - F-065 phase 4: playbook goal classification chunk 4 (91 dirs).
 - F-065 phase 2: L2 INDEX.xml for sdd/ai-agents/ux/sdlc-ai (400 methodologies).

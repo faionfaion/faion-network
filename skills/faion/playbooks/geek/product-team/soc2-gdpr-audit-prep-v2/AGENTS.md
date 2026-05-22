@@ -3,7 +3,7 @@ slug: soc2-gdpr-audit-prep-v2
 tier: geek
 group: product-team
 persona: p6-product-dev-team
-goal: TBD
+goal: audit-comply
 complexity: deep
 version: 1.0.0
 status: draft

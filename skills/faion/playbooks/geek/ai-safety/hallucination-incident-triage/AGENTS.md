@@ -3,7 +3,7 @@ slug: hallucination-incident-triage
 tier: geek
 group: ai-safety
 persona: P7
-goal: TBD
+goal: fix-incident
 complexity: medium
 version: 0.1.0
 status: draft

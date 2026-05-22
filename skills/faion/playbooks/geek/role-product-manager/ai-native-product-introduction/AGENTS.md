@@ -3,7 +3,7 @@ slug: ai-native-product-introduction
 tier: geek
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

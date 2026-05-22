@@ -3,7 +3,7 @@ slug: new-tool-call-schema-design-session
 tier: geek
 group: llm-integration
 persona: P7
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: ai-assisted-user-story-sanity-pass
 tier: geek
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

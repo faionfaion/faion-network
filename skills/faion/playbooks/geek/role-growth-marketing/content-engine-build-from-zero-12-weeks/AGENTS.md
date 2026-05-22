@@ -3,7 +3,7 @@ slug: content-engine-build-from-zero-12-weeks
 tier: geek
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

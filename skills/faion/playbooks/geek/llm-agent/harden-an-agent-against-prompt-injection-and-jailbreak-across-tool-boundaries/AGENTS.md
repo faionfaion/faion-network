@@ -3,7 +3,7 @@ slug: harden-an-agent-against-prompt-injection-and-jailbreak-across-tool-boundar
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

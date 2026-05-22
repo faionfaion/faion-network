@@ -3,7 +3,7 @@ slug: weekly-rag-retrieval-quality-spot-check
 tier: geek
 group: role-ml-engineer
 persona: geek-ai-engineer
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

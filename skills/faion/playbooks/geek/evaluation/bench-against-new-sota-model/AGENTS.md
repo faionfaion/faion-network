@@ -3,7 +3,7 @@ slug: bench-against-new-sota-model
 tier: geek
 group: evaluation
 persona: P7
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 0.1.0
 status: draft

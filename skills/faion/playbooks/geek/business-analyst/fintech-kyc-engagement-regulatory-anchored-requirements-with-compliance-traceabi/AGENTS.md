@@ -3,7 +3,7 @@ slug: fintech-kyc-engagement-regulatory-anchored-requirements-with-compliance-tr
 tier: geek
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

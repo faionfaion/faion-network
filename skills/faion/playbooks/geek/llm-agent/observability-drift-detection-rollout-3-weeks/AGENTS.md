@@ -3,7 +3,7 @@ slug: observability-drift-detection-rollout-3-weeks
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

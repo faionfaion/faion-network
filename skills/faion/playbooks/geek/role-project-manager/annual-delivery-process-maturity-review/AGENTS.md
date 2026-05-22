@@ -3,7 +3,7 @@ slug: annual-delivery-process-maturity-review
 tier: geek
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 1.0.0
 status: draft

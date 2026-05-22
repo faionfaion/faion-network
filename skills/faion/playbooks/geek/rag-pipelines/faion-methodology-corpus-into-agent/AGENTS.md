@@ -3,7 +3,7 @@ slug: faion-methodology-corpus-into-agent
 tier: geek
 group: rag-pipelines
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: multi-team-coordination-dependency-graph-reasoning-p6-product
 tier: geek
 group: role-project-manager
 persona: PM coordinating 3+ feature teams in a P6 product context
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 1.0.0
 status: draft

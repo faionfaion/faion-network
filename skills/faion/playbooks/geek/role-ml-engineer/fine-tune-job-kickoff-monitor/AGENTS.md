@@ -3,7 +3,7 @@ slug: fine-tune-job-kickoff-monitor
 tier: geek
 group: role-ml-engineer
 persona: geek-ai-engineer
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

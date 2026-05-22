@@ -3,7 +3,7 @@ slug: model-provider-upgrade-safety-pass
 tier: geek
 group: role-ml-engineer
 persona: geek-ai-engineer
-goal: TBD
+goal: migrate-rebuild
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: embedding-reranker-spike-experiment
 tier: geek
 group: role-ml-engineer
 persona: geek-ai-engineer
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

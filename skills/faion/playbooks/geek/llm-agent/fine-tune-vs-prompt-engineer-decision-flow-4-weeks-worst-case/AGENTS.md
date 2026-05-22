@@ -3,7 +3,7 @@ slug: fine-tune-vs-prompt-engineer-decision-flow-4-weeks-worst-case
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: govern-decide
 complexity: deep
 version: 1.0.0
 status: draft

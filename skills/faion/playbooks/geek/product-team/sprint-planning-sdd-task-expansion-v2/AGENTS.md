@@ -3,7 +3,7 @@ slug: sprint-planning-sdd-task-expansion-v2
 tier: geek
 group: product-team
 persona: p6-product-dev-team
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 1.0.0
 status: draft

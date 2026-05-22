@@ -3,7 +3,7 @@ slug: big-migration-postgres-monolith-v2
 tier: geek
 group: product-team
 persona: p6-product-dev-team
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

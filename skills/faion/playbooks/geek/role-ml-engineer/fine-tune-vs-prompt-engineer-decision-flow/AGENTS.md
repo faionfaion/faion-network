@@ -3,7 +3,7 @@ slug: fine-tune-vs-prompt-engineer-decision-flow
 tier: geek
 group: role-ml-engineer
 persona: ML / AI engineer shipping a production LLM / RAG / agent feature.
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

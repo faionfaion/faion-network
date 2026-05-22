@@ -3,7 +3,7 @@ slug: vector-db-query-optimization-pass
 tier: geek
 group: role-ml-engineer
 persona: geek-ai-engineer
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

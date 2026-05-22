@@ -3,7 +3,7 @@ slug: stand-up-a-production-agent-eval-harness-in-week-1
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

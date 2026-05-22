@@ -3,7 +3,7 @@ slug: agent-state-debug-session-cursor-replay
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: fix-incident
 complexity: deep
 version: 1.0.0
 status: draft

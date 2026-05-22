@@ -3,7 +3,7 @@ slug: stand-up-eval-harness-benchmark-suite
 tier: geek
 group: llm-agent
 persona: p7-llm-agent-developer
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

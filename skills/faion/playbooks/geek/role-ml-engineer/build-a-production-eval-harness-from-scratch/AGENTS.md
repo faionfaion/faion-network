@@ -3,7 +3,7 @@ slug: build-a-production-eval-harness-from-scratch
 tier: geek
 group: role-ml-engineer
 persona: ML / AI engineer shipping a production LLM / RAG / agent feature.
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

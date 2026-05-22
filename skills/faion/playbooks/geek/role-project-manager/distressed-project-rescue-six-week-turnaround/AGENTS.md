@@ -3,7 +3,7 @@ slug: distressed-project-rescue-six-week-turnaround
 tier: geek
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: fix-incident
 complexity: deep
 version: 1.0.0
 status: draft

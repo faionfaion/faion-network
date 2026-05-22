@@ -3,7 +3,7 @@ slug: incident-postmortem-preventive-backlog
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: fix-incident
 complexity: medium
 version: 0.1.0
 status: draft

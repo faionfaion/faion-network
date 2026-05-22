@@ -3,7 +3,7 @@ slug: multi-model-gateway-migration-portability
 tier: geek
 group: llm-integration
 persona: P7
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

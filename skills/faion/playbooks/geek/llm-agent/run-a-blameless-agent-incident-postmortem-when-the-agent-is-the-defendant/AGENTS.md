@@ -3,7 +3,7 @@ slug: run-a-blameless-agent-incident-postmortem-when-the-agent-is-the-defendant
 tier: geek
 group: llm-agent
 persona: P7
-goal: TBD
+goal: fix-incident
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: customer-zero-feedback-loop-session
 tier: geek
 group: ai-product-positioning
 persona: P7
-goal: TBD
+goal: discover-validate
 complexity: light
 version: 0.1.0
 status: draft

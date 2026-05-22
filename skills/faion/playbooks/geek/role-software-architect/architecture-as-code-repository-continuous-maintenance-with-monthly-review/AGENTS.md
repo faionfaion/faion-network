@@ -3,7 +3,7 @@ slug: architecture-as-code-repository-continuous-maintenance-with-monthly-review
 tier: geek
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

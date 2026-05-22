@@ -3,7 +3,7 @@ slug: quarterly-okr-cascade-weekly-review-v2
 tier: geek
 group: product-team
 persona: p6-product-dev-team
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

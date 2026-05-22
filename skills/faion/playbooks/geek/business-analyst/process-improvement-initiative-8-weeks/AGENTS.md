@@ -3,7 +3,7 @@ slug: process-improvement-initiative-8-weeks
 tier: geek
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: vertical-agent-prototype-to-production-v2
 tier: geek
 group: llm-agent
 persona: p7-llm-agent-developer
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

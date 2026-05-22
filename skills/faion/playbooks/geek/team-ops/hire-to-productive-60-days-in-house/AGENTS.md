@@ -3,7 +3,7 @@ slug: hire-to-productive-60-days-in-house
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: hire-onboard
 complexity: deep
 version: 0.1.0
 status: draft

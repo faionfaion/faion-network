@@ -3,7 +3,7 @@ slug: local-dev-env-reset
 tier: free
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: fix-incident
 complexity: light
 version: 1.0.0
 status: draft

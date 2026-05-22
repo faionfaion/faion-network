@@ -3,7 +3,7 @@ slug: token-cost-daily-watch
 tier: geek
 group: cost-optimization
 persona: P7
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

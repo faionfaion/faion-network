@@ -3,7 +3,7 @@ slug: ai-drafted-adr-with-codebase-grounded-review-loop
 tier: geek
 group: role-software-architect
 persona: role-software-architect
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

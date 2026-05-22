@@ -3,7 +3,7 @@ slug: hiring-screen-take-home-review
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: hire-onboard
 complexity: medium
 version: 0.1.0
 status: draft

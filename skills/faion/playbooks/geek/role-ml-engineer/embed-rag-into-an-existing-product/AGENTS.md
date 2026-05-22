@@ -3,7 +3,7 @@ slug: embed-rag-into-an-existing-product
 tier: geek
 group: role-ml-engineer
 persona: ML / AI engineer shipping a production LLM / RAG / agent feature.
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

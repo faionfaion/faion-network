@@ -3,7 +3,7 @@ slug: rag-chunking-strategy-bench
 tier: geek
 group: rag-pipelines
 persona: P7
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 0.1.0
 status: draft

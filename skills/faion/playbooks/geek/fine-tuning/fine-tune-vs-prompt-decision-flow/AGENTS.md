@@ -3,7 +3,7 @@ slug: fine-tune-vs-prompt-decision-flow
 tier: geek
 group: fine-tuning
 persona: P7
-goal: TBD
+goal: govern-decide
 complexity: deep
 version: 0.1.0
 status: draft

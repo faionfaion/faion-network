@@ -3,7 +3,7 @@ slug: on-call-architecture-escalation-handling
 tier: geek
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: fix-incident
 complexity: deep
 version: 1.0.0
 status: draft

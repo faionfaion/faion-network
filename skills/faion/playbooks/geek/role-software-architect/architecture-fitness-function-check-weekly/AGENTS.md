@@ -3,7 +3,7 @@ slug: architecture-fitness-function-check-weekly
 tier: geek
 group: role-software-architect
 persona: role-software-architect
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft
