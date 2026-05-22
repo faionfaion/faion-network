@@ -1,22 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="graph-rag-retrieval Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="graph-rag-retrieval Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for one retrieval invocation result. The subagent must return query_type, retrieval_path, candidates[], assembled_context, and fallback_used flag. Includes one valid and one invalid example.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "graph-rag-retrieval-result",
+  "type": "object",
+  "required": ["query", "query_type", "retrieval_path", "candidates", "assembled_context", "fallback_used"],
+  "properties": {
+    "query": {"type": "string", "minLength": 1},
+    "query_type": {"type": "string", "enum": ["GLOBAL", "ENTITY", "RELATIONSHIP", "LOCAL"]},
+    "retrieval_path": {"type": "string", "enum": ["summary", "entity-neighbors", "shortest-path", "vector-search", "hybrid"]},
+    "candidates": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["chunk_id", "score", "source"],
+        "properties": {
+          "chunk_id": {"type": "string"},
+          "score": {"type": "number"},
+          "source": {"type": "string", "enum": ["vector", "graph-neighbor", "shortest-path", "summary"]}
+        }
+      }
+    },
+    "assembled_context": {"type": "string"},
+    "fallback_used": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}
+    ]]></code>
+  </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "query": "How does Alice relate to Acme Corp?",
+  "query_type": "RELATIONSHIP",
+  "retrieval_path": "shortest-path",
+  "candidates": [
+    {"chunk_id": "c-019", "score": 0.81, "source": "shortest-path"},
+    {"chunk_id": "c-204", "score": 0.74, "source": "graph-neighbor"}
+  ],
+  "assembled_context": "Alice -[founded]-> Acme Corp -[acquired_by]-> Globex...",
+  "fallback_used": false
+}
+    ]]></code>
+    <note>Valid: query classified as RELATIONSHIP, path traversal used, candidates carry chunk_id + source, fallback not needed.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{
+  "query": "How does Alice relate to Acme Corp?",
+  "candidates": ["c-019", "c-204"],
+  "assembled_context": "Alice founded Acme..."
+}
+    ]]></code>
+    <note>Invalid: missing query_type, retrieval_path, fallback_used; candidates are bare strings rather than typed objects.</note>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`query_type` is one of the four canonical enums.</item>
+      <item>`retrieval_path` corresponds to the type via r2-r4 (GLOBAL→summary, RELATIONSHIP→shortest-path, ENTITY→entity-neighbors or hybrid, LOCAL→vector-search).</item>
+      <item>Every candidate has chunk_id + score + source.</item>
+      <item>`fallback_used=true` only when the primary path returned zero candidates.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-graph-rag-retrieval.py">Validates a result JSON file against this schema.</reference>
 </text>

@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="graph-rag-retrieval Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for graph-rag-retrieval as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="graph-rag-retrieval Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four observable antipatterns when applying graph-rag-retrieval, each with a detector signal and a concrete repair.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using community summaries as the answer for ENTITY or RELATIONSHIP queries instead of routing to the appropriate graph traversal path.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Community summaries are coarse-grained and mix multiple entities; they answer global thematic questions but blur the specific entity details and relationship paths that ENTITY and RELATIONSHIP queries need. Route by query type, not by what is cheapest to retrieve.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running live graph traversal for GLOBAL queries at query time on graphs larger than 50k nodes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Full-graph traversal to assemble a global answer can take tens of seconds on large graphs. Pre-computed hierarchical summaries serve GLOBAL queries in milliseconds. The entire point of offline summarization in graph-rag-indexing is to make GLOBAL queries fast at retrieval time.</repair>
-    </failure-mode>
+    <antipattern id="fm-community-summary-for-entity">
+      <description>Returning a coarse community summary as the answer for ENTITY or RELATIONSHIP queries instead of routing to neighbor lookup or path traversal.</description>
+      <reason>Community summaries blur multiple entities together. Symptom: answers feel "about the right topic" but never name the specific relationship the user asked about. Detector: `retrieval_path=summary` for `query_type IN (ENTITY,RELATIONSHIP)`. Fix: in router, force ENTITY → entity-neighbors and RELATIONSHIP → shortest-path; only LOCAL can fall back to vector after entity miss.</reason>
+    </antipattern>
+    <antipattern id="fm-live-traversal-for-global">
+      <description>Running full live graph traversal at query time on graphs &gt;50k nodes to answer GLOBAL questions.</description>
+      <reason>Latency spikes from sub-second to tens of seconds. Detector: p95 latency for `query_type=GLOBAL` &gt; 3s. Fix: pre-compute hierarchical/community summaries offline (graph-rag-indexing) and serve GLOBAL from the dict — never traverse.</reason>
+    </antipattern>
+    <antipattern id="fm-unbounded-neighbor-expansion">
+      <description>Expanding to every neighbor of every entity, no cap. Context window fills with low-relevance entity chunks.</description>
+      <reason>Faithfulness drops because the generator anchors on noisy expanded context. Detector: assembled_context length spikes 5-10x baseline. Fix: cap at 3 neighbors per entity (r4) and dedupe by chunk_id before assembling.</reason>
+    </antipattern>
+    <antipattern id="fm-uncaught-no-path">
+      <description>Calling `nx.shortest_path` without try/except; uncaught NetworkXNoPath or NodeNotFound crashes the retrieval step for valid relationship queries.</description>
+      <reason>Disconnected components are common in real graphs. Detector: 5xx rate on `retrieval_path=shortest-path` &gt; 0. Fix: wrap every shortest_path call (r3), catch NetworkXNoPath + NodeNotFound, then trigger LOCAL fallback (r5) instead of failing the request.</reason>
+    </antipattern>
   </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
 </text>
