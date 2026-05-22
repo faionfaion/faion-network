@@ -1,0 +1,55 @@
+# purpose: minimum-viable filled acceptance-contract.yaml that validates clean
+# consumes: nothing (fixture)
+# produces: spec instance used by scripts/validate-rag-feature-acceptance-contract.py --self-test
+# depends-on: acceptance-contract.schema.yaml
+# token-budget-impact: 0 at runtime (fixture, not loaded into LLM context)
+feature: example-rag
+version: 1.0.0
+
+intents:
+  policy-lookup:
+    pm_outcome: "Resolve customer policy questions without human escalation"
+    acceptable_failure: "Refusal to answer is acceptable; hallucination is not"
+    sme_rubric:
+      pass: "Cites correct policy section with verbatim quote"
+      borderline: "Cites correct section but paraphrases"
+      fail: "No citation or wrong citation"
+    offline:
+      faithfulness:
+        threshold: ">= 0.90"
+        baseline: "junior agent baseline 0.92"
+      context-precision:
+        threshold: ">= 0.80"
+        baseline: "current production 0.75"
+    online:
+      thumbs-down-rate:
+        threshold: "<= 5%"
+        baseline: "today 9%"
+
+  troubleshooting:
+    pm_outcome: "Walk user through fix; partial diagnosis acceptable"
+    acceptable_failure: "Wrong-but-safe step ok; destructive step not"
+    sme_rubric:
+      pass: "Steps in correct order, no destructive action first"
+      fail: "Recommends destructive action without backup"
+    offline:
+      answer-relevance:
+        threshold: ">= 0.80"
+        baseline: "previous prompt 0.71"
+      destructive-step-detector:
+        threshold: "== 0"
+        baseline: "hard zero by PM"
+    online:
+      follow-up-rephrase-rate:
+        threshold: "<= 20%"
+        baseline: "today 31%"
+
+signatures:
+  pm: "alice@example.com 2026-05-22 v1.0"
+  sme: "ravi@example.com 2026-05-22 v1.0"
+  ml_engineer: "jonas@example.com 2026-05-22 v1.0"
+
+recontract_triggers:
+  - "query_intent_distribution_shift_chi2_p < 0.01"
+  - "embedding_model_upgrade"
+  - "online_vs_offline_divergence >= 0.20"
