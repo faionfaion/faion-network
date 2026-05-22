@@ -4,85 +4,89 @@ tier: pro
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Pairs every prompt edit with a versioned changelog entry (hash + intent + eval delta + rollback hash) so production regressions can be traced to a specific change in minutes.
 content_id: "7736c2de817bf675"
-summary: A lightweight prompt-changelog convention that pairs every prompt edit with a hash, intent, eval delta, and rollback path so production-prompt regressions can be correlated back to a specific change in minutes rather than days.
+complexity: medium
+produces: spec
+est_tokens: 4300
 tags: [prompts, changelog, observability, regression, ml-engineering, version-control]
 ---
-
 # Prompt Changelog Discipline
 
 ## Summary
 
-**One-sentence:** Couple every prompt edit to a structured changelog entry — intent, hash, eval delta, rollback path — so any production-quality regression can be traced to a specific edit within minutes rather than archaeological git-blame sessions.
+**One-sentence:** Pairs every prompt edit with a versioned changelog entry (hash + intent + eval delta + rollback hash) so production regressions can be traced to a specific change in minutes.
 
-**One-paragraph:** Prompts are code, but most teams treat them as configuration: edits land in PRs with messages like "tweak prompt" or "fix wording", and a regression a week later forces an hour of git-blame on a long YAML file. The discipline pins six fields per prompt edit: prompt-id, prompt-hash (content SHA), one-sentence intent, eval-suite delta (before vs after on a frozen eval), rollout flag (canary % or shadow), and rollback hash. Entries live in a single per-prompt `PROMPTS.changelog.md` next to the prompt artifact. Mechanism: pre-commit hook computes the hash, blocks commits without a changelog entry, eval runner attaches its delta to the entry, and a `prompt rollback` command reverts to a known-good hash. Primary output: a changelog file per prompt plus a per-deploy summary that ties prompt versions to model versions and to live eval scores.
+**One-paragraph:** Pairs every prompt edit with a versioned changelog entry (hash + intent + eval delta + rollback hash) so production regressions can be traced to a specific change in minutes. The methodology assumes the inputs in Prerequisites and produces a `spec` artefact validated by `scripts/validate-prompt-changelog-discipline.py`. Five testable rules in `content/01-core-rules.xml` gate the work; failure modes in `content/03-failure-modes.xml` cover the most common ways the application goes wrong. The decision tree in `content/06-decision-tree.xml` routes the agent from the input shape to the right rule, so the methodology is safe to skip when preconditions do not hold.
+
+**Ефективно для:** ML ops teams treating prompts as code: one file per prompt, eval-gated PRs, MTTR-optimised rollback paths.
 
 ## Applies If (ALL must hold)
 
-- production system uses LLM prompts (Claude, OpenAI, Gemini, local) where output quality is customer-visible
-- prompts live in version-controlled files (not in an LLM-Studio web UI without export)
-- team has at least one frozen eval suite that the prompts are scored against
-- team has experienced at least one prompt regression where the offending edit was hard to identify
+- Working on a task whose output is `spec` aligned with prompt-changelog-discipline
+- Have the inputs listed in Prerequisites available
+- Need a reproducible, versioned artefact rather than ad-hoc notes
 
 ## Skip If (ANY kills it)
 
-- prompts are pure exploratory notebooks not in production — overhead not justified
-- prompt edits are gated entirely behind LLMOps SaaS (Vellum, Pezzo) that already does changelog — adopt their format instead of duplicating
-- no eval suite exists yet — establish the eval first (`geek/ai/ml-ops/evaluation-framework`); changelog without eval is just gossip
-- team has fewer than 5 prompts and one engineer — the discipline overhead exceeds the regression risk
+- Prototype throwaway code where the methodology overhead exceeds the regression risk
+- Methodology preconditions cannot be met (no eval suite, no traffic, no team)
 
 ## Prerequisites
 
-- prompts stored as files in a repo (one prompt = one file, or YAML map of prompt-id → prompt-text)
-- a frozen eval suite that runs in CI (or at least nightly)
-- agreement that prompt edits go through PRs, not via emergency hot-edit on the LLM gateway
+| Input artifact | Format | Source |
+|---|---|---|
+| Task brief | markdown | upstream agent or human |
+| Constraints | yaml | project config |
+| Acceptance criteria | list | spec / ticket |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-ops/evaluation-framework` | Eval delta is the load-bearing field; no eval, no changelog discipline |
-| `geek/ai/ml-engineer/prompt-engineering-evaluation` | Eval-suite construction is the upstream artifact |
-| `geek/ai/ml-engineer/llm-observability` | Tying changelog entries to live observability signals closes the loop |
+| `[[prompt-engineering-evaluation]]` | Adjacent context the agent normally already has when this methodology fires. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: one-prompt-one-file, hash on commit, intent + eval delta required, rollback hash, deploy-summary | ~900 |
-| `content/02-output-contract.xml` | essential | Changelog entry schema, per-deploy summary schema | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: silent edit, eval-skipped, untracked rollback, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
+| `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract_intent_from_pr_description` | haiku | Lookup with simple summarization |
-| `run_eval_and_attach_delta` | sonnet | Eval runner output parsing + delta computation |
-| `propose_rollback_target_hash` | sonnet | Walks recent history, picks last known-good hash by eval score |
-| `synthesize_deploy_summary` | sonnet | Cross-prompt synthesis at deploy time |
+| `gather-requirements` | sonnet | Structured interview-style extraction. |
+| `synthesize-spec` | opus | Cross-section trade-off synthesis. |
+| `lint-output` | haiku | Schema validation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/PROMPTS.changelog.md` | Skeleton with header + entry format |
-| `templates/changelog-entry.yaml` | YAML form when prompts are stored in a YAML registry |
-| `templates/deploy-summary.md` | Per-deploy summary table linking prompt versions to model version |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/spec.md.tmpl` | Markdown spec skeleton with the required sections + placeholders. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/prompt-hash.py` | Computes a stable content hash of the prompt file (after normalising whitespace) | Pre-commit hook |
-| `scripts/changelog-required.py` | Blocks the commit if a prompt file changed without a matching changelog entry | Pre-commit hook |
-| `scripts/prompt-rollback.py` | Reverts a prompt to a specified hash, opens an emergency PR with the diff | Incident response |
+| `scripts/validate-prompt-changelog-discipline.py` | Validate an output artefact against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/SKILL.md`
-- peer methodologies: `geek/ai/ml-engineer/prompt-engineering-evaluation`, `geek/ai/ml-ops/evaluation-framework`, `geek/ai/ml-engineer/prompt-version-pinning-runbook`
-- external: [Promptfoo eval framework] · [Microsoft LMOps team writeups on prompt versioning] · [Vellum / Pezzo / Helicone prompt-management docs] · [Anthropic prompt-engineering documentation chapter on iteration]
+- [[prompt-engineering-evaluation]]
+- [[prompt-version-pinning-runbook]]
+- parent skill: `geek/ai/ml-engineer/`
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `prompt-changelog-discipline` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.

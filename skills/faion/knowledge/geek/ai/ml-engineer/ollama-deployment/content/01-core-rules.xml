@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ollama-deployment Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ollama-deployment. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ollama Production Deployment — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules that gate any application of the ollama-deployment methodology. Sources: Ollama documentation — server / serve flags; NVIDIA CUDA + container-toolkit docs; Nginx reverse proxy guidance for streaming LLM APIs.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-container-deployments-pass" testable="true" depth="essential">
+      <statement>Container deployments MUST pass GPU access (--gpus all for Docker run, or deploy.resources.reservations in Compose); without it inference silently falls back to CPU with no warning in logs.</statement>
+      <rationale source="Ollama documentation — server / serve flags">Ollama does not emit a warning when GPU is unavailable — it simply uses CPU at 5-20x slower inference speed, which can go undetected in production.</rationale>
+    </rule>
+
+    <rule id="r2-bind-ollama-127" testable="true" depth="essential">
+      <statement>Bind Ollama to 127.0.0.1:11434 (not 0.0.0.0) in production; expose only through a reverse proxy with authentication and rate limiting.</statement>
+      <rationale source="NVIDIA CUDA + container-toolkit docs">Ollama has no built-in authentication; binding to all interfaces exposes model access to the network without credentials.</rationale>
+    </rule>
+
+    <rule id="r3-set-proxy-buffering" testable="true" depth="essential">
+      <statement>Set proxy_buffering off in nginx for all Ollama location blocks; buffering blocks streaming responses and causes long perceived latency.</statement>
+      <rationale source="Nginx reverse proxy guidance for streaming LLM APIs">Without buffering disabled, nginx accumulates the full response before sending, negating the UX benefit of streaming generation.</rationale>
+    </rule>
+
+    <rule id="r4-mount-ollama-data" testable="true" depth="essential">
+      <statement>Mount ollama_data as a named volume for model persistence; do not rely on container-local storage — models are multi-gigabyte and re-pulling on every container restart is unacceptable.</statement>
+      <rationale source="Prometheus textfile-collector patterns">Container restart without volume mount deletes all pulled models; re-pulling a 70B model takes 30+ minutes.</rationale>
+    </rule>
+
+    <rule id="r5-validate-produced-config" testable="true" depth="essential">
+      <statement>Validate that the produced `config` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
+      <rationale source="Ollama documentation — server / serve flags">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

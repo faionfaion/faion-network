@@ -4,20 +4,25 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: OpenAI Platform provides Chat Completions, the Responses API (2025+, stateful), Structured Outputs, Batch API (50% discount), embeddings, Whisper, TTS, DALL-E, and fine-tuning.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Integrates OpenAI Chat Completions / Responses API with pinned model versions, Structured Outputs, Batch API, max_tokens, retries, and prompt-cache hits.
 content_id: "cc027a7b2fe0a111"
+complexity: medium
+produces: code
+est_tokens: 4300
 tags: [openai, llm-api, structured-output, function-calling, batch-processing]
 ---
 # OpenAI API Integration
 
 ## Summary
 
-**One-sentence:** OpenAI Platform provides Chat Completions, the Responses API (2025+, stateful), Structured Outputs, Batch API (50% discount), embeddings, Whisper, TTS, DALL-E, and fine-tuning.
+**One-sentence:** Integrates OpenAI Chat Completions / Responses API with pinned model versions, Structured Outputs, Batch API, max_tokens, retries, and prompt-cache hits.
 
-**One-paragraph:** OpenAI Platform provides Chat Completions, the Responses API (2025+, stateful), Structured Outputs, Batch API (50% discount), embeddings, Whisper, TTS, DALL-E, and fine-tuning. Pin exact model versions (gpt-4o-2024-08-06). Use Structured Outputs (beta.chat.completions.parse) not JSON mode. Set max_tokens on every call. For new projects, prefer the Responses API over Chat Completions — it manages conversation state server-side.
+**One-paragraph:** Integrates OpenAI Chat Completions / Responses API with pinned model versions, Structured Outputs, Batch API, max_tokens, retries, and prompt-cache hits. The methodology assumes the inputs in Prerequisites and produces a `code` artefact validated by `scripts/validate-openai-api.py`. Five testable rules in `content/01-core-rules.xml` gate the work; failure modes in `content/03-failure-modes.xml` cover the most common ways the application goes wrong. The decision tree in `content/06-decision-tree.xml` routes the agent from the input shape to the right rule, so the methodology is safe to skip when preconditions do not hold.
+
+**Ефективно для:** Python and TypeScript engineers shipping production features on the OpenAI API with cost and reliability discipline.
 
 ## Applies If (ALL must hold)
 
@@ -26,7 +31,6 @@ tags: [openai, llm-api, structured-output, function-calling, batch-processing]
 - Batch processing of non-time-sensitive data (50% cost discount via Batch API)
 - Function calling / tool use as the primary agentic mechanism
 - Audio transcription (Whisper) or TTS in agent pipelines
-- Responses API's built-in conversation state management is needed
 
 ## Skip If (ANY kills it)
 
@@ -34,44 +38,59 @@ tags: [openai, llm-api, structured-output, function-calling, batch-processing]
 - Very long context (>128K tokens) — use Claude (200K) or Gemini (2M)
 - When Anthropic Claude's instruction-following is more reliable for your specific task
 - Tight budget with high-volume simple tasks — Gemini Flash ($0.10/M) is cheaper than gpt-4o-mini ($0.15/M)
-- When you need >128K context for a single call (use gpt-4.1 with 1M context or alternatives)
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Task brief | markdown | upstream agent or human |
+| Constraints | yaml | project config |
+| Acceptance criteria | list | spec / ticket |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[claude-api]]` | Adjacent context the agent normally already has when this methodology fires. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
+| `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `generate-skeleton` | sonnet | Boilerplate + schema scaffolding. |
+| `fill-business-logic` | opus | Domain-judgment-heavy core logic. |
+| `lint-and-test` | haiku | Mechanical checks against the contract. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/_smoke-test.py` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/skeleton.py` | Working code skeleton showing the produced shape with the contract types. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-openai-api.py` | Validate an output artefact against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
+- [[claude-api]]
+- [[structured-output]]
 - parent skill: `geek/ai/ml-engineer/`
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `openai-api` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.

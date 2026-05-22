@@ -4,20 +4,25 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Ollama is an open-source platform for running LLMs locally.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Installs Ollama and selects local models within RAM/VRAM constraints, producing a runbook that includes pulled models, quantisation choices, and HTTP endpoint smoke-test.
 content_id: "fffd48302168c9be"
-tags: [ollama, local-llm, model-management, hardware]
+complexity: light
+produces: config
+est_tokens: 4300
+tags: [ollama, local-llm, setup, models, hardware]
 ---
 # Ollama Setup and Model Management
 
 ## Summary
 
-**One-sentence:** Ollama is an open-source platform for running LLMs locally.
+**One-sentence:** Installs Ollama and selects local models within RAM/VRAM constraints, producing a runbook that includes pulled models, quantisation choices, and HTTP endpoint smoke-test.
 
-**One-paragraph:** Ollama is an open-source platform for running LLMs locally. It bundles model weights, configuration, and data into a single Modelfile package (similar to Docker). Supports NVIDIA (CUDA), Apple Silicon (Metal), and AMD (ROCm) GPUs. Default endpoint: http://localhost:11434.
+**One-paragraph:** Installs Ollama and selects local models within RAM/VRAM constraints, producing a runbook that includes pulled models, quantisation choices, and HTTP endpoint smoke-test. The methodology assumes the inputs in Prerequisites and produces a `config` artefact validated by `scripts/validate-ollama-setup-models.py`. Five testable rules in `content/01-core-rules.xml` gate the work; failure modes in `content/03-failure-modes.xml` cover the most common ways the application goes wrong. The decision tree in `content/06-decision-tree.xml` routes the agent from the input shape to the right rule, so the methodology is safe to skip when preconditions do not hold.
+
+**Ефективно для:** Developers setting up a local LLM workstation or laptop for offline experimentation and agent development.
 
 ## Applies If (ALL must hold)
 
@@ -36,40 +41,56 @@ tags: [ollama, local-llm, model-management, hardware]
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Task brief | markdown | upstream agent or human |
+| Constraints | yaml | project config |
+| Acceptance criteria | list | spec / ticket |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[ollama-python-client]]` | Adjacent context the agent normally already has when this methodology fires. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
+| `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-defaults` | sonnet | Bounded judgment from inputs. |
+| `emit-config` | haiku | Template fill. |
+| `validate-config` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/_smoke-test.yaml` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/config.yaml.tmpl` | YAML config skeleton with the required keys and bounded defaults. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ollama-setup-models.py` | Validate an output artefact against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
+- [[ollama-python-client]]
+- [[ollama-deployment]]
 - parent skill: `geek/ai/ml-engineer/`
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `ollama-setup-models` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.

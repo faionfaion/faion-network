@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Ollama Tool Calling and Structured Outputs — Worked Example" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>One end-to-end worked example showing the artefact shape this methodology produces.</summary>
+
+  <section title="Worked example">
+    <example type="good">
+      <code lang="python"><![CDATA[
+
+import ollama
+import json
+
+# Define tools using JSON Schema
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name, e.g., 'London'"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "Temperature unit"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_database",
+            "description": "Search the product database",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "limit": {"type": "integer", "description": "Max results to return"}
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+
+# Tool implementations
+def get_weather(location: str, unit: str = "celsius") -> dict:
+    return {"location": location, "temperature": 22, "unit": unit}
+
+def search_database(query: str, limit: int = 10) -> list:
+    return [{"id": 1, "name": f"Result for: {query}"}]
+
+TOOL_HANDLERS = {
+    "get_weather": get_weather,
+    "search_database": search_database
+}
+
+def chat_with_tools(user_message: str, model: str = "llama3.1:8b") -> str:
+    """Chat with tool calling support."""
+    messages = [{"role": "user", "content": user_message}]
+
+    response = ollama.chat(
+        model=model,
+        messages=messages,
+        tools=tools,
+        options={"num_ctx": 32768}  # REQUIRED: tool calling fails below 32k
+    )
+
+    # Check if model wants to call a tool
+    if response["message"].get("tool_calls"):
+        for tool_call in response["message"]["tool_calls"]:
+            func_name = tool_call["function"]["name"]
+            func_args = tool_call["function"]["arguments"]
+
+            if func_name in TOOL_HANDLERS:
+                result = TOOL_HANDLERS[func_name](**func_args)
+                messages.append(response["message"])
+                messages.append({
+                    "role": "tool",
+                    "content": json.dumps(result)
+                })
+
+        # Get final response with tool results
+        final_response = ollama.chat(model=model, messages=messages, tools=tools)
+        return final_response["message"]["content"]
+
+    return response["message"]["content"]
+
+result = chat_with_tools("What's the weather in Tokyo?")
+print(result)
+
+]]></code>
+      <note>Always set num_ctx to 32768 in options; tool calls fail silently at smaller context sizes.</note>
+    </example>
+  </section>
+</text>

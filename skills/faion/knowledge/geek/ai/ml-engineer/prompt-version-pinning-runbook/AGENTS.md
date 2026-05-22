@@ -4,85 +4,89 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Pins prompt versions at the LLM gateway with immutable IDs, environment-scoped lock files, canary / shadow rollout, gateway enforcement, and sub-60s rollback.
 content_id: "2260845c88596445"
-summary: A runbook for pinning prompt versions at the gateway: storage layout per environment, immutable version IDs, rollout (canary / shadow / 5/95 split), gateway-side enforcement, rollback in &lt; 60 seconds, and weekly A/B review.
-tags: [prompts, version-pinning, llm-gateway, ab-testing, llm-agent, geek-tier]
+complexity: deep
+produces: playbook-step
+est_tokens: 4300
+tags: [prompts, version-pinning, llm-gateway, ab-testing, llm-agent]
 ---
-
 # Prompt Version Pinning Runbook
 
 ## Summary
 
-**One-sentence:** Pin prompt versions at the LLM gateway with immutable IDs, environment-scoped storage, canary / shadow rollout, gateway-side enforcement, and a 60-second rollback path — so prompt changes ship with the same discipline as schema migrations.
+**One-sentence:** Pins prompt versions at the LLM gateway with immutable IDs, environment-scoped lock files, canary / shadow rollout, gateway enforcement, and sub-60s rollback.
 
-**One-paragraph:** Schema-version-pinning covers tool / output schemas; prompts also need a hardened pinning runbook. The geek-tier challenge is concrete: a multi-tenant agent platform with dozens of prompts, multiple environments, A/B experiments running constantly. Without pinning at the gateway, a new prompt version silently leaks into 100% of traffic at deploy. The runbook pins six choices: (1) storage layout — prompts are content-addressable objects (id + immutable version) in a registry per environment (`prod`, `staging`, `shadow`); (2) gateway-side enforcement — every LLM call carries the explicit `prompt_id @ version`, the gateway rejects unpinned calls; (3) rollout strategy per change — shadow (no traffic, eval only), canary (5%), guarded-flag (per-tenant), full; (4) rollback contract — `gateway rollback prompt_id` returns to last known-good in &lt; 60 sec, traffic shifts within 1 min; (5) weekly A/B review — at least one prompt under active comparison; (6) gateway audit log — every prompt version change is event-sourced for post-incident replay. Primary output: a working gateway with a `prompts/` registry, a per-environment lock file, and a `prompts ops` CLI.
+**One-paragraph:** Pins prompt versions at the LLM gateway with immutable IDs, environment-scoped lock files, canary / shadow rollout, gateway enforcement, and sub-60s rollback. The methodology assumes the inputs in Prerequisites and produces a `playbook-step` artefact validated by `scripts/validate-prompt-version-pinning-runbook.py`. Five testable rules in `content/01-core-rules.xml` gate the work; failure modes in `content/03-failure-modes.xml` cover the most common ways the application goes wrong. The decision tree in `content/06-decision-tree.xml` routes the agent from the input shape to the right rule, so the methodology is safe to skip when preconditions do not hold.
+
+**Ефективно для:** ML ops teams running multi-tenant agent platforms where unpinned prompt drift causes silent quality regressions.
 
 ## Applies If (ALL must hold)
 
-- production system has ≥ 10 distinct LLM prompts and ≥ 100k LLM calls per day
-- there is (or there can be) an LLM gateway / proxy in front of provider APIs (Helicone, Portkey, custom)
-- team has at least one ML engineer dedicated to prompt operations
-- there are multiple environments (prod, staging, optionally shadow) where prompt versions diverge
+- Working on a task whose output is `playbook-step` aligned with prompt-version-pinning-runbook
+- Have the inputs listed in Prerequisites available
+- Need a reproducible, versioned artefact rather than ad-hoc notes
 
 ## Skip If (ANY kills it)
 
-- prototype phase, single environment, no multi-tenant — pinning overhead exceeds the benefit; use `prompt-changelog-discipline` only
-- prompts are stored entirely in a third-party LLM-Studio SaaS with no exportable lock file — adapt their primitives, do not roll your own
-- no gateway is possible (compliance forbids it) — pinning happens at the client SDK with stricter discipline, but the runbook still applies
-- &lt; 100k LLM calls per day — the ROI on full pinning kicks in at scale; smaller teams use a lighter version
+- Prototype throwaway code where the methodology overhead exceeds the regression risk
+- Methodology preconditions cannot be met (no eval suite, no traffic, no team)
 
 ## Prerequisites
 
-- prompt-changelog-discipline already adopted (one file per prompt, hashes, eval)
-- an LLM gateway exists OR can be added in 1-2 weeks (open-source or commercial)
-- a frozen eval suite per prompt that runs in CI
-- a feature-flag system for guarded rollouts (LaunchDarkly, Unleash, or a homegrown gate)
+| Input artifact | Format | Source |
+|---|---|---|
+| Task brief | markdown | upstream agent or human |
+| Constraints | yaml | project config |
+| Acceptance criteria | list | spec / ticket |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer/prompt-changelog-discipline` | The hash + eval foundation; this runbook builds on it |
-| `geek/ai/ml-engineer/llm-observability` | The audit trail and rollback logs live in the observability platform |
-| `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps` | Incident-response runbook format consumed during rollbacks |
+| `[[prompt-changelog-discipline]]` | Adjacent context the agent normally already has when this methodology fires. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: immutable IDs, gateway enforcement, rollout strategy per change, 60s rollback, weekly A/B review | ~900 |
-| `content/02-output-contract.xml` | essential | Lock-file schema, gateway-event schema, rollback-receipt schema | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: silent version drift, unpinned client calls, rollback stuck, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
+| `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `generate_lockfile_diff_for_release` | sonnet | Diff old vs new lock, surface prompt versions changing |
-| `propose_rollout_strategy_per_change` | sonnet | Per-prompt bounded judgment from eval delta and traffic share |
-| `incident_rollback_orchestration` | sonnet | Reads gateway state, picks rollback target, executes via CLI |
-| `weekly_ab_review_synthesis` | opus | Cross-prompt synthesis of running comparisons |
+| `expand-step` | sonnet | Inline judgment per step. |
+| `integrate-with-upstream` | opus | Cross-step consistency. |
+| `lint-output` | haiku | Format check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/prompts.lock.yaml` | Per-environment lock file mapping prompt_id to immutable version |
-| `templates/gateway-policy.yaml` | Gateway enforcement config (reject unpinned, allowed versions per env) |
-| `templates/rollback-receipt.md` | Post-rollback artifact recording what was rolled back, by whom, when, why |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/playbook-step.md.tmpl` | Markdown playbook-step skeleton: trigger, action, verification, rollback. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/prompts-ops.py` | CLI: `prompts pin`, `prompts canary`, `prompts rollback`, `prompts diff` | On every prompt rollout / rollback |
-| `scripts/gateway-audit-export.py` | Pulls audit events for the past N days, summarises version transitions | Weekly |
+| `scripts/validate-prompt-version-pinning-runbook.py` | Validate an output artefact against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/SKILL.md`
-- peer methodologies: `geek/ai/ml-engineer/prompt-changelog-discipline`, `geek/ai/llm-integration/structured-output-patterns`
-- external: [Portkey LLM gateway docs] · [Helicone open-source proxy] · [LangChain Hub prompt versioning] · [Anthropic Workbench prompt versions docs] · [OpenAI Models endpoint versioning patterns]
+- [[prompt-changelog-discipline]]
+- [[llm-observability]]
+- parent skill: `geek/ai/ml-engineer/`
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `prompt-version-pinning-runbook` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.

@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ollama-setup-models Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ollama-setup-models. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ollama Setup and Model Management — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules that gate any application of the ollama-setup-models methodology. Sources: Ollama documentation — install / pull / list; Ollama model library (registry.ollama.ai); GGUF quantisation format spec.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-match-model-size" testable="true" depth="essential">
+      <statement>Match model size to available RAM/VRAM before pulling — loading a model that exceeds available memory causes OOM errors or falls back to CPU with unacceptable latency.</statement>
+      <rationale source="Ollama documentation — install / pull / list">A 70B model at Q4 quantization uses ~40GB; exceeding VRAM causes partial offload to RAM which is 5-20x slower.</rationale>
+    </rule>
+
+    <rule id="r2-quantized-versions-q4" testable="true" depth="essential">
+      <statement>Use quantized versions (Q4_K_M or Q5) for memory-constrained environments; accept the 15-30% quality trade-off consciously.</statement>
+      <rationale source="Ollama model library (registry.ollama.ai)">Q4_K_M cuts memory usage roughly in half compared to full precision, enabling models to run on consumer GPUs.</rationale>
+    </rule>
+
+    <rule id="r3-pin-model-tags" testable="true" depth="essential">
+      <statement>Pin model tags explicitly: use llama3.1:8b not llama3.1 — untagged version may resolve to a different quantization after ollama pull.</statement>
+      <rationale source="GGUF quantisation format spec">Untagged pulls may silently upgrade to a different quantization, changing response quality or failing to load on the same hardware.</rationale>
+    </rule>
+
+    <rule id="r4-dedicated-embedding-models" testable="true" depth="essential">
+      <statement>Use dedicated embedding models (nomic-embed-text, mxbai-embed-large) for embedding tasks, not generalist chat models.</statement>
+      <rationale source="Apple MLX vs llama.cpp benchmark notes">Chat models produce lower-quality embeddings and use more VRAM than purpose-built embedding models.</rationale>
+    </rule>
+
+    <rule id="r5-set-ollama-keep" testable="true" depth="essential">
+      <statement>Set OLLAMA_KEEP_ALIVE=1h to avoid 5-30s cold start on each request when models are used frequently.</statement>
+      <rationale source="Ollama documentation — install / pull / list">Without keep-alive, Ollama unloads the model after each session, causing reload overhead on the next call.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

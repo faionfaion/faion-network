@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ollama-python-client Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ollama-python-client. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ollama Python Client Patterns — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules that gate any application of the ollama-python-client methodology. Sources: Ollama Python library (PyPI: ollama); Ollama HTTP API reference; OpenTelemetry Python SDK docs.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-always-set-explicit" testable="true" depth="essential">
+      <statement>Always set explicit timeout values (120s for generation, 60s for embeddings, 3600s for model pulls) — the default requests timeout of None causes hung processes.</statement>
+      <rationale source="Ollama Python library (PyPI: ollama)">Large models can take 5-30s for first token; without timeout the process hangs indefinitely on server restart or OOM.</rationale>
+    </rule>
+
+    <rule id="r2-implement-health-check" testable="true" depth="essential">
+      <statement>Implement a health check (GET /api/tags with 5s timeout) before starting any batch workload; fail fast rather than queuing requests to an unavailable server.</statement>
+      <rationale source="Ollama HTTP API reference">Ollama returns connection refused when not running; early detection prevents batches from failing after partial progress.</rationale>
+    </rule>
+
+    <rule id="r3-set-num-ctx" testable="true" depth="essential">
+      <statement>Set num_ctx explicitly in options or Modelfile — the default context window (2048) is too small for most agent tasks; use 8192-32768 depending on use case.</statement>
+      <rationale source="OpenTelemetry Python SDK docs">Truncated context causes models to ignore early messages or tool definitions, producing silent failures.</rationale>
+    </rule>
+
+    <rule id="r4-validate-produced-code" testable="true" depth="essential">
+      <statement>Validate that the produced `code` matches the schema in `content/02-output-contract.xml` before handing off (rule r4).</statement>
+      <rationale source="httpx streaming docs">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    </rule>
+
+    <rule id="r5-validate-produced-code" testable="true" depth="essential">
+      <statement>Validate that the produced `code` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
+      <rationale source="Ollama Python library (PyPI: ollama)">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

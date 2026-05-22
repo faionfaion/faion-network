@@ -1,55 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Prompt Version Pinning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the lock file, gateway events, and rollback receipts.</summary>
+<text id="02-output-contract" title="Prompt Version Pinning Runbook — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the `playbook-step` artefact this methodology produces, with one valid and one invalid worked example.</summary>
 
-  <output-contract>
-    <required>
-      <field name="lockfile.environment" type="enum" values="prod|staging|shadow|dev"/>
-      <field name="lockfile.entries" type="list_of_object" min="1"/>
-      <field name="lockfile.entries[].prompt_id" type="string"/>
-      <field name="lockfile.entries[].active_version" type="string" notes="immutable id"/>
-      <field name="lockfile.entries[].history" type="list_of_object" notes="version + activated_at + retired_at + retire_reason"/>
-      <field name="lockfile.entries[].rollout_strategy" type="enum" values="shadow|canary|guarded_flag|full"/>
-      <field name="lockfile.entries[].rollout_percent" type="integer" min="0" max="100"/>
-      <field name="gateway_policy.environment" type="enum" values="prod|staging|shadow|dev"/>
-      <field name="gateway_policy.reject_unpinned" type="bool" notes="must be true in prod"/>
-      <field name="gateway_policy.allowed_versions" type="map" notes="prompt_id -&gt; list of acceptable versions for the env"/>
-      <field name="rollback_receipt.prompt_id" type="string"/>
-      <field name="rollback_receipt.from_version" type="string"/>
-      <field name="rollback_receipt.to_version" type="string"/>
-      <field name="rollback_receipt.requested_by" type="string"/>
-      <field name="rollback_receipt.executed_at" format="ISO8601"/>
-      <field name="rollback_receipt.completed_within_seconds" type="integer"/>
-      <field name="rollback_receipt.reason" type="paragraph" min_words="10"/>
-      <field name="rollback_receipt.related_incident_id" type="string"/>
-    </required>
+  <section title="Schema">
+    <reference path="scripts/validate-prompt-version-pinning-runbook.py">Mechanical validator wired to this schema.</reference>
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/prompt-version-pinning-runbook.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "date",
+    "produces",
+    "signature",
+    "payload",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "slug": {
+      "const": "prompt-version-pinning-runbook"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "produces": {
+      "const": "playbook-step"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "trigger",
+        "action",
+        "verification",
+        "rollback"
+      ],
+      "properties": {
+        "trigger": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "string"
+        },
+        "rollback": {
+          "type": "string"
+        }
+      }
+    },
+    "forbidden_seen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">lockfile.entries[].active_version uses a mutable tag like latest or v_current</pattern>
-      <pattern id="f2">gateway_policy.environment = prod AND reject_unpinned = false</pattern>
-      <pattern id="f3">rollback_receipt.completed_within_seconds &gt; 60 (rollback contract violated)</pattern>
-      <pattern id="f4">lockfile.entries[].rollout_strategy = full AND no canary entry in history within the past 30 days for this prompt</pattern>
-      <pattern id="f5">history entry has retired_at without retire_reason</pattern>
-      <pattern id="f6">A/B comparison entry with rollout_percent split open for more than 4 weeks without a close decision</pattern>
-    </forbidden>
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "slug": "prompt-version-pinning-runbook",
+  "version": "1.0.0",
+  "date": "2026-05-22",
+  "produces": "playbook-step",
+  "signature": "2fd213e797732483",
+  "payload": {
+    "trigger": "deploy event",
+    "action": "rollout 5% canary",
+    "verification": "eval delta within \u00b12 pp",
+    "rollback": "gateway rollback to prev hash"
+  },
+  "forbidden_seen": []
+}
+]]></code>
+    </example>
+  </section>
 
-    <allowed-transformations>
-      <transformation>Promote a version from shadow to canary to full without a new prompt-hash change (rollout-percent change only); the lockfile records each transition.</transformation>
-      <transformation>Pin a version per-tenant via guarded_flag; the lockfile records the flag id and the segment.</transformation>
-      <transformation>Use a higher canary percentage (e.g. 10%) when traffic to that prompt is low, to reach statistical closure within the planned window.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/prompts.lock.yaml"/>
-  </output-contract>
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "slug": "prompt-version-pinning-runbook",
+  "version": "v1",
+  "date": "today",
+  "produces": "playbook-step",
+  "signature": "tooshort",
+  "payload": {
+    "TBD": true
+  },
+  "forbidden_seen": [
+    "empty_intent"
+  ]
+}
+]]></code>
+      <note>Fails validation: missing required fields and contains forbidden patterns.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>All active_version values are immutable IDs</item>
-      <item>Gateway rejects unpinned calls in prod</item>
-      <item>Every active version has a documented rollout_strategy</item>
-      <item>Rollback receipt template present and the CLI produces it on every rollback</item>
-      <item>At least one A/B comparison active at any time</item>
-      <item>Quarterly game-day rollback exercise logged</item>
+      <item>Required keys present and typed correctly.</item>
+      <item>`forbidden_seen` array empty.</item>
+      <item>`signature` matches sha1(slug + version + ISO date)[:16].</item>
+      <item>`date` is ISO 8601 (YYYY-MM-DD).</item>
     </list>
   </section>
 </text>

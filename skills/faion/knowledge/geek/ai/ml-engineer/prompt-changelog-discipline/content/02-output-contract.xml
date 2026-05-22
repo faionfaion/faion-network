@@ -1,54 +1,120 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Prompt Changelog Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of a changelog entry and a per-deploy summary.</summary>
+<text id="02-output-contract" title="Prompt Changelog Discipline — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the `spec` artefact this methodology produces, with one valid and one invalid worked example.</summary>
 
-  <output-contract>
-    <required>
-      <field name="entry.prompt_id" type="string" notes="filename stem or YAML key"/>
-      <field name="entry.timestamp" format="ISO8601"/>
-      <field name="entry.hash" format="hex16"/>
-      <field name="entry.prev_hash" format="hex16" notes="empty only for the first ever entry"/>
-      <field name="entry.intent" type="paragraph" min_words="8" max_words="40"/>
-      <field name="entry.eval_delta" type="object" notes="map of eval_suite_name to before/after scores"/>
-      <field name="entry.rollout" type="enum" values="immediate|canary|shadow|guarded_flag"/>
-      <field name="entry.rollout_percent" type="integer" min="0" max="100"/>
-      <field name="entry.rollback_hash" format="hex16"/>
-      <field name="entry.authors" type="list_of_string" min="1"/>
-      <field name="entry.related_pr" type="url"/>
-      <field name="deploy_summary.deploy_id" type="string"/>
-      <field name="deploy_summary.deploy_timestamp" format="ISO8601"/>
-      <field name="deploy_summary.model_versions" type="object" notes="map of provider to model id and version"/>
-      <field name="deploy_summary.prompt_changes" type="list_of_object" notes="prompt_id, from_hash, to_hash, eval_delta_summary"/>
-      <field name="deploy_summary.expected_quality_impact" type="paragraph"/>
-      <field name="deploy_summary.rollback_plan" type="paragraph"/>
-    </required>
+  <section title="Schema">
+    <reference path="scripts/validate-prompt-changelog-discipline.py">Mechanical validator wired to this schema.</reference>
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/prompt-changelog-discipline.json",
+  "type": "object",
+  "required": [
+    "slug",
+    "version",
+    "date",
+    "produces",
+    "signature",
+    "payload",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "slug": {
+      "const": "prompt-changelog-discipline"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "produces": {
+      "const": "spec"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "title",
+        "sections"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 3
+        }
+      }
+    },
+    "forbidden_seen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">entry.hash mismatch with the actual normalised SHA of the file at commit time</pattern>
-      <pattern id="f2">entry.eval_delta empty OR not produced by the CI eval runner (hand-typed numbers)</pattern>
-      <pattern id="f3">entry.intent shorter than 8 words OR a token like "tweak", "minor edit", "wording fix"</pattern>
-      <pattern id="f4">entry.rollback_hash missing for any entry after the first (rollback path must always be available)</pattern>
-      <pattern id="f5">deploy_summary missing for any production deploy that includes a prompt change</pattern>
-      <pattern id="f6">entry.rollout = immediate AND eval_delta shows regression on any tracked metric</pattern>
-    </forbidden>
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "slug": "prompt-changelog-discipline",
+  "version": "1.0.0",
+  "date": "2026-05-22",
+  "produces": "spec",
+  "signature": "acb4704b34bc6f0b",
+  "payload": {
+    "title": "Worked spec",
+    "sections": [
+      "Intro",
+      "Requirements",
+      "Acceptance"
+    ]
+  },
+  "forbidden_seen": []
+}
+]]></code>
+    </example>
+  </section>
 
-    <allowed-transformations>
-      <transformation>Squash multiple iterative edits made within a single PR into one changelog entry, preserving the eval delta of the merged net change.</transformation>
-      <transformation>Reference an eval suite by id only in the entry; full eval results live in the eval-runner artifact, linked from the entry.</transformation>
-      <transformation>Mark an entry as `experiment` when the rollout is shadow or 5% canary; promote to `live` after the canary holds.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/PROMPTS.changelog.md"/>
-  </output-contract>
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "slug": "prompt-changelog-discipline",
+  "version": "v1",
+  "date": "today",
+  "produces": "spec",
+  "signature": "tooshort",
+  "payload": {
+    "TBD": true
+  },
+  "forbidden_seen": [
+    "empty_intent"
+  ]
+}
+]]></code>
+      <note>Fails validation: missing required fields and contains forbidden patterns.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>Each prompt is in its own file or YAML key (not inlined in source)</item>
-      <item>Hash present and matches normalised SHA of the file</item>
-      <item>Intent is a sentence, not a label</item>
-      <item>Eval delta produced by the runner, not hand-typed</item>
-      <item>Rollback hash recorded</item>
-      <item>Deploy summary committed with every release</item>
+      <item>Required keys present and typed correctly.</item>
+      <item>`forbidden_seen` array empty.</item>
+      <item>`signature` matches sha1(slug + version + ISO date)[:16].</item>
+      <item>`date` is ISO 8601 (YYYY-MM-DD).</item>
     </list>
   </section>
 </text>

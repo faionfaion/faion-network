@@ -4,20 +4,25 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A framework for augmenting LLMs with real-time access to external knowledge: embed query → retrieve top-k chunks from vector store → rerank to top-5 → inject context into prompt → generate with citations.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Specifies a production RAG pipeline: chunking strategy, embedding model, vector DB, hybrid search, reranking, prompt template, and evaluation hooks.
 content_id: "3328b6fffebf5dd2"
-tags: [rag, retrieval, embeddings, chunking, reranking]
+complexity: deep
+produces: spec
+est_tokens: 4300
+tags: [rag, retrieval, embeddings, vector-db, llm]
 ---
 # RAG (Retrieval-Augmented Generation)
 
 ## Summary
 
-**One-sentence:** A framework for augmenting LLMs with real-time access to external knowledge: embed query → retrieve top-k chunks from vector store → rerank to top-5 → inject context into prompt → generate with citations.
+**One-sentence:** Specifies a production RAG pipeline: chunking strategy, embedding model, vector DB, hybrid search, reranking, prompt template, and evaluation hooks.
 
-**One-paragraph:** A framework for augmenting LLMs with real-time access to external knowledge: embed query → retrieve top-k chunks from vector store → rerank to top-5 → inject context into prompt → generate with citations. Always rerank (retrieve top-20, reduce to top-5); always include a "no information" path when retrieval fails; always include source metadata in chunks for citations.
+**One-paragraph:** Specifies a production RAG pipeline: chunking strategy, embedding model, vector DB, hybrid search, reranking, prompt template, and evaluation hooks. The methodology assumes the inputs in Prerequisites and produces a `spec` artefact validated by `scripts/validate-rag.py`. Five testable rules in `content/01-core-rules.xml` gate the work; failure modes in `content/03-failure-modes.xml` cover the most common ways the application goes wrong. The decision tree in `content/06-decision-tree.xml` routes the agent from the input shape to the right rule, so the methodology is safe to skip when preconditions do not hold.
+
+**Ефективно для:** ML engineers building RAG systems beyond toy notebooks: production indexing, retrieval, and generation with evaluation.
 
 ## Applies If (ALL must hold)
 
@@ -26,7 +31,6 @@ tags: [rag, retrieval, embeddings, chunking, reranking]
 - Users need source citations to verify claims
 - The knowledge base is too large to fit in a single context window (more than a few hundred pages)
 - Multi-tenant system where each tenant has a separate knowledge base
-- Cost constraint: RAG is substantially cheaper than fine-tuning for factual recall tasks
 
 ## Skip If (ANY kills it)
 
@@ -37,40 +41,57 @@ tags: [rag, retrieval, embeddings, chunking, reranking]
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Task brief | markdown | upstream agent or human |
+| Constraints | yaml | project config |
+| Acceptance criteria | list | spec / ticket |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[rag-evaluation]]` | Adjacent context the agent normally already has when this methodology fires. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
+| `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-requirements` | sonnet | Structured interview-style extraction. |
+| `synthesize-spec` | opus | Cross-section trade-off synthesis. |
+| `lint-output` | haiku | Schema validation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/spec.md.tmpl` | Markdown spec skeleton with the required sections + placeholders. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rag.py` | Validate an output artefact against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
+- [[rag-evaluation]]
+- [[chunking-strategies]]
+- [[hybrid-search]]
 - parent skill: `geek/ai/ml-engineer/`
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `rag` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.
