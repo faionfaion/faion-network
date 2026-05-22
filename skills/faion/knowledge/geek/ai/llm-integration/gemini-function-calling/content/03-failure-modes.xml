@@ -1,22 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gemini-function-calling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gemini-function-calling as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Gemini Function Calling Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Five recurring antipatterns with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using enable_automatic_function_calling=True in a production agent pipeline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Automatic calling executes functions directly in the SDK call. Any exception kills the entire call with no logging, no retry, and no opportunity to validate arguments before execution.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Enabling grounding unconditionally for all queries without surfacing the cost to users.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Grounding adds significant per-query cost. Agents that enable it by default without making the cost visible to users can cause budget blowouts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using the same task_type for both document indexing and query embedding.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Using RETRIEVAL_DOCUMENT for queries or RETRIEVAL_QUERY for indexing violates the embedding model's optimization. Retrieval quality degrades measurably, typically 10–20% lower recall.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Auto-mode in production.</description>
+      <symptom>Function called with hallucinated args; side-effects executed; no audit trail.</symptom>
+      <root-cause>Auto-mode skips the callback layer where validation lives.</root-cause>
+      <fix>Switch to manual mode + arg validator (rule r3).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Functions without docstrings.</description>
+      <symptom>Model picks the wrong tool ~30% of the time.</symptom>
+      <root-cause>SDK auto-generates "function foo" descriptions.</root-cause>
+      <fix>Add docstrings; ≥30 chars intent-oriented (rule r1).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Complex nested type hints (Dict[str, List[Dict]]).</description>
+      <symptom>Schema parse fails or model emits wrong shape.</symptom>
+      <root-cause>SDK schema generator handles only the basic cases reliably.</root-cause>
+      <fix>Flatten to ≤2 levels (rule r2); pass complex blobs by reference id.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>google_search grounding enabled always.</description>
+      <symptom>Per-query cost doubles unexpectedly; bill spike.</symptom>
+      <root-cause>Default-on grounding "to be safe".</root-cause>
+      <fix>Enable per-call only when needed; gate on search_grounding flag.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>No argument validation before dispatch.</description>
+      <symptom>Tool runs with bad types; runtime exception leaks to user.</symptom>
+      <root-cause>Trust LLM-supplied args.</root-cause>
+      <fix>jsonschema / pydantic validation before execute (rule r4).</fix>
+    </antipattern>
   </section>
 </text>

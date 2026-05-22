@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="vector-db-security Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for vector-db-security as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Vector DB Security — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns when securing a vector DB.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Open binding — Qdrant bound 0.0.0.0:6333 with no API key; scanners find it within hours; data exfiltrated.</description>
+      <detector>network.binding == "0.0.0.0" AND auth.enabled == false</detector>
+      <repair>Set service.api_key in config; bind to 127.0.0.1 or private subnet; verify with nmap from public IP.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Plain HTTP — queries + payloads visible to network sniffers; PII leaks at the wire.</description>
+      <detector>tls.enabled == false OR tls.min_version &lt; "1.2"</detector>
+      <repair>Enable TLS; mount certificates; rotate every 90 days.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Static API key in code — key committed to git history; rotation requires code release.</description>
+      <detector>git history grep for `api_key.*=.*[a-zA-Z0-9]{20,}`</detector>
+      <repair>Move keys to secret manager (Vault, AWS SSM). Rotate immediately. Add pre-commit hook to detect keys.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>No audit log — admin change made; nobody knows who, when, what.</description>
+      <detector>audit.enabled == false OR sink missing</detector>
+      <repair>Enable audit log; forward to immutable sink (S3 Object Lock, ClickHouse with append-only).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="high">
+      <description>No PII procedure — GDPR erasure request received; team doesn't know how to remove embeddings + originals.</description>
+      <detector>pii block missing OR erasure_sla_hours undefined</detector>
+      <repair>Document erasure runbook: identify all collections containing the user, drop matching vectors, drop source docs. SLA &lt;30 days.</repair>
+    </failure-mode>
+
   </section>
 </text>

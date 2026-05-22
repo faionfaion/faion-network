@@ -4,72 +4,95 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Gemini function calling lets Python functions serve as LLM tools by using their docstrings and type hints as the tool schema.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Gemini function-calling integration — Python function declarations via docstring + types, manual-mode loop, JSON-schema response, optional Search grounding.
 content_id: "02ab428132bc6fef"
-tags: [gemini, function-calling, tool-use, grounding, embeddings]
+complexity: medium
+produces: code
+est_tokens: 3000
+tags: [gemini, function-calling, grounding, embeddings, structured-output]
 ---
-# Gemini Function Calling, Grounding, and Embeddings
+# Gemini Function Calling
 
 ## Summary
 
-**One-sentence:** Gemini function calling lets Python functions serve as LLM tools by using their docstrings and type hints as the tool schema.
+**One-sentence:** Produces a Gemini function-calling integration — Python function declarations via docstring + types, manual-mode loop, JSON-schema response, optional Search grounding.
 
-**One-paragraph:** Gemini function calling lets Python functions serve as LLM tools by using their docstrings and type hints as the tool schema. The SDK supports automatic mode (model executes tools in-process) and manual mode (caller controls execution). Beyond tools, Gemini offers Google Search grounding for live web data and text-embedding-004 (768-dim) for RAG pipelines, plus native JSON schema-constrained output via response_mime_type.
+**One-paragraph:** Gemini exposes Python functions as tools via docstring + type hints; SDK derives the schema automatically. Two execution modes: automatic (SDK runs the function in-process) and manual (caller dispatches). For production, prefer manual mode for auditability + scope enforcement. Beyond tool use, response_mime_type="application/json" + response_schema delivers schema-constrained typed output without forcing a tool. Google Search grounding is available behind a `tools=[Tool(google_search=...)]` flag and doubles per-query cost.
+
+**Ефективно для:** RAG-adjacent retrieval pipelines, agent loops on Gemini, schema-constrained extraction, live-search agents.
 
 ## Applies If (ALL must hold)
 
-- Pipelines running on Google Cloud / Vertex AI infrastructure.
-- Tasks requiring Google Search grounding for live web data.
-- RAG pipelines using text-embedding-004 (768-dim, multilingual).
-- Structured extraction with JSON schema (simpler than tool-forcing).
-- Agent loops where manual function calling allows logging, validation, and controlled execution.
+- Vendor is Gemini (cost or capability reason).
+- Tool count ≤ 20 OR a router upstream.
+- Python signatures with type hints; no exotic nested types.
+- Caller can wrap the SDK manual-mode loop.
 
 ## Skip If (ANY kills it)
 
-- OpenAI or Claude is already in the pipeline — adding Gemini increases vendor surface area without clear benefit unless Search grounding is needed.
-- Production pipelines requiring deterministic, auditable tool execution — automatic function calling is opaque and non-deterministic.
-- Tasks requiring Anthropic Extended Thinking-level transparent reasoning.
-- Complex nested function signatures — Gemini parses docstrings as schema; complex types degrade accuracy.
+- Single-vendor stack on Anthropic / OpenAI — use the respective methodology.
+- Need streaming-with-tool-calls — Gemini support is limited; non-streaming preferred.
+- Auto-mode used to "save code" — auto is fine for prototypes, not production.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Tool registry | Python functions | application code |
+| Gemini SDK + key | secret | secrets manager |
+| Output schema (if JSON) | JSON Schema or pydantic | spec |
+| Search grounding budget | doc | finops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[gemini-api-integration]]` | Safety + Files API baseline. |
+| `[[function-calling-patterns]]` | Cross-vendor router + validation patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 rules: docstring required, type hints required, manual mode in prod, validate args before exec, ≤20 tools, JSON via response_schema | ~700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for gemini-tool-decl + function-response shape | ~600 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: auto-mode in prod, docstringless functions, nested types, grounding-always-on, no validation | ~600 |
+| `content/04-procedure.xml` | medium | 6-step: declare functions → set mode → wire loop → enable grounding selectively → handle JSON → eval | ~800 |
+| `content/06-decision-tree.xml` | essential | Root: "vendor=Gemini AND tool use needed?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Write function docstrings | sonnet | Pattern code. |
+| Implement manual loop | sonnet | Mechanical. |
+| Decide grounding budget | opus | Cost reasoning. |
+| Tune response_schema | sonnet | Schema authoring. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/gemini-fc-client.py` | Manual-mode function-calling loop reference. |
+| `templates/function-declaration-example.py` | Function with docstring + type hints producing a tool. |
+| `templates/_smoke-test.json` | Minimum valid gemini-fc config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-gemini-function-calling.py` | Validates gemini-fc config: mode + tool count ≤20 + response_schema if JSON. | Pre-commit on config. |
 
 ## Related
 
 - parent skill: `geek/ai/llm-integration/`
+- `[[gemini-api-integration]]`
+- `[[function-calling-patterns]]`
+- `[[claude-tool-use]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` routes: non-Gemini → skip; Gemini + ≤20 tools + manual mode acceptable → run-the-checklist.

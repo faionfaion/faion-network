@@ -1,67 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gemini-function-calling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gemini-function-calling. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Gemini Function Calling Core Rules" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six testable rules for Gemini function calling with manual-mode dispatch.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Use manual function calling (enable_automatic_function_calling=False) in agent pipelines to allow logging, validation, and potential veto before execution.</statement>
-      <rationale source="v1-source">Automatic mode executes functions directly inside the SDK call. If a function raises an exception, the entire call fails with no retry opportunity. Manual mode gives the caller control and visibility.</rationale>
+      <statement source="google-ai-docs-2026">Every function used as a tool has a non-empty docstring describing intent + arguments. SDK uses the docstring as the tool description.</statement>
+      <rationale>Docstringless functions get auto-generated descriptions like "function foo" — model picks them poorly.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Validate the function name in the response before executing: assert fc.name == expected_name.</statement>
-      <rationale source="v1-source">With tool_config mode="ANY", the model must call a function but may choose the wrong one. Validating the name prevents executing an unintended function.</rationale>
+      <statement source="google-ai-docs-2026">Every parameter has a Python type hint. SDK derives JSON Schema from annotations; missing hints get coerced to "string" or fail.</statement>
+      <rationale>Without type hints schema accuracy drops; model emits wrong types.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Every tool function must have a type-annotated signature and a docstring that describes what the function does, its arguments, and its return value.</statement>
-      <rationale source="v1-source">Gemini parses Python docstrings and type hints to build the tool schema. Undocumented or unannotated functions may be ignored or called with wrong arguments.</rationale>
+      <statement source="production-discipline">Production uses manual mode (caller dispatches functions). Automatic mode is acceptable for prototypes only.</statement>
+      <rationale>Auto mode bypasses validation, logging, and scope checks; production needs all three.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Treat parallel function calls as non-deterministic in both order and selection. Always validate each call independently before executing.</statement>
-      <rationale source="v1-source">Gemini may call multiple tools in the same response in any order. Code that assumes a specific execution order will fail unpredictably.</rationale>
+      <statement source="function-calling-patterns">Validate LLM-supplied arguments before execution (jsonschema or pydantic against the function signature).</statement>
+      <rationale>LLMs hallucinate types; pre-execution validation prevents action on bad data.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Call dict() on fc.args explicitly, or use json_format.MessageToDict, before passing args to the function.</statement>
-      <rationale source="v1-source">fn_call.args returns a MapComposite protobuf object, not a plain Python dict. Passing it directly to **kwargs may silently omit fields or raise a TypeError.</rationale>
+      <statement source="vendor-docs-2026">Visible tool count ≤ 20 per call. Above that, route upstream.</statement>
+      <rationale>Selection accuracy degrades sharply.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Use Google Search grounding only when the task genuinely requires current web data — news, live prices, recent events.</statement>
-      <rationale source="v1-source">Grounding adds per-query cost and latency. For static knowledge, use the model's training data or a local RAG index instead.</rationale>
+      <statement source="google-ai-docs-2026">For schema-constrained typed output (without forcing a tool), set response_mime_type="application/json" + response_schema. Do not rely on prompt-only JSON instructions.</statement>
+      <rationale>SDK-level mime+schema produces reliable shape; prompt-only drifts.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Check grounding_metadata for source chunks after every grounded call and verify sources before surfacing them to users.</statement>
-      <rationale source="v1-source">Grounded responses cite web sources. Without verification, bad or irrelevant sources can undermine trust.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire Gemini function-calling loop.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Do not combine Google Search grounding with custom tools in production — this combination is experimental and may behave unexpectedly.</statement>
-      <rationale source="v1-source">Mixing grounding and function calling is not fully supported on all Gemini models. The model may prefer grounding over tool calls in unspecified ways.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use task_type="RETRIEVAL_DOCUMENT" for indexing documents and task_type="RETRIEVAL_QUERY" for search queries.</statement>
-      <rationale source="v1-source">Embedding models use separate optimization heads per task type. Using the wrong type (e.g., RETRIEVAL_DOCUMENT for a query) degrades retrieval quality measurably (10–20% lower recall).</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Do not mix text-embedding-004 (768-dim) vectors with indexes built for 1536-dim (OpenAI) or 1024-dim embeddings.</statement>
-      <rationale source="v1-source">Dimension mismatch causes an error at index insert time or silently produces zero-similarity results at query time depending on the vector DB configuration.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Cache computed document embeddings — re-embedding on every request is expensive and the vectors do not change unless the document changes.</statement>
-      <rationale source="v1-source">Embedding API calls have cost and latency. Documents that have not changed produce identical vectors; there is no benefit to re-computing them.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Always normalize embeddings before cosine similarity computation using np.linalg.norm.</statement>
-      <rationale source="v1-source">Raw cosine similarity without normalization produces unstable results. Normalized vectors ensure consistent similarity scores across different batch sizes.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Always validate extracted JSON against the intended schema using Pydantic before using it downstream. response_mime_type="application/json" does not guarantee schema compliance — Gemini may return valid JSON that violates the schema.</statement>
-      <rationale source="v1-source">JSON mode produces valid JSON syntax, but may miss required fields or add extra fields. Pydantic validation catches these mismatches early.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Use manual function calling (not automatic) so the orchestrating agent can log, validate, and potentially veto tool invocations before execution. Pass the function response back using genai.protos.FunctionResponse.</statement>
-      <rationale source="v1-source">Manual mode gives the orchestrator full visibility and control. Automatic mode hides function execution and prevents the agent from reacting to execution failures.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Set a maximum iteration count on any agent loop using Gemini tools; the model can loop indefinitely on ambiguous tasks.</statement>
-      <rationale source="v1-source">Without a cap, a poorly phrased query can cause the model to call tools repeatedly without making progress. A sensible default is 10 iterations.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Non-Gemini vendor or no tool need → skip.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

@@ -1,4 +1,9 @@
-"""Gemini structured extraction via response_mime_type — no tool use required.
+"""
+purpose: Gemini schema-constrained extraction via response_mime_type=application/json.
+consumes: raw text + pydantic / JSON schema
+produces: parsed dataclass / dict matching schema
+depends-on: content/01-core-rules.xml r6
+token-budget-impact: per-call; reliable JSON shape
 
 Usage:
     data = extract_article(article_text)

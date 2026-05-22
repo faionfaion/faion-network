@@ -1,4 +1,9 @@
-"""Auditable manual Gemini function calling — validates function name before execution.
+"""
+purpose: Auditable manual-mode Gemini function calling with name + arg validation.
+consumes: Python function with docstring + type hints; user query string
+produces: tool result + final model response
+depends-on: content/01-core-rules.xml r3, r4
+token-budget-impact: per-call; bounded by loop iterations
 
 Usage:
     result = call_with_tool("What's the weather in Tokyo?", get_current_weather)

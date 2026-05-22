@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Vector DB Security — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five steps: lock auth → TLS → network → encryption → audit + PII process.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="lock-auth">
+      <input>secret manager + DB admin access</input>
+      <action>Enable API key OR OIDC. Disable anonymous endpoint. Rotate any keys present in git history.</action>
+      <output>auth live, anonymous blocked</output>
+      <decision-gate>If anonymous still reachable on public IP — STOP (r1-no-anonymous).</decision-gate>
+    </step>
+
+    <step n="2" name="tls">
+      <input>cert manager (cert-manager, ACM, manual)</input>
+      <action>Mount cert; enable TLS ≥1.2; redirect plain HTTP listener to 443 OR disable it.</action>
+      <output>TLS verified with openssl s_client</output>
+      <decision-gate>If TLS &lt;1.2 — fix; modern compliance requires ≥1.2 (r2-tls-everywhere).</decision-gate>
+    </step>
+
+    <step n="3" name="network">
+      <input>VPC config + LB</input>
+      <action>Bind listener to private subnet; route external traffic via authenticated proxy. Verify with public-IP nmap.</action>
+      <output>listener private; external nmap clean</output>
+      <decision-gate>If public IP reachable — block (r3-private-network-only).</decision-gate>
+    </step>
+
+    <step n="4" name="encryption">
+      <input>KMS / disk encryption</input>
+      <action>Enable LUKS / EBS encryption on the data volume. For pgvector enable pg_tde or column-level. Verify keys rotate via KMS policy.</action>
+      <output>encryption at rest verified</output>
+      <decision-gate>If keys not rotatable — fix; static keys are audit findings.</decision-gate>
+    </step>
+
+    <step n="5" name="audit-and-pii">
+      <input>audit sink + PII detection</input>
+      <action>Enable admin audit log; forward to immutable sink. Document PII detection (Presidio), redaction policy, erasure runbook. Test erasure end-to-end on a fake account.</action>
+      <output>audit live; PII process documented + tested</output>
+      <decision-gate>If erasure test fails or SLA &gt;30d — fix before declaring done (r5-pii-handling-procedure).</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
