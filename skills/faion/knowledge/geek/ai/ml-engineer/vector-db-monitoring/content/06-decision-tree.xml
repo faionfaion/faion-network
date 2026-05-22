@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Vector DB Monitoring — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes an alert by metric pillar + magnitude to page / ticket / suppress.</summary>
+
+  <decision-tree>
+    <root-question id="q-pillar">Which pillar breached?</root-question>
+    <branch when="pillar == 'latency'">
+      <question id="q-lat-mag">Magnitude vs SLO?</question>
+      <branch when="ratio_to_slo &gt;= 2">
+        <conclusion ref="r2-paged-vs-ticket" verdict="PAGE — user impact obvious"/>
+      </branch>
+      <branch when="ratio_to_slo &gt;= 1 and ratio_to_slo &lt; 2">
+        <conclusion ref="r2-paged-vs-ticket" verdict="TICKET — degraded but functional"/>
+      </branch>
+    </branch>
+    <branch when="pillar == 'memory' or pillar == 'disk'">
+      <question id="q-cap">Forecast OOM days?</question>
+      <branch when="forecast_days &lt; 7">
+        <conclusion ref="r2-paged-vs-ticket" verdict="PAGE — imminent capacity event"/>
+      </branch>
+      <branch when="forecast_days &gt;= 7 and forecast_days &lt; 30">
+        <conclusion ref="r3-capacity-baseline" verdict="TICKET — scale plan needed"/>
+      </branch>
+    </branch>
+    <branch when="pillar == 'error'">
+      <question id="q-err-rate">Error rate?</question>
+      <branch when="error_rate_pct &gt;= 5">
+        <conclusion ref="r2-paged-vs-ticket" verdict="PAGE — heavy errors"/>
+      </branch>
+      <branch when="error_rate_pct &gt;= 1 and error_rate_pct &lt; 5">
+        <conclusion ref="r5-runbook-link-required" verdict="TICKET — open runbook, investigate"/>
+      </branch>
+    </branch>
+  </decision-tree>
+</text>

@@ -4,71 +4,91 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Core concepts, setup, text generation, streaming, and chat conversations.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a starter Gemini text/chat integration — SDK init, model pick (Flash vs Pro), single-shot generate, streaming, multi-turn chat, JSON response mode.
 content_id: "f105a21b257899a4"
-tags: [gemini, llm-api, text-generation, chat, streaming]
+complexity: light
+produces: code
+est_tokens: 2400
+tags: [gemini, basics, text-generation, streaming, chat]
 ---
-# Gemini API Basics
+# Gemini Basics
 
 ## Summary
 
-**One-sentence:** Core concepts, setup, text generation, streaming, and chat conversations.
+**One-sentence:** Produces a starter Gemini text/chat integration — SDK init, model pick (Flash vs Pro), single-shot generate, streaming, multi-turn chat, JSON response mode.
 
-**One-paragraph:** Core concepts, setup, text generation, streaming, and chat conversations. This methodology covers model selection (2.0 Flash vs. 1.5 Pro vs. Thinking), initialization, basic text generation with configuration, streaming responses, multi-turn chat, safety settings, and error handling with retry logic.
+**One-paragraph:** This methodology provides the minimum-viable starting point for a new Gemini integration: client init with API key or Vertex creds, text-only generate_content for one-shot calls, generate_content_stream for streaming, chat sessions for multi-turn, and response_mime_type="application/json" for typed output. Skip when function calling, multimodal, or Files API is needed — those are sibling methodologies.
+
+**Ефективно для:** prototypes, classification, summarisation, chat features, JSON extraction at small scale.
 
 ## Applies If (ALL must hold)
 
-- Starting a new project that will use Gemini and needs auth, model selection, and generation config established.
-- Exploring Gemini model capabilities (Flash vs. Pro vs. Thinking) before committing to an architecture.
-- Building a simple text generation or chat pipeline that does not yet need multimodal or function calling.
-- The team needs a working reference implementation of streaming, async, and JSON output modes.
+- New Gemini integration; no function calling or multimodal needed yet.
+- Single-process app; no Vertex Cloud-scale plumbing needed yet.
+- Caller can handle async / streaming if used.
+- Cost budget allows experimenting.
 
 ## Skip If (ANY kills it)
 
-- The task requires function calling or tool use — see gemini-api-integration for that pattern.
-- You need file uploads (audio/video/large docs) — use the Files API from gemini-api-integration.
-- The context window needed exceeds what Flash supports and you have not benchmarked Pro vs. Flash trade-offs yet.
-- You are integrating with Google Cloud enterprise infra — start with Vertex AI patterns, not AI Studio keys.
+- Function calling required → `[[gemini-function-calling]]`.
+- Multimodal (audio/image/video) → `[[gemini-multimodal]]`.
+- Large file uploads / Vertex enterprise → `[[gemini-api-integration]]`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| API key or Vertex creds | secret | env var |
+| Use-case description | doc | spec |
+| Sample input/output pair | text | eval set |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[gemini-api-integration]]` | Sibling for the safety/Files-API extensions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: explicit model, no env-key leak, streaming-or-not commit, JSON via mime_type, chat history bounded | ~600 |
+| `content/02-output-contract.xml` | essential | Minimum gemini-config-basic.json schema | ~500 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: hard-coded key, model not pinned, stream-and-await mix, JSON-string-output, unbounded chat history | ~500 |
+| `content/06-decision-tree.xml` | essential | Root: "starter call, no function/multimodal/Vertex needed?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Pick model | sonnet | Cost/quality. |
+| Wire streaming | runtime | Mechanical. |
+| Bound chat history | runtime | Mechanical. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/gemini-basic-client.py` | Reference Python client (one-shot + streaming + chat). |
+| `templates/gemini-config-basic.schema.json` | JSON Schema for starter config. |
+| `templates/_smoke-test.json` | Minimum valid starter config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-gemini-basics.py` | Validates gemini-config-basic.json: pinned model + temperature + max_output_tokens. | Pre-commit on starter config. |
 
 ## Related
 
 - parent skill: `geek/ai/llm-integration/`
+- `[[gemini-api-integration]]`
+- `[[gemini-function-calling]]`
+- `[[gemini-multimodal]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` routes the call: function-calling or multimodal needs route to siblings; basic text/chat routes here.
