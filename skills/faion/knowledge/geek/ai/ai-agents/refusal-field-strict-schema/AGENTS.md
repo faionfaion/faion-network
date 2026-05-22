@@ -3,72 +3,88 @@ slug: refusal-field-strict-schema
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Add an explicit nullable refusal: str | None field at the TOP of every strict-mode SO schema in safety-sensitive domains.
-content_id: "3eff4f127bf9643d"
-tags: [structured-output, safety, strict-mode, extraction, openai]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 69a45afee67a6ef4
+summary: Produces a structured-output spec that forces a `refusal` field at top level with strict schema mode so safety refusals surface in JSON instead of breaking the parse.
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [structured-output, refusal, strict-mode, safety, openai, anthropic]
 ---
-# Refusal Field for Safety-Aware Strict Extraction
+# Refusal Field Strict Schema
 
 ## Summary
 
-**One-sentence:** Add an explicit nullable refusal: str | None field at the TOP of every strict-mode SO schema in safety-sensitive domains.
+**One-sentence:** Produces a structured-output spec that forces a `refusal` field at top level with strict schema mode so safety refusals surface in JSON instead of breaking the parse.
 
-**One-paragraph:** Add an explicit nullable refusal: str | None field at the TOP of every strict-mode SO schema in safety-sensitive domains. When the model declines to answer, it writes the explanation into refusal and leaves payload fields null — instead of corrupting the JSON with a free-form refusal that breaks parsing. OpenAI's strict-mode response already exposes a top-level refusal; mirroring that field inside your own schema unifies the contract across providers and lets a single downstream branch handle "I cannot answer" without try/except.
+**One-paragraph:** When models refuse a request under structured output mode, they often emit free-form text that breaks JSON parsing. Adding an explicit top-level `refusal` field with strict mode forces the model to use it; downstream code can branch cleanly on present/absent refusal.
+
+**Ефективно для:** team whose JSON schema agents hit JSONDecodeError once a week because the model refused mid-stream.
 
 ## Applies If (ALL must hold)
 
-- PII / medical / legal / financial extraction with strict mode.
-- Content moderation outputs where "this content is abusive, refusing to score" must not throw.
-- Any pipeline that bills only on success and needs to log refusals separately from errors.
-- Multi-provider deployments where refusal handling must be uniform across OpenAI/Anthropic/local.
-- Long batch jobs where one item refusing must not abort the batch.
+- Using OpenAI structured-output strict mode or Anthropic tool_use.
+- Production agent encounters safety refusals.
+- Downstream code expects JSON shape.
 
 ## Skip If (ANY kills it)
 
-- Trivial transformations (uppercase, regex extract) where refusal is not in the model's repertoire.
-- Pipelines where any refusal is upstream policy violation and should hard-fail anyway.
-- When the only consumer is a human reviewer who already reads free-form responses.
+- Free-text completions (no schema).
+- Internal agents on trusted prompts only.
+- Refusals not expected (e.g., math).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `output-schema.json` | JSON Schema for the agent output | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-top-level-refusal; r2-strict-mode; r3-branch-on-refusal; r4-log-refusal-text; r5-no-refusal-in-prompt. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/refusal-field-strict-schema-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-refusal-field-strict-schema.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.

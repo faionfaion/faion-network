@@ -1,11 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="schema-version-pinning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for schema-version-pinning. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Schema Version Pinning Core Rules" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every schema-version-pinning spec MUST enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For every Pydantic model used as a cross-stage contract, declare `schema_version: Literal["vN"] = "vN"` as the first field, persist it on every emitted event, and route consumers via a `dict[str, type[BaseModel]]` parser registry keyed by version.</statement>
-      <rationale source="v1-source">Without an in-payload version, schema drift is silent: old consumers parse new payloads and crash on unrelated fields, masking the actual breaking change; with a typed registry, unknown versions raise at the boundary and old data still parses with old code.</rationale>
+    <rule id="r1-semver-in-schema" testable="true" depth="essential">
+      <statement>Every JSON schema MUST carry a top-level $version semver.</statement>
+      <rationale source="domain knowledge">Without version, drift is invisible until it crashes a consumer.</rationale>
+    </rule>
+    <rule id="r2-pin-minor" testable="true" depth="essential">
+      <statement>Agents MUST pin against ~major.minor (compatible-within-minor). Patch-only changes allowed.</statement>
+      <rationale source="domain knowledge">Pin too tight = no upgrades; pin too loose = breaking changes leak in.</rationale>
+    </rule>
+    <rule id="r3-breaking-change-protocol" testable="true" depth="essential">
+      <statement>Any breaking change MUST bump major + ship a migration script + 30-day deprecation window.</statement>
+      <rationale source="domain knowledge">Surprise breaking changes are the failure mode this methodology prevents.</rationale>
+    </rule>
+    <rule id="r4-recorded-call-migration" testable="true" depth="essential">
+      <statement>Recorded calls from record-replay-debugging MUST be migrateable forward via the migration script.</statement>
+      <rationale source="domain knowledge">Recordings rot without forward migration.</rationale>
+    </rule>
+    <rule id="r5-version-in-tool-call" testable="true" depth="essential">
+      <statement>Tool-call payloads MUST include $schema_version so the receiver can route to the right handler.</statement>
+      <rationale source="domain knowledge">Without the field, multi-version handlers can't disambiguate.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

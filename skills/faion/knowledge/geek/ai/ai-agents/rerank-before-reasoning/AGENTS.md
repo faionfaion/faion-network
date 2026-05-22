@@ -3,72 +3,88 @@ slug: rerank-before-reasoning
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When an agent retrieves context for a strong-model reasoning step, never feed the raw vector-search top-K straight into the LLM.
-content_id: "14b0e739510c984f"
-tags: [rag, retrieval, reranker, cross-encoder, embedding]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 81dd61aae83fee3f
+summary: Produces a RAG-stage spec inserting a cross-encoder reranker between retrieval and the reasoning model so top-k matches what the model needs, not what the embedder thought was close.
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [rag, rerank, cross-encoder, context-budget, retrieval]
 ---
-# Rerank Before Reasoning (Two-Stage Retrieval)
+# Rerank Before Reasoning
 
 ## Summary
 
-**One-sentence:** When an agent retrieves context for a strong-model reasoning step, never feed the raw vector-search top-K straight into the LLM.
+**One-sentence:** Produces a RAG-stage spec inserting a cross-encoder reranker between retrieval and the reasoning model so top-k matches what the model needs, not what the embedder thought was close.
 
-**One-paragraph:** When an agent retrieves context for a strong-model reasoning step, never feed the raw vector-search top-K straight into the LLM. Insert a small cross-encoder reranker between the embedding model and the reasoner: retrieve 50-200 candidates with cheap embeddings, rerank with a small cross-encoder (Cohere Rerank, BGE-reranker, Voyage rerank-2), keep top 5-10, then call the expensive model. The two-stage pattern preserves recall from a wide first pass while delivering the precision the reasoner depends on.
+**One-paragraph:** Embedding-based retrieval returns top-k by cosine similarity, which doesn't match what the LLM needs to reason. A cross-encoder reranker reads (query, candidate) pairs and produces a relevance score; the LLM sees k_final relevant candidates instead of k_retrieved noisy ones. Saves context tokens and improves answer quality.
+
+**Ефективно для:** RAG product whose top-1 hit is often related-but-wrong; the right doc sits at position 6.
 
 ## Applies If (ALL must hold)
 
-- Any RAG agent or knowledge-base lookup where retrieval feeds a strong reasoner.
-- Corpora with at least 1k chunks where ANN top-K returns plausible-but-wrong neighbours.
-- Tool-use agents that look up documentation, code, or policy and then act on it.
-- Domains with negation, abbreviations, or domain-specific jargon (medical, legal, finance) where embedding-only similarity misranks.
+- RAG pipeline retrieves top-k > 5 candidates.
+- Top-1 cosine miss rate > 20%.
+- Context budget tight; can't pass all k to LLM.
 
 ## Skip If (ANY kills it)
 
-- Tiny corpora (under ~100 documents) — retrieve everything, skip reranking.
-- Latency budgets under 200 ms where the rerank round-trip dominates.
-- Pipelines that already pin the reasoner to a small model — reranker latency costs more than the precision is worth.
-- High-cardinality structured lookups (SQL-style) where deterministic filters do the work better and cheaper.
+- Embedding hits top-1 reliably.
+- Latency-critical path (rerank adds 100-300ms).
+- k_retrieved == 1.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `pipeline-stages.yaml` | {embed_model, k_retrieved, k_final, reranker_model} | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-rerank-required; r2-k-retrieved-bigger; r3-reranker-model-shipped; r4-monitor-mrr-improvement; r5-fallback-on-rerank-timeout. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/rerank-before-reasoning-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-rerank-before-reasoning.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.

@@ -3,70 +3,88 @@ slug: schema-field-order
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: In a structured-output schema (JSON schema, Pydantic model, tool input schema, response_format), place dependent fields AFTER their dependencies.
-content_id: "89674b71f298e496"
-tags: [schema, field-order, structured-output, autoregressive, chain-of-thought]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 1da20e974978d900
+summary: Produces a structured-output schema-ordering spec placing reasoning fields BEFORE final answer fields so the model thinks-then-answers within the JSON itself.
+complexity: light
+produces: spec
+est_tokens: 4000
+tags: [structured-output, schema-design, chain-of-thought, json, reasoning]
 ---
-# Schema Field Order — Autoregressive Steering
+# Schema Field Order
 
 ## Summary
 
-**One-sentence:** In a structured-output schema (JSON schema, Pydantic model, tool input schema, response_format), place dependent fields AFTER their dependencies.
+**One-sentence:** Produces a structured-output schema-ordering spec placing reasoning fields BEFORE final answer fields so the model thinks-then-answers within the JSON itself.
 
-**One-paragraph:** In a structured-output schema (JSON schema, Pydantic model, tool input schema, response_format), place dependent fields AFTER their dependencies. The model generates left-to-right and each field can attend only to fields that came before it. If field B is conceptually derived from field A, A must appear earlier in the schema than B. This is free chain-of-thought: every "thought" field placed before the "answer" field acts as scratchpad, and every "input echo" field placed before "output" acts as a re-grounding step.
+**One-paragraph:** When the LLM emits JSON with the final answer field first, it has to commit before reasoning. Reordering so reasoning/scratchpad/analysis fields come BEFORE the answer field forces the model to think first. Quality improves substantially without prompt changes.
+
+**Ефективно для:** team using JSON-schema-constrained outputs whose answer quality plateaus despite better prompts.
 
 ## Applies If (ALL must hold)
 
-- Whenever your schema has fields where one depends on another (almost always).
-- When you want a "reasoning before answer" effect without using extended-thinking APIs.
-- When you want a "title from content" pattern — content first, title last.
-- When you need re-grounding on long inputs — put a field that restates the question before the answer.
+- Using JSON-schema-constrained outputs (OpenAI strict / Anthropic tool_use).
+- Answer quality matters more than latency.
+- Schema can be modified.
 
 ## Skip If (ANY kills it)
 
-- Schemas with no semantic dependency (pure parallel extraction of independent facts) — order does not matter.
-- When your runtime parses fields in arbitrary order (rare; almost all do declaration-order generation).
+- Free-form completions.
+- Latency-critical (reasoning fields add tokens).
+- Schema fixed by external contract.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `schema-fields.yaml` | list of {field, role: reasoning|intermediate|answer} | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-reasoning-first; r2-named-reasoning-field; r3-no-final-answer-shortcuts; r4-strict-required; r5-emit-token-cost. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/schema-field-order-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-schema-field-order.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.

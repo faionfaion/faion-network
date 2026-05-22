@@ -3,74 +3,88 @@ slug: reasoning-first-architectures
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Agents that act before thinking produce suboptimal outcomes.
-content_id: "69084dee94f28ecc"
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: de793256ed465656
+summary: Produces an agent-architecture spec selecting ReAct, Tree-of-Thought, Reflexion, or Planning-Loop based on task complexity, branching needs, and budget.
+complexity: deep
+produces: spec
+est_tokens: 4000
 tags: [agent-reasoning, think-before-act, react, tree-of-thought, reflexion]
 ---
 # Reasoning-First Architectures
 
 ## Summary
 
-**One-sentence:** Agents that act before thinking produce suboptimal outcomes.
+**One-sentence:** Produces an agent-architecture spec selecting ReAct, Tree-of-Thought, Reflexion, or Planning-Loop based on task complexity, branching needs, and budget.
 
-**One-paragraph:** Agents that act before thinking produce suboptimal outcomes. Use reasoning-first patterns (ReAct, Tree-of-Thought, Reflexion, Planning Loops, Critique-and-Revise) to separate thinking from action. Each pattern trades off latency, cost, and quality differently.
+**One-paragraph:** Agents that act without thinking produce hallucinated tool calls and brittle plans. Reasoning-first architectures (ReAct, ToT, Reflexion, Planning Loop) explicitly separate thinking from acting. This methodology picks the right one per drivers: complexity, branching, replan budget.
+
+**Ефективно для:** team running agents that act too fast and fail at branching tasks; their traces show no thinking step.
 
 ## Applies If (ALL must hold)
 
-- Tasks where acting without a plan produces low-quality output (complex coding, multi-step math, strategic decisions)
-- Research synthesis where the agent must reconcile conflicting sources before concluding
-- Any agentic pipeline where premature tool calls cause cascading errors (e.g. writing code before understanding the full spec)
-- Quality-critical generation where a Critique-and-Revise loop demonstrably improves output
-- Problems with multiple viable solution paths where Tree-of-Thought search yields better solutions than greedy selection
+- Designing a new agent for complex multi-step tasks.
+- Existing agents fail on branching or recovery from errors.
+- Reasoning models (o1, claude-extended-thinking) are available.
 
 ## Skip If (ANY kills it)
 
-- Simple factual retrieval where reasoning adds latency with no quality gain
-- Latency-sensitive paths (<500ms budget) — extended thinking and multi-path search are expensive
-- Tasks where the domain is so narrow that chain-of-thought adds no signal (e.g. regex matching, format conversion)
-- Reflexion loops on tasks with no verifiable exit criterion — the loop runs to the cap and exits with no quality guarantee
-- Streaming response use cases where intermediate reasoning steps must not be shown to the user
+- Simple lookup or single-tool tasks.
+- Latency-critical with <100ms budget.
+- Closed deterministic workflows.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `task-profile.yaml` | {complexity, branching, error_recovery_needed, budget_per_run} | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-thought-before-action; r2-tot-when-branching; r3-reflexion-when-recovery; r4-planning-loop-long-horizon; r5-budget-cap. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/reasoning-first-architectures-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-reasoning-first-architectures.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.

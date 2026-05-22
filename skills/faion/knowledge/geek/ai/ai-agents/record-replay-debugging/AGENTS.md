@@ -3,72 +3,89 @@ slug: record-replay-debugging
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO.
-content_id: "32db7a60667c7e6f"
-tags: [debugging, determinism, testing, reproducibility, agents]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: cccc2df105ba197b
+summary: Produces a debugging spec wiring record-replay for agent runs: persist every LLM call + tool result; replay deterministically against a frozen recording.
+complexity: medium
+produces: config
+est_tokens: 4000
+tags: [debugging, record-replay, determinism, agent-ops, reproducibility]
 ---
-# Record / Replay — Deterministic Agent Debugging
+# Record-Replay Debugging
 
 ## Summary
 
-**One-sentence:** Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO.
+**One-sentence:** Produces a debugging spec wiring record-replay for agent runs: persist every LLM call + tool result; replay deterministically against a frozen recording.
 
-**One-paragraph:** Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO. Replay is the only way to debug a 1-in-N production failure deterministically and the only way to mutate one variable (prompt, tool stub, system message) and verify the fix.
+**One-paragraph:** Agent failures are hard to reproduce: non-deterministic models + flaky tools + race conditions. Record-replay captures every LLM call + tool result + timestamp into a recording file; replay reads from the recording instead of hitting live services. Bug surfaces deterministically; fix lands in one iteration.
+
+**Ефективно для:** team that can't reproduce a production agent failure; the only artefact is one user report and a stale trace.
 
 ## Applies If (ALL must hold)
 
-- Production debugging of intermittent agent failures.
-- Building eval sets from real traffic — record once, replay many times with mutations.
-- Fix verification — change one prompt token, replay, confirm the bug path is gone.
-- Regression testing across model versions — replay last month's traces against the new model.
+- Production agent failures are hard to reproduce.
+- Multi-step agents with tool calls.
+- Cost or risk prevents re-running against live services.
 
 ## Skip If (ANY kills it)
 
-- Pure stateless single-call generators (one LLM call, no tools) — replay overhead is not justified.
-- Outputs containing PII you cannot persist — either redact in record, or skip.
-- Quick prototypes where you have not yet stabilised the agent shape — instrument once the API surface is fixed.
-- Tools that must hit external state (sending email, taking payment) — record but mark sideeffects as non-replayable.
+- Single-call no-tool agents.
+- Read-only agents.
+- Prototype with no production failures.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `agent-entrypoints.yaml` | list of entrypoints to wrap | operator |
+| `recording_store_uri` | S3/local-fs | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-record-all-calls; r2-deterministic-replay; r3-redact-secrets; r4-version-recording-format; r5-replay-in-ci. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the config artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/record-replay-debugging-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-record-replay-debugging.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.

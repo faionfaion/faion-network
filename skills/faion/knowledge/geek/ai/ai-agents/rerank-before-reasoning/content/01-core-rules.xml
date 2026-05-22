@@ -1,23 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rerank-before-reasoning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rerank-before-reasoning. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Rerank Before Reasoning Core Rules" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every rerank-before-reasoning spec MUST enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Retrieve 50-200 candidates with embeddings (recall pass) and rerank with a cross-encoder before passing top 5-10 to the reasoner; never feed raw embedding top-K directly to a strong-model reasoner.</statement>
-      <rationale source="v1-source">Pinecone and ZeroEntropy 2025 benchmarks report 10-20 pp precision@10 gains on enterprise retrieval suites; the same studies show that windows below 50 leave recall on the table while windows above 200 add latency without quality.</rationale>
+    <rule id="r1-rerank-required" testable="true" depth="essential">
+      <statement>When k_retrieved > k_final AND domain-specific re-ranking is feasible, the spec MUST insert a cross-encoder reranker stage.</statement>
+      <rationale source="domain knowledge">Embedding similarity is a proxy for relevance; reranker reads the actual query-candidate pair.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Sweep K ∈ {25, 50, 75, 100, 150} on a labelled eval set; pick the smallest K where precision@10 plateaus.</statement>
-      <rationale source="v1-source">Most production corpora plateau between K=50 and K=100. Going past the plateau spends reranker latency without recall gain; staying below it under-retrieves rare-but-relevant chunks.</rationale>
+    <rule id="r2-k-retrieved-bigger" testable="true" depth="essential">
+      <statement>k_retrieved MUST be > k_final * 3 to give the reranker enough recall headroom.</statement>
+      <rationale source="domain knowledge">Below 3x, the reranker has nothing useful to promote.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Pick a reranker by running an eval suite drawn from your real traffic, not by reading a public leaderboard alone; public benchmarks systematically over-rank hosted rerankers on academic corpora that do not match enterprise traffic.</statement>
-      <rationale source="v1-source">ZeroEntropy 2025 reports rank flips between BGE-large and Cohere Rerank 3 across domains; per-domain eval is the only reliable signal.</rationale>
+    <rule id="r3-reranker-model-shipped" testable="true" depth="essential">
+      <statement>The reranker model MUST be a cross-encoder (BGE-reranker, Cohere Rerank, mxbai-rerank). Bi-encoders are forbidden as rerankers.</statement>
+      <rationale source="domain knowledge">Bi-encoders are what the retrieval stage already used; switching to cross-encoder is the whole point.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Re-run the reranker eval whenever (a) the corpus has rotated more than 20% of chunks, (b) the embedding model is retrained, or (c) the reranker vendor ships a new version; do not re-evaluate on a fixed cadence.</statement>
-      <rationale source="v1-source">Calendar-based evals waste effort during stable periods and miss real shifts; corpus-rotation triggers track the actual signal.</rationale>
+    <rule id="r4-monitor-mrr-improvement" testable="true" depth="essential">
+      <statement>The spec MUST capture pre-rerank vs post-rerank MRR@k_final on a held-out set; deploy only if MRR delta > 0.05.</statement>
+      <rationale source="domain knowledge">Otherwise rerank adds latency for nothing.</rationale>
+    </rule>
+    <rule id="r5-fallback-on-rerank-timeout" testable="true" depth="essential">
+      <statement>On reranker timeout, the spec MUST fall back to embed-only top-k_final, NOT block the request.</statement>
+      <rationale source="domain knowledge">Reranker failure shouldn't bring the product down.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

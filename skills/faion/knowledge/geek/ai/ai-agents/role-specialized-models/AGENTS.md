@@ -3,72 +3,88 @@ slug: role-specialized-models
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Assign different models to different cognitive ROLES, not different subtasks.
-content_id: "f95cb4f5c3c16e31"
-tags: [models, cost-optimization, multi-agent, claude, role-specialization]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 0a452e7d09a05280
+summary: Produces a model-routing spec assigning each agent role (planner/coder/critic/summarizer) to the best-fit model rather than using one frontier model for everything.
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [model-routing, cost-optimization, agent-roles, multi-agent]
 ---
-# Role-Specialized Models per Agent Step
+# Role-Specialized Models
 
 ## Summary
 
-**One-sentence:** Assign different models to different cognitive ROLES, not different subtasks.
+**One-sentence:** Produces a model-routing spec assigning each agent role (planner/coder/critic/summarizer) to the best-fit model rather than using one frontier model for everything.
 
-**One-paragraph:** Assign different models to different cognitive ROLES, not different subtasks. The empirical split that works in production: planning and review get the strongest model, execution and code-writing get the mid model, and classification, slot-filling, and formatting get the smallest model. In Claude Code subagents this maps to `model:` per agent definition; in LangGraph/CrewAI it maps to per-node LLM. The split is by cognitive demand, not by which step happens to be next in the pipeline.
+**One-paragraph:** Using opus for every agent role is wasteful; using haiku for every role is reckless. Role-specialised routing maps each role to its best-fit model (planner=opus, coder=sonnet, summarizer=haiku, etc.) based on the role's competence floor and cost profile. This methodology emits a spec.
+
+**Ефективно для:** team running multi-role agents whose monthly bill is dominated by opus calls on roles where sonnet would suffice.
 
 ## Applies If (ALL must hold)
 
-- Multi-step agents where steps have genuinely different cognitive demands (planning vs typing vs labelling).
-- Claude Code projects where you can pin `model:` per subagent (`planner: opus`, `implementer: sonnet`, `classifier: haiku`).
-- Pipelines with an explicit plan-execute-review loop — review is often the second-best place to spend the strong model.
-- Workloads where token cost is dominated by a long execution step that does not require frontier reasoning.
+- Multi-role agent with >= 3 distinct roles.
+- Cost optimization required.
+- Quality benchmarks exist per role.
 
 ## Skip If (ANY kills it)
 
-- Single-turn workloads where there is one cognitive role, one call.
-- Pipelines with heavy state hand-off where model swap loses too much signal — switching mid-conversation drops the cheaper model into a context the stronger model populated.
-- Cold starts and prototypes — pin everything to the strong model first, profile, then specialize roles where the data justifies it.
-- Chains of equally hard steps (every step is reasoning) — the split has no leverage; routing or cascade is a better fit.
+- Single-role agent.
+- Quality constraints make routing risky.
+- All roles are top-tier (e.g., reasoning-heavy).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `role-inventory.yaml` | list of {role, competence_floor, expected_call_volume} | operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-competence-floor; r2-no-frontier-default; r3-per-role-eval; r4-drift-recheck; r5-fallback-to-stronger. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/role-specialized-models-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-role-specialized-models.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.

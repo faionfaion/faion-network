@@ -3,72 +3,89 @@ slug: schema-version-pinning
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Every Pydantic model used as an SO `text_format` or tool `input_schema` carries a `schema_version: Literal["vN"] = "vN"` discriminator field, and each pipeline event/log persists it.
-content_id: "6fa16b1e8a28d935"
-tags: [pydantic, structured-output, schema, versioning, multi-stage]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: cdd7f91801f80cdb
+summary: Produces a schema-evolution spec pinning JSON-schema versions per agent + migration policy + breaking-change protocol so deployed agents survive schema drift.
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [schema-versioning, migration, deployment, json-schema, tool-use]
 ---
-# Versioned SO Contracts — schema_version Pin in Every Payload
+# Schema Version Pinning
 
 ## Summary
 
-**One-sentence:** Every Pydantic model used as an SO `text_format` or tool `input_schema` carries a `schema_version: Literal["vN"] = "vN"` discriminator field, and each pipeline event/log persists it.
+**One-sentence:** Produces a schema-evolution spec pinning JSON-schema versions per agent + migration policy + breaking-change protocol so deployed agents survive schema drift.
 
-**One-paragraph:** Every Pydantic model used as an SO `text_format` or tool `input_schema` carries a `schema_version: Literal["vN"] = "vN"` discriminator field, and each pipeline event/log persists it. When a schema changes you bump the version and keep the previous parser registered for at least one rollback window. Strict mode forces the model to emit the declared literal, so events are guaranteed-tagged at the source. Silent schema drift — the dominant failure mode in multi-stage agent pipelines — becomes a typed branch dispatcher: "v3" events route to the v3 parser, "v4" to v4, unknown versions raise loudly instead of corrupting downstream state.
+**One-paragraph:** Tool-use and structured-output schemas drift over time. Agents deployed against v1 schemas crash silently when v2 ships. This methodology emits a versioning spec: schemas carry semver, agents pin against minor versions, migration tools convert recorded calls forward.
+
+**Ефективно для:** team whose deployed agents start emitting validation errors after a routine schema 'cleanup'.
 
 ## Applies If (ALL must hold)
 
-- Multi-stage pipelines where output of stage N is input to stage N+1
-- Event-sourced agent systems with replay or backfill
-- Cross-team contracts where producer and consumer ship independently
-- Long-running batch jobs that span schema-change releases
-- Stored conversation logs you plan to re-process months later
+- Multiple agents share a tool-use schema.
+- Schema changes more than once per quarter.
+- Production deploys not redeployed in lockstep.
 
 ## Skip If (ANY kills it)
 
-- One-shot scripts and exploratory notebooks — overhead not justified
-- Single-process pipelines where producer and consumer always deploy together
-- Schemas with no breaking changes expected ever (rare; usually wrong)
+- Single-tenant agent, schema co-deployed.
+- Schema frozen indefinitely.
+- Prototype with no production runs.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `schemas/` | directory of versioned JSON schemas | repo |
+| `agent-deploys.yaml` | list of {agent, pinned_version} | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| none | Self-contained. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: r1-semver-in-schema; r2-pin-minor; r3-breaking-change-protocol; r4-recorded-call-migration; r5-version-in-tool-call. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | Worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_input` | haiku | Mechanical. |
+| `classify_drivers` | sonnet | Subjective tradeoffs. |
+| `audit_output` | opus | Cross-cutting subtleties. |
+| `emit_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/schema-version-pinning-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-schema-version-pinning.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- Sibling methodologies in `geek/ai/ai-agents/`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Walks the drivers and picks a rule id per leaf. Each conclusion cites a rule in 01-core-rules.xml so the spec records the audit chain.
