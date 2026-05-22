@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Reasoning-First Architectures — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by classifier-inferred task type and difficulty to {standard, Extended Thinking, o3, o4-mini, DeepSeek R1} with budget per node.</summary>
+
+  <decision-tree>
+    <root-question id="q-eval">Does eval_evidence show reasoning_lift &gt; agreed threshold on this task type?</root-question>
+    <branch when="eval_evidence_present == false or reasoning_lift &lt;= threshold">
+      <conclusion ref="r1-eval-before-spend" verdict="route=standard; do NOT adopt reasoning route without proven lift"/>
+    </branch>
+    <branch when="eval_evidence_present == true and reasoning_lift &gt; threshold">
+      <question id="q-classifier">Did classifier mark this request as 'hard'?</question>
+      <branch when="classifier_hard == false">
+        <conclusion ref="r3-classifier-first" verdict="route=standard model; cheap path"/>
+      </branch>
+      <branch when="classifier_hard == true">
+        <question id="q-type">Which task-type bucket?</question>
+        <branch when="task_type == 'format' or task_type == 'analysis'">
+          <conclusion ref="r2-task-type-budget" verdict="route=extended-thinking, budget=4096-8192"/>
+        </branch>
+        <branch when="task_type == 'planning'">
+          <conclusion ref="r2-task-type-budget" verdict="route=o3 OR extended-thinking, budget=8192-32768"/>
+        </branch>
+        <branch when="task_type == 'research'">
+          <conclusion ref="r2-task-type-budget" verdict="route=o3 OR extended-thinking, budget=32768-131072"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="planning + classifier=hard + eval_lift=0.18 → o3 with 32K budget">
+    <code lang="text"><![CDATA[
+eval_evidence_present=true, lift=0.18 → q-classifier → classifier_hard=true → q-type → task_type=planning → r2-task-type-budget verdict: o3 + budget 32768
+]]></code>
+  </example>
+</text>

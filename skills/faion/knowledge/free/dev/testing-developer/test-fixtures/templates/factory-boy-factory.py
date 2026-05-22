@@ -1,3 +1,8 @@
+# purpose: Factory Boy base + traits + sub-factories for test-fixtures methodology
+# consumes: factory-boy installed; Django models importable
+# produces: ready-to-use UserFactory and per-trait variants
+# depends-on: r5-factory-uniqueness-xdist (use UUID under xdist)
+# token-budget-impact: ~250 tokens
 """
 Factory Boy factories template.
 Adapt models, fields, and subfactories to your domain.
