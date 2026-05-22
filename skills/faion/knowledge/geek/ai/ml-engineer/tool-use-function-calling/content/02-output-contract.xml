@@ -1,22 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tool-use-function-calling Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Tool Use — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins `tools.yaml` manifest shape and per-call AuditEntry shape.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="version" format="semver"/>
+      <field name="tools" type="array" min="1"/>
+      <field name="tools[].name" type="string"/>
+      <field name="tools[].description" type="string" min_chars="20"/>
+      <field name="tools[].args_schema" type="object" required_keys="type,properties"/>
+      <field name="tools[].safety_class" type="enum" values="read-only|mutating|destructive"/>
+      <field name="tools[].rate_limit_per_minute" type="integer" min="1"/>
+      <field name="audit_sink" type="object" required_keys="kind,location"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">tools[].args_schema missing OR type != "object" (r1-typed-schema)</pattern>
+      <pattern id="f2">tools[].safety_class missing (r3-side-effect-class)</pattern>
+      <pattern id="f3">tools[].safety_class == "destructive" AND human_gate == false (r4-human-gate-irreversible)</pattern>
+      <pattern id="f4">audit_sink missing (r5-audit-every-call)</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Add new tool — minor bump if existing tools unchanged.</transformation>
+      <transformation>Tighten args_schema (regex, enum) — patch bump.</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/tools.schema.yaml"/>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="AuditEntry shape">
+    <code lang="json"><![CDATA[
+{
+  "timestamp": "2026-05-22T14:32:00Z",
+  "tool_name": "send_email",
+  "args": {"to": "...", "subject": "...", "body": "..."},
+  "caller": {"agent_id": "...", "user_id": "..."},
+  "validated": true,
+  "executed": true,
+  "result": {"message_id": "..."},
+  "error": null
+}
+]]></code>
   </section>
 </text>
