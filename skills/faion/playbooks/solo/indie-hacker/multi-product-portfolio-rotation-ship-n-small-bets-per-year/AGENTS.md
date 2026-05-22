@@ -3,7 +3,7 @@ slug: multi-product-portfolio-rotation-ship-n-small-bets-per-year
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 1.0.0
 status: draft

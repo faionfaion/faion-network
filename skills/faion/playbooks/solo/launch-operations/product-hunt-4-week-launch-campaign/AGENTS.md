@@ -3,7 +3,7 @@ slug: product-hunt-4-week-launch-campaign
 tier: solo
 group: launch-operations
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 0.1.0
 status: draft

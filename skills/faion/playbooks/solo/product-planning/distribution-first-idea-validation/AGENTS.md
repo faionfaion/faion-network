@@ -3,7 +3,7 @@ slug: distribution-first-idea-validation
 tier: solo
 group: product-planning
 persona: P2
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 0.1.0
 status: draft

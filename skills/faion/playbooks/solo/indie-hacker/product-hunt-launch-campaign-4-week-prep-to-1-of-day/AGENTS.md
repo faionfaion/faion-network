@@ -3,7 +3,7 @@ slug: product-hunt-launch-campaign-4-week-prep-to-1-of-day
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 1.0.0
 status: draft

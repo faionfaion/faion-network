@@ -3,7 +3,7 @@ slug: tweet-to-launch-sprint-idea-to-paying-user-in-3-weeks
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

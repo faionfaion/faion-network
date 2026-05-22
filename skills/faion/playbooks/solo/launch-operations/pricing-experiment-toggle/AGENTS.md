@@ -3,7 +3,7 @@ slug: pricing-experiment-toggle
 tier: solo
 group: launch-operations
 persona: P2
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: sunset-and-rebuild-from-failed-launch
 tier: solo
 group: product-planning
 persona: P2
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 0.1.0
 status: draft

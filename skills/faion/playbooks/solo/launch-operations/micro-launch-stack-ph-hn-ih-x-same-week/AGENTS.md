@@ -3,7 +3,7 @@ slug: micro-launch-stack-ph-hn-ih-x-same-week
 tier: solo
 group: launch-operations
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 0.1.0
 status: draft

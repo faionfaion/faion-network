@@ -3,7 +3,7 @@ slug: keyword-research-session-for-a-new-topic-deep-2-3-hrs
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

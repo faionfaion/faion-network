@@ -3,7 +3,7 @@ slug: monday-client-check-in-cycle-one-per-active-client
 tier: solo
 group: freelancer
 persona: P3
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

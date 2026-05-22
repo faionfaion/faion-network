@@ -3,7 +3,7 @@ slug: weekly-positioning-post-linkedin-twitter
 tier: solo
 group: freelancer
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 1.0.0
 status: draft

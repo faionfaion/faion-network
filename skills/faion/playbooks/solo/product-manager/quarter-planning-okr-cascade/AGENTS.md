@@ -3,7 +3,7 @@ slug: quarter-planning-okr-cascade
 tier: solo
 group: product-manager
 persona: role-pm
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 1.0.0
 status: draft

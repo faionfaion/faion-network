@@ -3,7 +3,7 @@ slug: scope-change-conversation-when-client-says-just-one-more-thing
 tier: solo
 group: freelancer
 persona: P3
-goal: TBD
+goal: govern-decide
 complexity: light
 version: 1.0.0
 status: draft

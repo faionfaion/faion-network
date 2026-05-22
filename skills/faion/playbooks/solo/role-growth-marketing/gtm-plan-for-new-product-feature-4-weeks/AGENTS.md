@@ -3,7 +3,7 @@ slug: gtm-plan-for-new-product-feature-4-weeks
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

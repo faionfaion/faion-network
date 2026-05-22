@@ -3,7 +3,7 @@ slug: pre-launch-hardening-mvp
 tier: solo
 group: launch-operations
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 0.1.0
 status: draft

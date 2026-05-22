@@ -3,7 +3,7 @@ slug: internal-link-audit-on-one-cluster-60-min
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

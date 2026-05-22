@@ -3,7 +3,7 @@ slug: build-in-public-audience-growth-0-to-5k-followers-over-6-months
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

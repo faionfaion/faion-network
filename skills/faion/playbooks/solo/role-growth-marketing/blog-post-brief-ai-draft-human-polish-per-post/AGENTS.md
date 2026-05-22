@@ -3,7 +3,7 @@ slug: blog-post-brief-ai-draft-human-polish-per-post
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 1.0.0
 status: draft

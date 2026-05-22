@@ -3,7 +3,7 @@ slug: lifecycle-email-send-post-send-analytics-per-send
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft
