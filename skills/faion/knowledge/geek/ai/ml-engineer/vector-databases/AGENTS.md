@@ -4,72 +4,98 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Vector databases solve approximate nearest neighbor (ANN) search at scale — finding semantically similar items without exact keyword matching.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "14759711afc1940a"
+summary: Picks a vector database (Qdrant, Weaviate, Milvus, pgvector, Pinecone, Chroma) by operational profile (managed vs self-host, scale, filtering, hybrid search) and ships the connection + collection spec.
+complexity: medium
+produces: spec
+est_tokens: 3600
 tags: [vector-databases, rag, semantic-search, embeddings, similarity-search]
 ---
+
 # Vector Databases
 
 ## Summary
 
-**One-sentence:** Vector databases solve approximate nearest neighbor (ANN) search at scale — finding semantically similar items without exact keyword matching.
+**One-sentence:** Selects a vector DB across Qdrant (self-host fast filtered), pgvector (Postgres exists), Pinecone (managed serverless), Weaviate (graphs + hybrid), Milvus (billions-scale), or Chroma (dev only) using a decision tree driven by scale + filtering + ops profile.
 
-**One-paragraph:** Vector databases solve approximate nearest neighbor (ANN) search at scale — finding semantically similar items without exact keyword matching. The choice of database, index type, and quantization strategy determines recall accuracy, query latency, memory usage, and operational complexity. Wrong choices are expensive to migrate later.
+**One-paragraph:** Vector DB choice spans operational complexity, cost, and capability. 2026 benchmarks: Qdrant p99 latency at 10M vectors ≈12ms, Weaviate ≈16ms, Milvus ≈18ms. Qdrant leads filtered search ("find similar AND in_stock AND under $50"); pgvector wins when Postgres already exists; Pinecone removes ops burden at managed cost; Milvus is the only one routinely deployed at 100M-1B vectors. Output: a `vector-db.yaml` declaring connection, collection schema, embedding dim, metric (cosine / dot / euclidean), hybrid-search wiring (vector + BM25 fused via RRF), and multi-tenant filter rule.
+
+**Ефективно для:**
+
+- Self-host RAG де треба filtering — Qdrant найшвидший на complex metadata filters.
+- Команд з Postgres — pgvector економить інфра без нового сервісу (до 2K dim, &lt;10M vectors).
+- Multi-tenant SaaS — Qdrant payload filter або Pinecone namespaces.
+- Billion-scale catalog — Milvus з disaggregated архітектурою.
 
 ## Applies If (ALL must hold)
 
-- Building a RAG pipeline that needs semantic similarity search
-- Storing and querying document embeddings at scale (10K+ documents)
-- Implementing multi-tenant knowledge bases with namespace isolation
-- Replacing keyword-only search with semantic or hybrid search
-- Benchmarking or migrating between vector DB providers
+- Need to do similarity search over embeddings at scale (corpus &gt; 1k vectors)
+- Filtering by metadata required OR semantic dedup OR hybrid search
+- Acceptable to maintain a vector store (self-host OR pay managed)
 
 ## Skip If (ANY kills it)
 
-- Dataset fits in memory and has fewer than ~1,000 documents — use in-process numpy similarity instead
-- Requirement is pure exact-match lookup — a relational DB or Redis suffices
-- The application already uses Elasticsearch with kNN and a rewrite is not justified
-- Prototyping a single-user tool with no persistence requirement — Chroma in-memory is enough
+- Corpus &lt;1k vectors — keep them in memory, search with numpy
+- Need full-text search only — use Elastic / Typesense / Postgres GIN, not vector DB
+- Embeddings will change daily — fix the embedding choice first
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `corpus-profile.yaml` | YAML | vector count, dim, metadata schema, growth rate |
+| `ops-constraints.yaml` | YAML | managed vs self-host, GPU access, Kubernetes vs VM |
+| `multi-tenant-plan.yaml` | YAML | tenant isolation strategy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `rag-pipeline-design` | DB picked as part of pipeline tier |
+| `vector-db-setup-dev` | Dev-mode setup |
+| `vector-db-setup-prod` | Prod-mode setup |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: pick by profile, pin embedding model, tenant filter required, hybrid as default, metric matches embedding | 1100 |
+| `content/02-output-contract.xml` | essential | vector-db.yaml schema | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: Chroma in prod, missing tenant filter, dim mismatch, wrong metric, no backup | 900 |
+| `content/04-procedure.xml` | essential | 5 steps: profile → pick → ingest plan → tenant policy → ship | 700 |
+| `content/05-examples.xml` | essential | Worked example: 10M-vector Qdrant on-prem with payload filter | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by scale + filtering + ops to a specific DB | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `db_selection_drafting` | sonnet | Trade-off analysis |
+| `corpus_profile_extraction` | haiku | Counting / sum / aggregation |
+| `vector_db_yaml_lint` | haiku | Schema check |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/qdrant-setup.py` | Qdrant collection create + ingest skeleton |
+| `templates/vector-db.schema.yaml` | Schema for vector-db.yaml |
+| `templates/_smoke-test.yaml` | Minimum-viable vector-db spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vector-databases.py` | Lint vector-db.yaml | Pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[rag-pipeline-design]] · [[vector-db-setup-dev]] · [[vector-db-setup-prod]] · [[vector-db-index-tuning]] · [[vector-db-monitoring]] · [[vector-db-security]]
+- external: [Qdrant docs](https://qdrant.tech/documentation/) · [pgvector](https://github.com/pgvector/pgvector) · [Pinecone](https://www.pinecone.io/learn/)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes by (a) Postgres-exists, (b) scale tier (1M/100M/1B), (c) managed-vs-self-host, (d) hybrid search need → {Qdrant, pgvector, Pinecone, Weaviate, Milvus, Chroma}.
