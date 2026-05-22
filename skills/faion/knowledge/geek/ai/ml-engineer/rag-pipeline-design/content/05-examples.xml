@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="RAG Pipeline Design — Worked Example" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Worked example: Advanced RAG over support KB with Qdrant + Cohere Rerank + Ragas eval gate.</summary>
+
+  <example title="Production rag-pipeline.yaml">
+    <code lang="yaml"><![CDATA[
+tier: advanced
+
+embedding:
+  model: voyage-3-large
+  dim: 1024
+  pin_version: "2026-04"
+
+vector_db:
+  kind: qdrant
+  connection:
+    host: qdrant.internal
+    port: 6333
+  collection: support-kb
+  multi_tenant: true
+  required_filter: tenant_id
+
+chunking:
+  strategy: recursive
+  size: 512
+  overlap: 50
+  document_overrides:
+    legal: { strategy: paragraph, size: 400 }
+    code-docs: { strategy: header-based, size: 512 }
+
+retrieval:
+  mode: hybrid
+  top_k_first_stage: 20
+  fusion: rrf
+  weights:
+    vector: 0.65
+    bm25: 0.35
+
+reranker:
+  kind: cohere
+  model: rerank-multilingual-v3.0
+  top_n: 5
+
+prompt:
+  citation_required: true
+  fallback_phrase: "I don't have enough information to answer this with confidence."
+
+eval_gate:
+  framework: ragas
+  labelled_set_path: evals/support-kb-100.jsonl
+  thresholds:
+    faithfulness: ">= 0.90"
+    context_recall: ">= 0.85"
+    answer_relevance: ">= 0.80"
+
+telemetry:
+  log_query_embedding: true
+  log_retrieved_ids: true
+  log_scores: true
+  emit_to: drift-alerts
+]]></code>
+    <note>Advanced tier (r1), hybrid retrieval (r2), 512 / 50 chunks with document overrides (r3), Cohere Reranker (r4), citation enforcement (r5), Ragas gate (r6).</note>
+  </example>
+
+  <example title="Anti-example caught by the schema validator">
+    <code lang="yaml"><![CDATA[
+tier: agentic           # over-tier for FAQ; r1 violation flagged at review
+retrieval: { mode: vector }   # r2 violation: no BM25
+# reranker missing       # r4 violation
+prompt: { citation_required: false }  # r5 violation
+# eval_gate missing       # r6 violation
+]]></code>
+    <note>Validator returns 5 violations referencing r1, r2, r4, r5, r6 — every rule shows up as a concrete schema rejection.</note>
+  </example>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

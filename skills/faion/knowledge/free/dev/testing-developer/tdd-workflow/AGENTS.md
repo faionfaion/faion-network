@@ -3,73 +3,98 @@ slug: tdd-workflow
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Covers the Red-Green-Refactor loop adapted for LLM-assisted development, why tests-as-spec reduce total tokens, PostToolUse hooks that enforce the RED step, per-behavior TDD cycle scripting, and the conditions under which TDD costs more than it saves (exploratory spikes, UI prototypes).
-content_id: "27ccc09764ef490f"
-tags: [tdd, testing, red-green-refactor, llm-assisted, workflow]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 23cd714332925577
+summary: Produces a TDD-workflow config (per-behavior RED-GREEN-REFACTOR cycle, PostToolUse hook, CLAUDE.md snippet) for LLM-assisted development.
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
+tags: [tdd, red-green-refactor, llm-assisted, pytest, posttool-hook]
 ---
 # TDD Workflow
 
 ## Summary
 
-**One-sentence:** Covers the Red-Green-Refactor loop adapted for LLM-assisted development, why tests-as-spec reduce total tokens, PostToolUse hooks that enforce the RED step, per-behavior TDD cycle scripting, and the conditions under which TDD costs more than it saves (exploratory spikes, UI prototypes).
+**One-sentence:** Produces a TDD-workflow config (per-behavior RED-GREEN-REFACTOR cycle, PostToolUse hook, CLAUDE.md snippet) for LLM-assisted development.
 
-**One-paragraph:** Covers the Red-Green-Refactor loop adapted for LLM-assisted development, why tests-as-spec reduce total tokens, PostToolUse hooks that enforce the RED step, per-behavior TDD cycle scripting, and the conditions under which TDD costs more than it saves (exploratory spikes, UI prototypes).
+**One-paragraph:** LLMs naturally skip the RED step — they write implementation and tests together, producing tests that prove the implementation rather than specify behavior. This methodology emits a per-behavior loop script, a PostToolUse hook that auto-runs pytest after a file write, and a CLAUDE.md snippet that pins the discipline. Result: failing test first, minimal implementation second, refactor third — verifiable in CI.
+
+**Ефективно для:** solopreneur using Claude Code who keeps catching themselves letting the model write tests after the implementation lands.
 
 ## Applies If (ALL must hold)
 
-- Starting a new feature or module where behavior is well-defined
-- Writing business logic where correctness is critical
-- Enforcing RED step discipline when an agent tends to skip it
-- Setting up CLAUDE.md PostToolUse hooks for TDD enforcement
-- Explaining TDD workflow to an agent working on Python/JS/Go code
+- Starting a new feature or module where behavior is well-defined.
+- Writing business logic where correctness is critical.
+- Enforcing RED-step discipline when an agent tends to skip it.
+- Setting up PostToolUse hooks for TDD enforcement.
 
 ## Skip If (ANY kills it)
 
-- Exploratory spikes or prototypes where spec is unknown
-- UI/layout work where visual feedback drives design
-- Performance optimization (benchmark-driven, not test-driven)
-- Rapid throwaway scripts
+- Exploratory spikes or prototypes where spec is unknown.
+- UI/layout work — visual feedback drives design.
+- Performance optimization — benchmark-driven, not test-driven.
+- Throwaway scripts with no production use.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `behavior-list.yaml` | list of {behavior, signature, happy_path, edge_cases} | operator |
+| `test_command` | string (e.g., `pytest tests/test_x.py -x`) | repo |
+| `claude_md_path` | path | repo |
+| `settings_json_path` | path (Claude Code settings.json) | user config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[testing-pytest]] | RED-GREEN cycle assumes pytest semantics. |
+| [[code-review-basics]] | Refactor step uses review heuristics. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 testable rules: RED before GREEN, one behavior per cycle, minimal GREEN, no behavior change in REFACTOR, commit test+impl together, no TDD on UI/spike. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the tdd-workflow-config artefact. | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: write tests after, batch behaviors, generalize too early, add behavior in REFACTOR, skip the failing-run step. | ~800 |
+| `content/04-procedure.xml` | recommended | 7-step per-behavior loop (write RED → run RED → write GREEN → run all → refactor → run all → commit). | ~700 |
+| `content/05-examples.xml` | recommended | One worked behavior end-to-end + sample CLAUDE.md snippet + PostToolUse hook JSON. | ~700 |
+| `content/06-decision-tree.xml` | essential | Picks TDD vs spike-first vs benchmark-driven based on behavior_known + visual_feedback_drives. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_behavior_list` | haiku | Mechanical YAML→typed list. |
+| `prioritize_behaviors` | sonnet | Sequencing happy path vs edge cases. |
+| `audit_for_red_skip` | opus | Detecting silent test-after-implementation in agent transcripts. |
+| `emit_workflow_config` | sonnet | Mechanical JSON emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/tdd-cycle.sh` | Shell script: run failing test → implement → run passing test → prompt refactor. |
+| `templates/claude-md-snippet.md` | TDD-discipline reminder block to append to CLAUDE.md. |
+| `templates/posttool-hook.json` | Settings.json fragment that runs pytest after Write/Edit on test_*.py. |
+| `templates/_smoke-test.yaml` | Minimum behavior list (one happy path). |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-tdd-workflow.py` | Validates emitted config against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `free/dev/testing-developer/`
+- [[testing-pytest]]
+- [[unit-testing]]
+- [[code-review-basics]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on `behavior_known` (no → spike-first, then tests; yes → continue), then on `visual_feedback_drives` (yes → screenshot-driven, defer TDD; no → continue), then on `performance_dominant` (yes → benchmark-driven; no → strict RED-GREEN). Each leaf cites a rule id.
