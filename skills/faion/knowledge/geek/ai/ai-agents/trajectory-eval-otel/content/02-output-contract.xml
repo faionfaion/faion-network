@@ -1,22 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trajectory-eval-otel Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trajectory Eval Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the per-run eval report produced from OTel trace spans. Three normalized axes + raw counts + regression deltas vs baseline.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Eval-report schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/trajectory-eval-report.json",
+  "type": "object",
+  "required": ["run_id", "task_id", "scores", "raw", "verdict"],
+  "properties": {
+    "run_id":  {"type": "string"},
+    "task_id": {"type": "string"},
+    "scores": {
+      "type": "object",
+      "required": ["outcome", "trajectory", "resources"],
+      "properties": {
+        "outcome":    {"type": "number", "minimum": 0, "maximum": 1},
+        "trajectory": {"type": "number", "minimum": 0, "maximum": 1},
+        "resources":  {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "raw": {
+      "type": "object",
+      "required": ["total_tokens", "total_cost_usd", "total_steps", "total_latency_ms"],
+      "properties": {
+        "total_tokens":     {"type": "integer", "minimum": 0},
+        "total_cost_usd":   {"type": "number", "minimum": 0},
+        "total_steps":      {"type": "integer", "minimum": 0},
+        "total_latency_ms": {"type": "integer", "minimum": 0},
+        "cache_hit_rate":   {"type": "number", "minimum": 0, "maximum": 1},
+        "subagent_depth":   {"type": "integer", "minimum": 0}
+      }
+    },
+    "verdict": {"enum": ["pass", "regress-outcome", "regress-trajectory", "regress-resources"]},
+    "delta_vs_baseline": {
+      "type": "object",
+      "additionalProperties": {"type": "number"}
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "run_id": "run-2026-05-22-001",
+  "task_id": "swe-bench-22",
+  "scores": {"outcome": 1.0, "trajectory": 0.78, "resources": 0.85},
+  "raw": {"total_tokens": 8200, "total_cost_usd": 0.041, "total_steps": 4, "total_latency_ms": 12000, "cache_hit_rate": 0.62, "subagent_depth": 1},
+  "verdict": "pass"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "scores": {"outcome": 1.0}
+}
+]]></code>
+    <note>Missing run_id, task_id, raw, verdict; scores missing trajectory + resources.</note>
+  </example>
+
+  <reference path="templates/eval-rubric.py">Pydantic eval-rubric model</reference>
+  <reference path="templates/python-instrument-anthropic.py">OTel-instrumented Anthropic call</reference>
+  <reference path="scripts/validate-trajectory-eval-otel.py">Validator script</reference>
 </text>

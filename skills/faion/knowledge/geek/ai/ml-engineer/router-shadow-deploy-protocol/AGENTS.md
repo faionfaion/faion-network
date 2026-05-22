@@ -66,9 +66,12 @@ tags: [llm-routing, shadow-deploy, model-cascade, gateway, promotion-gate]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: zero user impact, scoring delta gate, cost guardrail, schema parity 100%, sustained-window minimum | ~1000 |
-| `content/02-output-contract.xml` | essential | shadow-report.yaml schema, promotion-decision artefact, rollback runbook reference | ~800 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes: silent cost blow-up, judge drift, schema sneak-change, traffic leak to users, premature promotion, etc. | ~1100 |
+| `content/01-core-rules.xml` | essential | 5 rules: zero user impact, scoring delta gate, cost guardrail, schema parity 100%, sustained window | 1000 |
+| `content/02-output-contract.xml` | essential | shadow-report.yaml schema, promotion-decision artefact, rollback runbook reference | 800 |
+| `content/03-failure-modes.xml` | essential | 7 failure modes: silent cost blow-up, judge drift, schema sneak-change, traffic leak, premature promotion | 1100 |
+| `content/04-procedure.xml` | essential | 6 steps: wire mirror → judge calibration → run shadow → review report → gradual rollout → cut-over | 800 |
+| `content/05-examples.xml` | essential | Worked example: cheap-router shadow caught cost-spike anti-pattern | 700 |
+| `content/06-decision-tree.xml` | essential | Promotion gate decision: ALL 3 gates green → promote; any red → fix or kill | 400 |
 
 ## Task Routing
 
