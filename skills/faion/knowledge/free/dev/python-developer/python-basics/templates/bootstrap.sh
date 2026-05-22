@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Bootstrap a new Python project from this methodology
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # bootstrap.sh — One-shot Python 3.12+ project bootstrap using uv
 # Usage: bash bootstrap.sh <project-name>
 # Requires: uv installed (curl -LsSf https://astral.sh/uv/install.sh | sh)

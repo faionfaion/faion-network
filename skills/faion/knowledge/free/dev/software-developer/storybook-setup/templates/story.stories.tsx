@@ -1,3 +1,10 @@
+/*
+ * purpose: CSF3 story skeleton with autodocs + args + variants
+ * consumes: content/01-core-rules.xml
+ * produces: config
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: small
+ */
 // Replace Component and ComponentProps with actual names.
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from '@storybook/test';

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Run mypy on changed files only
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # typecheck-touched.sh — Strict mypy on files changed vs main branch.
 # Use as pre-push hook: runs only on files touched in the current branch.
 # Requires: mypy + django-stubs installed in venv (uv run)

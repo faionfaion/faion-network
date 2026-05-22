@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Unit lane pytest invocation with strict markers + coverage
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # pytest-runner.sh — fast feedback loop for unit tests.
 # Usage: pytest-runner.sh [test-scope]
 # Runs only tests not marked integration/e2e/slow, deduplicates with no cache,

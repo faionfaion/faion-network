@@ -1,3 +1,8 @@
+# purpose: Async FastAPI route test skeleton (httpx + ASGITransport)
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 """
 Async route test skeleton using httpx.AsyncClient + ASGITransport.
 Tests routes in-process without a running server.

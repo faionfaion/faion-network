@@ -1,3 +1,10 @@
+/*
+ * purpose: Component built with class-variance-authority variants
+ * consumes: content/01-core-rules.xml
+ * produces: config
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: small
+ */
 // components/Button.tsx — CVA-based variant component pattern
 // Install: npm install class-variance-authority
 import { cva, type VariantProps } from "class-variance-authority"

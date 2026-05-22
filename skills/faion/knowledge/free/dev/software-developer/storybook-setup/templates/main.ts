@@ -1,3 +1,10 @@
+/*
+ * purpose: Storybook main config (stories glob + addons + framework)
+ * consumes: content/01-core-rules.xml
+ * produces: config
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: small
+ */
 import type { StorybookConfig } from '@storybook/react-vite';
 
 const config: StorybookConfig = {

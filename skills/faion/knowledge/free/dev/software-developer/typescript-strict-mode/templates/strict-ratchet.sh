@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Detect ratcheting of TS strict-mode flags
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # strict-ratchet.sh — fail CI if strict error count increases vs stored baseline.
 # Wire as a required CI check on PRs.
 # Commit .strict-baseline decreases as a sign of progress.

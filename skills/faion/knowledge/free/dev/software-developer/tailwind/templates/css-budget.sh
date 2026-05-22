@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Check generated CSS bundle stays within budget
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # css-budget.sh — fail CI if prod CSS exceeds gzipped budget.
 # Usage: css-budget.sh DIST_DIR MAX_KB
 # Wire after pnpm build in CI.

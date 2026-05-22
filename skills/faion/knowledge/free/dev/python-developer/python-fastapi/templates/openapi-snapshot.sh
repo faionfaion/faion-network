@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Generate and diff openapi.json against committed snapshot
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # openapi-snapshot.sh — diff served openapi.json against committed snapshot.
 # Fails (exit 1) if schema changed, moves new version into place for review.
 # Usage: bash scripts/openapi-snapshot.sh

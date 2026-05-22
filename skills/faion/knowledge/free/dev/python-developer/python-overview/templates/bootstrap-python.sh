@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Bootstrap routing decision for a new Python project
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # bootstrap-python.sh — create a modern Python project with uv + ruff + mypy + pytest.
 # Usage: bash scripts/bootstrap-python.sh <project-name>
 set -euo pipefail

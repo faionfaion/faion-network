@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Bootstrap a new Python project from this methodology
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # bootstrap.sh — One-shot modern Python project bootstrap (uv + ruff + mypy + pytest)
 # Usage: bash bootstrap.sh <project-name> [python-version]
 # Default Python version: 3.12

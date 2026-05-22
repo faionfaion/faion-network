@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: TDD cycle runner: ensure RED before GREEN
+# consumes: content/01-core-rules.xml
+# produces: config
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: small
 # tdd.sh — single-behavior RED-GREEN-REFACTOR loop driver.
 # Usage: ./tdd.sh path/to/test_file.py::test_name
 # For agents: replace read prompts with explicit subagent invocations.
