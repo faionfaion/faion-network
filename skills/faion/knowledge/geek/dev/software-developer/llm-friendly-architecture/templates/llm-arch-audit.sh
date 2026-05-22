@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Find files violating LLM-friendly architecture limits (size, depth, naming).
+# consumes: A source directory path + optional line-limit override (default 300).
+# produces: Plain-text report on stdout listing each violating file with the violated rule.
+# depends-on: Standard POSIX shell utilities (find, awk, wc).
+# token-budget-impact: zero — local shell run, no LLM calls.
 # llm-arch-audit.sh — Find files violating LLM-friendly architecture limits.
 # Usage: bash llm-arch-audit.sh [src-dir] [line-limit]
 # Input:  source directory (default: src), line limit (default: 250)

@@ -80,6 +80,8 @@ tags: [ai-coding, claude-code, cursor, copilot, code-review, dev, geek]
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
 | `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
+| `templates/gen-tests.sh` | Call Claude Code in `--print` mode to generate pytest test stubs. |
+| `templates/prompt-code.txt` | Structured code-generation prompt template (context/task/requirements/output). |
 
 ## Scripts
 

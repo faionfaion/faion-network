@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Call Claude Code in --print mode to generate pytest test stubs for a source file.
+# consumes: A source file path + repo CLAUDE.md context.
+# produces: A pytest test file at tests/test_<source>.py.
+# depends-on: claude CLI on PATH.
+# token-budget-impact: ~600 tokens per invocation (Claude Code prompt + reply).
 # gen-tests.sh — Generate pytest test stubs using Claude Code.
 # Usage: bash gen-tests.sh <source_file>
 # Input:  Python source file path

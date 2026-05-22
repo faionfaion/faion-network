@@ -1,3 +1,10 @@
+<!--
+purpose: Standard CLAUDE.md skeleton for a typical product repo.
+consumes: Repo facts: commands, conventions, dependencies, owners.
+produces: A project CLAUDE.md committed at the repo root.
+depends-on: templates/extract-commands.sh for the commands section.
+token-budget-impact: ~500 tokens when fully filled.
+-->
 # [Project Name]
 
 One paragraph: what this project does, its purpose, tech stack at a glance.

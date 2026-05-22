@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Chunking Code AST — Procedure" version="1.0.0" est_tokens="800" depth="deep">
+  <summary>6-step procedure: detect lang → parse → walk nodes → emit records → dedup → log warnings.</summary>
+
+  <section title="Step 1 — Detect language">
+    <p>Map file extension to {python, javascript, typescript, generic}. Optionally cross-check with a shebang line. Unknown extensions go to `generic`.</p>
+  </section>
+
+  <section title="Step 2 — Parse">
+    <p>Python: `tree = ast.parse(code)` — catch SyntaxError. JS/TS: tree-sitter parse. On parse failure, set strategy=generic, fallback=true, log warning.</p>
+  </section>
+
+  <section title="Step 3 — Walk definition nodes">
+    <p>Python: walk FunctionDef, AsyncFunctionDef, ClassDef. Record name, lineno, end_lineno, docstring via `ast.get_docstring`. JS/TS: walk function_declaration, class_declaration, arrow_function nodes from tree-sitter.</p>
+  </section>
+
+  <section title="Step 4 — Emit records">
+    <p>For each node, build the chunk record matching content/02-output-contract.xml. id = md5(source + start_line + strategy@version). Set type from the node kind.</p>
+  </section>
+
+  <section title="Step 5 — Dedup by (name, start_line)">
+    <p>If a class chunk fully contains its method chunks, choose policy A (drop class chunk, keep methods) or policy B (keep both with `parent_class` link). Apply r3-dedup-overlapping consistently across the pipeline.</p>
+  </section>
+
+  <section title="Step 6 — Log warnings + flag for re-ingest">
+    <p>Any fallback path MUST emit `{file, language, reason}` to the run log. The post-ingest report counts fallback files and surfaces them for manual fix.</p>
+  </section>
+</text>

@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="video-generation-production-service Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for video-generation-production-service. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Video Gen Service — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five rules: persistent queue, per-tenant quota, ffmpeg post-processing declared, cost cap enforced pre-submit, idempotent by design.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-persistent-queue" testable="true" depth="essential">
+      <statement>Queue MUST persist across restarts (Redis Streams, SQS, RabbitMQ). In-memory queue is forbidden in production.</statement>
+      <rationale source="queue durability lessons">In-memory queue loses jobs on pod crash; tenants double-pay for re-submitted jobs.</rationale>
     </rule>
+
+    <rule id="r2-per-tenant-quota" testable="true" depth="essential">
+      <statement>Service MUST enforce per-tenant monthly quota (jobs / cost). Submits exceeding quota MUST be rejected with 429.</statement>
+      <rationale source="multi-tenant noisy-neighbour reports">Without quota, one tenant can drain provider quota for everyone. Quota is the tenant-isolation primitive.</rationale>
+    </rule>
+
+    <rule id="r3-ffmpeg-post-processing-declared" testable="true" depth="essential">
+      <statement>Post-processing (concat / overlay / transcode) MUST be declared in the job spec, not improvised in worker code. The pipeline produces a typed `PostProcessing` block.</statement>
+      <rationale source="reproducibility discipline">Hard-coded ffmpeg in workers makes post-processing untestable. Declarative spec lets QA reproduce.</rationale>
+    </rule>
+
+    <rule id="r4-cost-cap-pre-submit" testable="true" depth="essential">
+      <statement>Submit MUST check global monthly cost cap BEFORE accepting. If projected cost (current + this job) &gt; cap × 0.95, reject with 402 + alert.</statement>
+      <rationale source="cost-overrun post-mortems">Reactive cost cap (after submit) is too late; provider already charged. Pre-submit check is the only safe guard.</rationale>
+    </rule>
+
+    <rule id="r5-idempotent-by-design" testable="true" depth="essential">
+      <statement>Submit endpoint MUST accept Idempotency-Key header from caller. Identical key within 24h returns the SAME job_id without re-billing.</statement>
+      <rationale source="async-api r1 + caller retry patterns">Even with provider idempotency, callers may retry the service-level submit. Service-level dedup avoids re-queue.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

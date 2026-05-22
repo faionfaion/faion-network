@@ -1,3 +1,10 @@
+<!--
+purpose: CLAUDE.md skeleton tuned for LLM-friendly architecture rules.
+consumes: Repo facts: commands, file conventions, owners.
+produces: A project CLAUDE.md committed at the repo root.
+depends-on: templates/llm-arch-audit.sh for the audit-output section.
+token-budget-impact: ~400 tokens when fully filled.
+-->
 # [Project Name]
 
 ## Commands

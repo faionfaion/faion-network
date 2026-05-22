@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Audit a source tree for LLM-friendly architecture compliance (file size, depth, naming).
+# consumes: A source directory path + an optional line-limit override (default 300).
+# produces: A JSON report listing each violating file with the violated rule.
+# depends-on: Standard POSIX shell utilities (find, awk, wc).
+# token-budget-impact: zero — local shell run, no LLM calls.
 # llm-arch-audit.sh — Audit source files for LLM-friendly architecture compliance.
 # Usage: bash llm-arch-audit.sh [src-dir] [line-limit]
 # Input:  source directory (default: src), line limit (default: 250)

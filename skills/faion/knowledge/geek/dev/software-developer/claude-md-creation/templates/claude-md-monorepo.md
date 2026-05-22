@@ -1,3 +1,10 @@
+<!--
+purpose: Monorepo CLAUDE.md skeleton — root brief + per-app addenda.
+consumes: Workspace layout + per-app commands + ownership map.
+produces: Root CLAUDE.md plus per-app CLAUDE.md children.
+depends-on: templates/extract-commands.sh per workspace.
+token-budget-impact: ~700 tokens when fully filled across the root brief.
+-->
 # [Monorepo Name]
 
 Monorepo containing [N] apps. See per-app files for app-specific instructions.
