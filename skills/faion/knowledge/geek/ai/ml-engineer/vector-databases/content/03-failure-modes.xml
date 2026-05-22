@@ -1,17 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="vector-databases Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for vector-databases as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Vector Databases — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five high-impact antipatterns when choosing or operating a vector DB.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using a different embedding model at query time than at ingestion time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Embedding model mismatch makes similarity scores meaningless. The distances computed between incompatible embedding spaces have no semantic interpretation. Store the model name as collection metadata and validate on startup.</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Chroma in production multi-process — file lock contention, data corruption, weird intermittent failures.</description>
+      <detector>kind=="chroma" AND serve_mode=="multi-process" OR running under gunicorn/uvicorn workers &gt;1</detector>
+      <repair>Migrate to Qdrant or pgvector. Chroma is dev/notebook only.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Querying a Qdrant or Weaviate collection immediately after a large bulk upsert.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both databases optimize indexes asynchronously. Queries immediately after a large upsert may hit partially-indexed data and return degraded recall. Add a ready-check before querying post-upsert.</repair>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Missing tenant filter — query without tenant_id returns docs from all tenants; data leak invisible in logs.</description>
+      <detector>retrieve() signature does not require tenant_id; production logs show queries without tenant filter</detector>
+      <repair>Make tenant_id a required parameter at the function signature. Add a canary test: tenant A query MUST NOT return any tenant B doc id.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Embedding dim mismatch — switched models, collection still has old dim; ingest fails OR new vectors mis-stored.</description>
+      <detector>collection.dim differs from new model output dim</detector>
+      <repair>Create new collection with correct dim; re-ingest; cut traffic over; drop old collection. Treat as major schema change.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Wrong distance metric — euclidean on OpenAI cosine embeddings; ranking is silently wrong.</description>
+      <detector>collection.metric != known-good metric for embedding_model</detector>
+      <repair>Recreate collection with correct metric. Document in vector-db.yaml mapping.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>No backup / snapshot policy — DB corruption requires full re-embed from source ($$, time).</description>
+      <detector>no scheduled snapshot job; backup_retention_days==0</detector>
+      <repair>Schedule daily Qdrant snapshot OR pg_dump for pgvector. Verify restore in staging quarterly.</repair>
+    </failure-mode>
+
   </section>
 </text>
