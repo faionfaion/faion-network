@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="previous_response_id Worked Example" version="2.0.0" est_tokens="600" depth="recommended">
+  <summary>Canonical multi-turn loop using previous_response_id with session-store + 404 fallback.</summary>
+  <example type="good">
+    <code lang="python"><![CDATA[
+import openai
+from typing import Optional
+
+client = openai.OpenAI()
+
+def turn(user_id: str, conv_id: str, prompt: str, store) -> dict:
+    prev_id: Optional[str] = store.get((user_id, conv_id))
+    try:
+        resp = client.responses.create(
+            model="o3",
+            input=prompt,
+            previous_response_id=prev_id,  # r1
+        )
+    except openai.NotFoundError:  # r3
+        resp = client.responses.create(model="o3", input=prompt)
+    store.set((user_id, conv_id), resp.id, ttl=24 * 3600)  # r2, r4
+    log({"user_id": user_id, "conv_id": conv_id, "prev": prev_id, "new": resp.id})  # r5
+    return resp
+]]></code>
+  </example>
+  <example type="bad">
+    <note>Bad — drops id between turns; reasoning rederived every turn (r1 violation).</note>
+    <code lang="python"><![CDATA[
+client.responses.create(model="o3", input=prompt)  # no previous_response_id
+]]></code>
+  </example>
+</text>

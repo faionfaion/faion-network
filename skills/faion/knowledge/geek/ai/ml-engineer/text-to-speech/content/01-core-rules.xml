@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="text-to-speech Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for text-to-speech. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Text-to-Speech — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: latency-bucket provider pick, voice cloning consent, cache-by-text-hash, streaming for real-time UX, mandatory fallback provider.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-latency-bucket-pick" testable="true" depth="essential">
+      <statement>Provider MUST be picked by use-case latency bucket: real-time (≤300ms TTFB) → Deepgram Aura / ElevenLabs Turbo; near-real-time (300-800ms) → OpenAI tts-1 / Google Chirp; batch → Coqui local or ElevenLabs multilingual.</statement>
+      <rationale source="provider TTFB benchmarks 2026">Latency varies 4× between providers. Picking by latency bucket prevents shipping tts-1 into a real-time agent that needs ≤300ms.</rationale>
     </rule>
+
+    <rule id="r2-voice-cloning-consent" testable="true" depth="essential">
+      <statement>Voice cloning (custom voice trained on a specific person) MUST have a signed consent record per voice. The TTS call MUST refuse a clone voice ID lacking consent_recorded=true in the catalog.</statement>
+      <rationale source="ethics + IP risk; EU AI Act provisions">Cloning a real person's voice without consent is fraud / impersonation in many jurisdictions and a EU AI Act high-risk obligation. Enforce at config layer; do not rely on operator memory.</rationale>
+    </rule>
+
+    <rule id="r3-cache-by-text-hash" testable="true" depth="essential">
+      <statement>Production TTS MUST cache audio output keyed by sha256(text + voice_id + model + version). Cache TTL ≥ 7 days. Skipping cache wastes 40-70% of inference cost.</statement>
+      <rationale source="cache-hit-rate measurements from voice-agent deployments">Identical phrases recur ("How can I help you?", "Please hold"). Hash-by-text cache nets 40-70% hit rate in real traffic.</rationale>
+    </rule>
+
+    <rule id="r4-streaming-for-real-time" testable="true" depth="essential">
+      <statement>Real-time use cases (voice agents, IVR) MUST use streaming TTS (provider returns audio chunks as it generates). Buffering full audio before play is forbidden for real-time.</statement>
+      <rationale source="UX perceived-latency studies">Buffering full audio adds the full synthesis duration to perceived latency. Streaming reduces TTFB to ≈200ms regardless of total length.</rationale>
+    </rule>
+
+    <rule id="r5-fallback-mandatory" testable="true" depth="essential">
+      <statement>Production deployment MUST declare a fallback provider != primary. Primary outage triggers fallback within 1s.</statement>
+      <rationale source="ElevenLabs / OpenAI incident reports 2025-2026">TTS providers have outages. Hard-coded single provider takes voice features down for the duration. Fallback to a different provider OR local Coqui keeps voice flow alive.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

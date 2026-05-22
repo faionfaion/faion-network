@@ -26,4 +26,5 @@ class Skeleton:
 
 if __name__ == "__main__":
     import json
-    print(json.dumps(Skeleton().render(), indent=2))
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
