@@ -3,77 +3,97 @@ slug: c4-drift-detection-from-iac
 tier: geek
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: C4 Drift Detection From Iac: codified engineering practice that turns the recurring 'role-software-architect/Living architecture diagram refresh' decision into a repeatable, auditable artefact.
-content_id: "d7f7dae8ee37c4b5"
-tags: [c4-drift-detection-from-iac, dev, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a drift report comparing the canonical C4 diagram against the live Terraform/Pulumi/CloudFormation state — new components, removed components, edge changes — so the living architecture diagram stays trustable.
+content_id: "22f4a5a0ff53f6b8"
+complexity: medium
+produces: report
+est_tokens: 3500
+tags: [c4, drift-detection, iac, terraform, architecture, dev, geek]
 ---
-# C4 Drift Detection From Iac
+# C4 Drift Detection From IaC
 
 ## Summary
 
-**One-sentence:** C4 Drift Detection From Iac: codified engineering practice that turns the recurring 'role-software-architect/Living architecture diagram refresh' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a drift report comparing the canonical C4 diagram against the live Terraform/Pulumi/CloudFormation state — new components, removed components, edge changes — so the living architecture diagram stays trustable.
 
-**One-paragraph:** C4 Drift Detection From Iac addresses the gap identified by the role-software-architect/Living architecture diagram refresh playbook: C4 model methodology exists at solo tier but doesn't address how to diff diagram against IaC + service registry — the core problem of 'diagram lies'. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Produces a drift report comparing the canonical C4 diagram against the live Terraform/Pulumi/CloudFormation state — new components, removed components, edge changes — so the living architecture diagram stays trustable. The methodology pins shape + owner + evidence + outcome review so the artefact becomes a reviewable operating tool rather than folklore. Inputs are validated against a JSON schema; outputs are gated by the `## Decision tree` so the agent skips the methodology when preconditions don't hold.
+
+**Ефективно для:** software architects keeping a living C4 diagram who need a scheduled, evidence-backed drift report rather than slack-screenshot updates whenever someone happens to remember.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-architect/Living architecture diagram refresh OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
+- The owner is a named person (role:handle), not a team alias or channel.
+- The required input artefacts in `## Prerequisites` are available and machine-readable.
+- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
+- No named owner — refuse to produce; assign first.
+- Inputs are missing or non-deterministic; fix the upstream observability before applying.
+- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
 
 ## Prerequisites
 
-- recent context for the role-software-architect/Living architecture diagram refresh task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Trigger record | text / ticket link | upstream alerting / planning queue |
+| Owner identity | `role:handle` string | RACI / org directory |
+| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
+| Prior artefact (if exists) | JSON matching the output contract | repo `.product/c4-drift-detection-from-iac/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| `[[code-review]]` | Peer methodology that reviews the artefact before merge. |
+| `[[incident-decision-template]]` | Peer methodology for incident-time decisions referenced by this artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| Parse inputs + check preconditions | haiku | Mechanical schema parse. |
+| Author the artefact body | sonnet | Bounded synthesis from typed inputs. |
+| Review for compliance + cross-cutting impact | opus | Cross-input judgement when stakes are high. |
+| Outcome-review synthesis at cadence | opus | Did the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/c4-drift-detection-from-iac.json` | JSON schema for the C4 Drift Detection From Iac output contract |
-| `templates/c4-drift-detection-from-iac.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
+| `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-c4-drift-detection-from-iac.py` | Enforce C4 Drift Detection From Iac output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-c4-drift-detection-from-iac.py` | Validate an artefact JSON against the output-contract schema + cross-field rules. | Pre-merge of the artefact PR + weekly staleness scan. |
 
 ## Related
 
-- parent skill: `geek/dev/`
-- upstream playbook: `role-software-architect/Living architecture diagram refresh`
+- [[code-review]] — gates the artefact before merge.
+- [[incident-decision-template]] — sibling 2-minute decision record.
+- [[regression-test-first-bugfix-workflow]] — sibling workflow that pins red-test-first discipline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.

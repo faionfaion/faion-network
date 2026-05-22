@@ -3,68 +3,97 @@ slug: healthtech-fhir-ba-pack
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: FHIR resources (Patient, Encounter, Observation, Condition), HIPAA/GDPR overlap, IRB/consent flows, audit-trail requirements — the HealthTech vertical pack the corpus lacks.
-content_id: "856493a66c147273"
-tags: [healthtech-fhir-ba-pack, ba, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a HealthTech BA pack — FHIR resources (Patient, Encounter, Observation, Condition), HIPAA/GDPR overlap matrix, IRB/consent workflow, and audit-trail spec — so clinical features ship without a post-launch privacy incident.
+content_id: "c83163f80b3e5dc1"
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [healthtech, fhir, hipaa, gdpr, consent, audit-trail, ba, geek]
 ---
-
 # HealthTech FHIR BA Pack
 
 ## Summary
 
-**One-sentence:** FHIR resources (Patient, Encounter, Observation, Condition), HIPAA/GDPR overlap, IRB/consent flows, audit-trail requirements — the HealthTech vertical pack the corpus lacks.
+**One-sentence:** Produces a HealthTech BA pack — FHIR resources (Patient, Encounter, Observation, Condition), HIPAA/GDPR overlap matrix, IRB/consent workflow, and audit-trail spec — so clinical features ship without a post-launch privacy incident.
 
-**One-paragraph:** HealthTech engagements need FHIR familiarity, HIPAA/GDPR overlap, IRB/consent, audit-trail. None of this is in faion. Output: FHIR resource map + compliance checklist + consent flow + audit-log spec.
+**One-paragraph:** Produces a HealthTech BA pack — FHIR resources (Patient, Encounter, Observation, Condition), HIPAA/GDPR overlap matrix, IRB/consent workflow, and audit-trail spec — so clinical features ship without a post-launch privacy incident. The methodology pins shape + owner + evidence + outcome review so the artefact becomes a reviewable operating tool rather than folklore. Inputs are validated against a JSON schema; outputs are gated by the `## Decision tree` so the agent skips the methodology when preconditions don't hold.
+
+**Ефективно для:** business analysts on US-HIPAA, EU-GDPR, or NHS engagements who must shape clinical features against FHIR R4/R5 resources, BAA boundaries, consent capture, and immutable audit trails before code is written.
 
 ## Applies If (ALL must hold)
 
-- BA on a HealthTech engagement
-- scope includes patient data, clinical records, or healthcare provider workflow
-- client jurisdiction subjects them to HIPAA, GDPR-Health, or equivalent
+- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
+- The owner is a named person (role:handle), not a team alias or channel.
+- The required input artefacts in `## Prerequisites` are available and machine-readable.
+- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
 
 ## Skip If (ANY kills it)
 
-- consumer wellness app with no clinical record
-- B2B health-IT-tooling for non-clinical staff (HR, scheduling)
-- client has dedicated HealthTech BA team — augment, don't duplicate
+- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
+- No named owner — refuse to produce; assign first.
+- Inputs are missing or non-deterministic; fix the upstream observability before applying.
+- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
 
 ## Prerequisites
 
-- list of patient-data fields needed
-- client's existing EMR / EHR + integration scope
-- HIPAA Business Associate Agreement or GDPR Data Processing Agreement reviewed
+| Input artifact | Format | Source |
+|---|---|---|
+| Trigger record | text / ticket link | upstream alerting / planning queue |
+| Owner identity | `role:handle` string | RACI / org directory |
+| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
+| Prior artefact (if exists) | JSON matching the output contract | repo `.product/healthtech-fhir-ba-pack/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent skill — provides operating context for this methodology |
-| `pro/ba/business-analyst` | peer methodology — produces inputs or consumes outputs |
-| `pro/sec/data-classification` | peer methodology — produces inputs or consumes outputs |
+| `[[code-review]]` | Peer methodology that reviews the artefact before merge. |
+| `[[incident-decision-template]]` | Peer methodology for incident-time decisions referenced by this artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| Parse inputs + check preconditions | haiku | Mechanical schema parse. |
+| Author the artefact body | sonnet | Bounded synthesis from typed inputs. |
+| Review for compliance + cross-cutting impact | opus | Cross-input judgement when stakes are high. |
+| Outcome-review synthesis at cadence | opus | Did the artefact change behaviour? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
+| `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-healthtech-fhir-ba-pack.py` | Validate an artefact JSON against the output-contract schema + cross-field rules. | Pre-merge of the artefact PR + weekly staleness scan. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodology: `pro/ba/business-analyst`
-- peer methodology: `pro/sec/data-classification`
-- external: https://www.hl7.org/fhir/ (HL7 FHIR R5); https://www.hhs.gov/hipaa/ (HHS HIPAA); https://gdpr.eu/article-9-special-categories-of-data/
+- [[code-review]] — gates the artefact before merge.
+- [[incident-decision-template]] — sibling 2-minute decision record.
+- [[regression-test-first-bugfix-workflow]] — sibling workflow that pins red-test-first discipline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.

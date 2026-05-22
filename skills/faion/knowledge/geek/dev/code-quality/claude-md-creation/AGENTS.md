@@ -3,71 +3,97 @@ slug: claude-md-creation
 tier: geek
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: CLAUDE.
-content_id: "87691b316f76ba53"
-tags: [claude-code, documentation, conventions, project-setup, ai-integration]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a CLAUDE.md project brief — tech stack, commands, file conventions, owners, anti-patterns — that fits a Claude Code session's loading budget without leaking secrets or wasting tokens on stale prose.
+content_id: "7b27e4b78a5e833c"
+complexity: medium
+produces: spec
+est_tokens: 3500
+tags: [claude-code, documentation, project-setup, conventions, ai-integration, dev, geek]
 ---
 # CLAUDE.md Creation
 
 ## Summary
 
-**One-sentence:** CLAUDE.
+**One-sentence:** Produces a CLAUDE.md project brief — tech stack, commands, file conventions, owners, anti-patterns — that fits a Claude Code session's loading budget without leaking secrets or wasting tokens on stale prose.
 
-**One-paragraph:** CLAUDE.md is a project-specific instruction file that provides Claude Code with context about the codebase, conventions, and workflows. A well-crafted CLAUDE.md enables Claude to work more effectively within your project's constraints, covering tech stack, quick commands, project structure, code conventions, and git workflow.
+**One-paragraph:** Produces a CLAUDE.md project brief — tech stack, commands, file conventions, owners, anti-patterns — that fits a Claude Code session's loading budget without leaking secrets or wasting tokens on stale prose. The methodology pins shape + owner + evidence + outcome review so the artefact becomes a reviewable operating tool rather than folklore. Inputs are validated against a JSON schema; outputs are gated by the `## Decision tree` so the agent skips the methodology when preconditions don't hold.
+
+**Ефективно для:** software developers and tech leads opening a new repo for Claude Code who need a token-efficient, secrets-safe project brief their team can amend in PRs.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new repo for Claude Code: no CLAUDE.md exists and the codebase has project-specific conventions.
-- Onboarding a pre-existing codebase: commands, structure, and lint rules need to be machine-readable in context.
-- After significant project restructuring: existing CLAUDE.md is stale (wrong commands, removed paths).
-- In multi-agent setups where multiple subagents share the same repo and need a consistent orientation doc.
+- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
+- The owner is a named person (role:handle), not a team alias or channel.
+- The required input artefacts in `## Prerequisites` are available and machine-readable.
+- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
 
 ## Skip If (ANY kills it)
 
-- Single-file scripts or throwaway prototypes with no conventions worth capturing.
-- Projects where CLAUDE.md already exists and is accurate — updating one section is not a full creation task.
-- Documentation-only repos with no commands to run and no code conventions to enforce.
+- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
+- No named owner — refuse to produce; assign first.
+- Inputs are missing or non-deterministic; fix the upstream observability before applying.
+- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Trigger record | text / ticket link | upstream alerting / planning queue |
+| Owner identity | `role:handle` string | RACI / org directory |
+| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
+| Prior artefact (if exists) | JSON matching the output contract | repo `.product/claude-md-creation/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[code-review]]` | Peer methodology that reviews the artefact before merge. |
+| `[[incident-decision-template]]` | Peer methodology for incident-time decisions referenced by this artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Parse inputs + check preconditions | haiku | Mechanical schema parse. |
+| Author the artefact body | sonnet | Bounded synthesis from typed inputs. |
+| Review for compliance + cross-cutting impact | opus | Cross-input judgement when stakes are high. |
+| Outcome-review synthesis at cadence | opus | Did the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
+| `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-claude-md-creation.py` | Validate an artefact JSON against the output-contract schema + cross-field rules. | Pre-merge of the artefact PR + weekly staleness scan. |
 
 ## Related
 
-- parent skill: `geek/dev/code-quality/`
+- [[code-review]] — gates the artefact before merge.
+- [[incident-decision-template]] — sibling 2-minute decision record.
+- [[regression-test-first-bugfix-workflow]] — sibling workflow that pins red-test-first discipline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.

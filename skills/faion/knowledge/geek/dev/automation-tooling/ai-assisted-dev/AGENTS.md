@@ -3,71 +3,96 @@ slug: ai-assisted-dev
 tier: geek
 group: dev
 domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Patterns for using AI coding assistants (Claude Code, Cursor, Copilot) effectively: match tool to task type, use structured prompts, always review AI output before accepting, and never auto-accept security-critical code.
-content_id: "06a87f8279519726"
-tags: [ai-coding, claude-code, cursor, copilot, code-review]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an AI-assisted dev workflow record — tool-to-task assignment (Claude Code / Cursor / Copilot), structured-prompt template, review checkpoint matrix, and security-critical block-list — that pins the defect-rate-reducing discipline that informal AI adoption skips.
+content_id: "cc28d94a2717fc81"
+complexity: medium
+produces: playbook-step
+est_tokens: 3500
+tags: [ai-coding, claude-code, cursor, copilot, code-review, dev, geek]
 ---
 # AI-Assisted Development
 
 ## Summary
 
-**One-sentence:** Patterns for using AI coding assistants (Claude Code, Cursor, Copilot) effectively: match tool to task type, use structured prompts, always review AI output before accepting, and never auto-accept security-critical code.
+**One-sentence:** Produces an AI-assisted dev workflow record — tool-to-task assignment (Claude Code / Cursor / Copilot), structured-prompt template, review checkpoint matrix, and security-critical block-list — that pins the defect-rate-reducing discipline that informal AI adoption skips.
 
-**One-paragraph:** Patterns for using AI coding assistants (Claude Code, Cursor, Copilot) effectively: match tool to task type, use structured prompts, always review AI output before accepting, and never auto-accept security-critical code. AI increases defect rate 4x when used without review discipline.
+**One-paragraph:** Produces an AI-assisted dev workflow record — tool-to-task assignment (Claude Code / Cursor / Copilot), structured-prompt template, review checkpoint matrix, and security-critical block-list — that pins the defect-rate-reducing discipline that informal AI adoption skips. The methodology pins shape + owner + evidence + outcome review so the artefact becomes a reviewable operating tool rather than folklore. Inputs are validated against a JSON schema; outputs are gated by the `## Decision tree` so the agent skips the methodology when preconditions don't hold.
+
+**Ефективно для:** software developers wiring Claude Code, Cursor, and Copilot into their daily flow who need a written tool-to-task map and review discipline before AI-generated code starts compounding latent defects.
 
 ## Applies If (ALL must hold)
 
-- Setting up a project workflow where Claude Code, Cursor, or Copilot will be primary development tools.
-- Deciding which AI tool to assign to which task type (planning vs. implementation vs. autocomplete).
-- Building a CI step that uses AI for automated test generation or code review commentary.
-- Onboarding a developer to AI coding tools — establishing safe review habits from the start.
+- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
+- The owner is a named person (role:handle), not a team alias or channel.
+- The required input artefacts in `## Prerequisites` are available and machine-readable.
+- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
 
 ## Skip If (ANY kills it)
 
-- Security-critical auth or payment logic where AI-suggested code must never be accepted without line-by-line human review.
-- Compliance-sensitive environments (healthcare, finance) where AI tool output has not been approved by legal/compliance.
-- Teams lacking the experience to review AI output critically — premature AI adoption creates hidden defect accumulation.
+- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
+- No named owner — refuse to produce; assign first.
+- Inputs are missing or non-deterministic; fix the upstream observability before applying.
+- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Trigger record | text / ticket link | upstream alerting / planning queue |
+| Owner identity | `role:handle` string | RACI / org directory |
+| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
+| Prior artefact (if exists) | JSON matching the output contract | repo `.product/ai-assisted-dev/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[code-review]]` | Peer methodology that reviews the artefact before merge. |
+| `[[incident-decision-template]]` | Peer methodology for incident-time decisions referenced by this artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Parse inputs + check preconditions | haiku | Mechanical schema parse. |
+| Author the artefact body | sonnet | Bounded synthesis from typed inputs. |
+| Review for compliance + cross-cutting impact | opus | Cross-input judgement when stakes are high. |
+| Outcome-review synthesis at cadence | opus | Did the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
+| `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-assisted-dev.py` | Validate an artefact JSON against the output-contract schema + cross-field rules. | Pre-merge of the artefact PR + weekly staleness scan. |
 
 ## Related
 
-- parent skill: `geek/dev/automation-tooling/`
+- [[code-review]] — gates the artefact before merge.
+- [[incident-decision-template]] — sibling 2-minute decision record.
+- [[regression-test-first-bugfix-workflow]] — sibling workflow that pins red-test-first discipline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.

@@ -1,22 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ai-assisted-dev Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AI-Assisted Development — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid `ai-assisted-dev` output. Subagent must satisfy this contract before returning to the caller.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://ai-assisted-dev/output.schema.json",
+  "type": "object",
+  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "properties": {
+    "trigger": {
+      "type": "object",
+      "required": ["kind", "url"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 2},
+        "url":  {"type": "string", "format": "uri"}
+      }
+    },
+    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "properties": {
+          "name":  {"type": "string"},
+          "value": {}
+        }
+      }
+    },
+    "decision": {"type": "string", "minLength": 4},
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "format": "uri"}
+    },
+    "review": {
+      "type": "object",
+      "required": ["cadence", "next_review_at"],
+      "properties": {
+        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
+        "next_review_at":  {"type": "string", "format": "date"}
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
+  "owner":   "swe:alice",
+  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
+  "decision": "ship variant A behind feature flag; revisit at next cadence",
+  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
+  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "trigger":  {"kind": "soon", "url": "tbd"},
+  "owner":    "team",
+  "inputs":   [],
+  "decision": "",
+  "evidence": [],
+  "review":   {}
+}
+]]></code>
+      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
+    </example>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>trigger (kind + url)</item>
+      <item>owner (role:handle)</item>
+      <item>inputs (≥1 typed input)</item>
+      <item>decision (non-empty)</item>
+      <item>evidence (≥1 URL)</item>
+      <item>review.cadence + review.next_review_at</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
+      <reason>Either fires constantly or never; not reviewable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>owner = team / channel / role-only</description>
+      <reason>Accountability evaporates; artefact decays.</reason>
+    </antipattern>
+    <antipattern>
+      <description>empty evidence array</description>
+      <reason>Conclusion is folklore, not evidence-anchored.</reason>
+    </antipattern>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>trigger.kind names a concrete event/threshold/schedule.</item>
+      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
+      <item>≥1 typed input present.</item>
+      <item>decision is a single declarative sentence.</item>
+      <item>≥1 evidence URL.</item>
+      <item>review.cadence + review.next_review_at set.</item>
     </list>
   </section>
 </text>

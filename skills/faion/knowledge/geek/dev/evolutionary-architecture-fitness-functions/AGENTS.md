@@ -3,78 +3,97 @@ slug: evolutionary-architecture-fitness-functions
 tier: geek
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "d4b76b0038ecf7d0"
-summary: Evolutionary Architecture Fitness Functions delivers a concrete, testable methodology that turns the recurring task of 'AI-drafted ADR with codebase-grounded review loop' into an auditable artefact, addressing the gap: Beyond per-scenario fitness functions, architects need a meth
-tags: [dev, geek, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an evolutionary-architecture fitness-function suite spec — quality attribute, threshold, sensor, owner, cadence — that turns 'maintainability/scalability' aspirations into CI-checkable constraints.
+content_id: "2d81969a0f75c064"
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: [architecture, fitness-function, evolutionary, ci, quality-attribute, dev, geek]
 ---
 # Evolutionary Architecture Fitness Functions
 
 ## Summary
 
-**One-sentence:** Evolutionary Architecture Fitness Functions delivers a concrete, testable methodology that turns the recurring task of 'AI-drafted ADR with codebase-grounded review loop' into an auditable artefact, addressing the gap: Beyond per-scenario fitness functions, architects need a methodology to maintain architecture-as-code via ArchUnit / dependency-cruiser / pyfound rules in CI. Prevents the 'patterns adopted without trade-offs' debt the brief calls out.
+**One-sentence:** Produces an evolutionary-architecture fitness-function suite spec — quality attribute, threshold, sensor, owner, cadence — that turns 'maintainability/scalability' aspirations into CI-checkable constraints.
 
-**One-paragraph:** Beyond per-scenario fitness functions, architects need a methodology to maintain architecture-as-code via ArchUnit / dependency-cruiser / pyfound rules in CI. Prevents the 'patterns adopted without trade-offs' debt the brief calls out. Evolutionary Architecture Fitness Functions closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'AI-drafted ADR with codebase-grounded review loop' (role-software-architect, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Produces an evolutionary-architecture fitness-function suite spec — quality attribute, threshold, sensor, owner, cadence — that turns 'maintainability/scalability' aspirations into CI-checkable constraints. The methodology pins shape + owner + evidence + outcome review so the artefact becomes a reviewable operating tool rather than folklore. Inputs are validated against a JSON schema; outputs are gated by the `## Decision tree` so the agent skips the methodology when preconditions don't hold.
+
+**Ефективно для:** software architects translating Ford/Parsons-style evolutionary architecture from a book into a CI gate: every quality attribute carries a measurable sensor + threshold + owner.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'AI-drafted ADR with codebase-grounded review loop' (role: role-software-architect) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
+- The owner is a named person (role:handle), not a team alias or channel.
+- The required input artefacts in `## Prerequisites` are available and machine-readable.
+- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
+- No named owner — refuse to produce; assign first.
+- Inputs are missing or non-deterministic; fix the upstream observability before applying.
+- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Trigger record | text / ticket link | upstream alerting / planning queue |
+| Owner identity | `role:handle` string | RACI / org directory |
+| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
+| Prior artefact (if exists) | JSON matching the output contract | repo `.product/evolutionary-architecture-fitness-functions/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `[[code-review]]` | Peer methodology that reviews the artefact before merge. |
+| `[[incident-decision-template]]` | Peer methodology for incident-time decisions referenced by this artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `evolutionary_architecture_fitness_functions_template_fill` | haiku | Template fill, no judgment |
-| `evolutionary_architecture_fitness_functions_evidence_check` | sonnet | Bounded comparison + judgment |
-| `evolutionary_architecture_fitness_functions_synthesis` | opus | Cross-input synthesis + final write-up |
+| Parse inputs + check preconditions | haiku | Mechanical schema parse. |
+| Author the artefact body | sonnet | Bounded synthesis from typed inputs. |
+| Review for compliance + cross-cutting impact | opus | Cross-input judgement when stakes are high. |
+| Outcome-review synthesis at cadence | opus | Did the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
+| `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-evolutionary-architecture-fitness-functions.py` | Validate an artefact JSON against the output-contract schema + cross-field rules. | Pre-merge of the artefact PR + weekly staleness scan. |
 
 ## Related
 
-- parent skill: `geek/dev/` (see neighbouring methodologies)
-- triggering activity: `role-software-architect/AI-drafted ADR with codebase-grounded review loop`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[code-review]] — gates the artefact before merge.
+- [[incident-decision-template]] — sibling 2-minute decision record.
+- [[regression-test-first-bugfix-workflow]] — sibling workflow that pins red-test-first discipline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.
