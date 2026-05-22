@@ -1,27 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-fastapi Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-fastapi as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="python-fastapi Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling synchronous I/O (requests.get, psycopg2 queries) inside async route handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sync calls block the event loop. All other pending requests wait until the blocking call returns. Use httpx.AsyncClient for HTTP and SQLAlchemy async for DB.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Business logic (validation, inventory check, payment) directly in router functions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Router functions with embedded logic cannot be tested without the HTTP stack, cannot be called from Celery tasks, and cannot be reused across endpoints.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Exposing /docs and /redoc in production (docs_url="/docs" with no guard).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>OpenAPI documentation exposes your full API surface, endpoint names, and schema structure. Gate with docs_url="/docs" if settings.debug else None.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Reusing a single Pydantic schema for create, update, and response operations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Create requires password; response must not expose it; update makes all fields optional. One schema cannot express all three constraints cleanly.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>`@app.on_event("startup")` / `@app.on_event("shutdown")` (deprecated).</description>
+      <symptom>FastAPI emits DeprecationWarning at boot; will break in a future major version.</symptom>
+      <root-cause>Old tutorial code; never migrated.</root-cause>
+      <fix>Replace with `@asynccontextmanager async def lifespan(app)` + `FastAPI(lifespan=lifespan)`.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Single schema reused for Create + Update + Response.</description>
+      <symptom>Clients can set `id` on Create; response leaks `password` field; OpenAPI docs are confusing.</symptom>
+      <root-cause>Shortcut to avoid writing four classes.</root-cause>
+      <fix>Define Base (shared), Create (input), Update (partial), Response (output with `from_attributes=True`).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Business logic in router function.</description>
+      <symptom>Routes call ORM directly; tests require TestClient; logic not reusable from CLI/cron.</symptom>
+      <root-cause>No services/ layer.</root-cause>
+      <fix>Extract into `services/<entity>.py` async function; router calls service, translates result to HTTP.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Sync DB call inside an async route (e.g. `db.query(...)` with sync Session).</description>
+      <symptom>Event loop blocked; concurrency dies; latency spikes under load.</symptom>
+      <root-cause>Mixed sync/async session; agents grab the wrong one.</root-cause>
+      <fix>Use AsyncSession + `await db.execute(select(...))`. Verify no sync DB methods in async routes.</fix>
+    </antipattern>
   </section>
 </text>

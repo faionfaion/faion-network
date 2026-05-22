@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="go-http-handlers Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-http-handlers as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Five antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using gin.Default() and then adding r.Use(middleware.Logger()) again.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>gin.Default() already registers Logger and Recovery. Adding Logger a second time doubles every log entry and makes the middleware stack invisible to readers. Use gin.New() with explicit middleware registration.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Creating context.Background() inside a handler to pass to a service or DB call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>context.Background() is never cancelled and has no deadline. The downstream call outlives the request, keeps connections open, and prevents graceful shutdown from completing. Always use c.Request.Context().</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Spawning go func() inside a handler that captures c.Request.Context().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When the handler returns, the context is cancelled. The goroutine's next DB or HTTP call returns context.Canceled. Without a recover() inside the goroutine, the panic kills the process. Use a derived context with explicit timeout from context.Background() for fire-and-forget work.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Returning raw gin.H{"error": err.Error()} which leaks struct field names and binding tag details.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>gin's validator returns messages like "Field validation for 'Email' failed on the 'email' tag". These expose internal model field names and validation rules to external clients. Wrap in a translator or return a generic error message.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>CORS configured with AllowOrigins: ["*"] and AllowCredentials: true.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This combination is invalid per the CORS spec. Modern browsers reject credentialed cross-origin requests when the response contains a wildcard origin. Specify origins explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>JWT signing key shorter than 32 bytes or hardcoded as a string literal.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Short HS256 keys are brute-forceable. Hardcoded keys are committed to source control. Use a minimum 32-byte key loaded from an environment variable or secrets manager, or switch to RS256 with a managed key pair.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Graceful shutdown: calling srv.Shutdown(ctx) but not waiting for server.close before exiting.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>srv.Shutdown is asynchronous relative to the process exit. Without waiting for the server.close callback, the process exits mid-request. Use the server.Run wrapper that blocks until Shutdown completes.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>gin.Default() instead of gin.New() with explicit middleware.</description>
+      <symptom>Log format does not match team conventions; trace IDs missing from logs; double Recovery if you also add your own.</symptom>
+      <root-cause>gin.Default bundles a generic Logger + Recovery; teams add their own and end up with two.</root-cause>
+      <fix>Replace gin.Default with gin.New + explicit r.Use(mw.Recovery, mw.RequestID, mw.Logger, ...).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>context.Background() inside a handler.</description>
+      <symptom>Slow request continues after client disconnect; resource usage doesn't drop on cancellation; trace IDs lost.</symptom>
+      <root-cause>Background detaches from request ctx; cancellation does not propagate.</root-cause>
+      <fix>Use c.Request.Context() (Gin) or echo.Request().Context() (Echo). For genuine background work, derive `context.WithoutCancel(c.Request.Context())` and add a timeout.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Spawning a goroutine inside a handler that captures c (gin.Context) and uses c.Request.Context() later.</description>
+      <symptom>Sporadic `context canceled` errors in background work; race-detector flags data races on gin.Context.</symptom>
+      <root-cause>gin.Context is request-scoped and not thread-safe; the ctx it carries dies when handler returns.</root-cause>
+      <fix>Extract needed values before `go func`; derive a detached ctx with explicit timeout; pass values + ctx by argument.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Business logic embedded in handler body (multi-branch validation, DB calls, transformation).</description>
+      <symptom>Handler files grow past 100 lines; unit tests require spinning up the HTTP stack to exercise rules.</symptom>
+      <root-cause>No enforced thinness rule; agents add logic where the test passes the input.</root-cause>
+      <fix>Extract logic into service methods. Handler becomes bind → validate-binding → service-call → translate-to-http; keep under 40 lines.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>http.Server constructed without ReadHeaderTimeout/ReadTimeout/WriteTimeout/IdleTimeout (defaults to zero == unbounded).</description>
+      <symptom>Slow-client connections (Slowloris) hold file descriptors; fd exhaustion under load.</symptom>
+      <root-cause>Defaults are zero; one-line `r.Run(":8080")` does not configure them.</root-cause>
+      <fix>Use templates/server.go shape: set all four timeouts and call srv.ListenAndServe.</fix>
+    </antipattern>
   </section>
 </text>

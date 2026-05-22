@@ -1,11 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="go-error-handling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-error-handling. Verify and refine before relying on for production.</summary>
+  <summary>Nine testable rules for typed Go errors, wrapping, boundary mapping, and middleware order.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="v1-source">Define AppError with Code, Message, HTTPStatus, and Err fields. Implement Error() and Unwrap() so errors.Is/As work across wrapping chains.</statement>
+      <rationale>Without Unwrap(), errors.As fails to traverse the chain; type assertions break on the first wrap.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="go1.13-errors">Always wrap with fmt.Errorf("context: %w", err) — never %v. Use errors.As at HTTP boundaries, never type assertions.</statement>
+      <rationale>%v stringifies and drops the chain; errors.As is the chain-aware comparator.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="v1-source">Map driver errors (pgx.ErrNoRows, sql.ErrNoRows, redis.Nil) to AppError at the repository layer. Never let driver errors reach HTTP handlers.</statement>
+      <rationale>Driver-specific types create implicit coupling at the wrong layer; handlers cannot know which driver is below them.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="v1-source">Use a Handler type (func returning error) + Wrap adapter so handlers can return errors directly instead of writing responses inline. One middleware logs and translates.</statement>
+      <rationale>Inline response writes duplicate the translation logic and inevitably drift.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="v1-source">Register panic-recovery middleware BEFORE the error-mapping middleware. Panics that reach the error mapper produce blank 500s with no body.</statement>
+      <rationale>Recovery must convert panic to error first; if mapping runs first, the panic bypasses it.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="net/http">Always call w.WriteHeader BEFORE json.NewEncoder(w).Encode. Writing the body first flushes an implicit 200.</statement>
+      <rationale>http.ResponseWriter flushes the status on first body byte; the status set later is ignored.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="golangci-lint">Run golangci-lint with errorlint, wrapcheck, errcheck, and nilnil enabled. Default config misses most error-handling bugs.</statement>
+      <rationale>Defaults don't catch %v wrapping or unwrapped returns; explicit linter set encodes the rules.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement source="v1-source">Never return package-level mutable *AppError vars. Use constructor functions (NewNotFound, NewBadRequest) that return new instances.</statement>
+      <rationale>`ErrNotFound.Message = "X"` mutates the global; one request corrupts state for every subsequent request.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement source="v1-source">When wrapping at a higher layer, preserve the inner AppError's HTTPStatus and Code when present. A 404 must not become 500 on rewrap.</statement>
+      <rationale>Status demotion on rewrap hides client errors as server errors and breaks SLO accounting.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">AppError shape, %w wrapping, repo-boundary mapping, one middleware, panic-then-map order, lint config — all green.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">No HTTP layer, or Go &lt; 1.13 — methodology does not apply.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's negative branch.</rationale>
     </rule>
   </section>
 </text>

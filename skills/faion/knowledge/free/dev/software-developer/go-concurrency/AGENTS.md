@@ -4,72 +4,91 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Canonical Go goroutine and concurrency patterns: worker pool, rate limiter, semaphore, RWMutex cache, and sync.
-content_id: "5a2df46fd2085f66"
-tags: [go, concurrency, goroutines, channels, worker-pool]
+summary: Produces race-free Go concurrency code (worker pool, rate limiter, semaphore, RWMutex cache, errgroup fan-out) where every goroutine has an explicit exit and `go test -race -count=10` passes.
+content_id: "go-concurrency-fb05"
+complexity: medium
+produces: code
+est_tokens: 4200
+tags: [go, concurrency, channels, goroutines, race-detector]
 ---
 # Go Concurrency Patterns
 
 ## Summary
 
-**One-sentence:** Canonical Go goroutine and concurrency patterns: worker pool, rate limiter, semaphore, RWMutex cache, and sync.
+**One-sentence:** Produces race-free Go concurrency code (worker pool, rate limiter, semaphore, RWMutex cache, errgroup fan-out) where every goroutine has an explicit exit and `go test -race -count=10` passes.
 
-**One-paragraph:** Canonical Go goroutine and concurrency patterns: worker pool, rate limiter, semaphore, RWMutex cache, and sync.Once. The invariant: every goroutine must have an explicit exit condition (context.Done() or channel close), and the goroutine that writes to a channel is the one that closes it. Tests must pass go test -race.
+**One-paragraph:** Canonical Go concurrency: the goroutine that writes to a channel is the one that closes it; every goroutine has an explicit exit condition (`ctx.Done()`, channel close, or `WaitGroup.Done`); concurrency is bounded by a semaphore sized to downstream capacity (DB pool / API rate-limit), not to `runtime.NumCPU()`; fan-out uses `errgroup.WithContext` to cancel siblings on first error. Every concurrency-heavy package adds `goleak.VerifyTestMain` and runs `go test -race -count>=10` in CI.
+
+**Ефективно для:** new Go services with parallel workloads, refactoring naked-goroutine code to add ctx + leak detection, fixing race-detector findings, sizing rate limiters and worker pools.
 
 ## Applies If (ALL must hold)
 
-- Generating a Go service that processes jobs in parallel (HTTP fan-out, batch ETL, queue consumer).
-- Refactoring sequential Go code into a worker pool with bounded concurrency.
-- Writing pipelines where stage N feeds stage N+1 via channels.
-- Adding context-based cancellation to existing goroutines.
-- Building rate limiters or semaphores around external APIs.
+- Project ships Go code that launches goroutines or uses channels/select.
+- CI can run `go test -race -count>=10`.
+- Team accepts `errgroup` + `goleak` as dependencies.
 
 ## Skip If (ANY kills it)
 
-- Single-threaded scripts or one-shot CLIs where startup cost dominates.
-- Code that needs to share mutable state without a clear ownership boundary — refactor the data model first.
-- Pure CPU-bound work with GOMAXPROCS=1 — goroutines add scheduling overhead with no parallelism.
-- When "concurrency" is really async I/O against one source — a single goroutine with select suffices.
+- Pure sequential code (CLI, single-process script with no goroutines).
+- Generated code paths where concurrency is owned by the framework (gRPC server, http.Handler) and no manual goroutines are spawned.
+- Tiny prototype where adding goleak overhead exceeds value.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Concurrency budget | int (max simultaneous outbound calls) | infra ADR |
+| Downstream capacity | int (DB pool size, rate limit) | infra config |
+| Cancellation scope | parent ctx type (request / server-lifetime) | architecture |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-backend]]` | Provides the Pool struct location and config wiring. |
+| `[[go-error-handling]]` | Errors propagated through channels use the same AppError type. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 9 rules: channel ownership, explicit exit, errgroup, semaphore, RWMutex/sync.Map, wg.Add placement, ctx.Done in select, race detector, goleak | ~800 |
+| `content/02-output-contract.xml` | essential | Required code patterns + CI invariants (race -count>=10) | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: leaky generator, map race, wg.Add inside, close-from-other-goroutine, ctx-less select | ~700 |
+| `content/04-procedure.xml` | medium | 5-step concurrency authoring procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Root: "Does the code spawn goroutines or use channels?" | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Generate Pool / Semaphore scaffold | sonnet | Pattern from templates. |
+| Diagnose race-detector finding | opus | Reasoning across multiple goroutines. |
+| Size semaphore from downstream | sonnet | Arithmetic + config lookup. |
+| Wire goleak TestMain | haiku | Boilerplate. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ci-race.sh` | CI script: `go vet`, `go test -race -count=3`, `staticcheck`. |
+| `templates/goleak-test-main.go` | TestMain with goleak.VerifyTestMain for leak detection per package. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-concurrency.py` | Greps for known antipatterns (bare `go func()` without ctx, `wg.Add` inside body, `close()` outside writer). | Pre-commit gate. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[go-backend]]` — Pool struct lives in internal/concurrency/
+- `[[go-error-handling]]` — error propagation through channels
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters by whether goroutines exist; for code that does, it asks whether ctx cancellation is wired and whether CI runs the race detector.

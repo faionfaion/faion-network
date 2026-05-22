@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="python-fastapi Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="python-fastapi Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required FastAPI app shape and per-endpoint invariants.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/python-fastapi",
+  "type": "object",
+  "required": ["app", "lifespan", "schemas", "deps"],
+  "properties": {
+    "app": {
+      "type": "object",
+      "properties": {
+        "module": {"const": "app.main"},
+        "title": {"type": "string"}
+      }
+    },
+    "lifespan": {
+      "type": "object",
+      "properties": {
+        "uses": {"const": "asynccontextmanager"},
+        "deprecated_on_event": {"const": false}
+      }
+    },
+    "schemas": {
+      "type": "array",
+      "description": "Each entity must have Base + Create + Update + Response.",
+      "items": {"type": "string", "pattern": ".*(Base|Create|Update|Response)$"}
+    },
+    "deps": {
+      "type": "object",
+      "properties": {
+        "DBSession": {"const": "Annotated[AsyncSession, Depends(get_db)]"},
+        "CurrentUser": {"const": "Annotated[User, Depends(get_current_user)]"}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="python"><![CDATA[# main.py
+from contextlib import asynccontextmanager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.db = await create_async_engine(...)
+    yield
+    await app.state.db.dispose()
+app = FastAPI(lifespan=lifespan)
+
+# deps.py
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+
+# schemas.py
+class UserBase(BaseModel):
+    email: EmailStr
+class UserCreate(UserBase):
+    password: str
+class UserResponse(UserBase):
+    id: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+# users.py route
+@router.post("/users", response_model=UserResponse)
+async def create_user(payload: UserCreate, db: DBSession) -> User:
+    return await users_service.create(db, payload)]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="python"><![CDATA[@app.on_event("startup")                         # r1 deprecated
+async def startup(): ...
+
+class User(BaseModel):                            # r2 one schema fits all
+    id: int
+    password: str
+
+@router.post("/users")
+def create_user(payload: User, db: Session = Depends(get_db)):  # r3 no alias, r4 sync def
+    db.execute("INSERT INTO users...")            # SQL in router, no service
+    return {"id": 1}                              # dict, not ORM]]></code>
+      <note>4 violations: on_event deprecated, schema reuse, sync def, dict return.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>asynccontextmanager lifespan; no @app.on_event.</item>
+      <item>Per-entity Base/Create/Update/Response schemas all defined.</item>
+      <item>Routes use Annotated alias for DBSession and CurrentUser.</item>
+      <item>Service functions are async def, accept typed params, return ORM (not dict).</item>
+      <item>flush+refresh pattern used to fetch generated IDs.</item>
     </list>
   </section>
 </text>

@@ -1,39 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="error-handling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for error-handling. Verify and refine before relying on for production.</summary>
+  <summary>Eight testable rules covering envelope shape, content-type, traceability, 5xx masking, errors[] usage, and handler wiring.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Every error response must include type (URI), title (short string), and status (integer matching HTTP status). detail, instance, traceId, and errors[] are optional but strongly recommended.</statement>
-      <rationale source="v1-source">RFC 7807 requires type, title, status as the minimum. Without them, clients cannot build generic error-handling logic.</rationale>
+      <statement source="RFC-7807">Every error response must include type (URI), title (short string), and status (integer matching HTTP status). detail, instance, traceId, and errors[] are optional but strongly recommended.</statement>
+      <rationale>RFC 7807 requires type/title/status as the minimum. Without them, clients cannot build generic error-handling logic.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Set Content-Type to application/problem+json, not application/json.</statement>
-      <rationale source="v1-source">RFC 7807 mandates the problem+json media type. Clients (e.g., Spring RestClient with ProblemDetail) detect typed handling via the suffix. Using application/json silently degrades to generic parsing.</rationale>
+      <statement source="RFC-7807">Set Content-Type to application/problem+json, not application/json.</statement>
+      <rationale>RFC 7807 mandates the problem+json media type. Clients (e.g., Spring RestClient with ProblemDetail) detect typed handling via the suffix. Using application/json silently degrades to generic parsing.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>The status field in the body must exactly match the HTTP response status code.</statement>
-      <rationale source="v1-source">RFC 7807 requires they match. Mismatches appear when re-wrapping downstream errors: the outer HTTP code is 502 while the body says 400.</rationale>
+      <statement source="RFC-7807">The status field in the body must exactly match the HTTP response status code.</statement>
+      <rationale>Mismatches appear when re-wrapping downstream errors and break client routing (outer 502 vs body 400). RFC 7807 requires they match.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Always populate traceId. Map from the W3C traceparent header if present; otherwise generate a UUID.</statement>
-      <rationale source="v1-source">Without traceId, supporting a customer requires log scraping by timestamp across all services. With traceId, one string resolves the incident.</rationale>
+      <statement source="W3C-trace-context">Always populate traceId. Map from the W3C traceparent header if present; otherwise generate a UUID.</statement>
+      <rationale>Without traceId, supporting a customer requires log scraping by timestamp across all services. With traceId, one string resolves the incident.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>For 5xx errors, detail must be a generic static string. Never interpolate exception messages, stack traces, SQL, internal paths, or PII.</statement>
-      <rationale source="v1-source">Raw exception messages leak implementation details, internal hostnames, and sometimes credentials. Provide traceId for internal lookup instead.</rationale>
+      <statement source="OWASP-A05-2021">For 5xx errors, detail must be a generic static string. Never interpolate exception messages, stack traces, SQL, internal paths, or PII.</statement>
+      <rationale>Raw exception messages leak implementation details, internal hostnames, and sometimes credentials. Provide traceId for internal lookup instead.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Use errors[] only for validation failures (4xx). Each item must have field, code (machine-readable slug), and message (human-readable).</statement>
-      <rationale source="v1-source">errors[] is a custom extension beyond RFC 7807. Using it for non-validation errors (401, 403, 404) over-structures simple responses and surprises clients expecting the spec shape.</rationale>
+      <statement source="v1-source">Use errors[] only for validation failures (4xx). Each item must have field, code (machine-readable slug), and message (human-readable).</statement>
+      <rationale>errors[] is a custom extension beyond RFC 7807. Using it for non-validation errors over-structures simple responses and surprises clients expecting the spec shape.</rationale>
     </rule>
     <rule id="r7" testable="true" depth="essential">
-      <statement>Treat type URIs as part of the API contract. Once published, changing them is a breaking change.</statement>
-      <rationale source="v1-source">Clients may dispatch on the type URI to handle specific error classes. Renaming validation-error to validation silently breaks those clients.</rationale>
+      <statement source="v1-source">Treat type URIs as part of the API contract. Once published, changing them is a breaking change.</statement>
+      <rationale>Clients dispatch on the type URI to handle specific error classes. Renaming `validation-error` to `validation` silently breaks those clients.</rationale>
     </rule>
     <rule id="r8" testable="true" depth="essential">
-      <statement>Register a single framework-level exception handler. Handlers must not call response.json() with a shape that differs from ProblemDetail.</statement>
-      <rationale source="v1-source">Per-route error shapes re-create the inconsistency the methodology exists to solve. One handler, one shape, one content-type.</rationale>
+      <statement source="v1-source">Register a single framework-level exception handler. Handlers must not call response.json() with a shape that differs from ProblemDetail.</statement>
+      <rationale>Per-route error shapes re-create the inconsistency the methodology exists to solve. One handler, one shape, one content-type.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">All rules above hold against every error response in the API; gate via the JSON Schema contract test.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">If protocol is not JSON-over-HTTP or framework cannot install a single handler, do not apply this methodology.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's negative branch.</rationale>
     </rule>
   </section>
 </text>

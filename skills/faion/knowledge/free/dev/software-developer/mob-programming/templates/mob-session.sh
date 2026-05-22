@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: start a mob session with visible timer + rotation prompts + draft PR.
+# consumes: Done definition as $1; optional roster file.
+# produces: stdout chimes + log of rotations + draft PR description.
+# depends-on: bash, date, sleep, gh (optional).
+# token-budget-impact: 0 — shell script.
 # mob-session.sh — start a mob session with timer, scribe log, and draft PR.
 # Usage: mob-session.sh "Add idempotency keys to /payments"
 # Requires: mob (https://mob.sh), gh (GitHub CLI)

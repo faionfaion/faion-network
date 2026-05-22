@@ -1,12 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="testing-go Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for testing-go as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Testing in Go Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed when testing-go is applied incorrectly. Each entry has a symptom (`description`), root cause (`reason`), and corrective fix (in `note`).</summary>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Test passes locally, flakes in CI on a `time.Sleep(100*ms)`.</description>
+      <reason>Hard sleep used in place of synchronization; CI machine is slower or faster than dev box.</reason>
+      <note>Fix: Replace with `require.Eventually(t, predicate, timeout, tick)` or a `done` channel.</note>
+    </antipattern>
+    <antipattern>
+      <description>Test panics with nil-pointer-deref before any `Errorf` fires.</description>
+      <reason>`assert.NoError` did not stop the test; subsequent `result.Field` ran on nil.</reason>
+      <note>Fix: Use `require.NoError` for any error whose absence is a precondition for the rest of the test.</note>
+    </antipattern>
+    <antipattern>
+      <description>Loop-variable bug: every parallel subtest tests the last row only.</description>
+      <reason>Pre-Go-1.22 loop var captured by reference; `tc := tc` shadowing was omitted.</reason>
+      <note>Fix: Either upgrade to Go 1.22 (`go.mod` go 1.22) where the language change fixes this, or add `tc := tc` before `t.Run`.</note>
+    </antipattern>
+    <antipattern>
+      <description>`go test -bench=.` shows wildly different ns/op between runs.</description>
+      <reason>Single `-count=1` run, no `benchstat`, GC noise dominates.</reason>
+      <note>Fix: Run `-count=10` and compare with `benchstat old.txt new.txt`; never eyeball ns/op.</note>
+    </antipattern>
+    <antipattern>
+      <description>Fuzz target panics on first run because seed corpus is empty.</description>
+      <reason>`f.Add` never called before `f.Fuzz`.</reason>
+      <note>Fix: Add 3-5 representative `f.Add(...)` seeds covering empty, valid, and boundary inputs.</note>
+    </antipattern>
   </section>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

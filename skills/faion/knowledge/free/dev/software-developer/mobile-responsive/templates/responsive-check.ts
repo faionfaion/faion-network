@@ -1,3 +1,8 @@
+// purpose: Playwright multi-viewport screenshot + horizontal-scroll + tap-target check.
+// consumes: BASE_URL or URL arg; runs against a live preview.
+// produces: screenshots in test-results/, assertion failures on scroll or undersize.
+// depends-on: @playwright/test, chromium binary.
+// token-budget-impact: ~30 lines.
 /**
  * responsive-check.ts — Playwright script for multi-viewport screenshot and overflow detection.
  * Usage: npx ts-node scripts/responsive-check.ts http://localhost:3000

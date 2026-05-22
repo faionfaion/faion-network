@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="python Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="python Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required project layout and config invariants.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/python",
+  "type": "object",
+  "required": ["pythonVersion", "linterFormatter", "typeChecker", "depManager", "servicesLayer"],
+  "properties": {
+    "pythonVersion": {"type": "string", "pattern": "^\\^?3\\.(1[1-9]|[2-9][0-9])"},
+    "linterFormatter": {"const": "ruff"},
+    "typeChecker": {
+      "type": "object",
+      "required": ["tool", "strict"],
+      "properties": {
+        "tool": {"const": "mypy"},
+        "strict": {"const": true}
+      }
+    },
+    "depManager": {"const": "poetry"},
+    "servicesLayer": {"type": "boolean", "const": true},
+    "forbidden": {
+      "type": "array",
+      "items": {"enum": [
+        "from typing import Optional",
+        "from typing import List, Dict",
+        "Optional[X]",
+        "black + isort + flake8 with ruff"
+      ]}
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="toml"><![CDATA[# pyproject.toml
+[tool.poetry]
+python = "^3.11"
+
+[tool.poetry.dependencies]
+django = "^5.0"
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "UP", "SIM", "DJ"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+# project layout
+# myapp/
+# ├── services.py           # business logic
+# ├── views.py              # HTTP/transport only
+# ├── models.py
+# └── tests/
+#     └── test_services.py]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="python"><![CDATA[# REJECTED
+from typing import Optional, List          # r6 violated
+
+def create_user(request) -> Optional[User]: # logic in views, Optional[X], request param
+    if not request.POST.get("email"):
+        return None
+    return User.objects.create(email=request.POST["email"])  # no @transaction.atomic]]></code>
+      <note>4 violations: Optional[X] / List (r6), logic in view (r1), request param (r1), no transaction.atomic (r1).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>pyproject.toml python = "^3.11" or higher.</item>
+      <item>ruff configured; no black / isort / flake8 in dev deps.</item>
+      <item>mypy strict = true.</item>
+      <item>services/ layer exists; views import services, not models directly.</item>
+      <item>`X | None` syntax used; no `Optional[X]` in new code.</item>
+      <item>asyncio code uses gather() or TaskGroup() for concurrent I/O; no sequential `await` for independent ops.</item>
     </list>
   </section>
 </text>

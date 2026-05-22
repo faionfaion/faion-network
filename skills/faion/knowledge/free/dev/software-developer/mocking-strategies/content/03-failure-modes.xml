@@ -1,37 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mocking-strategies Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mocking-strategies as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="mocking-strategies Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mocking the system under test rather than its dependencies.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If you mock the function being tested, you're not testing anything. The mock always passes regardless of whether the real implementation works.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using Mock() instead of Mock(spec=RealClass) or autospec=True.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Plain Mock returns a Mock for any attribute access, including misspelled names. spec= or autospec=True raises AttributeError on typos, catching bugs immediately.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Over-mocking: mocking internal helpers and verifying every internal call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tests coupled to implementation details break on every refactor, even when behavior is unchanged. Verify only calls that are part of the external contract.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Not resetting mocks between tests (state leaking across tests).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Call counts and return values accumulate. Use pytest-mock's mocker fixture (auto-resets) or explicit mock.reset_mock() in setUp/tearDown.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Mocking data structures (dataclasses, Pydantic models) instead of using real instances.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mocking value objects defeats type safety and usually signals the production design needs adjustment, not the test.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using @patch with wrong target path (patching source module, not lookup site).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>@patch('module_b.function_b') when module_a imports function_b leaves module_a's local name unaffected; the test exercises the real code.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Over-mocking — using `mock` everywhere when `stub`/`fake` suffices.</description>
+      <symptom>Tests break on every refactor that changes call signatures; many `assert_called_with(...)` assertions fail despite behavior being correct.</symptom>
+      <root-cause>Treating mock as default rather than the special case where the call itself is the contract.</root-cause>
+      <fix>Default to stub for return values; reach for mock only when the API caller is observable behavior (e.g. cache hit count).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Patching at the definition module: `mock.patch('module_b.function_b')` when module_a is the consumer.</description>
+      <symptom>Test mocks the wrong reference; production code still calls the real function.</symptom>
+      <root-cause>Confusion between where the name is defined vs where it is looked up.</root-cause>
+      <fix>Patch the consumer's module: `mock.patch('module_a.function_b')`.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Plain Mock for async functions.</description>
+      <symptom>`await mocked_fn()` returns a Mock or raises TypeError; tests pass without exercising the awaited path.</symptom>
+      <root-cause>Plain Mock doesn't return a coroutine.</root-cause>
+      <fix>Use AsyncMock from unittest.mock (Python ≥3.8). In vitest, use `vi.fn()` returning a Promise.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Inline mock setup of 10+ lines in the test body.</description>
+      <symptom>Test file is unreadable; intent buried under setup; mocks duplicated across tests.</symptom>
+      <root-cause>No fixture extraction; either too many collaborators or wrong layering.</root-cause>
+      <fix>Extract a fixture (`@pytest.fixture` / `beforeEach`). If still bloated, reconsider the layering — too many collaborators in one unit.</fix>
+    </antipattern>
   </section>
 </text>

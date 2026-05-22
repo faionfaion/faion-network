@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: bootstrap pnpm pin + corepack + initial install.
+# consumes: $PNPM_VERSION env var (default 9.6.0).
+# produces: package.json packageManager set + pnpm-lock.yaml.
+# depends-on: bash, corepack-capable Node (>=16.10).
+# token-budget-impact: 0 — shell script.
 # pnpm-bootstrap.sh — initialise a pnpm-pinned project safely.
 # Usage: PNPM_VERSION=9.12.0 NODE_VERSION=20 ./pnpm-bootstrap.sh
 set -euo pipefail

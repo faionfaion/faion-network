@@ -1,3 +1,8 @@
+# purpose: multi-stage Dockerfile for Poetry projects — builder exports, final stage runs pip.
+# consumes: pyproject.toml + poetry.lock.
+# produces: production image without Poetry runtime.
+# depends-on: docker, python:3.11-slim base.
+# token-budget-impact: ~30 lines.
 # Multi-stage Dockerfile for Poetry projects.
 # Builder: export requirements.txt. Final: pip install only.
 # Never run poetry install in the final stage.

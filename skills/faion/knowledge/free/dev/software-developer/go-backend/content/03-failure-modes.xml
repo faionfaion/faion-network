@@ -1,27 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="go-backend Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-backend as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Five antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Defining interfaces in the impl package (repository defines UserRepository; service uses it). This creates an import cycle: service imports repository, and if repository defines the interface, service must also import repository to import the interface.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Circular imports are forbidden in Go. The import cycle breaks the build. The correct pattern is: service defines the interface, repository implements it. This makes service depend on nothing except its own interfaces, and repository depends on service only for the interface it needs to implement.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Capturing gin.Context or c in a goroutine: go func() { h.userService.Process(c) }(). Then inside Process, using c.Request or c.Param — these are accessed from a different goroutine than the one that owns them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>gin.Context is request-scoped and not thread-safe. Accessing it from a goroutine is a data race. The correct pattern is: derive ctx := c.Request.Context() before spawning the goroutine, then pass ctx and the extracted values (e.g., ID from c.Param("id")) as arguments.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Calling c.JSON(...) directly in error cases: if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}) return }. This bypasses error middleware.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Centralized error middleware (using c.Error(...) + ErrorHandler) ensures all errors are logged, mapped, and formatted consistently. If handlers call c.JSON directly, they sidestep the middleware, leading to inconsistent responses and missing logs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Bloating main.go with business logic: parsing config, database setup, service initialization, and handler registration all in main. The file becomes 200+ lines.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Testing is impossible: main imports internal/*, sets up the database, and runs the server. A test cannot import main and run a subset of the logic. The correct pattern is: main only wires (config → deps → router → server), keeping business logic in handler/service/repository.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Defining interfaces in the impl package (repository defines UserRepository; service imports repository to import the interface).</description>
+      <symptom>Build fails with "import cycle not allowed"; or developers add `interface` files in repository/ to dodge cycles.</symptom>
+      <root-cause>Misreading Go interface ownership — interfaces belong to the consumer, not the producer.</root-cause>
+      <fix>Move the interface declaration to service/. repository/ has only concrete types implementing it. service depends on nothing except its own interfaces.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Capturing gin.Context (`c`) in a goroutine: `go func() { h.userService.Process(c) }()`.</description>
+      <symptom>Sporadic data races flagged by go test -race; request-context leaks beyond request lifetime; trace IDs propagate to wrong goroutines.</symptom>
+      <root-cause>gin.Context is request-scoped and not thread-safe.</root-cause>
+      <fix>Before spawning, derive `ctx := c.Request.Context()` and extract any other values (params, headers). Pass ctx and the extracted values to the goroutine.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Calling c.JSON(...) directly for error responses, bypassing the ErrorHandler middleware.</description>
+      <symptom>Inconsistent error shapes across endpoints; ErrorHandler logs miss the actual failures; metrics undercount errors.</symptom>
+      <root-cause>Habit from net/http or framework-less code; ErrorHandler convention not enforced.</root-cause>
+      <fix>Handlers return after `c.Error(err)`; ErrorHandler middleware reads `c.Errors` and writes the canonical response. CI grep blocks `c.JSON(http.Status[45]`.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Bloating cmd/api/main.go with database setup, service init, business logic — 200+ lines.</description>
+      <symptom>main.go grows; tests cannot exercise startup logic; agents add more glue inside main.</symptom>
+      <root-cause>No explicit "thin main" rule; agents put everything where it visibly runs.</root-cause>
+      <fix>Move config loading, DB connect, service init into internal/config + internal/server. main.go limited to call sequence: cfg := config.Load(); deps := server.Wire(cfg); server.Run(deps).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Pool.Submit that blocks on a full buffered channel without selecting on ctx.Done().</description>
+      <symptom>Pool deadlocks under cancellation; goroutines stuck on send; graceful shutdown hangs.</symptom>
+      <root-cause>Naive `jobs &lt;- job` without ctx awareness.</root-cause>
+      <fix>`select { case p.jobs &lt;- job: case &lt;-ctx.Done(): return ctx.Err() }`. Worker close happens after sender finishes.</fix>
+    </antipattern>
   </section>
 </text>

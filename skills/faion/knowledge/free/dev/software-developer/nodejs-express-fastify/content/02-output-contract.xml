@@ -1,22 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="nodejs-express-fastify Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="nodejs-express-fastify Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required app shape + middleware ordering + shutdown.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/nodejs-express-fastify",
+  "type": "object",
+  "required": ["framework", "middlewareOrder", "shutdown"],
+  "properties": {
+    "framework": {"enum": ["express", "fastify"]},
+    "middlewareOrder": {
+      "type": "array",
+      "description": "First helmet, last errorHandler.",
+      "items": {"type": "string"}
+    },
+    "schemaValidation": {
+      "type": "object",
+      "required": ["library", "scope"],
+      "properties": {
+        "library": {"enum": ["zod", "typebox"]},
+        "scope": {"const": "module"}
+      }
+    },
+    "shutdown": {
+      "type": "object",
+      "required": ["signals", "drainSeconds"],
+      "properties": {
+        "signals": {"type": "array", "items": {"enum": ["SIGTERM", "SIGINT"]}, "minItems": 2},
+        "drainSeconds": {"type": "integer", "minimum": 5, "maximum": 60}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="typescript"><![CDATA[const app = express();
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(pinoHttp({ logger }));
+app.use(rateLimit({ windowMs: 60_000, max: 100 }));
+app.use('/api', routes);                                    // r1: routes
+app.use((req, res) => res.status(404).json({...}));          // 404
+app.use(errorHandler);                                       // r1+r2: last
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+async function shutdown() {
+  server.close(async () => {
+    await db.end();
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 15_000).unref();
+}]]></code>
+      <note>Ordered helmet→cors→json→log→rate→routes→404→errorHandler. SIGTERM+SIGINT wired.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="typescript"><![CDATA[const app = express();
+app.use(errorHandler);                                       // r2 violated
+app.use(express.json());
+app.post('/x', (req, res) => {
+  if (!req.body.email) {
+    res.status(400).json({ error: 'bad' });                   // r5 violated
+  }
+});]]></code>
+      <note>2 violations: error handler before routes, inline error response.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Error handler registered AFTER all routes.</item>
+      <item>helmet + cors + rate-limit present before routes.</item>
+      <item>Schemas live at module scope; not constructed per request.</item>
+      <item>No `res.status(4xx|5xx).json({error})` inside a handler.</item>
+      <item>SIGTERM + SIGINT listeners both registered.</item>
     </list>
   </section>
 </text>

@@ -1,3 +1,8 @@
+// purpose: Playwright config with sane defaults — retries, trace, multi-browser projects.
+// consumes: BASE_URL env var (defaults to localhost:3000), CI env var.
+// produces: HTML + JUnit reports under test-results/.
+// depends-on: @playwright/test ^1.40, npm script "start" for webServer.
+// token-budget-impact: ~30 lines; loaded once per session.
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({

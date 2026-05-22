@@ -1,11 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="go-concurrency Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-concurrency. Verify and refine before relying on for production.</summary>
+  <summary>Nine testable rules covering channel ownership, explicit exit, fan-out, sizing, locking, and CI invariants.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="effective-go">The goroutine that writes to a channel is the one that closes it. No exceptions.</statement>
+      <rationale>Closing from a non-writer goroutine causes panic when the writer is mid-send. Channel ownership rule eliminates that class of bug.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="v1-source">Every goroutine must have an explicit exit condition: ctx.Done(), channel close, or WaitGroup.Done path. Never write bare `go func()` without a shutdown mechanism.</statement>
+      <rationale>Bare goroutines leak; goleak catches them, but the rule prevents the bug at write time.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="golang.org/x/sync/errgroup">Use `errgroup.WithContext` over hand-rolled WaitGroup + errCh for fan-out — it cancels siblings on first error automatically.</statement>
+      <rationale>Hand-rolled error fan-out routinely forgets to cancel siblings; errgroup encodes the right pattern.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="v1-source">Bound concurrency with a buffered semaphore sized to downstream capacity (DB pool size, API rate limit), not to runtime.NumCPU().</statement>
+      <rationale>NumCPU is unrelated to downstream throughput; sizing by CPUs overshoots DB pools and rate limits, causing timeouts.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="v1-source">Use sync.RWMutex for read-heavy caches. Use sync.Map only when keys are write-once and reads dominate overwhelmingly; otherwise RWMutex + map is more predictable.</statement>
+      <rationale>sync.Map is optimized for narrow workloads; RWMutex is simpler, well-understood, and benches well for typical caches.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="go-by-example">Always call wg.Add(1) before launching the goroutine, never inside it.</statement>
+      <rationale>wg.Add inside the body races with wg.Wait — a wait may return before Add is called.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="v1-source">In select statements, always include a `&lt;-ctx.Done()` case to ensure graceful cancellation. A select without ctx.Done can block indefinitely even when the parent context is cancelled.</statement>
+      <rationale>Without ctx.Done branch, cancellation is silent. Adding it costs one case and prevents shutdown hangs.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement source="go-test-race">All tests for concurrency-heavy packages must pass `go test -race -count=10 ./...` before merge. Never skip the race detector.</statement>
+      <rationale>Race detector is non-deterministic; repeated runs surface races that a single run misses.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement source="go.uber.org/goleak">For packages with concurrency primitives, add a TestMain that calls `goleak.VerifyTestMain(m)`. This detects goroutine leaks at the end of every test run.</statement>
+      <rationale>Forgotten goroutines accumulate; goleak prevents leaks from shipping.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">All goroutines have explicit exit, channels owned by their writers, errgroup used for fan-out, CI runs -race -count>=10, goleak verifies TestMain.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">No goroutines or channels are introduced — the methodology does not apply.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's negative branch.</rationale>
     </rule>
   </section>
 </text>

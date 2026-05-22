@@ -4,71 +4,101 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools.
-content_id: "4d9d16a50e38f204"
-tags: [fastapi, python, async, pydantic, sqlalchemy]
+summary: Produces a production FastAPI app — @asynccontextmanager lifespan, Pydantic v2 Base/Create/Update/Response schemas, Annotated dependency aliases, async service functions, async SQLAlchemy 2 with flush+refresh, and Depends-based auth.
+content_id: "python-fastapi-fb19"
+complexity: medium
+produces: code
+est_tokens: 4400
+tags: [fastapi, pydantic, async, sqlalchemy, depends]
 ---
 # FastAPI Standards
 
 ## Summary
 
-**One-sentence:** Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools.
+**One-sentence:** Produces a production FastAPI app — @asynccontextmanager lifespan, Pydantic v2 Base/Create/Update/Response schemas, Annotated dependency aliases, async service functions, async SQLAlchemy 2 with flush+refresh, and Depends-based auth.
 
-**One-paragraph:** Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools. Separate request schemas (`UserCreate`) from response schemas (`UserResponse`); keep business logic in services, not routers.
+**One-paragraph:** Production-grade FastAPI: Pydantic v2 schemas define the API contract; separate `Base`, `Create`, `Update`, and `Response` schemas (Response uses `ConfigDict(from_attributes=True)`). `@asynccontextmanager` lifespan manages connection pools; never `@app.on_event` (deprecated). Annotated aliases (`DBSession = Annotated[AsyncSession, Depends(get_db)]`) eliminate boilerplate. Routers stay thin; service functions are `async def`, accept typed parameters, return ORM instances. After insert, `await db.flush(); await db.refresh(obj)` to get the generated ID without committing — commit happens in get_db on request success.
+
+**Ефективно для:** new async REST APIs needing OpenAPI docs, microservices wanting high I/O concurrency, replacing sync Flask/DRF endpoints with async equivalents, services adopting Pydantic v2 + SQLAlchemy 2 async.
 
 ## Applies If (ALL must hold)
 
-- Building new REST APIs in Python requiring async/await and auto-generated OpenAPI docs
-- Microservices needing high throughput (async I/O, connection pooling)
-- Replacing synchronous Flask / Django REST Framework endpoints with async equivalents
-- Projects where Pydantic v2 validation and `pydantic-settings` config management are already in use
+- Python >= 3.11.
+- FastAPI >= 0.110 + Pydantic v2.
+- async I/O is a real benefit (DB + HTTP clients).
+- Team comfortable with `async/await` (or willing to learn).
 
 ## Skip If (ANY kills it)
 
-- Existing Django projects with complex ORM relationships — Django REST Framework fits better
-- Simple CRUD with no async I/O needs — Flask or Django may be simpler to operate
-- Projects where the team is unfamiliar with `async/await` — sync bugs in async code are hard to debug
-- GraphQL APIs — FastAPI's OpenAPI tooling conflicts with GraphQL schema conventions
+- Existing Django + DRF service with complex ORM — DRF stays simpler.
+- Simple CRUD with no async benefit — Flask/DRF easier to operate.
+- GraphQL — different schema model.
+- Team has zero async experience and timeline is tight — risk of subtle bugs.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| DB driver | string (asyncpg, aiomysql, motor) | infra ADR |
+| Auth scheme | JWT / cookie | security ADR |
+| Migration tool | alembic / piccolo | infra ADR |
+| Settings management | pydantic-settings | config ADR |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[python]]` | Python ecosystem rules apply at the language level. |
+| `[[python-poetry-setup]]` | Dep manager pin. |
+| `[[error-handling]]` | RFC 7807 envelope for HTTP errors. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: lifespan, schema separation, Annotated aliases, async services return ORM, flush+refresh | ~700 |
+| `content/01-project-structure.xml` | essential | Recommended directory layout (kept) | ~700 |
+| `content/02-output-contract.xml` | essential | App shape + per-endpoint invariants | ~700 |
+| `content/02-schemas-deps.xml` | essential | Schemas + Annotated deps (kept) | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: deprecated on_event, schema reuse, logic in router, sync DB call in async route | ~600 |
+| `content/03-service-layer.xml` | essential | Service-function patterns (kept) | ~700 |
+| `content/04-antipatterns.xml` | essential | Additional FastAPI-specific traps (kept) | ~600 |
+| `content/04-procedure.xml` | medium | 6-step scaffold | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question on async REST API needing OpenAPI | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold main + lifespan | sonnet | Template. |
+| Generate schemas | sonnet | DTO generation. |
+| Migrate sync endpoint to async | opus | I/O reasoning. |
+| Auth dependency wiring | sonnet | Pattern. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/main.py` | App + lifespan + router include scaffold. |
+| `templates/schemas.py` | Base/Create/Update/Response schema skeletons. |
+| `templates/dependencies.py` | Annotated DBSession + CurrentUser aliases. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-python-fastapi.py` | Greps for @app.on_event, sync DB calls in async routes, schema reuse. | Pre-commit gate. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[python]]` — Python language rules
+- `[[error-handling]]` — RFC 7807 envelope
+- `[[integration-testing]]` — async test session pattern
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters: async-benefiting workload, team comfort with async, Pydantic v2 adoptable.

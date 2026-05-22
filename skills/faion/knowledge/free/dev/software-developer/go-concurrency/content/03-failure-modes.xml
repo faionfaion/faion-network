@@ -1,32 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="go-concurrency Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-concurrency as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Five antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Generator goroutine without a ctx.Done() exit: go func() { for i := 0; ; i++ { ch &lt;- i } }()</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If no consumer reads from ch, the goroutine blocks forever. Memory and goroutine count grow unboundedly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Concurrent write to a plain map without a mutex: go func() { cache[key]++ }()</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Concurrent map access is undefined behaviour in Go. The race detector catches it, but it may silently corrupt data or panic in production.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Calling wg.Add(1) inside the goroutine body: go func() { wg.Add(1); defer wg.Done(); ... }()</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The goroutine may not execute before wg.Wait() is called if the scheduler yields, causing premature completion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Closing a channel from a goroutine other than the writer: producer sends on ch, but a separate cleanup goroutine closes(ch). If the producer is blocked on send, the receiver gets a panic.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Closing a send-on-closed-channel causes panic. Only the sender can close. If cleanup needs to stop the producer, use a separate done channel: close(done), and the producer selects on done to exit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Unbuffered channel without a receiver: ch := make(chan int); go func() { ch &lt;- 1; ch &lt;- 2 }() (but main never reads from ch). The goroutine blocks forever on the first send.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>An unbuffered send blocks until there is a receiver. If no goroutine is receiving, the sender leaks. Use a buffered channel if the producer outpaces consumers, or ensure a receiver drains the channel.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Generator goroutine without a ctx.Done() exit: `go func() { for i := 0; ; i++ { ch &lt;- i } }()`.</description>
+      <symptom>goleak reports a leaked goroutine at test teardown; memory grows on long-running processes.</symptom>
+      <root-cause>Infinite loop with no exit signal; even when ch is no longer read, the goroutine blocks on send forever.</root-cause>
+      <fix>Add `select { case ch &lt;- i: case &lt;-ctx.Done(): return }`. Accept ctx as a parameter.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Concurrent write to a plain map without a mutex: `go func() { cache[key]++ }()`.</description>
+      <symptom>`go test -race` flags `WARNING: DATA RACE` on the map access; production crashes with "concurrent map writes" panic.</symptom>
+      <root-cause>Go maps are not goroutine-safe; concurrent writes crash the runtime.</root-cause>
+      <fix>Wrap with sync.RWMutex or use sync.Map for write-once + many-reads. Run -race to verify.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Calling `wg.Add(1)` inside the goroutine body: `go func() { wg.Add(1); defer wg.Done(); ... }()`.</description>
+      <symptom>`wg.Wait()` returns before all goroutines finished; downstream observes a half-baked result.</symptom>
+      <root-cause>Add race: Wait can be called before the goroutine has scheduled its Add.</root-cause>
+      <fix>Move `wg.Add(1)` to the line before `go func()`. Inside the goroutine, only `defer wg.Done()`.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Closing a channel from a goroutine other than the writer.</description>
+      <symptom>Sporadic `panic: send on closed channel` during shutdown; rare under low load, reproducible under stress.</symptom>
+      <root-cause>Violates channel-ownership rule: only the writer knows when no more sends are coming.</root-cause>
+      <fix>Move `close(ch)` into the writer goroutine. If multiple writers exist, use a `sync.Once` and an explicit "done" channel pattern, or refactor to a single owner.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>`select` without a `&lt;-ctx.Done()` case in a long-lived loop.</description>
+      <symptom>Graceful shutdown hangs indefinitely; SIGTERM kills the process after the deadline.</symptom>
+      <root-cause>No way for ctx cancellation to interrupt the select.</root-cause>
+      <fix>Always include `case &lt;-ctx.Done(): return ctx.Err()` (or break) in every select that runs in a loop.</fix>
+    </antipattern>
   </section>
 </text>

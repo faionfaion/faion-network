@@ -1,17 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="testing-pytest Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for testing-pytest as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Session-scoped DB fixture breaks under xdist</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each worker gets its own session — database sequences can collide. Use separate DB per worker with worker_id fixture.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Patching at import location instead of usage location</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Python looks up names at call time in the namespace where they were imported, not the original module.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Testing with pytest Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed when testing-pytest is applied incorrectly. Each entry has a symptom (`description`), root cause (`reason`), and corrective fix (in `note`).</summary>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Test passes alone, fails when others ran first.</description>
+      <reason>Session-scoped fixture holds mutable state.</reason>
+      <note>Fix: Demote to function scope or freeze the object with `dataclasses.replace`/`copy.deepcopy` on use.</note>
+    </antipattern>
+    <antipattern>
+      <description>`mocker.patch` silently does nothing.</description>
+      <reason>Patch target is wrong (patched where defined, not where used).</reason>
+      <note>Fix: Always patch the import path in the module under test, not the origin module.</note>
+    </antipattern>
+    <antipattern>
+      <description>CI is slow because every test starts the Django app.</description>
+      <reason>App init runs in `function` scope.</reason>
+      <note>Fix: Move to `session` scope read-only fixture; use `django-pytest` if available.</note>
+    </antipattern>
+    <antipattern>
+      <description>`pytest -n auto` makes a test deadlock.</description>
+      <reason>Tests share a SQLite file or write to the same path.</reason>
+      <note>Fix: Use `tmp_path_factory` per worker, or `pytest-xdist` worker-id env var to namespace artefacts.</note>
+    </antipattern>
+    <antipattern>
+      <description>Async test silently skipped, marked passed.</description>
+      <reason>`pytest-asyncio` is in `auto` mode and the test forgot `@pytest.mark.asyncio`.</reason>
+      <note>Fix: Set `asyncio_mode = strict`; every async test must opt in.</note>
+    </antipattern>
   </section>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

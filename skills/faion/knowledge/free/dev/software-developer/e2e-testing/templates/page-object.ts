@@ -1,3 +1,8 @@
+// purpose: POM skeleton for one route — copy and rename.
+// consumes: data-testid attributes from frontend, route path.
+// produces: TypeScript class exporting goto + intent-named actions + expect helpers.
+// depends-on: @playwright/test (no other deps).
+// token-budget-impact: ~40 lines per POM; loaded only by failing specs during triage.
 import { Page, Locator, expect } from '@playwright/test';
 
 // Skeleton Page Object — copy and rename for each route.

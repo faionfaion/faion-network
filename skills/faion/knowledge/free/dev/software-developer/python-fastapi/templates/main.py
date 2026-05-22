@@ -1,3 +1,8 @@
+# purpose: FastAPI app entry — lifespan, router includes, error handler.
+# consumes: settings (pydantic-settings), routers, lifespan deps.
+# produces: app = FastAPI(...) importable as `app.main:app`.
+# depends-on: fastapi, pydantic-settings.
+# token-budget-impact: ~40 lines.
 """
 FastAPI application entry point.
 Adjust imports, router includes, and middleware to your project structure.

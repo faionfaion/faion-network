@@ -4,32 +4,36 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: A methodology for standardizing API error responses following RFC 7807 Problem Details: every error returns `type` (URI), `title`, `status`, `detail`, `instance`, `traceId`, and an optional `errors[]` array for field-level validation failures.
+summary: Produces one application/problem+json envelope across every REST endpoint (RFC 7807 type/title/status/detail/instance/traceId + optional errors[]) with one framework handler and a JSON Schema gate.
 content_id: "2122f774409c6e33"
+complexity: medium
+produces: code
+est_tokens: 4100
 tags: [rfc-7807, error-handling, api-design, problem-details, rest]
 ---
 # Error Handling with RFC 7807 Problem Details
 
 ## Summary
 
-**One-sentence:** A methodology for standardizing API error responses following RFC 7807 Problem Details: every error returns `type` (URI), `title`, `status`, `detail`, `instance`, `traceId`, and an optional `errors[]` array for field-level validation failures.
+**One-sentence:** Produces one application/problem+json envelope across every REST endpoint (RFC 7807 type/title/status/detail/instance/traceId + optional errors[]) with one framework handler and a JSON Schema gate.
 
-**One-paragraph:** A methodology for standardizing API error responses following RFC 7807 Problem Details: every error returns `type` (URI), `title`, `status`, `detail`, `instance`, `traceId`, and an optional `errors[]` array for field-level validation failures. All endpoints share one shape, one content-type (`application/problem+json`), and one error-handler entry point.
+**One-paragraph:** Every error returns `type` (URI), `title`, `status` (matching HTTP code), `detail`, `instance`, `traceId`, and an optional `errors[]` array for field-level validation failures. All endpoints share one shape, one content-type (`application/problem+json`), one framework-level exception handler. For 5xx errors, `detail` is a static string — never an exception message, stack trace, or SQL. `traceId` is populated from the W3C `traceparent` header or a generated UUID so on-call can correlate a customer's report with internal logs in one lookup.
+
+**Ефективно для:** new REST APIs, refactors merging mixed error shapes into one, public-facing APIs where the error envelope is part of the contract, API-gateway/BFF setups translating downstream errors, multi-service architectures where clients must not memorise per-service formats.
 
 ## Applies If (ALL must hold)
 
-- New REST API where consistent client-side error handling matters.
-- Refactoring mixed error shapes (`{error:"..."}`, `{detail:"..."}`, HTML) into one envelope.
-- Public-facing APIs where error shape is part of the published contract.
-- Multi-service architectures where clients must not memorize per-service formats.
-- API gateway / BFF setups translating downstream errors.
+- The API speaks JSON over HTTP (not gRPC, not GraphQL, not streaming).
+- Clients are heterogeneous and benefit from a single error parser.
+- You can register one global exception handler at the framework level.
+- The team accepts `application/problem+json` as the response content-type.
 
 ## Skip If (ANY kills it)
 
-- gRPC — use `google.rpc.Status` + `google.rpc.error_details` instead.
+- gRPC service — use `google.rpc.Status` + `error_details` instead.
 - GraphQL — errors live in the response `errors[]` array per spec.
 - Internal-only low-stability APIs where the envelope overhead outweighs benefit.
 - Streaming endpoints (SSE, WebSocket) — error frames follow their own conventions.
@@ -37,40 +41,59 @@ tags: [rfc-7807, error-handling, api-design, problem-details, rest]
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Framework choice | string (fastapi / express / spring / django-rest) | tech stack ADR |
+| List of HTTP status codes the API emits | YAML/Markdown table | OpenAPI spec or BA ticket |
+| Trace-context header name | string (`traceparent` per W3C) | observability conventions |
+| Domain of error-type URIs | string (`https://api.example.com/errors/`) | API governance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[language-framework-guide]]` | Stack choice determines which exception-handler API is used. |
+| `[[go-http-handlers]]` or `[[nodejs-express-fastify]]` or `[[python-fastapi]]` | Framework-specific middleware wiring. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules: shape, content-type, status match, traceId, 5xx masking, errors[] usage, type URIs as contract, one handler | ~700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for ProblemDetails + valid/invalid response examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: leaked exception text, wrong content-type, mismatched status, errors[] misuse, per-route shapes, missing traceId | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: declare type URIs → write ProblemDetail model → register one handler → contract-test → wire trace-context | ~900 |
+| `content/05-examples.xml` | medium | FastAPI + Express + Spring full worked examples | ~800 |
+| `content/06-decision-tree.xml` | essential | Root: "Is this a JSON-over-HTTP REST API where clients want generic error handling?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Generate ProblemDetail model + handler | sonnet | Mechanical, framework-templated. |
+| Author error type URIs + titles | sonnet | Naming conventions, low ambiguity. |
+| Contract-test schema authoring | sonnet | Schema mirrors the model. |
+| Triage why a downstream returns a non-conforming error | opus | Multi-source diagnosis (network, framework, middleware order). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/problem-details.schema.yaml` | JSON Schema 2020-12 for the ProblemDetails body — drop-in for jsonschema/ajv/schemathesis. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-error-handling.py` | Validates a sample HTTP response body+headers against the ProblemDetails schema. | Contract test in CI; on-call debugging of a non-conforming endpoint. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[go-http-handlers]]` — Go middleware integration
+- `[[python-fastapi]]` — FastAPI exception handler integration
+- `[[nodejs-express-fastify]]` — Node middleware integration
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters protocol (JSON-over-HTTP only), framework support for one handler, and whether the team accepts `application/problem+json`. If any branch fails, defer to gRPC/GraphQL-specific conventions or skip the envelope.

@@ -1,3 +1,8 @@
+// purpose: ESLint 9 flat config — TS strict, no-explicit-any error, React hooks rules.
+// consumes: nothing external; drop at repo root.
+// produces: lint pass/fail with @typescript-eslint and react-hooks rules.
+// depends-on: eslint>=9, typescript-eslint, eslint-plugin-react-hooks.
+// token-budget-impact: ~40 lines.
 // eslint.config.js — ESLint 9.x flat config with TypeScript strict + React hooks
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';

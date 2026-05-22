@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-fastapi Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-fastapi. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="python-fastapi Core Rules" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five testable rules for production FastAPI.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="fastapi.tiangolo.com/advanced/events">Use @asynccontextmanager lifespan for startup/shutdown. Never use deprecated @app.on_event("startup").</statement>
+      <rationale>on_event is deprecated; lifespan handles both phases atomically.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="v1-source">Define separate Base, Create, Update, and Response schemas. Response uses ConfigDict(from_attributes=True). Never reuse one schema for all four roles.</statement>
+      <rationale>One-schema-fits-all leaks read-only fields into Create, allows clients to set id/created_at, and breaks API contracts.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="v1-source">Use Annotated type aliases (DBSession, CurrentUser) for dependencies. This eliminates repeated Depends() boilerplate.</statement>
+      <rationale>`db: Annotated[AsyncSession, Depends(get_db)]` reads cleanly; the alias factors away the noise.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="v1-source">Service functions are async, accept typed parameters, and return ORM model instances or None. Never return raw SQL results or dicts.</statement>
+      <rationale>Returning models lets the router serialize via response schema; dicts bypass type safety and the OpenAPI contract.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="sqlalchemy-doc">Use `await db.flush(); await db.refresh(obj)` to get generated IDs after insert without committing. Commit happens in get_db on success.</statement>
+      <rationale>flush+refresh exposes DB defaults to the service without releasing the transaction prematurely.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">lifespan used, schemas separated, Annotated deps, async services return ORM, flush+refresh pattern.</statement>
+      <rationale>Aggregate conclusion for positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Not an async REST API or team has no async experience and timeline is tight.</statement>
+      <rationale>Aggregate conclusion for negative branch.</rationale>
     </rule>
   </section>
 </text>

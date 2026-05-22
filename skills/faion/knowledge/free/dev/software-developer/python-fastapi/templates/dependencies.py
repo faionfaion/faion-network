@@ -1,3 +1,8 @@
+# purpose: shared FastAPI deps — DBSession + CurrentUser Annotated aliases.
+# consumes: app.config, sqlalchemy async engine.
+# produces: get_db, get_current_user, DBSession, CurrentUser.
+# depends-on: fastapi, sqlalchemy[asyncio], pyjwt.
+# token-budget-impact: ~30 lines.
 """
 Shared FastAPI dependencies: DB session, current user, type aliases.
 Import DBSession and CurrentUser in route functions instead of raw Depends().

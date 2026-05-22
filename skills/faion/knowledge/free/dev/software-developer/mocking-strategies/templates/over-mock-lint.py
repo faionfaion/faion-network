@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: lint script — flags test functions with >5 lines of mock setup.
+# consumes: pytest test files via Path arguments.
+# produces: stderr report; exit 1 on findings.
+# depends-on: stdlib only (ast).
+# token-budget-impact: 0 — pre-commit script.
 """
 Over-mock detector: flags test functions with too many assert_called* calls.
 Input:  tests/ directory (recursive scan of test_*.py files)

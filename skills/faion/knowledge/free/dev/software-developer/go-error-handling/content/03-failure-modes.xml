@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="go-error-handling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-error-handling as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Five antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Returning package-level mutable *AppError vars directly (e.g., return apperror.ErrNotFound).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any caller can mutate the shared var: ErrNotFound.Message = "X" corrupts the global for all subsequent requests. Always use constructors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using %v instead of %w in fmt.Errorf: fmt.Errorf("op failed: %v", err).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>%v formats the error string but does not chain the error. errors.Is and errors.As return false through %v-wrapped errors. The errorlint linter catches this.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Type asserting instead of errors.As: appErr := err.(*apperror.AppError).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Type assertion fails for wrapped errors — it only checks the outermost type. errors.As traverses the Unwrap chain and handles wrapped *AppError correctly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Wrap always sets HTTPStatus 500, silently promoting 4xx errors to 5xx.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wrapping a NewNotFound (404) with a naive Wrap function produces an AppError with HTTPStatus 500. Wrap must preserve the inner AppError's status when present.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Leaking driver errors (pgx.ErrNoRows, sql.ErrNoRows) to HTTP handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Driver errors couple response shapes to the persistence layer. Map at the repository boundary: pgx.ErrNoRows → apperror.NewNotFound(...).</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Ignoring errors from json.NewEncoder(w).Encode(body) with _ =.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A write failure leaves the client without a response body. Log the write error even if you cannot re-send the response. errcheck (golangci-lint) flags this.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>fmt.Errorf("...: %v", err) — wrapping with %v instead of %w.</description>
+      <symptom>errors.Is and errors.As at the boundary return false even when the chain should match; sentinel checks silently fail.</symptom>
+      <root-cause>%v stringifies the inner error and drops the chain.</root-cause>
+      <fix>Replace `%v` with `%w` in every fmt.Errorf wrap. errorlint linter catches this automatically.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Type assertions at HTTP boundary: `if ae, ok := err.(*AppError); ok { ... }`.</description>
+      <symptom>After any wrap (`fmt.Errorf("...: %w", appErr)`), the type assertion fails; handler emits a generic 500.</symptom>
+      <root-cause>Type assertions don't traverse the Unwrap chain.</root-cause>
+      <fix>`var ae *AppError; if errors.As(err, &amp;ae) { ... }`. errorlint catches this too.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Driver errors (pgx.ErrNoRows, sql.ErrNoRows, redis.Nil) propagating to handlers.</description>
+      <symptom>Handler matches on `pgx.ErrNoRows`; couples HTTP layer to the database driver.</symptom>
+      <root-cause>Repository forgets to map driver errors to AppError.</root-cause>
+      <fix>At every repository function exit, wrap driver errors: `if errors.Is(err, pgx.ErrNoRows) { return apperror.NewNotFound("user") }`.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Package-level mutable *AppError vars: `var ErrNotFound = &amp;AppError{...}`.</description>
+      <symptom>Mid-request mutations corrupt subsequent requests; tests pass in isolation, flake under load.</symptom>
+      <root-cause>Shared mutable state in a global; one handler mutates Message, all others observe the change.</root-cause>
+      <fix>Replace each ErrXxx with a NewXxx() constructor returning a fresh instance.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Status demotion on rewrap: wrapping an inner AppError(404) at a higher layer produces AppError(500).</description>
+      <symptom>404s reported as 500s in SLO dashboards; on-call paged for client errors.</symptom>
+      <root-cause>Wrap function defaults to HTTPStatus=500 without checking the inner chain.</root-cause>
+      <fix>In Wrap(), `errors.As` the input; if it's already an *AppError, preserve its HTTPStatus and Code.</fix>
+    </antipattern>
   </section>
 </text>

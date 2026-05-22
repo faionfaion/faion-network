@@ -1,22 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="error-handling Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="error-handling Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the ProblemDetails envelope plus valid/invalid examples, used by validate-error-handling.py.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <reference path="templates/problem-details.schema.yaml">JSON Schema 2020-12 source — load instead of duplicating.</reference>
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/problem-details",
+  "type": "object",
+  "required": ["type", "title", "status"],
+  "additionalProperties": true,
+  "properties": {
+    "type":     {"type": "string", "format": "uri"},
+    "title":    {"type": "string", "minLength": 1},
+    "status":   {"type": "integer", "minimum": 100, "maximum": 599},
+    "detail":   {"type": "string"},
+    "instance": {"type": "string"},
+    "traceId":  {"type": "string", "minLength": 1},
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "code", "message"],
+        "properties": {
+          "field":   {"type": "string"},
+          "code":    {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="http"><![CDATA[HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+  "type": "https://api.example.com/errors/validation-error",
+  "title": "Validation Error",
+  "status": 400,
+  "detail": "Request validation failed",
+  "instance": "/users",
+  "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "errors": [
+    {"field": "email", "code": "format", "message": "must be a valid e-mail address"}
+  ]
+}]]></code>
+      <note>Content-type is +json. status=400 matches HTTP code. traceId from W3C traceparent. errors[] only on 4xx validation.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="http"><![CDATA[HTTP/1.1 500 Internal Server Error
+Content-Type: application/json
+
+{
+  "error": "psycopg2.OperationalError: connection refused at /opt/app/db.py:42",
+  "stack": "Traceback (most recent call last)...",
+  "code": 502
+}]]></code>
+      <note>5 violations: wrong content-type, missing type+title+status, raw exception in body (rule:r5), stack trace, status mismatch (5xx HTTP, "code:502" body).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every error response has Content-Type: application/problem+json.</item>
+      <item>type/title/status are always present; status equals the HTTP status code.</item>
+      <item>For 5xx, detail is a static string (no exception text, no stack, no SQL).</item>
+      <item>traceId is set on every response; sourced from traceparent or generated UUID.</item>
+      <item>errors[] appears only on 4xx validation responses.</item>
+      <item>type URIs are stable; changes documented in CHANGELOG as breaking.</item>
     </list>
   </section>
 </text>

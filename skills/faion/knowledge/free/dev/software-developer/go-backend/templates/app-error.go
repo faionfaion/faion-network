@@ -1,3 +1,8 @@
+// purpose: typed application errors with HTTP status mapping for the ErrorHandler middleware.
+// consumes: nothing external — drop into internal/apperror/.
+// produces: AppError type + sentinel constructors (NotFound, BadRequest, Conflict, Internal).
+// depends-on: stdlib only (fmt, errors).
+// token-budget-impact: ~40 lines; loaded once at boot.
 // internal/apperror/apperror.go — typed application errors with HTTP mapping
 package apperror
 

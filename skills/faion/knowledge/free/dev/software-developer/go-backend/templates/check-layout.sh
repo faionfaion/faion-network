@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# scripts/check-layout.sh — fail commit if Go standard layout drifts.
-# Run in CI and as a pre-commit hook.
+# purpose: fail CI/commit if Go standard layout drifts (cmd/, internal/, no external internal imports).
+# consumes: repo root cwd; expects go.mod present.
+# produces: exit 0 on pass, non-zero with reason on fail.
+# depends-on: bash, grep, find — no external tools.
+# token-budget-impact: 0 — shell script, not loaded into LLM context.
 set -euo pipefail
 
 required=("cmd" "internal/handler" "internal/service" "internal/repository" "internal/model")

@@ -1,3 +1,8 @@
+// purpose: server.go skeleton — Wire(cfg) -> *http.Server with timeouts, Run() with graceful shutdown.
+// consumes: *Config (Addr, timeouts), *Deps (handlers, logger).
+// produces: *http.Server with all four timeouts; Run blocks until SIGINT/SIGTERM and drains.
+// depends-on: stdlib net/http, os/signal, time, errgroup.
+// token-budget-impact: ~60 lines; loaded once at boot.
 // server/server.go — graceful shutdown wrapper for Go HTTP services.
 // Usage: server.Run(srv, 15*time.Second, log)
 // Blocks until SIGINT or SIGTERM, then drains for `grace` duration.

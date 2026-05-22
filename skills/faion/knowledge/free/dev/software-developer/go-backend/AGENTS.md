@@ -4,71 +4,96 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Production-grade Go backend pattern using the standard cmd/ + internal/ project layout with Gin or Echo routers.
-content_id: "f3c43363bde0ba3d"
-tags: [go, backend, project-layout, http, error-handling]
+summary: Produces a Go HTTP backend scaffold with cmd/ + internal/ layout, consumer-side interfaces, context-first I/O signatures, typed AppError mapped to HTTP via one middleware, and a context-aware worker pool.
+content_id: "go-backend-fb02"
+complexity: medium
+produces: code
+est_tokens: 4300
+tags: [go, golang, gin, backend, project-layout]
 ---
-# Go Backend
+# Go Backend (cmd/ + internal/, Gin/Echo)
 
 ## Summary
 
-**One-sentence:** Production-grade Go backend pattern using the standard cmd/ + internal/ project layout with Gin or Echo routers.
+**One-sentence:** Produces a Go HTTP backend scaffold with cmd/ + internal/ layout, consumer-side interfaces, context-first I/O signatures, typed AppError mapped to HTTP via one middleware, and a context-aware worker pool.
 
-**One-paragraph:** Production-grade Go backend pattern using the standard cmd/ + internal/ project layout with Gin or Echo routers. Key conventions: interfaces defined at the consumer side, context.Context as first arg on all I/O functions, typed AppError mapped to HTTP via middleware, worker-pool concurrency via a Pool struct with channel-based job queue.
+**One-paragraph:** Production-grade Go backend with the standard `cmd/api/main.go` entry point and `internal/{handler,service,repository,model,middleware,config}` domain code. Interfaces are defined at the consumer side (service defines `UserRepository`, repository implements it). `context.Context` is the first arg of every exported I/O function; `gin.Context` is never captured inside a goroutine. Handlers use `ShouldBindJSON` (returns error) and call `c.Error(err)` so a single ErrorHandler middleware maps AppError to HTTP. Worker pools select on both jobs channel and `ctx.Done()` to drain cleanly under cancellation.
+
+**Ефективно для:** new Go HTTP services, refactors that mix interface ownership or leak gin.Context across goroutines, agent-generated scaffolds where main.go bloats with business logic, services adopting structured error handling.
 
 ## Applies If (ALL must hold)
 
-- Greenfield Go service scaffolding with cmd/ + internal/handler/service/repository layers.
-- Adding endpoints to an existing Gin/Echo project following this layout.
-- Generating typed AppError taxonomies and error-handler middleware.
-- Building worker-pool / fan-out-fan-in glue code around a typed Job interface.
+- Building or refactoring a Go HTTP service (Gin, Echo, or net/http).
+- Module supports the standard `cmd/` + `internal/` layout (Go 1.18+).
+- Team accepts a single ErrorHandler middleware that owns HTTP error mapping.
+- All I/O functions can take `context.Context` as the first argument.
 
 ## Skip If (ANY kills it)
 
-- Non-standard layouts (Hex / Clean / monorepo multi-module) — import paths will be wrong.
-- Performance-critical hot paths needing sync.Pool or escape-analysis awareness.
-- Cgo / unsafe / kernel-bypass code — out of scope.
-- Generics-heavy domain libraries — examples use pre-generics style.
+- Library or CLI tool — no HTTP layer; layout rules don't apply.
+- Heavily-customised framework forcing a different layout (go-kit, goa).
+- Codebase already uses the pkg/internal-monorepo pattern with shared interfaces.
+- gRPC-only service — see go-grpc methodology instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Go module name | string (`github.com/acme/svc`) | `go.mod` |
+| Framework choice | string (gin / echo / net-http) | tech stack ADR |
+| Database driver | string (pgx, gorm, sqlx) | infra ADR |
+| Worker concurrency target | int (default `runtime.NumCPU()`) | perf budget |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-error-handling]]` | AppError type the middleware maps from. |
+| `[[go-http-handlers]]` | thin-handler pattern this layout enforces. |
+| `[[go-concurrency]]` | worker-pool patterns referenced in the scaffold. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 10 rules: layout, consumer interfaces, *Request DTOs, thin main, context first, ErrorHandler, Pool patterns | ~800 |
+| `content/02-output-contract.xml` | essential | Required dir tree + invariants: cmd/api/main.go, internal/*, no external internal/ imports | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: interface in impl, gin.Context in goroutine, c.JSON for errors, bloated main, blocking Pool.Submit | ~700 |
+| `content/04-procedure.xml` | medium | 6-step scaffold procedure | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question on Go HTTP service + standard layout support | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Generate cmd/api/main.go wiring | sonnet | Template-driven; no novel reasoning. |
+| Author AppError + middleware | sonnet | Pattern from templates/. |
+| Worker pool scaffold | opus | Concurrency invariants benefit from careful reasoning. |
+| Layout audit on existing repo | sonnet | check-layout.sh + diff reporting. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/app-error.go` | AppError struct, sentinel errors, constructors. |
+| `templates/check-layout.sh` | CI script verifying internal/ dirs exist and internal/ is not imported externally. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-backend.py` | Validates a Go repo against the layout invariants (cmd/, internal/, no external internal/ imports). | Pre-commit gate; CI before `go build`. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[go-error-handling]]` — error types this layout uses
+- `[[go-http-handlers]]` — handler thinness rules
+- `[[go-concurrency]]` — pool / channel invariants
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` checks: HTTP service yes/no, standard layout permitted yes/no, context-first allowed yes/no. All three yes -> run-the-checklist; any no -> defer.

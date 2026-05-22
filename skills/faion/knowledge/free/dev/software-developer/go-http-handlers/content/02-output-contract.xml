@@ -1,22 +1,120 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="go-http-handlers Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="go-http-handlers Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required server.go shape (middleware order + timeouts + shutdown) and handler shape (thin, ctx-aware).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/go-http-handlers",
+  "type": "object",
+  "required": ["server", "handlerShape"],
+  "properties": {
+    "server": {
+      "type": "object",
+      "required": ["framework", "middlewareOrder", "timeouts", "shutdown"],
+      "properties": {
+        "framework": {"enum": ["gin", "echo", "net-http"]},
+        "middlewareOrder": {
+          "type": "array",
+          "items": {"type": "string"},
+          "contains": {"const": "Recovery"},
+          "description": "Recovery first; Logger second; RequestID third; auth + domain after."
+        },
+        "timeouts": {
+          "type": "object",
+          "required": ["readHeader", "read", "write", "idle"],
+          "properties": {
+            "readHeader": {"type": "integer", "minimum": 1},
+            "read":       {"type": "integer", "minimum": 1},
+            "write":      {"type": "integer", "minimum": 1},
+            "idle":       {"type": "integer", "minimum": 1}
+          }
+        },
+        "shutdown": {
+          "type": "object",
+          "required": ["signal", "drainSeconds"],
+          "properties": {
+            "signal": {"enum": ["SIGINT,SIGTERM"]},
+            "drainSeconds": {"type": "integer", "minimum": 5, "maximum": 60}
+          }
+        }
+      }
+    },
+    "handlerShape": {
+      "type": "object",
+      "required": ["maxLines", "allowedSteps"],
+      "properties": {
+        "maxLines": {"type": "integer", "maximum": 40},
+        "allowedSteps": {
+          "type": "array",
+          "items": {"enum": ["bind", "validate-binding", "call-service", "translate-to-http"]}
+        }
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="go"><![CDATA[func Wire(cfg *Config, deps *Deps) *http.Server {
+    r := gin.New()                         // r2
+    r.Use(mw.Recovery())                   // r1: Recovery first
+    r.Use(mw.RequestID())
+    r.Use(mw.Logger(deps.Log))
+    r.Use(mw.Auth(deps.JWT))
+    r.POST("/users", deps.UserHandler.Create)
+    return &http.Server{
+        Addr:              cfg.Addr,
+        Handler:           r,
+        ReadHeaderTimeout: 5 * time.Second,    // r8
+        ReadTimeout:       30 * time.Second,
+        WriteTimeout:      30 * time.Second,
+        IdleTimeout:       120 * time.Second,
+    }
+}
+
+func (h *UserHandler) Create(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {        // r7
+        _ = c.Error(err); return
+    }
+    u, err := h.svc.Create(c.Request.Context(), req.ToDomain())  // r3
+    if err != nil { _ = c.Error(err); return }
+    c.JSON(201, u)
+}]]></code>
+      <note>gin.New + explicit middleware + timeouts + thin handler with c.Request.Context().</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="go"><![CDATA[func main() {
+    r := gin.Default()                     // r2 violated
+    r.POST("/users", func(c *gin.Context) {
+        var u model.User
+        c.BindJSON(&u)
+        ctx := context.Background()         // r4 violated
+        go func() { svc.Notify(c) }()       // r5 violated
+        if u.Email == "" { /* ... */ }      // r6/r7 violated
+        c.JSON(200, svc.CreateUser(ctx, &u))
+    })
+    r.Run(":8080")                          // no timeouts (r8 violated)
+}]]></code>
+      <note>Five violations in 10 lines.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>gin.New() (or echo.New()) used; never gin.Default().</item>
+      <item>Middleware order: Recovery, RequestID, Logger, Auth, then domain.</item>
+      <item>http.Server has all four timeouts set explicitly (no zero values).</item>
+      <item>Every handler is &lt; 40 lines; no business logic.</item>
+      <item>c.Request.Context() plumbed to every service/repo call; no context.Background().</item>
+      <item>No `go func() { ... c.Request... }` inside handlers.</item>
+      <item>Validation happens in request-struct binding tags, not handler body.</item>
+      <item>main() registers a SIGINT/SIGTERM listener that calls srv.Shutdown(ctx) with a 10-15s drain.</item>
     </list>
   </section>
 </text>

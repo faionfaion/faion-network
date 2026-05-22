@@ -1,32 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-poetry-setup Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-poetry-setup as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="python-poetry-setup Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent calls poetry shell in headless CI or Docker.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>poetry shell hangs forever waiting for a TTY. Poetry 2.0 removed it entirely. Always use poetry run &lt;cmd&gt; from agents, never poetry shell.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent uses pip install to add a package to a Poetry-managed project.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>pip install bypasses Poetry's solver and does not update pyproject.toml or poetry.lock. The next poetry install will remove the package.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent writes "^0.1" expecting it to mean &lt;1.0.0.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>In Poetry, ^0.1 means &gt;=0.1.0,&lt;0.2.0 (not &lt;1.0.0). The caret rule applies to the leftmost non-zero digit. Always run poetry add --dry-run and read back the resolved range before committing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agent calls poetry add X when the lockfile is dirty (uncommitted local changes).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Poetry silently merges the dirty state into the new lock. Run poetry check --lock before any add/remove.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Agent uses poetry self add instead of pip install to install a Poetry plugin.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Actually reversed: pip install into the Poetry interpreter corrupts Poetry's own deps. Use poetry self add for plugins. The antipattern is using pip for Poetry's own environment.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>poetry.lock added to .gitignore.</description>
+      <symptom>Every install regenerates the lockfile; transitive deps differ between PRs; "works on my machine" returns.</symptom>
+      <root-cause>Confusion with caches that ARE gitignored.</root-cause>
+      <fix>Remove from .gitignore; commit the file; gate via pre-commit hook checking it exists.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Bare `poetry update` run on a shared repo.</description>
+      <symptom>Massive lockfile diff; another dev's staged changes overwritten; merge conflicts on every push.</symptom>
+      <root-cause>Treating `poetry update` like `git pull`.</root-cause>
+      <fix>Use `poetry update &lt;pkg>` to bump one package; document the rule in CONTRIBUTING.md.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>`poetry install` in the final Docker production stage.</description>
+      <symptom>Image > 200MB; Poetry runtime + dev deps ship to production.</symptom>
+      <root-cause>Single-stage Dockerfile copy/paste.</root-cause>
+      <fix>Multi-stage: builder exports requirements.txt; final stage runs pip install. Image drops by 100-150MB.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Broad Python constraint `python = ">=3.8"`.</description>
+      <symptom>Solver slow (10x); cryptic conflict errors when a dep narrows the range.</symptom>
+      <root-cause>Habit / leftover from older tooling.</root-cause>
+      <fix>Pin tight: `python = "^3.11"`. Solver speeds up; conflicts produce clear messages.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="nodejs-express-fastify Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure for production Node HTTP service.</summary>
+
+  <section title="Steps">
+    <step n="1" name="scaffold-app">
+      <input>Framework choice + project skeleton.</input>
+      <action>Add app.ts (Express) or server.ts (Fastify); register helmet/cors/json/pino/rate-limit BEFORE routes.</action>
+      <output>app.ts with the middleware order from r1.</output>
+      <decision-gate>If using Express 5+, document the auto-async-propagation; otherwise add the try/catch wrap helper.</decision-gate>
+    </step>
+    <step n="2" name="declare-schemas-at-module-scope">
+      <input>One endpoint spec.</input>
+      <action>Declare Zod/TypeBox schemas at the top of the route module; pass into the handler.</action>
+      <output>One schema per endpoint, all module-scoped.</output>
+      <decision-gate>Bench the route under load; if compile time leaks in, the schema was per-request.</decision-gate>
+    </step>
+    <step n="3" name="centralize-error-handler">
+      <input>Error model from [[error-handling]].</input>
+      <action>Register one error middleware AFTER routes that maps AppError to Problem+JSON.</action>
+      <output>middleware/errorHandler.ts.</output>
+      <decision-gate>Block merge if any handler calls res.status(4xx|5xx).json on its own.</decision-gate>
+    </step>
+    <step n="4" name="graceful-shutdown">
+      <input>SIGTERM/SIGINT in node process.</input>
+      <action>Add process.on('SIGTERM', shutdown) and SIGINT; shutdown calls server.close + db.end + 15s fallback timeout.</action>
+      <output>Shutdown handler in app.ts / server.ts.</output>
+      <decision-gate>If running under PM2, ensure kill_timeout >= drainSeconds.</decision-gate>
+    </step>
+    <step n="5" name="audit">
+      <input>Repo state.</input>
+      <action>Run templates/audit-routes.sh + scripts/validate-nodejs-express-fastify.py.</action>
+      <output>CI gate.</output>
+      <decision-gate>Block on any violation.</decision-gate>
+    </step>
+  </section>
+</text>

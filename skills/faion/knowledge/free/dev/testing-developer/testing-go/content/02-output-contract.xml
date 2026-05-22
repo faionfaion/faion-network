@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="testing-go Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Testing in Go Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying testing-go must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "testing-go-output",
+  "required": [
+    "test_files",
+    "test_function_count",
+    "table_driven_count",
+    "forbidden_seen",
+    "require_used"
+  ],
+  "properties": {
+    "test_files": {
+      "description": "Paths of Go test files produced."
+    },
+    "test_function_count": {
+      "description": "Total `Test*` functions across files."
+    },
+    "table_driven_count": {
+      "description": "Tests using a table + `t.Run`."
+    },
+    "benchmark_count": {
+      "description": "`Benchmark*` functions present."
+    },
+    "fuzz_targets": {
+      "description": "Names of `Fuzz*` functions."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    },
+    "require_used": {
+      "description": "`require` used for nil/error preconditions."
+    }
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="test_files" format="array&lt;string&gt;" required="true">Paths of Go test files produced.</field>
+      <field name="test_function_count" format="integer" required="true">Total `Test*` functions across files.</field>
+      <field name="table_driven_count" format="integer" required="true">Tests using a table + `t.Run`.</field>
+      <field name="benchmark_count" format="integer" required="false">`Benchmark*` functions present.</field>
+      <field name="fuzz_targets" format="array&lt;string&gt;" required="false">Names of `Fuzz*` functions.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
+      <field name="require_used" format="boolean" required="true">`require` used for nil/error preconditions.</field>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">No `time.Sleep` inside a test body — use `require.Eventually` or signal channels.</pattern>
+      <pattern id="f2">No `t.Parallel()` inside a subtest that mutates package-level globals.</pattern>
+      <pattern id="f3">No `assert.NoError` followed by a deref of the returned pointer — use `require`.</pattern>
+      <pattern id="f4">No bare `panic(err)` in test setup — `t.Fatalf` instead.</pattern>
+      <pattern id="f5">No `os.Exit` in `TestMain` without first calling `m.Run()`.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "test_files": [],
+  "test_function_count": 1,
+  "table_driven_count": 1,
+  "benchmark_count": 1,
+  "fuzz_targets": [],
+  "forbidden_seen": [],
+  "require_used": true
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "test_function_count": 1,
+  "table_driven_count": 1,
+  "benchmark_count": 1,
+  "fuzz_targets": [],
+  "forbidden_seen": [
+    "f1"
+  ],
+  "require_used": true
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-testing-go.py` exit 0.</item>
     </list>
   </section>
 </text>

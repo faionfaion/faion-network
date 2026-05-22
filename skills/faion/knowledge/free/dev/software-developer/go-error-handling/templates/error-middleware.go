@@ -1,3 +1,8 @@
+// purpose: HTTP middleware translating returned-error AppError into JSON via errors.As.
+// consumes: handlers of type `func(w,r) error`; AppError from pkg/apperror.
+// produces: JSON response with Content-Type application/json (or problem+json if integrated with error-handling methodology).
+// depends-on: pkg/apperror, encoding/json, net/http.
+// token-budget-impact: ~70 lines; loaded once at boot.
 // Package httpx provides HTTP handler wrappers including error translation middleware.
 // Handler is a func(ResponseWriter, *Request) error variant of http.HandlerFunc.
 // Wrap converts it to a standard HandlerFunc and translates *AppError to JSON responses.

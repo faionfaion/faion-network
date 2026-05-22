@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="e2e-testing Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure from enumerated journeys to a green smoke gate, with a decision-gate at each transition.</summary>
+
+  <section title="Steps">
+    <step n="1" name="enumerate-journeys">
+      <input>Product spec, Linear ticket, or BA acceptance criteria.</input>
+      <action>Extract list of user journeys, one per critical revenue/auth path. Drop anything already covered by unit or integration tests.</action>
+      <output>journeys.md with N items, N ≤ 15 for a starter suite.</output>
+      <decision-gate>If N > 15, split into @critical (top 15) and @nightly (rest). If N == 0, stop — no E2E suite needed.</decision-gate>
+    </step>
+    <step n="2" name="propose-testids">
+      <input>journeys.md + the live UI or design mockups.</input>
+      <action>For every interactive element on the journey path, propose a stable `data-testid` in scope-name-type format.</action>
+      <output>testids.md mapping (route, element) -> data-testid string. PR to frontend adding the attributes.</output>
+      <decision-gate>If frontend cannot add data-testid (legacy code), fall back to getByRole + getByLabel. If neither works, skip the methodology for that journey.</decision-gate>
+    </step>
+    <step n="3" name="write-page-objects">
+      <input>testids.md + route list from journeys.md.</input>
+      <action>For each route, create e2e/pages/&lt;Name&gt;Page.ts using templates/page-object.ts. Methods named after user intent (login, addToCart), not DOM events.</action>
+      <output>One TypeScript file per route under e2e/pages/, each exporting one class.</output>
+      <decision-gate>Run `tsc --noEmit` on the pages directory; if errors, fix before proceeding. POMs must be type-safe.</decision-gate>
+    </step>
+    <step n="4" name="write-specs-and-fixtures">
+      <input>POM classes + journey list.</input>
+      <action>Create e2e/fixtures.ts extending base test with testUser + authenticatedPage fixtures. For each journey, write e2e/&lt;journey&gt;.spec.ts tagged @smoke or @critical.</action>
+      <output>One spec.ts per journey + e2e/fixtures.ts. Specs import `test` from ./fixtures.</output>
+      <decision-gate>Run `npx playwright test --list`; verify count <= 50 in the @smoke/@critical bucket. If over, defer some to @nightly.</decision-gate>
+    </step>
+    <step n="5" name="wire-smoke-gate">
+      <input>Spec files + staging URL.</input>
+      <action>Copy templates/smoke-gate.sh into the project's deploy script. CI runs `BASE_URL=$STAGING_URL bash smoke-gate.sh` post-deploy; exit non-zero rolls back.</action>
+      <output>Updated deploy.sh + smoke-gate.sh in repo root.</output>
+      <decision-gate>If staging URL is not reachable from CI runners, use a self-hosted runner or skip the gate (deploy without rollback).</decision-gate>
+    </step>
+    <step n="6" name="run-and-triage">
+      <input>Full suite invocation.</input>
+      <action>Run `npx playwright test --reporter=list,html`. For each failure, open trace.zip; classify as real-bug / selector-drift / timing / data / infra. Auto-retry only on infra.</action>
+      <output>Test report (HTML), per-failure classification, fix PRs.</output>
+      <decision-gate>If flake rate &gt;5% after 3 CI runs, freeze the suite and run flake triage before adding new specs.</decision-gate>
+    </step>
+  </section>
+</text>

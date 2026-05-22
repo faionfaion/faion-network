@@ -1,37 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="integration-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for integration-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="integration-testing Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using unittest.mock or jest.mock to replace the database in integration tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A mocked DB integration test proves nothing about the actual ORM query, transaction, or schema. Lint with grep: no unittest.mock imports in tests/integration/.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Spawning a new Testcontainers container per test (function scope) instead of session scope.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Container cold start is multi-second. 50 tests with function-scoped containers adds minutes to CI. Always session-scope the container, function-scope only the transaction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mixing TestClient (sync) with async def tests, or calling await client.get() on a sync client.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The async/sync mismatch silently skips assertions or raises obscure errors. Standardize on one client type per test suite.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Hardcoding auth tokens in test files.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tokens encode roles and claims that vary per scenario. Hardcoded tokens create invisible coupling and expire silently. Use a token-minting fixture instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Testing against production or a shared staging environment.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Shared environments cause tests to affect each other and real data. Every integration test must run against an isolated, disposable environment.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>WireMock stubs that pass tests but drift from the real upstream API over time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Stubs prove the stub, not the real contract. Pair with periodic Pact contract verification or scheduled real-API smoke tests.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Mocking the ORM session / repository in "integration" tests.</description>
+      <symptom>Tests pass but production ORM queries fail; schema migrations untested; uniqueness constraints fire only in prod.</symptom>
+      <root-cause>Treating integration as "unit + a stub" — defeats the purpose of integration.</root-cause>
+      <fix>Replace mocks with a Testcontainers-backed real session. Move mock-heavy tests to tests/unit/.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Unpinned image tag: `PostgresContainer("postgres:latest")`.</description>
+      <symptom>Suite suddenly fails after Docker Hub publishes a new major; CI flakes for unrelated reasons.</symptom>
+      <root-cause>:latest is a moving target.</root-cause>
+      <fix>Pin to a specific version (postgres:16.2). Update in a separate PR with full suite green.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Spinning a fresh container per test instead of per session.</description>
+      <symptom>Suite takes minutes; CI runtime balloons; container startup costs dwarf the actual tests.</symptom>
+      <root-cause>Container fixture scope set to function/module instead of session.</root-cause>
+      <fix>Container fixture scope="session". Per-test isolation via transaction-rollback session fixture, not new container.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Cleanup via teardown delete (`DELETE FROM users` in fixture teardown) instead of transaction rollback.</description>
+      <symptom>Test failures leave orphan rows; later tests fail on unique constraints; manual DB cleanup needed.</symptom>
+      <root-cause>Teardown only runs on success path; failures skip it.</root-cause>
+      <fix>Begin transaction in fixture; ROLLBACK in finally/yield-exit. Atomic, survives crashes.</fix>
+    </antipattern>
   </section>
 </text>

@@ -4,72 +4,90 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Covers pnpm configuration, workspace management, CI/CD integration, and security practices for JavaScript/TypeScript projects.
-content_id: "a00e7bb5e5f9160f"
-tags: [pnpm, package-management, monorepo, nodejs, javascript]
+summary: Produces a reproducible pnpm setup — packageManager pin via corepack, committed pnpm-lock.yaml, no shamefully-hoist, .pnpmfile.cjs for phantom deps, workspace:* protocol, CI --frozen-lockfile gate.
+content_id: "pnpm-fb17"
+complexity: light
+produces: config
+est_tokens: 2900
+tags: [pnpm, package-management, corepack, workspace, monorepo]
 ---
 # pnpm Package Management
 
 ## Summary
 
-**One-sentence:** Covers pnpm configuration, workspace management, CI/CD integration, and security practices for JavaScript/TypeScript projects.
+**One-sentence:** Produces a reproducible pnpm setup — packageManager pin via corepack, committed pnpm-lock.yaml, no shamefully-hoist, .pnpmfile.cjs for phantom deps, workspace:* protocol, CI --frozen-lockfile gate.
 
-**One-paragraph:** Covers pnpm configuration, workspace management, CI/CD integration, and security practices for JavaScript/TypeScript projects. Key rule: pin the pnpm version via `packageManager` field + `corepack`, always commit `pnpm-lock.yaml`, and never use `shamefully-hoist=true` — fix phantom deps via `.pnpmfile.cjs` instead.
+**One-paragraph:** Pin the pnpm version in root package.json `packageManager` field (corepack-managed). Always commit `pnpm-lock.yaml`. Keep `shamefully-hoist=false`; fix phantom-dep issues with the `readPackage` hook in `.pnpmfile.cjs`, never with hoisting. Reference internal packages by `workspace:*`; Changesets rewrites to real versions at publish. CI runs `pnpm install --frozen-lockfile` and caches the pnpm store keyed by `pnpm-lock.yaml` hash.
+
+**Ефективно для:** new repos / monorepos adopting pnpm, migrations from npm/yarn where lockfile drift wastes hours, services suffering from phantom dependencies, CI suites with slow install times.
 
 ## Applies If (ALL must hold)
 
-- All new JavaScript/TypeScript projects (single-package or monorepo).
-- Repos whose `packageManager` field specifies `pnpm`.
-- CI/CD pipeline setup needing fast, reproducible installs.
-- Migrating an npm/yarn repo to pnpm.
-- Monorepo work requiring `pnpm --filter` + workspace protocol.
+- JS/TS project on Node 18+.
+- Team accepts pnpm as the package manager.
+- CI can run corepack + pnpm.
+- Monorepo with internal packages, OR single repo wanting reproducible installs.
 
 ## Skip If (ANY kills it)
 
-- Repos that mandate npm or yarn (legacy CI, customer constraint, polyrepo with hoisting deps).
-- Single-file scripts using `npx` with no `package.json`.
-- Electron or legacy native modules that assume hoisted layout.
-- Projects using Bun or Deno as primary runtime where pnpm adds debug surface.
+- Project mandated to use npm or yarn for compliance reasons.
+- Single-tool ecosystem (e.g. Deno) that doesn't need npm-shaped lockfiles.
+- Plugin that ships as zero-dep (no install step).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| pnpm version | semver string (e.g. `9.6.0`) | pnpm release notes |
+| Node engines | `>=20.x` | infra |
+| CI provider | string | infra ADR |
+| Workspaces (if any) | YAML pnpm-workspace.yaml | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[javascript]]` | TS+lint+test stack interacts with the package manager. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: packageManager pin, no shamefully-hoist, workspace:*, frozen-lockfile in CI, .pnpmfile.cjs for phantom deps | ~600 |
+| `content/02-output-contract.xml` | essential | Required files (package.json packageManager, .npmrc, .pnpmfile.cjs) + CI fields | ~500 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: unpinned pnpm, shamefully-hoist=true, npm install in CI, missing lockfile | ~500 |
+| `content/06-decision-tree.xml` | essential | Root: "JS/TS project where pnpm is acceptable?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Generate configs | haiku | Boilerplate. |
+| Migration from npm/yarn | sonnet | Lockfile conversion. |
+| Phantom-dep diagnosis | opus | Multi-package reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/npmrc` | .npmrc with `engine-strict=true`, `strict-peer-dependencies=false` (or true if team accepts). |
+| `templates/pnpm-bootstrap.sh` | Bootstrap script — corepack enable + install + verify. |
+| `templates/gh-actions-ci.yml` | GitHub Actions CI with pnpm cache + frozen-lockfile. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pnpm-package-management.py` | Verifies packageManager field, lockfile presence, no shamefully-hoist in any .npmrc. | Pre-commit gate. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[javascript]]` — broader TS/JS standards
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters: pnpm acceptable, corepack supported, lockfile commit acceptable.

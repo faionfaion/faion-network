@@ -1,11 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="go-http-handlers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-http-handlers. Verify and refine before relying on for production.</summary>
+  <summary>Eight testable rules covering middleware order, explicit composition, context handling, handler thinness, and server timeouts.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="v1-source">Register middleware in this order: Recovery first, Logger second, RequestID third, then auth and domain-specific middleware.</statement>
+      <rationale>Recovery must catch panics from every later middleware; Logger needs RequestID earliest; auth depends on RequestID.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="gin-doc">Use gin.New() instead of gin.Default(). Explicitly register each middleware.</statement>
+      <rationale>gin.Default() bundles Recovery + Logger with opinionated formats; explicit composition lets you align with your logger and trace conventions.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="go-context-doc">Use c.Request.Context() (or echo.Request().Context()) everywhere. Pass it to every service, repository, and database call.</statement>
+      <rationale>Request-scoped ctx carries cancellation, deadlines, and trace IDs through the call chain.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="v1-source">Never create context.Background() inside a handler. context.Background() is for main() and test setup only.</statement>
+      <rationale>Using Background() in a handler breaks cancellation propagation — long-running downstream calls won't stop when the client disconnects.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="v1-source">Do not spawn goroutines inside a handler that use c.Request.Context(). The context is cancelled when the handler returns; goroutines then crash on use.</statement>
+      <rationale>Request ctx is bound to the handler lifetime; for background work, derive a new ctx (context.WithoutCancel + WithTimeout) and pass extracted values.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="v1-source">Keep handlers to: bind request -> validate -> call one service method -> translate to HTTP. No business logic in handler files.</statement>
+      <rationale>Thin handlers are testable as transport adapters; logic in handlers becomes untestable without a real HTTP stack.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="gin-doc">Validate in the request struct via binding tags (`binding:"required,email,gte=0"`), not in the handler body.</statement>
+      <rationale>Centralizing validation in the DTO definition makes contracts inspectable and removes nested ifs from handlers.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement source="net/http">Always set ReadHeaderTimeout, ReadTimeout, WriteTimeout, and IdleTimeout on http.Server. Never leave default zero values.</statement>
+      <rationale>Zero timeouts means a slow client can hold a connection forever (Slowloris); ReadHeaderTimeout=5s, ReadTimeout=30s, WriteTimeout=30s, IdleTimeout=120s are reasonable defaults.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">gin.New(), explicit order, ctx plumbed, thin handlers, binding-tag validation, timeouts set, graceful shutdown wired.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Service is not HTTP or does not own its lifecycle (serverless) — methodology does not apply.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's negative branch.</rationale>
     </rule>
   </section>
 </text>

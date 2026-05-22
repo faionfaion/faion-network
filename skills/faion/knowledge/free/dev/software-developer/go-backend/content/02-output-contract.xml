@@ -1,22 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="go-backend Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="go-backend Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required directory tree and per-file invariants for a Go HTTP backend.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema (project tree)">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/go-backend",
+  "type": "object",
+  "required": ["modulePath", "entry", "internalDirs"],
+  "properties": {
+    "modulePath": {"type": "string", "pattern": "^[a-z0-9./_-]+$"},
+    "entry": {"const": "cmd/api/main.go"},
+    "internalDirs": {
+      "type": "array",
+      "items": {"enum": ["handler", "service", "repository", "model", "middleware", "config"]},
+      "minItems": 5,
+      "uniqueItems": true
+    },
+    "externalInternalImports": {
+      "type": "array",
+      "description": "Must be empty: no file outside the module may import the module's internal/ packages.",
+      "maxItems": 0
+    },
+    "forbiddenPatterns": {
+      "type": "array",
+      "items": {"enum": [
+        "c.JSON(http.Status",
+        "go func() { ... c.Request",
+        "BindJSON(",
+        "interface { } in repository/"
+      ]}
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="text"><![CDATA[github.com/acme/svc/
+├── cmd/
+│   └── api/main.go              # thin: config -> deps -> router -> server
+├── internal/
+│   ├── handler/                 # thin handlers, ShouldBindJSON
+│   ├── service/                 # business logic, defines UserRepository interface
+│   ├── repository/              # implements service interfaces
+│   ├── model/                   # domain structs, no HTTP tags
+│   ├── middleware/              # ErrorHandler, Logger, RequestID
+│   └── config/                  # envconfig binding
+├── pkg/                         # exported re-usables (rare)
+├── migrations/
+└── go.mod]]></code>
+      <note>internal/ never imported from outside the module. main.go imports only internal/* setup helpers.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="go"><![CDATA[// internal/handler/user.go — REJECTED
+func (h *UserHandler) Create(c *gin.Context) {
+    var u model.User                          // direct domain bind (r3 violated)
+    if err := c.BindJSON(&u); err != nil {     // BindJSON aborts (r7 violated)
+        c.JSON(400, gin.H{"error": err})       // direct JSON (r8 violated)
+        return
+    }
+    go func() { h.s.Process(c) }()             // c captured in goroutine (r5 violated)
+}]]></code>
+      <note>4 violations in 7 lines.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>cmd/api/main.go exists; it imports config + deps + router + server, nothing else.</item>
+      <item>internal/{handler,service,repository,model,middleware,config} exist (>=5 of the 6).</item>
+      <item>No file outside the module imports `&lt;module&gt;/internal/`.</item>
+      <item>Interfaces declared in service/, not repository/.</item>
+      <item>Every exported I/O function has ctx context.Context as first arg.</item>
+      <item>Handlers call c.Error(err) on failure, never c.JSON for errors.</item>
+      <item>Worker Pool.Submit selects on ctx.Done() as well as the jobs channel.</item>
     </list>
   </section>
 </text>

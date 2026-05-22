@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="python Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure to scaffold a Python 3.11+ project end-to-end.</summary>
+
+  <section title="Steps">
+    <step n="1" name="pin-python-and-poetry">
+      <input>Python version target.</input>
+      <action>`pyenv install 3.11.x`; `poetry init`; set `python = "^3.11"` in pyproject.toml.</action>
+      <output>pyproject.toml with python pin + poetry.lock.</output>
+      <decision-gate>If Poetry not acceptable, switch to uv but keep lock semantics.</decision-gate>
+    </step>
+    <step n="2" name="ruff-and-mypy">
+      <input>templates/pyproject.toml.</input>
+      <action>Add `[tool.ruff]` + `[tool.mypy]` blocks; remove black/isort/flake8 if present.</action>
+      <output>Single linter+formatter (ruff) + strict mypy.</output>
+      <decision-gate>If too many mypy errors at strict, scope to services/ first; ratchet weekly.</decision-gate>
+    </step>
+    <step n="3" name="services-layer">
+      <input>Framework choice (Django/FastAPI/general).</input>
+      <action>Create services.py inside each Django app (or services/ package for FastAPI). Move logic from views/routes into services.</action>
+      <output>services.py per app; views/routes shrink to bind-validate-call-translate.</output>
+      <decision-gate>If a view shrinks below 10 lines, that's the target shape.</decision-gate>
+    </step>
+    <step n="4" name="pytest-fixtures">
+      <input>templates/conftest.py.</input>
+      <action>Add pytest with parametrize + asyncio_mode = "auto"; create test fixtures (db_session, client).</action>
+      <output>tests/ with at least one services-level test.</output>
+      <decision-gate>If services-level tests are slow, see [[integration-testing]] for tx rollback.</decision-gate>
+    </step>
+    <step n="5" name="asyncio-correctness">
+      <input>Independent I/O calls.</input>
+      <action>Replace sequential awaits with asyncio.gather() or TaskGroup; document why each parallel call is safe (no shared state).</action>
+      <output>Refactored async code.</output>
+      <decision-gate>If calls share state, keep sequential; if calls hit shared rate-limit, add a semaphore.</decision-gate>
+    </step>
+    <step n="6" name="ci-gate">
+      <input>CI workflow file.</input>
+      <action>Add steps: `poetry install --no-interaction`, `ruff check`, `ruff format --check`, `mypy --strict`, `pytest`.</action>
+      <output>Updated CI workflow.</output>
+      <decision-gate>Block merge on any of the four checks.</decision-gate>
+    </step>
+  </section>
+</text>

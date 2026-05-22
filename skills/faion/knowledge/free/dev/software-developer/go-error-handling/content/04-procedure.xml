@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="go-error-handling Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Five-step procedure from apperror scaffold to lint-gated CI.</summary>
+
+  <section title="Steps">
+    <step n="1" name="scaffold-apperror-pkg">
+      <input>Module layout.</input>
+      <action>Drop templates/apperror.go into pkg/apperror/. Implement Error(), Unwrap(), constructors (NewNotFound, NewBadRequest, NewConflict, NewInternal), Wrap.</action>
+      <output>pkg/apperror/apperror.go + apperror_test.go covering Is/As/Unwrap.</output>
+      <decision-gate>If team prefers internal/ over pkg/, place there — but apperror is intentionally exportable.</decision-gate>
+    </step>
+    <step n="2" name="define-wrap-rules">
+      <input>List of layers (handler, service, repository) + their typical errors.</input>
+      <action>Document the wrap rule per boundary: repository wraps with `%w` and maps driver errors; service wraps with `%w` and adds context; handler returns error (no wrap).</action>
+      <output>docs/error-wrapping.md inside the repo.</output>
+      <decision-gate>If a layer has no useful context to add, do not wrap — just `return err`.</decision-gate>
+    </step>
+    <step n="3" name="repository-boundary-mapping">
+      <input>Driver list (pgx, sql, redis, http client).</input>
+      <action>For each driver, write a mapping function in internal/repository/errors.go: pgx.ErrNoRows -> NewNotFound; uniqueness-violation -> NewConflict; etc.</action>
+      <output>One mapping function per driver in repository/errors.go.</output>
+      <decision-gate>If the driver does not expose stable sentinel errors (custom RPC client), prefer matching on code strings, document the choice.</decision-gate>
+    </step>
+    <step n="4" name="wire-middleware">
+      <input>Framework choice + middleware list.</input>
+      <action>Drop templates/error-middleware.go into internal/middleware/. Register in order: RequestID, Recovery, Logger, ErrorMapper.</action>
+      <output>internal/middleware/error.go + main.go wiring.</output>
+      <decision-gate>Recovery MUST come before ErrorMapper. If order is reversed, panics produce blank 500s.</decision-gate>
+    </step>
+    <step n="5" name="lint-gate">
+      <input>golangci-lint.yml.</input>
+      <action>Enable errorlint, wrapcheck, errcheck, nilnil. Run on PR.</action>
+      <output>.golangci.yml with the four linters enabled.</output>
+      <decision-gate>Block merge on any linter finding from this set.</decision-gate>
+    </step>
+  </section>
+</text>

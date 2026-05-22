@@ -1,3 +1,8 @@
+# purpose: shared pytest conftest with event-loop + DB session fixtures.
+# consumes: pytest-asyncio>=0.23, SQLAlchemy or Django ORM.
+# produces: async test loop + per-test DB session helpers.
+# depends-on: pytest>=7, pytest-asyncio.
+# token-budget-impact: ~40 lines.
 """
 Standard pytest conftest.py with common fixtures.
 Adjust imports for your project structure.

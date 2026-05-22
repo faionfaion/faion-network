@@ -1,11 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="integration-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for integration-testing. Verify and refine before relying on for production.</summary>
+  <summary>Nine testable rules for real-dependency integration testing with Testcontainers and transaction rollback.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="testcontainers.com">Use real databases in integration tests — never mock the ORM, session, or connection. Testcontainers spins up real Postgres/MySQL/Redis in Docker for the test session.</statement>
+      <rationale>Mocking the database defeats the purpose of integration testing: ORM queries, transactions, and schema migrations don't get exercised.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="v1-source">Each test must roll back its changes via a transaction-scoped fixture. Never rely on teardown deletion — it leaks rows when tests fail mid-run.</statement>
+      <rationale>BEGIN ... ROLLBACK is atomic and survives test crashes; manual cleanup orphans rows on assertion failure.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="v1-source">Pin container image tags (postgres:16.2, never postgres:latest). Unpinned tags break the suite when a new major version drops in CI.</statement>
+      <rationale>:latest is a moving target; pinning ensures reproducible test runs.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="v1-source">Keep unit tests and integration tests in separate directories (tests/unit/ and tests/integration/). Run unit on every save; integration on push/PR only.</statement>
+      <rationale>Mixing them slows the inner dev loop and tempts skipping the slow tests.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="v1-source">Integration test suites exceeding 5 minutes must be split or parallelized. Track CI runtime in PR descriptions.</statement>
+      <rationale>Suites &gt; 5min get skipped; the rule forces parallelization or scope reduction.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="testing-pyramid">Target 70% unit tests, 20% integration tests, 10% E2E tests. Test failure paths (timeouts, 5xx, retries), not just happy paths.</statement>
+      <rationale>Inverted pyramid (more integration than unit) makes the suite slow and brittle.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="v1-source">Use a session-scoped engine fixture for Testcontainers + a function-scoped transaction-rollback session per test. Never create a new container per test.</statement>
+      <rationale>Container boot is ~3-5s; per-test containers slow the suite 100x.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement source="fastapi-doc">Override the get_db dependency to inject the test db_session. Clear dependency_overrides after the test via yield + app.dependency_overrides.clear().</statement>
+      <rationale>Without clearing, overrides leak across tests; clearing keeps isolation.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement source="v1-source">Assert HTTP status AND body shape. Never assert only the status code — a 200 with an empty body is a bug.</statement>
+      <rationale>Status-only assertions hide regressions where the route returns success but the wrong payload.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Pinned image, session container, tx rollback, separate dirs, DI override, status+body asserts.</statement>
+      <rationale>Aggregate conclusion target for the positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">No real dependencies, no Docker access, or no DI override mechanism.</statement>
+      <rationale>Aggregate conclusion target for the negative branch.</rationale>
     </rule>
   </section>
 </text>

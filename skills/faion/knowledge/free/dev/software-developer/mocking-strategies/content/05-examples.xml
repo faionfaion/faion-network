@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="mocking-strategies Examples" version="1.0.0" est_tokens="500" depth="light">
+  <summary>Two worked examples — stub for state return, fake for repository.</summary>
+
+  <section title="Stub for state return">
+    <example type="good">
+      <code lang="python"><![CDATA[# app/checkout.py
+def charge(intent_id: str, amount_cents: int) -> bool:
+    pi = stripe.PaymentIntent.create(amount=amount_cents, ...)
+    return pi.status == "succeeded"
+
+# tests/test_checkout.py
+from unittest.mock import patch
+@patch("app.checkout.stripe.PaymentIntent.create")
+def test_charge_succeeded(create_stub):
+    create_stub.return_value = type("PI", (), {"status": "succeeded"})()
+    assert charge("pi_x", 1000) is True]]></code>
+      <note>stub, patched in consumer module, returns state; no assert_called_with(...) over-spec.</note>
+    </example>
+  </section>
+
+  <section title="Fake for repository">
+    <example type="good">
+      <code lang="python"><![CDATA[# tests/fakes.py
+class FakeUserRepo:
+    def __init__(self): self._db = {}
+    async def get(self, user_id): return self._db.get(user_id)
+    async def save(self, u): self._db[u.id] = u
+
+# tests/test_users.py
+import pytest
+@pytest.fixture
+def users(): return FakeUserRepo()
+
+async def test_create_returns_user(users):
+    svc = UserService(users)                       # inject fake
+    u = await svc.create("a@b.com")
+    assert (await users.get(u.id)).email == "a@b.com"]]></code>
+      <note>Fake implements interface; tests read like the real code path; no mock setup needed.</note>
+    </example>
+  </section>
+</text>

@@ -1,22 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="python-poetry-setup Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+  <summary>Required pyproject + CI + Dockerfile invariants.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/python-poetry-setup",
+  "type": "object",
+  "required": ["lockfileCommitted", "pythonConstraint", "ciInstall", "depsGroups"],
+  "properties": {
+    "lockfileCommitted": {"const": true},
+    "pythonConstraint": {"type": "string", "pattern": "^\\^?3\\.(1[1-9]|[2-9][0-9])"},
+    "ciInstall": {"type": "string", "pattern": "poetry install .*--sync"},
+    "depsGroups": {
+      "type": "array",
+      "items": {"enum": ["main", "dev", "test", "docs"]},
+      "minItems": 3
+    },
+    "dockerMultiStage": {
+      "type": "object",
+      "properties": {
+        "builderUses": {"enum": ["poetry export"]},
+        "finalUses":   {"enum": ["pip install -r requirements.txt"]}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="toml"><![CDATA[# pyproject.toml
+[tool.poetry]
+name = "acme"
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.110"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8"
+
+[tool.poetry.group.docs]
+optional = true
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.5"
+
+# CI step
+- run: poetry install --sync --no-interaction
+
+# Dockerfile
+FROM python:3.11-slim AS builder
+RUN pip install poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt -o /tmp/req.txt --without-hashes
+
+FROM python:3.11-slim
+COPY --from=builder /tmp/req.txt .
+RUN pip install -r req.txt]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="text"><![CDATA[# pyproject.toml — REJECTED
+python = ">=3.8"                              # r5 violated
+# poetry.lock in .gitignore                    # r1 violated
+
+# Dockerfile
+FROM python:3.11
+COPY . .
+RUN pip install poetry && poetry install       # r7 violated]]></code>
+      <note>3 violations: broad Python range, no lockfile, Poetry in final stage.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>poetry.lock committed (not in .gitignore).</item>
+      <item>pyproject Python constraint uses `^3.11` (or higher).</item>
+      <item>CI step uses `--sync --no-interaction`.</item>
+      <item>Dep groups main/dev/test (and docs optional) declared.</item>
+      <item>Dockerfile is multi-stage; final stage uses pip + requirements.txt.</item>
+      <item>CI caches .venv keyed by OS+Python+poetry.lock hash.</item>
     </list>
   </section>
 </text>

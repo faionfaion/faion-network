@@ -1,22 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mobile-responsive Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="mobile-responsive Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required CSS invariants and Playwright assertions for a responsive UI.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/mobile-responsive",
+  "type": "object",
+  "required": ["viewportMeta", "breakpointStrategy", "tapTargetMinPx", "viewportsTested"],
+  "properties": {
+    "viewportMeta": {"const": "width=device-width, initial-scale=1"},
+    "breakpointStrategy": {"const": "mobile-first"},
+    "tapTargetMinPx": {"const": 44},
+    "viewportsTested": {
+      "type": "array",
+      "items": {"enum": [360, 768, 1280, 1920]},
+      "minItems": 4
+    },
+    "lighthouseMobile": {
+      "type": "object",
+      "required": ["perf", "a11y"],
+      "properties": {
+        "perf": {"type": "integer", "minimum": 85, "maximum": 100},
+        "a11y": {"type": "integer", "minimum": 95, "maximum": 100}
+      }
+    },
+    "forbidden": {
+      "type": "array",
+      "items": {"enum": [
+        "width:[0-9]+px (>1px)",
+        "100vh on iOS-targeted page",
+        "@media (max-width: ...)/desktop-first"
+      ]}
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="css"><![CDATA[/* mobile-first */
+.card { padding: clamp(0.75rem, 2vw, 1.25rem); }
+.button { min-block-size: 44px; min-inline-size: 44px; }
+@media (min-width: 768px) {
+  .card { grid-column: span 2; }
+}]]></code>
+      <note>clamp() spacing, 44px tap target, mobile-first media query.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="css"><![CDATA[/* REJECTED */
+.card { width: 360px; padding: 24px; }       /* fixed px (r3) */
+@media (max-width: 768px) { .card { width: 100% } } /* desktop-first (r2) */
+.button { min-height: 24px; }                  /* below 44px (r4) */
+.hero { height: 100vh; }                       /* iOS issue (r5) */]]></code>
+      <note>Four violations: fixed px, desktop-first, undersized tap target, 100vh.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Viewport meta tag present in head.</item>
+      <item>All media queries use `min-width` (mobile-first).</item>
+      <item>Interactive elements have computed min-block-size and min-inline-size >= 44px.</item>
+      <item>No `100vh` for iOS-served pages; use `100dvh`/`100svh`/`100lvh`.</item>
+      <item>Playwright screenshots exist at 360/768/1280/1920.</item>
+      <item>Lighthouse mobile run shows perf >= 85, a11y >= 95.</item>
     </list>
   </section>
 </text>

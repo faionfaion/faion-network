@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="go-http-handlers Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Five-step procedure to scaffold server + first handler + shutdown.</summary>
+
+  <section title="Steps">
+    <step n="1" name="server-skeleton">
+      <input>Framework choice + timeout budget.</input>
+      <action>Copy templates/server.go: Wire(cfg, deps) returns *http.Server with all four timeouts; Run(ctx, srv) does ListenAndServe with errgroup.</action>
+      <output>internal/server/server.go.</output>
+      <decision-gate>If chosen framework is net/http, drop Gin imports; otherwise adjust middleware constructors.</decision-gate>
+    </step>
+    <step n="2" name="middleware-order">
+      <input>Auth scheme + logger choice.</input>
+      <action>Register middlewares: Recovery, RequestID, Logger, ErrorMapper (from [[go-error-handling]]), Auth, then domain.</action>
+      <output>internal/middleware/*.go + wiring in server.go.</output>
+      <decision-gate>If Recovery isn't first, panics produce blank 500s; CI grep rejects misorder.</decision-gate>
+    </step>
+    <step n="3" name="request-dto">
+      <input>One endpoint spec.</input>
+      <action>Create `type XxxRequest struct { ... \`json:".." binding:"required,email"\` }`. Add a ToDomain() method that maps to model.</action>
+      <output>internal/handler/dto.go + ToDomain() method.</output>
+      <decision-gate>If a field must never come from the client (ID, timestamps), do not include it in *Request.</decision-gate>
+    </step>
+    <step n="4" name="thin-handler">
+      <input>DTO + service method.</input>
+      <action>Handler does: ShouldBindJSON -> validate -> svc.X(c.Request.Context(), req.ToDomain()) -> c.JSON(status, result).</action>
+      <output>internal/handler/x.go &lt; 40 lines.</output>
+      <decision-gate>If handler exceeds 40 lines, move logic into service.</decision-gate>
+    </step>
+    <step n="5" name="graceful-shutdown">
+      <input>Server instance + parent ctx.</input>
+      <action>Listen for SIGINT/SIGTERM with signal.NotifyContext; on signal, call srv.Shutdown(ctx) with 10-15s timeout; cancel root ctx after.</action>
+      <output>main.go wires Run(ctx, srv) and exits cleanly.</output>
+      <decision-gate>If srv.Shutdown returns context.DeadlineExceeded, increase drain or investigate hanging handlers.</decision-gate>
+    </step>
+  </section>
+</text>

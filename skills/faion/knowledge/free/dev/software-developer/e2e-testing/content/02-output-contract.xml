@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="e2e-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="e2e-testing Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required directory shape and per-file invariants for a Playwright E2E project. Used by validate-e2e-testing.py to gate commits.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/e2e-testing",
+  "type": "object",
+  "required": ["playwrightConfig", "pages", "fixtures", "specs"],
+  "properties": {
+    "playwrightConfig": {
+      "type": "string",
+      "description": "Path to playwright.config.ts; must declare projects array with at least chromium, must set retries>=1 in CI, must set trace='on-first-retry'."
+    },
+    "pages": {
+      "type": "array",
+      "description": "Page Object files at e2e/pages/*.ts. Each exports a class with constructor(page: Page), goto(), and >=1 intent-named method.",
+      "items": {"type": "string", "pattern": "^e2e/pages/[A-Z][A-Za-z0-9]*\\.ts$"},
+      "minItems": 1
+    },
+    "fixtures": {
+      "type": "string",
+      "description": "e2e/fixtures.ts exporting `test` extended from @playwright/test with at least one custom fixture."
+    },
+    "specs": {
+      "type": "array",
+      "description": "Test files at e2e/*.spec.ts. <=50 in the @critical/@smoke tag bucket.",
+      "items": {"type": "string", "pattern": "^e2e/.+\\.spec\\.ts$"},
+      "maxItems": 50
+    },
+    "forbidden": {
+      "type": "array",
+      "description": "Patterns that must NOT appear anywhere in e2e/.",
+      "items": {"enum": [
+        "page.waitForTimeout",
+        "page.locator('css=",
+        "{ force: true }",
+        "page.locator('//",
+        "describe.only",
+        "test.only"
+      ]}
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="text"><![CDATA[e2e/
+├── playwright.config.ts        # projects: [chromium, firefox]; retries: 2; trace: on-first-retry
+├── fixtures.ts                 # extends test with testUser, authenticatedPage
+├── pages/
+│   ├── LoginPage.ts            # class LoginPage { goto(); login(email, pwd); expectLoggedIn() }
+│   └── CheckoutPage.ts
+├── helpers/
+│   └── testData.ts             # createTestUser(api, overrides) via POST /api/test/users
+└── checkout.spec.ts            # tag @smoke @critical; uses authenticatedPage fixture]]></code>
+      <note>POMs use only getByTestId / getByRole. Specs assert via expect(locator), never waitForTimeout.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="typescript"><![CDATA[// e2e/login.spec.ts — REJECTED by validate-e2e-testing.py
+test('login works', async ({ page }) => {
+  await page.goto('/login');
+  await page.locator('#email-input-1234').fill('a@b.com');   // dynamic CSS ID
+  await page.locator('button.submit').click({ force: true }); // force bypass
+  await page.waitForTimeout(3000);                            // hard sleep
+  expect(await page.url()).toContain('/dashboard');           // raw url assert, no auto-retry
+});]]></code>
+      <note>4 violations: CSS selector, dynamic ID, force:true, waitForTimeout. Validator exits 1.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every locator goes through getByTestId / getByRole / getByLabel.</item>
+      <item>No occurrence of `waitForTimeout`, `force: true`, or raw CSS selectors.</item>
+      <item>Every spec file imports `test` from `./fixtures`, not from `@playwright/test` directly.</item>
+      <item>Critical-path tag (`@smoke` or `@critical`) appears on <=50 test cases.</item>
+      <item>playwright.config.ts sets retries >= 1 and trace: 'on-first-retry'.</item>
+      <item>At least one POM file under e2e/pages/ per route covered by specs.</item>
     </list>
   </section>
 </text>

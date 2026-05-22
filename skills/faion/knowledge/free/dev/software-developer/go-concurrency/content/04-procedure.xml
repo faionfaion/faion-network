@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="go-concurrency Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Five-step procedure: model fan-out, size semaphore, wire ctx, add leak detection, run -race x10.</summary>
+
+  <section title="Steps">
+    <step n="1" name="model-the-fanout">
+      <input>Workload description (N items, each calls downstream X taking ~Tms).</input>
+      <action>Pick the pattern: worker pool (steady), errgroup (one-shot fan-out), semaphore (rate limiting), pipeline (stages).</action>
+      <output>One sentence stating the chosen pattern + which template to start from.</output>
+      <decision-gate>If the workload is single-shot fan-out, prefer errgroup over hand-rolled Pool.</decision-gate>
+    </step>
+    <step n="2" name="size-bound">
+      <input>Downstream capacity numbers (DB pool size, API RPS, SLA).</input>
+      <action>Compute concurrency = min(downstream_capacity, target_throughput * latency_seconds). Document the derivation in a comment.</action>
+      <output>Semaphore size or worker count + comment.</output>
+      <decision-gate>If derivation lands on `runtime.NumCPU()` for an I/O-bound workload, re-derive — almost always wrong.</decision-gate>
+    </step>
+    <step n="3" name="wire-context">
+      <input>Parent ctx scope (request / server lifetime).</input>
+      <action>Plumb ctx into every goroutine; every select includes ctx.Done(); Submit-style methods return ctx.Err() on cancellation.</action>
+      <output>Code where `grep -n "go " | grep -v ctx | grep -v cancel` returns zero hits.</output>
+      <decision-gate>If a goroutine cannot accept ctx, refactor to accept it or add a `done chan struct{}` closed by the owner.</decision-gate>
+    </step>
+    <step n="4" name="add-leak-detection">
+      <input>Package containing concurrency primitives.</input>
+      <action>Add templates/goleak-test-main.go renamed to `package_test.go`.</action>
+      <output>One TestMain per concurrency-heavy package.</output>
+      <decision-gate>If goleak reports leaks, fix before merging — never add Ignore directives without a documented reason.</decision-gate>
+    </step>
+    <step n="5" name="ci-race-x10">
+      <input>CI configuration.</input>
+      <action>Add the templates/ci-race.sh step; ensure `-race -count>=10` for changed concurrency packages.</action>
+      <output>CI pipeline runs the race detector on every PR.</output>
+      <decision-gate>Block merge if race detector reports any data race.</decision-gate>
+    </step>
+  </section>
+</text>

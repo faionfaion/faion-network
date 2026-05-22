@@ -1,3 +1,8 @@
+# purpose: Pydantic v2 schema hierarchy template — Base/Create/Update/Response.
+# consumes: domain field list.
+# produces: 4 schema classes per entity; Response has from_attributes=True.
+# depends-on: pydantic>=2.
+# token-budget-impact: ~40 lines per entity.
 """
 Pydantic v2 schema hierarchy for User resource.
 Copy and adapt for other resources: rename User → YourResource.

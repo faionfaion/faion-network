@@ -1,12 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="python Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Five antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Business logic in Django views (DB calls + branching + side effects).</description>
+      <symptom>views.py grows past 500 lines; tests require the full Django HTTP stack; cron / CLI cannot reuse the logic.</symptom>
+      <root-cause>Django tutorials place logic in views; no enforced services/ layer.</root-cause>
+      <fix>Extract into services.py functions receiving domain types; views shrink to bind-validate-call-translate; cron/CLI call services directly.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Sequential awaits for independent I/O.</description>
+      <symptom>Total latency = sum of awaits; profiler shows long sequential waits where parallel is possible.</symptom>
+      <root-cause>Habit from sync Python; ignoring that awaits are not parallel by themselves.</root-cause>
+      <fix>Use `asyncio.gather(*calls)` or `async with TaskGroup() as tg: tg.create_task(...)` for independent calls.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>`Optional[X]` and `List[int]` in new 3.11+ code.</description>
+      <symptom>Legacy-style imports proliferate; codebase carries `from typing import Optional, List, Dict`.</symptom>
+      <root-cause>Inherited from 3.8-era code; agents copy older patterns.</root-cause>
+      <fix>Replace with `X | None` and `list[int]`. ruff `UP` ruleset auto-fixes.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>black + isort + flake8 retained alongside ruff.</description>
+      <symptom>Pre-commit hook flips formatting on every run; rule conflicts between tools.</symptom>
+      <root-cause>Half-finished migration to ruff.</root-cause>
+      <fix>Remove black/isort/flake8 from pre-commit + poetry deps; keep only ruff (lint + format).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Multi-step DB ops not wrapped in @transaction.atomic.</description>
+      <symptom>Partial writes on error; data inconsistency when one of multiple INSERTs fails.</symptom>
+      <root-cause>Missing transaction boundary at the service entry.</root-cause>
+      <fix>Wrap the service function or the relevant block with `@transaction.atomic` (sync) / `async with transaction.atomic()` (async).</fix>
+    </antipattern>
   </section>
 </text>

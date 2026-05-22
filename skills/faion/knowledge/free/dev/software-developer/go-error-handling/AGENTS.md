@@ -4,72 +4,96 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Typed AppError with Code, Message, HTTPStatus, Err.
-content_id: "e5fd377af7509efc"
-tags: [go, error-handling, http, middleware, typed-errors]
+summary: Produces a Go error-handling pipeline (typed AppError, fmt.Errorf %w wrapping, repository boundary mapping, middleware translation, golangci-lint errorlint/wrapcheck) that yields consistent HTTP responses across the service.
+content_id: "go-error-handling-fb06"
+complexity: medium
+produces: code
+est_tokens: 4200
+tags: [go, golang, error-handling, apperror, middleware]
 ---
-# Go Error Handling
+# Go Error Handling (typed AppError + middleware)
 
 ## Summary
 
-**One-sentence:** Typed AppError with Code, Message, HTTPStatus, Err.
+**One-sentence:** Produces a Go error-handling pipeline (typed AppError, fmt.Errorf %w wrapping, repository boundary mapping, middleware translation, golangci-lint errorlint/wrapcheck) that yields consistent HTTP responses across the service.
 
-**One-paragraph:** Typed AppError with Code, Message, HTTPStatus, Err. HTTP middleware translates to JSON. Wrap at repo boundaries. Use errors.As, never type assertions.
+**One-paragraph:** Define `AppError{Code, Message, HTTPStatus, Err}` implementing `Error()` and `Unwrap()` so `errors.Is/As` work through wrapping. Always wrap with `fmt.Errorf("context: %w", err)`, never `%v`. Map driver errors (pgx.ErrNoRows, sql.ErrNoRows) to AppError at the repository layer — never let driver errors reach handlers. Handlers return error; an HTTP middleware logs and translates AppError to JSON via `errors.As`. Panic recovery middleware runs BEFORE the error mapper. `golangci-lint` runs with errorlint, wrapcheck, errcheck, nilnil enabled.
+
+**Ефективно для:** new Go services, refactors merging ad-hoc error shapes into one typed envelope, repos where driver errors leak to handlers or status codes get demoted on rewrap, services adopting structured logging tied to AppError fields.
 
 ## Applies If (ALL must hold)
 
-- New Go HTTP service (chi / gin / echo / stdlib net/http) needing consistent JSON error responses
-- Refactoring a service that returns bare errors.New(...) — wrap with apperror.New* constructors
-- Adding correlation / trace IDs to error responses for production debugging
-- Standardizing structured error logging (slog, zerolog, zap)
-- Library code needing typed errors callable via errors.Is / errors.As
+- Service returns errors across layers (handler → service → repository).
+- Team accepts one typed AppError and one translation middleware.
+- golangci-lint can be added to CI with custom linters enabled.
+- Errors must map to HTTP status codes deterministically.
 
 ## Skip If (ANY kills it)
 
-- gRPC services — use google.golang.org/grpc/status + codes.Code; HTTPStatus is meaningless
-- CLI tools — errors go to stderr + exit code; JSON overhead not justified
-- Public library packages — custom error type forces consumers to depend on your package; prefer sentinel errors
-- Shallow code paths where fmt.Errorf("%w", err) chains already do the job
+- Pure library code that never reaches an HTTP boundary (use errors.Is/As only).
+- Pre-1.13 Go codebase that cannot use `%w` wrapping (upgrade first).
+- Generated code where errors are owned by a different layer (protoc-gen-* envelopes).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Layer list (handler/service/repository) | Markdown | `[[go-backend]]` layout |
+| Driver list (pgx, sqlx, http clients) | Markdown | infra ADR |
+| HTTP framework | string (gin/echo/net-http) | tech stack ADR |
+| Logger | string (slog/zap/zerolog) | observability ADR |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[go-backend]]` | Provides apperror/ package location and middleware wiring. |
+| `[[go-http-handlers]]` | Handlers return error and use the translation middleware. |
+| `[[error-handling]]` | Cross-language RFC 7807 envelope this maps onto. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 9 rules: AppError shape, %w wrapping, repo boundary mapping, Handler+Wrap, panic-then-map order, lint config, constructors not mutable vars | ~800 |
+| `content/02-output-contract.xml` | essential | Required apperror package shape + middleware order + lint config | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: %v wrapping, type assertion at HTTP boundary, driver errors leaking, mutable package vars, status demotion on rewrap | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: scaffold pkg/apperror → wrap rules → repo mapping → middleware → lint gate | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question on Go service + HTTP layer | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold pkg/apperror | sonnet | Template-driven. |
+| Boundary mapping for new driver | sonnet | Lookup table generation. |
+| errors.Is/As migration from type assertions | opus | AST-level reasoning over wrap chains. |
+| Lint config | haiku | Boilerplate YAML. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/apperror.go` | Drop-in pkg/apperror package: AppError type, constructors, Wrap helper. |
+| `templates/error-middleware.go` | HTTP middleware translating AppError to JSON via errors.As. |
+| `templates/prompt-error-scaffold.txt` | Prompt for sub-agent generating the apperror package + middleware. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-go-error-handling.py` | Verifies %w usage, no type assertions at HTTP boundaries, apperror.go shape. | Pre-commit gate. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[go-backend]]` — middleware order
+- `[[go-http-handlers]]` — handler signatures
+- `[[error-handling]]` — RFC 7807 cross-mapping
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters: Go service with HTTP layer, %w available (Go 1.13+), team can install one translation middleware. Any "no" -> skip.

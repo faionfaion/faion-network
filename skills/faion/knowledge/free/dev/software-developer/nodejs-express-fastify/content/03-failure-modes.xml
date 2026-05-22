@@ -1,42 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nodejs-express-fastify Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nodejs-express-fastify as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="nodejs-express-fastify Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Callback-based async handler in Express: User.findById(id, (err, user) =&gt; {...}).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Callback-based code cannot use try/catch for error propagation. Errors require explicit res.status(500) calls in every callback, creating inconsistent shapes and missed error paths. Use async/await with next(err) in catch.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Async Express handler without try/catch and next(err): async (req, res) =&gt; { const u = await find(); res.json(u); }.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Express 4 does not catch rejected promises from async handlers. If find() rejects, the response hangs indefinitely. Wrap in try/catch and call next(err), or use Express 5 / express-async-errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Route handler without a schema in Fastify or validate() middleware in Express.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unvalidated request bodies reach business logic and databases with arbitrary shapes. Schema validation is the only reliable defense against malformed input.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>CORS configured with origin: '*' and credentials: true.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This combination is invalid per the CORS spec and causes a browser error at runtime. Browsers block credentialed cross-origin requests when the server responds with a wildcard origin.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Hardcoded port, JWT secret, or database URL as string literals in application code.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Secrets committed to source or bundled into images are leaked to anyone with repository or container access. Use process.env and validate at startup; reject missing required config.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Fastify auth decorator registered in a plain plugin (not wrapped with fastify-plugin).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fastify's encapsulation isolates decorators to the plugin's scope. Routes outside the plugin cannot call app.authenticate. The failure is silent — the decorator simply does not exist on the outer instance.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Logging raw req.body or req.headers without redacting authorization, cookie, and password fields.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Production logs containing credentials create audit failures and enable credential theft via log aggregation systems. Use pino's redact option to strip sensitive fields before logging.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Error handler registered before routes.</description>
+      <symptom>Errors thrown in routes never invoke the handler; client sees default Express 500.</symptom>
+      <root-cause>Order-dependent middleware; 4-arg handler only catches downstream next(err).</root-cause>
+      <fix>Move app.use(errorHandler) to AFTER all app.use(routes...).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Schema constructed per-request inside handler.</description>
+      <symptom>Latency 10x baseline under load; CPU profiler shows ZOD/TypeBox compile time.</symptom>
+      <root-cause>Schema parsed/compiled inside the handler closure.</root-cause>
+      <fix>Move schemas to module scope; pass compiled schema into the handler.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Inline error response: `res.status(400).json({ error: ... })`.</description>
+      <symptom>Inconsistent error shapes across endpoints; ErrorMapper bypassed.</symptom>
+      <root-cause>Handlers writing responses directly instead of throwing/calling next(err).</root-cause>
+      <fix>Throw a typed AppError; let centralized error handler emit Problem+JSON.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>No SIGTERM listener; container kill drops in-flight requests.</description>
+      <symptom>Rolling deploys cause 502s for ~30s while pods cycle.</symptom>
+      <root-cause>Default process.exit on SIGTERM without server.close().</root-cause>
+      <fix>Add SIGTERM+SIGINT handlers calling server.close + DB pool close + setTimeout fallback.</fix>
+    </antipattern>
   </section>
 </text>

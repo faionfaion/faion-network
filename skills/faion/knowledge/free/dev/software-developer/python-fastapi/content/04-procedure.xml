@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="python-fastapi Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure for a production FastAPI app.</summary>
+
+  <section title="Steps">
+    <step n="1" name="bootstrap">
+      <input>Python 3.11+, Poetry.</input>
+      <action>`poetry add fastapi[standard] pydantic-settings sqlalchemy[asyncio] asyncpg alembic uvicorn`.</action>
+      <output>pyproject.toml + lockfile.</output>
+      <decision-gate>If using a non-async driver, abort and reconsider — methodology assumes async DB.</decision-gate>
+    </step>
+    <step n="2" name="lifespan-and-deps">
+      <input>templates/main.py + dependencies.py.</input>
+      <action>Create app with @asynccontextmanager lifespan; declare DBSession + CurrentUser Annotated aliases.</action>
+      <output>app/main.py + app/deps.py.</output>
+      <decision-gate>If team prefers separate `init_db` and `close_db` functions, wrap them inside lifespan.</decision-gate>
+    </step>
+    <step n="3" name="schemas">
+      <input>Entity list (User, Order, ...).</input>
+      <action>For each entity, write Base/Create/Update/Response in `app/schemas/<entity>.py`; Response uses ConfigDict(from_attributes=True).</action>
+      <output>One schemas file per entity.</output>
+      <decision-gate>If shared fields are tiny, keep Base for >=2 fields; otherwise inline.</decision-gate>
+    </step>
+    <step n="4" name="services">
+      <input>Entity + DB models.</input>
+      <action>Create `app/services/<entity>.py` with async functions; each accepts AsyncSession + typed params, returns ORM. Use flush+refresh for IDs.</action>
+      <output>One service module per entity.</output>
+      <decision-gate>Routers MUST NOT import models directly; only services.</decision-gate>
+    </step>
+    <step n="5" name="routers">
+      <input>Service functions.</input>
+      <action>Thin routers: `async def create_user(payload: UserCreate, db: DBSession) -> User: return await users_service.create(db, payload)`.</action>
+      <output>routers/users.py and others.</output>
+      <decision-gate>If a router exceeds 30 lines per endpoint, extract.</decision-gate>
+    </step>
+    <step n="6" name="ci-gate">
+      <input>pre-commit + CI.</input>
+      <action>Run ruff + mypy --strict + pytest + scripts/validate-python-fastapi.py.</action>
+      <output>Updated CI workflow.</output>
+      <decision-gate>Block merge on any gate failure.</decision-gate>
+    </step>
+  </section>
+</text>

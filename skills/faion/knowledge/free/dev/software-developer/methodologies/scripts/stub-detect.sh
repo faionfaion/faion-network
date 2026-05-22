@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: list sibling methodologies whose AGENTS.md is too thin (likely stub).
+# consumes: parent skill directory passed as $1.
+# produces: stdout list of short AGENTS.md paths (likely stubs).
+# depends-on: bash, find, wc — stdlib only.
+# token-budget-impact: 0 — shell script.
 # stub-detect.sh — list sibling methodologies whose README is too thin.
 # Usage: stub-detect.sh skills/faion/knowledge/free/dev/software-developer
 set -euo pipefail

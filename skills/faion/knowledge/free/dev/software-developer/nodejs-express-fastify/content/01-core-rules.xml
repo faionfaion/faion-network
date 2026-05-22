@@ -1,11 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="nodejs-express-fastify Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nodejs-express-fastify. Verify and refine before relying on for production.</summary>
+  <summary>Eight testable rules covering middleware order, schemas, error flow, and shutdown.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="v1-source">Register middleware in this order: helmet, cors, body parsing, logging, rate-limit, routes, 404 handler, error handler. Error handler MUST be last.</statement>
+      <rationale>Out-of-order middleware breaks security headers, leaves error handler unable to capture downstream throws.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="expressjs.com">Never register errorHandler before routes. An Express error handler (4-arg) is only invoked when a route calls next(err).</statement>
+      <rationale>Express's middleware ordering rule — error handler must be the last in the chain.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="zod-doc">Every route accepting body/params/query must validate against a schema. Zod for Express; TypeBox for Fastify.</statement>
+      <rationale>Without runtime validation, TS types lie at the network boundary.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="fastify.dev">In Fastify, compile schemas at module scope, not inside the handler registration.</statement>
+      <rationale>Fastify caches compiled schemas per definition; per-request compile = 10x slowdown.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="expressjs.com">All errors flow to the centralized error handler via next(err) (Express) or by throwing (Fastify). Never call res.status().json() with an error shape in a handler.</statement>
+      <rationale>Centralized error handling is the only way to keep response shapes consistent (see [[error-handling]]).</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="expressjs.com">In Express 4, wrap async handlers with try/catch and call next(err) in the catch. In Express 5+, unhandled promise rejections propagate automatically.</statement>
+      <rationale>Express 4 swallows unhandled promise rejections; explicit wrapping prevents silent 500s.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="fastify-plugin">Wrap any Fastify plugin that decorates the instance with fastify-plugin (fp) when the decorator must be visible outside the plugin scope.</statement>
+      <rationale>Fastify encapsulates by default; fastify-plugin exposes decorations upward.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement source="v1-source">Listen for SIGTERM and SIGINT. On signal: stop accepting new connections, drain in-flight via server.close(), close DB pools, then exit.</statement>
+      <rationale>Containers/k8s send SIGTERM; ignoring it drops in-flight requests on rollout.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Middleware ordered correctly, error handler last, schemas at module scope, errors via next(err)/throw, SIGTERM listener wired.</statement>
+      <rationale>Aggregate conclusion for positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Not Node HTTP, or no long-lived lifecycle (serverless).</statement>
+      <rationale>Aggregate conclusion for negative branch.</rationale>
     </rule>
   </section>
 </text>

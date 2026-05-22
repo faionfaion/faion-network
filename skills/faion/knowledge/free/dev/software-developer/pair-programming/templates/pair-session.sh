@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: start a logged pair session with terminal transcript + Pomodoro chime.
+# consumes: $1 = session goal string.
+# produces: docs/sessions/$DATE.md + transcript.
+# depends-on: bash, script(1), date.
+# token-budget-impact: 0 — shell script.
 # scripts/pair-session.sh — start a logged pair session with terminal transcript.
 # The transcript can be fed to the AI navigator as prior context on session resume.
 set -euo pipefail

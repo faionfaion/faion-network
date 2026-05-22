@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="integration-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="integration-testing Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Required test directory layout and fixture invariants.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/integration-testing",
+  "type": "object",
+  "required": ["dirs", "conftest", "ciSuiteTimeBudget"],
+  "properties": {
+    "dirs": {
+      "type": "object",
+      "required": ["unit", "integration"],
+      "properties": {
+        "unit": {"const": "tests/unit"},
+        "integration": {"const": "tests/integration"}
+      }
+    },
+    "conftest": {
+      "type": "object",
+      "required": ["containerScope", "sessionScope", "imageTag"],
+      "properties": {
+        "containerScope": {"const": "session"},
+        "sessionScope":   {"const": "function"},
+        "imageTag":       {"type": "string", "pattern": "^[a-z0-9-]+:[0-9.]+$"}
+      }
+    },
+    "ciSuiteTimeBudget": {"type": "integer", "minimum": 1, "maximum": 300},
+    "assertions": {
+      "type": "array",
+      "description": "Each test must assert both status and body.",
+      "items": {"enum": ["status", "body"]}
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="python"><![CDATA[# tests/integration/conftest.py
+from testcontainers.postgres import PostgresContainer
+
+@pytest.fixture(scope="session")
+def pg_url():
+    with PostgresContainer("postgres:16.2") as c:    # r3: pinned
+        yield c.get_connection_url()
+
+@pytest.fixture(scope="session")
+def engine(pg_url):
+    eng = create_engine(pg_url)
+    Base.metadata.create_all(eng)
+    yield eng
+
+@pytest.fixture
+def db_session(engine):
+    conn = engine.connect()
+    tx = conn.begin()                                  # r2: transaction
+    SessionLocal = sessionmaker(bind=conn)
+    session = SessionLocal()
+    yield session
+    session.close()
+    tx.rollback()                                      # rollback even on test fail
+    conn.close()
+
+@pytest.fixture
+def client(db_session):
+    def _get_db(): yield db_session
+    app.dependency_overrides[get_db] = _get_db          # r8: DI override
+    yield TestClient(app)
+    app.dependency_overrides.clear()                    # r8: cleanup
+
+# tests/integration/test_users.py
+def test_create_user(client):
+    r = client.post("/users", json={"email": "a@b.com"})
+    assert r.status_code == 201                         # r9: status
+    body = r.json()
+    assert body["email"] == "a@b.com" and body["id"]    # r9: body shape]]></code>
+      <note>Session-scoped container, function-scoped tx, DI override + clear, status + body asserts.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="python"><![CDATA[# REJECTED
+@pytest.fixture
+def db_session():
+    with PostgresContainer("postgres:latest") as c:    # r3 violated: unpinned + per-test container
+        eng = create_engine(c.get_connection_url())
+        yield Session(eng)
+        eng.execute("TRUNCATE TABLE users")             # r2 violated: teardown delete
+
+def test_login(client):
+    r = client.post("/login", json={...})
+    assert r.status_code == 200                         # r9 violated: status-only assert]]></code>
+      <note>Three violations: unpinned tag (r3), per-test container (r7), teardown deletion (r2), status-only assert (r9).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>tests/unit/ and tests/integration/ are separate directories.</item>
+      <item>conftest uses scope="session" for the container, scope="function" for the session.</item>
+      <item>Image tags are pinned (postgres:16.2, never :latest).</item>
+      <item>Per-test fixture begins a transaction and rolls back on yield exit.</item>
+      <item>DI overrides cleared via app.dependency_overrides.clear() after each test.</item>
+      <item>Every test asserts both HTTP status and body shape.</item>
+      <item>CI suite runtime < 5 minutes (track in PR descriptions).</item>
     </list>
   </section>
 </text>

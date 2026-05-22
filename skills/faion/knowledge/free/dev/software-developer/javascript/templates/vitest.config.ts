@@ -1,3 +1,8 @@
+// purpose: Vitest config with jsdom + coverage (v8) + setup file for tests.
+// consumes: nothing external; drop at repo root.
+// produces: vitest test run with coverage report under ./coverage.
+// depends-on: vitest, @vitejs/plugin-react, jsdom.
+// token-budget-impact: ~30 lines.
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 

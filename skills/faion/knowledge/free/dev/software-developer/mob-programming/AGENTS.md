@@ -4,75 +4,89 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: A team practice where all members work together on one task at one machine: a rotating Driver types only what the Navigator(s) dictate, and ideas must pass through someone else's hands before reaching the keyboard.
-content_id: "aaaac3d98c397e53"
-tags: [mob-programming, pair-programming, teamwork, knowledge-transfer, collaboration]
+summary: Produces a mob-programming session checklist (Driver/Navigator strong-style, 5-10 min rotation, written Done definition, parking lot, retrospective) so the whole team learns one task at one machine without knowledge silos.
+content_id: "mob-programming-fb13"
+complexity: light
+produces: checklist
+est_tokens: 2700
+tags: [mob, programming, team, collaboration, learning]
 ---
 # Mob Programming
 
 ## Summary
 
-**One-sentence:** A team practice where all members work together on one task at one machine: a rotating Driver types only what the Navigator(s) dictate, and ideas must pass through someone else's hands before reaching the keyboard.
+**One-sentence:** Produces a mob-programming session checklist (Driver/Navigator strong-style, 5-10 min rotation, written Done definition, parking lot, retrospective) so the whole team learns one task at one machine without knowledge silos.
 
-**One-paragraph:** A team practice where all members work together on one task at one machine: a rotating Driver types only what the Navigator(s) dictate, and ideas must pass through someone else's hands before reaching the keyboard. Strong-style navigation, strict 5-10 minute rotation, and a written session goal are the three load-bearing constraints.
+**One-paragraph:** Whole team at one machine: rotating Driver types only what the Navigator dictates ("ideas must pass through someone else's hands before reaching the keyboard"). Strong-style navigation, strict 5-10 minute rotation, written single-sentence Done definition before the session, 75-90 minute breaks, time-boxed disagreements (2 min then try one), parking lot for off-topic items, written retrospective after every session. Eliminates handoff delays and knowledge silos by making the team produce together.
+
+**Ефективно для:** onboarding new hires, untangling complex legacy code, decisions that affect multiple owners, knowledge transfer when a senior is leaving, teaching a new pattern by doing it together.
 
 ## Applies If (ALL must hold)
 
-- High-stakes changes requiring multiple specialists simultaneously (payment flow, schema migration, security refactor).
-- Onboarding: new engineer navigates while the team drives — knowledge transfers in hours.
-- "Impossible" production bugs requiring frontend + backend + ops context simultaneously.
-- Killing a knowledge silo when the only expert is leaving.
-- Cross-team API contract design where decisions must stick.
-- Spreading a new technique (TDD, hexagonal arch) across the team via kata.
+- 3-6 people can dedicate a full session to one task.
+- One shared workstation (physical room) or one shared screen (remote).
+- Team accepts strict 5-10 minute rotation and strong-style navigation.
+- Task has a single-sentence Done definition writable before start.
 
 ## Skip If (ANY kills it)
 
-- Routine CRUD, typo fixes, dependency bumps — overhead exceeds benefit.
-- Async teams with more than three time zones — coordination cost exceeds knowledge gain.
-- Solo founder or two-person team — that is pairing, not mobbing.
-- When more than 50 percent of time is spent waiting on builds or external APIs.
-- Teams that have never paired — start with pairing for 2-4 weeks first.
-- Tasks the team genuinely needs to parallelize to hit a deadline.
+- Independent parallelisable work — split tasks instead, save mob for unknowns.
+- Routine work the team has done many times — no learning payoff.
+- Group >6 — boredom; consider Ensemble or splitting into mobs.
+- Cannot articulate Done before start — clarify scope first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Done definition | one sentence | session lead / PM |
+| Roster + rotation order | list of names | session lead |
+| Timer | physical / app | shared |
+| Parking lot doc | text file | shared |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[pair-programming]]` | Strong-style navigation is shared between mob and pair; preconditions overlap. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 8 rules: strong style, intent-level navigation, 5-10 min rotation, written Done, breaks, retro, time-boxed disagreements, parking lot | ~700 |
+| `content/02-output-contract.xml` | essential | Required session-checklist shape + retrospective doc shape | ~500 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: backseat-driver mode, no rotation, no retro | ~500 |
+| `content/06-decision-tree.xml` | essential | Root: "Is this a learning/complex task with 3-6 willing people?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Generate session checklist | haiku | Boilerplate. |
+| Author Done definition | sonnet | Needs concise framing. |
+| Triage rotation breakdowns | sonnet | Pattern-match symptoms. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mob-session.sh` | Visible-timer + agenda + rotation helper script. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mob-programming.py` | Validates that a session checklist has Done definition + rotation + retro plan. | Pre-session start. |
 
 ## Related
 
 - parent skill: `free/dev/software-developer/`
+- `[[pair-programming]]` — two-person variant
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters: 3-6 people present yes/no, complex/learning task yes/no, single-sentence Done writable yes/no.

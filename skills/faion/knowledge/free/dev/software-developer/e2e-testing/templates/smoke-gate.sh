@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# smoke-gate.sh — block deploy if smoke E2E fails on staging URL.
+# purpose: deploy gate — block release if @smoke E2E fails against the staging URL.
+# consumes: BASE_URL (required), TIMEOUT (default 300s), SMOKE_TAG (default @smoke).
+# produces: exit 0 on pass, non-zero on fail; playwright-report/ HTML artefact.
+# depends-on: npx, @playwright/test installed in the project.
+# token-budget-impact: 0 — shell script, not loaded into LLM context at runtime.
 # Usage: BASE_URL=https://staging.example.com bash smoke-gate.sh
 set -euo pipefail
 BASE_URL="${BASE_URL:?BASE_URL required}"

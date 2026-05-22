@@ -1,42 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="error-handling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for error-handling as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Six antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
       <description>Interpolating exception messages, stack traces, SQL text, or internal paths into the detail field for 5xx errors.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Exposes implementation details, internal hostnames, and sometimes credentials to external clients. Use a static detail string and provide traceId for internal lookup.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
+      <symptom>Production error bodies contain `OperationalError`, `Traceback`, `psycopg2`, or hostnames; security scanner flags PII/credentials leak.</symptom>
+      <root-cause>Default exception handlers render exc.__str__ into the response without sanitization.</root-cause>
+      <fix>Catch broadly in the global handler; log exc_info=True server-side; return a static detail string and the traceId for client-side reference.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
       <description>Returning Content-Type: application/json instead of application/problem+json.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Clients that detect the +json media type suffix (e.g., Spring ProblemDetail) fall back to generic parsing. RFC 7807 mandates the problem+json type; the methodology's consistency guarantee depends on it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>HTTP status code on the response does not match the status field in the body.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>RFC 7807 requires both to match. Mismatch appears when wrapping downstream errors: the HTTP envelope says 502 while the body says 400, confusing clients and monitoring tools.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using errors[] for non-validation error types (401, 403, 404, 429).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>errors[] is a field-level extension for validation failures. Single-cause errors carry all necessary information in detail. Adding an empty errors[] array confuses clients expecting the spec shape.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>type field contains a non-URI string such as "validation" or "not_found".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>RFC 7807 requires type to be a URI. Non-URI values are technically non-conforming. More importantly, they cannot link to documentation pages that explain the error, recovery steps, and errors[] shape.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Skipping traceId on successful error handling (only populating it on 500).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tracing 400-class errors is equally important for debugging client-integration issues. Always populate traceId from W3C traceparent or generate a UUID.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>errors[].code contains a translated or localized string.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>code is machine-readable and must be stable. Translate errors[].message for users, but keep code as an invariant slug (email_invalid, not "Email invalide").</repair>
-    </failure-mode>
+      <symptom>Spring RestClient.ProblemDetail / RFC 7807-aware clients fall back to generic parsing; type-based dispatch dies silently.</symptom>
+      <root-cause>Framework default JSONResponse sets `application/json`; methodology requires explicit override.</root-cause>
+      <fix>Set `headers={"Content-Type": "application/problem+json"}` on every error response, or override the framework's default media type globally.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Body status field disagrees with HTTP response code.</description>
+      <symptom>HTTP 502 but body says `"status": 400`; clients route to the wrong handler.</symptom>
+      <root-cause>Downstream errors get re-wrapped without updating the body status; or middleware overrides HTTP code after handler returns body.</root-cause>
+      <fix>Build ProblemDetail with `status=response.status_code`; assert in the contract test that the two match.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Using errors[] for 401, 403, 404, or 5xx responses.</description>
+      <symptom>Clients receive an empty errors[] on 404 or a single fabricated entry on 500; confused parsing.</symptom>
+      <root-cause>Misreading errors[] as a general-purpose error list rather than a validation-failures extension.</root-cause>
+      <fix>Restrict errors[] to 4xx validation responses (typically 400, 422). For other 4xx/5xx, omit the field entirely.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Per-route error responses with custom shapes ({"error":...}, {"message":...}, HTML).</description>
+      <symptom>Same API returns three different error envelopes depending on the endpoint; client-side error-handling code multiplies.</symptom>
+      <root-cause>Multiple developers added per-route exception handlers instead of one framework-level handler.</root-cause>
+      <fix>Remove per-route handlers. Register one global handler returning ProblemDetail. CI grep blocks `JSONResponse(content={"error":` patterns.</fix>
+    </antipattern>
+    <antipattern id="ap-06">
+      <description>Missing traceId on every error response.</description>
+      <symptom>On-call cannot correlate a customer-supplied error report with any log line; resorts to timestamp scraping across services.</symptom>
+      <root-cause>traceparent header not propagated; no fallback UUID generation.</root-cause>
+      <fix>In the global handler, read `request.headers["traceparent"]`; if absent, generate `uuid.uuid4().hex` and set on the response.</fix>
+    </antipattern>
   </section>
 </text>

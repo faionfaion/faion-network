@@ -1,3 +1,8 @@
+# purpose: in-memory fake repository implementing the same interface as the real repository.
+# consumes: domain entity types only; no DB.
+# produces: a drop-in replacement for tests that satisfies the repository ABC.
+# depends-on: stdlib only (typing, dataclasses).
+# token-budget-impact: ~40 lines.
 """
 Fake in-memory repository implementing a UserRepository ABC.
 Use in unit tests instead of a database.

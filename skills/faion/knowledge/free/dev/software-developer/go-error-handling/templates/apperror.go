@@ -1,3 +1,8 @@
+// purpose: typed AppError package with Error()/Unwrap()/Wrap helpers — backs the methodology's r1/r9.
+// consumes: nothing external; drop into pkg/apperror/.
+// produces: AppError{Code,Message,HTTPStatus,Err} + constructors NewNotFound/NewBadRequest/etc.
+// depends-on: stdlib errors + fmt only.
+// token-budget-impact: ~60 lines; loaded once at boot.
 // Package apperror defines a structured error type for HTTP services.
 // Use constructors (NewNotFound, NewValidation, etc.); never modify package-level vars.
 package apperror

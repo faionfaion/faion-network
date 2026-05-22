@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="integration-testing Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Five-step procedure: pin image -> session fixture -> tx fixture -> DI override -> CI wiring.</summary>
+
+  <section title="Steps">
+    <step n="1" name="pick-and-pin">
+      <input>Stack (Postgres + Redis + ...).</input>
+      <action>Choose Testcontainers modules; pin to a specific patch version per service.</action>
+      <output>Updated pyproject.toml / package.json + docs/test-stack.md.</output>
+      <decision-gate>If a service has no Testcontainers module, use CI-native service block (github-actions services).</decision-gate>
+    </step>
+    <step n="2" name="session-container">
+      <input>Pinned image.</input>
+      <action>Add session-scoped fixture in tests/integration/conftest.py creating one container + engine + schema for the whole pytest session.</action>
+      <output>conftest.py with @pytest.fixture(scope="session").</output>
+      <decision-gate>If schema migrations are slow, cache the migrated container via Testcontainers reuse or volume snapshot.</decision-gate>
+    </step>
+    <step n="3" name="transaction-rollback-session">
+      <input>Session engine.</input>
+      <action>Add function-scoped fixture that opens a connection, BEGIN, yields a Session, then ROLLBACK on teardown — even on test failure.</action>
+      <output>db_session fixture using yield + finally tx.rollback().</output>
+      <decision-gate>If using async SQLAlchemy 2.x, use AsyncSession + connection.begin() context manager.</decision-gate>
+    </step>
+    <step n="4" name="di-override">
+      <input>Web framework + DI provider (get_db).</input>
+      <action>Override the framework's DB dependency to yield the test session; ensure clean-up clears dependency_overrides after the test.</action>
+      <output>client fixture in conftest.py.</output>
+      <decision-gate>If your framework lacks a DI hook, use middleware to swap the session — but DI is preferred.</decision-gate>
+    </step>
+    <step n="5" name="ci-wire">
+      <input>CI provider (GitHub Actions / GitLab / Buildkite).</input>
+      <action>Add a workflow step that installs Docker, runs `pytest tests/integration -v --maxfail=1`. Track suite time in PR comment.</action>
+      <output>.github/workflows/integration.yml.</output>
+      <decision-gate>If suite > 5 minutes, split by path or parallelize via pytest-xdist + per-worker DB schema.</decision-gate>
+    </step>
+  </section>
+</text>

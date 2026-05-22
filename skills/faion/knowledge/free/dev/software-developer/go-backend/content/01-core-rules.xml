@@ -1,11 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="go-backend Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-backend. Verify and refine before relying on for production.</summary>
+  <summary>Ten testable rules covering layout, interface ownership, request DTOs, context, middleware, and worker-pool concurrency.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="golang-standards/project-layout">Use the standard Go layout: cmd/api/main.go for entry point, internal/{handler,service,repository,model,middleware,config} for domain code, pkg/ for public packages, migrations/ for DB migrations.</statement>
+      <rationale>internal/ prevents external imports, enforcing encapsulation. cmd/ supports multiple binaries from one module.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="effective-go">Define interfaces in the package that consumes them, not in the package that provides the implementation. service/ defines UserRepository; repository/ provides the implementation.</statement>
+      <rationale>This is the Go idiom. Interfaces at the consumer side break import cycles and make mocking straightforward — the test provides a mock that satisfies the interface without importing the real impl.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="v1-source">Use separate *Request structs for HTTP request binding. Never bind directly into domain model structs.</statement>
+      <rationale>Domain models may have fields that must never be set by external input (IDs, timestamps, internal flags). DTO separation enforces this boundary.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="v1-source">Keep cmd/api/main.go thin: only wiring (config -> deps -> router -> server). No business logic.</statement>
+      <rationale>Agents bloat main.go when not constrained. Thin main makes each layer independently testable.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="go-context-doc">Pass context.Context as the first argument of every exported function that does I/O. Never capture gin.Context inside a goroutine — derive ctx := c.Request.Context() before spawning.</statement>
+      <rationale>Context carries cancellation, deadlines, and trace IDs. Capturing gin.Context in a goroutine is a data race and causes request-context leaks.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="v1-source">Use Gin (or Echo) with small, single-purpose middlewares. Never put business logic in middleware.</statement>
+      <rationale>Small middlewares compose cleanly and are easier for agents to understand and extend.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="gin-doc">Use ShouldBindJSON (returns error) instead of BindJSON (aborts on error). Use binding struct tags for validation.</statement>
+      <rationale>ShouldBind lets handlers return custom error responses; BindJSON writes a 400 and aborts, bypassing the ErrorHandler middleware.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement source="v1-source">Use a single ErrorHandler middleware that maps AppError to HTTP status. Handlers call c.Error(err) and return — never c.JSON for errors.</statement>
+      <rationale>Centralized error mapping ensures consistent error shape and avoids duplicating HTTP status logic in every handler.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement source="v1-source">Use a Pool struct with a buffered jobs channel and context-aware workers. Pool.Submit must select on both the jobs channel and ctx.Done() to avoid deadlock under cancellation.</statement>
+      <rationale>Blocking submit on a full buffer without ctx awareness deadlocks when the caller is cancelled. The select pattern drains cleanly.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement source="v1-source">Use runtime.NumCPU() as default worker count. Close the jobs channel after all jobs are sent; let workers drain naturally.</statement>
+      <rationale>Closing the channel signals workers to exit their range loop cleanly without an explicit stop signal.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Layout matches, interfaces at consumer side, contexts plumbed, ErrorHandler single, Pool selects on ctx.Done.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's positive branch.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Service is not HTTP or layout cannot follow the standard — methodology does not apply.</statement>
+      <rationale>Aggregate conclusion target for the decision tree's negative branch.</rationale>
     </rule>
   </section>
 </text>

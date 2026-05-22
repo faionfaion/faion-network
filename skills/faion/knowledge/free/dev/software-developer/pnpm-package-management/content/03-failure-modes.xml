@@ -1,37 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="pnpm-package-management Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for pnpm-package-management as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="pnpm-package-management Failure Modes" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running `npm install` or `yarn add` in a pnpm repo, creating a `package-lock.json` or `yarn.lock` alongside pnpm-lock.yaml.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mixed lockfiles cause non-deterministic installs and CI failures. Enforce with `preinstall: "npx only-allow pnpm"` and add `package-lock.json` / `yarn.lock` to `.gitignore`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding `pnpm-lock.yaml` to `.gitignore`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without a committed lockfile, CI installs different versions from development, causing "works on my machine" bugs. Always commit the lockfile.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Setting `shamefully-hoist=true` to fix a "module not found" error.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hoisting hides phantom dependency bugs and makes the project behave like npm. Fix phantom deps by adding the missing dep explicitly with `pnpm add`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Editing package.json dependencies by hand instead of using `pnpm add` / `pnpm remove`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Manual edits bypass peer-dependency resolution, producing an inconsistent lockfile. Always use pnpm CLI commands.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using `pnpm audit` in a retry loop when no fix exists for a transitive CVE.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>`pnpm audit` exits non-zero even for CVEs with no fix. Use `pnpm audit --prod` to skip dev deps; check reachability with `pnpm why`; pin via `.pnpmfile.cjs` if truly reachable and unfixed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using `pnpm add x` at workspace root without `--filter` intending to add to a sub-package.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without --filter, the dep installs at the root, not the intended package. Always scope with `--filter &lt;pkg-name&gt;`.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>No `packageManager` field; pnpm version drifts between devs.</description>
+      <symptom>Lockfile churn on every PR; "works on my laptop" install failures.</symptom>
+      <root-cause>No version pin + no corepack activation.</root-cause>
+      <fix>Add `"packageManager": "pnpm@9.6.0"` to package.json; run `corepack enable` in CI and onboarding.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>`shamefully-hoist=true` in .npmrc to "fix" a phantom dep.</description>
+      <symptom>Mystery version conflicts between transitive deps; bugs that appear only after `pnpm install --no-frozen-lockfile`.</symptom>
+      <root-cause>Hoisting flattens the dep tree and lets undeclared deps resolve accidentally.</root-cause>
+      <fix>Set `shamefully-hoist=false`. Add the missing dep declaratively via `.pnpmfile.cjs` readPackage hook, or as a direct devDependency.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>`pnpm install` (without --frozen-lockfile) in CI.</description>
+      <symptom>CI silently regenerates pnpm-lock.yaml; production deps drift between PRs.</symptom>
+      <root-cause>Default install rewrites the lockfile on small drift; CI never alerts.</root-cause>
+      <fix>Replace with `pnpm install --frozen-lockfile`; fail CI if the lockfile would change.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>`pnpm-lock.yaml` in .gitignore.</description>
+      <symptom>Every install is a fresh resolution; transitive deps change on every clone.</symptom>
+      <root-cause>Confusion with .gitignored caches.</root-cause>
+      <fix>Remove from .gitignore; commit the file; require its presence via pre-commit hook.</fix>
+    </antipattern>
   </section>
 </text>

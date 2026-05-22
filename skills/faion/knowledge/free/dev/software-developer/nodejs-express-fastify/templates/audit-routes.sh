@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: scan route files for missing schema / auth / next(err) usage.
+# consumes: $1 = routes directory.
+# produces: stdout list of suspect routes.
+# depends-on: bash, grep.
+# token-budget-impact: 0 — shell script.
 # audit-routes.sh — flag route handlers missing schema, auth, or error wiring.
 # Usage: audit-routes.sh src/routes
 # Exits 1 if any issues found; wire into pre-commit.
