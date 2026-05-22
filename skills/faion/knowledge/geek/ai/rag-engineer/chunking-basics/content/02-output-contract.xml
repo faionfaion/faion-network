@@ -1,22 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="chunking-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Chunking Basics — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for one chunk record emitted by the pipeline: id, text, token_count, source, page, chunk_index, strategy, version. Validated by scripts/validate-chunking-basics.py.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-basics/chunk.schema.json",
+  "type": "object",
+  "required": ["id", "text", "token_count", "source", "chunk_index", "strategy", "version"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+    "text": {"type": "string", "minLength": 1},
+    "token_count": {"type": "integer", "minimum": 1, "maximum": 4000},
+    "source": {"type": "string", "minLength": 1},
+    "page": {"type": ["integer", "null"], "minimum": 1},
+    "chunk_index": {"type": "integer", "minimum": 0},
+    "strategy": {"type": "string", "enum": ["fixed", "sentence", "paragraph", "recursive", "markdown", "code-ast", "html", "semantic"]},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "overlap": {"type": "integer", "minimum": 0}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>id — md5 hex of source + chunk_index + strategy_version.</item>
+      <item>text — chunk body, non-empty.</item>
+      <item>token_count — tiktoken count, 1..4000.</item>
+      <item>source — file path or URL.</item>
+      <item>chunk_index — 0-based position in source.</item>
+      <item>strategy — splitter used.</item>
+      <item>version — strategy version (semver).</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Sequential integer IDs.</description>
+      <reason>Collide on re-chunk or update; break idempotent ingest.</reason>
+    </antipattern>
+    <antipattern>
+      <description>token_count populated from len(text.split()).</description>
+      <reason>Word count is not a token count; can exceed embedding model cap.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Missing strategy or version field.</description>
+      <reason>Cannot diff A/B chunking runs without it.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "id": "9c7b1f2a8d3e4b5a6f7c8d9e0a1b2c3d",
+  "text": "Effective chunking ensures that embedded text units contain enough context...",
+  "token_count": 482,
+  "source": "docs/chunking-guide.md",
+  "page": null,
+  "chunk_index": 0,
+  "strategy": "recursive",
+  "version": "1.0.0",
+  "overlap": 50
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "id": 1,
+  "text": "...",
+  "token_count": 4800,
+  "source": "",
+  "strategy": "magic"
+}
+]]></code>
+      <note>Invalid: integer id, token_count over cap, empty source, strategy not in enum, missing chunk_index + version.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>id matches md5 hex pattern.</item>
+      <item>token_count within 1..4000.</item>
+      <item>strategy ∈ allowed enum.</item>
+      <item>version follows semver.</item>
+      <item>source non-empty.</item>
     </list>
   </section>
 </text>
