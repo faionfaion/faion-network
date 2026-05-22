@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: guided RED-GREEN-REFACTOR shell wrapper for one behavior
+# consumes: test_command + impl_file path (CLI args)
+# produces: prompts user through 7-step per-behavior loop
+# depends-on: bash + a runnable test_command (pytest / vitest / go test)
+# token-budget-impact: ~200 tokens
 # tdd-cycle.sh — guided TDD cycle for a single behavior
 #
 # Usage:
