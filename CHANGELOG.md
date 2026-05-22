@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 wave-4 chunk-07 v1.bak sidecars from refactor.
 - F-066 refactor: harvest +1 files (batch 0).
 - F-066 refactor: harvest +13 files (batch 0).
 - F-066 refactor: harvest +4 files (batch 0).
