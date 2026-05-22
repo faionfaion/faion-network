@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-065 phase 3: playbook YAML→XML batch 3 (100 dirs).
 - F-065 phase 3: playbook YAML→XML batch 2 (100 dirs).
 - F-065 phase 3: playbook YAML→XML batch 1 (100 dirs).
 - F-065 phase 1: domain merge batch 18 (7 files).
