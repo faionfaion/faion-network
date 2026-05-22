@@ -3,41 +3,96 @@ slug: fixed-price-vs-tm-cr-pricing-playbook
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-content_id: "69d80b50bc7ab429"
-summary: "Change-request playbook for P4 outsource BAs at the BA/procurement boundary: classify each CR by contract type (fixed-price vs T&M), apply absorb / negotiate-addendum / scope-swap decisions per category, and price the residual risk explicitly so neither side discovers cost surprises at handover."
-tags: [ba, geek, p4-outsource, change-request, fixed-price, tm, pricing]
+summary: "Produces a change-request playbook for P4 outsource BAs at the BA/procurement boundary: classify each CR by contract type (fixed-price vs T&M), apply absorb / negotiate-addendum / scope-swap decisions, and price residual risk explicitly."
+content_id: "9d62df62d53fe1af"
+complexity: deep
+produces: playbook-step
+est_tokens: 4500
+tags: [ba, p4-outsource, change-request, fixed-price, tm, pricing, geek]
 ---
+
 # Fixed-Price vs T&M Change-Request Pricing Playbook
 
 ## Summary
 
-Change requests behave radically differently under fixed-price and T&M contracts, and Faion currently has no BA-side methodology bridging change management to commercial structure. Under fixed-price every CR is a margin event and needs an addendum-or-absorb decision rooted in residual contingency; under T&M every CR is a velocity event and needs a re-baseline impact only. This playbook gives the P4 outsource BA a single decision tree that classifies the CR by contract type, then by size, then by risk exposure, and produces one of four actions (absorb, scope-swap, addendum, defer-to-phase-2). It explicitly prices residual risk and keeps the BA / procurement / sponsor handoff legible.
+**One-sentence:** Produces a change-request playbook for P4 outsource BAs at the BA/procurement boundary: classify each CR by contract type (fixed-price vs T&M), apply absorb / negotiate-addendum / scope-swap decisions, and price residual risk explicitly.
 
-## Applies If
+**Ефективно для:** P4 outsource BAs handling change requests under fixed-price + T&M contracts; commercial leads defending CR pricing; PMs negotiating scope swaps without margin leak.
 
-- The engagement is an active outsource contract with a defined commercial structure (fixed-price, T&M, or hybrid).
-- A change request has been submitted by client or vendor that materially alters scope, schedule, or cost.
-- The BA has read access to the original SOW, the master agreement (MSA), and the running burn-down or hours ledger.
-- A named sponsor on each side (client and vendor) is reachable for an addendum decision.
+**One-paragraph:** This methodology pins the recurring decision around "fixed-price-vs-tm-cr-pricing-playbook" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
-## Skip If
+## Applies If (ALL must hold)
 
-- The change is a clarification of existing scope (no scope delta, no cost delta) — record and move on, no playbook needed.
-- The engagement has no fixed scope at all (pure staff augmentation) — CRs do not apply; renegotiate weekly capacity instead.
-- The CR is regulator-mandated and must be implemented regardless of price — escalate immediately, not via this playbook.
+- Engagement runs under fixed-price OR T&M contract.
+- Change requests arrive after baseline scope agreed.
+- BA owns the CR pricing recommendation.
+- Owner exists for the playbook step.
 
-## Content
+## Skip If (ANY kills it)
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Five testable rules covering contract-type classification, size thresholds, residual-risk pricing, the absorb/swap/addendum decision tree, and the cross-boundary handoff to procurement |
+- Engagement is internal product team — no contract boundary.
+- Vendor handles all CR pricing — link out.
+- Pilot with no signed contract yet.
+
+## Prerequisites
+
+| Input artifact | Format | Source |
+|---|---|---|
+| Baseline scope + price | spec + commercial doc | commercial |
+| Change request (CR) text | Markdown / ticket | client / PM |
+| Historical CR outcomes (absorbed / addendum / swap) | spreadsheet | commercial |
+| Margin and contingency status | spreadsheet | finance |
+| Playbook owner | handle / email | team roster |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `[[fixed-price-risk-loading-model]]` | risk loading model produced the baseline buffer |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft_cr_classification` | haiku | Template fill from CR text. |
+| `synthesize_decision` | sonnet | Absorb vs addendum vs swap judgment. |
+| `escalate_margin_breach` | opus | Cross-CR margin compounding. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/fixed-price-vs-tm-cr-pricing-playbook.json` | JSON Schema for the Fixed-Price vs T&M Change-Request Pricing Playbook output contract |
+| `templates/fixed-price-vs-tm-cr-pricing-playbook.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a fixed-price-vs-tm-cr-pricing-playbook record |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-fixed-price-vs-tm-cr-pricing-playbook.py` | Enforce the Fixed-Price vs T&M Change-Request Pricing Playbook output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ba/`
-- triggering activity: `Major change-request impact assessment + re-baseline`, `Pre-bid discovery for a fixed-price engagement (P4)`
-- neighbouring: `pro/ba/change-request-impact-rubric`, `pro/ba/cr-options-matrix-template`, `geek/ba/fixed-price-risk-loading-model`
+- [[fixed-price-risk-loading-model]] — upstream risk-loading model.
+- [[compliance-traceability-pack]] — when CR touches compliance scope.
+- [[ai-enabled-business-analysis]] — parent BA methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

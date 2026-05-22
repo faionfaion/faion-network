@@ -3,85 +3,94 @@ slug: ai-story-truth-checklist
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5eccf185523afd2e"
-summary: A discrete BA checklist that vets AI-generated user stories for plausibility-but-wrong shapes — invented personas, conflated jobs, fabricated metrics, missing edge cases — before they enter the backlog.
-tags: [user-stories, ba, ai-codegen, story-vetting, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a per-story checklist that vets AI-generated user stories for plausible-but-wrong shapes: invented personas, conflated jobs, fabricated metrics, missing edge cases — before they enter the backlog."
+content_id: "ba922839025867f2"
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: [ba, user-stories, hallucination, checklist, ai-codegen, geek]
 ---
+
 # AI Story Truth Checklist
 
 ## Summary
 
-**One-sentence:** A discrete 8-point checklist the BA runs on every AI-generated user story to vet for the "plausible-but-wrong" failure mode — invented personas, conflated jobs, fabricated metrics, missing edge cases — before the story enters the team backlog.
+**One-sentence:** Produces a per-story checklist that vets AI-generated user stories for plausible-but-wrong shapes: invented personas, conflated jobs, fabricated metrics, missing edge cases — before they enter the backlog.
 
-**One-paragraph:** AI assistants generate user stories at velocity, but the dominant failure mode is "looks like a story, doesn't match reality": invented personas not in the actual user research, conflated jobs (login + onboarding lumped together), fabricated metrics ("25% of users want X" with no data), missing edge cases (no failure path, no offline mode, no privacy implication), missing acceptance criteria, story tense / voice violations, dependencies hand-waved, and out-of-scope features sneaking in. This methodology gives the BA an 8-point checklist they run on every AI-drafted story. Output: a per-story score and a `pass / revise / scrap` decision. Stories enter the backlog only after passing.
+**Ефективно для:** BAs running AI-assisted story drafting; PMs gating LLM-drafted backlog entries; QA leads detecting story-level hallucinations early.
+
+**One-paragraph:** This methodology pins the recurring decision around "ai-story-truth-checklist" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- BA owns the story-quality gate for the team's backlog.
-- AI-generated stories are an active input (Claude, Cursor, ChatGPT, internal LLM).
-- User research artefacts exist (personas, JTBD statements, interview notes) for cross-reference.
-- A documented acceptance-criteria style guide exists in the repo.
+- User stories drafted by an LLM (or LLM-assisted).
+- Stories will enter a sprint backlog after this gate.
+- Owner exists for the story review.
+- Persona / job catalogue exists OR can be supplied.
 
 ## Skip If (ANY kills it)
 
-- BA does not own the backlog gate — escalate to whoever does.
-- Team has no user-research artefacts to validate against — the checklist's persona / metric checks have nothing to compare to.
-- Stories are technical-only (e.g. tech debt) — different vetting applies.
-- Process is in transition (e.g. story-mapping workshop in flight) — defer.
+- Stories are fully human-authored — apply standard story review.
+- Spike / research story with no production output.
+- Single-story experiment with no downstream impact.
 
 ## Prerequisites
 
-- Persona file or persona index (e.g. `personas.yaml`).
-- JTBD statements or equivalent user-research artefact (`research/jtbd.md`).
-- Acceptance-criteria style guide (`backlog/style-guide.md`).
-- A `backlog/incoming/` folder where AI-drafted stories land before vetting.
+| Input artifact | Format | Source |
+|---|---|---|
+| AI-drafted user story | Markdown | BA |
+| Persona catalogue | Markdown / CSV | PM |
+| Job catalogue (JTBD) | Markdown / CSV | PM |
+| Owner for review | handle / email | team roster |
+| Source requirement id | spec id | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst/user-story-fundamentals` | Background on canonical story shape. |
-| `solo/research/researcher/jtbd` (or pro variant) | JTBD statements are the truth anchor for the conflation check. |
-| `geek/ba/business-analyst/ai-enabled-business-analysis` | Sibling: this checklist is the operational counterpart. |
+| `[[ai-transcript-to-traceable-requirement]]` | source requirement has a provenance trail |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: persona-in-roster, JTBD-anchored, no fabricated stats, edge cases enumerated, AC traceable | ~1100 |
-| `content/02-output-contract.xml` | essential | Story-vetting record schema, decision rule, traceability map | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 LLM-specific story failure modes with detectors | ~1000 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `persona-match` | haiku | Mechanical: persona name lookup |
-| `jtbd-conflation-check` | sonnet | Bounded judgement: does the story conflate two jobs? |
-| `stat-verification` | sonnet | Bounded: trace claims to research artefacts |
-| `vetting-aggregate` | opus | Cross-checklist synthesis; final pass / revise / scrap |
+| `draft_checklist_pass` | haiku | Mechanical story walk-through. |
+| `synthesize_revision` | sonnet | Per-story judgment when a check fails. |
+| `escalate_contradiction` | opus | When persona + job + AC conflict. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/vetting-record.json` | Per-story vetting record |
-| `templates/checklist.md` | The 8-point checklist with concrete prompts |
-| `templates/style-guide.md` | Story / AC style reference |
+| `templates/ai-story-truth-checklist.json` | JSON Schema for the AI Story Truth Checklist output contract |
+| `templates/ai-story-truth-checklist.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/vet-story.py` | Run the checklist on a single story; emit vetting record | Per story in backlog/incoming |
-| `scripts/batch-vet.py` | Run vetting on all incoming stories; produce daily summary | Daily |
+| `scripts/validate-ai-story-truth-checklist.py` | Enforce the AI Story Truth Checklist output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ba/business-analyst/`
-- peer methodologies: `ai-enabled-business-analysis`, `user-story-fundamentals`, `acceptance-criteria-writing`
-- external: [Mike Cohn user-story guidance](https://www.mountaingoatsoftware.com/) · [INVEST criteria](https://en.wikipedia.org/wiki/INVEST_(mnemonic)) · [JTBD canonical: Christensen](https://hbr.org/2016/09/know-your-customers-jobs-to-be-done)
+- [[ai-ac-hallucination-checklist]] — sister checklist on acceptance criteria.
+- [[ai-transcript-to-traceable-requirement]] — upstream provenance.
+- [[ai-enabled-business-analysis]] — parent methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

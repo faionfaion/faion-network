@@ -3,78 +3,96 @@ slug: ai-workload-cost-attribution
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Workload Cost Attribution: codified platform / SRE practice that turns the recurring 'role-devops-engineer/Weekly cloud cost review' decision into a repeatable, auditable artefact.
-content_id: "83e5d69314e03b06"
-tags: [ai-workload-cost-attribution, infra, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Per-tenant / per-feature LLM + GPU cost attribution: token-meter ingestion, GPU-second mapping, cost-per-request rollup, monthly invoice-ready report."
+content_id: "8ecd2e49967cebd2"
+complexity: medium
+produces: report
+est_tokens: 4600
+tags: [finops, ai, cost, attribution, tokens, gpu, geek, infra]
 ---
-# Ai Workload Cost Attribution
+
+# AI Workload Cost Attribution
 
 ## Summary
 
-**One-sentence:** Ai Workload Cost Attribution: codified platform / SRE practice that turns the recurring 'role-devops-engineer/Weekly cloud cost review' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-tenant / per-feature LLM + GPU cost attribution: token-meter ingestion, GPU-second mapping, cost-per-request rollup, monthly invoice-ready report.
 
-**One-paragraph:** Ai Workload Cost Attribution addresses the gap identified by the role-devops-engineer/Weekly cloud cost review playbook: finops-ai-ml-costs touches this but is shallow. AI inference / training workloads have unique attribution (GPU-hour, tokens-per-tenant) not modeled in existing tagging guides. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Per-tenant / per-feature LLM + GPU cost attribution: token-meter ingestion, GPU-second mapping, cost-per-request rollup, monthly invoice-ready report. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`report`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/Weekly cloud cost review OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Production LLM / GPU workload with ≥2 tenants or features sharing one provider account.
+- Monthly cost ≥$2k OR per-tenant unit economics are required.
+- Token meter (provider API or self-hosted gateway) is available.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-tenant single-feature workload — flat monthly invoice suffices.
+- Pre-revenue workload <$100/month — overhead exceeds value.
+- Provider does not expose per-call usage metadata (rare in 2026).
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/Weekly cloud cost review task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| LLM usage events | OTel GenAI spans / provider usage API | llm-observability |
+| GPU node metrics | DCGM / NVML exporter | platform team |
+| Tenant tag | header / JWT claim | API gateway |
+| Pricing catalogue | JSON / YAML | FinOps team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `geek/ai/ml-engineer/llm-observability` | Token & latency telemetry source. |
+| `pro/infra/devops-engineer/cost-monitoring-baseline` | Underlying FinOps stack. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | One end-to-end worked example | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `usage_event_normalize` | haiku | Deterministic schema mapping. |
+| `cost_rollup_per_tenant` | sonnet | Aggregate + reconcile against provider invoice. |
+| `variance_explain` | opus | Diagnose >10% variance between rollup and invoice. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-workload-cost-attribution.json` | JSON schema for the Ai Workload Cost Attribution output contract |
-| `templates/ai-workload-cost-attribution.md` | Markdown skeleton with the required fields |
+| `templates/attribution-report.md` | Monthly per-tenant cost report skeleton. |
+| `templates/pricing-catalogue.yaml` | Provider pricing as machine-readable YAML. |
+| `templates/usage-event-schema.json` | Canonical usage event JSON Schema. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-workload-cost-attribution.py` | Enforce Ai Workload Cost Attribution output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-workload-cost-attribution.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/infra/`
-- upstream playbook: `role-devops-engineer/Weekly cloud cost review`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- `[[llm-observability]]`
+- `[[cost-monitoring-baseline]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether ai-workload-cost-attribution applies: root question — "Are there ≥2 tenants/features sharing one LLM/GPU provider account AND monthly cost ≥$2k?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

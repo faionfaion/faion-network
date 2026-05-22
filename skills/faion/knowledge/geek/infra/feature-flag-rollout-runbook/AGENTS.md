@@ -3,78 +3,95 @@ slug: feature-flag-rollout-runbook
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4f3bbbfad09e5c31"
-summary: Feature Flag Rollout Runbook delivers a concrete, testable methodology that turns the recurring task of 'RFC → Production: feature delivery (3-6 weeks)' into an auditable artefact, addressing the gap: GitOps progressive delivery exists, but the team-level runbook (who toggles, wh
-tags: [infra, geek, runbook, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Staged feature-flag rollout runbook: 1/10/50/100% cohorts, kill switch, SLO-tied auto-rollback, flag-cleanup TODO, post-rollout audit."
+content_id: "f2894943924cf018"
+complexity: medium
+produces: playbook-step
+est_tokens: 3800
+tags: [feature-flags, rollout, progressive-delivery, kill-switch, geek, infra]
 ---
+
 # Feature Flag Rollout Runbook
 
 ## Summary
 
-**One-sentence:** Feature Flag Rollout Runbook delivers a concrete, testable methodology that turns the recurring task of 'RFC → Production: feature delivery (3-6 weeks)' into an auditable artefact, addressing the gap: GitOps progressive delivery exists, but the team-level runbook (who toggles, when to escalate, kill-switch criteria, cohort definitions) is missing. Feature flags without governance become permanent debt.
+**One-sentence:** Staged feature-flag rollout runbook: 1/10/50/100% cohorts, kill switch, SLO-tied auto-rollback, flag-cleanup TODO, post-rollout audit.
 
-**One-paragraph:** GitOps progressive delivery exists, but the team-level runbook (who toggles, when to escalate, kill-switch criteria, cohort definitions) is missing. Feature flags without governance become permanent debt. Feature Flag Rollout Runbook closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'RFC → Production: feature delivery (3-6 weeks)' (p6-product-dev-team, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Staged feature-flag rollout runbook: 1/10/50/100% cohorts, kill switch, SLO-tied auto-rollback, flag-cleanup TODO, post-rollout audit. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`playbook-step`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'RFC → Production: feature delivery (3-6 weeks)' (role: p6-product-dev-team) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Feature flag system is in use (LaunchDarkly / Unleash / OpenFeature / homegrown).
+- Feature rollout affects ≥1% of live production traffic.
+- An on-call rotation exists to receive auto-rollback alerts.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Internal-only feature with <10 users — full rollout is fine.
+- Pre-production prototype — no users to stage against.
+- Hard-gated feature for one customer — flag is just a release marker; full rollout to that account.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Feature flag platform | LaunchDarkly / Unleash / OpenFeature | infra |
+| SLO + alerting | Prom / Datadog / Honeycomb | slo-definition-template-per-service-class |
+| Kill switch | feature flag boolean | infra |
+| Cohort definitions | Markdown / flag config | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/infra/devops-engineer/progressive-delivery-101` | Foundational concept. |
+| `pro/infra/devops-engineer/slo-definition-template-per-service-class` | Source of rollback SLO thresholds. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `feature_flag_rollout_runbook_template_fill` | haiku | Template fill, no judgment |
-| `feature_flag_rollout_runbook_evidence_check` | sonnet | Bounded comparison + judgment |
-| `feature_flag_rollout_runbook_synthesis` | opus | Cross-input synthesis + final write-up |
+| `cohort_definition` | sonnet | Cohort math: 1/10/50/100% on a stable hash. |
+| `auto_rollback_wiring` | sonnet | Wire alert → flag flip. |
+| `post_rollout_audit` | haiku | Mechanical cleanup checks. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/runbook.md` | Full rollout runbook with 1/10/50/100 stages + abort criteria. |
+| `templates/auto-rollback-alert.yaml` | Alert manager / Datadog monitor template. |
+| `templates/post-rollout-audit.md` | Cleanup checklist + flag-removal PR template. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-feature-flag-rollout-runbook.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/infra/` (see neighbouring methodologies)
-- triggering activity: `p6-product-dev-team/RFC → Production: feature delivery (3-6 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/infra/`
+- `[[progressive-delivery-101]]`
+- `[[slo-definition-template-per-service-class]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether feature-flag-rollout-runbook applies: root question — "Does this rollout touch ≥1% of live traffic AND a feature flag platform is available?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

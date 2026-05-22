@@ -3,60 +3,98 @@ slug: strangler-pattern-checklist-product-dev-team
 tier: geek
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-content_id: "616b81de4012a27d"
-summary: Team-execution checklist for big migrations (Postgres major, monolith-to-services, region migration) — legacy contract freeze, ACL rollout, traffic-shift gates, sunset criteria — distinct from the pattern essay.
-tags: [strangler, migration, product-dev-team, postgres-major, monolith-to-services, geek, dev]
+summary: "Gate-by-gate checklist for a 4-12-engineer strangler migration: legacy contract freeze, ACL coverage, shadow-read window, staged traffic shift, sunset criteria."
+content_id: "2ab07d3302b638de"
+complexity: deep
+produces: checklist
+est_tokens: 3800
+tags: [strangler, migration, product-dev-team, checklist, geek, dev]
 ---
+
 # Strangler Pattern Checklist — Product Dev Team
 
 ## Summary
 
-**One-sentence:** A team-execution checklist for big strangler-pattern migrations (Postgres major upgrade, monolith-to-services split, region/cloud migration), covering legacy contract freeze, anti-corruption-layer (ACL) rollout, traffic-shift gates, and explicit sunset criteria.
+**One-sentence:** Gate-by-gate checklist for a 4-12-engineer strangler migration: legacy contract freeze, ACL coverage, shadow-read window, staged traffic shift, sunset criteria.
 
-**One-paragraph:** Microservices design and the strangler pattern are described conceptually in `pro/dev/software-developer/strangler-fig-migration-pattern`. This methodology operates one level down: the actual ordered checklist a 4-12-engineer product team works against during a multi-month migration. It enumerates the gates — legacy frozen, ACL deployed, shadow read in green for 7 days, traffic shift to 1% then 10% then 50%, observed error budget intact, then sunset — and makes each one a binary owner-and-date row. Drives the migration from PM-by-Gantt to PM-by-checkbox, with engineering owning the gates rather than negotiating per-week deadline slips.
+**One-paragraph:** Gate-by-gate checklist for a 4-12-engineer strangler migration: legacy contract freeze, ACL coverage, shadow-read window, staged traffic shift, sunset criteria. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`checklist`) at a deep complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
 - Product team of 4-12 engineers running a migration projected to last ≥6 weeks.
-- Migration crosses a data store boundary (DB major upgrade, schema move, store change) OR a service boundary (extraction, region split).
-- The team owns both the legacy and the new stack (no third-party legacy that prevents an ACL).
-- Production observability is mature enough to compare legacy vs new on latency, error rate, and business metrics.
+- Migration crosses a data store boundary OR a service boundary.
+- Team owns both the legacy and the new stack.
+- Production observability is mature enough to compare legacy vs new on latency/error/business metrics.
 
 ## Skip If (ANY kills it)
 
-- Migration is single-developer scope → use the pattern essay alone; the checklist is overkill.
-- No write traffic to migrate (read-only data set) → shadow-read alone suffices, traffic-shift gates collapse to a redirect.
-- Migration is forced by a vendor end-of-life within 4 weeks → emergency upgrade playbook applies, not this checklist.
-- Team has no production observability — stand up the observability layer FIRST (separate effort), then run this checklist.
+- Migration is single-developer scope — use the pattern essay alone.
+- No write traffic to migrate — shadow-read alone suffices.
+- Vendor end-of-life within 4 weeks — emergency playbook applies, not this checklist.
+- No production observability — stand it up FIRST as a separate effort.
 
 ## Prerequisites
 
-- An ACL spec: input/output contract between legacy and new for every operation in scope.
-- An observability dashboard comparing legacy and new on latency p50/p95/p99, error rate, business success rate (e.g. signup conversion).
-- A traffic-shift mechanism: weighted DNS, load balancer routing, feature flag, or middleware-level switch.
-- A migration RUN-BOOK with named on-call for the migration window.
+| Input artifact | Format | Source |
+|---|---|---|
+| ACL spec | Markdown / YAML | design doc |
+| Observability dashboard | Grafana / Honeycomb | platform team |
+| Traffic-shift mechanism | feature flag / DNS / LB / middleware | infra |
+| Migration runbook | Markdown | incident playbook |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/dev/software-developer/strangler-fig-migration-pattern` | The pattern essay; this is the team-execution complement. |
-| `geek/dev/software-developer/dual-write-shadow-read-template` | The exact shape of the shadow-read gate. |
-| `geek/dev/software-developer/multi-region-failover-pattern-pack` | Useful when migration crosses regions. |
-| `geek/dev/software-developer/incident-decision-template` | Drives rollback decisions when a gate trips. |
+| `geek/dev/software-developer/dual-write-shadow-read-template` | Exact shape of the shadow-read gate. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: legacy contract frozen, ACL covers 100% of traffic, shadow read green ≥7 days, traffic shift in stages with auto-rollback, sunset criteria written before cutover | ~1300 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `gate_status_audit` | haiku | Deterministic check on each gate (binary). |
+| `shadow_read_divergence_triage` | sonnet | Diagnose divergence root cause. |
+| `traffic_shift_decision` | opus | Multi-input go/no-go at 1/10/50/100%. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/migration-checklist.md` | Five-gate checkbox checklist with owners/dates. |
+| `templates/acl-coverage-matrix.md` | Op-by-op ACL coverage table. |
+| `templates/shadow-read-divergence-log.md` | Per-day shadow-read divergence record. |
+| `templates/sunset-plan.md` | Sunset criteria + named deletion-PR owner. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-strangler-pattern-checklist-product-dev-team.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/dev/software-developer/`
-- peer methodologies: `dual-write-shadow-read-template`, `multi-region-failover-pattern-pack`, `incident-decision-template`, `fitness-function-suite-bootstrap`
-- external: [Fowler — StranglerFigApplication](https://martinfowler.com/bliki/StranglerFigApplication.html) · [Stripe Database Migration retrospective](https://stripe.com/blog) · [Shopify monolith decomposition blog](https://shopify.engineering/)
+- parent skill: `geek/dev/`
+- `[[strangler-fig-migration-pattern]]`
+- `[[dual-write-shadow-read-template]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether strangler-pattern-checklist-product-dev-team applies: root question — "Is the migration ≥6 weeks projected scope AND crosses a data store / service boundary?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

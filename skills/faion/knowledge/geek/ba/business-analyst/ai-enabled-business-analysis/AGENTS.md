@@ -3,73 +3,96 @@ slug: ai-enabled-business-analysis
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for integrating AI tools into core BA workflows: requirements extraction from documents using NLP, stakeholder sentiment analysis, process discovery via process mining, and AI-accelerated BA documentation (acceptance criteria, gap analyses, RACI matrices).
-content_id: "c5e6da8efc613786"
-tags: [business-analysis, ai-integration, requirements, governance, agentic-systems]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a methodology spec for the business-analyst role on AI-assisted workflows: governance, agentic-system specs, AI TRiSM compliance, and the BA-specific checklists feeding requirements / AC / story workflows."
+content_id: "d1320f8eff251f22"
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [ba, ai-integration, requirements, governance, agentic-systems, geek]
 ---
-# AI-Enabled Business Analysis
+
+# AI-Enabled Business Analysis (Business Analyst)
 
 ## Summary
 
-**One-sentence:** A methodology for integrating AI tools into core BA workflows: requirements extraction from documents using NLP, stakeholder sentiment analysis, process discovery via process mining, and AI-accelerated BA documentation (acceptance criteria, gap analyses, RACI matrices).
+**One-sentence:** Produces a methodology spec for the business-analyst role on AI-assisted workflows: governance, agentic-system specs, AI TRiSM compliance, and the BA-specific checklists feeding requirements / AC / story workflows.
 
-**One-paragraph:** A methodology for integrating AI tools into core BA workflows: requirements extraction from documents using NLP, stakeholder sentiment analysis, process discovery via process mining, and AI-accelerated BA documentation (acceptance criteria, gap analyses, RACI matrices). Covers the BA's role in agentic system specifications — defining agent boundaries, human oversight requirements, and escalation criteria. Applies the Gartner AI TRiSM (Trust, Risk, Security Management) framework to AI initiative requirements.
+**Ефективно для:** business analysts integrating LLMs into the BA role; BA leads governing AI use across the function; compliance reviewers gating AI-BA outputs under AI TRiSM.
+
+**One-paragraph:** This methodology pins the recurring decision around "ai-enabled-business-analysis" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- Extracting requirements from large document corpora (contracts, transcripts, RFPs) where manual reading is impractical
-- Performing stakeholder sentiment analysis on communication logs before requirements prioritization
-- Generating first-draft requirements documents, acceptance criteria, or gap analysis reports
-- Validating AI initiative requirements against the AI TRiSM framework
-- Defining agent boundaries, escalation rules, and human oversight requirements for an agentic AI initiative
+- BA function applies LLM assistance on ≥1 workflow.
+- Source corpora include documents or transcripts.
+- Compliance regime applies.
+- Owner exists for the BA methodology.
 
 ## Skip If (ANY kills it)
 
-- Requirements involve sensitive stakeholder dynamics where AI analysis of communications is ethically inappropriate
-- Domain is too specialized for the model's training — hallucinations on domain terms produce plausible-but-wrong requirements
-- Organization has not assessed data privacy obligations for feeding stakeholder communications to an external AI model
-- The BA role is primarily facilitation (workshops, negotiations) — AI adds little value in real-time human facilitation
+- BA team has no LLM access and no plan to add one.
+- Domain is too specialised — model hallucinates on terms.
+- Stakeholder dynamics make AI analysis of communications ethically inappropriate.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Source corpora | PDF / DOCX / transcript | engagement |
+| Domain glossary | Markdown | BA lead |
+| Governance policy | Markdown | compliance |
+| BA methodology owner | handle / email | team roster |
+| AI TRiSM gate checklist | Markdown | compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[ai-enabled-business-analysis]]` | ba-core flavour of the methodology informs the BA-role variant |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_governance` | sonnet | Policy synthesis with judgment. |
+| `synthesize_role_responsibilities` | sonnet | Per-role responsibility mapping. |
+| `escalate_trism_gate` | opus | Compliance-gate decisions touch multiple regimes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ai-enabled-business-analysis.json` | JSON Schema for the AI-Enabled Business Analysis (Business Analyst) output contract |
+| `templates/ai-enabled-business-analysis.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a ai-enabled-business-analysis record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-enabled-business-analysis.py` | Enforce the AI-Enabled Business Analysis (Business Analyst) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ba/business-analyst/`
+- [[ai-ac-hallucination-checklist]] — feeds the AC gate.
+- [[ai-story-truth-checklist]] — feeds the story gate.
+- [[ai-transcript-to-traceable-requirement]] — feeds extraction.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

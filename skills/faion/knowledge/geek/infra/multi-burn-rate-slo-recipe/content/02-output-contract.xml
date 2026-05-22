@@ -1,39 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Multi Burn Rate Slo Recipe Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Multi Burn Rate Slo Recipe output. Subagent must satisfy this before returning to the caller.</summary>
-
+<text id="02-output-contract" title="Multi-Burn-Rate SLO Recipe Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying multi-burn-rate-slo-recipe must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "multi-burn-rate-slo-recipe-output",
+  "required": ["slo_name", "windows", "burn_rates", "alert_routes", "runbook_url"],
+  "properties": {
+    "slo_name": {"description": "Required field slo_name."},
+    "windows": {"description": "Required field windows."},
+    "burn_rates": {"description": "Required field burn_rates."},
+    "alert_routes": {"description": "Required field alert_routes."},
+    "runbook_url": {"description": "Required field runbook_url."}
+  }
+}]]></code>
+  </section>
   <output-contract>
     <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      <field name="slo_name" required="true">Required field slo_name.</field>
+      <field name="windows" required="true">Required field windows.</field>
+      <field name="burn_rates" required="true">Required field burn_rates.</field>
+      <field name="alert_routes" required="true">Required field alert_routes.</field>
+      <field name="runbook_url" required="true">Required field runbook_url.</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f1">Single-window alert (no short+long pairing).</pattern>
+      <pattern id="f2">Burn rate threshold without a numeric SLO value.</pattern>
+      <pattern id="f3">Alert routed to channel with no on-call rotation.</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/multi-burn-rate-slo-recipe.json"/>
   </output-contract>
-
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "slo_name": "...",
+  "windows": "...",
+  "burn_rates": "...",
+  "alert_routes": "...",
+  "runbook_url": "..."
+}]]></code>
+    <note>All required fields populated; forbidden patterns absent.</note>
+  </example>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "windows": "...",
+  "burn_rates": "...",
+  "alert_routes": "...",
+  "runbook_url": "..."
+}]]></code>
+    <note>Missing the first required field — schema rejects.</note>
+  </example>
   <section title="Self-check checklist">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/multi-burn-rate-slo-recipe.json</item>
+      <item>All required fields present and non-null.</item>
+      <item>No forbidden pattern matched.</item>
+      <item>Output validates against `scripts/validate-multi-burn-rate-slo-recipe.py` exit 0.</item>
     </list>
   </section>
 </text>

@@ -3,78 +3,96 @@ slug: fixed-price-risk-loading-model
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "2c0d3d2c2980ce20"
-summary: Fixed Price Risk Loading Model delivers a concrete, testable methodology that turns the recurring task of 'Pre-bid discovery for a fixed-price engagement (P4)' into an auditable artefact, addressing the gap: Geek-tier methodology: how to translate risk register into pricing buffe
-tags: [ba, geek, model, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a fixed-price risk loading model: risk-register-to-buffer translation, contingency tiers, hidden-cost classes, and a defensible bid number with explicit risk-pricing reasoning per category."
+content_id: "2cbe4dbd626a03a3"
+complexity: deep
+produces: spec
+est_tokens: 4500
+tags: [ba, fixed-price, pricing, risk, p4-outsource, geek]
 ---
-# Fixed Price Risk Loading Model
+
+# Fixed-Price Risk Loading Model
 
 ## Summary
 
-**One-sentence:** Fixed Price Risk Loading Model delivers a concrete, testable methodology that turns the recurring task of 'Pre-bid discovery for a fixed-price engagement (P4)' into an auditable artefact, addressing the gap: Geek-tier methodology: how to translate risk register into pricing buffer with explicit formulas (risk probability x impact x mitigation cost). Currently risk-management exists but stops short of pricing integration.
+**One-sentence:** Produces a fixed-price risk loading model: risk-register-to-buffer translation, contingency tiers, hidden-cost classes, and a defensible bid number with explicit risk-pricing reasoning per category.
 
-**One-paragraph:** Geek-tier methodology: how to translate risk register into pricing buffer with explicit formulas (risk probability x impact x mitigation cost). Currently risk-management exists but stops short of pricing integration. Fixed Price Risk Loading Model closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Pre-bid discovery for a fixed-price engagement (P4)' (role-business-analyst, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** BAs / sales engineers pricing fixed-price engagements; commercial leads defending bid margins to procurement; partners pricing P4 outsource engagements.
+
+**One-paragraph:** This methodology pins the recurring decision around "fixed-price-risk-loading-model" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Pre-bid discovery for a fixed-price engagement (P4)' (role: role-business-analyst) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Engagement is fixed-price (not T&M).
+- Risk register exists OR can be built.
+- Bid number is defensible against procurement.
+- Owner exists for the model.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Engagement is T&M — loading model does not apply.
+- Bid is volume-only with no risk premium negotiated.
+- Standardised price-list product with no scope-risk variance.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Risk register (likelihood × impact) | CSV | BA / delivery |
+| Historical loading ratios | spreadsheet | finance |
+| Engagement scope | Markdown spec | BA |
+| Bid owner | handle / email | commercial |
+| Procurement constraints | Markdown | commercial |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ba/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `[[fixed-price-vs-tm-cr-pricing-playbook]]` | change-request flow runs after bid signed |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `fixed_price_risk_loading_model_template_fill` | haiku | Template fill, no judgment |
-| `fixed_price_risk_loading_model_evidence_check` | sonnet | Bounded comparison + judgment |
-| `fixed_price_risk_loading_model_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft_loading_table` | haiku | Mechanical template fill. |
+| `synthesize_buffer` | sonnet | Per-class buffer judgment. |
+| `escalate_margin` | opus | Cross-class margin decision. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/fixed-price-risk-loading-model.json` | JSON Schema for the Fixed-Price Risk Loading Model output contract |
+| `templates/fixed-price-risk-loading-model.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a fixed-price-risk-loading-model record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-fixed-price-risk-loading-model.py` | Enforce the Fixed-Price Risk Loading Model output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ba/` (see neighbouring methodologies)
-- triggering activity: `role-business-analyst/Pre-bid discovery for a fixed-price engagement (P4)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[fixed-price-vs-tm-cr-pricing-playbook]] — adjacent change-request playbook.
+- [[compliance-traceability-pack]] — when risk is regulatory.
+- [[ai-enabled-business-analysis]] — parent BA methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

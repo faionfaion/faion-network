@@ -1,7 +1,9 @@
-"""Extract requirements from a PDF document using Claude.
-
-Input: PDF file path.
-Output: list of dicts with id, type, description, source, ambiguous.
+"""
+purpose: extract requirements from a source document using an LLM.
+consumes: typed inputs per content/02-output-contract.xml.
+produces: artefact field rows ready for the ai-enabled-business-analysis record.
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml.
+token-budget-impact: ~250 tokens.
 """
 import json
 import pdfplumber

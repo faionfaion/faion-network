@@ -3,78 +3,97 @@ slug: gdpr-dsar-runbook-product-dev-team
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f7d6d5527e2cfcca"
-summary: "Gdpr Dsar Runbook Product Dev Team — testable methodology for platform, k8s, networking, cost models. DSAR (Data Subject Access Request) execution is a recurring legal obligation with no concrete runbook in faion: data discovery query patterns, redaction rules, response packaging."
-tags: [infra, geek, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Engineer-friendly Data-Subject-Access-Request runbook: intake, identity verify, system-by-system extraction, redaction, packaging, 30-day SLA delivery + audit."
+content_id: "21a91e0cf4460124"
+complexity: medium
+produces: playbook-step
+est_tokens: 3800
+tags: [gdpr, dsar, privacy, runbook, geek, infra]
 ---
-# Gdpr Dsar Runbook Product Dev Team
+
+# GDPR DSAR Runbook — Product Dev Team
 
 ## Summary
 
-**One-sentence:** Gdpr Dsar Runbook Product Dev Team — testable methodology for platform, k8s, networking, cost models. DSAR (Data Subject Access Request) execution is a recurring legal obligation with no concrete runbook in faion: data discovery query patterns, redaction rules, response packaging.
+**One-sentence:** Engineer-friendly Data-Subject-Access-Request runbook: intake, identity verify, system-by-system extraction, redaction, packaging, 30-day SLA delivery + audit.
 
-**One-paragraph:** Gdpr Dsar Runbook Product Dev Team closes a known gap in infra practice: DSAR (Data Subject Access Request) execution is a recurring legal obligation with no concrete runbook in faion: data discovery query patterns, redaction rules, response packaging. The methodology is anchored to the recurring activity 'SOC2 / GDPR audit prep (annual) (role: p6-product-dev-team)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Engineer-friendly Data-Subject-Access-Request runbook: intake, identity verify, system-by-system extraction, redaction, packaging, 30-day SLA delivery + audit. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`playbook-step`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'SOC2 / GDPR audit prep (annual) (role: p6-product-dev-team)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Controller status under GDPR (EU/UK personal data subjects).
+- ≥1 DSAR per quarter expected at scale; ad-hoc handling not sustainable.
+- Multiple systems (DB, blob storage, CRM, analytics) hold subject data.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Processor-only status — controller handles DSAR; provide raw export only.
+- No EU/UK subjects — different framework applies.
+- Single-system small startup — manual SQL export sufficient; runbook is overhead.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Data map | Markdown / data-catalog | DPO + DBA |
+| Identity verification mechanism | email + secondary check | support team |
+| Subject-id ↔ internal-id mapping | DB | engineering |
+| Redaction policy | Markdown | DPO |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `geek/infra/banking-core-data-residency-rules` | Residency rules constrain processing of DSAR data. |
+| `pro/infra/devops-engineer/data-retention-policy-template` | Defines retention windows DSAR draws from. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `gdpr_dsar_runbook_product_dev_team_template_fill` | haiku | Template fill, no judgement |
-| `gdpr_dsar_runbook_product_dev_team_evidence_check` | sonnet | Bounded comparison + judgement |
-| `gdpr_dsar_runbook_product_dev_team_synthesis` | opus | Cross-input synthesis + final write-up |
+| `intake_normalise` | haiku | Mechanical request parse. |
+| `identity_verify_check` | sonnet | Compose verification challenge from data on file. |
+| `system_extraction_orchestrate` | sonnet | Run per-system extracts; reconcile. |
+| `redaction_pass` | opus | Cross-document third-party + secret redaction. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/dsar-intake.md` | Intake form + initial reply template. |
+| `templates/extract-orchestration.md` | Per-system extraction checklist. |
+| `templates/redaction-policy.md` | Redaction policy and pass criteria. |
+| `templates/delivery-letter.md` | Final delivery cover letter template. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-gdpr-dsar-runbook-product-dev-team.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/infra/` (see neighbouring methodologies)
-- triggering activity: `SOC2 / GDPR audit prep (annual) (role: p6-product-dev-team)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/infra/`
+- `[[banking-core-data-residency-rules]]`
+- `[[data-retention-policy-template]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether gdpr-dsar-runbook-product-dev-team applies: root question — "Is the requester a verified data subject AND we are the controller for their personal data?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

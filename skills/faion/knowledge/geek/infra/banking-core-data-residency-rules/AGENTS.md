@@ -3,77 +3,96 @@ slug: banking-core-data-residency-rules
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Banking Core Data Residency Rules: codified platform / SRE practice that turns the recurring 'p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks)' decision into a repeatable, auditable artefact.
-content_id: "6057aaf5ee98b6cb"
-tags: [banking-core-data-residency-rules, infra, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Per-jurisdiction data residency spec for core banking workloads: PII residence, processor residence, cross-border transfer locks, supervisory-authority notification triggers."
+content_id: "01294f996568619e"
+complexity: deep
+produces: spec
+est_tokens: 4600
+tags: [banking, data-residency, gdpr, psd2, core, geek, infra]
 ---
-# Banking Core Data Residency Rules
+
+# Banking Core — Data Residency Rules
 
 ## Summary
 
-**One-sentence:** Banking Core Data Residency Rules: codified platform / SRE practice that turns the recurring 'p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-jurisdiction data residency spec for core banking workloads: PII residence, processor residence, cross-border transfer locks, supervisory-authority notification triggers.
 
-**One-paragraph:** Banking Core Data Residency Rules addresses the gap identified by the p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks) playbook: Banking-core projects collide with EU / UK / APAC residency rules. faion's cloud-architecture material does not enumerate residency constraints per regulator. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Per-jurisdiction data residency spec for core banking workloads: PII residence, processor residence, cross-border transfer locks, supervisory-authority notification triggers. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`spec`) at a deep complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Production core-banking workload (deposits, payments, ledger) operating in EU/UK or any jurisdiction with residency law.
+- Personal data of customers crosses cloud-region boundaries OR is processed by a third-country processor.
+- Subject to EBA / FCA / FINMA / equivalent supervisory framework.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pre-license fintech with no real customer funds — apply lighter playbook.
+- Pure analytics workload with no PII — residency law does not bite.
+- Single-jurisdiction workload with no cross-border transfer at all.
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Jurisdiction list | Markdown | compliance team |
+| Data map | Markdown / data-catalog tool | DPO + DBA |
+| Processor list | Spreadsheet / vendor mgmt | procurement |
+| Supervisor contact matrix | table | compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/devops-engineer/multi-region-active-active-pattern` | How residency interacts with active-active topology. |
+| `pro/dev/software-developer/gdpr-dsar-runbook-product-dev-team` | PII handling under DSAR / Article 15. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | One end-to-end worked example | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `residency_data_map` | sonnet | Multi-system data map produced from inventory. |
+| `transfer_legality_check` | opus | Schrems II + SCC analysis. |
+| `supervisor_notification_draft` | opus | Regulator-facing language; high-stakes synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/banking-core-data-residency-rules.json` | JSON schema for the Banking Core Data Residency Rules output contract |
-| `templates/banking-core-data-residency-rules.md` | Markdown skeleton with the required fields |
+| `templates/residency-spec.md` | Per-jurisdiction residency table + transfer locks. |
+| `templates/transfer-impact-assessment.md` | TIA template per Schrems II. |
+| `templates/supervisor-notification.md` | Pre-fill for EBA / FCA notification. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-banking-core-data-residency-rules.py` | Enforce Banking Core Data Residency Rules output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-banking-core-data-residency-rules.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/infra/`
-- upstream playbook: `p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks)`
+- `[[multi-region-active-active-pattern]]`
+- `[[gdpr-dsar-runbook-product-dev-team]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether banking-core-data-residency-rules applies: root question — "Does customer PII cross a cloud-region OR third-country boundary?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

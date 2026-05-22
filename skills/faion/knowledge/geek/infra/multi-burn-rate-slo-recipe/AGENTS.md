@@ -3,77 +3,95 @@ slug: multi-burn-rate-slo-recipe
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Multi Burn Rate Slo Recipe: codified infra practice that turns the recurring 'role-devops-engineer/Observability stack rollout: logs + metrics + traces + SLOs (8 weeks)' decision into a repeatable, auditable artefact.
-content_id: "d4c1557351e12447"
-tags: [multi-burn-rate-slo-recipe, infra, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Multi-window multi-burn-rate SLO alert configuration: short+long windows for fast/slow burn detection, alert routing, false-positive tuning, runbook hooks."
+content_id: "4da6d5cd0dafb13b"
+complexity: medium
+produces: config
+est_tokens: 3800
+tags: [slo, burn-rate, alerting, sre, infra, geek]
 ---
-# Multi Burn Rate Slo Recipe
+
+# Multi-Burn-Rate SLO Recipe
 
 ## Summary
 
-**One-sentence:** Multi Burn Rate Slo Recipe: codified infra practice that turns the recurring 'role-devops-engineer/Observability stack rollout: logs + metrics + traces + SLOs (8 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Multi-window multi-burn-rate SLO alert configuration: short+long windows for fast/slow burn detection, alert routing, false-positive tuning, runbook hooks.
 
-**One-paragraph:** Multi Burn Rate Slo Recipe addresses the gap identified by the role-devops-engineer/Observability stack rollout: logs + metrics + traces + SLOs (8 weeks) playbook: Google-style multi-window multi-burn-rate alerting is the modern alert pattern. Currently undocumented in faion despite being the natural endpoint for any SLO program. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Multi-window multi-burn-rate SLO alert configuration: short+long windows for fast/slow burn detection, alert routing, false-positive tuning, runbook hooks. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`config`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/Observability stack rollout: logs + metrics + traces + SLOs (8 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Service has a published SLO with a defined error budget window (e.g. 30 days).
+- Alerting platform supports multi-window multi-burn-rate expressions (Prom / Sumo / Datadog).
+- On-call team agreed to consume burn-rate alerts (not raw error count).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- No SLO yet — define SLO first via slo-definition-template-per-service-class.
+- Single-window alerting is fine for the maturity stage — multi-window overkill.
+- Alert volume sensitivity prohibits any new alerts (need to clean up first).
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/Observability stack rollout: logs + metrics + traces + SLOs (8 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| SLO + window | YAML | slo-definition-template-per-service-class |
+| Metric source | Prom / OTel | platform |
+| Alert platform | Alertmanager / Datadog / Sumo | infra |
+| On-call rotation | PagerDuty / OpsGenie | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/devops-engineer/slo-definition-template-per-service-class` | Defines the SLO this recipe alerts against. |
+| `geek/dev/software-developer/slo-burn-rate-review-protocol` | Consumer of the alerts produced. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `config_compose` | sonnet | Express recipe in target alerting DSL. |
+| `threshold_tuning` | opus | Tune for false-positive trade-off. |
+| `runbook_wiring` | sonnet | Link alert → runbook. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/multi-burn-rate-slo-recipe.json` | JSON schema for the Multi Burn Rate Slo Recipe output contract |
-| `templates/multi-burn-rate-slo-recipe.md` | Markdown skeleton with the required fields |
+| `templates/prometheus-rules.yaml` | Multi-window burn rate alert rules. |
+| `templates/datadog-monitor.json` | Datadog SLO monitor JSON. |
+| `templates/alert-routing.yaml` | Routing rules to on-call rotations. |
+| `templates/_smoke-test.yaml` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-multi-burn-rate-slo-recipe.py` | Enforce Multi Burn Rate Slo Recipe output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-multi-burn-rate-slo-recipe.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/infra/devops-engineer/`
-- upstream playbook: `role-devops-engineer/Observability stack rollout: logs + metrics + traces + SLOs (8 weeks)`
+- parent skill: `geek/infra/`
+- `[[slo-definition-template-per-service-class]]`
+- `[[slo-burn-rate-review-protocol]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether multi-burn-rate-slo-recipe applies: root question — "Does the service have a published SLO with an error budget window AND an alerting platform that supports multi-window expressions?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

@@ -1,42 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Burn Review — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Shape of the weekly review note and decision-log entries.</summary>
-
+<text id="02-output-contract" title="SLO Burn-Rate Review Protocol Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying slo-burn-rate-review-protocol must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "slo-burn-rate-review-protocol-output",
+  "required": ["week_id", "date", "attendees", "burn_trace", "matrix_actions", "decisions_made"],
+  "properties": {
+    "week_id": {"description": "Required field week_id."},
+    "date": {"description": "Required field date."},
+    "attendees": {"description": "Required field attendees."},
+    "burn_trace": {"description": "Required field burn_trace."},
+    "matrix_actions": {"description": "Required field matrix_actions."},
+    "decisions_made": {"description": "Required field decisions_made."}
+  }
+}]]></code>
+  </section>
   <output-contract>
     <required>
-      <field name="review_note" required_keys="week_id,date,attendees,burn_trace,matrix_actions,postmortem_actions_due,architectural_decisions,recontract_candidates,decisions_made"/>
-      <field name="decisions_made" type="list" min_entries="1"
-             item_required_keys="decision_id,description,owner,status,adr_spawned"/>
-      <field name="attendees" required_keys="architect,oncall_lead,product_rep"/>
-      <field name="burn_trace" required_keys="slos,window,top_burners,total_budget_consumed_pct"/>
-      <field name="matrix_actions" type="list"
-             item_required_keys="alert_id,cell,action,owner,status"/>
+      <field name="week_id" required="true">Required field week_id.</field>
+      <field name="date" required="true">Required field date.</field>
+      <field name="attendees" required="true">Required field attendees.</field>
+      <field name="burn_trace" required="true">Required field burn_trace.</field>
+      <field name="matrix_actions" required="true">Required field matrix_actions.</field>
+      <field name="decisions_made" required="true">Required field decisions_made.</field>
     </required>
-
     <forbidden>
       <pattern id="f1">decisions_made list empty</pattern>
       <pattern id="f2">attendees missing any of architect / oncall_lead / product_rep</pattern>
       <pattern id="f3">review note committed &gt; 2h after meeting end</pattern>
-      <pattern id="f4">two consecutive weeks with reviews skipped without recorded cancellation reason</pattern>
-      <pattern id="f5">architectural_decisions item without an owner or follow-through plan</pattern>
-      <pattern id="f6">recontract_candidates not surfaced to product within 1 week of being raised</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Extend the agenda with up to 2 portfolio-specific items (e.g. multi-tenant capacity) — do not remove the five standard items.</transformation>
-      <transformation>Reduce review to 15 min in weeks with no burn activity, but still walk all five items.</transformation>
-      <transformation>Defer an item to the following week; the deferral itself is logged as a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
   </output-contract>
-
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "week_id": "...",
+  "date": "...",
+  "attendees": "...",
+  "burn_trace": "...",
+  "matrix_actions": "...",
+  "decisions_made": [
+    {
+      "decision_id": "d1"
+    }
+  ]
+}]]></code>
+    <note>All required fields populated; forbidden patterns absent.</note>
+  </example>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "date": "...",
+  "attendees": "...",
+  "burn_trace": "...",
+  "matrix_actions": "...",
+  "decisions_made": []
+}]]></code>
+    <note>Missing the first required field — schema rejects.</note>
+  </example>
   <section title="Self-check checklist">
     <list>
-      <item>Review held within the week's scheduled slot (or cancellation logged)</item>
-      <item>Three required attendees present</item>
-      <item>All five agenda items walked</item>
-      <item>≥1 decision recorded</item>
-      <item>Note committed within 2h</item>
-      <item>Open architectural decisions have owners and follow-through</item>
+      <item>All required fields present and non-null.</item>
+      <item>No forbidden pattern matched.</item>
+      <item>Output validates against `scripts/validate-slo-burn-rate-review-protocol.py` exit 0.</item>
     </list>
   </section>
 </text>

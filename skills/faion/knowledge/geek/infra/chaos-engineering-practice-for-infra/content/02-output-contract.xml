@@ -1,44 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Chaos Engineering Practice for Infra Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Chaos Engineering Practice for Infra output. Subagent must satisfy this before returning to the caller.</summary>
-
+<text id="02-output-contract" title="Chaos Engineering Practice for Infra Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying chaos-engineering-practice-for-infra must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "chaos-engineering-practice-for-infra-output",
+  "required": ["experiment_id", "hypothesis", "blast_radius", "abort_criteria", "outcome", "learnings"],
+  "properties": {
+    "experiment_id": {"description": "Required field experiment_id."},
+    "hypothesis": {"description": "Required field hypothesis."},
+    "blast_radius": {"description": "Required field blast_radius."},
+    "abort_criteria": {"description": "Required field abort_criteria."},
+    "outcome": {"description": "Required field outcome."},
+    "learnings": {"description": "Required field learnings."}
+  }
+}]]></code>
+  </section>
   <output-contract>
     <required>
-      <field name="experiment_id" type="string" required="true">stable slug per game-day</field>
-      <field name="steady_state_hypothesis" type="string" required="true">metric form; e.g., 'p95 &lt; 200ms, error &lt; 0.5%'</field>
-      <field name="blast_radius" type="object" required="true">{services, traffic_pct, geographies, duration}</field>
-      <field name="tool" type="string" required="true">Litmus|Chaos-Mesh|Gremlin|AWS-FIS|custom</field>
-      <field name="on_call_present" type="bool" required="true">true if full team on-call during experiment</field>
-      <field name="action_items" type="list" required="true">[{action, owner, deadline}]</field>
-      <field name="owner" type="string" required="true">named experiment lead</field>
+      <field name="experiment_id" required="true">Required field experiment_id.</field>
+      <field name="hypothesis" required="true">Required field hypothesis.</field>
+      <field name="blast_radius" required="true">Required field blast_radius.</field>
+      <field name="abort_criteria" required="true">Required field abort_criteria.</field>
+      <field name="outcome" required="true">Required field outcome.</field>
+      <field name="learnings" required="true">Required field learnings.</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">steady_state_hypothesis missing or non-metric form</pattern>
-      <pattern id="f2">blast_radius.traffic_pct &gt; 0.1 in first 3 game-days</pattern>
-      <pattern id="f3">experiment runs off-hours before 6 successful daytime runs</pattern>
-      <pattern id="f4">action_items is empty AND experiment completed</pattern>
+      <pattern id="f1">Experiment runs without a written hypothesis.</pattern>
+      <pattern id="f2">Blast radius unbounded (production-wide) without exec sign-off.</pattern>
+      <pattern id="f3">Abort criteria absent or untestable.</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/chaos-engineering-practice-for-infra.json"/>
   </output-contract>
-
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "experiment_id": "...",
+  "hypothesis": "...",
+  "blast_radius": "...",
+  "abort_criteria": "...",
+  "outcome": "...",
+  "learnings": "..."
+}]]></code>
+    <note>All required fields populated; forbidden patterns absent.</note>
+  </example>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "hypothesis": "...",
+  "blast_radius": "...",
+  "abort_criteria": "...",
+  "outcome": "...",
+  "learnings": "..."
+}]]></code>
+    <note>Missing the first required field — schema rejects.</note>
+  </example>
   <section title="Self-check checklist">
     <list>
-      <item>experiment_id populated with a typed value</item>
-      <item>steady_state_hypothesis populated with a typed value</item>
-      <item>blast_radius populated with a typed value</item>
-      <item>tool populated with a typed value</item>
-      <item>on_call_present populated with a typed value</item>
-      <item>action_items populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>All required fields present and non-null.</item>
+      <item>No forbidden pattern matched.</item>
+      <item>Output validates against `scripts/validate-chaos-engineering-practice-for-infra.py` exit 0.</item>
     </list>
   </section>
 </text>

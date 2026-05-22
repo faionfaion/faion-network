@@ -1,39 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai Workload Cost Attribution Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai Workload Cost Attribution output. Subagent must satisfy this before returning to the caller.</summary>
-
+<text id="02-output-contract" title="AI Workload Cost Attribution Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying ai-workload-cost-attribution must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "ai-workload-cost-attribution-output",
+  "required": ["period", "tenants", "total_cost", "by_feature", "reconciled_to_invoice"],
+  "properties": {
+    "period": {"description": "Required field period."},
+    "tenants": {"description": "Required field tenants."},
+    "total_cost": {"description": "Required field total_cost."},
+    "by_feature": {"description": "Required field by_feature."},
+    "reconciled_to_invoice": {"description": "Required field reconciled_to_invoice."}
+  }
+}]]></code>
+  </section>
   <output-contract>
     <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      <field name="period" required="true">Required field period.</field>
+      <field name="tenants" required="true">Required field tenants.</field>
+      <field name="total_cost" required="true">Required field total_cost.</field>
+      <field name="by_feature" required="true">Required field by_feature.</field>
+      <field name="reconciled_to_invoice" required="true">Required field reconciled_to_invoice.</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f1">Sum of by_tenant ≠ total_cost (tolerance 0.5%).</pattern>
+      <pattern id="f2">reconciled_to_invoice == false but report shipped to finance.</pattern>
+      <pattern id="f3">Any tenant cost without a known tenant_id (UNATTRIBUTED bucket non-empty).</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/ai-workload-cost-attribution.json"/>
   </output-contract>
-
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "period": "...",
+  "tenants": "...",
+  "total_cost": "...",
+  "by_feature": "...",
+  "reconciled_to_invoice": "..."
+}]]></code>
+    <note>All required fields populated; forbidden patterns absent.</note>
+  </example>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "tenants": "...",
+  "total_cost": "...",
+  "by_feature": "...",
+  "reconciled_to_invoice": "..."
+}]]></code>
+    <note>Missing the first required field — schema rejects.</note>
+  </example>
   <section title="Self-check checklist">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-workload-cost-attribution.json</item>
+      <item>All required fields present and non-null.</item>
+      <item>No forbidden pattern matched.</item>
+      <item>Output validates against `scripts/validate-ai-workload-cost-attribution.py` exit 0.</item>
     </list>
   </section>
 </text>

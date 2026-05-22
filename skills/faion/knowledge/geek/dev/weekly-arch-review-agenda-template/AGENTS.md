@@ -3,78 +3,94 @@ slug: weekly-arch-review-agenda-template
 tier: geek
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "682f53563d6aa208"
-summary: "Weekly Arch Review Agenda Template: produces a versioned, owner-signed artefact that closes the gap 'p6-product-dev-team/Weekly architectural review (45 min)'."
-tags: [weekly-arch-review-agenda-template, dev, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Fixed-form weekly architecture review agenda: 5 named items (incoming ADRs, fitness functions, drift signals, debt review, next-week pre-briefs) with decision-output gate."
+content_id: "498d55955d3ce4b3"
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [architecture, review, agenda, weekly, adr, geek]
 ---
-# Weekly Arch Review Agenda Template
+
+# Weekly Architecture Review Agenda Template
 
 ## Summary
 
-**One-sentence:** Weekly Arch Review Agenda Template: produces a versioned, owner-signed artefact that closes the gap 'p6-product-dev-team/Weekly architectural review (45 min)'.
+**One-sentence:** Fixed-form weekly architecture review agenda: 5 named items (incoming ADRs, fitness functions, drift signals, debt review, next-week pre-briefs) with decision-output gate.
 
-**One-paragraph:** Addresses the gap surfaced by 'p6-product-dev-team/Weekly architectural review (45 min)': design-docs-* pages exist but no agenda template for the recurring 45-min ritual. Without it, the meeting drifts into status. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a weekly arch review agenda template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Fixed-form weekly architecture review agenda: 5 named items (incoming ADRs, fitness functions, drift signals, debt review, next-week pre-briefs) with decision-output gate. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`checklist`) at a light complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p6-product-dev-team/Weekly architectural review (45 min)' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team has a named architect or architecture council.
+- ADRs are produced regularly (≥1/month).
+- There is appetite to make architecture review a recurring ritual.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working weekly arch review agenda template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Architecture decisions are made ad hoc by the founding team — review is overhead.
+- Team is <4 engineers — review degenerates into status standup.
+- ADR cadence is <1/quarter — there is nothing to review weekly.
 
 ## Prerequisites
 
-- recent context for the 'p6-product-dev-team/Weekly architectural review (45 min)' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Open ADR list | Markdown / Linear | ADR repo |
+| Fitness-function dashboard | Grafana / static report | architecture-fitness-functions |
+| Tech-debt board | Linear / Jira / Markdown | tech-debt-basics |
+| 60-min weekly slot | calendar | all senior engineers |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/dev/dev` | parent domain group — provides operating context for Weekly Arch Review Agenda Template |
+| `pro/dev/software-architect/retro-adr-workflow` | Source of ADR drafts reviewed. |
+| `pro/dev/software-architect/architecture-fitness-functions` | Source of fitness signals reviewed. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `agenda_prebrief_compose` | sonnet | Compose the 5-item brief 24h pre-meeting. |
+| `decision_log_draft` | sonnet | Write the decision log after the meeting. |
+| `adr_spawn_check` | opus | Decide which items become ADRs. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-arch-review-agenda-template.json` | JSON schema for the Weekly Arch Review Agenda Template output contract |
-| `templates/weekly-arch-review-agenda-template.md` | Markdown skeleton with the required fields |
+| `templates/agenda.md` | Five-item agenda template with empty-state defaults. |
+| `templates/decision-log-entry.md` | Shape of one decision-log entry. |
+| `templates/prebrief.md` | 1-page brief sent 24h pre-meeting. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-weekly-arch-review-agenda-template.py` | Enforce Weekly Arch Review Agenda Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-weekly-arch-review-agenda-template.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/dev/`
-- upstream playbook: `p6-product-dev-team/Weekly architectural review (45 min)`
-- geek/dev/p6-product-dev-team
+- `[[retro-adr-workflow]]`
+- `[[architecture-fitness-functions]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether weekly-arch-review-agenda-template applies: root question — "Does the team produce ≥1 ADR per month AND have a named architect?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

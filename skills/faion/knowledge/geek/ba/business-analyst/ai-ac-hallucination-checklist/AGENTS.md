@@ -3,77 +3,94 @@ slug: ai-ac-hallucination-checklist
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Concrete operating checklist covering ai ac hallucination checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
-content_id: "f324c186ea2dc026"
-tags: [ai, ba, checklist]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a per-story checklist that vets AI-generated acceptance criteria for plausible-but-wrong shapes: invented happy paths, missing edge cases, fabricated metrics, contradictory constraints, before ACs enter sprint."
+content_id: "f200fa0e8ccc73d6"
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: [ba, acceptance-criteria, hallucination, checklist, ai-codegen, geek]
 ---
-# AI AC Hallucination Checklist
+
+# AI Acceptance Criteria Hallucination Checklist
 
 ## Summary
 
-**One-sentence:** Concrete operating checklist covering ai ac hallucination checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped.
+**One-sentence:** Produces a per-story checklist that vets AI-generated acceptance criteria for plausible-but-wrong shapes: invented happy paths, missing edge cases, fabricated metrics, contradictory constraints, before ACs enter sprint.
 
-**One-paragraph:** Concrete operating checklist covering ai ac hallucination checklist — the small set of items a practitioner runs every cycle so nothing high-leverage gets skipped. ACs drafted with AI assistance silently invent business rules; existing AC methodology doesn't cover hallucination detection.
+**Ефективно для:** BAs gating AI-generated acceptance criteria; QA leads catching AC hallucinations before sprint start; PMs reviewing AI-drafted stories.
+
+**One-paragraph:** This methodology pins the recurring decision around "ai-ac-hallucination-checklist" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- You operate the recurring activity addressed by ai ac hallucination checklist at least once per cycle (weekly, sprint, quarter, or annual).
-- You have authority to act on each item — checklist items without owners or budget are deferred.
-- Skipped items must be auditable: a written reason replaces the action.
-- Time-box: full pass completes within the cycle window (e.g., 30-90 min for weekly, 1-2 days for annual).
+- Acceptance criteria drafted by an LLM (or LLM-assisted).
+- Story will enter a sprint backlog after this gate.
+- Owner exists for the AC review.
+- Story is for a software / agent feature, not pure research.
 
 ## Skip If (ANY kills it)
 
-- One-off events with no recurrence — checklist value is in the rhythm.
-- Activities without a named owner — items will not be done, only ticked.
-- Teams running a more granular checklist already — adding a meta-layer creates conflict.
+- ACs are fully human-authored — apply standard AC review.
+- Story is a spike / research task with no production output.
+- Single-story experiment with no downstream impact.
 
 ## Prerequisites
 
-- Calendar slot dedicated to the cycle (recurring meeting / focus block).
-- Read-access to the source systems each item inspects (analytics, billing, repo).
-- Last cycle's output filed where current cycle can compare year-over-year.
+| Input artifact | Format | Source |
+|---|---|---|
+| AI-drafted acceptance criteria | Markdown / Gherkin | BA |
+| Source requirement record | spec id | BA |
+| Definition-of-done reference | Markdown | engineering lead |
+| Owner for review | handle / email | team roster |
+| Existing edge-case catalogue | Markdown | QA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ba/business-analyst/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[ai-transcript-to-traceable-requirement]]` | source requirement has a provenance trail |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `checklist_dry_run` | haiku | Template walk, no judgment needed |
-| `anomaly_flag` | sonnet | Compare current cycle vs prior, flag deltas |
-| `decision_synthesis` | opus | Consolidate flags into a corrective-action list |
+| `draft_checklist_pass` | haiku | Mechanical AC walk-through. |
+| `synthesize_revision` | sonnet | Per-AC judgment when a check fails. |
+| `escalate_ambiguity` | opus | When two checks contradict. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/ai-ac-hallucination-checklist.json` | JSON Schema for the AI Acceptance Criteria Hallucination Checklist output contract |
+| `templates/ai-ac-hallucination-checklist.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-ac-hallucination-checklist.py` | Enforce the AI Acceptance Criteria Hallucination Checklist output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ba/business-analyst/`
-- peer methodologies: see siblings under `geek/ba/business-analyst/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-story-truth-checklist]] — sister checklist on user stories.
+- [[ai-transcript-to-traceable-requirement]] — upstream traceability.
+- [[ai-enabled-business-analysis]] — parent methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

@@ -1,67 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Story Truth Checklist Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the vetting-record shape, the decision rule, and the traceability map.</summary>
+<text id="02-output-contract" title="AI Story Truth Checklist Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a valid AI Story Truth Checklist output. Subagent must satisfy this contract before returning to caller.</summary>
 
-  <section title="Required vetting-record fields">
-    <list>
-      <item><code>story_id</code> (string)</item>
-      <item><code>vetted_at_utc</code> (ISO timestamp)</item>
-      <item><code>vetted_by</code> (BA name)</item>
-      <item><code>persona_ref</code> (persona id from personas.yaml or null)</item>
-      <item><code>jtbd_ref</code> (jtbd id from research/jtbd.md or null)</item>
-      <item><code>checklist_results</code> (object with 8 boolean keys + notes)</item>
-      <item><code>stats_flagged</code> (array of {snippet, source_url_or_null, status})</item>
-      <item><code>edge_cases_present</code> (object: failure_path, empty_state, privacy)</item>
-      <item><code>ac_count</code> (integer)</item>
-      <item><code>ac_traceable_count</code> (integer)</item>
-      <item><code>decision</code> (enum: pass, revise, scrap)</item>
-      <item><code>revise_notes</code> (string; required when decision != pass)</item>
-    </list>
-    <reference path="templates/vetting-record.json">Authoritative JSON Schema.</reference>
-  </section>
+  <output-contract>
+    <required>
+      <field name="artefact_id" type="string" required="true">kebab-case slug; prefix `aist-`</field>
+      <field name="owner" type="string" required="true">single named accountable owner</field>
+      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
+      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
+      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO-8601 date</field>
+    </required>
 
-  <section title="Decision rule">
-    <list>
-      <item><code>scrap</code> when ANY: persona_ref is null; stats_flagged contains any `unverified` AND stat affects core claim; ac_count = 0.</item>
-      <item><code>revise</code> when ANY: jtbd_ref null; edge cases incomplete; ac_traceable_count &lt; ac_count.</item>
-      <item><code>pass</code> when all checklist_results are true AND no scrap / revise triggers.</item>
-    </list>
-  </section>
+    <forbidden>
+      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty</pattern>
+      <pattern id="f2">rationale that does not reference any input by name</pattern>
+      <pattern id="f3">inputs_used empty AND decision is not &apos;no-op&apos;</pattern>
+      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f5">version regressed (lower than previous record)</pattern>
+    </forbidden>
 
-  <section title="Traceability map">
-    <list>
-      <item>Vetted stories accumulate links: story_id → persona_ref, jtbd_ref, research artefacts referenced in stats.</item>
-      <item>The traceability map is the audit trail; the team can re-derive "why does this story exist" in one query.</item>
-      <item>Stories that lose traceability after a research-doc deletion are flagged in a weekly audit.</item>
-    </list>
-  </section>
+    <allowed-transformations>
+      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
+      <transformation>Promote &apos;no decision yet&apos; to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
+      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
+    </allowed-transformations>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>decision = pass while jtbd_ref is null.</description>
-      <reason>r2 violation. JTBD anchor is required.</reason>
-    </antipattern>
-    <antipattern>
-      <description>decision = pass while stats_flagged has unverified entries.</description>
-      <reason>r3 violation. Unverified stats must be removed or sourced.</reason>
-    </antipattern>
-    <antipattern>
-      <description>edge_cases_present.failure_path = false AND decision != revise.</description>
-      <reason>r4 violation. Failure path is mandatory.</reason>
-    </antipattern>
-    <antipattern>
-      <description>ac_count &gt; 0 AND ac_traceable_count = 0 AND decision = pass.</description>
-      <reason>r5 violation. AC must be traceable.</reason>
-    </antipattern>
-  </section>
+    <schema>
+      <schema-reference path="templates/ai-story-truth-checklist.json"/>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "artefact_id": "aist-example-001",
+  "owner": "alex@acme.com",
+  "decision": "see templates/ai-story-truth-checklist.md for shape",
+  "rationale": "Decision cites input artefact A (URL) and input artefact B (path). The rationale is at least two sentences and identifies which constraints drove the call.",
+  "inputs_used": [{"name": "A", "source": "https://example.com/A"}, {"name": "B", "source": "repo:path/B"}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "decision": "yes",
+  "rationale": "obviously",
+  "inputs_used": [],
+  "version": "v1",
+  "last_reviewed": "soon"
+}
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>persona_ref points to a real id in personas.yaml.</item>
-      <item>jtbd_ref points to a real id in research/jtbd.md.</item>
-      <item>Every stat has a source URL or status `unverified`.</item>
-      <item>Edge-case map has all three keys.</item>
-      <item>revise_notes populated when decision != pass.</item>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Output validates against templates/ai-story-truth-checklist.json</item>
     </list>
   </section>
 </text>

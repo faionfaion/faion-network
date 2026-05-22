@@ -1,14 +1,17 @@
 ---
 slug: slo-burn-rate-review-protocol
 tier: geek
-group: software-developer
+group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "063ff3b83b649b9e"
-summary: Weekly 30-minute architecture ritual that converts the past week's SLO burn data into named ADR-worthy decisions, paired with the burn-decision matrix, so error budgets become a live architectural input rather than wallpaper.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Weekly 30-min architect-led ritual converting SLO burn data + matrix-triggered actions into named ADR-worthy decisions captured in a versioned review note."
+content_id: "60fca40b4cd4049d"
+complexity: medium
+produces: report
+est_tokens: 4600
 tags: [slo, error-budget, architecture, weekly-review, adr, burn-rate]
 ---
 
@@ -16,74 +19,85 @@ tags: [slo, error-budget, architecture, weekly-review, adr, burn-rate]
 
 ## Summary
 
-**One-sentence:** Weekly 30-minute architect-led ritual converting the past week's SLO burn data + matrix-triggered actions into named ADR-worthy decisions, so error budgets drive architecture rather than decorate dashboards.
+**One-sentence:** Weekly 30-min architect-led ritual converting SLO burn data + matrix-triggered actions into named ADR-worthy decisions captured in a versioned review note.
 
-**One-paragraph:** Reliability-architecture methodology covers patterns; the burn-rate decision matrix covers in-the-moment actions. Between them is a missing ritual: a regular forum where architecture absorbs what burn-rate is telling it. Without the review, error budgets become a passive metric — burn happens, mitigations happen, but the underlying architecture does not change. This methodology pins a weekly 30-minute review with five named items: (1) last week's burn-rate trace per SLO, (2) matrix-triggered actions and overrides, (3) postmortem actions due, (4) architectural decisions invited by burn pattern, (5) recontract candidates (SLOs that no longer match user pain). The review's output is a decision log entry, NOT a slack thread. Mechanism: data prep → 30-min review → decision log → ADR if needed. Primary output: a `burn-review-YYYY-WW.md` weekly note + ADRs spawned from named decisions.
+**One-paragraph:** Weekly 30-min architect-led ritual converting SLO burn data + matrix-triggered actions into named ADR-worthy decisions captured in a versioned review note. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`report`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- SLOs in use with burn-rate alerting (`pro/infra/devops-engineer/slo-definition-template-per-service-class`)
-- burn decision matrix in use (`pro/infra/devops-engineer/slo-burn-decision-matrix`)
-- architect or tech lead with authority to drive architectural decisions
-- ≥1 production service for ≥3 months (enough history)
+- SLOs are in use with burn-rate alerting in production.
+- A burn decision matrix is in use (matrix-triggered actions logged).
+- An architect or tech lead has authority to drive architectural decisions.
+- At least one production service has ≥3 months of SLO history.
 
 ## Skip If (ANY kills it)
 
-- no SLOs OR no burn-rate alerts in use — burn-rate review is built on the data those produce
-- single-service shop with no architectural decisions to make — overhead exceeds value
-- the team meets daily already and absorbs burn signals there — no new ritual needed
-- architecture changes are politically blocked — the review will surface decisions that go unactioned, breeding cynicism
+- No SLOs or no burn-rate alerts in use — the review has no data.
+- Single-service shop with no architectural decisions to make — overhead exceeds value.
+- Daily team meeting already absorbs burn signals adequately.
+- Architecture changes are politically blocked — surfaced decisions go unactioned.
 
 ## Prerequisites
 
-- access to burn-rate dashboards (Grafana / Honeycomb / Datadog)
-- audit log of matrix-triggered actions from `slo-burn-decision-matrix`
-- postmortem tracking system
-- 30-minute weekly slot with the required attendees (architect, on-call lead, product representative)
+| Input artifact | Format | Source |
+|---|---|---|
+| Burn-rate dashboards | Grafana / Honeycomb / Datadog | observability stack |
+| Matrix-triggered actions log | JSON / Markdown audit | slo-burn-decision-matrix |
+| Postmortem tracking | Jira / Linear / GitHub | incident-mgmt |
+| 30-min weekly slot | calendar | architect + on-call lead + product rep |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer/slo-definition-template-per-service-class` | Defines the SLOs being reviewed |
-| `pro/infra/devops-engineer/slo-burn-decision-matrix` | Supplies the actions log this review aggregates |
-| `pro/dev/software-architect/retro-adr-workflow` | Captures decisions arising from the review |
-| `pro/dev/software-architect/architecture-fitness-functions` | Where systemic fixes attach |
+| `pro/infra/devops-engineer/slo-definition-template-per-service-class` | Defines the SLOs being reviewed. |
+| `pro/infra/devops-engineer/slo-burn-decision-matrix` | Supplies the actions log this review aggregates. |
+| `pro/dev/software-architect/retro-adr-workflow` | Captures decisions arising from the review. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: weekly cadence, fixed agenda, decision-output not discussion-output, attendee minimum, written log | ~1000 |
-| `content/02-output-contract.xml` | essential | Review-note shape, decision-log entry schema, ADR spawning rule | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: meeting without decisions, attendee drift, blame surface, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | One end-to-end worked example | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `data_prep_burn_trace` | n/a | Deterministic data pull |
-| `agenda_pre_brief` | sonnet | Compose the 5-item brief with current week's evidence |
-| `decision_capture_drafting` | sonnet | Write the post-review decision log from notes |
-| `adr_spawn_check` | sonnet | Decide whether the decision rises to ADR weight |
+| `data_prep_burn_trace` | haiku | Deterministic data pull |
+| `agenda_pre_brief` | sonnet | Compose 5-item brief with current week evidence |
+| `decision_capture_drafting` | sonnet | Write post-review decision log from notes |
+| `adr_spawn_check` | opus | Decide whether the decision rises to ADR weight |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/burn-review.md` | Review note template (5 sections) |
-| `templates/decision-log-entry.md` | Decision-log entry shape |
-| `templates/agenda-pre-brief.md` | 1-page brief sent 24h pre-meeting |
+| `templates/burn-review.md` | Weekly review note skeleton (5 sections + decision log block) |
+| `templates/decision-log-entry.md` | Shape of one decision-log entry produced by the review |
+| `templates/agenda-pre-brief.md` | 1-page brief sent 24h before the meeting |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/prep-burn-review.py` | Pull last week's burn data, matrix audit log, postmortem actions; render brief | 24h pre-meeting |
-| `scripts/lint-review-note.py` | Verify all five sections + decision log entry present | Post-meeting |
+| `scripts/validate-slo-burn-rate-review-protocol.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/dev/software-developer/`
-- peer methodologies: `slo-definition-template-per-service-class`, `slo-burn-decision-matrix`, `architecture-fitness-functions`, `retro-adr-workflow`
-- external: [Google SRE Workbook — Implementing SLOs](https://sre.google/workbook/implementing-slos/) · [DORA Accelerate](https://dora.dev/) · [Charity Majors — Honeycomb on observability](https://charity.wtf/)
+- parent skill: `geek/dev/`
+- `[[slo-definition-template-per-service-class]]`
+- `[[slo-burn-decision-matrix]]`
+- `[[retro-adr-workflow]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether slo-burn-rate-review-protocol applies: root question — "Did burn-rate alerts fire in the past week (or matrix actions were taken)?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.
