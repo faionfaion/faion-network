@@ -1,22 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gemini-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gemini-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Gemini Basics Failure Modes" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Five recurring starter failures with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mixing sync model.generate_content() and async model.generate_content_async() in the same script.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>They use different event loop implementations; this causes RuntimeError: This event loop is already running. Pick one pattern and stick to it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Rebuilding chat history from scratch for each message instead of persisting the chat object.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Rebuilding discards prior context, forcing you to re-include prior messages in each new prompt. This wastes tokens and breaks natural conversation flow.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Assuming ResourceExhausted errors on the free tier are transient and will resolve with retries.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Free tier daily quotas are hard limits; once exceeded, no amount of backoff helps. Check when quota resets and wait until then, or upgrade to paid tier.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Hard-coded API key in source.</description>
+      <symptom>Key leaked via GitHub; vendor revokes key; service down.</symptom>
+      <root-cause>Quick-start tutorial code committed verbatim.</root-cause>
+      <fix>os.environ["GEMINI_API_KEY"] or secrets manager; .gitignore .env (rule r2).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Model not pinned ("gemini-pro").</description>
+      <symptom>Outputs change overnight when Google rolls a new alias target.</symptom>
+      <root-cause>Alias treated as a model name.</root-cause>
+      <fix>Use full version like "gemini-2.5-flash" (rule r1).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Mixing streaming and non-streaming in one path.</description>
+      <symptom>Half-streamed tokens leak into a UI expecting a full response.</symptom>
+      <root-cause>Toggle behind a config not consistently applied.</root-cause>
+      <fix>Commit to one mode per call site (rule r3).</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Asking for JSON via prompt only without response_mime_type.</description>
+      <symptom>Occasional non-JSON output; parser breaks.</symptom>
+      <root-cause>Prompt engineering instead of SDK path.</root-cause>
+      <fix>Set response_mime_type="application/json" + response_schema (rule r4).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Unbounded chat history.</description>
+      <symptom>Conversation fails with context-limit error after ~20 turns.</symptom>
+      <root-cause>No trim logic; history append-only.</root-cause>
+      <fix>FIFO trim by token budget; target ≤ half model context (rule r5).</fix>
+    </antipattern>
   </section>
 </text>
