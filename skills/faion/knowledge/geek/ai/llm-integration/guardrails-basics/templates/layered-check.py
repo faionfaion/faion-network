@@ -1,3 +1,10 @@
+"""
+purpose: Ordered fast-to-slow guardrail runner that reaches the LLM classifier only if cheap layers pass.
+consumes: text + detector + moderator
+produces: dict {ok, blocked_by, latency_ms_per_layer}
+depends-on: content/01-core-rules.xml r2, r4, r5
+token-budget-impact: zero — runtime; bounds total latency below configured budget
+"""
 # Layered guardrail check: fast-to-slow ordering
 # Requires: PromptInjectionDetector and a moderator with .moderate(text) -> dict
 

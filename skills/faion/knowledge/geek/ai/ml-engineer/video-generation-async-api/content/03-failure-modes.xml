@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="video-generation-async-api Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for video-generation-async-api as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Video Async API — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns in video gen async clients.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Tight polling — sleep 100ms in poll loop; hits 429; provider rate-limits the account.</description>
+      <detector>poll loop sleeps &lt;1s OR no backoff implemented</detector>
+      <repair>Implement exponential backoff (1, 2, 4, 8, 16, 30). Add jitter to spread retries.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>No idempotency key — network retry double-bills.</description>
+      <detector>submit() calls don't include idempotency-key header</detector>
+      <repair>Compute sha256(prompt + params + provider) as key. Provider dedups on the key.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>No fallback — Runway has 4-hour outage; media pipeline stalls; content backlog grows.</description>
+      <detector>only one provider configured</detector>
+      <repair>Add fallback (e.g., Runway primary, Luma fallback). On timeout/failure, retry with fallback.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Missed artefact TTL — URL expired in 48h; downstream pipeline references dead link.</description>
+      <detector>downstream stores provider URL as final artefact reference</detector>
+      <repair>Download immediately on SUCCEEDED. Store in S3/GCS. Reference internal URL only.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>No cost cap — runaway batch generates 1000 videos at $5 each; $5000 bill.</description>
+      <detector>no monthly cost_budget enforced in submit()</detector>
+      <repair>Check current spend before submit. If above cap, queue or refuse. Alert at 80%.</repair>
+    </failure-mode>
+
   </section>
 </text>

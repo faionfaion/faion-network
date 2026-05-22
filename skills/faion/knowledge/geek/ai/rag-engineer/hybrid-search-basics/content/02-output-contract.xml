@@ -1,22 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="hybrid-search-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="hybrid-search-basics Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for a hybrid-search config. Required fields: fusion strategy, alpha (if linear), dense index, sparse index, k, tie-break rule, eval evidence.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "hybrid-search-config",
+  "type": "object",
+  "required": ["fusion", "dense", "sparse", "k", "tie_break", "eval"],
+  "properties": {
+    "fusion": {"type": "string", "enum": ["rrf", "linear"]},
+    "alpha": {"type": "number", "minimum": 0, "maximum": 1},
+    "rrf_k": {"type": "integer", "default": 60},
+    "dense": {"type": "object", "required": ["index", "model"], "properties": {"index": {"type": "string"}, "model": {"type": "string"}}},
+    "sparse": {"type": "object", "required": ["backend"], "properties": {"backend": {"type": "string", "enum": ["bm25", "splade", "tantivy"]}}},
+    "k": {"type": "integer", "minimum": 1},
+    "tie_break": {"type": "string", "enum": ["dense_rank", "sparse_rank", "doc_id"]},
+    "eval": {"type": "object", "required": ["dataset", "metric", "score"], "properties": {"dataset": {"type": "string"}, "metric": {"type": "string"}, "score": {"type": "number"}}}
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "fusion": "rrf",
+  "rrf_k": 60,
+  "dense": {"index": "qdrant://docs", "model": "text-embedding-3-large"},
+  "sparse": {"backend": "bm25"},
+  "k": 10,
+  "tie_break": "dense_rank",
+  "eval": {"dataset": "labeled-queries-v2", "metric": "ndcg@10", "score": 0.74}
+}
+    ]]></code>
+    <note>Valid: RRF chosen, dense + sparse legs configured, eval evidence with metric and score.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{
+  "fusion": "linear",
+  "dense": {"index": "qdrant://docs"},
+  "sparse": {"backend": "bm25"},
+  "k": 10
+}
+    ]]></code>
+    <note>Invalid: linear fusion without alpha, dense missing model, no tie_break, no eval.</note>
+  </example>
+
+  <reference path="scripts/validate-hybrid-search-basics.py">Validates a config file against this schema.</reference>
 </text>
