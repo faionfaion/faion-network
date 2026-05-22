@@ -1,23 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agentic-rag-tool-using Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agentic-rag-tool-using. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Agentic RAG Tool-Using — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 testable rules every tool-using RAG agent must obey: bounded loops with logs, specific tool descriptions, cheap routing model, intra-run caching, allow-list for external search.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Cap the tool-using loop at max_calls (recommended 3). Each loop iteration MUST log the tool name, input query, and a truncated result summary for offline debugging.</statement>
-      <rationale source="v1-source">Without a cap, a confused tool selector can loop indefinitely. Without logging, tool selection decisions are a black box that is impossible to debug in production.</rationale>
+    <rule id="r1-cap-and-log" testable="true" depth="essential">
+      <statement>Cap the tool-using loop at max_calls (recommended 3). Each iteration MUST log {iteration, tool_name, input_query, result_summary_truncated_to_200_chars, latency_ms} to a structured sink.</statement>
+      <rationale source="LangGraph agentic RAG tutorial + production failure post-mortems">Uncapped loops let confused selectors loop indefinitely on ambiguous queries. Without logs, tool-selection becomes a black box that cannot be debugged or audited in production.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The tool description passed to the LLM MUST be specific enough to distinguish tools: "vector_search: semantic similarity search in document database" vs "keyword_search: exact keyword matching for precise terms" — not just tool names.</statement>
-      <rationale source="v1-source">Ambiguous tool descriptions cause the LLM to default to the first tool in the list regardless of query type, defeating the purpose of the registry.</rationale>
+
+    <rule id="r2-specific-descriptions" testable="true" depth="essential">
+      <statement>Each tool description passed to the LLM MUST distinguish purpose, input shape, and result shape — e.g. "vector_search(query:str) returns top-k document chunks by semantic similarity" vs "keyword_search(query:str) returns exact phrase matches" — not just tool names.</statement>
+      <rationale source="Anthropic + OpenAI function-calling guidance">Ambiguous descriptions cause the LLM to default to the first tool regardless of query type, defeating the registry. Specific descriptions let the model route on intent, not order.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use fast/cheap models (Haiku or gpt-4o-mini) for tool routing. Reserve Opus or gpt-4o for final answer generation. Separate the routing budget from the synthesis budget.</statement>
-      <rationale source="v1-source">Tool routing is a classification task (which tool?) that does not require deep reasoning. Routing with Opus burns ~10x the budget for no quality gain on the routing decision itself.</rationale>
+
+    <rule id="r3-cheap-routing-model" testable="true" depth="essential">
+      <statement>Routing decisions use a fast/cheap model (haiku, gpt-4o-mini). The final synthesis step uses a heavier model (opus, gpt-4o). Routing and synthesis token budgets are tracked separately.</statement>
+      <rationale source="Cost-benchmarking of agentic RAG pipelines">Tool routing is classification, not reasoning — Opus burns ~10x the budget per call for no quality gain on the decision itself. Synthesis benefits from the heavier model.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Cache tool results within a single agentic run. If the same tool is called with the same query in a later iteration, return the cached result without re-executing the tool.</statement>
-      <rationale source="v1-source">The same sub-query can recur across iterations; re-executing the tool wastes latency and API cost without adding new information.</rationale>
+
+    <rule id="r4-intra-run-cache" testable="true" depth="essential">
+      <statement>Cache tool results keyed by (tool_name, normalised_query) within a single agentic run. Cache MUST be cleared between runs to avoid stale answers.</statement>
+      <rationale source="Observed loop pathologies in iterative retrieval">The same sub-query can recur across iterations; re-executing wastes latency and API cost without adding new information. Cross-run caching introduces freshness bugs.</rationale>
+    </rule>
+
+    <rule id="r5-web-search-allowlist" testable="true" depth="essential">
+      <statement>If web_search is in the registry, ship an explicit domain allow-list. Calls to non-listed domains MUST be rejected by the wrapper before the network call.</statement>
+      <rationale source="Data-governance + adversarial-content threat model">Unrestricted web search can retrieve adversarial pages, out-of-date data, or content that conflicts with the vetted corpus. Allow-list is the only configuration-time defence.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
