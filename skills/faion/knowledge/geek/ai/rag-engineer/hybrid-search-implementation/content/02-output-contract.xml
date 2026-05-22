@@ -1,22 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="hybrid-search-implementation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="hybrid-search-implementation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for one HybridSearchService.search() invocation result.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "hybrid-search-result",
+  "type": "object",
+  "required": ["query", "backend", "fusion", "results"],
+  "properties": {
+    "query": {"type": "string"},
+    "backend": {"type": "string", "enum": ["weaviate", "qdrant", "pinecone", "elasticsearch", "custom"]},
+    "fusion": {"type": "string", "enum": ["rrf", "linear"]},
+    "alpha": {"type": "number"},
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "score", "dense_rank", "sparse_rank"],
+        "properties": {
+          "id": {"type": "string"},
+          "score": {"type": "number"},
+          "dense_rank": {"type": ["integer", "null"]},
+          "sparse_rank": {"type": ["integer", "null"]}
+        }
+      }
+    },
+    "latency_ms": {"type": "number"}
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "query": "JWT refresh token rotation",
+  "backend": "qdrant",
+  "fusion": "rrf",
+  "results": [
+    {"id": "doc-12", "score": 0.0312, "dense_rank": 3, "sparse_rank": 1},
+    {"id": "doc-99", "score": 0.0289, "dense_rank": 1, "sparse_rank": 8}
+  ],
+  "latency_ms": 78
+}
+    ]]></code>
+    <note>Valid: per-leg ranks present, fused score numeric.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{
+  "query": "JWT refresh token rotation",
+  "results": [{"id": "doc-12", "score": 0.0312}]
+}
+    ]]></code>
+    <note>Invalid: missing backend, fusion, per-leg ranks.</note>
+  </example>
+
+  <reference path="scripts/validate-hybrid-search-implementation.py">Validates a search result against this schema.</reference>
 </text>

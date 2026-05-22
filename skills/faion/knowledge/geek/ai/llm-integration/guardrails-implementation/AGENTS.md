@@ -4,72 +4,94 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Public-facing LLM applications receive adversarial input and must not relay toxic, hallucinated, or PII-laden content downstream.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a production guardrails pipeline — config dataclass + input/output validators + filters + structured violation log + audit trail + optional async fan-out.
 content_id: "09eb570b72518db2"
+complexity: medium
+produces: code
+est_tokens: 3600
 tags: [guardrails, implementation, production, validation, hallucination-detection]
 ---
 # Guardrails Implementation
 
 ## Summary
 
-**One-sentence:** Public-facing LLM applications receive adversarial input and must not relay toxic, hallucinated, or PII-laden content downstream.
+**One-sentence:** Produces a production guardrails pipeline — config dataclass + input/output validators + filters + structured violation log + audit trail + optional async fan-out.
 
-**One-paragraph:** Public-facing LLM applications receive adversarial input and must not relay toxic, hallucinated, or PII-laden content downstream. A pipeline with no guardrails silently passes policy violations, leaks credentials, and produces unauditable output. Guardrails add structured violation logging, per-category detection, and an audit trail — requirements in regulated industries and multi-agent pipelines where one agent's bad output becomes another's poisoned input.
+**One-paragraph:** Public-facing LLM applications receive adversarial input and must not relay toxic, hallucinated, or PII-laden content downstream. The implementation pattern: a single GuardrailsPipeline class fed by a GuardrailConfig dataclass, with input checks ordered cheap-first (rule-based injection → API moderation → optional LLM checks), output checks separating validators (boolean accept/block) from filters (transform), and a structured violation log per call. Async variant fans out independent checks via ThreadPoolExecutor for high-throughput apps. Guardrail failures themselves must fail loudly — never swallow exceptions inside a validator.
+
+**Ефективно для:** інженера, що піднімає safety-pipeline над клієнтським LLM-агентом — публічний chatbot, регульована галузь, multi-agent, де outputs feedback в inputs.
 
 ## Applies If (ALL must hold)
 
-- Public-facing applications where users may submit adversarial or off-policy input
-- Regulated industries (healthcare, finance, legal) with compliance output requirements
-- Multi-agent pipelines where one agent's output feeds another — prevent cascading bad data
-- Any app storing or transmitting user content through an LLM
-- Applications where hallucinated facts could cause real harm (medical advice, legal citations)
+- Public-facing application accepting adversarial user input.
+- Regulated context (healthcare/finance/legal) with compliance output requirements.
+- Multi-agent pipeline where one agent's output feeds another.
+- Latency budget allows ≥500ms of guardrail overhead.
 
 ## Skip If (ANY kills it)
 
-- Internal developer tools where all users are trusted — guardrails add latency and cost for no benefit
-- Pure text transformation (translation, summarization of provided text) — hallucination guardrails irrelevant
-- Prototype/PoC stages — implement before production, not during exploration
-- When the guardrail check itself calls an LLM and latency budget is under 500ms — use rule-based checks only
+- Internal trusted-only tool — adds latency for no benefit.
+- Pure text transformation (translation/summarisation) — hallucination irrelevant.
+- Prototype/PoC stage — wire before production, not during exploration.
+- Sub-500ms latency budget — use rule-based checks only (see [[guardrails-basics]]).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Policy categories + thresholds | YAML/JSON | safety policy doc |
+| Moderation API key (OpenAI / Perspective / Azure) | secret | secrets manager |
+| Telemetry sink | URL | observability stack |
+| Hallucination context store (optional) | retrieval API | RAG layer |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[guardrails-basics]]` | Defines the layered defense baseline. |
+| `[[ai-failure-mode-taxonomy]]` | Names violation categories. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 rules: config dataclass, ordered checks, validators-vs-filters, fail-loudly, async fan-out, structured violation log | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for guardrails-config + violation_log shape | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: hardcoded thresholds, silent except swallow, mixed validator+filter, sync N-check serial, no audit log | ~700 |
+| `content/04-procedure.xml` | medium | Steps: define GuardrailConfig → wire input pipeline (rule→API→LLM) → wire output pipeline (validators→filters) → emit violation log → optional async fan-out. | ~800 |
+| `content/06-decision-tree.xml` | essential | Public-facing + adversarial input? → run; internal trusted? → skip. | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft-config-dataclass` | sonnet | Schema authoring. |
+| `wire-pipeline-class` | sonnet | Mechanical class build. |
+| `tune-hallucination-detector` | opus | Cross-input reasoning. |
+| `lint-violation-log` | haiku | Pattern check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/guardrails-pipeline.py` | GuardrailConfig + GuardrailResult + GuardrailsPipeline reference class. |
+| `templates/moderate-input.py` | Standalone input moderation function with cheap-first ordering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-guardrails-implementation.py` | Validate guardrails-config.json — required fields, cheap-first ordering, fail_closed=true, async_fanout sane. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ai/llm-integration/`
+- [[guardrails-basics]]
+- [[ai-failure-mode-taxonomy]]
+- [[prompt-engineering-security]]
+
+## Decision tree
+
+The tree at `content/06-decision-tree.xml` triages: public-facing AND adversarial input possible? → wire production pipeline; trusted-only or prototype? → skip. Walk it before introducing a guardrails layer to avoid the latency tax on tools that don't need it.
