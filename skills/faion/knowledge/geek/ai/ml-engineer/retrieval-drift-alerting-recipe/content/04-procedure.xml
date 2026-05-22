@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Retrieval Drift Alerting Recipe — Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six-step procedure: capture baseline → compute nightly metrics → wire alerts → install safer-mode gate → drill rollback → schedule baseline refresh.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="capture-baseline">
+      <input>≥2 weeks of stable production retrieval logs (query vectors, retrieved IDs, scores)</input>
+      <action>Run `scripts/baseline-refresh.py --window 14d --output baseline_YYYY_MM.parquet`. Confirm no incident events overlap the window; reject if any P1 was open.</action>
+      <output>Frozen `baseline_2026_MM.parquet` snapshot in object storage</output>
+      <decision-gate>If query volume in window &lt;1000 — extend window; baseline on small sample is fragile (r1-baseline-freshness).</decision-gate>
+    </step>
+
+    <step n="2" name="compute-nightly-metrics">
+      <input>Last 24h of production logs + frozen baseline</input>
+      <action>Compute four metrics: query-embedding KL divergence vs baseline, retrieval-set Jaccard drift on top-10 IDs, score-histogram KS-statistic, neighbour-recency (median doc timestamp).</action>
+      <output>`drift-metrics-YYYY-MM-DD.json` with one row per metric</output>
+      <decision-gate>If any of the four metrics is missing data — fail-loud, do not silently zero-fill (r2-four-metric-coverage).</decision-gate>
+    </step>
+
+    <step n="3" name="wire-alerts">
+      <input>`drift-alerts.yaml` config + alerting backend</input>
+      <action>Install Prometheus rules from `templates/prometheus-rules.yaml`. Route P1 (immediate page) when ≥2 metrics breach OR magnitude &gt;3σ; P3 (ticket) when single metric breach 1σ-3σ sustained ≥60min.</action>
+      <output>Live alerts in Grafana / PagerDuty</output>
+      <decision-gate>If alert routing matrix missing for a metric class — STOP; unrouted alert = alarm-fatigue source (r3-routing-by-severity).</decision-gate>
+    </step>
+
+    <step n="4" name="install-safer-mode-gate">
+      <input>Feature-flag system + safer-mode handler in app code</input>
+      <action>Wire the alerting backend to flip a feature flag that switches RAG response from synthesised answer to "citations-only" mode while drift is active. Verify the flag is applied within 60s of breach.</action>
+      <output>Auto-gate live; test in pre-prod by injecting a synthetic drift event</output>
+      <decision-gate>If gate cannot be deployed (no feature-flag infra) — block recipe rollout; bare alerts without gate are unactionable (r4-safer-mode-gate).</decision-gate>
+    </step>
+
+    <step n="5" name="drill-the-rollback">
+      <input>Synthetic drift event in pre-prod</input>
+      <action>Replay 24h of logs with shifted query distribution. Verify alert fires, gate engages, on-call receives explanation, manual rollback works (re-embed or revert embedding-model version).</action>
+      <output>Drill report with timing measurements</output>
+      <decision-gate>If on-call cannot resolve in ≤30min in drill — improve runbook before deploying live.</decision-gate>
+    </step>
+
+    <step n="6" name="schedule-baseline-refresh">
+      <input>Acceptance-contract recontract trigger</input>
+      <action>After recontract event, run `scripts/baseline-refresh.py` to capture new baseline; require human approval. Old baseline archived, never deleted.</action>
+      <output>New baseline parquet + audit log entry</output>
+      <decision-gate>If recontract fires too often (&gt;1×/quarter) — investigate upstream instability, not just baseline drift (r5-recontract-trigger).</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

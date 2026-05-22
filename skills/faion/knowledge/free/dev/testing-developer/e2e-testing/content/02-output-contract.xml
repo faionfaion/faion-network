@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="e2e-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="E2E Testing Output Contract" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the emitted e2e-suite-config artefact. Subagent output MUST validate before being returned.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
+  <output-contract produces="config">
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["slug", "version", "decision", "drivers", "audit"],
+  "properties": {
+    "slug": {"const": "e2e-testing"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "decision": {
+      "type": "object",
+      "required": ["framework", "ci_shard_count", "auth_strategy", "visual_regression", "pom_base_path", "test_dir"],
+      "properties": {
+        "framework": {"enum": ["playwright", "cypress"]},
+        "ci_shard_count": {"type": "integer", "minimum": 1},
+        "auth_strategy": {"enum": ["storage-state", "api-token-injection", "none"]},
+        "visual_regression": {"enum": ["none", "component-scoped"]},
+        "pom_base_path": {"type": "string"},
+        "test_dir": {"type": "string"}
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "required": ["framework_preference", "visual_regression_needed", "ci_machine_budget", "journey_count"],
+      "additionalProperties": true
+    },
+    "audit": {
+      "type": "object",
+      "required": ["rule_refs"],
+      "properties": {"rule_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^r[0-9a-z-]+$"}}}
+    }
+  }
+}
+]]></schema>
+
+    <example valid="true" title="Greenfield Playwright suite, 4-way sharding"><![CDATA[
+{
+  "slug": "e2e-testing",
+  "version": "2.0.0",
+  "decision": {
+    "framework": "playwright",
+    "ci_shard_count": 4,
+    "auth_strategy": "storage-state",
+    "visual_regression": "component-scoped",
+    "pom_base_path": "tests/e2e/pages/base.ts",
+    "test_dir": "tests/e2e"
+  },
+  "drivers": {"framework_preference": "greenfield", "visual_regression_needed": true, "ci_machine_budget": 4, "journey_count": 12},
+  "audit": {"rule_refs": ["r1-test-pyramid", "r2-pom", "r4-storagestate", "r8-sharded-ci", "r-greenfield"]}
+}
+]]></example>
+
+    <example valid="false" title="Missing decision keys + empty rule_refs"><![CDATA[
+{
+  "slug": "e2e-testing",
+  "version": "2.0.0",
+  "decision": {"framework": "playwright"},
+  "drivers": {},
+  "audit": {"rule_refs": []}
+}
+]]></example>
+
+    <example-violations>
+      <violation>decision missing ci_shard_count, auth_strategy, visual_regression, pom_base_path, test_dir.</violation>
+      <violation>drivers missing framework_preference, visual_regression_needed, ci_machine_budget, journey_count.</violation>
+      <violation>audit.rule_refs empty — no rule cited.</violation>
+    </example-violations>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>JSON validates against the schema above.</item>
+      <item>decision.framework matches the decision tree branch given drivers.</item>
+      <item>audit.rule_refs cites the rules that drove the branch.</item>
+      <item>If visual_regression == component-scoped, decision must include masked-region selectors per r-component-screenshot.</item>
     </list>
   </section>
+
+  <reference path="templates/playwright.config.ts">Working Playwright config emitted from this decision.</reference>
+  <reference path="scripts/validate-e2e-testing.py">Schema validator.</reference>
 </text>

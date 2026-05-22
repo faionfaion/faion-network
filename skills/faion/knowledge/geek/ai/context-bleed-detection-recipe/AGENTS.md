@@ -3,80 +3,96 @@ slug: context-bleed-detection-recipe
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Context Bleed Detection Recipe: codified ai practice that turns the recurring 'p7-llm-agent-developer/Agent-state debug session (cursor + replay)' decision into a repeatable, auditable artefact.
-content_id: "e9789447b8fc851a"
-tags: [context-bleed-detection-recipe, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a runnable recipe that detects context bleed across multi-tenant LLM sessions (cross-user leakage, prior-turn carry-over, system-prompt drift) and emits a tagged incident record.
+content_id: "fa6057067ca615b9"
+complexity: medium
+produces: playbook-step
+est_tokens: 4000
+tags: [context-bleed, multi-tenant, llm-integration, security, ai-core, geek]
 ---
+
 # Context Bleed Detection Recipe
 
 ## Summary
 
-**One-sentence:** Context Bleed Detection Recipe: codified ai practice that turns the recurring 'p7-llm-agent-developer/Agent-state debug session (cursor + replay)' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a runnable detection recipe (canary probe + embedding-distance check + tag-based audit) for context bleed across multi-tenant LLM sessions, plus a tagged incident record for each hit.
 
-**One-paragraph:** Context Bleed Detection Recipe addresses the gap surfaced by 'p7-llm-agent-developer/Agent-state debug session (cursor + replay)'. subagent-as-context-firewall + compaction-preserve-refs describe the cure; there is no recipe for noticing context bleed before a user does. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Production LLM systems that serve multiple tenants from the same model deployment where a user can ask a benign question and recover snippets from a prior user's session, OR where stale tool output from turn N-1 silently feeds into turn N.
+
+**One-paragraph:** Pins the recurring "is this LLM bleeding context between sessions" investigation into a deterministic recipe. The recipe injects per-session canary tokens, snapshots system-prompt + tool-call state, and runs a post-hoc embedding-distance check between adjacent sessions. Output is a tagged incident record naming (a) the bleed type (cross-tenant / prior-turn / system-drift), (b) the probe that fired, (c) the affected session ids, and (d) the recommended kill switch (session-id reset, fresh worker, prompt-cache invalidate).
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p7-llm-agent-developer/Agent-state debug session (cursor + replay)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- LLM serves at least two distinct tenants OR sessions from the same model deployment.
+- A bleed-like complaint or audit finding has been opened in the last 30 days.
+- The operator has session logs + system-prompt history available.
+- Tier == geek or higher.
+- A single accountable on-call owner can be named.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Single-tenant / single-session deployment with no carry-over surface.
+- Bleed already root-caused and patched — use a regression test, not this recipe.
+- Provider-managed deployment where session isolation is delegated (e.g., managed agent runtime) — open vendor ticket instead.
 
 ## Prerequisites
 
-- recent context for the 'p7-llm-agent-developer/Agent-state debug session (cursor + replay)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|---|---|---|
+| 24h of session logs with timestamps + session_id | jsonl | log store |
+| Current system-prompt snapshot | text | prompt repo |
+| List of tools the agent can call | yaml | tool registry |
+| Tenant - session_id mapping | csv | auth / billing service |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `geek/ai/data-exfiltration-canary-tokens` | the canary mechanism this recipe leans on |
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: r1-canary-per-session, r2-snapshot-before-probe, r3-distance-threshold, r4-named-incident, r5-no-blast-radius-fix | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema for incident record + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: false-positive-from-paraphrase / canary-leak / snapshot-stale / tenant-id-misjoin / overfire-killswitch | ~900 |
+| `content/04-procedure.xml` | essential | 5-step probe to measure to score to classify to emit recipe | ~1000 |
+| `content/06-decision-tree.xml` | essential | Bleed-type classifier branching on probe + distance + system-drift | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| `inject_canary_and_snapshot` | haiku | Mechanical insertion |
+| `score_embedding_distance` | sonnet | Bounded distance compute + threshold pick |
+| `classify_bleed_type` | opus | Multi-signal synthesis, high consequence |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/context-bleed-detection-recipe.json` | JSON schema for the Context Bleed Detection Recipe output contract |
-| `templates/context-bleed-detection-recipe.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/context-bleed-detection-recipe.json` | JSON schema for the incident record output |
+| `templates/context-bleed-detection-recipe.md` | Markdown skeleton for the incident record |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-context-bleed-detection-recipe.py` | Enforce Context Bleed Detection Recipe output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-context-bleed-detection-recipe.py` | Enforce incident-record contract | After detector returns, before paging on-call |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- upstream playbook: `p7-llm-agent-developer/Agent-state debug session (cursor + replay)`
-- methodology family: `geek/ai/` (gap-p2 batch, F-059-063)
+- [[data-exfiltration-canary-tokens]] — upstream primitive.
+- [[hallucination-detection-online]] — adjacent online monitor.
+- [[llm-integration]] — parent skill.
+- Upstream playbook: `p3-llm-integration/Detect cross-session context bleed`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Three-question tree: (1) preconditions present? - no = skip; yes (2) canary appeared in foreign session? - yes = cross-tenant bleed; no (3) embedding-distance between turn N and N-1 across sessions exceeds threshold? - yes = prior-turn carry-over; no = clean. Terminal branches reference rules in `content/01-core-rules.xml`.
