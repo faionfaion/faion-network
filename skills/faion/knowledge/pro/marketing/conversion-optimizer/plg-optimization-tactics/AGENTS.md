@@ -2,7 +2,7 @@
 slug: plg-optimization-tactics
 tier: pro
 group: marketing
-domain: conversion-optimizer
+domain: marketing
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

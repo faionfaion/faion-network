@@ -2,7 +2,7 @@
 slug: ads-google-reporting
 tier: pro
 group: marketing
-domain: ppc-manager
+domain: marketing
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

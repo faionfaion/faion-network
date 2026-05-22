@@ -2,7 +2,7 @@
 slug: privacy-compliance
 tier: pro
 group: marketing
-domain: growth-marketer
+domain: marketing
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

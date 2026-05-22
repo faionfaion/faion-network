@@ -2,7 +2,7 @@
 slug: ops-customer-success-metrics
 tier: pro
 group: marketing
-domain: gtm-strategist
+domain: marketing
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
