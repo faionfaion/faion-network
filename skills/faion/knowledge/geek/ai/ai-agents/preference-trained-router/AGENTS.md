@@ -3,72 +3,94 @@ slug: preference-trained-router
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Train a tiny router (matrix factorization, BERT classifier, or similarity ranker) on Chatbot-Arena-style preference data so it can decide BEFORE inference whether each prompt should go to the weak or strong model.
-content_id: "42cc5450114cb88e"
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 83f02e194556f679
+summary: Produces a router-spec for a tiny preference-trained classifier that picks weak vs strong model before inference (one round-trip, no cascade).
+complexity: deep
+produces: spec
+est_tokens: 4000
 tags: [routing, cost-optimization, model-selection, preference-learning, routellm]
 ---
-# Preference-Trained Router (RouteLLM Pattern)
+# Preference-Trained Router
 
 ## Summary
 
-**One-sentence:** Train a tiny router (matrix factorization, BERT classifier, or similarity ranker) on Chatbot-Arena-style preference data so it can decide BEFORE inference whether each prompt should go to the weak or strong model.
+**One-sentence:** Produces a router-spec for a tiny preference-trained classifier that picks weak vs strong model before inference (one round-trip, no cascade).
 
-**One-paragraph:** Train a tiny router (matrix factorization, BERT classifier, or similarity ranker) on Chatbot-Arena-style preference data so it can decide BEFORE inference whether each prompt should go to the weak or strong model. One round-trip, one decision, no cascade. The router is a learned binary classifier on the prompt embedding, not a heuristic — and it must be retrained when traffic distribution drifts.
+**One-paragraph:** Cascade routing (try cheap model, escalate on failure) doubles cost on hard prompts and adds 500-1000ms p95 latency. A preference-trained binary classifier (logistic regression on embeddings, or small BERT) trained on (prompt, accepted_response) pairs picks weak vs strong in one shot. This methodology emits a router-spec: training data shape, model arch, calibration threshold, uncertainty fallback, drift monitor.
+
+**Ефективно для:** team running &gt;1k mixed-difficulty prompts/day where Haiku could handle 60% but cascade adds unacceptable p95.
 
 ## Applies If (ALL must hold)
 
-- Latency-sensitive production traffic where the cascade round-trip is unacceptable.
-- You have ≥10k logged (prompt, weak-output, strong-output) tuples to train on (or can use Arena public data + a few thousand of your own).
-- Mostly-stable task distribution — router quality decays under distribution shift.
-- Token spend on the strong model is the dominant line item AND the workload mixes easy and hard prompts.
+- Prompt volume &gt; 1k/day with mixed difficulty.
+- Latency-sensitive product where cascade adds unacceptable p95.
+- Preference data (good vs bad model outputs) is collectable.
+- Strong/weak model cost gap &gt;= 5x.
 
 ## Skip If (ANY kills it)
 
-- Cold start with no preference data — train a cascade first, log Arena pairs, switch later.
-- Rapidly drifting traffic (new product, weekly feature changes) — the router goes stale faster than you can retrain it.
-- Adversarial or safety-critical paths where a wrong-but-confident route is unacceptable; use a cascade with explicit verification instead.
-- Single-model workloads where the strong model's marginal cost is already low (small prompts, cached prefix).
+- Low volume (&lt; 100/day) — routing overhead exceeds savings.
+- Uniform task difficulty — single-model is simpler.
+- No preference data — can't train.
+- Wrong-model failure is catastrophic (medical, legal).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `preference-data.jsonl` | {prompt, weak_response, strong_response, label} | ops |
+| `weak_model_id` | string | infra |
+| `strong_model_id` | string | infra |
+| `target_strong_accuracy` | float (0..1) | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[role-specialized-models]] | Task-routing complements model-routing. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: binary classifier, preference-derived labels, calibration threshold, uncertainty fallback, drift monitor. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the router-spec. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: multi-class router, single-LLM-judge labels, no uncertainty band, no drift monitoring. | ~700 |
+| `content/04-procedure.xml` | recommended | 4-step procedure: collect data → train → calibrate → deploy with drift hook. | ~600 |
+| `content/05-examples.xml` | recommended | One RouteLLM-style example with calibration curve. | ~600 |
+| `content/06-decision-tree.xml` | essential | Picks router-deploy vs skip-static-rules from preference_data_size. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_preference_data` | haiku | Mechanical JSONL→typed batch. |
+| `train_classifier` | n/a | Scikit-learn / HF Transformers — not LLM. |
+| `audit_calibration` | opus | Detect over-routing to weak. |
+| `emit_router_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/router-spec.md` | Markdown wrapper. |
+| `templates/_smoke-test.yaml` | Minimum preference set. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-preference-trained-router.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[role-specialized-models]]
+- [[rerank-before-reasoning]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on `preference_data_size` (&lt; 1000 → skip; otherwise deploy), then on `weak_strong_cost_ratio` (&gt;= 5 → enable router; &lt; 5 → static rule). Each leaf cites a rule id.

@@ -1,39 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="claude-tool-use Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for claude-tool-use. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Claude Tool Use Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Eight testable rules for production Claude tool-use loops.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Write tool descriptions as if explaining to a colleague who has never seen your codebase — specificity prevents wrong tool selection; vague descriptions lead to wrong tool calls with no error.</statement>
-      <rationale source="v1-source">Tool descriptions are the primary signal for tool selection. The model has no other context for choosing between tools.</rationale>
+      <statement source="anthropic-docs-2026">Tool descriptions are written for a colleague who has never seen the codebase — specific intent + constraints. Vague descriptions cause silent wrong-tool selection.</statement>
+      <rationale>Tool descriptions are the primary signal Claude uses to pick a tool. Vague text degrades selection without surfacing an error.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Check stop_reason == "tool_use" explicitly on every response; missing this check causes the agent loop to exit early on tool requests.</statement>
-      <rationale source="v1-source">tool_use is a stop, not an error. The API returns stop_reason="tool_use" whenever Claude wants to call a tool; the caller must handle it.</rationale>
+      <statement source="anthropic-docs-2026">Check `stop_reason == "tool_use"` explicitly on every response; loop continues only when this stop reason fires.</statement>
+      <rationale>tool_use is a stop, not an error. Missing the check causes the agent to exit on the first tool request.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Set a max-iterations guard (10–20 turns); tool loops without a limit run indefinitely when a tool returns a consistently unhelpful result.</statement>
-      <rationale source="v1-source">Infinite loops burn quota and can be triggered by a single broken tool implementation that always returns the same response.</rationale>
+      <statement source="agent-loop-folklore">Set a max-iterations guard (10-20 turns); without it a broken tool that always returns the same result causes an infinite loop.</statement>
+      <rationale>Infinite loops burn quota and frequently surface as cost incidents before they surface as bugs.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Append response.content (the full list including tool_use blocks) as the assistant message, not just the text. Omitting tool_use blocks breaks conversation history and causes API errors on the next turn.</statement>
-      <rationale source="v1-source">The API requires complete message history including tool_use and tool_result blocks to reconstruct the conversation state.</rationale>
+      <statement source="anthropic-docs-2026">Append the full `response.content` list (text + tool_use blocks) as the assistant message; never append text-only.</statement>
+      <rationale>API requires complete history with tool_use + tool_result blocks; omitting tool_use breaks the next turn.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Execute all tool_use blocks from a single response concurrently — do not serialize what Claude dispatched in parallel; return all results in one user message.</statement>
-      <rationale source="v1-source">Claude requests parallel tools to reduce round-trips; serializing them defeats the optimization and increases latency.</rationale>
+      <statement source="anthropic-docs-2026">When Claude returns multiple tool_use blocks, execute them concurrently and return all tool_result blocks in one user message.</statement>
+      <rationale>Claude requests parallel tools to reduce round-trips; serializing defeats the optimisation and inflates latency.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Return tool errors as content (not is_error=True) unless the error should terminate the loop — Claude can often recover from tool errors when they're returned as data.</statement>
-      <rationale source="v1-source">is_error=True signals an unrecoverable error; most tool failures (timeouts, not-found) are recoverable if Claude sees the error message as data.</rationale>
+      <statement source="anthropic-docs-2026">Return tool errors as content (not `is_error=True`) unless the error must terminate the loop; Claude can often recover from tool errors when shown as data.</statement>
+      <rationale>is_error=True signals unrecoverable; most timeouts / not-founds are recoverable if Claude can see the error message.</rationale>
     </rule>
     <rule id="r7" testable="true" depth="essential">
-      <statement>To get guaranteed typed output, define a single extraction tool and force it with tool_choice={"type": "tool", "name": "..."}; access the result from tool_use.input.</statement>
-      <rationale source="v1-source">Prompt engineering ("return only JSON") fails occasionally even with temperature=0. The forced tool call routes through the tool use pathway which is more reliable for structured data.</rationale>
+      <statement source="forced-tool-pattern">For typed structured output, define an extraction tool and force it with `tool_choice={"type":"tool","name":"..."}`; read result from `tool_use.input`.</statement>
+      <rationale>Prompt engineering for JSON output fails occasionally even at temperature=0; forced tool call uses the more reliable tool-use pathway.</rationale>
     </rule>
     <rule id="r8" testable="true" depth="essential">
-      <statement>MCP is primarily designed for Claude Desktop (stdio transport); programmatic API usage should use standard tool use, not MCP.</statement>
-      <rationale source="v1-source">MCP servers communicate via stdio by default and require subprocess lifecycle management; standard tool use is stateless and easier to operationalize in servers.</rationale>
+      <statement source="mcp-spec">MCP is for Claude Desktop (stdio); programmatic API usage should use standard tool use unless a Desktop-specific feature is required.</statement>
+      <rationale>MCP requires subprocess lifecycle management; standard tool use is stateless and easier to operationalise in servers.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → implement the loop per content/04-procedure.xml.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Non-Claude model or no tool calls needed → skip; use vendor-specific or pure-text completion.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

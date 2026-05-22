@@ -1,22 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="structured-output Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for structured-output as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Structured Output — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns when integrating structured output.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using JSON mode instead of structured output for production extraction pipelines.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>JSON mode returns valid JSON syntax but may omit required fields, add unexpected fields, or use wrong types. These are silent failures that corrupt downstream state.</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Regex-extracting JSON from natural prose — model wraps JSON in markdown fence; regex misses it; production parse-fail rate 5-15%.</description>
+      <detector>code base contains `re.search(r"```json"...)` OR `output.split("{")[1]` patterns AND provider supports response_format</detector>
+      <repair>Switch to provider-native structured output. OpenAI: `response_format={"type": "json_schema", ...}`. Anthropic: tool use with JSON schema.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Streaming responses with structured output: trying to parse the response incrementally.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Structured output validation requires the complete response. Streaming cannot be validated until the stream completes. Buffer the full response before parsing.</repair>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Infinite retry loop on parse failure — burns budget, never resolves; downstream call times out.</description>
+      <detector>retry count unbounded OR &gt; 1 in safe-parse wrapper</detector>
+      <repair>Cap at exactly 1 repair retry per r3. Beyond that, log raw + return error to caller.</repair>
     </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Schema complexity compounds with context length: testing schema on short toy examples then deploying on production-length contexts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A schema that works on 100-token inputs may produce validation errors on 8K-token inputs where the model's attention is spread across a much larger context. Always test at production context length.</repair>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Schema drift — Pydantic model changed but production prompt still references old field. Model returns old shape; parser silently fills with defaults.</description>
+      <detector>git history shows Pydantic field changed within last 30 days; production logs show old field-set in responses</detector>
+      <repair>Add a strict-validation flag; reject extra/missing fields explicitly. Version schemas and pass version_id to model.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Recursive schema — `class Node: children: list[Node]` — provider API rejects at call time; production breaks.</description>
+      <detector>schema JSON contains `$ref` pointing back to ancestor</detector>
+      <repair>Flatten: store `nodes: list[Node]` + `parent_id: Optional[str]`. Reconstruct tree client-side.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Silent fallback — parse fails, function returns None or default; downstream code runs on empty data without warning.</description>
+      <detector>safe-parse catches all exceptions and returns default; no log/alert</detector>
+      <repair>Log raw response + schema on second failure (r4). Surface to error sink + dashboard. Never return silent default.</repair>
+    </failure-mode>
+
   </section>
 </text>
