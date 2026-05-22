@@ -1,57 +1,139 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Indirect Prompt Injection Defense Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Indirect Prompt Injection Defense artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Indirect Prompt Injection Defense Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for an IPI defense specification: trust boundaries, taint-rules, dual-LLM split, canaries, and eval-set references.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/indirect-prompt-injection-defense",
+  "type": "object",
+  "required": ["agent_name", "boundaries", "untrusted_sources", "taint_rules", "tool_scopes", "canary", "eval_set"],
+  "properties": {
+    "agent_name": {"type": "string", "minLength": 1},
+    "boundaries": {
+      "type": "array",
+      "minItems": 3,
+      "description": "Trust boundaries; at least developer/user/tool-content.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "channel"],
+        "properties": {
+          "id": {"type": "string"},
+          "label": {"type": "string"},
+          "channel": {"enum": ["system", "user", "tool", "memory", "rag"]}
+        }
+      }
+    },
+    "untrusted_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source", "trust_level", "max_size_kb", "content_type"],
+        "properties": {
+          "source": {"type": "string"},
+          "trust_level": {"enum": ["untrusted", "partially_trusted", "trusted"]},
+          "max_size_kb": {"type": "integer", "minimum": 1},
+          "content_type": {"type": "string"}
+        }
+      }
+    },
+    "taint_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source_pattern", "wrap_with", "max_quote_chars"],
+        "properties": {
+          "source_pattern": {"type": "string"},
+          "wrap_with": {"type": "string", "description": "e.g. <untrusted-content source='zendesk'>...</untrusted-content>"},
+          "max_quote_chars": {"type": "integer", "minimum": 100}
+        }
+      }
+    },
+    "split_pattern": {
+      "enum": ["single_llm", "dual_llm_planner_reader", "n_llm_pipeline"]
+    },
+    "tool_scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool", "allowed_paths", "allowed_hosts"],
+        "properties": {
+          "tool": {"type": "string"},
+          "allowed_paths": {"type": "array", "items": {"type": "string"}},
+          "allowed_hosts": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "canary": {
+      "type": "object",
+      "required": ["token_format", "outbound_check"],
+      "properties": {
+        "token_format": {"type": "string"},
+        "outbound_check": {"enum": ["abort_on_match", "log_on_match"]}
+      }
+    },
+    "eval_set": {
+      "type": "object",
+      "required": ["path", "min_categories", "min_cases"],
+      "properties": {
+        "path": {"type": "string"},
+        "min_categories": {"type": "integer", "minimum": 10},
+        "min_cases": {"type": "integer", "minimum": 20}
+      }
+    }
+  }
+}]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "agent_name": "zendesk-support-copilot",
+  "boundaries": [
+    {"id": "b1", "label": "developer instructions", "channel": "system"},
+    {"id": "b2", "label": "agent user", "channel": "user"},
+    {"id": "b3", "label": "ticket comments + KB articles", "channel": "tool"}
+  ],
+  "untrusted_sources": [
+    {"source": "zendesk_ticket_comment", "trust_level": "untrusted", "max_size_kb": 32, "content_type": "text/markdown"}
+  ],
+  "taint_rules": [
+    {"source_pattern": "zendesk.*", "wrap_with": "<untrusted-content source='zendesk'>{body}</untrusted-content>", "max_quote_chars": 16000}
+  ],
+  "split_pattern": "dual_llm_planner_reader",
+  "tool_scopes": [
+    {"tool": "send_email", "allowed_paths": [], "allowed_hosts": ["@customer.example.com"]}
+  ],
+  "canary": {"token_format": "CANARY-{uuid}", "outbound_check": "abort_on_match"},
+  "eval_set": {"path": "evals/ipi/", "min_categories": 10, "min_cases": 30}
+}]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "agent_name": "weak-agent",
+  "boundaries": [{"id": "b1", "label": "everything", "channel": "system"}],
+  "untrusted_sources": [],
+  "taint_rules": [],
+  "split_pattern": "single_llm",
+  "canary": null
+}]]></code>
+      <note>Fails: only 1 boundary (needs ≥3), zero untrusted sources declared, no taint-rules, no canary.</note>
+    </example>
   </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
+      <item>boundaries array has ≥3 entries spanning system/user/tool.</item>
+      <item>Every untrusted_source has ≥1 matching taint_rule via source_pattern.</item>
+      <item>If any tool has write/send/charge effect, split_pattern is not single_llm.</item>
+      <item>Every tool_scope declares allowed_paths and allowed_hosts (may be empty list, never null).</item>
+      <item>canary.token_format contains a uniqueness placeholder.</item>
+      <item>eval_set.min_categories ≥ 10 and min_cases ≥ 20.</item>
     </list>
   </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
 </text>

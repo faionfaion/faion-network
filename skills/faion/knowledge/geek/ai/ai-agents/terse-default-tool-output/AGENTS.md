@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Forces every list/search tool to default to compact summary output (id + headline + truncated/total_hits) with an explicit format=full opt-in plus mandatory reason argument, validated by a CI envelope schema.
-content_id: "1d99ecf5db1d3c50"
+content_id: "b022c4373295c014"
 complexity: medium
 produces: config
 est_tokens: 4300
