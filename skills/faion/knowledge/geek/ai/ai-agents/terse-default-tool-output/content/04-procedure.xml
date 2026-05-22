@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Terse Default Tool Output Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4-step procedure to retrofit an existing list/search tool to terse-default + verbosity opt-in.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="measure-worst-case">
+      <input>Existing tool source + sample queries</input>
+      <action>Run 20 representative calls capturing response token-count. If p95 &gt; 500 tokens, this methodology applies.</action>
+      <output>p50 / p95 / p99 token-count table</output>
+      <decision-gate>If p95 &lt; 500 tokens, skip — overhead exceeds the saving.</decision-gate>
+    </step>
+
+    <step n="2" name="design-summary-shape">
+      <input>List of fields the agent actually consumes downstream (audit trace if available)</input>
+      <action>Pick the smallest subset that lets the agent decide its next action: always include the primary key, one ranking/recency hint, and one one-line headline. Drop everything else.</action>
+      <output>Summary shape spec (column list, ~30 tokens per row target)</output>
+    </step>
+
+    <step n="3" name="implement-format-knob">
+      <input>Summary shape spec</input>
+      <action>Add a `format: Literal["summary","full"]` parameter defaulting to `"summary"`. Add `truncated` + `total_hits` to every response. For `full` mode, require a `reason: str` argument.</action>
+      <output>Modified tool returning the envelope from `02-output-contract.xml`</output>
+    </step>
+
+    <step n="4" name="wire-eval-gate">
+      <input>Tool deployed to staging + agent trace store</input>
+      <action>Add a recurring eval: per-task ratio of `format="full"` calls. Alert if &gt; 30% without a logged justification. Validate every response against the schema in CI.</action>
+      <output>Dashboard + alert wired; tool ready for production agents.</output>
+      <decision-gate>If raw-mode rate stays &gt; 30% even with justifications, summary shape is missing required fields — return to step 2.</decision-gate>
+    </step>
+
+  </section>
+</text>

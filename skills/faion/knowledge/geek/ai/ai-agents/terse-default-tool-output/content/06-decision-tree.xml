@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Terse Default Tool Output Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping tool type + measured worst-case output to an action. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-worst-case">Is the tool's worst-case (p95) response &gt; 500 tokens?</root-question>
+
+    <branch when="p95_tokens &lt;= 500">
+      <conclusion ref="terse-default-required" verdict="skip; tool already compact; overhead exceeds savings"/>
+    </branch>
+
+    <branch when="p95_tokens &gt; 500">
+      <question id="q-tool-type">Is the tool a final-result tool (last step of the loop) or an intermediate planning tool?</question>
+      <branch when="tool_role == final_result">
+        <conclusion ref="terse-default-required" verdict="default to full; agent / user wants the answer at the end of the loop"/>
+      </branch>
+      <branch when="tool_role == intermediate_planning">
+        <question id="q-key-available">Does each row have a stable primary key the agent can use to re-query?</question>
+        <branch when="primary_key == true">
+          <conclusion ref="primary-key-in-summary" verdict="implement summary mode + format='full' opt-in + truncation flag"/>
+        </branch>
+        <branch when="primary_key == false">
+          <conclusion ref="primary-key-in-summary" verdict="introduce a deterministic id (uuid or hash of canonical key) BEFORE applying this methodology"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="search-logs-intermediate">
+    p95=3200 → q-tool-type: intermediate → q-key-available: row.id present → primary-key-in-summary; implement summary mode with id, ts, level, msg-headline + truncated/total_hits + reason on full.
+  </example>
+</text>
