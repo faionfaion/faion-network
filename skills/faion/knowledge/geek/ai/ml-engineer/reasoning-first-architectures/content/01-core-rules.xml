@@ -1,11 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="reasoning-first-architectures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for reasoning-first-architectures. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Reasoning-First Architectures — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: eval-before-spend, task-type budget, classifier-first router, human gate on irreversible, fall-through on budget cap.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-eval-before-spend" testable="true" depth="essential">
+      <statement>Reasoning-model adoption MUST be preceded by an eval on ≥50 labelled examples that shows the reasoning route beats the standard route by a margin agreed in the acceptance contract. Shipping reasoning routing without this eval is forbidden.</statement>
+      <rationale source="OpenAI o-series, Anthropic Extended Thinking benchmarks 2026">Cost is 10-50× per call. Without a measured lift on the actual task, the spend has no defence. Half of "reasoning needed" intuitions disappear under controlled comparison.</rationale>
     </rule>
+
+    <rule id="r2-task-type-budget" testable="true" depth="essential">
+      <statement>Thinking budget MUST be set per task-type bucket: 1K-4K for formatting / extraction, 4K-8K for code review / logic, 8K-32K for architecture planning, 32K-128K for theorem / deep research. A single global budget is forbidden.</statement>
+      <rationale source="Anthropic ET docs; OpenAI reasoning effort guide">Thinking budget is an upper bound; the model decides how much to use. Too low truncates reasoning on hard tasks; too high wastes cost on simple ones. Per-bucket calibration captures actual variance.</rationale>
+    </rule>
+
+    <rule id="r3-classifier-first" testable="true" depth="essential">
+      <statement>A cheap classifier (haiku / nano / heuristic) MUST run first to decide whether the reasoning route is warranted. Direct-to-reasoning for every request is forbidden.</statement>
+      <rationale source="cost-routing patterns; industry post-mortems">Real-world workloads have a long tail of simple requests. Classifier overhead (~50ms, &lt;$0.001) is negligible against the reasoning-model cost it saves.</rationale>
+    </rule>
+
+    <rule id="r4-human-gate-irreversible" testable="true" depth="essential">
+      <statement>When the reasoning-model output triggers an irreversible downstream action (deploy, payment, deletion), a human-review gate MUST sit between the model and the action. Reasoning confidence below the eval-set p10 score MUST escalate to human.</statement>
+      <rationale source="Anthropic responsible scaling; incident reports">Reasoning models hallucinate confident wrong answers on out-of-distribution inputs. Irreversible side effects amplify those failures. Gating limits blast radius.</rationale>
+    </rule>
+
+    <rule id="r5-fall-through-on-budget-cap" testable="true" depth="essential">
+      <statement>The routing layer MUST have an explicit fall-through to the standard model when reasoning budget is exhausted (monthly spend cap hit) or the reasoning provider is unhealthy. Silent 5xx propagation is forbidden.</statement>
+      <rationale source="resilience patterns; GPT outage post-mortems">Hard-coding the expensive route makes the product brittle to provider outages and cost overruns. Fall-through plus a degradation banner keeps the product alive at known quality cost.</rationale>
+    </rule>
+
   </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Task-type budget selector">
+      <code lang="python"><![CDATA[
+BUDGETS = {"format": 1024, "analysis": 4096, "planning": 8192, "research": 32768}
+def reasoning_budget(task_type: str) -> int:
+    return BUDGETS.get(task_type, 4096)
+]]></code>
+      <note>r2-task-type-budget — explicit per-bucket budgets, never a single global value.</note>
+    </example>
+
+    <example type="bad" title="Blanket reasoning">
+      <code lang="python"><![CDATA[
+# r1 + r3 violations: ships every request to o3 without classifier, without eval evidence
+response = openai.chat.completions.create(model="o3", messages=[...], reasoning_effort="high")
+]]></code>
+      <note>No classifier, no eval gate, no budget per task. Burns money on requests that don't benefit.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

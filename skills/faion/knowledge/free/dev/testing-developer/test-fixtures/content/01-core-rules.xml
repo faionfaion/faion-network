@@ -1,11 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-fixtures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-fixtures. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Test Fixtures Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules every pytest fixture design MUST follow. Hard rules — operator input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-scope-matches-state" testable="true" depth="essential">
+      <statement>Stateful fixtures (DB rows, file handles, mutable objects) MUST be function-scoped. session/module scope is reserved for truly immutable resources.</statement>
+      <rationale source="docs.pytest.org/en/stable/fixture.html">Stateful + wide scope leaks state across tests. Function scope is the safe default.</rationale>
     </rule>
+
+    <rule id="r2-yield-not-addfinalizer" testable="true" depth="essential">
+      <statement>Use `yield` for fixture cleanup, NOT request.addfinalizer(). Cleanup MUST be co-located with setup.</statement>
+      <rationale source="docs.pytest.org">yield-fixtures keep teardown next to setup and run cleanup even when setup partially succeeds after yield.</rationale>
+    </rule>
+
+    <rule id="r3-no-mystery-guest" testable="true" depth="essential">
+      <statement>Test data MUST be requested by name through fixture parameters. Implicit autouse data creation is forbidden unless documented.</statement>
+      <rationale source="meszaros xUnit Test Patterns">Mystery Guest: data appears from nowhere; readers cannot trace where it comes from. Explicit fixture params restore traceability.</rationale>
+    </rule>
+
+    <rule id="r4-no-god-fixture" testable="true" depth="essential">
+      <statement>No single fixture creates "everything the suite needs". Split into composable factory fixtures per model.</statement>
+      <rationale source="meszaros xUnit Test Patterns">God Fixture forces every test to pay for setup it doesn't use, slowing the suite and obscuring intent.</rationale>
+    </rule>
+
+    <rule id="r5-factory-uniqueness-xdist" testable="true" depth="essential">
+      <statement>When `xdist_workers &gt; 1`, factories MUST use UUID-based unique values for unique-constrained fields. factory.Sequence is forbidden under xdist.</statement>
+      <rationale source="pytest-xdist docs">Sequence counters start at 0 per worker → guaranteed collisions on unique constraints.</rationale>
+    </rule>
+
+    <rule id="r6-xdist-worker-db" testable="true" depth="essential">
+      <statement>When `xdist_workers &gt; 1`, each worker MUST get its own database via the worker_id fixture. Sharing one DB across workers is forbidden.</statement>
+      <rationale source="pytest-xdist + pytest-django docs">Concurrent transactions from workers race on the same table; tests pass locally and fail in parallel.</rationale>
+    </rule>
+
+    <rule id="r7-autouse-documented" testable="true" depth="essential">
+      <statement>Every autouse=True fixture MUST carry a docstring stating what cross-cutting effect it has and why it is implicit.</statement>
+      <rationale source="convention">Autouse hides side effects from readers; the docstring is the minimum compensation.</rationale>
+    </rule>
+
+    <rule id="r-factory-pick" testable="true" depth="essential">
+      <statement>When `has_many_optional_fields == false` AND `domain_scenarios_named == false`, the spec MUST pick the Factory pattern.</statement>
+      <rationale source="meszaros + factoryboy docs">Factory is the simplest pattern; reach for it unless the model demands richer expression.</rationale>
+    </rule>
+
+    <rule id="r-builder-pick" testable="true" depth="essential">
+      <statement>When `has_many_optional_fields == true`, the spec MUST pick the Builder pattern (fluent with-* methods).</statement>
+      <rationale source="meszaros">Builders read naturally when an object has many independent optional knobs.</rationale>
+    </rule>
+
+    <rule id="r-mother-pick" testable="true" depth="essential">
+      <statement>When `domain_scenarios_named == true`, the spec MUST add an Object Mother on top of Factory/Builder with semantic methods (premium_user, banned_user).</statement>
+      <rationale source="meszaros">Named scenarios encode domain language; tests read intent rather than implementation.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
