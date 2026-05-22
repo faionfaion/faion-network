@@ -1,22 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="reasoning-first-architectures Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Reasoning-First Architectures — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the YAML shape of `reasoning-routing.yaml` — declarative routing spec consumed by the orchestrator.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="version" format="semver"/>
+      <field name="classifier" type="object" required_keys="model,prompt_version,confidence_field"/>
+      <field name="task_types" type="map" min_keys="2"/>
+      <field name="task_types.&lt;name&gt;.route" type="enum" values="standard|extended-thinking|o3|o4-mini|deepseek-r1"/>
+      <field name="task_types.&lt;name&gt;.thinking_budget" type="integer" min="0" max="131072"/>
+      <field name="task_types.&lt;name&gt;.standard_fallback" type="object" required_keys="model,trigger"/>
+      <field name="eval_evidence" type="object" required_keys="set_path,reasoning_lift,sample_size"/>
+      <field name="budget_cap" type="object" required_keys="monthly_usd,on_cap_hit"/>
+      <field name="human_gate" type="object" required_keys="enabled,actions,confidence_floor"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">eval_evidence missing OR sample_size &lt; 50 (r1-eval-before-spend)</pattern>
+      <pattern id="f2">single global thinking_budget for all task_types (r2-task-type-budget)</pattern>
+      <pattern id="f3">classifier absent — all requests route directly to a reasoning model (r3-classifier-first)</pattern>
+      <pattern id="f4">human_gate.enabled=false AND actions includes any of {deploy, payment, delete} (r4-human-gate-irreversible)</pattern>
+      <pattern id="f5">budget_cap.on_cap_hit == "fail" — must be "fall-through" (r5-fall-through-on-budget-cap)</pattern>
+      <pattern id="f6">thinking_budget &lt; 1024 for task_type ∈ {planning, research} — under-budget on hard task</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Adjust thinking_budget within ±2x as long as eval gate still passes.</transformation>
+      <transformation>Swap reasoning provider (o3 ↔ Claude ET) is major version bump with new eval evidence.</transformation>
+      <transformation>Adding a task_type is patch bump if classifier already differentiates it.</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/reasoning-routing.schema.yaml"/>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>classifier model + prompt_version pinned</item>
+      <item>≥2 task_types declared with route + thinking_budget + fallback</item>
+      <item>eval_evidence.sample_size ≥ 50 AND reasoning_lift documented</item>
+      <item>budget_cap.on_cap_hit == "fall-through"</item>
+      <item>human_gate.enabled == true if any irreversible action listed</item>
+      <item>thinking_budget within 1K-128K, sized per task-type bucket</item>
     </list>
   </section>
 </text>
