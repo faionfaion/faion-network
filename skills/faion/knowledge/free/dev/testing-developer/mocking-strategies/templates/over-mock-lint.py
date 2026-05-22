@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: lint pass detecting over-mocked test files in a Python project
+# consumes: test directory path + own-package name + threshold ratio
+# produces: stdout report listing test files exceeding the mock/assertion ratio
+# depends-on: stdlib only (ast, pathlib, argparse)
+# token-budget-impact: ~350 tokens
 """
 over-mock-lint.py — detect over-mocked test files in a Python project.
 
