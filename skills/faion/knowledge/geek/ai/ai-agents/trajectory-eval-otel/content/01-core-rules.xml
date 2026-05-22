@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="trajectory-eval-otel Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for trajectory-eval-otel. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Trajectory Eval OTel Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for multi-axis agent evaluation using OpenTelemetry GenAI semantic conventions.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="three-axis-required" testable="true" depth="essential">
+      <statement>Every agent eval MUST score on three independent axes: outcome (correctness), trajectory (steps + loops + tool-misuse), resources (tokens + cost + latency). A single "% success" metric is rejected.</statement>
+      <rationale source="Internal — Sonnet 4.5→4.6 regression catch; arXiv 2310.13548 trajectory eval literature">Outcome-only eval hides cost and step regressions; observed 96% outcome stable while trajectory dropped from 0.78 to 0.61 after a tool description removal.</rationale>
     </rule>
+
+    <rule id="otel-genai-semconv" testable="true" depth="essential">
+      <statement>All LLM calls MUST be wrapped in spans using OTel GenAI semantic conventions: `gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.usage.cache_read_tokens`, `gen_ai.usage.cache_creation_tokens`, `gen_ai.response.finish_reason`.</statement>
+      <rationale source="OpenTelemetry GenAI semconv; Langfuse / Phoenix / Datadog OTLP receivers">Vendor-neutral attribute set lets traces flow uniformly across backends without code changes; ad-hoc attributes lock evaluation into a single vendor.</rationale>
+    </rule>
+
+    <rule id="tool-span-required" testable="true" depth="essential">
+      <statement>Every tool call MUST be a child span of the agent run with `agent.tool.name`, `agent.tool.args_hash`, `agent.tool.outcome` (`success|error|timeout`), `agent.tool.duration_ms`. Tracing the LLM call without the tool result is forbidden.</statement>
+      <rationale source="Anthropic engineering — tool-use debugging notes">Tool spans capture the half of the trajectory needed to debug loops; the LLM call alone shows symptoms, the tool span shows the cause.</rationale>
+    </rule>
+
+    <rule id="hash-not-paste" testable="true" depth="essential">
+      <statement>Long prompts and tool outputs MUST be stored by SHA-256 hash in spans, with the full content kept in a side store keyed by the hash. Storing &gt; 8KB of raw prompt text in span attributes is forbidden.</statement>
+      <rationale source="OTLP payload-size guidance; internal trace-store cost audits">Inline prompt storage blows the OTLP payload budget and ships PII to every trace consumer; hash + side-store keeps spans cheap and content controlled.</rationale>
+    </rule>
+
+    <rule id="ci-eval-gate" testable="true" depth="essential">
+      <statement>Eval MUST run as a CI step on every PR: regress on outcome AND trajectory AND cost. A PR that improves outcome but regresses cost &gt; 25% is failed unless explicitly waived in the PR description.</statement>
+      <rationale source="Internal — cost-only regression case study Q4 2025">Without a CI gate, cost regressions are invisible until the monthly bill arrives; multi-axis CI catches them in minutes.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

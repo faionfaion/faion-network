@@ -23,6 +23,13 @@ tags: [llm-routing, shadow-deploy, model-cascade, gateway, promotion-gate]
 
 **One-paragraph:** Generic A/B testing methodology does not cover the specific risks of deploying a router (one that picks between models) or a tuned model running in shadow behind a stronger model. Routers introduce three failure modes that A/B does not catch: cost spike (the cheap router routes unexpectedly to the expensive model), scoring delta (the cheap model output is plausible but wrong in subtle ways), and schema mismatch (the new router returns slightly different JSON keys). This methodology pins the shadow protocol: mirror 100% of traffic to the candidate router, do NOT return its output to users, log scoring delta + cost delta + schema-parity at the request level, gate promotion only after ≥7-day stable window where (a) scoring delta within acceptance contract, (b) cost ≤ baseline × 1.1, (c) schema parity = 100%. Mechanism: shadow window → metric review → gradual percentage rollout → full cut-over with rollback ready. Primary output: a `shadow-report.yaml` and a go/no-go decision artefact.
 
+**Ефективно для:**
+
+- Команд із LLM router або model-cascade — звичайний A/B пропускає cost spike, judge drift і schema sneak-change; цей протокол ловить усе три.
+- Tuned-model rollout-ів (DPO, fine-tune) у production — shadow window валідовує що дешевша модель не дає subtle-wrong відповідей.
+- Cost-sensitive продуктів — гарантія baseline × 1.1 cost gate не дає cheap-router-у тихо переадресовуватись на дорогу модель.
+- Schema-strict integration — 100% schema parity gate блокує тихий drift у JSON keys який валиться у downstream parser.
+
 ## Applies If (ALL must hold)
 
 - production LLM system with a router OR cascade (multiple models, dynamic selection)
