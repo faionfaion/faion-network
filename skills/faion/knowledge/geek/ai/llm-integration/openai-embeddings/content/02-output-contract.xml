@@ -1,22 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="openai-embeddings Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="OpenAI Embeddings — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Per-chunk embedding record persisted in the vector store. Captures custom_id, model, dims, vector length, source hash, and original text.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://openai-embeddings/output.schema.json",
+  "type": "object",
+  "required": ["custom_id", "model", "dimensions", "vector_len", "source_hash", "chunk_text", "embedded_at"],
+  "properties": {
+    "custom_id": {"type": "string", "pattern": "^[a-zA-Z0-9_\\-:]+$", "minLength": 4},
+    "model": {"type": "string", "enum": ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"]},
+    "dimensions": {"type": "integer", "minimum": 1, "maximum": 3072},
+    "vector_len": {"type": "integer", "minimum": 1, "maximum": 3072},
+    "source_hash": {"type": "string", "pattern": "^[a-f0-9]{16,64}$"},
+    "chunk_text": {"type": "string", "minLength": 1},
+    "embedded_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>custom_id — stable across retries; format `doc_{id}_chunk_{n}` or equivalent.</item>
+      <item>model + dimensions — must match pipeline-wide pin.</item>
+      <item>vector_len == dimensions (validator enforces equality).</item>
+      <item>source_hash — sha1/sha256 of chunk_text, used to dedupe re-embeds.</item>
+      <item>chunk_text — original text kept alongside the vector.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>vector_len != dimensions.</description>
+      <reason>Indicates ingestion/query mismatch; downstream similarity scores are meaningless.</reason>
+    </antipattern>
+    <antipattern>
+      <description>chunk_text empty or whitespace-only.</description>
+      <reason>Zero-content chunks produce near-zero vectors that cluster anomalously.</reason>
+    </antipattern>
+    <antipattern>
+      <description>custom_id reused across distinct chunks.</description>
+      <reason>Breaks Batch API result correlation; loses chunk on collision.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "custom_id": "doc_42_chunk_3",
+  "model": "text-embedding-3-small",
+  "dimensions": 1536,
+  "vector_len": 1536,
+  "source_hash": "9a8b7c6d5e4f3210",
+  "chunk_text": "Embeddings encode semantic meaning into dense vectors...",
+  "embedded_at": "2026-05-22T12:34:56Z"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "custom_id": "doc_42",
+  "model": "text-embedding-3-small",
+  "dimensions": 1536,
+  "vector_len": 3072,
+  "source_hash": "",
+  "chunk_text": ""
+}
+]]></code>
+      <note>Invalid: vector_len mismatches dimensions; source_hash empty; chunk_text empty; embedded_at missing.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>vector_len equals dimensions.</item>
+      <item>model is in the pinned enum.</item>
+      <item>custom_id is unique per chunk.</item>
+      <item>chunk_text non-empty.</item>
     </list>
   </section>
 </text>

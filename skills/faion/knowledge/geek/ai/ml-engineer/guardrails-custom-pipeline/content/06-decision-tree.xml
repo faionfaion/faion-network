@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Custom Guardrails Pipeline Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Component-inclusion tree by trust + data sensitivity + latency.</summary>
+
+  <decision-tree>
+    <root-question id="q-external">Are end-users external / untrusted?</root-question>
+    <branch when="external == true">
+      <question id="q-pii">Does input ever contain PII (email/phone/SSN/card)?</question>
+      <branch when="pii == true">
+        <conclusion ref="four-components" verdict="enable PII + injection + moderation; judge only with RAG context"/>
+      </branch>
+      <branch when="pii == false">
+        <conclusion ref="four-components" verdict="enable injection + moderation; PII off"/>
+      </branch>
+    </branch>
+    <branch when="external == false">
+      <question id="q-latency">SLO p99 &lt; 100 ms?</question>
+      <branch when="latency_lt_100ms == true">
+        <conclusion ref="regex-only-tier1" verdict="tier-1 only (length + injection regex); no moderation"/>
+      </branch>
+      <branch when="latency_lt_100ms == false">
+        <conclusion ref="four-components" verdict="injection + moderation; PII + judge by config"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="external + PII → full four-component pipeline">
+    <code lang="text"><![CDATA[
+external=true → q-pii → pii=true → enable PII + injection + moderation; judge gated on context
+]]></code>
+  </example>
+</text>

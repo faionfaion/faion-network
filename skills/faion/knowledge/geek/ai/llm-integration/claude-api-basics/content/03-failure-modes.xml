@@ -1,12 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="claude-api-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for claude-api-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Claude API Basics Failure Modes" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>5 antipatterns observed when bootstrapping the Anthropic SDK. Each entry has a symptom (`description`), root cause (`reason`), and corrective fix (`note`).</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Concurrent subagents share one API key and trip the 50 req/min Tier-1 cap inside seconds.</description>
+      <reason>No per-worker rate budget; no use of `x-ratelimit-remaining-requests` header to throttle proactively.</reason>
+      <note>Fix: divide tier capacity across N workers, throttle before reaching zero remaining, or upgrade tier. Read the header on every response and gate the next call.</note>
+    </antipattern>
+    <antipattern>
+      <description>Cost dashboard shows fluctuating per-call prices that don't match the requested model.</description>
+      <reason>Cost lookup uses the request model string; an alias has silently resolved to a different model snapshot.</reason>
+      <note>Fix: key the price table off `response.model`, not the request argument; assert that `response.model` matches the pin and alert on mismatch.</note>
+    </antipattern>
+    <antipattern>
+      <description>Forked worker pool hangs on the first Anthropic call; no error, just silence.</description>
+      <reason>Parent process imported `client = Anthropic()` at module top; forked workers inherited stale httpx connection state.</reason>
+      <note>Fix: construct the client inside the worker's `init` function (or use `spawn` start method); never share a client across forks.</note>
+    </antipattern>
+    <antipattern>
+      <description>Random 529 errors crash the pipeline; retry policy explicitly excludes 529 because "it's not a rate limit".</description>
+      <reason>Tenacity decorator only catches `RateLimitError`; `overloaded_error` arrives as `APIStatusError(status_code=529)` and bypasses it.</reason>
+      <note>Fix: add `retry_if_exception_type((RateLimitError, APIStatusError))` and either filter `status_code &gt;= 500` or include 529 explicitly.</note>
+    </antipattern>
+    <antipattern>
+      <description>Anthropic support cannot trace a failed call — operator has only the timestamp.</description>
+      <reason>Wrapper never captured `x-request-id`; logs show only the exception text.</reason>
+      <note>Fix: read `x-request-id` from `response.response.headers` (or the SDK's exposed accessor) and emit it on every error log line. Persist alongside the request for replay.</note>
+    </antipattern>
   </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

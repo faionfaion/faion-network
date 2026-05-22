@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Multi-Agent Spec — Content Pipeline Example" version="1.0.0" est_tokens="550" depth="medium">
+  <summary>End-to-end worked example: research → write → edit content pipeline with budgets, model assignment, and termination predicate.</summary>
+
+  <section title="Brief">
+    <p>Internal need: produce a 1500-word explainer on EU AI Act Articles 5/6/9 relevant to a product team. Budget: 25k tokens, 6 minutes. One developer can ship the result; quality bar is "publishable on engineering blog with editor sign-off".</p>
+  </section>
+
+  <section title="STEP 1 — Roster">
+    <code lang="yaml"><![CDATA[
+- name: researcher  | role: "Gather + summarise EU AI Act Articles 5/6/9 relevant to recommendation systems"
+- name: writer      | role: "Compose the 1500-word explainer from researcher findings; no new claims"
+- name: editor      | role: "Tighten clarity, fix factual drift against findings, finalize markdown"
+]]></code>
+    <p>Pairwise overlap check: researcher×writer share 1 noun ("findings/explainer"), writer×editor share 1 ("explainer/markdown") — passes ≤2 threshold.</p>
+  </section>
+
+  <section title="STEP 2 — Pattern">
+    <p>Dependency: editor needs writer output; writer needs researcher output. Linear DAG → `sequential`.</p>
+  </section>
+
+  <section title="STEP 3-5 — Full spec">
+    <code lang="yaml"><![CDATA[
+task: "Produce a 1500-word internal explainer on EU AI Act Articles 5/6/9 for recommendation-system engineers"
+pattern: sequential
+decision_authority: orchestrator
+message_schema:
+  schema_version: v1
+  fields: [schema_version, from, to, payload, ts]
+budget: {total_tokens: 25000, wallclock_s: 360}
+termination:
+  kind: predicate
+  predicate: "result.final_markdown != null AND result.word_count >= 1400 AND result.word_count <= 1700"
+agents:
+  - name: researcher
+    role: "Gather and summarise EU AI Act Articles 5/6/9 relevant to recommendation systems"
+    model: sonnet
+    system_prompt: |
+      You are a research specialist on EU regulation. Output strict JSON.
+      Forbidden: opinion, generalities, claims without article reference.
+      Schema: {findings:[{claim, article, source_url}], confidence: 0..1}
+    token_budget: 6000
+    timeout_s: 90
+  - name: writer
+    role: "Compose the 1500-word explainer from researcher findings; introduce no new claims"
+    model: sonnet
+    system_prompt: |
+      You are a technical writer for engineering blogs. Output JSON.
+      Forbidden: any claim not present in researcher.findings[].
+      Schema: {draft_markdown: str, word_count: int, claims_used: [{idx, source_url}]}
+    token_budget: 8000
+    timeout_s: 120
+  - name: editor
+    role: "Tighten clarity, fix factual drift vs researcher.findings, finalize markdown"
+    model: opus
+    system_prompt: |
+      You are a senior editor. Compare draft_markdown to researcher.findings — fail any claim with no source.
+      Schema: {final_markdown: str, change_log: [str], word_count: int}
+    token_budget: 5000
+    timeout_s: 90
+]]></code>
+  </section>
+
+  <section title="STEP 6 — Validation">
+    <code lang="text"><![CDATA[
+$ python scripts/validate-multi-agent-basics.py spec.yaml
+spec.yaml: ok (3 agents, sequential, sum_budget=19000 ≤ 0.9*25000)
+]]></code>
+  </section>
+</text>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="OpenAI Embeddings — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step procedure for chunk → embed → upsert → search. Each step has typed input + bounded action + observable output.</summary>
+
+  <section title="Steps">
+    <step n="1" name="pin-config">
+      <input>Pipeline tier (latency budget, cost ceiling, expected recall).</input>
+      <action>Choose `(model, dimensions)` and persist in a single `config.py` consumed by ingest and query. Default: `text-embedding-3-small`, dims=1536.</action>
+      <output>Frozen embedding config; startup smoke test passes.</output>
+      <decision-gate>If `vector_store.dims != config.dimensions` at startup → fail loud.</decision-gate>
+    </step>
+    <step n="2" name="chunk">
+      <input>Source documents (markdown / html / text).</input>
+      <action>Apply semantic chunker with ~10% overlap. Reject chunks &gt; 8000 tokens.</action>
+      <output>List of `(custom_id, chunk_text)` tuples ready for embedding.</output>
+    </step>
+    <step n="3" name="embed">
+      <input>Chunks list, embedding config.</input>
+      <action>If &gt; 1000 chunks and 24-hour window OK → Batch API. Else → sync `embeddings.create`. Pin `model` and `dimensions` from config.</action>
+      <output>List of embedding records matching the output contract.</output>
+      <decision-gate>If `len(vector) != dimensions` → reject.</decision-gate>
+    </step>
+    <step n="4" name="upsert">
+      <input>Embedding records.</input>
+      <action>Write to vector store keyed by `custom_id`; include `chunk_text` and `source_hash` payload for retrieval and dedup.</action>
+      <output>Upsert count == input count.</output>
+    </step>
+    <step n="5" name="search">
+      <input>User query (raw).</input>
+      <action>Expand short / ambiguous queries via LLM rewrite. Embed expanded query with same `(model, dimensions)`. Nearest-neighbor search top-k.</action>
+      <output>Ranked list of `(score, chunk_text, custom_id)` tuples.</output>
+    </step>
+    <step n="6" name="return-results">
+      <input>Top-k search results.</input>
+      <action>Filter by score floor; deduplicate by `source_hash`; format for downstream consumer (RAG prompt assembly).</action>
+      <output>Filtered, deduplicated chunk list ready for context injection.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="stream-json-orchestration Procedure" version="1.1.0" est_tokens="900" depth="medium">
+  <summary>Seven-step procedure for spawning the agent CLI, consuming its stream-json output, and producing a validated run report.</summary>
+
+  <step n="1" name="prepare-invocation">
+    <input>Task prompt, allowed-tools list, max-turns, budget cap, log dir.</input>
+    <action>Assemble the argv list with `--output-format stream-json`, `--include-partial-messages`, `--allowedTools "..."`, `--max-turns N`. Validate that none of these is missing.</action>
+    <output>argv ready for `subprocess.Popen`.</output>
+    <decision-gate>If `--allowedTools` or `--max-turns` missing — refuse to spawn.</decision-gate>
+  </step>
+
+  <step n="2" name="spawn-subprocess">
+    <input>argv from step 1, log dir.</input>
+    <action>Open `subprocess.Popen(argv, stdout=PIPE, stderr=PIPE, stdin=DEVNULL, bufsize=1, text=True)`. Open the replay JSONL file at `runs/&lt;to-be-filled&gt;.jsonl` for append-as-events-arrive.</action>
+    <output>`proc` handle and `log_file` handle.</output>
+  </step>
+
+  <step n="3" name="consume-events">
+    <input>`proc.stdout` iterator.</input>
+    <action>For each non-empty line: parse JSON with try/except (log decode errors, continue). Append the raw line to the replay log. On the `system/init` event, capture `session_id` and rename the replay log to `runs/&lt;session_id&gt;.jsonl`.</action>
+    <output>Sequence of parsed event dicts.</output>
+    <decision-gate>On `JSONDecodeError` log to stderr sink — never crash the orchestrator.</decision-gate>
+  </step>
+
+  <step n="4" name="apply-budget-cap">
+    <input>Each parsed event, rolling `total_cost_usd`.</input>
+    <action>Update `total_cost_usd` from `event.get("total_cost_usd")` if present. If `total_cost_usd &gt; cap`, call `proc.kill()`, set `kill_reason="budget_cap"`, break out of the loop.</action>
+    <output>Either continuation or killed-process with reason.</output>
+  </step>
+
+  <step n="5" name="apply-safety-veto">
+    <input>Each `assistant` event with `tool_use` blocks.</input>
+    <action>For each `tool_use`, look up the tool name + arguments against the veto rule set. On a denied call: `proc.kill()`, `kill_reason="safety_veto"`, break.</action>
+    <output>Either continuation or killed-process with reason.</output>
+    <decision-gate>Veto fires BEFORE the tool runs because the model emits `tool_use` before the tool actually executes.</decision-gate>
+  </step>
+
+  <step n="6" name="finalize-on-result">
+    <input>The `result` event emitted at the end of the run.</input>
+    <action>Set `result_subtype` from the event, set final `total_cost_usd`, set `ended_at` to now. Close the replay log. Compute `events_count`.</action>
+    <output>Complete run report dict.</output>
+  </step>
+
+  <step n="7" name="validate-and-persist">
+    <input>Run report dict.</input>
+    <action>Call `scripts/validate-stream-json-orchestration.py run-report.json`. On PASS, write the report next to the replay log; on FAIL, surface the violation list and refuse to mark the run as complete.</action>
+    <output>Persisted `runs/&lt;session_id&gt;.report.json` and a return code matching `result_subtype`.</output>
+    <decision-gate>If validate exits non-zero — the orchestrator is broken; quarantine the report for inspection.</decision-gate>
+  </step>
+</text>

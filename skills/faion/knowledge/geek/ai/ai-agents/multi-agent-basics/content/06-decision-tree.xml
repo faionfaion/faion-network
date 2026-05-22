@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Multi-Agent Pattern Decision Tree" version="1.0.0" est_tokens="350">
+  <decision-tree>
+    <root-question id="q-decomposable">Can the task be decomposed into ≥2 non-overlapping roles upfront?</root-question>
+    <branch when="decomposable == false">
+      <conclusion ref="r1-non-overlap">Skip multi-agent. The task is single-role; use a single agent (or a single ReAct loop). Revisit only if context budget or quality requires splitting.</conclusion>
+    </branch>
+    <branch when="decomposable == true">
+      <question id="q-deps">Are role steps independent (no role consumes another's output)?</question>
+      <branch when="all_steps_independent == true">
+        <conclusion ref="r5-no-bidirectional-deps">Pick `parallel`. Fan-out N roles, gather results, synthesize. Per-agent rate-limit guard required.</conclusion>
+      </branch>
+      <branch when="all_steps_independent == false">
+        <question id="q-quality-stakes">Is the task high-stakes verification where one agent could miss the failure?</question>
+        <branch when="quality_stakes == 'high' AND agents_count &gt;= 3">
+          <conclusion ref="r2-named-decision-authority">Pick `debate`. Proponent + opponent + judge. Use different model families if available to break echo chambers.</conclusion>
+        </branch>
+        <branch when="quality_stakes == 'high' AND agents_count &lt; 3">
+          <conclusion ref="r2-named-decision-authority">Pick `hierarchical`. One opus-class manager plans + dispatches + synthesizes; cheaper workers execute. Judge role is the manager itself.</conclusion>
+        </branch>
+        <branch when="quality_stakes == 'normal'">
+          <question id="q-dag-shape">Is the data flow a linear chain (A→B→C) or a tree/graph?</question>
+          <branch when="dag_shape == 'linear'">
+            <conclusion ref="r4-full-context-handoff">Pick `sequential`. Pipeline pattern; each agent consumes the prior agent's full output (not just delta).</conclusion>
+          </branch>
+          <branch when="dag_shape == 'graph_with_shared_state'">
+            <conclusion ref="r4-full-context-handoff">Pick `collaborative`. Agents iterate on a shared workspace; coordinator synthesizes after N rounds.</conclusion>
+          </branch>
+          <branch when="dag_shape == 'open_ended_chat'">
+            <conclusion ref="r7-explicit-termination">Pick `conversational` (AutoGen-style turn-taking). Mandatory: explicit termination phrase + max_turns cap to prevent runaway.</conclusion>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="content-pipeline">
+      <p>Task: 1500-word explainer with research → write → edit. Decomposable, dependent (linear), normal stakes → q-decomposable=yes → q-deps=dependent → q-quality-stakes=normal → q-dag-shape=linear → conclusion `sequential`.</p>
+    </example>
+  </decision-tree>
+</text>

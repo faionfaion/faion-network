@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="multi-agent-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for multi-agent-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Multi-Agent Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Six antipatterns that recur in shipped multi-agent systems, paired with detector + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Role confusion — overlapping agent responsibilities cause agents to duplicate work.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If two agents have similar system prompts and responsibilities, they produce redundant outputs, wasting tokens and confusing the orchestrator.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Communication overhead — every send/receive consumes tokens; small tasks pay disproportionate coordination tax.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Multi-agent systems have setup cost. For simple problems, direct single-agent approach is cheaper.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Deadlocks — agents waiting on each other's outputs without timeout hang indefinitely.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If Agent A waits for B and B waits for A, the system deadlocks. Use a coordinator that detects cycles at plan-time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Echo chambers — agents with similar training data converge on the same (possibly wrong) answer in debate or review.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Large language models trained on similar data produce correlated outputs. Debate is less useful if both sides reach the same incorrect conclusion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Coordination failure — without a clear decision-making authority, no consensus is reached.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Specify upfront who decides: the orchestrator, the judge, majority vote, or consensus.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Resource waste — parallel agents sharing a rate-limited API key hit limits faster.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>5 parallel agents hitting the same key multiply effective request rate by 5. Use per-agent rate limiters or a shared token bucket.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Sequential bottlenecks — debate and collaborative patterns serialize naturally; parallelism gains are limited.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Not all patterns parallelize equally. Debate requires sequential rounds; only independent stages can run in parallel.</repair>
-    </failure-mode>
+  <section title="Role &amp; coordination">
+    <antipattern>
+      <description>Role overlap — two agents share significant nouns in their `role` field and produce duplicated work.</description>
+      <reason>Overlap is the dominant first-week bug. Detect: validator script flags shared noun count ≥3 between any pair. Fix: split the overlapping bit into a third agent or absorb it into one of the two; never keep both.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bidirectional dependency / deadlock — agent A waits for B and B waits for A; the run hangs until the wall-clock cap.</description>
+      <reason>Detect: plan-time cycle check on the agent DAG. Fix: refactor to a DAG. If the dependency feels mutual, you really want a shared workspace (collaborative pattern), not point-to-point messaging.</reason>
+    </antipattern>
+    <antipattern>
+      <description>No named decision authority — when two agents output conflicting answers, the synthesis step deadlocks or picks arbitrarily.</description>
+      <reason>Detect: `decision_authority` field absent or empty in spec. Fix: declare orchestrator / judge / majority / human as the canonical tie-breaker; orchestrator is the default and works for ~80% of cases.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Context &amp; budget">
+    <antipattern>
+      <description>Context loss on handoff — orchestrator passes only a delta or summary; downstream agent fills the gap with hallucination.</description>
+      <reason>Detect: eval reveals downstream agent referencing facts no upstream agent produced. Fix: every handoff message carries the full prior context the downstream needs; let the LLM provider's prefix caching pay for the redundancy.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Rate-limit amplification — N parallel agents share one API key; effective request rate is N×, key trips its limit, all agents stall.</description>
+      <reason>Detect: 429s on a parallel-pattern run that single-agent runs do not trigger. Fix: per-agent token bucket or per-agent API key (the cleaner fix); document the per-key concurrency cap in the spec.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Quality">
+    <antipattern>
+      <description>Echo chamber in debate — both sides converge on the same wrong answer because their underlying models are trained on the same data.</description>
+      <reason>Detect: debate runs where proponent and opponent agree by round 2. Fix: assign different model families to the two sides (Anthropic vs OpenAI), or feed the opponent a contrarian system-prompt directive ("you must surface the strongest counter even if you privately agree").</reason>
+    </antipattern>
   </section>
 </text>

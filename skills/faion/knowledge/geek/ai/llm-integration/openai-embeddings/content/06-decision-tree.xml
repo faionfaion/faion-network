@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="OpenAI Embeddings Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-latency">Is the embed call on an interactive path (user-blocking) or offline (nightly / catchup)?</root-question>
+    <branch when="path_class == 'interactive'">
+      <conclusion ref="r2-semantic-chunking">Use synchronous `embeddings.create`. Model = text-embedding-3-small, dims = 1536. Pin from config.</conclusion>
+    </branch>
+    <branch when="path_class == 'offline'">
+      <question id="q-volume">Is the batch &gt; 1000 chunks AND the 24-hour completion window acceptable?</question>
+      <branch when="batch_size &gt; 1000 AND completion_window_hours &gt;= 24">
+        <conclusion ref="r5-batch-correlation">Use Batch API. Assign meaningful `custom_id`. Correlate results by custom_id, never by order.</conclusion>
+      </branch>
+      <branch when="batch_size &lt;= 1000 OR completion_window_hours &lt; 24">
+        <conclusion ref="r1-model-and-dims-pin">Use synchronous embeddings with paced concurrency. Pin model and dims from config.</conclusion>
+      </branch>
+    </branch>
+    <branch when="recall_eval_required == true">
+      <question id="q-model-choice">Did A/B vs text-embedding-3-large show recall@10 lift &gt; 5%?</question>
+      <branch when="recall_lift_pct &gt; 5">
+        <conclusion ref="r1-model-and-dims-pin">Switch to text-embedding-3-large; reindex the full corpus; update config.</conclusion>
+      </branch>
+      <branch when="recall_lift_pct &lt;= 5">
+        <conclusion ref="r1-model-and-dims-pin">Stay on text-embedding-3-small; cost-benefit does not justify the switch.</conclusion>
+      </branch>
+    </branch>
+    <example trace="nightly-news-corpus">
+      <p>10K news articles, nightly reindex, 24h OK → Batch API. custom_id = `news_{article_id}_chunk_{n}`. Conclusion r5-batch-correlation.</p>
+    </example>
+  </decision-tree>
+</text>

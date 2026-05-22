@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="cost-optimization Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="LLM Cost Optimization Plan Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the cost-plan artefact. Describes router / cache / batch / budget configuration per pipeline stage and expected savings band.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/llm-cost-plan.json",
+  "type": "object",
+  "required": ["artefact_id", "pipeline", "stages", "global_budget", "version", "last_reviewed", "measurement_baseline_days"],
+  "properties": {
+    "artefact_id":  {"type": "string", "pattern": "^cop-[a-z0-9-]{6,}$"},
+    "pipeline":     {"type": "string"},
+    "measurement_baseline_days": {"type": "integer", "minimum": 7},
+    "stages": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["stage", "current_cost_share", "actions"],
+        "properties": {
+          "stage":              {"type": "string"},
+          "current_cost_share": {"type": "number", "minimum": 0, "maximum": 1},
+          "output_token_share": {"type": "number", "minimum": 0, "maximum": 1},
+          "actions": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["type", "rule_ref"],
+              "properties": {
+                "type":     {"enum": ["router", "prompt-cache", "response-cache", "batch", "prompt-redesign", "no-op"]},
+                "rule_ref": {"type": "string"},
+                "config":   {"type": "object"},
+                "expected_savings_pct": {"type": "number", "minimum": 0, "maximum": 0.95}
+              }
+            }
+          }
+        }
+      }
+    },
+    "global_budget": {
+      "type": "object",
+      "required": ["daily_soft_usd", "daily_hard_usd", "alert_at_pct"],
+      "properties": {
+        "daily_soft_usd": {"type": "number", "minimum": 0},
+        "daily_hard_usd": {"type": "number", "minimum": 0},
+        "alert_at_pct":   {"type": "number", "minimum": 0.5, "maximum": 1}
+      }
+    },
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "cop-rag-pipeline",
+  "pipeline": "neromedia-news-rewrite",
+  "measurement_baseline_days": 14,
+  "stages": [
+    {"stage": "classify", "current_cost_share": 0.30, "output_token_share": 0.10,
+     "actions": [
+       {"type": "router", "rule_ref": "route-by-complexity",
+        "config": {"classifier_model": "claude-haiku-4-5"}, "expected_savings_pct": 0.65}
+     ]},
+    {"stage": "rewrite", "current_cost_share": 0.55, "output_token_share": 0.70,
+     "actions": [
+       {"type": "prompt-cache", "rule_ref": "cache-only-repeated-prefix",
+        "config": {"prefix_tokens": 2400}, "expected_savings_pct": 0.40},
+       {"type": "prompt-redesign", "rule_ref": "log-output-token-share",
+        "config": {"target_output_pct": 0.45}, "expected_savings_pct": 0.20}
+     ]},
+    {"stage": "embed-archive", "current_cost_share": 0.15, "output_token_share": 0.05,
+     "actions": [
+       {"type": "batch", "rule_ref": "batch-the-offline",
+        "config": {"batch_size": 1000}, "expected_savings_pct": 0.50}
+     ]}
+  ],
+  "global_budget": {"daily_soft_usd": 25, "daily_hard_usd": 50, "alert_at_pct": 0.80},
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "pipeline": "rag",
+  "measurement_baseline_days": 0,
+  "stages": [{"stage": "all", "current_cost_share": 1.5, "actions": []}],
+  "global_budget": {"daily_soft_usd": 100, "daily_hard_usd": 50, "alert_at_pct": 2}
+}
+]]></code>
+    <note>artefact_id fails pattern; baseline 0 days violates measure-before-optimize rule; cost share &gt;1 impossible; stage has no actions; soft &gt; hard budget; alert_at_pct &gt; 1 (must be 0-1); missing version + last_reviewed.</note>
+  </example>
+
+  <reference path="scripts/validate-cost-optimization.py">Validator that enforces this contract.</reference>
+
 </text>

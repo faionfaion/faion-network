@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="React Hooks Worked Example" version="1.1.0" est_tokens="800" depth="optional">
+  <summary>Before/after: buggy data-fetch component with stale closure + sync-via-effect → clean component with abort signal + derivation.</summary>
+
+  <section title="Before — buggy">
+    <code lang="tsx"><![CDATA[
+function UserCard({userId}: {userId: string}) {
+  const [user, setUser] = useState<User | null>(null);
+  const [fullName, setFullName] = useState("");
+
+  if (!userId) return null;  // BUG 1: early return before hooks below
+  useEffect(() => {
+    fetch(`/api/users/${userId}`).then(r => r.json()).then(setUser);
+  }, []);  // BUG 2: missing userId in deps
+  useEffect(() => {
+    if (user) setFullName(`${user.first} ${user.last}`);  // BUG 3: sync-via-effect
+  }, [user]);
+
+  return <div>{fullName}</div>;
+}
+]]></code>
+  </section>
+
+  <section title="After — fixed">
+    <code lang="tsx"><![CDATA[
+function UserCard({userId}: {userId: string}) {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    const controller = new AbortController();
+    fetch(`/api/users/${userId}`, {signal: controller.signal})
+      .then(r => r.json())
+      .then(setUser)
+      .catch(err => { if (err.name !== 'AbortError') throw err; });
+    return () => controller.abort();  // FIX 1: cleanup, FIX 2: deps complete
+  }, [userId]);
+
+  if (!userId || !user) return null;        // FIX 3: early return AFTER hooks
+  const fullName = `${user.first} ${user.last}`;  // FIX 4: derive in render
+
+  return <div>{fullName}</div>;
+}
+]]></code>
+    <note>Three rules applied: unconditional-call (early return moved below hooks), exhaustive-deps (userId added), cleanup-mandatory (AbortController), derive-not-sync (fullName computed inline).</note>
+  </section>
+
+  <reference path="templates/use-fetch.example.tsx">Reusable custom hook with same shape</reference>
+</text>

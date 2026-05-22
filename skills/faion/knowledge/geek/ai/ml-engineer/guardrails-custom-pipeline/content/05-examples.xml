@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Custom Guardrails Pipeline Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>FastAPI app wiring the pipeline as middleware.</summary>
+
+  <example type="good">
+    <note>FastAPI `/chat` route: wraps every request through `pipeline.run`. Blocking response returned as 400 with violations; safe response forwarded.</note>
+    <code lang="python"><![CDATA[
+from fastapi import FastAPI, HTTPException
+from openai import AsyncOpenAI
+from guardrails_pipeline import GuardrailsPipeline, GuardrailConfig
+
+app = FastAPI()
+client = AsyncOpenAI()
+pipeline = GuardrailsPipeline(
+    client=client,
+    model="gpt-4o",
+    config=GuardrailConfig(
+        enable_pii_detection=True,
+        enable_injection_detection=True,
+        enable_content_moderation=True,
+        enable_hallucination_detection=False,
+    ),
+)
+
+@app.post("/chat")
+async def chat(body: dict):
+    result = await pipeline.arun(body["message"])
+    if not result.is_safe:
+        raise HTTPException(400, {"violations": result.violations})
+    return {"reply": result.filtered_output, "violations": result.violations}
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Same shape, but pipeline is instantiated per request → cold compile of regexes each time; moderation key leaked into URL.</note>
+    <code lang="python"><![CDATA[
+@app.post("/chat-bad")
+async def chat_bad(body: dict, openai_key: str):
+    p = GuardrailsPipeline(client=AsyncOpenAI(api_key=openai_key), model="gpt-4o")
+    result = await p.arun(body["message"])
+    return {"reply": result.filtered_output}
+]]></code>
+  </example>
+</text>

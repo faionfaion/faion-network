@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-quality-queries Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-quality-queries Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Output is a Markdown report whose YAML frontmatter validates against the JSON Schema below. Each finding pins a file, line, and a concrete fix.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <reference path="templates/audit-report.md">Markdown skeleton matching this contract.</reference>
+  <reference path="scripts/validate-django-quality-queries.py">Validator script — exit 0 on pass, 1 on violation list.</reference>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (frontmatter of the audit report)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DjangoQueryAuditReport",
+  "type": "object",
+  "required": [
+    "methodology", "target_repo", "endpoints_audited",
+    "n_plus_one_count", "indexes_recommended", "tests_added", "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "methodology": { "const": "django-quality-queries" },
+    "target_repo": { "type": "string", "minLength": 1 },
+    "endpoints_audited": { "type": "integer", "minimum": 0 },
+    "n_plus_one_count": { "type": "integer", "minimum": 0 },
+    "indexes_recommended": { "type": "integer", "minimum": 0 },
+    "tests_added": { "type": "integer", "minimum": 0 },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "severity", "file", "line", "fix", "before_queries", "after_queries"],
+        "properties": {
+          "rule_id": {
+            "enum": ["r1-select-related","r2-prefetch-related","r3-bulk-ops","r4-indexes","r5-assertnumqueries"]
+          },
+          "severity": { "enum": ["error","warning","info"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 0 },
+          "fix": { "type": "string", "minLength": 1 },
+          "before_queries": { "type": "integer", "minimum": 0 },
+          "after_queries": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Examples">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+---
+methodology: django-quality-queries
+target_repo: faion-net/faion-net-be
+endpoints_audited: 14
+n_plus_one_count: 3
+indexes_recommended: 2
+tests_added: 5
+findings:
+  - rule_id: r1-select-related
+    severity: error
+    file: apps/orders/views.py
+    line: 42
+    fix: "move ORM call into selectors.get_order_list(user=...) with select_related('user','shipping_address')"
+    before_queries: 1001
+    after_queries: 3
+---
+      ]]></code>
+      <note>Valid: all required keys present, finding includes before/after counts and a concrete fix.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+---
+methodology: django-quality-queries
+target_repo: faion-net-be
+n_plus_one_count: -1
+findings:
+  - severity: error
+    file: apps/orders/views.py
+    fix: "add select_related"
+---
+      ]]></code>
+      <note>Invalid: missing endpoints_audited / indexes_recommended / tests_added; n_plus_one_count negative; finding missing rule_id, line, before_queries, after_queries.</note>
+    </example>
   </section>
 </text>

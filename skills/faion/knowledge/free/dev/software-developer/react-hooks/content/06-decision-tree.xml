@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="React Hooks Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree for state placement + memoization + effect-vs-handler choices. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-needs-state">Does the value need to survive across renders (component remounts not considered)?</root-question>
+
+    <branch when="needs_state == false">
+      <conclusion ref="derive-not-sync" verdict="Compute inline in render body. No `useState`, no `useEffect`."/>
+    </branch>
+
+    <branch when="needs_state == true">
+      <question id="q-source">Is the value derived from props or other state?</question>
+      <branch when="derived == true">
+        <conclusion ref="derive-not-sync" verdict="Compute inline. If passed to memo'd child or used as hook dep → wrap in `useMemo`."/>
+      </branch>
+      <branch when="derived == false">
+        <question id="q-side-effect">Does it require a side-effect (subscription, fetch, timer)?</question>
+        <branch when="side_effect == false">
+          <conclusion ref="unconditional-call" verdict="`useState` at top level of component."/>
+        </branch>
+        <branch when="side_effect == true">
+          <question id="q-on-event-or-render">Is the effect triggered by render (mount / dep-change) or by user event?</question>
+          <branch when="trigger == render">
+            <conclusion ref="cleanup-mandatory" verdict="`useEffect` with exhaustive deps + cleanup function."/>
+          </branch>
+          <branch when="trigger == event">
+            <conclusion ref="unconditional-call" verdict="Plain event handler. Do NOT wrap in `useEffect`."/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="form-derivation">
+    Component shows `fullName = first + ' ' + last`. q-needs-state: depends entirely on props → derived → derive-not-sync conclusion. No state, no effect, inline expression. Compare to sync-via-effect antipattern in 03-failure-modes.xml.
+  </example>
+</text>

@@ -1,27 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-quality-queries Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-quality-queries as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-quality-queries Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns with concrete symptom, root cause, and fix. Each maps to a rule from `01-core-rules.xml` so the validator can flag it.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using select_related on a nullable ForeignKey and iterating without checking None.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>select_related with a NULL FK produces an outer join and correctly returns None for the related object. Agents sometimes add .exclude(fk__isnull=True) to avoid None checks, which changes the result set semantics.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using prefetch_related but then filtering the related queryset in Python inside the loop.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Filtering in Python after prefetch breaks the optimization — the filter re-issues queries. Use Prefetch(queryset=...) with the filter applied to the queryset argument instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding select_related to every queryset including those that never access the related object.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unnecessary JOINs add CPU and memory cost. Profile first with Debug Toolbar, add select_related only where the related field is actually accessed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>prefetch_related on a queryset that has already been evaluated (e.g., list(queryset)).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>prefetch_related works at queryset evaluation time. Calling it after list() has no effect. Use prefetch_related_objects() for already-evaluated querysets.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-select-related-nullable" severity="medium">
+      <description>Adding `select_related("nullable_fk")` and then assuming the related object is never None.</description>
+      <symptom>AttributeError: 'NoneType' object has no attribute 'email' in production list views; the same code works in tests.</symptom>
+      <root-cause>select_related on a nullable FK uses an OUTER JOIN and correctly returns None for missing rows. The optimisation is sound; the access pattern is not.</root-cause>
+      <fix>Either guard with `if obj.user is not None:` or chain `.exclude(user__isnull=True)` to narrow the queryset semantics intentionally. Never remove select_related to "fix" the None handling.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-prefetch-then-python-filter" severity="high">
+      <description>Calling `prefetch_related("items")` then filtering `obj.items.filter(active=True)` inside the loop.</description>
+      <symptom>nplusone middleware fires; Debug Toolbar shows 2 + N queries despite the prefetch.</symptom>
+      <root-cause>`obj.items.filter(...)` re-issues a SQL query because the filter constructs a new queryset that bypasses the prefetch cache.</root-cause>
+      <fix>Use `Prefetch("items", queryset=Item.objects.filter(active=True), to_attr="active_items")` and iterate `obj.active_items` (a plain list).</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-select-related-blanket" severity="low">
+      <description>Adding `select_related(...)` to every queryset including ones that never access the related object.</description>
+      <symptom>Query time on detail endpoints rises 10-30%; database CPU climbs; EXPLAIN ANALYZE shows unnecessary JOINs.</symptom>
+      <root-cause>Each JOIN costs CPU + memory; blanket optimisation defeats the point of per-endpoint tuning.</root-cause>
+      <fix>Profile with Debug Toolbar first. Add select_related only where the related field is actually dereferenced. Remove blanket calls from base managers.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-prefetch-after-list" severity="medium">
+      <description>Calling `prefetch_related` after the queryset has been materialised (`list(qs)`).</description>
+      <symptom>Optimisation appears to be in place but Debug Toolbar still shows N+1; tests fail under nplusone.</symptom>
+      <root-cause>prefetch_related works at queryset evaluation time. Once the queryset is consumed (list, len, iteration, indexing), the prefetch call is a no-op.</root-cause>
+      <fix>Place `prefetch_related` before any materialisation. For already-materialised lists, call `prefetch_related_objects(items, "relation")` explicitly.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-save-loop" severity="high">
+      <description>Iterating model instances and calling `.save()` for counter increments or batch creates.</description>
+      <symptom>Single endpoint executes thousands of UPDATEs; transaction time blows past 30s; database connection pool exhausted.</symptom>
+      <root-cause>Each `.save()` is its own UPDATE round trip; counter increments also expose a race window between read and write.</root-cause>
+      <fix>Use `Model.objects.bulk_create(...)` for batch creates, `Model.objects.filter(pk__in=...).update(field=F("field") + 1)` for counters. Atomic + O(1) queries.</fix>
+    </antipattern>
   </section>
 </text>

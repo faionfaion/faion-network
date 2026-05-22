@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="claude-api-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for claude-api-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Claude API Basics Core Rules" version="1.0.0" est_tokens="850" depth="essential">
+  <summary>6 testable rules for production-grade Anthropic SDK bootstrap: env-only auth, full-date pinning, retry against 429 + 529, response-field cost tracking, multiprocessing safety, and `x-request-id` capture.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Load the API key from the `ANTHROPIC_API_KEY` environment variable only; never embed it in source files, agent system prompts, or log lines.</statement>
+      <rationale source="docs.anthropic.com/en/api/getting-started">Source-embedded keys leak via VCS; prompt-embedded keys leak via logs and provider-side abuse monitoring.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Pin model ids with full-date suffixes (e.g. `claude-sonnet-4-20250514`); reject alias-only strings (`claude-sonnet-4`) in production configs.</statement>
+      <rationale source="docs.anthropic.com/en/docs/about-claude/models">Aliases can resolve to a different model snapshot over time, silently changing behaviour and breaking cost-tracking lookups.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Wrap every Messages API call with a `tenacity` retry decorator that retries `RateLimitError` (429) AND `APIStatusError` with `status_code in {500, 502, 503, 529}` using `wait_exponential(min=1, max=60)` up to 5 attempts.</statement>
+      <rationale source="Anthropic SDK errors guide">529 `overloaded_error` is a transient server condition, not a client error; applications that ignore it lose requests during peak hours.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Track cost using `response.model` (the response field, NOT the requested model) and the `usage.input_tokens / output_tokens / cache_creation_input_tokens / cache_read_input_tokens` quartet.</statement>
+      <rationale source="claude-best-practices migration notes">Anthropic aliases may resolve to a different model snapshot than requested; using the request model causes silent cost misattribution.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>In multiprocessing or fork-based workers, construct a fresh `Anthropic()` client per worker; do NOT share a module-level global across forks.</statement>
+      <rationale source="anthropic-sdk-python README">The SDK holds httpx connection state; forked workers cannot safely share it. Sharing causes hangs and connection-reuse races.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Capture `x-request-id` from the response headers on every call and emit it on every error log line.</statement>
+      <rationale source="docs.anthropic.com/en/api/errors">Anthropic support requires `x-request-id` to trace a specific request server-side; without it production failures cannot be debugged.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

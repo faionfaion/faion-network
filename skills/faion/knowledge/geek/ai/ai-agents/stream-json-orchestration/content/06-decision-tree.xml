@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="stream-json-orchestration Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-root">Which orchestrator shape fits this task profile (length, budget cap, safety veto, hand-off)?</root-question>
+    <branch when="task.expected_duration_seconds &lt; 5">
+      <conclusion ref="r1-stream-json-mandate">Skip this methodology. Use a direct SDK call or pretty-print mode; the parsing overhead exceeds value.</conclusion>
+    </branch>
+    <branch when="task.expected_duration_seconds &gt;= 30 and budget_cap_usd is not None">
+      <conclusion ref="r6-budget-veto">Full Python `StreamHandler` class with rolling cost tracker; budget cap triggers `proc.kill()`.</conclusion>
+    </branch>
+    <branch when="task.expected_duration_seconds &gt;= 30 and safety_veto_required == true">
+      <conclusion ref="r6-budget-veto">Event-dispatcher pattern with veto rule set; inspect every `tool_use` before execution.</conclusion>
+    </branch>
+    <branch when="task.conditional_handoff_required == true">
+      <conclusion ref="r6-budget-veto">Detect hand-off signal in assistant text (regex against parsed content), kill current proc, spawn next with the carried context.</conclusion>
+    </branch>
+    <branch when="otel_export_required == true">
+      <conclusion ref="r7-result-and-replay">Per-event OTel span mapping; persist the JSONL replay file as the source of truth for traces.</conclusion>
+    </branch>
+    <branch when="task.requires_human_terminal_output == true">
+      <conclusion ref="r1-stream-json-mandate">Skip this methodology. Use the CLI's pretty-print mode directly with the user; orchestration is not the right tool.</conclusion>
+    </branch>
+    <branch when="cli.supports_stream_json == false">
+      <conclusion ref="r1-stream-json-mandate">Skip this methodology and surface a defect against the CLI; do not roll your own JSONL emitter on top of pretty-print.</conclusion>
+    </branch>
+    <example trace="discord-bot-with-budget">
+      <p>Discord bot agent task: duration ≥30s, budget_cap_usd=0.50 → branch matches `budget_cap` → conclusion `r6-budget-veto` → instantiate `StreamHandler(allowed_tools=..., max_turns=20, budget_cap_usd=0.50)`.</p>
+    </example>
+  </decision-tree>
+</text>

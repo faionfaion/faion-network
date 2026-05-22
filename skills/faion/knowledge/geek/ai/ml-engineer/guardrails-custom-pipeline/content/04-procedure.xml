@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Custom Guardrails Pipeline Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 steps to ship a working custom pipeline.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-detectors">
+      <input>guardrail-plan.json</input>
+      <action>Create `pii_detector.py` and `injection_detector.py` with compiled regex sets per `01-core-rules`.</action>
+      <output>Two importable detector classes.</output>
+    </step>
+
+    <step n="2" name="wire-moderator">
+      <input>OpenAI API key</input>
+      <action>Wrap `client.moderations.create` in `ContentModerator.acheck(text)` returning `(flagged: bool, categories: dict)`.</action>
+      <output>Async moderation client.</output>
+    </step>
+
+    <step n="3" name="wire-judge">
+      <input>OpenAI client + judge model name</input>
+      <action>Build `HallucinationDetector.acheck(response, context)` with `response_format=json_object` and a strict prompt.</action>
+      <output>Async hallucination client returning `{is_grounded, unsupported_claims, confidence}`.</output>
+    </step>
+
+    <step n="4" name="config">
+      <input>Plan rails + ops requirements</input>
+      <action>Define `GuardrailConfig` dataclass with `enable_*` boolean flags and `max_input_length / max_output_length` ints.</action>
+      <output>Config dataclass.</output>
+    </step>
+
+    <step n="5" name="compose-pipeline">
+      <input>4 detectors + config</input>
+      <action>Build `GuardrailsPipeline` with `process_input`, `process_output`, `run`. `process_input` uses `asyncio.gather` for independent checks; obeys `none-means-block`.</action>
+      <output>Working pipeline class.</output>
+      <decision-gate>If `process_input` returns `(None, _)`, `run()` must NOT call the LLM. Asserted by smoke test.</decision-gate>
+    </step>
+
+    <step n="6" name="integrate-middleware">
+      <input>FastAPI / LangChain / LlamaIndex app</input>
+      <action>Wrap pipeline as middleware: FastAPI `BaseHTTPMiddleware`, LangChain `RunnableLambda`, LlamaIndex `NodeParser`. Inject from app DI.</action>
+      <output>Pipeline mounted in framework.</output>
+    </step>
+
+    <step n="7" name="smoke-test">
+      <input>Smoke fixtures: 1 clean prompt, 1 PII prompt, 1 injection prompt</input>
+      <action>Run pipeline; assert clean → `is_safe=True`, PII → `input_modified=True`, injection → `is_safe=False` + `sanitized_input=None`.</action>
+      <output>Green smoke output OR violations report.</output>
+    </step>
+
+  </section>
+</text>

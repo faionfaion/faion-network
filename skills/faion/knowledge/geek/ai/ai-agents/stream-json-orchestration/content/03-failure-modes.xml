@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="stream-json-orchestration Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for stream-json-orchestration as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="stream-json-orchestration Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that defeat the mid-run-reaction value of stream-json orchestration.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Reading agent output as one big JSON blob at end.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Switch to stream-json; parse per line.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using regex on plain-text output to detect tool calls.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use the structured stream — robust across model versions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Buffering events without back-pressure.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use line-buffered reads plus a queue; backpressure when downstream slow.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Killing the agent without --max-turns and --allowedTools.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defense in depth: hard cap plus allowlist plus monitor stream events.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Ignoring result event.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always handle the final event — that is your "done, with summary".</repair>
-    </failure-mode>
+    <antipattern id="fm-01-buffered-output" severity="high">
+      <symptom>Orchestrator calls `subprocess.run(..., capture_output=True)` or awaits `proc.stdout.read()` and then `json.loads(stdout)` — fails with `JSONDecodeError` because stream-json is line-delimited.</symptom>
+      <root-cause>Author treated stream-json as a single JSON document instead of a JSONL stream.</root-cause>
+      <fix>Use `subprocess.Popen(..., stdout=PIPE, bufsize=1, text=True)` and iterate `for line in proc.stdout`. Parse each line individually.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-regex-plaintext" severity="high">
+      <symptom>Orchestrator detects tool calls by `re.search(r"using tool: (\w+)", line)` against pretty-print output.</symptom>
+      <root-cause>Code predates the stream-json output mode; never migrated.</root-cause>
+      <fix>Switch the CLI to `--output-format stream-json` and read structured `tool_use` events. Regex against plain text breaks on every model version bump.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-no-backpressure" severity="medium">
+      <symptom>Orchestrator queues events into a list/queue unboundedly; memory grows over long runs; downstream consumer falls behind without warning.</symptom>
+      <root-cause>No backpressure between the parser and the downstream sink (UI, telemetry, replay log).</root-cause>
+      <fix>Use a bounded `asyncio.Queue(maxsize=256)` or block on `put()` when the consumer lags. Surface backpressure as a metric.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-no-turns-no-allowlist" severity="critical">
+      <symptom>`claude -p "task" --output-format stream-json` invoked without `--allowedTools` or `--max-turns`. Agent loops forever or uses unexpected tools.</symptom>
+      <root-cause>Author tested locally with one task and didn't add defence-in-depth before shipping.</root-cause>
+      <fix>Make `--allowedTools` and `--max-turns` mandatory constructor arguments in the orchestrator class. CI test rejects an invocation that omits either.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-no-result-event" severity="high">
+      <symptom>Orchestrator returns when stdout closes; never matches against `event.type == "result"`. Loses the final cost, duration, and `result_subtype`.</symptom>
+      <root-cause>Code uses `for line in proc.stdout` and exits when the iterator stops, ignoring the structured terminator.</root-cause>
+      <fix>Pattern-match `if event.get("type") == "result"` inside the loop and set the run summary from that event. Treat absence of a result event as `error_during_execution`.</fix>
+    </antipattern>
   </section>
 </text>

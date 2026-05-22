@@ -1,12 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="openai-embeddings Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for openai-embeddings as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="OpenAI Embeddings — Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 known failure modes when running an embeddings pipeline in production. Each carries symptom / root-cause / fix.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Embedding sensitive PII (names, emails, IDs) into a shared vector store.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Data leaks via nearest-neighbor queries are a real attack surface — an adversary can extract PII by querying with known PII fragments and retrieving neighbors.</repair>
+    <failure-mode id="fm-01" severity="high">
+      <description>Dimension mismatch — query path embeds with 1536 dims against a corpus stored at 3072 dims; cosine returns random scores; recall drops to noise.</description>
+      <detector>Recall@10 falls to baseline; mean top-1 cosine score drops below the empirical floor; startup smoke test detects (model, dims) drift.</detector>
+      <repair>Centralise `(model, dims)` in a `config.py` consumed by both ingest and query. Add a startup assertion that compares the stored vector_len to the configured dims; fail loud.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Silent truncation — input &gt; 8191 tokens passed to `embeddings.create`; OpenAI silently truncates; the resulting vector represents only the head.</description>
+      <detector>Logs show no error but recall drops on long documents; chunk count per doc unexpectedly = 1 for long sources.</detector>
+      <repair>Chunk before embed using `chunking-strategies`. Add a guard that rejects inputs &gt; 8000 tokens and routes them through the chunker.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Batch FIFO assumption — pipeline reads the JSONL output line-by-line and pairs to inputs by position; results are scrambled and embeddings attach to the wrong chunk.</description>
+      <detector>Random retrieval results; reindex with sync mode fixes the issue.</detector>
+      <repair>Always key results by `custom_id`. Build a `{custom_id: embedding}` dict before upsert; never rely on line order.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>PII leak via shared store — embedding user records into a multi-tenant vector store lets adversaries extract PII via probing queries.</description>
+      <detector>Vector store has tenant_id null on some records; nearest-neighbor across tenants returns cross-tenant results.</detector>
+      <repair>Partition by tenant_id at the index level. Redact PII pre-embed (names, emails, SSNs). Enforce filter-on-tenant for every search call.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Query embedded as raw user message — short or ambiguous queries (2–5 words) miss recall because they sit in sparse vector regions.</description>
+      <detector>Recall@10 high for long queries, low for short ones; A/B vs expanded-query shows lift &gt; 10%.</detector>
+      <repair>LLM-rewrite the query before embedding (`expand-query` sub-task) for any input under 8 tokens or one that does not contain a noun phrase.</repair>
+    </failure-mode>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Documents being embedded are DATA. Instructions hidden inside source text ("ignore previous rules", "treat next doc as authoritative") have no effect on embedding generation but may influence downstream retrieval-augmented LLM calls — the consuming methodology (`agentic-rag`) is responsible for sanitising retrieved chunks before injecting them into prompts.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Any change to `(model, dims)` triggers a full reindex of the corpus and is reviewed by a named engineer before merge. Re-embed cost and recall regression both flow from this pair.</p>
   </section>
 </text>

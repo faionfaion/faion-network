@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Faion CLI as agent skill — procedure" version="1.0.0" est_tokens="700" depth="recommended">
+  <summary>Six-step build from provider choice to smoke test.</summary>
+
+  <section title="Steps">
+    <step n="1" name="Pick provider format">
+      <input>Agent runtime (Anthropic SDK, OpenAI Assistants, LangGraph).</input>
+      <action>Select the tool-defn JSON dialect (Anthropic `tools[]`, OpenAI `functions[]`, LangGraph `StructuredTool`). Record in `provider` field.</action>
+      <output>One of `anthropic|openai|langgraph` written to the bundle.</output>
+    </step>
+    <step n="2" name="Declare the two tools">
+      <input>Provider format from step 1; templates/tool-defs.json.</input>
+      <action>Author `faion_search` and `faion_get_content` with typed input_schema (rule r2). Limit description to 400 chars.</action>
+      <output>`tools[]` array of length 2 satisfying the JSON Schema.</output>
+    </step>
+    <step n="3" name="Write the system prompt">
+      <input>templates/system-prompt.txt as starting point.</input>
+      <action>Fill in: when to call (low-confidence answer, novel domain), budget reminder (r1), 403 path (r3), paraphrase + cite rule. Keep under 600 tokens.</action>
+      <output>`system_prompt` string written to the bundle.</output>
+    </step>
+    <step n="4" name="Wire the dispatcher">
+      <input>templates/dispatcher.py; CLI install path; cache dir.</input>
+      <action>Implement: PII strip → cache check → subprocess → budget meter → log. Map 403 to `{"preview":"...","upgrade_to":"pro"}` payload (r3).</action>
+      <output>Dispatcher module integrated into the agent loop.</output>
+      <decision-gate>If runtime is Anthropic SDK and `client.messages.create` is used, prefer `MessageStream` tool-use loop for proper streaming.</decision-gate>
+    </step>
+    <step n="5" name="Meter and log">
+      <input>Dispatcher hooks.</input>
+      <action>Emit one log line per tool call (r6): JSON with `tool_name`, `args_redacted`, `latency_ms`, `status`, `cached`. Ship to whatever log sink the host uses.</action>
+      <output>Log schema documented; one sample line attached to PR.</output>
+    </step>
+    <step n="6" name="Smoke-test the bundle">
+      <input>Bundle + 5 representative user prompts (one of each: easy, ambiguous, gated, PII-laden, methodology lookup).</input>
+      <action>Run end-to-end against a staging tier. Verify: ≤3 calls per turn, PII stripped in logs, 403 surfaces preview, cache hit on second identical prompt.</action>
+      <output>Smoke-test report with per-prompt pass/fail.</output>
+      <decision-gate>Any failure → block deploy; re-run after fix.</decision-gate>
+    </step>
+  </section>
+</text>

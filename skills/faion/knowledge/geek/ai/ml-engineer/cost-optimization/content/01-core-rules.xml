@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cost-optimization Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cost-optimization. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LLM Cost Optimization Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules that every LLM cost plan must satisfy before any router or cache flips. Validator enforces each mechanically.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="measure-before-optimize" testable="true" depth="essential">
+      <statement>A per-stage cost dashboard MUST exist and have ≥7 days of data before any router / cache / batch change is committed.</statement>
+      <rationale source="finops.org foundation; Langfuse / Helicone cost-attribution guides 2026">Optimization without attribution moves random levers; teams routinely "save 50%" on a stage that was 3% of spend.</rationale>
     </rule>
+
+    <rule id="route-by-complexity" testable="true" depth="essential">
+      <statement>Multi-tier routers run a Haiku-class classifier (≤$0.30/1k requests) and dispatch to {haiku, sonnet, opus} by complexity. Total router overhead must be ≤5% of model-saved cost.</statement>
+      <rationale source="Anthropic Pricing 2026; OpenAI o-mini pricing 2026">At Haiku $1/$5/MTok vs Opus $5/$25/MTok, routing 80% of traffic away from Opus saves 60-70% on input alone; classifier overhead is rounding error if Haiku-grade.</rationale>
+    </rule>
+
+    <rule id="cache-only-repeated-prefix" testable="true" depth="essential">
+      <statement>cache_control attaches only to prefixes ≥1024 tokens (Sonnet/Opus) or ≥2048 (Haiku) that are byte-identical across ≥12 requests/hour. Profile hit-rate ≥50% within 24h or remove the marker.</statement>
+      <rationale source="platform.claude.com/docs prompt caching 2026">Cache write is 1.25-2× base input rate. Below the 12/h threshold or with sub-50% hit rate the marker INCREASES effective cost.</rationale>
+    </rule>
+
+    <rule id="batch-the-offline" testable="true" depth="essential">
+      <statement>Any workload with ≥100 requests where no human waits on individual completion within 1h MUST route through Batch API (50% discount). Online interactive traffic MUST NOT.</statement>
+      <rationale source="Anthropic Message Batches API; OpenAI Batch API 2026">50% off compounds with caching; an offline summarizer with cached corpus + batch can run at ~5% of base rate.</rationale>
+    </rule>
+
+    <rule id="log-output-token-share" testable="true" depth="essential">
+      <statement>The cost dashboard MUST display output_tokens × output_rate vs input_tokens × input_rate per stage. When output share exceeds 60% of stage cost, routing alone cannot help — escalate to prompt redesign instead.</statement>
+      <rationale source="OpenAI / Anthropic pricing 2026 — output tokens are 3-5× input">Output bloat (verbose CoT, repeated headers, JSON pretty-printing) is invisible without per-direction attribution; misdiagnosis sends teams down the routing rabbit hole when only prompt edits help.</rationale>
+    </rule>
+
+    <rule id="token-budget-guard" testable="true" depth="essential">
+      <statement>Every gateway call goes through a budget guard that records cost and breaks with BudgetExceededError at the daily soft cap, alerts at 80% of the cap, and refuses requests at the hard cap.</statement>
+      <rationale source="finops.org runaway-cost patterns; Anthropic spend-cap docs">Without a hard guard, agentic runaways and infinite tool loops can spend a week of budget in minutes; soft cap is a circuit breaker, hard cap is the brake.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

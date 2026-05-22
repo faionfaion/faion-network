@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="stream-json-orchestration Worked Examples" version="1.1.0" est_tokens="600" depth="medium">
+  <summary>Five reference orchestrations: Discord live UI, budget cap, safety veto, conditional hand-off, OTel telemetry.</summary>
+
+  <example id="ex-01-discord-live-ui" produces="code">
+    <title>Discord bot live-updates from assistant events</title>
+    <flow>User runs `/agent fix the login bug` → bot spawns `claude -p ... --output-format stream-json` → each `assistant` event becomes a Discord message edit → `result` event closes with the final cost.</flow>
+    <delta>Without stream-json, the user waits silently for 2 minutes; with it, the bot streams partial reasoning live.</delta>
+  </example>
+
+  <example id="ex-02-budget-cap" produces="code">
+    <title>$0.50 per-task budget cap</title>
+    <flow>Production agent service caps each task at $0.50. Orchestrator tracks `total_cost_usd` from each event; when cumulative spend exceeds the cap, `proc.kill()` fires even mid-tool-call.</flow>
+    <delta>faion-net 2026-Q1 post-mortem: 12% of total spend was tasks that would have run unbounded; cap eliminated that class.</delta>
+  </example>
+
+  <example id="ex-03-safety-veto" produces="code">
+    <title>File-delete veto</title>
+    <code lang="python"><![CDATA[
+for event in stream:
+    if event.get("type") == "assistant":
+        for block in event.get("message", {}).get("content", []):
+            if block.get("type") == "tool_use" and block["name"] == "Bash":
+                cmd = block["input"].get("command", "")
+                if "rm -rf" in cmd and not approved:
+                    proc.kill(); kill_reason = "safety_veto"; break
+]]></code>
+    <delta>The veto fires before the tool actually runs because `tool_use` events arrive before tool execution. Saves restoring from backup.</delta>
+  </example>
+
+  <example id="ex-04-conditional-handoff" produces="code">
+    <title>Planner → executor hand-off</title>
+    <flow>Stage 1 planner emits a plan in its final assistant message → orchestrator parses the plan → spawns N parallel Stage 2 executor subprocesses (one per task) → each Stage 2 has its own stream → orchestrator gathers final results → Stage 3 reviewer reads aggregate. All connected via stream-json + Python `asyncio.gather`.</flow>
+    <delta>No SDK, no shared in-process state; each subagent gets its own context-firewalled stream.</delta>
+  </example>
+
+  <example id="ex-05-otel-telemetry" produces="code">
+    <title>OTel GenAI semantic-conventions export</title>
+    <flow>Each event maps to an OpenTelemetry span: `system/init` → root span, `assistant` → child span `gen_ai.message`, `tool_use` → child span `gen_ai.tool.execution`, `result` → close root with cost and duration. Langfuse / Phoenix consumes the OTLP feed.</flow>
+    <delta>Every agent run becomes a queryable trace; cost and duration are first-class span attributes.</delta>
+  </example>
+</text>

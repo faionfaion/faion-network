@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="claude-api-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Claude API Basics Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract for the subagent bootstrapping the Anthropic SDK client. Captures auth source, pinned model, retry policy, cost-tracker installation, and `x-request-id` capture.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "claude-api-basics-output",
+  "required": [
+    "auth_source",
+    "model_id",
+    "retry_policy",
+    "cost_tracker_installed",
+    "request_id_logged",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "auth_source": {"description": "Where API key is loaded from; must be 'env'."},
+    "model_id": {"description": "Pinned full-date model id."},
+    "retry_policy": {"description": "Object with retry_on (list of error types), max_attempts (int)."},
+    "cost_tracker_installed": {"description": "Boolean — is a CostTracker bound to the client?"},
+    "request_id_logged": {"description": "Boolean — does the wrapper log x-request-id on every call?"},
+    "forbidden_seen": {"description": "Forbidden patterns matched; must be empty."}
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="auth_source" format="string" required="true">Source of the API key; must be "env".</field>
+      <field name="model_id" format="string" required="true">Pinned full-date model id.</field>
+      <field name="retry_policy" format="object" required="true">retry_on (list), max_attempts (int).</field>
+      <field name="cost_tracker_installed" format="boolean" required="true">CostTracker bound to the client.</field>
+      <field name="request_id_logged" format="boolean" required="true">Wrapper logs x-request-id.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched; must be empty.</field>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">`auth_source != "env"` (hardcoded key or prompt-embedded).</pattern>
+      <pattern id="f2">Model id without a full-date suffix (alias only).</pattern>
+      <pattern id="f3">`retry_policy.retry_on` missing 529 / `overloaded_error`.</pattern>
+      <pattern id="f4">`cost_tracker_installed == false`.</pattern>
+      <pattern id="f5">`request_id_logged == false`.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort `retry_policy.retry_on` deterministically.</transformation>
+      <transformation>Normalise model id to lowercase.</transformation>
     </allowed-transformations>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "auth_source": "env",
+  "model_id": "claude-sonnet-4-20250514",
+  "retry_policy": {"retry_on": ["429", "500", "502", "503", "529"], "max_attempts": 5},
+  "cost_tracker_installed": true,
+  "request_id_logged": true,
+  "forbidden_seen": []
+}]]></code>
+    <note>All forbidden patterns absent; retry covers 529 explicitly.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "auth_source": "hardcoded",
+  "model_id": "claude-sonnet-4",
+  "retry_policy": {"retry_on": ["429"], "max_attempts": 3},
+  "cost_tracker_installed": false,
+  "request_id_logged": false,
+  "forbidden_seen": ["f1", "f2", "f3", "f4", "f5"]
+}]]></code>
+    <note>Every forbidden pattern triggered — schema rejects.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>`scripts/validate-claude-api-basics.py` exits 0.</item>
     </list>
   </section>
 </text>

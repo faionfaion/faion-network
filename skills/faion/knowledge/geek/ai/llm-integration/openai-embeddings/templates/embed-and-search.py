@@ -1,6 +1,10 @@
-# Embedding utility: embed(), cosine(), top_k()
-# Usage: embeddings = embed(texts); results = top_k(embed([query])[0], corpus_embs, corpus_texts)
-
+"""
+purpose: Reusable embed() + cosine() + top_k() for ingest and query paths.
+consumes: list of texts (ingest) or single query (query); pinned (model, dimensions).
+produces: list of float vectors (ingest) or ranked (score, text) pairs (query).
+depends-on: openai>=1.0, numpy>=1.24.
+token-budget-impact: cost = sum(len(text) tokens) × embedding price; pin model from config.
+"""
 import numpy as np
 from typing import List, Tuple
 from openai import OpenAI
