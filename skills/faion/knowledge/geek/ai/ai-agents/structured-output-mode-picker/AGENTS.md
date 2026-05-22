@@ -3,72 +3,97 @@ slug: structured-output-mode-picker
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Four constrained-decoding modes ship in 2026 SDKs and they are NOT interchangeable.
-content_id: "35c1c0ce3b817744"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a decision-record selecting the constrained-decoding mode (json-mode / SO strict / tool-call / grammar) for a given agent stage, based on output consumer and provider support.
+content_id: "07af069c3205ba08"
+complexity: medium
+produces: decision-record
+est_tokens: 3800
 tags: [structured-outputs, json-schema, tool-calling, constrained-decoding, llm-api]
 ---
-# Structured Output Mode — JSON-Mode vs SO vs Tool-Call vs Grammar
+# Structured Output Mode Picker
 
 ## Summary
 
-**One-sentence:** Four constrained-decoding modes ship in 2026 SDKs and they are NOT interchangeable.
+**One-sentence:** Four constrained-decoding modes ship in 2026 SDKs and they are not interchangeable — pick by use case (extraction / action / DSL / legacy).
 
-**One-paragraph:** Four constrained-decoding modes ship in 2026 SDKs and they are NOT interchangeable. JSON mode guarantees only valid JSON; Structured Outputs (response_format: json_schema, strict: true) guarantees full schema compliance; tool calls guarantee schema-compliant arguments and dispatch to a function; grammar-mode (XGrammar / Outlines / GBNF) constrains generation to any context-free grammar including non-JSON DSLs. Picking by use case — extraction → SO, action → tool call, custom DSL/SQL → grammar, legacy fallback → json mode — saves tokens and prevents silent constraint violations.
+**One-paragraph:** Produces a decision-record naming the correct constrained-decoding mode for an agent stage: JSON mode (valid JSON only), Structured Outputs strict (full schema compliance), tool call (schema + function dispatch), or grammar mode (XGrammar / Outlines / GBNF for arbitrary CFGs including SQL, regex, custom DSLs). Maps each mode to its use case: extraction → SO strict; agent action → tool call; custom DSL or local-model output → grammar; legacy fallback → json mode (only when strict SO is unsupported). Wrong mode is the single biggest silent-correctness regression in 2026 structured-output design.
+
+**Ефективно для:** будь-якої нової агентської стадії або міграції legacy `response_format={"type": "json_object"}` коду, де треба знати чи перемикатися на strict SO, tool call або grammar mode.
 
 ## Applies If (ALL must hold)
 
-- Choosing constrained decoding for a new agent or pipeline stage
-- Migrating a legacy response_format={"type": "json_object"} codebase
-- Adding a constrained-output step on a local open-source model (vLLM/Ollama)
-- Designing an agent that mixes data extraction and action dispatch in one loop
+- A new agent stage or pipeline step needs constrained decoding.
+- Multiple modes are technically available from the chosen provider.
+- The output consumer is one of: extraction (typed parse), action (dispatch to function), DSL (SQL/regex/custom grammar), legacy free-form JSON.
+- The team can afford a one-shot eval comparison between candidate modes on ≥10 rows.
 
 ## Skip If (ANY kills it)
 
-- Free-form chat where structure is undesirable — keep plain text
-- One-off scripts where downstream parsing tolerates failure — json_object is acceptable
-- Pure transformation tasks fully solved by regex / deterministic code — skip the LLM
-- When the chosen provider does not support the mode you picked — fall back to closest peer
+- Free-form chat where structure is undesirable.
+- Pure transformation tasks fully solvable by deterministic code (skip the LLM entirely).
+- Chosen provider only supports one mode — pick is forced.
+- Free-form ranking / brainstorm where any structure hurts.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Use-case description | one paragraph | product spec |
+| Provider list + supported modes | YAML matrix | `provider-modes.yml` |
+| Output consumer name | enum | `extraction`/`action`/`dsl`/`legacy` |
+| Per-row eval set (≥10 rows) | JSONL | `evals/<stage>/gold.jsonl` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/strict-mode-required-fields` | Strict SO constrains the schema shape; required reading if SO is the pick. |
+| `geek/ai/ai-agents/structured-tool-errors` | Tool-call mode requires error envelopes; required if tool call is the pick. |
+| `geek/ai/ai-agents/semantic-field-naming` | Field names matter under every mode; pair with the rename pass. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: pick-by-consumer, never-json-for-typed, never-SO-for-action, grammar-for-DSL, fallback-only-if-no-strict | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the decision-record: chosen_mode, alternatives_considered, rationale, eval_delta | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: json-mode-for-typed-extraction, SO-for-dispatch, tool-call-for-DSL, grammar-for-extraction, mode-mismatch-between-providers | ~700 |
+| `content/04-procedure.xml` | medium | Step-by-step: identify consumer → list available modes → run shortlisted eval → write decision-record | ~700 |
+| `content/06-decision-tree.xml` | essential | Picks the mode from consumer × provider × output shape | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Classify the use case | sonnet | Pattern-matching against four canonical consumers. |
+| Run candidate-mode eval | sonnet | Mechanical harness execution. |
+| Write the decision-record | opus | Captures product judgement; opus weighs tradeoffs cleanly. |
+| Migrate legacy json-mode code | sonnet | Refactor plumbing, deterministic. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mode_examples.py` | Four side-by-side minimal calls — one per mode — using openai / anthropic / outlines bindings. |
+| `templates/decision-record.md` | Markdown skeleton for the SO-mode decision record (chosen, alternatives, rationale, eval delta). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-structured-output-mode-picker.py` | Validates the decision-record JSON against `02-output-contract.xml`. | After authoring the decision-record, before merging the migration PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[strict-mode-required-fields]] — applies when SO strict is the chosen mode.
+- [[structured-tool-errors]] — applies when tool-call is the chosen mode.
+- [[refusal-field-strict-schema]] — strict SO needs a refusal field.
+- [[semantic-field-naming]] — every mode benefits from the rename pass.
+
+## Decision tree
+
+The tree at `content/06-decision-tree.xml` picks the mode from three observables: output consumer (extraction / action / DSL / legacy), provider support (does the provider ship strict SO + tool-call + grammar?), and output shape (JSON / SQL / regex / arbitrary CFG). Use it whenever the choice between modes is contested; the tree is intentionally short because the mapping is mostly mechanical once the consumer is named.

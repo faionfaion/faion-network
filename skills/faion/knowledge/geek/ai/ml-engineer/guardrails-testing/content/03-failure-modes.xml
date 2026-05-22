@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="guardrails-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for guardrails-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Guardrails Testing Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns in the harness itself.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running security tests with live LLM API calls in CI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Live API calls in CI add cost, latency, and non-determinism. Mock the LLM client for unit and integration tests. Reserve live API tests for manual red-team sessions in staging.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Deploying guardrails without a false positive baseline measurement.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without a baseline, you cannot tell whether a guardrail configuration change improved or degraded precision. Measure false positive rate before and after every configuration change using a fixed representative sample.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="live-llm-in-ci" severity="high">
+      <symptom>CI bill explodes; tests randomly fail due to API rate limits; flake rate &gt; 10%.</symptom>
+      <root-cause source="Cost postmortems">Tests call real OpenAI / Anthropic / NIM endpoints in every PR.</root-cause>
+      <fix>Mock all LLM clients with `unittest.mock` or `respx`. Reserve live calls for the `--live` red-team marker that runs nightly, not per-PR.</fix>
+    </antipattern>
+
+    <antipattern id="no-fp-budget" severity="high">
+      <symptom>Security suite green; production users complain "my legit message gets blocked"; no test catches it.</symptom>
+      <root-cause source="User-trust incidents">Accuracy suite either missing or has no pass/fail threshold on FP rate.</root-cause>
+      <fix>Declare `fp_budget` in the report; assert `false_positive_rate &lt;= fp_budget` in CI; default budget = 0.01.</fix>
+    </antipattern>
+
+    <antipattern id="single-payload-set" severity="medium">
+      <symptom>Payload library has 30 entries dated 2025; new jailbreak techniques pass undetected; red-team report shows "0 issues" while live traffic shows 5/day.</symptom>
+      <root-cause source="Threat intel mismatch">Payload library is frozen; no monthly refresh; no source from threat-intel feeds.</root-cause>
+      <fix>Version payload files (v1.jsonl, v2.jsonl); add monthly task to ingest patterns from OWASP LLM list and from production incident reports.</fix>
+    </antipattern>
+
+    <antipattern id="no-baseline" severity="medium">
+      <symptom>p99 latency creeps from 200 ms to 800 ms over six releases; no alarm; SLO breach in prod.</symptom>
+      <root-cause source="Perf drift reviews">Perf suite runs but produces no stored baseline; comparisons are ad-hoc.</root-cause>
+      <fix>Persist `bench.json` baseline per release; CI fails if `p99 &gt; baseline_p99 * 1.2`. Refresh baseline only on explicit approval.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rust Error Handling Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure: classify crate → pick library → write Error type → swap unwraps → wire clippy gate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="classify-crate">
+      <input>`Cargo.toml`</input>
+      <action>Read `[lib]` / `[[bin]]` / `build = "build.rs"`. If both `[lib]` and `[[bin]]` present, classify by which is published.</action>
+      <output>crate_type</output>
+    </step>
+
+    <step n="2" name="pick-library">
+      <input>crate_type</input>
+      <action>library → `thiserror`. binary → `anyhow`. build-script → `Box&lt;dyn Error&gt;`. Add the chosen crate to `[dependencies]`.</action>
+      <output>error_library</output>
+    </step>
+
+    <step n="3" name="write-error-type">
+      <input>error_library + list of fallible call sites from `cargo check`</input>
+      <action>For thiserror: copy `templates/error.rs.thiserror.tmpl`, add variants per call site, wire `#[from]` for upstream errors. For anyhow: define `pub type Result&lt;T&gt; = anyhow::Result&lt;T&gt;` and call `.context("…")` at each `?`.</action>
+      <output>`src/error.rs` (lib) OR `Result` alias (bin)</output>
+    </step>
+
+    <step n="4" name="swap-unwraps">
+      <input>greppable `.unwrap()` / `.expect()` outside test files</input>
+      <action>Replace each call with `?` after `.context(...)` (anyhow) or chained `Err.into()` (thiserror). Run `cargo test` after each module.</action>
+      <output>zero unwraps in `src/`</output>
+      <decision-gate>If a call site genuinely cannot fail (e.g. `regex::Regex::new` on a compile-time-constant pattern): use `expect("static regex compiles")` and add a unit test that exercises the path. Document with comment `// SAFETY: compile-time constant`.</decision-gate>
+    </step>
+
+    <step n="5" name="wire-clippy-gate">
+      <input>committed clean code</input>
+      <action>Add `templates/clippy.toml` to crate root. Add CI step: `cargo clippy --all-targets -- -D clippy::unwrap_used -D clippy::expect_used`. Tests escape the gate via `#[allow(clippy::unwrap_used)]` if needed.</action>
+      <output>locked gate; new unwraps in `src/` fail PR</output>
+    </step>
+
+  </section>
+</text>

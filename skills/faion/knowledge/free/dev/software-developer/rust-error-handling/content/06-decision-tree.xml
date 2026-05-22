@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Rust Error Handling Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routes crate type to error-library choice and variant strategy. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-crate-type">What is the crate type (`Cargo.toml`)?</root-question>
+
+    <branch when="crate_type == library">
+      <question id="q-lib-downstream-match">Does downstream code need to `match` specific failures?</question>
+      <branch when="downstream_match == true">
+        <conclusion ref="thiserror-for-lib" verdict="`#[derive(thiserror::Error)]` enum with named variants + `#[from]` source chains"/>
+      </branch>
+      <branch when="downstream_match == false">
+        <conclusion ref="thiserror-for-lib" verdict="Single opaque variant `Other(#[from] anyhow::Error)` is acceptable, but still ship a typed enum"/>
+      </branch>
+    </branch>
+
+    <branch when="crate_type == binary">
+      <conclusion ref="anyhow-for-app" verdict="`anyhow::Result&lt;T&gt;` + `.context()` at every fallible boundary; no enum needed"/>
+    </branch>
+
+    <branch when="crate_type == build-script">
+      <conclusion ref="question-mark-over-match" verdict="`Box&lt;dyn std::error::Error&gt;` is fine; build.rs is single-use"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="library-with-typed-failures">
+    crate_type=library, downstream_match=true → thiserror-for-lib conclusion. See 05-examples.xml library section. Clippy gate `unwrap_used = deny` still applies.
+  </example>
+</text>

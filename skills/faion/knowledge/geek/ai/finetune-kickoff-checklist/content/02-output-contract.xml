@@ -1,42 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Finetune Kickoff Checklist Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Finetune Kickoff Checklist deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
+<text id="02-output-contract" title="Fine-tune kickoff checklist — output contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for the kickoff checklist artefact.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ft-kickoff-checklist",
+  "type": "object",
+  "required": ["workload", "owner", "created_at", "decision_record_ref", "baseline", "dataset", "holdout", "training_plan", "rollback", "budget_cap_usd"],
+  "properties": {
+    "workload": {"type": "string"},
+    "owner": {"type": "string", "not": {"enum": ["team", "TBD"]}},
+    "created_at": {"type": "string", "format": "date"},
+    "decision_record_ref": {"type": "string", "pattern": "^.+$"},
+    "budget_cap_usd": {"type": "number", "minimum": 1},
+    "baseline": {
+      "type": "object",
+      "required": ["score", "eval_harness_commit"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "eval_harness_commit": {"type": "string", "minLength": 7}
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["total_examples", "dedup_dropped", "pii_audit_pass"],
+      "properties": {
+        "total_examples": {"type": "integer", "minimum": 1000},
+        "dedup_dropped": {"type": "integer", "minimum": 0},
+        "pii_audit_pass": {"type": "boolean", "const": true}
+      }
+    },
+    "holdout": {
+      "type": "object",
+      "required": ["fraction", "disjoint_from_train", "stratified"],
+      "properties": {
+        "fraction": {"type": "number", "minimum": 0.1, "maximum": 0.3},
+        "disjoint_from_train": {"type": "boolean", "const": true},
+        "stratified": {"type": "boolean", "const": true}
+      }
+    },
+    "training_plan": {
+      "type": "object",
+      "required": ["eval_cadence", "max_epochs"],
+      "properties": {
+        "eval_cadence": {"enum": ["per-epoch", "every-n-steps"]},
+        "max_epochs": {"type": "integer", "minimum": 1, "maximum": 10}
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "required": ["plan", "canary_metric", "dry_run_passed"],
+      "properties": {
+        "plan": {"type": "string", "minLength": 50},
+        "canary_metric": {"type": "string"},
+        "dry_run_passed": {"type": "boolean"}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "workload": "support-classifier",
+  "owner": "ml-eng@example.com",
+  "created_at": "2026-05-22",
+  "decision_record_ref": "rfc/2026-05-15-ft-support-classifier.json",
+  "budget_cap_usd": 1000,
+  "baseline": {"score": 0.78, "eval_harness_commit": "a1b2c3d"},
+  "dataset": {"total_examples": 6500, "dedup_dropped": 420, "pii_audit_pass": true},
+  "holdout": {"fraction": 0.10, "disjoint_from_train": true, "stratified": true},
+  "training_plan": {"eval_cadence": "per-epoch", "max_epochs": 3},
+  "rollback": {"plan": "Flip feature flag ft.support.v2=off; route resumes Sonnet prompt. Owner: on-call. Tested in staging 2026-05-21.", "canary_metric": "support_classifier.f1_p95", "dry_run_passed": true}
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "workload": "x",
+  "owner": "team",
+  "created_at": "2026-05-22",
+  "decision_record_ref": "",
+  "budget_cap_usd": 1000,
+  "baseline": {"score": 0.78, "eval_harness_commit": "x"},
+  "dataset": {"total_examples": 200, "dedup_dropped": 0, "pii_audit_pass": false},
+  "holdout": {"fraction": 0.02, "disjoint_from_train": false, "stratified": false},
+  "training_plan": {"eval_cadence": "per-epoch", "max_epochs": 3},
+  "rollback": {"plan": "TBD", "canary_metric": "x", "dry_run_passed": false}
+}]]></code>
+      <note>owner == team (r1/r4 sig), dataset 200 &lt; 1k (r1), holdout 2% &lt; 10% + not disjoint (r3), PII audit failed (r5), rollback plan trivial (r7).</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>decision_record_ref non-empty.</item>
+      <item>dataset.total_examples ≥ 1000.</item>
+      <item>holdout.fraction ≥ 0.10 AND disjoint_from_train AND stratified all true.</item>
+      <item>dataset.pii_audit_pass true.</item>
+      <item>rollback.plan ≥ 50 chars AND dry_run_passed.</item>
     </list>
   </section>
 </text>

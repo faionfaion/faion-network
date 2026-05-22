@@ -4,77 +4,92 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f130d44f22eb9c20"
-summary: Finetune Kickoff Checklist delivers a concrete, testable methodology that turns the recurring task of 'Fine-tune job kickoff + monitor' into an auditable artefact, addressing the gap: fine-tuning-openai-* methodologies are step-wise but lack the kickoff gate (is fine-tuning even 
-tags: [ai, geek, checklist, methodology]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a kickoff-gate checklist (eval baseline, data quality bar, hold-out slice, eval-during-training cadence, rollback plan) that fine-tune jobs MUST pass before training spend is approved.
+content_id: "ft-kickoff-7c8d"
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [fine-tune, checklist, kickoff, gate, ai-core]
 ---
-# Finetune Kickoff Checklist
+# Fine-tune Kickoff Checklist
 
 ## Summary
 
-**One-sentence:** Finetune Kickoff Checklist delivers a concrete, testable methodology that turns the recurring task of 'Fine-tune job kickoff + monitor' into an auditable artefact, addressing the gap: fine-tuning-openai-* methodologies are step-wise but lack the kickoff gate (is fine-tuning even the right tool vs prompt + RAG?).
+**One-sentence:** Produces a kickoff-gate checklist (eval baseline, data quality bar, hold-out slice, eval-during-training cadence, rollback plan) that fine-tune jobs MUST pass before training spend is approved.
 
-**One-paragraph:** fine-tuning-openai-* methodologies are step-wise but lack the kickoff gate (is fine-tuning even the right tool vs prompt + RAG?). Finetune Kickoff Checklist closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Fine-tune job kickoff + monitor' (role-ml-engineer, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Every fine-tune-openai-* methodology covers HOW to train. None covers the kickoff gate: did we even confirm fine-tuning is the right tool, do we have eval + hold-out, does the data pass quality checks, is rollback wired in. This methodology produces the 12-item gate the team signs before sending the first training file. Single artefact: `kickoff-checklist.json` with all items marked yes/no/n-a + owner.
+
+**Ефективно для:** ml-engineer pre-training gate, founder/CTO sign-off on training spend, FinOps challenges, the team running fine-tune for the third time and tired of avoidable failures.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Fine-tune job kickoff + monitor' (role: role-ml-engineer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Team has decided to fine-tune (e.g. via `[[finetune-cost-vs-prompt-decision]]`).
+- Training dataset candidate exists (≥1k examples).
+- Eval set exists for the workload.
+- A named owner (ml engineer) will run the job.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Still in fine-tune vs prompt debate — run `[[finetune-cost-vs-prompt-decision]]` first.
+- LoRA/QLoRA experiment with ≤ $10 budget — overhead > savings.
+- Provider-hosted automated tuning where ALL checks are vendor-default — verify vendor defaults instead.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Decision record (FT recommended) | JSON | `[[finetune-cost-vs-prompt-decision]]` output |
+| Training dataset | JSONL with `messages` per row | data lake |
+| Eval set + baseline score | JSONL + float | eval harness |
+| Rollback plan | text | runbook |
+| Provider account + budget cap | account id + $ | finops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `[[finetune-cost-vs-prompt-decision]]` | Upstream — gates whether to even run this. |
+| `[[eval-set-stratified-sampling-recipe]]` | Hold-out design. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 7 rules: decision record present, baseline score, hold-out 10%, dedup, PII scrub, train-loss watch, rollback wired | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the checklist + valid/invalid examples | ~600 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: no hold-out, leaky dedup, no rollback, eval-during-training missing | ~600 |
+| `content/06-decision-tree.xml` | essential | Gate-pass tree | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `finetune_kickoff_checklist_template_fill` | haiku | Template fill, no judgment |
-| `finetune_kickoff_checklist_evidence_check` | sonnet | Bounded comparison + judgment |
-| `finetune_kickoff_checklist_synthesis` | opus | Cross-input synthesis + final write-up |
+| Fill items from artefacts | haiku | Mechanical extraction. |
+| Check hold-out is disjoint from train | sonnet | Bounded set ops. |
+| Approve / reject narrative | opus | High-stakes summary. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/kickoff-checklist.schema.json` | JSON Schema for the artefact. |
+| `templates/kickoff-checklist.example.json` | Worked filled example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-finetune-kickoff-checklist.py` | Validate the checklist JSON against schema + rules. | Before training submission. |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `role-ml-engineer/Fine-tune job kickoff + monitor`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/ai/`
+- `[[finetune-cost-vs-prompt-decision]]` — upstream gate
+- `[[eval-set-stratified-sampling-recipe]]` — hold-out design
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters: decision record present, ≥1k examples, eval baseline known, owner named → run; else skip and resolve upstream gaps.

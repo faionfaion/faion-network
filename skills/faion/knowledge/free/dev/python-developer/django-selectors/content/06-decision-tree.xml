@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-selectors Decision Tree" version="1.1.0" est_tokens="300">
+  <decision-tree>
+    <root-question id="q1">Does the operation read data (no mutation, no save/update/delete/delay)?</root-question>
+    <branch when="q1 == no">
+      <conclusion ref="r4-read-only-no-side-effects">Not a selector. Place in `services.py` (write path) per [[django-service-layer]]. Stop here.</conclusion>
+    </branch>
+    <branch when="q1 == yes">
+      <question id="q2">Is the query reused by more than one caller (view + task / view + admin / view + serializer-helper / view + management command)?</question>
+      <branch when="q2 == no">
+        <question id="q3">Does the query traverse related objects (FK / OneToOne / M2M / reverse FK)?</question>
+        <branch when="q3 == no">
+          <conclusion ref="r1-kwarg-only">Inline is acceptable. If the call site grows complex, revisit — extract on the next change.</conclusion>
+        </branch>
+        <branch when="q3 == yes">
+          <conclusion ref="r2-prefetch-ownership">Extract into selector. Single caller plus relationships means future N+1 risk on the next caller addition — pay the small cost now.</conclusion>
+        </branch>
+      </branch>
+      <branch when="q2 == yes">
+        <conclusion ref="r2-prefetch-ownership">Extract into `selectors.py`. Apply rules r1-r3 (kwarg-only, prefetch ownership, .exists). Add an N+1 test per r5.</conclusion>
+      </branch>
+    </branch>
+    <example trace="serializer iterates orders + items.product → q1=yes (read) → q2=yes (view + task) → extract via r2-prefetch-ownership"/>
+  </decision-tree>
+</text>

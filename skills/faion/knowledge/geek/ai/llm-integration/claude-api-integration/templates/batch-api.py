@@ -1,24 +1,22 @@
-"""
-Anthropic Batch API helpers — create batch jobs and poll for results.
+# purpose: Batch API submit + poll + errored-resubmit helpers for ClaudeService.
+# consumes: list[{id, messages, [model], [max_tokens]}]; id == DB primary key.
+# produces: list[{id, text}] succeeded + list[{id, error, resubmit:True}] errored.
+# depends-on: rule r7 in content/01-core-rules.xml.
+# token-budget-impact: 50% discount on input + output for batched calls (24h SLA).
+"""Anthropic Batch API helpers — create + poll + resubmit-errored."""
+from __future__ import annotations
 
-Batch API provides 50% cost reduction. Processing time: up to 24 hours.
-Not suitable for real-time workflows; use for offline enrichment only.
-
-Usage:
-    requests = [
-        {"id": "r1", "messages": [{"role": "user", "content": "Hello"}]},
-        {"id": "r2", "messages": [{"role": "user", "content": "World"}]},
-    ]
-    batch_id = create_batch(client, requests)
-    results = poll_batch(client, batch_id)  # blocks until done
-"""
 import time
+
 import anthropic
+
+POLL_INTERVAL_SECONDS = 60  # rule r7: ≥60s.
 
 
 def create_batch(client: anthropic.Anthropic, requests: list[dict]) -> str:
-    """Submit requests to Claude Batch API. Returns batch ID."""
-    batch = client.beta.messages.batches.create(
+    if not requests:
+        raise ValueError("Empty batch refused.")
+    batch = client.messages.batches.create(
         requests=[
             {
                 "custom_id": r["id"],
@@ -34,21 +32,18 @@ def create_batch(client: anthropic.Anthropic, requests: list[dict]) -> str:
     return batch.id
 
 
-def poll_batch(
-    client: anthropic.Anthropic,
-    batch_id: str,
-    poll_interval: int = 30,
-) -> list[dict]:
-    """Poll until batch is done. Returns list of {id, text} for succeeded results."""
+def poll_batch(client: anthropic.Anthropic, batch_id: str, poll_interval: int = POLL_INTERVAL_SECONDS) -> list[dict]:
+    """Poll until `processing_status == "ended"`. Errored items flagged for resubmit."""
+    if poll_interval < 60:
+        raise ValueError("Poll interval below 60 violates rule r7.")
     while True:
-        batch = client.beta.messages.batches.retrieve(batch_id)
+        batch = client.messages.batches.retrieve(batch_id)
         if batch.processing_status == "ended":
-            return [
-                {
-                    "id": r.custom_id,
-                    "text": r.result.message.content[0].text,
-                }
-                for r in client.beta.messages.batches.results(batch_id)
-                if r.result.type == "succeeded"
-            ]
+            out: list[dict] = []
+            for r in client.messages.batches.results(batch_id):
+                if r.result.type == "succeeded":
+                    out.append({"id": r.custom_id, "text": r.result.message.content[0].text})
+                else:
+                    out.append({"id": r.custom_id, "error": str(r.result.error), "resubmit": True})
+            return out
         time.sleep(poll_interval)

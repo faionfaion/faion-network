@@ -1,11 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="structured-output-mode-picker Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for structured-output-mode-picker. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="structured-output-mode-picker Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules for picking the right constrained-decoding mode for a given agent stage.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Pick mode by output consumer: deterministic extraction → SO strict; agent action → tool call; custom DSL or local-model output → grammar; everything else legacy → json mode (only if strict SO unsupported).</statement>
-      <rationale source="v1-source">BuildMVPFast 2026 production guide and Vellum's mode comparison both show silent correctness regressions when json-mode is used for typed extraction; XGrammar paper shows 100x speedups vs alternatives on local DSL workloads.</rationale>
+  <section title="Pick by consumer">
+    <rule id="r1-pick-by-consumer" testable="true" depth="essential">
+      <statement>Pick the mode by the output consumer, not by which API the team learned first: deterministic extraction → SO strict; agent action / dispatch → tool call; custom DSL or local-model output → grammar; legacy fallback → json-mode (only when strict SO is unsupported on the chosen provider).</statement>
+      <rationale source="BuildMVPFast 2026 production guide; Vellum mode comparison; XGrammar paper.">Production studies consistently show silent correctness regressions when json-mode is used for typed extraction (passes `json.loads`, fails Pydantic). XGrammar shows 100x speedups vs alternatives on local DSL workloads — the wrong mode is not just incorrect, it is slow.</rationale>
+      <reference path="templates/mode_examples.py">Four side-by-side calls — one per mode — to compare locally.</reference>
+    </rule>
+  </section>
+
+  <section title="Forbidden mappings">
+    <rule id="r2-no-json-for-typed" testable="true" depth="essential">
+      <statement>Never use `response_format={"type": "json_object"}` for typed extraction tasks where downstream code parses the result into a Pydantic / dataclass model. The format guarantees only valid JSON, not schema compliance.</statement>
+      <rationale source="OpenAI 2026 docs">json-mode produces valid-but-wrong outputs that pass `json.loads()` and fail downstream typing. The team only discovers the regression in prod data with bad shapes.</rationale>
+    </rule>
+    <rule id="r3-no-so-for-action" testable="true" depth="essential">
+      <statement>Never use SO strict for an action-dispatch task where the LLM must choose which function to call. Use tool-call mode — the function name comes back in the response and feeds the dispatcher directly.</statement>
+      <rationale source="Anthropic + OpenAI tool-calling docs">SO strict forces the model to fit one schema; tool-call lets the model pick from N schemas plus a function name. Using SO for dispatch wastes the routing affordance the ecosystem already provides.</rationale>
+    </rule>
+    <rule id="r4-grammar-for-dsl" testable="true" depth="essential">
+      <statement>For non-JSON outputs (SQL, regex, custom DSLs, domain grammars) use grammar mode (XGrammar / Outlines / GBNF). Do not detour through JSON or tool-call.</statement>
+      <rationale source="XGrammar paper, Outlines library">Detouring through JSON adds two failure modes (JSON parse + JSON-to-DSL convert) and wastes tokens encoding the DSL inside JSON strings. Grammar mode constrains the generation directly to the target CFG.</rationale>
+    </rule>
+  </section>
+
+  <section title="Fallback policy">
+    <rule id="r5-fallback-only-if-no-strict" testable="true" depth="essential">
+      <statement>Use json-mode only when the chosen provider does not support strict SO AND the output consumer is downstream code that can tolerate per-batch failures. Document the fallback in the decision-record with a tracking issue to migrate when strict SO becomes available.</statement>
+      <rationale source="Provider 2026 matrices">json-mode without a schema is now the worst of the four for typed extraction; it survives only as a fallback for providers behind the curve.</rationale>
     </rule>
   </section>
 </text>

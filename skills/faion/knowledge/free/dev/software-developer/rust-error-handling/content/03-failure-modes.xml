@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-error-handling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-error-handling as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Rust Error Handling Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns: library/app confusion, untyped strings, lost source chains, prod-panic patterns.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling .unwrap() or .expect() on Result or Option values in non-test production code.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>.unwrap() panics at runtime on Err/None. In production, this terminates the process without cleanup. Use ? for propagation or handle the None/Err case explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Silently ignoring errors with let _ = fallible_operation().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Silent discards hide failures that should be logged or propagated. At minimum, log with error!("{}", e); or propagate with ?. The let _ = pattern is acceptable only when the error is genuinely irrelevant (e.g., closing a channel that may already be closed).</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Returning Result&lt;(), String&gt; or Err("something went wrong".to_string()) from functions that callers need to handle.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>String errors lose the original error type, prevent match-based handling, and destroy the error chain. Use typed enums or anyhow::Error.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="anyhow-in-library" severity="high">
+      <symptom>A published library returns `anyhow::Result&lt;T&gt;`; downstream tries to match on a specific failure but cannot because `anyhow::Error` is opaque `Box&lt;dyn Error&gt;` under the hood.</symptom>
+      <root-cause source="anyhow vs thiserror docs">Author wanted boilerplate-free errors and reached for `anyhow`. The cost is paid by every downstream caller who now must downcast.</root-cause>
+      <fix>Switch library to `thiserror` enum. Keep `anyhow` only in `examples/` and tests. Mark this in `Cargo.toml` keywords so users see the contract.</fix>
+    </antipattern>
+
+    <antipattern id="untyped-string-error" severity="medium">
+      <symptom>Custom error is `pub struct MyError(pub String)`. Lower-level errors get `.to_string()`'d into it; the original error type is lost.</symptom>
+      <root-cause source="Rust Book ch.9">Author skipped `thiserror` because the type seemed simple. The shortcut throws away source chains and `Display` formatting symmetry.</root-cause>
+      <fix>Replace with `#[derive(thiserror::Error)]` enum. Wrap upstream errors with `#[from]` or `#[source]`. Display strings via `#[error("...")]`.</fix>
+    </antipattern>
+
+    <antipattern id="swallowing-source" severity="medium">
+      <symptom>Error variant captures source as `String` (`Variant(String)`) instead of typed (`Variant(#[source] io::Error)`). `tracing` log shows the error but cannot walk causes.</symptom>
+      <root-cause source="std::error::Error::source docs">`#[source]` keeps the original type and lets `.source()` walk the chain. Stringifying flattens the chain to a single line.</rationale></root-cause>
+      <fix>Change variant to `Variant(#[from] io::Error)` (or `#[source]` if you also need data). Update log instrumentation: `tracing::error!(error = ?e)` walks the chain when present.</fix>
+    </antipattern>
+
+    <antipattern id="unwrap-in-production" severity="high">
+      <symptom>Production binary panics in production with `thread 'main' panicked at 'called Result::unwrap() on an Err value'`. No context.</symptom>
+      <root-cause source="clippy::unwrap_used docs">Prototype `.unwrap()` calls left behind. Default clippy config does not deny these.</root-cause>
+      <fix>Add `templates/clippy.toml`: `unwrap_used = "deny"`, `expect_used = "deny"`. Run `cargo clippy -- -D clippy::unwrap_used -D clippy::expect_used` in CI. Replace each call with `?` + context.</fix>
+    </antipattern>
+
   </section>
 </text>

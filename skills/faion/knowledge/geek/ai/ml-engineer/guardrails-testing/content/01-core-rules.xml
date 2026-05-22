@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="guardrails-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for guardrails-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Guardrails Testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules for the three-suite test harness.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="three-suite-split" testable="true" depth="essential">
+      <statement>The harness has three explicit suites: `tests/security/` (must-block), `tests/accuracy/` (must-pass), `tests/perf/` (latency + throughput). Each suite has independent fail criteria.</statement>
+      <rationale source="OWASP LLM testing 2026">Conflating security and accuracy hides the real signal — a high-FP run still passes "no leak" but breaks UX. Separate suites force separate reporting.</rationale>
+    </rule>
+    <rule id="parametrize-detector" testable="true" depth="essential">
+      <statement>Every detector (PII, injection, etc.) is unit-tested via `@pytest.mark.parametrize` with at least 10 cases covering positive, negative, edge, and Unicode inputs.</statement>
+      <rationale source="pytest docs; FP audits">Hand-rolled per-detector tests miss the input-space variance; parametrize forces a table you can read at a glance and regression-protect.</rationale>
+    </rule>
+    <rule id="mock-llm-in-ci" testable="true" depth="essential">
+      <statement>CI tests mock every LLM client. No live API calls in any pytest run. Live red-team runs go through a `--live` marker that CI skips by default.</statement>
+      <rationale source="CI cost postmortems">Live LLM in CI multiplies the build cost by 100x and adds non-determinism that destroys flake tracking.</rationale>
+    </rule>
+    <rule id="payload-library-versioned" testable="true" depth="essential">
+      <statement>Adversarial payload library lives at `tests/payloads/v<N>.jsonl`. Each payload has `id`, `category`, `attack_string`, `expected_outcome`. New payloads bump version; old payloads stay for regression.</statement>
+      <rationale source="Internal red-team retros">Mutating a single file destroys the regression baseline; versioned files preserve "this attack used to bypass; we fixed it" memory.</rationale>
+    </rule>
+    <rule id="fp-budget" testable="true" depth="essential">
+      <statement>Accuracy suite declares a false-positive budget (default ≤1% of legit inputs blocked). Exceeding the budget fails the suite even if every security test passes.</statement>
+      <rationale source="User-trust audits">A 5% FP rate destroys users' trust faster than any single bypass. The budget makes FP a first-class fail criterion.</rationale>
+    </rule>
+    <rule id="latency-p99-baseline" testable="true" depth="essential">
+      <statement>Perf suite stores a baseline `bench.json` per release. Current run fails if p99 latency exceeds baseline by &gt; 20% or if throughput drops by &gt; 15%.</statement>
+      <rationale source="pytest-benchmark docs">Without a baseline, slow drift never trips an alarm and one day the SLO is gone. Pinned baselines catch regression at the commit that introduced it.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

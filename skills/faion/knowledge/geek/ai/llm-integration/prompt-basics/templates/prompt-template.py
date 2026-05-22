@@ -1,16 +1,9 @@
 """
-PromptTemplate — reusable prompt with system, user template, and few-shot examples.
-
-Usage:
-    template = PromptTemplate(
-        system="You are a sentiment classifier. Respond with: positive, negative, or neutral.",
-        user_template="Classify: {text}",
-        examples=[
-            {"input": "Classify: I love this!", "output": "positive"},
-            {"input": "Classify: This is terrible.", "output": "negative"},
-        ]
-    )
-    messages = template.render(text="This exceeded my expectations!")
+purpose: PromptTemplate dataclass + render() — pin prompts as code constants for diff and CI snapshot tests.
+consumes: system string, user_template with `{var}` placeholders, optional few-shot examples list.
+produces: rendered messages array (list[dict]) for OpenAI-compatible chat completions.
+depends-on: stdlib only (dataclasses, typing).
+token-budget-impact: zero overhead beyond the literal token count; examples capped at 3–5.
 """
 from dataclasses import dataclass, field
 from typing import List, Dict

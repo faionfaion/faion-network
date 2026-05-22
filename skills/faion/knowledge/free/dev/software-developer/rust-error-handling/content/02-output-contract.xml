@@ -1,22 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rust-error-handling Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Rust Error Handling Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the error-design spec capturing crate type, error-library choice, and clippy gate config.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Spec schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/rust-error-handling-spec.json",
+  "type": "object",
+  "required": ["crate_type", "error_library", "clippy_gate", "version", "last_reviewed"],
+  "properties": {
+    "crate_type":    {"enum": ["library", "binary", "build-script"]},
+    "error_library": {"enum": ["thiserror", "anyhow", "box-dyn-error"]},
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "display"],
+        "properties": {
+          "name":    {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+          "display": {"type": "string"},
+          "from":    {"type": "string", "description": "wrapped type for #[from]"},
+          "source":  {"type": "boolean"}
+        }
+      }
+    },
+    "clippy_gate": {
+      "type": "object",
+      "required": ["unwrap_used", "expect_used"],
+      "properties": {
+        "unwrap_used": {"const": "deny"},
+        "expect_used": {"const": "deny"}
+      }
+    },
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  },
+  "allOf": [
+    {"if": {"properties": {"crate_type": {"const": "library"}}}, "then": {"properties": {"error_library": {"const": "thiserror"}}}}
+  ]
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "crate_type": "library",
+  "error_library": "thiserror",
+  "variants": [
+    {"name": "Io",     "display": "I/O error",          "from": "std::io::Error", "source": true},
+    {"name": "Parse",  "display": "parse error: {0}",   "from": "serde_json::Error", "source": true},
+    {"name": "NotFound", "display": "resource not found"}
+  ],
+  "clippy_gate": {"unwrap_used": "deny", "expect_used": "deny"},
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "crate_type": "library",
+  "error_library": "anyhow",
+  "clippy_gate": {"unwrap_used": "warn"}
+}
+]]></code>
+    <note>Library crate must use thiserror, not anyhow. Clippy gate must be "deny" not "warn". Missing version + last_reviewed.</note>
+  </example>
+
+  <reference path="templates/error.rs.thiserror.tmpl">Error enum scaffold</reference>
+  <reference path="templates/clippy.toml">Clippy gate config</reference>
+  <reference path="scripts/validate-rust-error-handling.py">Validator</reference>
 </text>

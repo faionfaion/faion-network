@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Rust Error Handling Worked Example" version="1.1.0" est_tokens="600" depth="optional">
+  <summary>Library Error enum with thiserror; binary app using anyhow with context.</summary>
+
+  <section title="Library — thiserror">
+    <code lang="rust"><![CDATA[
+// src/error.rs
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum CrateError {
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] serde_json::Error),
+
+    #[error("resource '{id}' not found")]
+    NotFound { id: String },
+
+    #[error("invalid state: {0}")]
+    InvalidState(String),
+}
+
+pub type Result<T, E = CrateError> = std::result::Result<T, E>;
+
+// src/store.rs
+pub fn load(id: &str) -> Result<Record> {
+    let bytes = std::fs::read(path_for(id))?;     // Io via #[from]
+    let rec: Record = serde_json::from_slice(&bytes)?;  // Parse via #[from]
+    Ok(rec)
+}
+]]></code>
+  </section>
+
+  <section title="Binary — anyhow with context">
+    <code lang="rust"><![CDATA[
+// src/main.rs
+use anyhow::{Context, Result};
+
+fn main() -> Result<()> {
+    let config_path = std::env::var("APP_CONFIG").context("APP_CONFIG env var not set")?;
+    let raw = std::fs::read_to_string(&config_path)
+        .with_context(|| format!("reading config at {config_path}"))?;
+    let cfg: Config = toml::from_str(&raw).context("parsing TOML config")?;
+    run(cfg).context("running app")
+}
+]]></code>
+    <note>Library exposes typed variants downstream can match. Binary uses context strings — log line reads top-down: "running app" → "parsing TOML config" → "reading config at /etc/app.toml" → "permission denied".</note>
+  </section>
+
+  <reference path="templates/error.rs.thiserror.tmpl">Library scaffold</reference>
+</text>

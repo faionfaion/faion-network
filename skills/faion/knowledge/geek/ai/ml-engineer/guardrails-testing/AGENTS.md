@@ -3,70 +3,99 @@ slug: guardrails-testing
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Guardrail testing requires three distinct test suites: security tests (injection payloads that must be blocked), accuracy tests (legitimate content that must pass), and performance tests (latency and throughput under load).
-content_id: "9648b96078cd82dd"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a three-suite pytest harness (security red-team + accuracy false-positive + perf latency) for a deployed guardrails pipeline plus a monthly run report.
+content_id: "edc83ddc83844a1d"
+complexity: deep
+produces: report
+est_tokens: 4200
 tags: [guardrails, security-testing, red-teaming, prompt-injection, llm-testing]
 ---
-# LLM Guardrails Testing and Red-Teaming
+# Guardrails Testing and Red-Teaming
 
 ## Summary
 
-**One-sentence:** Guardrail testing requires three distinct test suites: security tests (injection payloads that must be blocked), accuracy tests (legitimate content that must pass), and performance tests (latency and throughput under load).
+**One-sentence:** Builds three pytest suites — security (must-block payloads), accuracy (must-pass legit inputs), perf (latency p99 + throughput) — and the monthly red-team report.
 
-**One-paragraph:** Guardrail testing requires three distinct test suites: security tests (injection payloads that must be blocked), accuracy tests (legitimate content that must pass), and performance tests (latency and throughput under load). Red-teaming with adversarial payloads before production and monthly after deployment is mandatory for any guardrail covering security or compliance use cases.
+**One-paragraph:** A guardrails layer that has not been red-teamed is theatre. This methodology produces the harness: parametrized unit tests per detector, integration tests with mocked LLM clients, an adversarial payload library (jailbreaks, encoded injection, role-play attacks, multi-turn chains), and a perf benchmark suite. Outputs a `guardrail-test-report.json` covering pass-rate per suite, false-positive rate, false-negative rate, and latency percentiles. Re-run pre-deploy + monthly + after model upgrade.
+
+**Ефективно для:**
+
+- Pre-deploy gate — без зеленого звіту guardrails-харнес не пускає реліз у прод.
+- Monthly red-team — нові jailbreak-патерни зʼявляються щомісяця; стара захист тиха гниє.
+- Model upgrade (gpt-4o → gpt-5) — non-deterministic поведінка змінюється, треба перевалідувати все.
+- FP report investigation — користувачі скаржаться що legit input блокується; харнес ловить regress на конкретному patternі.
 
 ## Applies If (ALL must hold)
 
-- Before deploying any guardrail system to production — run the full security and accuracy test suites.
-- Monthly red-team sessions to test against new jailbreak and injection techniques.
-- After any guardrail configuration change or underlying model update.
-- When investigating false positive reports from production users.
+- Deployed or about-to-be-deployed guardrails layer (custom / NeMo / Guardrails AI).
+- Python + pytest available; team can mock LLM clients in CI.
+- Application owner accepts monthly red-team cadence (or pre-deploy gate only at minimum).
 
 ## Skip If (ANY kills it)
 
-- Live production traffic — run tests in staging against production-equivalent guardrail config.
-- End-to-end tests with live LLM APIs in CI — use mocked LLM clients to avoid cost and flakiness.
+- Live prod traffic — tests must run in staging against prod-equivalent config.
+- E2E with live LLM in CI — cost + flakiness explode; mock instead.
+- Internal-only dev tooling with no security surface — harness ROI negative.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `guardrails_pipeline.py` or NeMo config | Python module / dir | `guardrails-custom-pipeline` / `guardrails-nemo` |
+| Adversarial payload library | JSONL / YAML | this methodology produces it |
+| pytest + pytest-benchmark | dev dep | dev requirements |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `guardrails-concepts` | Plan tells the harness which rails to test. |
+| `guardrails-custom-pipeline` | Tested system under test. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: three-suite split, parametrize-detector, mock-llm-in-ci, payload-library-versioned, fp-budget, latency-p99-baseline | 1100 |
+| `content/02-output-contract.xml` | essential | Schema for `guardrail-test-report.json` | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: live-llm-in-ci, no-fp-budget, single-payload-set, no-baseline | 800 |
+| `content/04-procedure.xml` | essential | 6 steps: build payload lib → security suite → accuracy suite → perf suite → red-team → report | 800 |
+| `content/05-examples.xml` | essential | Worked example: report for a custom pipeline | 600 |
+| `content/06-decision-tree.xml` | essential | Test cadence decision tree | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold_suites` | haiku | Templated pytest layout. |
+| `generate_payloads` | sonnet | Adversarial creativity needed. |
+| `interpret_red_team` | opus | High-stakes reasoning over failure traces. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/test_security.py` | Security suite skeleton with payload table |
+| `templates/test_accuracy.py` | False-positive suite skeleton |
+| `templates/test_perf.py` | Latency / throughput benchmark skeleton |
+| `templates/_smoke-test.py` | Minimal runner |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-guardrails-testing.py` | Validate `guardrail-test-report.json` | After test run; pre-merge gate |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[guardrails-custom-pipeline]] — system under test
+- [[guardrails-nemo]] — NeMo config under test
+- [[prompt-injection-defense]] — source of adversarial patterns
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches on deploy stage (pre-deploy / monthly / on-incident) and on whether model was upgraded.

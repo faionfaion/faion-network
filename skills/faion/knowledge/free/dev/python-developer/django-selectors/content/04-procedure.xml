@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-selectors Procedure" version="1.1.0" est_tokens="400" depth="medium">
+  <summary>Five-step procedure: locate query → extract → optimise → test → wire all callers.</summary>
+
+  <section title="Steps">
+    <step n="1" name="locate-query">
+      <input>view / task / admin / serializer source file</input>
+      <action>Grep for `Model.objects` and `Model._default_manager`. List every call that filters, orders, or paginates the same model.</action>
+      <output>list of duplicate or near-duplicate query expressions</output>
+      <decision-gate>If the query appears in exactly one place AND has no related-object access, skip extraction.</decision-gate>
+    </step>
+
+    <step n="2" name="design-signature">
+      <input>identified queries</input>
+      <action>Pick the union of filter params used at the call sites. Signature: `def &lt;entity&gt;_&lt;shape&gt;(*, param1, param2=None) -> QuerySet[Model]`. Shape is `list`, `get`, `count_for`, `summary_for`, etc.</action>
+      <output>function signature drafted in `apps/<app>/selectors.py`</output>
+      <decision-gate>Parameters must be keyword-only.</decision-gate>
+    </step>
+
+    <step n="3" name="optimise">
+      <input>signature + caller access patterns</input>
+      <action>Add select_related for every FK/OneToOne the callers dereference; prefetch_related for every M2M / reverse FK. Use Prefetch(queryset=...) when the related queryset needs filtering or its own select_related.</action>
+      <output>fully-optimised selector body</output>
+      <decision-gate>Run nplusone middleware in tests — must report zero false N+1.</decision-gate>
+    </step>
+
+    <step n="4" name="test">
+      <input>selector + factory_boy factories</input>
+      <action>Add `tests/test_selectors.py` with `django_assert_num_queries(N)` locking the count, plus a basic correctness assertion (filter behaviour, ordering).</action>
+      <output>regression-locked test</output>
+      <decision-gate>Deliberately remove a prefetch — test must fail; restore it — test must pass.</decision-gate>
+    </step>
+
+    <step n="5" name="wire-callers">
+      <input>list of original query sites</input>
+      <action>Replace each in-line query with a call to the selector. Drop any redundant select_related/prefetch_related from the caller side.</action>
+      <output>views/tasks/admin become thin; query logic centralised</output>
+      <decision-gate>All callers green; original tests still pass.</decision-gate>
+    </step>
+  </section>
+</text>

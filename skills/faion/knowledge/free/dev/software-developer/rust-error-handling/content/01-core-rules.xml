@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-error-handling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-error-handling. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Rust Error Handling Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules covering library/app split, propagation, and context preservation.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="thiserror-for-lib" testable="true" depth="essential">
+      <statement>Publishable libraries use `thiserror` to derive `Error` on an enum of named variants. Each variant has `#[error("...")]` for Display and optional `#[from]` for source-chain conversion.</statement>
+      <rationale source="thiserror crate docs">Libraries must let downstream consumers `match` on specific variants. Opaque dynamic errors force callers to log-only, losing flow control.</rationale>
     </rule>
+
+    <rule id="anyhow-for-app" testable="true" depth="essential">
+      <statement>Binaries (CLI, web service, daemon) use `anyhow::Result<T>` with `.context()` calls at every fallible boundary. No custom Error enums unless a specific call site needs to match.</statement>
+      <rationale source="anyhow crate docs">App-level code log-and-exits on most errors. Manual enum boilerplate adds no value when the caller is the user-facing log. `.context()` builds the trace from existing strings.</rationale>
+    </rule>
+
+    <rule id="no-unwrap-non-test" testable="true" depth="essential">
+      <statement>`.unwrap()` and `.expect()` are FORBIDDEN in `src/` (non-test code). Allowed in `#[cfg(test)]` blocks and `tests/`. Enforce via clippy `unwrap_used = "deny"`, `expect_used = "deny"` in `clippy.toml`.</statement>
+      <rationale source="clippy::unwrap_used docs">Panics in library code crash callers without explanation. `?` and proper error variants preserve context and let callers decide.</rationale>
+    </rule>
+
+    <rule id="question-mark-over-match" testable="true" depth="essential">
+      <statement>Use `?` operator for propagation. Explicit `match result { Err(e) => return Err(e.into()), Ok(v) => v }` is forbidden unless the match adds genuine logic (logging, fallback, retry).</statement>
+      <rationale source="Rust Book ch.9; The `?` Operator">Manual match shadows the `From` conversion and bloats code. `?` triggers `From` automatically — chain `thiserror` `#[from]` and propagation is one character.</rationale>
+    </rule>
+
+    <rule id="source-chains-required" testable="true" depth="essential">
+      <statement>Every error variant that wraps a lower-level error MUST expose it via `#[source]` or `#[from]`. Never `.to_string()` the source — that drops the chain.</statement>
+      <rationale source="std::error::Error::source docs">Source chains let observability tools (`tracing`, Sentry) walk causes. Stringifying the source erases the chain and the original type.</rationale>
+    </rule>
+
+    <rule id="context-on-conversion" testable="true" depth="essential">
+      <statement>When using `anyhow`, call `.context("doing X")` on every `?` boundary that touches I/O, network, or external input. Plain `?` without context drops the "where did this fail" trace.</statement>
+      <rationale source="anyhow::Context docs">Anyhow errors print backwards-chained context — without `.context()` calls the chain is empty and the user sees only the lowest-level error (e.g. "permission denied" with no file name).</rationale>
+    </rule>
+
   </section>
 </text>

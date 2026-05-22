@@ -1,22 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-selectors Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-selectors Output Contract" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Output is Python source code (selector functions). The validator parses each function and checks the schema below: signature is kwarg-only, return type is QuerySet[X] or X, no write operations, lives in `selectors.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <reference path="templates/selector_list.py">List selector skeleton.</reference>
+  <reference path="templates/selector_get.py">Single-object selector skeleton.</reference>
+  <reference path="scripts/validate-django-selectors.py">AST-based validator.</reference>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (per-function metadata extracted by the validator)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DjangoSelectorFunction",
+  "type": "object",
+  "required": ["name", "file", "kwarg_only", "return_type", "writes_db", "test_module"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "file": { "type": "string", "pattern": ".+/selectors\\.py$" },
+    "kwarg_only": { "const": true },
+    "return_type": {
+      "type": "string",
+      "description": "QuerySet[<Model>] for list selectors, <Model> for single-object selectors"
+    },
+    "writes_db": { "const": false },
+    "test_module": { "type": "string", "minLength": 1 }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Signature examples">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db.models import QuerySet, Prefetch
+from apps.orders.models import Order, OrderItem
+
+
+def order_list_for_user(*, user, status: str | None = None, limit: int | None = None) -> QuerySet[Order]:
+    qs = (
+        Order.objects.filter(user=user)
+        .select_related("shipping_method")
+        .prefetch_related(Prefetch("items", queryset=OrderItem.objects.select_related("product")))
+        .order_by("-created_at")
+    )
+    if status:
+        qs = qs.filter(status=status)
+    if limit:
+        qs = qs[:limit]
+    return qs
+
+
+def order_get_for_user(*, order_id: int, user) -> Order:
+    return (
+        Order.objects.select_related("user", "shipping_method")
+        .prefetch_related("items__product")
+        .filter(user=user)
+        .get(pk=order_id)
+    )
+      ]]></code>
+      <note>Valid: kwarg-only, return types QuerySet[Order] / Order, writes_db=False, lives in selectors.py.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def order_list(user, status=None):                  # missing *: positional args
+    return list(Order.objects.filter(user=user))    # returns list, not QuerySet
+
+def order_get(order_id):
+    try:
+        return Order.objects.get(pk=order_id)
+    except Order.DoesNotExist:
+        return None                                  # MUST raise, not return None
+
+def order_archive(*, order_id):                      # writes — should be in services.py
+    Order.objects.filter(pk=order_id).update(archived=True)
+      ]]></code>
+      <note>Invalid: positional args, list return, swallowed DoesNotExist, write inside selectors module.</note>
+    </example>
   </section>
 </text>

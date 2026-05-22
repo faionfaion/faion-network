@@ -1,12 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-selectors Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-selectors as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-selectors Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five concrete antipatterns observed in selector code reviews. Each maps to a rule from `01-core-rules.xml`.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-list-return" severity="high">
+      <description>Selector returns `list[Model]` (`return list(qs)`) instead of QuerySet.</description>
+      <symptom>Callers cannot add `.filter(...)` or `.order_by(...)` without re-issuing a brand-new query; pagination bypasses the optimised query and loads every row into memory.</symptom>
+      <root-cause>Author wants "explicit materialisation" or fears stale querysets. Materialisation defeats the entire point — selectors are designed to compose at the call site.</root-cause>
+      <fix>Return `QuerySet[Model]` annotated. Callers slice / filter / paginate as needed. If the caller really needs a list, it calls `list(selector(...))`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-none-on-not-found" severity="high">
+      <description>Single-object selector catches `DoesNotExist` and returns `None`.</description>
+      <symptom>AttributeError downstream when callers forget the None check; or silent 200 OK responses with empty body for missing resources.</symptom>
+      <root-cause>"Avoid exceptions in business logic" applied incorrectly. The DoesNotExist contract is Django-wide; raising matches stdlib semantics.</root-cause>
+      <fix>Let DoesNotExist propagate. Views convert it to 404 via `get_object_or_404` or a DRF exception handler. Service functions that handle "missing" cases call `qs.first()` explicitly to signal intent.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-positional-args" severity="medium">
+      <description>Selector takes positional arguments: `def order_list(user, status=None)`.</description>
+      <symptom>Call sites grow ambiguous as the function gains parameters; refactoring breaks callers silently by swapping argument order.</symptom>
+      <root-cause>Pythonic default carries over from view helpers / utility functions; styleguide rule overlooked.</root-cause>
+      <fix>Add `*,` after `self`-less signature: `def order_list(*, user, status=None)`. Every call site becomes `order_list(user=u, status=s)` — self-documenting.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-count-gt-zero" severity="medium">
+      <description>Existence check uses `qs.count() > 0` or `len(qs) > 0`.</description>
+      <symptom>Slow endpoints on large tables; database CPU spikes; logs show COUNT(*) on millions of rows just to know if at least one exists.</symptom>
+      <root-cause>Author treats QuerySet like a list; doesn't know about `.exists()`.</root-cause>
+      <fix>Replace with `qs.exists()`. Generates `SELECT 1 FROM ... LIMIT 1` — constant time.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-write-in-selector" severity="high">
+      <description>Selector function performs `.save()`, `.update()`, `.delete()`, or calls `.delay()` on a Celery task.</description>
+      <symptom>Test setup that calls a selector for assertion mutates DB; selectors fail under read-only replicas; idempotency assumptions violated.</symptom>
+      <root-cause>Author conflates "function with DB access" with "selector". Write functions belong in `services.py`.</root-cause>
+      <fix>Move the write into `services.py`. Selector returns the data; the service decides what to mutate.</fix>
+    </antipattern>
   </section>
 </text>

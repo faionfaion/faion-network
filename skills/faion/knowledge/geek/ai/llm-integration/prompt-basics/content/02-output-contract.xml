@@ -1,22 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="prompt-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Prompt Basics — Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Rendered messages array from a PromptTemplate, ready for client.chat.completions.create. Captures shape and roles.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://prompt-basics/output.schema.json",
+  "type": "array",
+  "minItems": 2,
+  "items": {
+    "type": "object",
+    "required": ["role", "content"],
+    "properties": {
+      "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+      "content": {"type": "string", "minLength": 1}
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required structure">
+    <list>
+      <item>First message MUST be `role: system` with non-empty content.</item>
+      <item>Last message MUST be `role: user` with non-empty content.</item>
+      <item>Few-shot examples alternate `user`+`assistant` between the system and the final user message.</item>
+      <item>No empty content strings; no missing roles.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Missing or empty system message.</description>
+      <reason>Default behaviour without a system role varies by model; outputs are inconsistent.</reason>
+    </antipattern>
+    <antipattern>
+      <description>User-supplied text inserted into the system role.</description>
+      <reason>Prompt-injection sink — user can override constraints.</reason>
+    </antipattern>
+    <antipattern>
+      <description>More than 5 few-shot examples.</description>
+      <reason>Attention decays; tokens balloon without quality lift.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+[
+  {"role": "system", "content": "You are a sentiment classifier. Respond with only: positive, negative, or neutral."},
+  {"role": "user", "content": "Classify: I love this product!"},
+  {"role": "assistant", "content": "positive"},
+  {"role": "user", "content": "Classify: This exceeded expectations."}
+]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+[
+  {"role": "user", "content": "Write something about AI"}
+]
+]]></code>
+      <note>Invalid: no system message; output format unspecified; topic undirected.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>First role == "system", non-empty content.</item>
+      <item>Last role == "user", non-empty content.</item>
+      <item>Few-shot count ∈ [0, 5].</item>
+      <item>No content field is empty.</item>
     </list>
   </section>
 </text>

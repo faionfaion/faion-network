@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-selectors Worked Example" version="1.1.0" est_tokens="400" depth="optional">
+  <summary>Worked example: refactor an in-view query into a selector with N+1 lock and complex Prefetch.</summary>
+
+  <section title="Before / After">
+    <example type="bad" title="Query embedded in view — duplicated across endpoints">
+      <code lang="python"><![CDATA[
+# apps/orders/views.py
+class OrderListView(APIView):
+    def get(self, request):
+        orders = Order.objects.filter(user=request.user)
+        return Response(OrderSerializer(orders, many=True).data)
+]]></code>
+      <note>N+1 inside the serializer for items → product. Same pattern repeated in admin and Celery task with subtle differences.</note>
+    </example>
+
+    <example type="good" title="Centralised selector + N+1-locked test">
+      <code lang="python"><![CDATA[
+# apps/orders/selectors.py
+from django.db.models import Prefetch, QuerySet
+from apps.orders.models import Order, OrderItem
+
+
+def order_list_for_user(
+    *,
+    user,
+    status: str | None = None,
+) -> QuerySet[Order]:
+    qs = (
+        Order.objects
+        .filter(user=user)
+        .select_related("shipping_method")
+        .prefetch_related(
+            Prefetch("items", queryset=OrderItem.objects.select_related("product")),
+        )
+        .order_by("-created_at")
+    )
+    if status:
+        qs = qs.filter(status=status)
+    return qs
+
+
+# apps/orders/views.py
+class OrderListView(APIView):
+    def get(self, request):
+        qs = order_list_for_user(user=request.user, status=request.query_params.get("status"))
+        return Response(OrderSerializer(qs, many=True).data)
+
+
+# apps/orders/tests/test_selectors.py
+import pytest
+from apps.orders.selectors import order_list_for_user
+
+
+@pytest.mark.django_db
+def test_order_list_for_user_query_count(django_assert_num_queries, order_factory, user_factory):
+    user = user_factory()
+    for _ in range(10):
+        order_factory(user=user)
+    with django_assert_num_queries(3):
+        result = list(order_list_for_user(user=user))
+        for o in result:
+            list(o.items.all())  # access prefetched data
+    assert len(result) == 10
+]]></code>
+      <note>Three queries regardless of order count. Admin / Celery task / view all call the same function; one fix propagates everywhere.</note>
+    </example>
+  </section>
+</text>

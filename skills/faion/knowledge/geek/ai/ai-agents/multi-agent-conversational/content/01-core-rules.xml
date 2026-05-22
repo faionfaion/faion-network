@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="multi-agent-conversational Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for multi-agent-conversational. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Conversational Multi-Agent Core Rules" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five testable rules for shipping an AutoGen-style conversational runner that terminates safely and stays within budget.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every ConversationalAgents instance MUST set both a termination_phrase and a max_turns cap. Neither alone is sufficient: the phrase may never appear (causing infinite loops without max_turns), and max_turns alone produces no semantic exit signal.</statement>
-      <rationale source="v1-source">Without a termination phrase, the agent has no way to signal completion — the conversation always runs to max_turns. Without max_turns, a bug or confused agent that never says the phrase causes an infinite loop.</rationale>
+  <section title="Termination">
+    <rule id="r1-dual-termination" testable="true" depth="essential">
+      <statement>Every conversational runner MUST set BOTH a non-empty `termination_phrase` (or JSON-flag output check) AND a `max_turns` cap. Neither alone is sufficient.</statement>
+      <rationale source="autogen-runtime-experience">Phrase alone risks infinite loops (model never says it); max_turns alone yields no semantic completion signal — the run terminates mid-thought.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The sliding context window MUST be capped (default: last 3 turns). Never pass the full conversation history to each turn prompt.</statement>
-      <rationale source="v1-source">Conversational patterns accumulate context linearly. Passing full history to every turn causes quadratic token growth: turn N sees N-1 prior messages. A fixed sliding window (3-5 entries) keeps per-turn cost constant.</rationale>
+    <rule id="r2-max-turns-ceiling" testable="true" depth="essential">
+      <statement>`max_turns` MUST be ≤ 30. Higher values almost always indicate the wrong pattern (conversational masquerading as a long pipeline).</statement>
+      <rationale source="multi-agent-spec-checks">Runs that legitimately need &gt;30 turns are not conversational — they are open-ended chats or pipelines mis-labelled.</rationale>
+    </rule>
+  </section>
+
+  <section title="Context &amp; budget">
+    <rule id="r3-sliding-window" testable="true" depth="essential">
+      <statement>Per-turn prompt MUST include only the last N messages from the conversation (default N=3, max N=8). Full history passing is forbidden.</statement>
+      <rationale source="quadratic-token-growth">Full-history passing makes turn cost grow O(N²); fixed window keeps per-turn cost O(1) at the price of forgetting old turns (a property, not a bug).</rationale>
+    </rule>
+    <rule id="r4-per-turn-budget-audit" testable="true" depth="essential">
+      <statement>The runner MUST track cumulative `used_tokens` after every turn and abort the loop when `used_tokens ≥ 0.9 × token_budget`, emitting the current trace with `aborted_early=true`.</statement>
+      <rationale source="multi-agent-cost-blowups">Conversational + sliding window still accumulates output tokens with turn count; cumulative budget audit is the only reliable hard stop besides max_turns.</rationale>
+    </rule>
+  </section>
+
+  <section title="Identity">
+    <rule id="r5-distinct-identities" testable="true" depth="essential">
+      <statement>Agents in the conversation MUST have distinct `name` AND non-identical `system_prompt`. Two agents with the same prompt degenerate to monologue.</statement>
+      <rationale source="role-overlap-failure-mode">Distinct names without distinct prompts produce indistinguishable turns; the conversation does not advance.</rationale>
     </rule>
   </section>
 </text>

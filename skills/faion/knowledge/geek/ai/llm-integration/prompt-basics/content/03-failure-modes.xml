@@ -1,47 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="prompt-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for prompt-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Prompt Basics — Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 known failure modes when authoring prompts in production. Each carries symptom / root-cause / fix.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Zero-shot fails on novel output schemas — model guesses format without examples</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model has no reference for the new schema in the training data; zero-shot works only for standard schemas.</repair>
+    <failure-mode id="fm-01" severity="high">
+      <description>Silent regression — prompt unchanged in git but model version upgraded; outputs change shape; downstream parsers break days later.</description>
+      <detector>Snapshot tests of `template.render(**fixture).content` diverge from baseline after model upgrade.</detector>
+      <repair>Snapshot every PromptTemplate against the current model in CI. Block deploys on snapshot diff; review and re-pin.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Few-shot example quality matters more than quantity; bad examples poison output</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model learns from examples; bad examples teach the wrong pattern more effectively than good ones.</repair>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Prompt injection — user-supplied text contains "ignore previous instructions" and the model complies, breaking constraints.</description>
+      <detector>Output drifts from system constraints when fuzzing user_template with adversarial inputs.</detector>
+      <repair>Render via `user_template.format(...)`; never concatenate user text into system role. Add an input filter that strips role-marker tokens (`system:`, `assistant:`).</repair>
     </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Prompt injection via user-controlled content can override system prompt constraints</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mixing instruction text and user data in the same string is indistinguishable to the model without boundaries.</repair>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Runtime concat — `prompt = f"Do X with {user_value}"` constructed at call time; not committed; impossible to diff.</description>
+      <detector>Code review finds f-strings or `.format` calls outside the PromptTemplate boundary.</detector>
+      <repair>Refactor to a PromptTemplate constant. Lint rule that flags `chat.completions.create(messages=[{"content": f"..."} ...])` in non-template files.</repair>
     </failure-mode>
+
     <failure-mode id="fm-04" severity="medium">
-      <description>Long, nested system prompts degrade following accuracy on complex tasks (model "forgets" later constraints)</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model attention to instructions drops with distance from the current query.</repair>
+      <description>Vague task description — "summarise this" — yields output length and tone that vary call-to-call.</description>
+      <detector>Output length variance / format variance &gt; 30% across 20 calls on identical input.</detector>
+      <repair>Replace with explicit instruction: "Summarise in exactly 3 bullet points, each ≤ 15 words, factual tone."</repair>
     </failure-mode>
+
     <failure-mode id="fm-05" severity="medium">
-      <description>Without versioning, prompt drift goes undetected — silent regression in output quality</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Runtime-constructed prompts leave no audit trail; changes are invisible to code review.</repair>
+      <description>Missing system role — `messages=[{"role":"user", "content": "..."}]` only — model behaviour drifts across versions.</description>
+      <detector>Rendered messages array starts with `user`.</detector>
+      <repair>PromptTemplate constructor rejects empty system. Validator script flags missing system in rendered output.</repair>
     </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Chain-of-Thought adds latency and tokens; not appropriate for high-throughput pipelines</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CoT adds 100–500 tokens per call; overhead not justified for simple tasks.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Asking the model to "return ONLY JSON" still fails occasionally — always try/except json.loads and retry with a corrective message</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model understanding of "only" is not perfect; defensive parsing is required.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Temperature 0 is not fully deterministic across providers or after model updates — do not assume identical outputs in production</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Determinism varies by provider and model version; testing required.</repair>
-    </failure-mode>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>The user_template's `{var}` placeholders are the ONLY surface where user content enters. Any other interpolation route is a vulnerability. Validators must inspect every commit for f-strings inside message construction.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Any prompt change that affects a production output is reviewed by a named engineer, with snapshot diffs attached to the PR. Prompt drift causes silent breakages — review is the only guardrail before deploy.</p>
   </section>
 </text>
