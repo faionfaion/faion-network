@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Guardrails Implementation Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Five-step procedure to wire a GuardrailsPipeline class into a production LLM app.</summary>
+
+  <step n="1" name="define-config">
+    <input>policy doc + thresholds</input>
+    <action>Author a `GuardrailConfig` dataclass with enable_pii_detection, enable_prompt_injection_detection, enable_content_moderation, enable_hallucination_detection, moderation_cutoff, async_fanout. Load from YAML at startup.</action>
+    <output>GuardrailConfig instance</output>
+  </step>
+  <step n="2" name="wire-input-pipeline">
+    <input>config + user_input</input>
+    <action>Compose ordered_checks cheap-first: regex_injection → length_cap → api_moderation → llm_classifier. Each returns Violation or None. Return (sanitized_input, [violations]). Block on injection or moderation hit.</action>
+    <output>sanitized_input or None + violation list</output>
+    <decision-gate>If injection or moderation hit → return None (blocked); do not run subsequent checks.</decision-gate>
+  </step>
+  <step n="3" name="wire-output-pipeline">
+    <input>llm_output + retrieval context (optional)</input>
+    <action>Run validators (schema_check, pii_check, optionally hallucination_check w/ context). On accept, apply filters (pii_redact, etc.). On reject, return Violation.</action>
+    <output>cleaned_output or Violation</output>
+  </step>
+  <step n="4" name="emit-violation-log">
+    <input>violation list per call</input>
+    <action>POST {trace_id, layer, violation_type, severity, decision, latency_ms} to violation_log_sink. Use a typed sink (HTTP or local file → forwarder).</action>
+    <output>structured log entries</output>
+  </step>
+  <step n="5" name="optional-async-fanout">
+    <input>config.async_fanout == true + independent checks</input>
+    <action>Wrap independent checks in ThreadPoolExecutor / asyncio.gather. Aggregate results; respect block-first semantics.</action>
+    <output>parallel-checked input</output>
+    <decision-gate>If async_fanout=true but checks depend on each other → revert to sequential.</decision-gate>
+  </step>
+</text>

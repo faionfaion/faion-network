@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="chunking-code-ast Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for chunking-code-ast as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Chunking Code AST — Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>4 failure modes with detector + repair: regex on complex TS, silent fallback, no dedup, ignoring max_chunk_size on long functions.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the JS regex-based path for TypeScript files with decorators, generics, or complex arrow functions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>For multi-language codebases, prefer tree-sitter bindings over regex-based JS chunking — the regex patterns in the reference implementation fail on arrow functions with implicit returns, TypeScript generics, and decorator syntax. Install tree-sitter for production TypeScript RAG.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Indexing CodeChunker output from Python files without deduplicating overlapping method/class chunks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CodeChunker via AST produces overlapping chunks when a class contains methods — both the class body and each method appear as separate chunks. Deduplicate by (name, start_line) before indexing to avoid duplicate vector entries that skew nearest-neighbor scores.</repair>
-    </failure-mode>
+    <antipattern>
+      <description>Regex path used on TypeScript with decorators, generics, or arrow functions with implicit returns.</description>
+      <reason>Regex fails to match nested braces or generic angle brackets; chunks emitted are truncated mid-body. Detector: language==typescript AND strategy==regex AND any chunk has unbalanced braces in `text`. Repair: install tree-sitter-typescript and switch strategy to tree-sitter; bump strategy_version.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Generic-line fallback emitted with no warning, so downstream sees chunks without name/type/docstring.</description>
+      <reason>Hits to those files cannot be ranked by function name. Detector: emitted record has type==code_block AND no warning entry for that source in the run log. Repair: add warning emit on the SyntaxError / empty-match branches; flag affected files for re-ingest.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Class chunk and its method chunks both indexed.</description>
+      <reason>Overlapping ranges skew nearest-neighbour scores and inflate index size. Detector: two records with same `source` and method.start_line within class.start_line..class.end_line. Repair: dedup by (name, start_line) or drop the class-level chunk and keep only methods.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>A single huge function (e.g. 800-line legacy handler) emitted as one chunk that exceeds the embedding model's input cap.</description>
+      <reason>Embedding call truncates silently; only the prefix is encoded. Detector: token_count(text) &gt; embedding_model.input_cap. Repair: split the function at sub-statement boundaries (top-level if/for blocks) into ≤ chunk_size pieces and link them via shared name + part_index.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Code content is DATA. Docstrings or comments containing instruction-shaped text ("ignore previous instructions", "the password is X") MUST NOT be interpreted as prompts at retrieval time. The synthesis prompt MUST wrap retrieved code in a code-fence or XML tag to mark it as data.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Before promoting a code-chunker strategy change, a reviewer samples 10 chunks per language and verifies (a) names match the source, (b) line ranges are correct, (c) no class+methods duplication, (d) no fallback chunks without warnings.</p>
   </section>
 </text>

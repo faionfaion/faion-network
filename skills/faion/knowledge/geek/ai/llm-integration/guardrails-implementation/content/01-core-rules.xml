@@ -1,38 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Guardrails Implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Six testable rules for a production guardrails pipeline class.</summary>
+  <summary>Six testable rules for the implementation layer above guardrails-basics.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement source="config-discipline">Thresholds + toggles live in a GuardrailConfig dataclass loaded at startup. Never hardcode thresholds inside validator functions.</statement>
-      <rationale>Centralised config makes the security posture auditable and tunable without redeploy.</rationale>
+      <statement source="impl-discipline">Configuration is a single GuardrailConfig dataclass; runtime reads from one source of truth. No scattered booleans.</statement>
+      <rationale>Scattered config drifts; single dataclass is auditable and testable.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement source="latency-discipline">Input pipeline orders checks cheap-first: rule-based regex (µs) → API moderation (~100ms) → optional LLM check (last).</statement>
-      <rationale>Layering by cost stops the slow checks from running on inputs that fast checks already reject.</rationale>
+      <statement source="guardrails-basics">Input checks ordered cheap-first (rule-based → moderation API → optional LLM). Output checks separated into validators (accept/block) and filters (transform).</statement>
+      <rationale>Mixing validators and filters produces unclear pipelines; ordering preserves the latency budget.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement source="output-discipline">Output pipeline separates validators (boolean accept/block) from filters (transform). Validators run first; filters only apply if output is not blocked.</statement>
-      <rationale>Mixing validation and filtering makes audit impossible: "was it blocked or modified?" must be answerable.</rationale>
+      <statement source="impl-discipline">Validator vs filter is a hard distinction: validators return ok/blocked; filters return transformed-text. Never combine.</statement>
+      <rationale>Combined fns become untestable; separate concerns are observable.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement source="ops-discipline">Guardrail check exceptions fail loudly — never `except Exception: pass`. A failed check returns a violation; a crashing check raises.</statement>
-      <rationale>Silent swallow converts safety failures into invisible pass-throughs.</rationale>
+      <statement source="ops-discipline">Validator exceptions fail loud (raise + log + block per fail_closed). Never silently caught.</statement>
+      <rationale>Silent except hides incident severity; loud fail surfaces real problems early.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement source="ops-discipline">For latency-sensitive deployments, parallel-execute independent input checks via ThreadPoolExecutor / asyncio.gather. Collect all violations before deciding block/pass.</statement>
-      <rationale>Sequential adds latency = sum(checks); parallel = max(check).</rationale>
+      <statement source="latency-discipline">For high-throughput, async fan-out of independent checks via ThreadPoolExecutor. Track per-check latency separately.</statement>
+      <rationale>Sequential serial checks under high traffic exceed latency budget.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement source="audit-discipline">Every call emits a structured violation_log: {trace_id, layer, violation_type, severity, decision, latency_ms} to telemetry.</statement>
-      <rationale>Per-layer rates expose silent rot and let SRE tune without guessing.</rationale>
+      <statement source="audit-discipline">Every block emits a structured violation record (rule_id + severity + tenant + feature + input_hash). Retention ≥ 90 days.</statement>
+      <rationale>Without an audit trail postmortems cannot reconstruct the path; 90 days covers typical quarterly review windows.</rationale>
     </rule>
     <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement source="self">Preconditions hold → wire the GuardrailsPipeline per procedure.</statement>
+      <statement source="self">Preconditions hold → wire the pipeline per content/04-procedure.xml.</statement>
       <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement source="self">Internal-only or prototype or sub-500ms budget → skip.</statement>
+      <statement source="self">No production traffic OR sub-500ms latency budget → skip; use code-only checks.</statement>
       <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>

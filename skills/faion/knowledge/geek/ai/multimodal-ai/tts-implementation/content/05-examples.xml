@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="TTS Implementation — Worked Example" version="1.1.0" est_tokens="600" depth="medium">
+  <summary>Worked synthesis of an 18000-character podcast episode through TTSService: 5 chunks, parallel synth, assembled mp3, cache + eviction.</summary>
+
+  <section title="Worked synthesis — 18000-char article → 5-chunk podcast episode">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio, tempfile, hashlib, shutil, json
+from pathlib import Path
+from pydub import AudioSegment
+from openai import AsyncOpenAI
+
+CACHE_ROOT = Path("out/audio/cache")
+client = AsyncOpenAI()
+
+def _key(text, voice, speed, model, provider):
+    return hashlib.sha256(f"{text}|{voice}|{speed}|{model}|{provider}".encode()).hexdigest()
+
+def semantic_split(text, max_chars=3950):
+    chunks, current = [], ""
+    for para in text.split("\n\n"):
+        if len(current) + len(para) + 2 <= max_chars:
+            current = f"{current}\n\n{para}".strip()
+        else:
+            if current: chunks.append(current)
+            current = para if len(para) <= max_chars else para[:max_chars].rsplit(" ", 1)[0]
+    if current: chunks.append(current)
+    return chunks
+
+async def synth_chunk(idx, text, voice, speed, model, tmpdir):
+    chunk_key = _key(text, voice, speed, model, "openai")
+    out = Path(tmpdir) / f"chunk_{idx:03d}.mp3"
+    resp = await client.audio.speech.create(model=model, voice=voice, input=text,
+                                            speed=speed, response_format="mp3")
+    await asyncio.to_thread(resp.stream_to_file, out)
+    dur = await asyncio.to_thread(lambda: AudioSegment.from_file(out).duration_seconds)
+    return {"index": idx, "path": str(out), "duration_s": dur,
+            "char_count": len(text), "cached": False, "chunk_key": chunk_key}
+
+async def synthesize_long(text, voice="onyx", model="tts-1-hd", speed=1.0):
+    full_key = _key(text, voice, speed, model, "openai")
+    out_dir = CACHE_ROOT / full_key
+    out_dir.mkdir(parents=True, exist_ok=True)
+    assembled = out_dir / "assembled.mp3"
+    if assembled.exists():
+        return {"status": "ok", "path": str(assembled), "cached": True,
+                "cache_key": full_key, "chunks": json.loads((out_dir / "chunks.json").read_text()),
+                "provider": "openai", "voice": voice, "model": model, "speed": speed,
+                "duration_s": AudioSegment.from_file(assembled).duration_seconds}
+    tmpdir = tempfile.mkdtemp(prefix="ttschunk-")
+    try:
+        chunks_text = semantic_split(text)
+        sem = asyncio.Semaphore(5)
+        async def bound(i, t):
+            async with sem: return await synth_chunk(i, t, voice, speed, model, tmpdir)
+        chunks = await asyncio.gather(*[bound(i, t) for i, t in enumerate(chunks_text)])
+        merged = AudioSegment.empty()
+        gap = AudioSegment.silent(duration=300)
+        for c in chunks: merged += AudioSegment.from_file(c["path"]) + gap
+        merged.export(assembled, format="mp3")
+        (out_dir / "chunks.json").write_text(json.dumps(chunks))
+        return {"status": "ok", "path": str(assembled), "duration_s": merged.duration_seconds,
+                "provider": "openai", "voice": voice, "model": model, "speed": speed,
+                "cache_key": full_key, "cached": False, "chunks": chunks}
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+# Run
+article = open("article-18000-chars.txt").read()
+result = asyncio.run(synthesize_long(article))
+print(json.dumps(result, indent=2, default=str))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Expected behaviour">
+    <p>First call: 5 chunks synthesised in parallel under semaphore=5, assembled to ~312s mp3 at out/audio/cache/&lt;key&gt;/assembled.mp3, chunks.json index persisted. Second call with identical input: cache_key matches, assembled.mp3 exists, returns cached=true without any provider call. Tempdir is cleaned in the finally block even on exception.</p>
+  </section>
+</text>
