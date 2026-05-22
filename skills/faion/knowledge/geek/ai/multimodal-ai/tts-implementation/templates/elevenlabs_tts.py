@@ -1,8 +1,9 @@
-"""
-ElevenLabs TTS and voice cloning.
-Requirements: pip install elevenlabs
-Consent: voice cloning requires explicit consent from the person whose voice is cloned.
-"""
+# purpose: ElevenLabs TTS + consent-gated voice cloning.
+# consumes: text, voice_id (library or cloned), stability/similarity_boost, consent record for clone path.
+# produces: saved audio file at output_path; clone_voice() returns voice_id string only after consent check.
+# depends-on: elevenlabs SDK; consent store integration (caller's responsibility).
+# token-budget-impact: zero LLM tokens; provider has its own per-character billing.
+"""ElevenLabs TTS + voice cloning. Cloning requires consent record (rule r6)."""
 from __future__ import annotations
 
 import os

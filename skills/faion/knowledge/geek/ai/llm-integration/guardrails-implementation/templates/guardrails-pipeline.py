@@ -1,4 +1,10 @@
 """
+purpose: Production GuardrailsPipeline class — input checks, output validators+filters, structured audit.
+consumes: LLM client + GuardrailConfig + user_input + system_prompt + retrieval context
+produces: GuardrailResult (is_safe, filtered_output, violation_log entries)
+depends-on: content/01-core-rules.xml r1, r3, r4, r6
+token-budget-impact: per-call; LLM check only on accepted inputs when stakes flag is set
+
 GuardrailsPipeline — production guardrails for LLM input/output.
 
 Usage:

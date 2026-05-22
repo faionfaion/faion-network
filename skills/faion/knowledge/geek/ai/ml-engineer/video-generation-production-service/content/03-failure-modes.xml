@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="video-generation-production-service Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for video-generation-production-service as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Video Gen Service — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns in production video-gen service.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>In-memory queue — pod restart loses queued jobs; tenants re-submit; double billing.</description>
+      <detector>queue.kind == in-memory OR no Redis/SQS persistence</detector>
+      <repair>Use Redis Streams or SQS. Configure dead-letter queue for permanent failures.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>No per-tenant quota — one tenant exhausts provider quota; all tenants 429.</description>
+      <detector>tenant_quotas missing OR default value 0 or null</detector>
+      <repair>Enforce default quota; require explicit override for VIP tenants.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="medium">
+      <description>ffmpeg invoked from request handler — blocks request thread; service unresponsive.</description>
+      <detector>FastAPI route calls subprocess.run(ffmpeg) inline</detector>
+      <repair>Move ffmpeg to worker; never inline in HTTP handler. Workers can be horizontally scaled.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Cost cap checked AFTER submit — provider already billed; cap is decorative.</description>
+      <detector>cost cap check appears after submit() in code flow</detector>
+      <repair>Move check before queue.put(). Reject 402 if projected breach.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>No idempotency — caller network blip causes double-submit; double-billed.</description>
+      <detector>submit endpoint ignores Idempotency-Key header</detector>
+      <repair>Honour Idempotency-Key with 24h window. Same key returns existing job_id without billing.</repair>
+    </failure-mode>
+
   </section>
 </text>

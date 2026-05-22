@@ -1,7 +1,9 @@
-"""
-LongTextTTS: chunk long text at sentence boundaries and concatenate audio segments.
-Fixes: uses tempfile.mkdtemp() to avoid concurrent-agent path collisions.
-"""
+# purpose: LongTextTTS — semantic split + per-chunk synth + pydub assembly with mkdtemp isolation.
+# consumes: text (any length), voice, model, speed, output_path.
+# produces: assembled audio file at output_path; cleans tempdir on exit.
+# depends-on: openai SDK; pydub; tempfile (concurrent-agent safety); rule r3-r4 in 01-core-rules.
+# token-budget-impact: zero LLM tokens.
+"""LongTextTTS: chunk long text at sentence boundaries with mkdtemp isolation."""
 from __future__ import annotations
 
 import re

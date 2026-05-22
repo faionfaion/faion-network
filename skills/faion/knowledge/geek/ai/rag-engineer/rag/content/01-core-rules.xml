@@ -1,107 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rag Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rag. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="rag Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules for production RAG: chunking + metadata, hybrid default, rerank top-20→5, context order, answer-only-from-context with citations, MRR/faithfulness gate.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use chunk_size=512 for Q&amp;A docs, 1024 for technical manuals, and 1500 for research papers. Use 20% overlap between chunks.</statement>
-      <rationale source="v1-source">Chunk size must balance retrieval precision (smaller = more targeted) with context completeness (larger = fewer split concepts). Document type determines the natural unit of meaning.</rationale>
+    <rule id="r1-chunk-and-metadata" testable="true" depth="essential">
+      <statement>Pick chunk_size by document type (512 Q&amp;A / 1024 technical / 1500 papers) with 20% overlap; attach metadata (filename, page, section, ingestion-date) at index time. Tune chunk size empirically on a representative query sample.</statement>
+      <rationale source="v1-source">Chunk size balances precision (smaller) vs context completeness (larger). Metadata cannot be added retroactively without full re-embed.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Test chunk size empirically on a representative sample of queries before committing to production parameters.</statement>
-      <rationale source="v1-source">Optimal chunk size is corpus-dependent. The defaults above are starting points; retrieval quality should be measured on the actual query distribution.</rationale>
+    <rule id="r2-hybrid-default" testable="true" depth="essential">
+      <statement>Use hybrid search (BM25 + vector) by default; fall back to pure vector only after benchmarking shows no improvement on the labeled eval set.</statement>
+      <rationale source="v1-source">Pure semantic search misses exact technical terms, codes, and rare names; hybrid adds BM25 coverage at minimal latency on modern stores.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Add metadata at index time: source filename, page number, section heading, and ingestion date. This cannot be added retroactively without re-indexing.</statement>
-      <rationale source="v1-source">Metadata enables filtering, citation generation, and staleness detection. Adding it after indexing requires full re-embedding of all documents, which is expensive and causes downtime.</rationale>
+    <rule id="r3-rerank-20-to-5" testable="true" depth="essential">
+      <statement>Use a cross-encoder reranker for all production retrieval. Retrieve top-20, rerank to top-5 (or top-K determined by token budget). Token budget = top_K × avg_chunk_tokens must stay well below context limit minus system prompt.</statement>
+      <rationale source="v1-source">Vector similarity is calibrated for recall, not precision. Cross-encoder rerank pays 100-300ms for a meaningful precision lift. Context overflow drops middle chunks.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Remove near-duplicate chunks before indexing (cosine similarity greater than 0.97). Duplicate chunks waste storage and bias retrieval toward repeated content.</statement>
-      <rationale source="v1-source">Duplicate chunks appear multiple times in top-k results, crowding out diverse relevant content and inflating context with redundant text.</rationale>
+    <rule id="r4-context-order" testable="true" depth="essential">
+      <statement>Place highest-scored chunks first in the prompt context. Never randomise order.</statement>
+      <rationale source="v1-source">LLMs exhibit "lost in the middle" — earlier and last positions get more attention. Highest relevance must lead.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Implement incremental indexing: track document hashes, re-index only changed documents.</statement>
-      <rationale source="v1-source">Full re-indexing on every update is expensive at scale. Document hash comparison identifies changed documents in O(n) and limits embedding API cost to the changed subset.</rationale>
+    <rule id="r5-answer-only-from-context" testable="true" depth="essential">
+      <statement>Instruct the model to answer ONLY from the provided context, with an explicit fallback "If the context does not contain the answer, say so." Require citations in [Source: filename, page N] format and validate them against retrieved chunk metadata post-generation.</statement>
+      <rationale source="v1-source">Without this instruction the model leaks training knowledge confidently. Unvalidated citations are unverified assertions; validation catches hallucinated citations.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use hybrid search (BM25 + vector) by default. Fall back to pure vector only after benchmarking shows no improvement.</statement>
-      <rationale source="v1-source">Pure semantic search misses exact technical terms, product codes, and rare names. Hybrid search adds BM25 coverage with minimal additional latency on most vector databases.</rationale>
+    <rule id="r6-launch-gate" testable="true" depth="essential">
+      <statement>Before launching, require MRR@10 &gt; 0.7 on the test set AND faithfulness &gt; 0.9 (RAGAS or LLM judge). Re-evaluate after any chunk, embedding, or reranker change.</statement>
+      <rationale source="v1-source">Below these thresholds, the system ships hallucinations or wrong answers at unacceptable rates. Re-eval after changes catches regressions before users do.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use a cross-encoder reranker for all production retrieval. Retrieve top-20, rerank to top-5.</statement>
-      <rationale source="v1-source">Vector search similarity scores are calibrated for recall, not precision. A cross-encoder reranker scores candidate chunks against the full query, improving precision at the cost of 100–300ms latency.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Ensure top_k * avg_chunk_tokens stays well below the model's context limit after adding system prompt and few-shot examples.</statement>
-      <rationale source="v1-source">Context overflow causes the model to drop earlier chunks. The dropped chunks are typically the less similar ones, but they may contain the answer for complex queries.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Cache frequent queries at the application layer — same query string produces the same retrieval result.</statement>
-      <rationale source="v1-source">Embedding + retrieval adds 200–600ms. For repeated queries in high-traffic applications, caching eliminates this latency entirely.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Put highest-scored chunks first in the prompt context. Models attend better to earlier content.</statement>
-      <rationale source="v1-source">LLMs exhibit "lost in the middle" behavior: facts in the middle of a long context are attended to less than facts at the beginning or end. Highest-relevance chunks should be first.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Instruct the model to answer ONLY from the provided context. Include an explicit fallback instruction: "If the context does not contain the answer, say so."</statement>
-      <rationale source="v1-source">Without this constraint, the model falls back to its training knowledge and produces answers that appear grounded but are not. The fallback instruction prevents confident hallucination.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Always request citations in a consistent format: [Source: filename, page N]. Parse and validate them against retrieved chunk metadata post-generation.</statement>
-      <rationale source="v1-source">Citations without validation are unverified assertions. The model may cite a plausible-sounding source that was not actually retrieved. Validation against chunk metadata catches hallucinated citations.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Run a faithfulness evaluator on production responses. When faithfulness score is below 0.8, queue for human review rather than surfacing to users.</statement>
-      <rationale source="v1-source">Low faithfulness means the generated answer contains claims not supported by the retrieved context. These are hallucinations that can damage user trust and cause compliance failures.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Evaluate retrieval quality with MRR greater than 0.7 and faithfulness greater than 0.9 before launching a RAG pipeline to production.</statement>
-      <rationale source="v1-source">MRR below 0.7 means the most relevant document is often not in the top-3 retrieved results — the generated answer is likely wrong or incomplete. Faithfulness below 0.9 means 10%+ of answers contain hallucinated claims.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Track retrieval quality with regular benchmarks on a held-out query set. Re-evaluate after any index, chunking, or embedding model change.</statement>
-      <rationale source="v1-source">Index updates, embedding model upgrades, and chunking parameter changes all affect retrieval quality. Without re-evaluation, quality regressions go undetected until user complaints surface them.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>When a query requires combining facts from more than 3 separate chunks, switch to iterative (agentic) RAG rather than single-shot retrieval.</statement>
-      <rationale source="v1-source">Standard RAG degrades on multi-hop reasoning because a single retrieval step cannot surface all relevant chunks for complex cross-document questions. Iterative RAG fetches additional context based on intermediate answers.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Recommended subagents: query-embedder (embeds user query and calls vector store API), reranker (scores retrieved chunks with cross-encoder; returns top N), rag-generator (synthesizes answer from reranked context; enforces "only use provided context" constraint), citation-extractor (parses source references and validates against chunk metadata).</statement>
-      <rationale source="v1-source">Separating concerns enables independent testing, error recovery, and reuse of each subagent in different RAG variants.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Reference implementations use: llama-index (end-to-end RAG), langchain (RAG chains, retrievers, document loaders), ragas (RAG evaluation: faithfulness, answer relevance, context recall), qdrant-client (Python client for Qdrant), unstructured (parse PDFs, DOCX, HTML to clean text).</statement>
-      <rationale source="v1-source">These tools provide the standard interfaces for building production RAG systems with well-supported APIs.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Vector database selection: Qdrant (recommended production self-hosted), Chroma (dev/prototyping), LlamaCloud (managed parsing + indexing), Pinecone (fully managed; serverless tier), plus reranking services (Cohere Rerank: SaaS best-in-class, OpenAI Embeddings: text-embedding-3-large standard choice, Voyage AI: text-voyage-3 alternative).</statement>
-      <rationale source="v1-source">Qdrant provides the best balance of performance, filtering capabilities, and self-hosting flexibility. Cohere and OpenAI embeddings are the industry standards for quality and availability.</rationale>
-    </rule>
-    <rule id="r20" testable="true" depth="essential">
-      <statement>Test chunk size empirically: 512 tokens for Q&amp;A, 1024 for technical docs, 1500 for research papers. Always add metadata (source filename, page, section, date) at index time — it's impossible to add retroactively without re-indexing.</statement>
-      <rationale source="v1-source">Chunk size dramatically affects both retrieval and generation quality. Metadata is the foundation for citations and filtered retrieval.</rationale>
-    </rule>
-    <rule id="r21" testable="true" depth="essential">
-      <statement>Use hybrid search (BM25 + vector) by default; fall back to pure vector only after benchmarking shows no improvement. Evaluate retrieval quality with RAGAS before launching; aim for MRR greater than 0.7, faithfulness greater than 0.9.</statement>
-      <rationale source="v1-source">Hybrid search catches exact terms that pure semantic search misses. RAGAS metrics provide quantitative gates before production launch.</rationale>
-    </rule>
-    <rule id="r22" testable="true" depth="essential">
-      <statement>Cache frequent queries at the application layer — same query string → same retrieval result. Implement incremental indexing: track document hashes, re-index only changed documents. Deduplicate near-identical chunks before indexing (cosine similarity greater than 0.97) to avoid redundant context.</statement>
-      <rationale source="v1-source">Caching eliminates redundant API calls. Incremental indexing scales to large corpora. Deduplication reduces token waste and improves retrieval precision.</rationale>
-    </rule>
-    <rule id="r23" testable="true" depth="essential">
-      <statement>Retrieved context order matters: put highest-scored chunks first in the prompt (models attend better to earlier content). Agents may silently ignore "answer only from context" constraints — add an explicit faithfulness check as a post-generation step.</statement>
-      <rationale source="v1-source">LLM attention patterns favor earlier content. Post-checks catch hallucination that the system prompt alone cannot prevent.</rationale>
-    </rule>
-    <rule id="r24" testable="true" depth="essential">
-      <statement>If the query requires combining facts from more than 3 separate chunks, standard RAG degrades; switch to agentic RAG with iterative retrieval. Index re-embedding after changing the embedding model requires complete re-indexing — plan for downtime or blue/green index strategy.</statement>
-      <rationale source="v1-source">Multi-hop reasoning needs multiple retrieval steps. Embedding model changes are high-risk operational events requiring careful planning.</rationale>
-    </rule>
-    <rule id="r25" testable="true" depth="essential">
-      <statement>Token budget: top_k * avg_chunk_tokens must stay well below the model's context limit after adding system prompt and few-shot examples. Human-in-loop checkpoint: when faithfulness score less than 0.8 on production queries, queue them for human review rather than surfacing the answer to users.</statement>
-      <rationale source="v1-source">Context overflow causes the model to drop earlier chunks. Human review gates catch low-confidence answers before they harm user trust.</rationale>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip RAG when the corpus fits a single context window AND token cost is acceptable; or when questions are general-knowledge with no domain corpus dependency.</statement>
+      <rationale source="phase-d">Context-stuffing beats RAG at small scale; general-knowledge questions don't need retrieval.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

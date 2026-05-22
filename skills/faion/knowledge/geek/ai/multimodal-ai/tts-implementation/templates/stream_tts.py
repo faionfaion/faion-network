@@ -1,7 +1,9 @@
-"""
-Async TTS streaming: stream_tts generator and stream_to_speaker for pyaudio.
-Note: pyaudio requires portaudio system library. Verify at import, not at runtime.
-"""
+# purpose: Async TTS streaming — generator pattern for low first-byte latency.
+# consumes: text, voice; in async context only.
+# produces: AsyncGenerator[bytes] yielding PCM chunks; or WebSocket forwarded bytes; or pyaudio playback.
+# depends-on: openai AsyncOpenAI; optional pyaudio (requires portaudio system lib).
+# token-budget-impact: zero LLM tokens.
+"""Async TTS streaming: stream_tts generator + pyaudio + WebSocket forwarders."""
 from __future__ import annotations
 
 from typing import AsyncGenerator
