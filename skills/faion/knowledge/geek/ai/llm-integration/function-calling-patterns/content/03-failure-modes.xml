@@ -1,12 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="function-calling-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for function-calling-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Function Calling Patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six recurring failure modes with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Treating stop_reason == "tool_use" as task completion and returning a partial response.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>tool_use stop_reason means the model wants to call a tool and has not yet produced a final answer. Returning the incomplete assistant message skips all intended tool actions.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>50-tool dump — every registered tool surfaced to every call.</description>
+      <symptom>Model picks the wrong tool ~20% of the time; same-category tools confused.</symptom>
+      <root-cause>"Easier to expose everything" + no routing layer.</root-cause>
+      <fix>Two-stage router (templates/tool-router.py): pick category → surface category subset (≤20 tools).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>No arg validation — LLM-supplied args go straight to the executor.</description>
+      <symptom>Production calls execute with hallucinated fields, wrong types, invalid enums.</symptom>
+      <root-cause>Trust the model; no schema gate at the boundary.</root-cause>
+      <fix>Validate against input_schema before execute(); return ValidationError as tool_result so the model can self-correct (rule r2).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Sequential tool dispatch when the model emitted parallel calls.</description>
+      <symptom>Per-turn latency 3-5x what it should be; user-visible slowness.</symptom>
+      <root-cause>Loop wrote a naive for-loop over tool_use blocks.</root-cause>
+      <fix>ThreadPoolExecutor / asyncio.gather over the parallel block list (rule r4).</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Infinite loop on a broken tool that returns the same response.</description>
+      <symptom>Single conversation burns 50+ API calls; cost spike.</symptom>
+      <root-cause>No iteration cap.</root-cause>
+      <fix>max_turns=15 + cap-hit log + truncated-answer return (rule r3).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Vendor mixing — single conversation sends Anthropic tool_use to OpenAI API.</description>
+      <symptom>Opaque API errors; debugging takes hours.</symptom>
+      <root-cause>Adapter layer absent or buggy.</root-cause>
+      <fix>One conversation = one vendor format; adapter translates per call site, not per message (rule r6).</fix>
+    </antipattern>
+    <antipattern id="ap-06">
+      <description>Schema-versionless tools — schema change deploys without bumping the version.</description>
+      <symptom>Mid-deploy, half traffic uses old schema, half new; intermittent errors.</symptom>
+      <root-cause>Schema treated as code, not as API.</root-cause>
+      <fix>Bump version on any schema change; pin caller to a version; deprecate old versions explicitly (rule r7).</fix>
+    </antipattern>
   </section>
 </text>

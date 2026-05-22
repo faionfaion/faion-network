@@ -1,3 +1,8 @@
+# purpose: versioned SO schema demonstrating schema-version-pinning patterns
+# consumes: caller-supplied schema_version literal
+# produces: typed dispatch from version -> handler
+# depends-on: r1-semver-in-schema, r5-version-in-tool-call
+# token-budget-impact: ~250 tokens
 """Two versions of the same shape with a typed dispatcher.
 
 Pattern: every shared SO model declares schema_version as a Literal
