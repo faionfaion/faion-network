@@ -1,39 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gemini-api-integration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gemini-api-integration. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Gemini API Integration Core Rules" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six testable rules for Gemini API integration.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Select Gemini 1.5 Pro for complex multimodal reasoning, long context (&gt;500K tokens), or code analysis. Select Gemini 1.5 Flash for classification, extraction, and simple Q&amp;A where cost matters more than latency. Select gemini-1.0-pro for text-only legacy integration where 32K context is sufficient. Avoid gemini-1.0-pro-vision; Gemini 1.5 models subsume it.</statement>
-      <rationale source="v1-source">Pro handles complex reasoning and cross-file synthesis; Flash prioritizes cost and speed for bounded tasks. The context window is the primary decision factor: tasks exceeding ~100K tokens need Pro; under 100K, Flash is cheaper. Legacy models are deprecated and only used when Vertex AI requires specific model versions.</rationale>
+      <statement source="google-ai-docs-2026">Pick Flash for cost-sensitive paths (≤20% of Pro pricing); Pro only when quality eval requires it. Default = Flash.</statement>
+      <rationale>Flash is cost-competitive with Haiku; Pro pricing kicks in only when needed.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Use the 1M token context only when the task genuinely requires processing a single large document or codebase whole; do not artificially pad input to justify the model choice. Use native multimodal capabilities (single request with text + image + audio + video) only when all media types are semantically linked; do not mix unrelated video with unrelated text as a way to load both simultaneously. Enable Grounding (Google Search) only when real-time information is required and the user understands the cost impact; do not enable it by default.</statement>
-      <rationale source="v1-source">The 1M context is expensive at scale if you do not need it; use Flash for most tasks and reserve Pro for genuinely large documents. Multimodal in one call is powerful but only when the context is coherent (analyzing a presentation slide + speaker transcript + audio + video of the speaker together makes sense; pasting random images into a coding question does not). Grounding costs add up silently and should be transparent to users.</rationale>
+      <statement source="google-ai-docs-2026">For media files &gt;10 MB or any video/audio, use the Files API (upload + reference) instead of inline base64. Track file TTL (48h default).</statement>
+      <rationale>Inline base64 inflates the request and blows the request-size limit; Files API also enables caching.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Always check response.prompt_feedback.block_reason before accessing response.text; accessing .text on a safety-blocked response raises ValueError. Wrap access in try-except and log the block reason for audit.</statement>
-      <rationale source="v1-source">Gemini's safety filters are aggressive and block responses silently if you do not check. Accessing the text field on a blocked response crashes; the exception is not informative. Logging block reasons helps identify if a class of prompts is systematically blocked by safety filters.</rationale>
+      <statement source="google-ai-docs-2026">generation_config is always set explicitly (temperature, max_output_tokens, response_mime_type). Default of "leave it to the SDK" produces inconsistent behaviour across versions.</statement>
+      <rationale>Explicit config locks behaviour against SDK upgrades.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Always configure generation_config.max_output_tokens explicitly; the default is unlimited and causes runaway costs. Set a reasonable bound based on expected output length.</statement>
-      <rationale source="v1-source">Without explicit max_output_tokens, Gemini can generate responses with tens of thousands of tokens, multiplying cost unexpectedly. Set 1024-8192 depending on task.</rationale>
+      <statement source="google-ai-docs-2026">safety_settings covers all 4 standard categories (HARASSMENT, HATE_SPEECH, SEXUALLY_EXPLICIT, DANGEROUS_CONTENT) with explicit thresholds. Omitting a category accepts the SDK default which may change.</statement>
+      <rationale>Without explicit thresholds, BLOCK_REASON appears with no caller fingerprint.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Use gemini-1.5-flash for classification, extraction, and simple Q&amp;A where cost matters more than latency. Reserve gemini-1.5-pro for complex reasoning or contexts exceeding 500K tokens.</statement>
-      <rationale source="v1-source">Flash costs approximately 3x less than Pro while maintaining good quality for bounded tasks. Pro's reasoning is measurably better for open-ended synthesis and cross-file analysis.</rationale>
+      <statement source="ops-folklore">Retry on 429 (rate-limited) with exponential backoff capped at 60s and ≤5 attempts. No retry on 400 (bad request) — surface to caller.</statement>
+      <rationale>429 is transient; 400 is structural and retries waste quota.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Enable context caching (genai.CachedContent) when the same large document is queried multiple times in a session; the cache reduces token cost by 75% for cached content.</statement>
-      <rationale source="v1-source">Caching amortizes the cost of large document uploads across multiple queries; after two or three questions about the same 1MB codebase, the cache pays for itself.</rationale>
+      <statement source="google-ai-docs-2026">When response.candidate.finish_reason == "SAFETY" or "BLOCKLIST" or "OTHER", caller surfaces the block_reason to the application layer; do not silently coerce to empty string.</statement>
+      <rationale>Silent BLOCK_REASON is a top source of "AI answered nothing" production bugs.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use response.usage_metadata to log prompt_token_count and candidates_token_count for every call. Gemini's 1M context makes it easy to accidentally send huge prompts without noticing.</statement>
-      <rationale source="v1-source">Logging usage per call reveals cost outliers and helps calibrate prompt sizes. Without logging, a single 500K-token request can blow a budget silently.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire Gemini client per the procedure.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>When integrating Gemini into an agent, first determine whether the task is multimodal or text-only to select Flash vs. Pro. Then, for file uploads, poll state.name == "ACTIVE" before constructing the analysis prompt. For long-context document analysis, check if chunking is needed (&gt;900K tokens after encoding) or if the full document fits. For function calling loops, cap iteration at a configurable limit (default 10) to prevent infinite tool calls.</statement>
-      <rationale source="v1-source">This workflow reduces cost (Flash where possible), prevents async bugs (polling before use), and prevents runaway loops (iteration caps).</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Vendor is not Gemini → skip; use the relevant vendor methodology.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>
