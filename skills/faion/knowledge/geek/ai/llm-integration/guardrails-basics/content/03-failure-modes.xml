@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="guardrails-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for guardrails-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Guardrails Basics Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Five recurring antipatterns in guardrail stacks.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Logging the raw blocked content alongside the violation record.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Raw injection payloads in logs create secondary attack surface and may violate PII policies. Log violation type, user ID, and sanitized input only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running the moderation API on every request in a high-throughput streaming pipeline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>At 50–200ms per call, two LLM-based guardrails add 1s+ to every request, which breaks streaming UX. Measure P95 latency impact before enabling in real-time contexts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Prompt injection via tool results: if an agent fetches external data (web pages, database rows) and includes it in the next LLM call, the fetched content can contain injection payloads — run injection detection on all external data before it enters the context</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents that skip validation of external data are vulnerable to indirect prompt injection attacks.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Multi-turn injection: a user spreading a harmful instruction across 5 harmless-looking turns defeats per-turn guardrails; consider a sliding-window check over the last N turns</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Per-turn guardrails miss cumulative attacks distributed across conversation turns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Human checkpoint needed before adjusting moderation thresholds; lowering a threshold in response to false positives can open real attack vectors — require a second reviewer for any threshold change in production</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Threshold adjustments are security changes and require human review, not autonomous action.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Guardrail latency accumulates; two LLM-based guardrails (input + output) at 500ms each add 1s to every request — measure P95 latency impact before enabling in streaming contexts</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Streaming responses become unresponsive with cumulative guardrail latency; measure before deploying.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>PromptInjectionDetector regex patterns must be escaped correctly for re.IGNORECASE; test each pattern independently against known evasions (Unicode lookalikes, whitespace normalization) before adding to production</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unescaped or untested patterns fail to catch evasions or cause false positives.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Single-layer guardrail (e.g. only an LLM classifier).</description>
+      <symptom>Adversarial inputs slip; the one layer is a single point of failure.</symptom>
+      <root-cause>"Classifier handles everything" assumption.</root-cause>
+      <fix>≥4 layers per rule r1.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Classifier first in the chain.</description>
+      <symptom>Latency 800ms on every input even trivially-bad ones.</symptom>
+      <root-cause>Order was set by enthusiasm, not cost.</root-cause>
+      <fix>Cheap-first ordering (rule r2).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>No per-layer telemetry.</description>
+      <symptom>Cannot diagnose which layer is doing the work; cannot tune.</symptom>
+      <root-cause>Telemetry afterthought.</root-cause>
+      <fix>Per-layer block_rate metric in dashboard (rule r3).</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Fail-open by default.</description>
+      <symptom>Classifier outage releases unfiltered traffic.</symptom>
+      <root-cause>"Don't break the service" reflex.</root-cause>
+      <fix>fail_closed = true; opt-in fail_open with sign-off (rule r5).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Classifier as detector only (no schema/regex).</description>
+      <symptom>JSON output silently invalid; schema-check would have caught it.</symptom>
+      <root-cause>Belief that the classifier covers structural problems.</root-cause>
+      <fix>Output schema as a separate, deterministic layer (rule r1).</fix>
+    </antipattern>
   </section>
 </text>
