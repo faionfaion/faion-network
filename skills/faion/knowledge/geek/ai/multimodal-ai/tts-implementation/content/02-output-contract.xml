@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tts-implementation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="TTS Implementation — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON shape returned by TTSService.synthesize() for both short-form (single-chunk) and long-form (multi-chunk assembled) outputs. Carries cache_key, chunks array, total duration, eviction flag.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://tts-implementation/output.schema.json",
+  "type": "object",
+  "required": ["status", "path", "duration_s", "provider", "voice", "model",
+               "cache_key", "cached", "chunks"],
+  "properties": {
+    "status":     {"type": "string", "enum": ["ok", "error"]},
+    "path":       {"type": "string", "minLength": 1, "description": "assembled audio file path"},
+    "duration_s": {"type": "number", "minimum": 0.0, "description": "sum of all chunk durations"},
+    "provider":   {"type": "string", "enum": ["openai", "elevenlabs", "google", "azure"]},
+    "voice":      {"type": "string", "minLength": 1},
+    "model":      {"type": "string", "minLength": 1},
+    "speed":      {"type": "number", "minimum": 0.25, "maximum": 4.0, "default": 1.0},
+    "cache_key":  {"type": "string", "pattern": "^[a-f0-9]{64}$",
+                   "description": "sha256 of full text + voice + speed + provider"},
+    "cached":     {"type": "boolean"},
+    "chunks":     {"type": "array",
+                   "items": {"type": "object",
+                             "required": ["index", "path", "duration_s", "char_count", "cached"],
+                             "properties": {
+                               "index":      {"type": "integer", "minimum": 0},
+                               "path":       {"type": "string"},
+                               "duration_s": {"type": "number"},
+                               "char_count": {"type": "integer"},
+                               "cached":     {"type": "boolean"}
+                             }}},
+    "eviction":   {"type": "object",
+                   "properties": {
+                     "files_removed": {"type": "integer"},
+                     "bytes_freed":   {"type": "integer"}
+                   }},
+    "consent_id": {"type": "string", "description": "present only when clone path was taken"},
+    "error":      {"type": "string"}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>chunks — empty array for single-call payloads; one entry per chunk for LongTextTTS output.</item>
+      <item>path — assembled audio file (sum of chunks for long-form, single file for short-form).</item>
+      <item>duration_s — sum of chunk durations measured with pydub; 0.0 with status ok is an error.</item>
+      <item>cache_key — sha256 hex of full payload + voice + speed + provider.</item>
+      <item>consent_id — required when provider == "elevenlabs" AND voice is a cloned voice id.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>provider == "elevenlabs" with cloned voice_id and no consent_id field.</description>
+      <reason>Violates rule r6-clone-consent-gate; legal exposure under ElevenLabs ToS.</reason>
+    </antipattern>
+    <antipattern>
+      <description>chunks array empty but duration_s &gt; 60s.</description>
+      <reason>Long-form output without chunk metadata cannot be re-assembled or partially evicted.</reason>
+    </antipattern>
+    <antipattern>
+      <description>cache_key length != 64 or contains non-hex characters.</description>
+      <reason>Cache lookups via the key will silently miss; integrity check fails.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example — long-form podcast episode">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "path": "out/audio/cache/abc123/episode-42.mp3",
+  "duration_s": 312.7,
+  "provider": "openai",
+  "voice": "onyx",
+  "model": "tts-1-hd",
+  "speed": 1.0,
+  "cache_key": "9f4a7c3e8d2b1a5f6e9c0d3b2a1f4e8d7c9b6a5d4e3c2b1a0f9e8d7c6b5a4f3e",
+  "cached": false,
+  "chunks": [
+    {"index": 0, "path": "out/audio/cache/abc123/chunk-0.mp3", "duration_s": 62.1, "char_count": 3950, "cached": false},
+    {"index": 1, "path": "out/audio/cache/abc123/chunk-1.mp3", "duration_s": 64.5, "char_count": 3990, "cached": false},
+    {"index": 2, "path": "out/audio/cache/abc123/chunk-2.mp3", "duration_s": 63.0, "char_count": 3920, "cached": false},
+    {"index": 3, "path": "out/audio/cache/abc123/chunk-3.mp3", "duration_s": 61.8, "char_count": 3880, "cached": false},
+    {"index": 4, "path": "out/audio/cache/abc123/chunk-4.mp3", "duration_s": 61.3, "char_count": 3260, "cached": false}
+  ],
+  "eviction": {"files_removed": 4, "bytes_freed": 18874368}
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "path": "out/audio/clone-42.mp3",
+  "duration_s": 25.0,
+  "provider": "elevenlabs",
+  "voice": "cloned-speaker-alice",
+  "model": "eleven_multilingual_v2",
+  "cache_key": "shortkey",
+  "cached": false,
+  "chunks": []
+}
+]]></code>
+      <note>Invalid: cloned voice but no consent_id field; cache_key not sha256; chunks empty for &gt;20s audio.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>If duration_s &gt; 60s, chunks array has &gt;= 2 entries.</item>
+      <item>sum(c.duration_s for c in chunks) ≈ duration_s (within 0.5s tolerance).</item>
+      <item>If provider == "elevenlabs" and voice is a clone id, consent_id is present and non-empty.</item>
+      <item>cache_key passes sha256 regex.</item>
+      <item>If eviction object is present, files_removed and bytes_freed are non-negative integers.</item>
     </list>
   </section>
 </text>

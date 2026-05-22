@@ -4,71 +4,92 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: CodeChunker splits Python source via the `ast` module at FunctionDef, AsyncFunctionDef, and ClassDef boundaries, emitting chunks with name, type, docstring, and line range.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Splits source code at function and class boundaries via Python `ast` (or tree-sitter for JS/TS), emitting chunks carrying name, type, docstring, and line range for code-search RAG.
 content_id: "3f02c6312ddf157e"
+complexity: deep
+produces: code
+est_tokens: 4000
 tags: [chunking, code-chunking, ast, rag, code-search]
 ---
 # Code Chunking via AST and Function Boundaries
 
 ## Summary
 
-**One-sentence:** CodeChunker splits Python source via the `ast` module at FunctionDef, AsyncFunctionDef, and ClassDef boundaries, emitting chunks with name, type, docstring, and line range.
+**One-sentence:** Splits source code at function and class boundaries via Python `ast` (or tree-sitter for JS/TS), emitting chunks carrying name, type, docstring, and line range for code-search RAG.
 
-**One-paragraph:** CodeChunker splits Python source via the `ast` module at FunctionDef, AsyncFunctionDef, and ClassDef boundaries, emitting chunks with name, type, docstring, and line range. JavaScript and TypeScript fall back to regex patterns for function and class extraction. Generic line-based splitting handles unsupported languages or parse errors.
+**One-paragraph:** CodeChunker dispatches by language. Python uses `ast.parse` on the full source and walks FunctionDef, AsyncFunctionDef, ClassDef nodes. JavaScript/TypeScript use tree-sitter (regex is a last-resort fallback). Each chunk carries name, type, docstring, start_line, end_line. SyntaxError or unsupported language falls back to a generic line splitter that MUST emit a warning so the caller can flag unindexed metadata. Overlapping class/method chunks are deduplicated by (name, start_line) before indexing.
+
+**Ефективно для:** RAG engineer ingesting a code repo for "what does function X do" / "show examples of pattern Y" queries — closes the gap between line-based chunkers (which destroy function boundaries) and human code-search intent.
 
 ## Applies If (ALL must hold)
 
-- Ingesting source code repositories into a code-search RAG (Python AST, JS/TS function-level splitting).
-- Building a code documentation assistant that answers "what does function X do?" or "show me examples of pattern Y".
-- Any pipeline where the retrieval query maps naturally to function or class units (e.g., finding all async route handlers).
-- Multi-language codebases where Python is the primary language and JS/TS is secondary.
+- Ingesting source code into a RAG / semantic code-search index.
+- Primary language is Python OR JS/TS with tree-sitter available.
+- Queries map naturally to function or class units (e.g. "find all async route handlers").
+- Caller is prepared to handle a warning when AST parse fails.
 
 ## Skip If (ANY kills it)
 
-- Code chunking via JS regex patterns on TypeScript with decorators or generics — AST parsers handle those correctly; regex does not. Use tree-sitter bindings instead.
-- Corpora entirely in languages not supported by ast or the JS regex patterns — the generic line-based fallback silently drops class and function metadata.
-- Documentation or prose files — use chunking-document-structure or chunking-semantic instead.
-- Files with syntax errors that prevent ast.parse — the fallback to generic splitting silently drops all metadata; surface this to the caller as a warning.
+- Corpus is prose or documentation — load [[chunking-document-structure]] or [[chunking-semantic]].
+- TypeScript with decorators / generics AND tree-sitter unavailable — regex path fails silently; defer until tree-sitter is installed.
+- Files with syntax errors with no fallback policy — generic line-based output silently drops metadata.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Source files | .py / .js / .ts / .tsx | repo checkout |
+| Language detector | extension map | file scan |
+| tree-sitter bindings | python wheel | `pip install tree-sitter` for JS/TS |
+| Embedding model token cap | int | matches downstream embedder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/rag-engineer/chunking-basics` | Token measurement + metadata-at-creation invariants apply here too. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: dispatch by language, AST primary path, dedup overlapping chunks, log on fallback, version on strategy change | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for a code chunk: id, text, type, name, docstring, start_line, end_line, language, source | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: regex on complex TS, silent fallback, no dedup, ignoring max_chunk_size on long functions | ~800 |
+| `content/04-procedure.xml` | deep | 6-step procedure: detect lang → parse → walk nodes → emit records → dedup → log | ~800 |
+| `content/05-examples.xml` | medium | Worked example: CodeChunker on a Django views.py emitting class + 3 method chunks | ~500 |
+| `content/06-decision-tree.xml` | essential | Routes language + parse-status to strategy + fallback path | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `detect-language` | haiku | Extension + shebang classification. |
+| `parse-and-chunk` | haiku | Mechanical AST walk, no LLM judgement. |
+| `summarise-docstring` | sonnet | When docstring missing, generate one-line synopsis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/code_chunker.py` | CodeChunker reference with Python AST + JS/TS tree-sitter dispatch and generic fallback. |
+| `templates/code-chunk-schema.json` | JSON Schema for the per-chunk output record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-chunking-code-ast.py` | Validate emitted chunk list against schema; warn on missing docstring; check dedup. | After chunker run, before embedding. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[chunking-basics]] — token + metadata invariants.
+- [[chunking-document-structure]] — sibling for Markdown / HTML.
+- [[chunking-production-service]] — wraps this chunker in a service.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` decides between Python AST, JS/TS tree-sitter, JS/TS regex fallback, and generic line-based on syntax error. Always use the tree before instantiating a chunker so the fallback path is intentional, not accidental.

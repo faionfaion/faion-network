@@ -1,51 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="hybrid-search-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for hybrid-search-implementation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="hybrid-search-implementation Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules for production hybrid-search implementations across Weaviate, Qdrant, Pinecone, Elasticsearch.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use Weaviate's hybrid() query method with alpha parameter for clean, built-in hybrid search.</statement>
-      <rationale source="v1-source">Weaviate handles BM25 preprocessing internally, reducing implementation complexity vs other databases.</rationale>
+    <rule id="r1-weaviate-native-hybrid" testable="true" depth="essential">
+      <statement>For Weaviate, use the native hybrid() query method with alpha parameter; do not run dense + BM25 client-side when the server supports it.</statement>
+      <rationale source="v1-source; Weaviate docs">Weaviate handles BM25 preprocessing and fusion internally, reducing latency and code complexity vs client-side fusion.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Pre-compute sparse vectors outside Qdrant; the DB stores (indices, values) but has no built-in tokenizer.</statement>
-      <rationale source="v1-source">Qdrant's sparse vector format requires application-layer tokenization. Raw text cannot be passed to the sparse vector field.</rationale>
+    <rule id="r2-qdrant-precompute-sparse" testable="true" depth="essential">
+      <statement>For Qdrant, pre-compute sparse vectors (BM25 or SPLADE) in application code before insert; Qdrant stores (indices,values) but has no built-in tokeniser.</statement>
+      <rationale source="v1-source; Qdrant docs">Passing raw text to a sparse vector field produces a type error at the API level. Tokenisation must live in application code.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Train BM25Encoder on the full corpus before ingestion; corpus changes invalidate the encoder and require retraining.</statement>
-      <rationale source="v1-source">Pinecone's BM25Encoder learns corpus-level IDF statistics. If the corpus changes significantly, the encoder's IDF weights become stale.</rationale>
+    <rule id="r3-pinecone-bm25encoder" testable="true" depth="essential">
+      <statement>For Pinecone sparse-dense, train BM25Encoder on the full corpus before ingestion; significant corpus changes invalidate the encoder and require retraining.</statement>
+      <rationale source="v1-source; Pinecone docs">BM25Encoder learns corpus-wide IDF. Stale IDF weights degrade keyword recall as the corpus grows.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Prefer RRF over linear combination when the two search methods return scores on different scales (e.g., BM25 vs cosine similarity).</statement>
-      <rationale source="v1-source">RRF uses rank position, not raw scores, so it is immune to score scale mismatches. Linear combination requires explicit per-corpus normalization to avoid one signal dominating the other.</rationale>
+    <rule id="r4-default-rrf" testable="true" depth="essential">
+      <statement>Default to RRF over linear combination when leg scores come on different scales; require an alpha sweep before switching to linear.</statement>
+      <rationale source="v1-source">RRF uses rank positions and is immune to score-scale mismatches. Linear without normalisation is fragile.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Measure alpha on a labeled eval set before deploying; wrong alpha degrades results worse than using a single search method alone.</statement>
-      <rationale source="v1-source">Alpha is data-dependent. A value tuned for one corpus can invert the quality ordering on a different corpus.</rationale>
+    <rule id="r5-measure-alpha" testable="true" depth="essential">
+      <statement>Measure alpha on a labeled eval set of ≥50 queries before deploying; never ship a guessed alpha to production.</statement>
+      <rationale source="v1-source">Wrong alpha can be worse than either method alone. Intuition about the right value is unreliable across corpora.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Default to RRF over linear combination: RRF is robust to scale differences between BM25 and cosine scores, requires no normalization.</statement>
-      <rationale source="v1-source">RRF eliminates the need for per-corpus score normalization.</rationale>
+    <rule id="r6-fetch-2-3x-candidates" testable="true" depth="essential">
+      <statement>Pre-fetch 2-3x the desired top-K from each leg (e.g., k_leg=30 for final k=10) so fusion can promote middle-ranked documents that win across both methods.</statement>
+      <rationale source="v1-source">Documents that rank 8-15 in each leg but win in fused score are the entire reason hybrid beats single-leg. Fetching only top-K per leg loses them.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Always fetch 2-3x more candidates from each method than the final top-K before fusion — fusion can promote documents not in top-10 of either method alone.</statement>
-      <rationale source="v1-source">Fusion can surface documents that rank moderately in both methods but not in the top-10 of either alone. Pre-fetching more candidates allows this promotion.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Build a labeled evaluation set (50-200 query/relevant-doc pairs) before tuning alpha — intuition about the right alpha is usually wrong.</statement>
-      <rationale source="v1-source">Alpha tuning requires empirical data. Intuition is unreliable.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>For Weaviate, HybridFusion.RELATIVE_SCORE generally outperforms RANKED for corpora with high score variance.</statement>
-      <rationale source="v1-source">RELATIVE_SCORE is more robust to outlier scores.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use the determine_alpha pattern (detect quotes, codes, query length) to route query types automatically rather than one global alpha.</statement>
-      <rationale source="v1-source">Dynamic alpha improves quality on mixed query sets.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>For Elasticsearch, normalize BM25 scores with `/max(bm25_scores)` and cosine similarity is already [0,1] before linear combination.</statement>
-      <rationale source="v1-source">Score normalization is essential for linear combination in Elasticsearch.</rationale>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>If the target store is not in {Weaviate, Qdrant, Pinecone, Elasticsearch} or latency budget blocks two-leg retrieval, skip hybrid-search-implementation.</statement>
+      <rationale source="phase-d">Covered backends define the implementation paths; outside them this methodology does not apply directly.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
