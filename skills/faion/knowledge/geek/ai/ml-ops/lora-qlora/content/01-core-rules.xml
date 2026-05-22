@@ -1,43 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lora-qlora Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lora-qlora. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LoRA and QLoRA — Low-Rank Adaptation Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules for lora-qlora.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>LoRA configurations MUST specify four core parameters: (1) rank (r), typically 8-64 depending on task complexity; (2) alpha (scaling factor), usually equal to rank; (3) target_modules, the attention layers to adapt (q_proj, k_proj, v_proj, o_proj, plus MLP layers gate_proj, up_proj, down_proj for instruction-following); (4) dropout, typically 0.05-0.1 for regularization. Configurations MUST NOT target fewer than four attention layers; targeting only q and v (a common shortcut) leaves 40-60% of trainable capacity unused.</statement>
-      <rationale source="v1-source">Each parameter has a specific purpose: rank controls the expressiveness of the adapter (higher rank = more capacity but more parameters); alpha scales the LoRA contribution to prevent catastrophic forgetting; target_modules determines which layers benefit from adaptation (attention layers are more sensitive than feed-forward layers); dropout prevents overfitting on small datasets. Incomplete target coverage is a major failure mode — the model appears to train cleanly but learns less than expected.</rationale>
+
+    <rule id="bf16-on-ampere" testable="true" depth="essential">
+      <statement>LoRA-only training MUST use bf16 on Ampere+ GPUs (A100/A6000/3090/4090/5090).</statement>
+      <rationale source="PyTorch docs">bf16 has wider dynamic range than fp16; far fewer NaN crashes.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>QLoRA deployments MUST use exactly this quantization stack: (1) load_in_4bit=True with bnb_4bit_quant_type="nf4", (2) bnb_4bit_compute_dtype=torch.bfloat16 (or torch.float16 on older GPUs), (3) bnb_4bit_use_double_quant=True (quantize the quantization constants themselves), (4) call prepare_model_for_kbit_training BEFORE get_peft_model (reversing the order silently produces wrong gradients), (5) use optim="paged_adamw_8bit" to handle memory spikes in the optimizer. Quantized base models MUST NOT be merged with adapters in production; keep adapters separate to avoid quality degradation.</statement>
-      <rationale source="v1-source">Each quantization parameter has measurable impact: NF4 is optimal for LLM inference and training; double quantization saves ~25% additional memory; bfloat16 has wider dynamic range than float16 on A100/H100 and avoids overflow. Calling prepare_model_for_kbit_training in the wrong order breaks gradient computation silently — the model appears to train but gradients are corrupted. Merging quantized adapters causes quality loss because the merge operation assumes the base is in full precision.</rationale>
+    <rule id="nf4-for-qlora" testable="true" depth="essential">
+      <statement>QLoRA base quantisation MUST be nf4 (not int4 / int8).</statement>
+      <rationale source="QLoRA paper">nf4 is the only 4-bit format that preserves quality for LLMs as of 2026.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>LoRA training configurations MUST be selected based on three factors: (1) Dataset size: &lt;500 examples → use lower learning rate (5e-5), &gt;10K examples → use higher LR (2e-4); (2) Task complexity: simple classification → rank 8, instruction-following → rank 32-64; (3) GPU memory: enable gradient checkpointing (30% memory savings, 15% throughput cost) on 8B+ models. Training MUST include: per_device_train_batch_size=2-4, gradient_accumulation_steps=4-8 (to simulate larger batches), lr_scheduler_type="cosine" (better convergence than linear), warmup_ratio=0.03 (3% of steps), fp16=True or bf16=True (depends on GPU).</statement>
-      <rationale source="v1-source">Learning rate scales with dataset size: small datasets require conservative LR to avoid overfitting; large datasets benefit from higher LR for faster convergence. Gradient checkpointing trades memory for throughput — always worth it on 8B+ models because memory is the bottleneck. Cosine learning rate decay provides better final loss than linear. Warmup prevents divergence in the first steps.</rationale>
+    <rule id="compute-dtype-bf16-for-qlora" testable="true" depth="essential">
+      <statement>QLoRA compute_dtype MUST be bf16 (not fp16) when GPU supports it.</statement>
+      <rationale source="QLoRA + bnb docs">bf16 compute on nf4 weights is the empirically stable combination.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>LoRA adapter saving and loading MUST follow this pattern: (1) call model.save_pretrained("path") to save only the adapter (LoRA matrices and config), not the base model; (2) load via AutoPeftModelForCausalLM.from_pretrained("path") which automatically loads the adapter and merges it into the base for inference; (3) do NOT attempt to load an adapter path directly as a full model — this will raise a dimension mismatch error. For production deployment, merge the adapter into the base via model.merge_and_unload() to produce a single model file, but keep the separate adapter for versioning and A/B testing.</statement>
-      <rationale source="v1-source">Adapters are designed to be small and versionable; saving just the LoRA matrices (typically 1-10MB) is the intended workflow. Merging should only happen for final deployment to a production service that cannot swap adapters. Keeping separate adapters enables task switching and A/B testing without reloading the base.</rationale>
+    <rule id="rank-alpha-2-1" testable="true" depth="essential">
+      <statement>LoRA alpha MUST be 2× rank by default; deviate only with measured evidence.</statement>
+      <rationale source="PEFT docs">2:1 is the empirically stable ratio.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>DoRA (use_dora=True) provides measurable improvements over LoRA (2-5% quality gain on some benchmarks) but is incompatible with some PEFT versions and quantization backends — always test in a development environment before committing to it. Multiple task-specific adapters MUST be trained on the same base model and kept separate; do not merge multiple adapters into a single model. Adapter scaling (set_adapter_scale) affects all LoRA layers uniformly; there is no per-layer control without custom patching.</statement>
-      <rationale source="v1-source">DoRA is a strict improvement over LoRA in theory but has implementation issues in some libraries; field testing is essential. Multiple adapters on one base enable rapid task switching without retraining. Uniform scaling is a limitation but sufficient for most use cases.</rationale>
+    <rule id="grad-checkpointing-on" testable="true" depth="essential">
+      <statement>Gradient checkpointing MUST be enabled when VRAM headroom is &lt; 4GB.</statement>
+      <rationale source="v1-methodology">Checkpointing trades 20-30% wallclock for 30-40% VRAM.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>LoRA deployments MUST target all attention layers (q, k, v, o) plus MLP layers (gate, up, down) for instruction-following tasks. Parameter count at init MUST be logged and reviewed; if trainable params exceed 2% of total, the rank is too high and will exceed GPU memory during training. Validation loss MUST be monitored for overfitting; if val loss increases for 5 consecutive steps, stop training immediately (early stopping). Dataset token length distribution MUST be validated before training; sequences truncated at max_seq_length mid-sentence silently degrade quality.</statement>
-      <rationale source="v1-source">Incomplete target coverage is common and hard to diagnose. Trainable parameter overflow is invisible until OOM during training — logging at init catches it early. Early stopping prevents wasting GPU time on diverging runs. Token distribution validation is overlooked but critical — truncation artifacts poison the training signal.</rationale>
+    <rule id="smoke-test-5-steps" testable="true" depth="essential">
+      <statement>5-step smoke test (load, fwd, bwd, opt step, save) MUST pass before launching a multi-hour run.</statement>
+      <rationale source="v1-methodology">Dtype / device errors are common; smoke catches them in &lt;2 min.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Always enable gradient checkpointing (model.gradient_checkpointing_enable()) before training on 8B+ models — saves ~30% memory at ~15% throughput cost. Use bf16=True instead of fp16=True on A100/H100 — bf16 has wider dynamic range and avoids overflow on long runs. For hyperparameter selection, use rank=16 as a safe default for general tasks; only go lower (rank=8) for simple classification or higher (rank=32-64) for complex reasoning. Alpha MUST equal rank (common practice, avoids tuning a second hyperparameter).</statement>
-      <rationale source="v1-source">Gradient checkpointing is always worth the throughput trade-off on memory-constrained models. bf16 is strictly better than fp16 on modern hardware. Rank selection has well-established guidelines by task complexity. Alpha=rank removes a hyperparameter.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Evaluate adapters with temperature=0 on a fixed held-out set before and after training — this isolates the adapter's effect from sampling noise. Avoid merging adapters in production unless absolutely necessary for deployment convenience; merged adapters cannot be swapped or versioned. Keep adapter versions in a manifest (JSON with adapter_name, date, task, performance metrics) to enable rollback if a new adapter degrades production quality.</statement>
-      <rationale source="v1-source">Temperature=0 provides deterministic evaluation. Merging is a point of no return — it permanently alters the base model. Adapter manifests enable quick rollback if a new adapter causes issues in production.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Memory and training time tradeoffs: Full fine-tuning requires storing gradients, activations, and parameters in fp32/fp16 — 28GB for 7B, 140GB for 70B. LoRA (0.1-1% trainable params in fp16) requires ~16GB for 7B, ~140GB for 70B (memory savings come from smaller effective batch size due to adapter size, not from parameter count). QLoRA (0.1-1% trainable in fp16, base in 4-bit) requires ~6-8GB for 7B, ~40-48GB for 70B. Training speed is roughly 1x for full fine-tuning, 1.2x for LoRA (adapter overhead), 0.8x for QLoRA (quantization overhead). For a fixed GPU, QLoRA enables 5-7x larger models than full fine-tuning.</statement>
-      <rationale source="v1-source">LoRA's memory savings come from training fewer parameters (smaller gradients and optimizer states). QLoRA's additional savings come from 4-bit quantization of the base model. Speed tradeoffs are acceptable because LoRA/QLoRA training runs on smaller GPUs, enabling many teams to train at all.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

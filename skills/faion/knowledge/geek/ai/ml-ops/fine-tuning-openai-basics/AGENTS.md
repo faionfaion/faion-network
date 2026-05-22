@@ -3,75 +3,95 @@ slug: fine-tuning-openai-basics
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Data preparation methodology for OpenAI fine-tuning: creating JSONL training examples in the chat messages format, validating structure and token counts with tiktoken, and generating additional examples with GPT-4.
-content_id: "f5a3fb2047ff8e62"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Prepares JSONL chat-messages training data for OpenAI fine-tuning, validates structure + token counts with tiktoken, and synthesises extra examples with GPT-4 when below the recommended count.
+content_id: "6f5d51847c783e3d"
+complexity: medium
+produces: config
+est_tokens: 4000
 tags: [openai, fine-tuning, data-preparation, validation, cost-estimation]
 ---
-# Fine-tuning OpenAI — Basics
+# Fine-tuning OpenAI — Basics (Dataset Preparation)
 
 ## Summary
 
-**One-sentence:** Data preparation methodology for OpenAI fine-tuning: creating JSONL training examples in the chat messages format, validating structure and token counts with tiktoken, and generating additional examples with GPT-4.
+**One-sentence:** Prepares JSONL chat-messages training data for OpenAI fine-tuning, validates structure + token counts with tiktoken, and synthesises extra examples with GPT-4 when below the recommended count.
 
-**One-paragraph:** Data preparation methodology for OpenAI fine-tuning: creating JSONL training examples in the chat messages format, validating structure and token counts with tiktoken, and generating additional examples with GPT-4. Covers the decision matrix for when fine-tuning beats few-shot prompting or RAG, and the three-phase pipeline: dataset prep → job submission → evaluation.
+**One-paragraph:** OpenAI fine-tuning expects JSONL where each line is a chat-messages payload. The wins come from clean data, not exotic hyperparameters. This methodology validates structure (system / user / assistant alternation, role correctness), enforces token-count budget per example, and uses GPT-4 to synthesise additional examples when the base count is under the 50-example floor. Records baseline cost projection BEFORE the job runs.
+
+**Ефективно для:**
+
+- First-time OpenAI fine-tune (typical solopreneur scenario).
+- Closed API requirement + small dataset (<10k examples).
+- Quick domain adaptation (legal phrasing, brand voice).
+- On-platform RAG-substitute when retrieval is overkill.
 
 ## Applies If (ALL must hold)
 
-- Output format or style is inconsistently produced by the base model despite prompt engineering (below 80% compliance)
-- Domain-specific vocabulary causes incorrect or inconsistent terminology in base model outputs
-- Current prompts are long (>500 tokens of examples) and reducing them via fine-tuning would cut latency and cost
-- Deterministic output structure (strict JSON schemas) needed but base model produces it inconsistently
-- Task clearly benefits from style/format fine-tuning rather than knowledge injection
+- Closed API is the deployment target (OpenAI hosted).
+- Dataset of ≥50 high-quality examples available (or budget to generate more).
+- Token budget is computable in advance.
 
 ## Skip If (ANY kills it)
 
-- Goal is injecting new facts or knowledge — fine-tuning memorizes patterns, not facts; use RAG
-- Fewer than 50 high-quality examples available — invest in data collection first
-- Prompt engineering already achieves >90% quality — fine-tuning adds cost and operational overhead without meaningful gain
-- Application uses many diverse tasks — a task-specific fine-tuned model can regress on other tasks
-- Rapid iteration is needed — fine-tuning jobs take 30-60 minutes; prompt engineering allows instant iteration
-- Sensitive data that must not be processed on OpenAI servers
+- Self-hosted finetune required — use finetuning-basics / fine-tuning-lora instead.
+- Dataset < 50 examples and no budget for synthesis.
+- Closed API ft is not allowed by data-residency policy.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Raw examples | CSV/JSONL | Internal export |
+| OpenAI API key | secret | Provider |
+| Token-budget cap | USD | Finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `validate_jsonl` | haiku | Schema check; deterministic. |
+| `tiktoken_count` | haiku | Count tokens; deterministic. |
+| `synth_examples` | sonnet | GPT-4 augmentation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/training-jsonl.jsonl` | Sample chat-messages training row |
+| `templates/cost-estimate.yaml` | Cost projection skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-fine-tuning-openai-basics.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[fine-tuning-openai-production]]
+- [[finetuning-datasets]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Does the dataset have ≥50 examples? Branches route to a rule id from `content/01-core-rules.xml` (min-50-examples, token-budget-computed, role-alternation, ...) so every leaf is traceable to a testable statement.

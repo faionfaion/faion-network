@@ -3,72 +3,95 @@ slug: vision-agentic-pipeline
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production vision pipelines use a three-subagent chain: image-router (classifies image type, selects VLM + prompt), vision-extractor (calls VLM, enforces structured output, returns Pydantic model), validation-agent (cross-checks extracted fields against business rules).
-content_id: "22dffbb575dbdd5e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Wires a three-subagent vision pipeline: image-router (classifies + selects VLM), vision-extractor (calls VLM, returns Pydantic), validation-agent (cross-checks against business rules).
+content_id: "31c29b608bbf4231"
+complexity: deep
+produces: spec
+est_tokens: 5200
 tags: [vision, agentic, pipeline, vlm, production]
 ---
-# Vision Agentic Pipeline: Production Architecture
+# Vision Agentic Pipeline — Production Architecture
 
 ## Summary
 
-**One-sentence:** Production vision pipelines use a three-subagent chain: image-router (classifies image type, selects VLM + prompt), vision-extractor (calls VLM, enforces structured output, returns Pydantic model), validation-agent (cross-checks extracted fields against business rules).
+**One-sentence:** Wires a three-subagent vision pipeline: image-router (classifies + selects VLM), vision-extractor (calls VLM, returns Pydantic), validation-agent (cross-checks against business rules).
 
-**One-paragraph:** Production vision pipelines use a three-subagent chain: image-router (classifies image type, selects VLM + prompt), vision-extractor (calls VLM, enforces structured output, returns Pydantic model), validation-agent (cross-checks extracted fields against business rules). Low-confidence extractions (<0.85) route to a human-review queue. The VisionService class wraps this with retry logic, multi-provider fallback, and async batch processing.
+**One-paragraph:** Production vision pipelines that pile every concern into a single mega-prompt regress on accuracy as the prompt grows. This methodology splits the work into three subagents, each with a single responsibility and a structured-output contract. Router decides which VLM + prompt to use. Extractor runs the VLM call with retries + Pydantic enforcement. Validator cross-checks extracted fields against business rules and triggers human review on failure.
+
+**Ефективно для:**
+
+- Document-extraction pipelines that must scale past 1k docs/day.
+- Multi-doc-type intake (invoices + receipts + IDs) where a router beats one-prompt-to-rule-them-all.
+- Compliance scenarios where a validation agent must veto extractor output before downstream use.
+- Production stacks where you must swap VLMs (provider outage, price war) without breaking the extractor contract.
 
 ## Applies If (ALL must hold)
 
-- Agent-driven document processing workflows where images arrive as tool results from other agents.
-- Visual Q&A over a corpus of images (product catalogs, medical scans, satellite imagery).
-- Multi-provider resilience requirements where single-provider downtime must not block the pipeline.
-- High-volume batch document processing that must scale beyond single-threaded VLM calls.
-- Pipelines where business-rule validation on extracted data is required before downstream writes.
+- Building a vision pipeline that must run at >100 docs/day in production.
+- Multiple image / document types flow into the same pipeline.
+- Business rules exist that must veto extracted output (totals must add up, dates must be in range, IDs must match a checksum).
 
 ## Skip If (ANY kills it)
 
-- Simple one-off image descriptions — a single VLM call is sufficient; the router-extractor-validator overhead is not justified.
-- Real-time video frame analysis at >5 FPS — VLM API latency (500 ms–2 s) makes this impractical; use local CV models.
-- Privacy-sensitive images where sending to third-party APIs violates data agreements — use self-hosted Qwen3-VL or GLM-4.5V and run the pipeline locally.
+- Single-image-type pipeline with <100/day volume — one prompt is fine.
+- Free-form caption generation (no structured output) — no router or validator needed.
+- Real-time latency budget <500ms — three sequential VLM calls cannot fit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Image queue | JSONL of {image_url, doc_type_hint} | Intake bus |
+| Doc-type taxonomy | YAML | Business analyst output |
+| Business rules | YAML / Python | Domain SME |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `router` | haiku | Classify doc_type; cheap + fast. |
+| `extractor` | sonnet | VLM call with structured-output enforcement. |
+| `validator` | haiku | Apply deterministic business rules. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pipeline-config.yaml` | Three-subagent pipeline config skeleton |
+| `templates/router-prompt.txt` | Router classification prompt |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vision-agentic-pipeline.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[vision-document-extraction]]
+- [[vision-classification-moderation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Has the pipeline received a new image event? Branches route to a rule id from `content/01-core-rules.xml` (idempotent-by-hash, router-cheap-model, retry-on-schema-fail, ...) so every leaf is traceable to a testable statement.

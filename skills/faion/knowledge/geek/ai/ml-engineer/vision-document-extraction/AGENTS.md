@@ -3,73 +3,95 @@ slug: vision-document-extraction
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Document extraction uses VLMs to pull structured data from invoices, receipts, forms, contracts, and ID documents.
-content_id: "cee5b320d420d343"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Pulls structured fields from invoices, receipts, forms, contracts, and IDs via VLM with Pydantic-enforced output and a deterministic post-validator (totals add up, dates parseable, IDs checksummed).
+content_id: "a7fac250520913d0"
+complexity: deep
+produces: spec
+est_tokens: 5000
 tags: [vision, ocr, document-extraction, structured-output, invoice]
 ---
 # Vision Document Extraction
 
 ## Summary
 
-**One-sentence:** Document extraction uses VLMs to pull structured data from invoices, receipts, forms, contracts, and ID documents.
+**One-sentence:** Pulls structured fields from invoices, receipts, forms, contracts, and IDs via VLM with Pydantic-enforced output and a deterministic post-validator (totals add up, dates parseable, IDs checksummed).
 
-**One-paragraph:** Document extraction uses VLMs to pull structured data from invoices, receipts, forms, contracts, and ID documents. The core pattern is: schema-defined prompt → response_format enforcement → Pydantic validation → confidence routing to human review. Claude Sonnet is the default choice for complex layouts; Gemini Flash for high-volume simple documents.
+**One-paragraph:** Document extraction with VLMs replaces classic OCR+template pipelines for documents whose layouts vary (handwritten receipts, multi-vendor invoices, ID cards). The risk: VLM hallucinates fields. The fix: Pydantic schema enforcement at output, plus a post-validator that re-runs deterministic checks (totals add up, dates parseable, IDs checksum) and triggers a human-review queue on failure. Always include a confidence score per field, not a per-document score.
+
+**Ефективно для:**
+
+- AP automation: invoice intake across 50+ vendors with varying layouts.
+- Receipt OCR for expense reports where photos are crooked, blurry, multi-currency.
+- Onboarding KYC: ID + proof-of-address from international document types.
+- Legacy contract digitisation where templates are not available.
 
 ## Applies If (ALL must hold)
 
-- Extracting structured data from uploaded documents: invoices, receipts, contracts, forms.
-- OCR replacement for scanned PDFs where layout matters (tables, multi-column text).
-- Processing ID documents (passports, driver's licences) to extract personal information.
-- Automating data entry from paper-based or image-based forms into backend systems.
-- Batch processing of historical document archives that were not machine-readable.
+- Documents have variable layout (classic OCR + template will not generalise).
+- Structured output is required (downstream system needs typed fields).
+- Manual review queue exists for low-confidence extractions.
 
 ## Skip If (ANY kills it)
 
-- Simple barcode/QR decoding — zxing or python-qrcode are faster and cheaper.
-- Documents where pixel-level measurement accuracy is required — statistical VLM outputs are not reliable for calibration tasks.
-- Medical records where FDA/CE-cleared inference is required — off-the-shelf VLMs are not cleared devices.
-- Privacy-regulated documents where sending to third-party APIs violates GDPR/HIPAA data agreements — use self-hosted Qwen3-VL instead.
+- Documents have fixed layout — classic OCR + template is cheaper and faster.
+- Volume < 50/day — manual entry might be cheaper than tuning the pipeline.
+- Documents are high-stakes legal text that must be quoted verbatim — risk of hallucination too high.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Document image | pdf/jpg/png | Upload bus |
+| Schema | Pydantic model | BA + Eng joint authoring |
+| Validation rules | Python module | BA output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `doc_type_classify` | haiku | Route to per-type prompt. |
+| `vlm_extract` | sonnet | Vision call with strict schema. |
+| `post_validate` | haiku | Deterministic field checks. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/extraction-schema.yaml` | Per-doc-type Pydantic schema sketches |
+| `templates/post-validate.py` | Deterministic post-validator skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vision-document-extraction.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[vision-agentic-pipeline]]
+- [[vision-provider-selection]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Was the doc-type classifier confident? Branches route to a rule id from `content/01-core-rules.xml` (doc-type-router, pydantic-required, review-queue-on-fail, ...) so every leaf is traceable to a testable statement.

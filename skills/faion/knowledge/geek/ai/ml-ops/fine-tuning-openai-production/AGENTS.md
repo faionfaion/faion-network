@@ -3,73 +3,96 @@ slug: fine-tuning-openai-production
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Full OpenAI fine-tuning production pipeline: file upload, job creation with hyperparameter control, status polling, LLM-as-judge evaluation against a held-out test set, and model ID registry management.
-content_id: "641e0ba788c8435c"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: End-to-end OpenAI fine-tune pipeline: file upload, job create with hyperparameter control, status polling, LLM-as-judge evaluation on held-out set, model ID registry.
+content_id: "aae61ef93d9fbd2b"
+complexity: deep
+produces: code
+est_tokens: 5000
 tags: [openai, fine-tuning, production, model-registry, evaluation]
 ---
-# Fine-tuning OpenAI — Production
+# Fine-tuning OpenAI — Production Pipeline
 
 ## Summary
 
-**One-sentence:** Full OpenAI fine-tuning production pipeline: file upload, job creation with hyperparameter control, status polling, LLM-as-judge evaluation against a held-out test set, and model ID registry management.
+**One-sentence:** End-to-end OpenAI fine-tune pipeline: file upload, job create with hyperparameter control, status polling, LLM-as-judge evaluation on held-out set, model ID registry.
 
-**One-paragraph:** Full OpenAI fine-tuning production pipeline: file upload, job creation with hyperparameter control, status polling, LLM-as-judge evaluation against a held-out test set, and model ID registry management. The FineTuningPipeline class encapsulates the complete workflow with human-checkpoint gates before deployment.
+**One-paragraph:** Going from a prepared dataset (fine-tuning-openai-basics) to a production model requires a pipeline, not a one-off CLI command. This methodology defines: file upload → job creation with explicit hyperparameters (n_epochs, batch_size, learning_rate_multiplier) → status polling with backoff → LLM-as-judge eval on the held-out set → model ID registry write so prod traffic can pin a version. Each stage is idempotent and resumable.
+
+**Ефективно для:**
+
+- Promoting a successful OpenAI ft from notebook to production.
+- Versioned model registry across multiple finetune iterations.
+- CI gate before traffic rollout.
+- Rollback capability when a new ft regresses.
 
 ## Applies If (ALL must hold)
 
-- Need a fine-tuned model deployable via OpenAI API with zero infrastructure overhead
-- Task has 50-10,000 high-quality JSONL examples with a consistent system prompt
-- Use cases: style consistency, domain-specific tone, structured output format enforcement, task classifier
-- Willing to tolerate 15 minutes to several hours of training latency
+- Dataset already prepared and validated (fine-tuning-openai-basics done).
+- Production traffic > 0 (rollout matters).
+- Eval harness exists (evaluation-framework done).
 
 ## Skip If (ANY kills it)
 
-- Fewer than 50 examples — base model with few-shot beats fine-tuning; collect more data first
-- Task requires up-to-date factual knowledge — OpenAI fine-tuning does not inject new facts
-- Cost sensitivity: ft:gpt-4o-mini costs 3-6x more per token than base gpt-4o-mini — verify ROI
-- Proprietary data that must not leave your infrastructure — training data is processed on OpenAI servers
-- Need for a fully private model weight — OpenAI retains training data per their data policy
+- Self-hosted ft target — use finetuning-basics / lora pipeline.
+- One-off experiment with no rollout — Notebook is fine.
+- No held-out eval set — author one first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prepared dataset | JSONL | fine-tuning-openai-basics |
+| Eval set | JSONL | evaluation-framework |
+| Model registry | DB / git tag scheme | DevOps |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `file_upload` | haiku | OpenAI files API; deterministic. |
+| `job_create` | haiku | OpenAI fine-tunes API. |
+| `status_poll` | haiku | Polling loop with backoff. |
+| `judge_eval` | sonnet | Quality scoring. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/finetune-pipeline.py` | Pipeline orchestrator skeleton |
+| `templates/model-registry.yaml` | Registry schema skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-fine-tuning-openai-production.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[fine-tuning-openai-basics]]
+- [[evaluation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Has the file been uploaded? Branches route to a rule id from `content/01-core-rules.xml` (idempotent-resume, hyperparameter-explicit, eval-on-held-out, ...) so every leaf is traceable to a testable statement.

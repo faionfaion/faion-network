@@ -3,73 +3,96 @@ slug: finetuning-basics
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Comprehensive reference for open-model fine-tuning techniques (LoRA, QLoRA, DoRA, full fine-tuning) and training frameworks (LLaMA-Factory, Unsloth, Axolotl, TRL).
-content_id: "68ae3ae806d77de1"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Picks the cheapest fine-tuning technique (LoRA, QLoRA, DoRA, full FT) and the simplest framework (LLaMA-Factory, Unsloth, Axolotl, TRL) for the task and GPU budget.
+content_id: "b46c1621f952692b"
+complexity: deep
+produces: decision-record
+est_tokens: 4400
 tags: [fine-tuning, llm, lora, qlora, frameworks]
 ---
 # Fine-tuning Basics — Techniques and Frameworks
 
 ## Summary
 
-**One-sentence:** Comprehensive reference for open-model fine-tuning techniques (LoRA, QLoRA, DoRA, full fine-tuning) and training frameworks (LLaMA-Factory, Unsloth, Axolotl, TRL).
+**One-sentence:** Picks the cheapest fine-tuning technique (LoRA, QLoRA, DoRA, full FT) and the simplest framework (LLaMA-Factory, Unsloth, Axolotl, TRL) for the task and GPU budget.
 
-**One-paragraph:** Comprehensive reference for open-model fine-tuning techniques (LoRA, QLoRA, DoRA, full fine-tuning) and training frameworks (LLaMA-Factory, Unsloth, Axolotl, TRL). Covers technique selection by GPU memory budget, alignment methods (SFT, DPO, ORPO), model merging strategies, and the agent-appropriate division of labor between data preparation (automatable) and GPU training (dispatched externally).
+**One-paragraph:** Open-model fine-tuning has four mainstream techniques (LoRA, QLoRA, DoRA, full fine-tune) and four mainstream frameworks (LLaMA-Factory, Unsloth, Axolotl, TRL). Each technique has a different GPU floor and quality ceiling; each framework has a different config surface. This methodology picks the (technique, framework) pair by matching dataset size, target task, GPU VRAM, and team skill, then locks the choice in a decision record.
+
+**Ефективно для:**
+
+- Open-model fine-tune from a CSV / JSONL dataset.
+- Cost-driven move from closed API to self-hosted finetune.
+- Domain adaptation (legal, medical) where general models miss vocabulary.
+- On-prem / air-gapped requirements where API fine-tunes are out.
 
 ## Applies If (ALL must hold)
 
-- Need a model to consistently follow a domain-specific format or writing style that prompting cannot enforce
-- Building a product where inference latency matters and a smaller fine-tuned model can replace a larger prompted one
-- Alignment work: converting DPO/ORPO preference data into a tuned model for controlled output behavior
-- Repeated task patterns (extraction, classification, rewriting) where a small fine-tuned model beats few-shot on cost
+- Dataset of ≥1k examples available.
+- GPU access (rented or owned) with ≥24GB VRAM (or planning QLoRA on 16GB).
+- Base model selected (7B/8B/13B class typical for solopreneur budgets).
 
 ## Skip If (ANY kills it)
 
-- Adding new factual knowledge — fine-tuning memorizes patterns, not facts; use RAG instead
-- Fewer than 100 high-quality examples — insufficient signal; use few-shot prompting
-- One-off tasks — fine-tuning overhead (data prep, training, eval, hosting) is not justified
-- Rapidly changing requirements — every dataset update requires a full retrain cycle
-- ORPO/DPO without collected chosen/rejected pairs — obtaining rejection data from production is non-trivial
+- Few-shot prompting solves the task — fine-tune is overkill.
+- Dataset < 1k examples — finetune underfits; prompt engineer instead.
+- Closed API fine-tune is the only option (data residency) — use fine-tuning-openai-* methodologies.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Dataset | JSONL/CSV | Internal export |
+| Base model | HF model id | Provider choice |
+| GPU access | rented / on-prem | Cloud or hardware |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `technique_pick` | sonnet | LoRA vs QLoRA vs full FT. |
+| `framework_pick` | sonnet | LLaMA-Factory vs Unsloth vs Axolotl vs TRL. |
+| `budget_estimate` | haiku | GPU-hour calc. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/finetune-config.yaml` | Framework-agnostic finetune config skeleton |
+| `templates/decision-record.md` | Technique + framework choice rationale |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-finetuning-basics.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[fine-tuning-lora]]
+- [[lora-qlora]]
+- [[finetuning-datasets]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Does available GPU VRAM cover base model + LoRA adapters? Branches route to a rule id from `content/01-core-rules.xml` (lora-default, qlora-when-low-vram, full-ft-only-when-justified, ...) so every leaf is traceable to a testable statement.

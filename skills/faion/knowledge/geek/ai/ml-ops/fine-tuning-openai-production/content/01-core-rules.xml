@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fine-tuning-openai-production Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fine-tuning-openai-production. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Fine-tuning OpenAI — Production Pipeline Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules for fine-tuning-openai-production.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="hyperparameter-explicit" testable="true" depth="essential">
+      <statement>Job submission MUST set n_epochs, batch_size, learning_rate_multiplier explicitly; never rely on defaults silently.</statement>
+      <rationale source="v1-methodology">OpenAI default heuristics change; explicit values give reproducibility.</rationale>
     </rule>
+    <rule id="status-poll-backoff" testable="true" depth="essential">
+      <statement>Status polling MUST use exponential backoff (start 30s, cap 5 min).</statement>
+      <rationale source="v1-methodology">Tight polling burns quota and hits rate limits.</rationale>
+    </rule>
+    <rule id="eval-on-held-out" testable="true" depth="essential">
+      <statement>Promotion MUST be gated by eval on the held-out set; eval set MUST not have been in training.</statement>
+      <rationale source="v1-methodology">In-training eval over-reports; held-out catches it.</rationale>
+    </rule>
+    <rule id="registry-pin-id" testable="true" depth="essential">
+      <statement>Model registry MUST pin the fine-tuned model ID + base_model + dataset_hash + eval_score.</statement>
+      <rationale source="v1-methodology">Without a registry, prod traffic cannot pin / roll back.</rationale>
+    </rule>
+    <rule id="rollback-on-regression" testable="true" depth="essential">
+      <statement>Pipeline MUST support rollback to previous registry entry on eval regression &gt; 5pp.</statement>
+      <rationale source="v1-methodology">Silent regressions destroy trust; explicit rollback recovers.</rationale>
+    </rule>
+    <rule id="idempotent-resume" testable="true" depth="essential">
+      <statement>Each stage MUST be idempotent and resumable (re-running with same inputs is a no-op or recovers from last step).</statement>
+      <rationale source="v1-methodology">Long-running ft jobs interact with flaky networks; resumability prevents waste.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

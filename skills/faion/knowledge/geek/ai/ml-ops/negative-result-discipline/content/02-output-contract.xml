@@ -1,50 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Negative Result Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of a negative-result Markdown artifact and its index row. Agent must satisfy this before merging the spike-close PR.</summary>
+<text id="02-output-contract" title="Negative Result Discipline for ML Spikes Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema + valid / invalid examples for the negative-result-discipline artefact.</summary>
 
-  <output-contract>
-    <required>
-      <field name="frontmatter.title" type="string" max_chars="80"/>
-      <field name="frontmatter.date_closed" format="YYYY-MM-DD"/>
-      <field name="frontmatter.owner" type="string" notes="github handle or email"/>
-      <field name="frontmatter.cost_usd" type="integer" notes="engineer-hours x rate + cloud spend"/>
-      <field name="frontmatter.tags" type="list_of_string" min="1" notes="must all be in negative-results/TAGS.md"/>
-      <field name="frontmatter.related_pre_spike_doc" format="path_or_url"/>
-      <field name="frontmatter.related_code_branch" type="string" notes="frozen git branch name"/>
-      <field name="hypothesis" type="paragraph" max_lines="8"/>
-      <field name="outcome" type="paragraph" max_lines="8" notes="must contain at least one numeric measurement"/>
-      <field name="retry_condition" type="paragraph" max_lines="8" notes="must list at least one concrete observable trigger"/>
-      <field name="attached_data" type="list_of_object" max="3"/>
-      <field name="index_row" type="object" notes="row added to negative-results/index.yaml"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">free-text tag not present in TAGS.md</pattern>
-      <pattern id="f2">retry_condition equals the string Maybe, TBD, Someday, When ready, or empty</pattern>
-      <pattern id="f3">outcome paragraph without any numeric measurement (no percentage, latency, cost, accuracy, or count)</pattern>
-      <pattern id="f4">attached_data list includes a notebook (.ipynb) or a checkpoint (.pt, .ckpt, .safetensors) larger than 5 MB</pattern>
-      <pattern id="f5">frontmatter.cost_usd missing or set to 0 (cost is the budget-justification signal; record it)</pattern>
-      <pattern id="f6">hypothesis written after the outcome was known (retrofitted hypothesis); detector: hypothesis paragraph mentions the failure mode by name</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Compress the outcome paragraph to its load-bearing sentences; never embellish.</transformation>
-      <transformation>Round cost_usd to nearest $50 below $1k, nearest $500 above $1k.</transformation>
-      <transformation>Replace personal names in attached log excerpts with role labels (engineer-A, reviewer-B) when the team is public-facing.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/negative-result.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>All three blocks (HYPOTHESIS, OUTCOME, RETRY-CONDITION) present and named</item>
-      <item>RETRY-CONDITION contains at least one observable trigger</item>
-      <item>OUTCOME has at least one numeric measurement</item>
-      <item>Every tag in frontmatter.tags exists in negative-results/TAGS.md</item>
-      <item>index.yaml regenerated and committed in the same PR</item>
-      <item>Team-visible surface (channel, wiki, PR description) links to this entry</item>
-      <item>Cost field populated with a real estimate, not zero</item>
-    </list>
+  <section title="JSON Schema">
+    <schema lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/negative-result-discipline.json",
+  "type": "object",
+  "required": [
+    "spike_id",
+    "hypothesis",
+    "outcome",
+    "retry_condition",
+    "cost_usd",
+    "indexed_at"
+  ],
+  "properties": {
+    "spike_id": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string"
+    },
+    "retry_condition": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cost_usd": {
+      "type": "number"
+    },
+    "indexed_at": {
+      "type": "string"
+    }
+  }
+}
+]]></schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spike_id": "example-spike_id",
+  "hypothesis": "example-hypothesis",
+  "outcome": "example-outcome",
+  "retry_condition": "example-retry_condition",
+  "tags": [
+    "a",
+    "b"
+  ],
+  "cost_usd": 1.0,
+  "indexed_at": "example-indexed_at"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spike_id": 123
+}
+]]></code>
+    <note>field "spike_id" must be string, not integer; other required fields also missing.</note>
+  </example>
+
+  <reference path="scripts/validate-negative-result-discipline.py">schema validator</reference>
 </text>

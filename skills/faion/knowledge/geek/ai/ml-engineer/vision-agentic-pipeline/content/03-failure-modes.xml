@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="vision-agentic-pipeline Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for vision-agentic-pipeline as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Vision Agentic Pipeline — Production Architecture Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns for vision-agentic-pipeline.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Sending file metadata (EXIF, PDF author, creation date) expectations to the vision extraction agent.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>VLMs cannot see file metadata — agents expecting metadata from vision calls will get nothing. Use PyMuPDF or Pillow for metadata extraction separately from the VLM call.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running VLM extraction synchronously in a web request handler for batch document uploads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Single-threaded VLM calls at 1-2s each block the web worker. Move to async batch processing with a task queue (Celery, arq) — the response to the user is a job ID, not the extraction result.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mega-prompt" severity="medium">
+      <symptom>Single prompt tries to route + extract + validate at once.</symptom>
+      <root-cause source="v1-methodology + 2026 production review">Author optimised for prompt count instead of correctness.</root-cause>
+      <fix>Refactor into three subagents; each with its own prompt + model.</fix>
+    </antipattern>
+    <antipattern id="no-validator" severity="medium">
+      <symptom>Extractor output flows directly to production.</symptom>
+      <root-cause source="v1-methodology + 2026 production review">Team treats VLM output as ground truth.</root-cause>
+      <fix>Add a validator that applies deterministic business rules; veto on failure.</fix>
+    </antipattern>
+    <antipattern id="opus-everywhere" severity="medium">
+      <symptom>Every step uses opus regardless of complexity.</symptom>
+      <root-cause source="v1-methodology + 2026 production review">Default model selection without per-task analysis.</root-cause>
+      <fix>Use haiku for router + validator; reserve sonnet/opus for the extractor.</fix>
+    </antipattern>
+
   </section>
 </text>

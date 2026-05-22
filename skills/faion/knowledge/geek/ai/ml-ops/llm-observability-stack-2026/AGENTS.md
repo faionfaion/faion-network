@@ -3,73 +3,95 @@ slug: llm-observability-stack-2026
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Comprehensive monitoring for production AI applications requires integrating multiple platforms: tracing (Langfuse), cost analytics (Helicone), evaluation (Arize Phoenix), and multi-agent tracing (Braintrust).
-content_id: "850643e647547f3d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Integrates Langfuse (tracing), Helicone (cost analytics), Arize Phoenix (eval), and Braintrust (multi-agent tracing) behind a one-line SDK wrapper so each tool sees the same span tree.
+content_id: "19b1b24515fa6ef1"
+complexity: deep
+produces: config
+est_tokens: 5000
 tags: [observability, monitoring, llm, tracing, cost-analytics]
 ---
 # LLM Observability Stack (2026)
 
 ## Summary
 
-**One-sentence:** Comprehensive monitoring for production AI applications requires integrating multiple platforms: tracing (Langfuse), cost analytics (Helicone), evaluation (Arize Phoenix), and multi-agent tracing (Braintrust).
+**One-sentence:** Integrates Langfuse (tracing), Helicone (cost analytics), Arize Phoenix (eval), and Braintrust (multi-agent tracing) behind a one-line SDK wrapper so each tool sees the same span tree.
 
-**One-paragraph:** Comprehensive monitoring for production AI applications requires integrating multiple platforms: tracing (Langfuse), cost analytics (Helicone), evaluation (Arize Phoenix), and multi-agent tracing (Braintrust). The 2026 stack combines self-hostable open-source tools with SaaS options, enabling cost tracking, quality metrics, performance monitoring, and reliability analysis across production LLM pipelines.
+**One-paragraph:** Production LLM apps need four observability planes: traces (Langfuse), cost analytics (Helicone), evaluation (Arize Phoenix), multi-agent tracing (Braintrust). Running them in silos forces redundant span emission and makes correlation impossible. This methodology defines a one-line SDK wrapper that emits OTEL-format spans consumed by all four tools, plus a hostable Langfuse + Phoenix self-host config when data-residency matters.
+
+**Ефективно для:**
+
+- Multi-agent product where one trace spans 5+ tool calls.
+- Cost re-attribution audit (Helicone shines).
+- Eval dashboard for stakeholders (Phoenix shines).
+- Self-hosted observability for data-residency compliance.
 
 ## Applies If (ALL must hold)
 
-- Deploying any LLM-powered feature to production that requires quality, cost, or latency monitoring.
-- Diagnosing unexpected behavior in a multi-step agent pipeline (which tool call failed? which prompt version regressed?).
-- Running A/B tests on prompt variants with statistical tracking of quality metrics.
-- Setting up cost alerts before a large-scale rollout to avoid budget overruns.
-- Auditing an existing LLM system with no observability to identify the highest-impact gaps.
+- Pipeline runs ≥10 LLM calls per request OR multi-agent.
+- Cost is non-trivial ($500/mo+).
+- Team has bandwidth to wire OTEL exporters.
 
 ## Skip If (ANY kills it)
 
-- The system is a prototype or one-off script making fewer than 100 LLM calls — the setup cost exceeds the value; use provider dashboards directly.
-- The team has no process for reviewing dashboards — observability tooling without a review cadence generates noise, not insight.
-- Real-time latency budget is so tight that proxy-based tools (Helicone) add unacceptable overhead — use SDK-based tools (Langfuse decorators) which add <1ms.
-- The application handles highly sensitive PII and the observability vendor is not cleared for that data class — use self-hosted Langfuse or Phoenix only.
+- Single-call pipeline — Helicone alone suffices.
+- Spend < $100/mo — observability cost outweighs value.
+- Closed-API only with provider dashboard sufficient.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| OTEL exporter | library | Already in stack or being added |
+| Tool accounts | API keys | Provider signup |
+| Data-residency rules | policy | Legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `wrapper_author` | sonnet | One-line SDK wrapper emitting OTEL spans. |
+| `config_self_host` | sonnet | Langfuse + Phoenix self-host compose. |
+| `dashboard_setup` | haiku | Default dashboards per tool. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/otel-wrapper.py` | One-line SDK wrapper skeleton |
+| `templates/docker-compose.yml` | Self-host Langfuse + Phoenix compose |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-llm-observability-stack-2026.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[llm-cost-basics]]
+- [[evaluation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Is data residency required (EU)? Branches route to a rule id from `content/01-core-rules.xml` (self-host-when-residency, one-span-tree, pii-redaction-edge, ...) so every leaf is traceable to a testable statement.

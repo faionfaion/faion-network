@@ -3,73 +3,95 @@ slug: evaluation-metrics
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Metrics for measuring LLM performance across different dimensions including accuracy, quality, latency, cost, safety, and reliability.
-content_id: "0a35e4ac3c9ea0a9"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Selects per-task metrics across accuracy, quality, latency, cost, safety, and reliability; produces a metric card that the eval harness consumes.
+content_id: "0c0f4f798a9e43af"
+complexity: medium
+produces: spec
+est_tokens: 3800
 tags: [evaluation, metrics, llm, ml-ops, benchmarking]
 ---
-# Evaluation Metrics
+# Evaluation Metrics for LLMs
 
 ## Summary
 
-**One-sentence:** Metrics for measuring LLM performance across different dimensions including accuracy, quality, latency, cost, safety, and reliability.
+**One-sentence:** Selects per-task metrics across accuracy, quality, latency, cost, safety, and reliability; produces a metric card that the eval harness consumes.
 
-**One-paragraph:** Metrics for measuring LLM performance across different dimensions including accuracy, quality, latency, cost, safety, and reliability. Select 3-5 metrics matching the task type, run them against a fixed test dataset, compare to a pre-established baseline, and report pass/fail per metric against defined thresholds.
+**One-paragraph:** Generic 'is it good' metrics fail. This methodology picks per-task metrics across six dimensions: accuracy (exact-match / F1), quality (LLM-as-judge rubric), latency (p50/p95 ms), cost ($/call), safety (refusal rate / toxicity), reliability (parse-success / retry rate). The output is a metric card — one YAML per task — that the evaluation harness reads to know what to compute.
+
+**Ефективно для:**
+
+- Onboarding new task to the eval harness.
+- Refactoring a vague 'looks good' eval into a measurable contract.
+- Cross-team alignment on what 'better' means.
+- Compliance: demonstrating measurable safety + reliability.
 
 ## Applies If (ALL must hold)
 
-- Implementing automated quality gates in a CI/CD pipeline for LLM-powered features.
-- Comparing two model versions or prompt variants before a production rollout.
-- Tracking metric trends over time in a production monitoring dashboard.
-- Building an evaluation harness that a subagent can run autonomously against a test dataset.
-- Selecting the right metric for a specific task type (classification, QA, summarization, code generation).
+- A task has at least one quantifiable dimension.
+- Multiple stakeholders disagree on what 'better' means.
+- An eval harness exists or will exist.
 
 ## Skip If (ANY kills it)
 
-- The task has no quantifiable success criterion — open-ended creative generation requires human preference evaluation, not automated metrics.
-- Ground-truth labels are unavailable and cannot be synthesized with validation; BLEU/ROUGE without references are meaningless.
-- Exact match or BLEU are the only metrics for long-form generation — they punish valid paraphrases and correlate poorly with human judgment.
-- Safety metrics (toxicity, bias) are the sole gate for production decisions — automated safety metrics miss context-dependent harms and require human review.
+- Task is wholly subjective (creative writing) — pick a quality-only proxy and move on.
+- <10 examples — metrics are noisy below that.
+- Stakes are zero — picking metrics is overhead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task brief | markdown | Product + BA |
+| Sample inputs/outputs | JSONL | Pilot run |
+| Stakeholder list | list | Product + Eng + Legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `dimension_pick` | sonnet | Choose subset of 6 dimensions. |
+| `metric_select` | sonnet | Per dimension, pick a measurable metric. |
+| `card_write` | haiku | Emit YAML card. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/metric-card.yaml` | Per-task metric card skeleton |
+| `templates/rubric.md` | LLM-as-judge rubric template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-evaluation-metrics.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[evaluation-framework]]
+- [[evaluation-benchmarks]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Is the task's quality dimension quantifiable by exact-match or F1? Branches route to a rule id from `content/01-core-rules.xml` (metric-per-dim-or-na, anchored-rubric, safety-and-reliability-floor, ...) so every leaf is traceable to a testable statement.

@@ -1,11 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mocking-strategies Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mocking-strategies. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Mocking Strategies Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules every mocking decision MUST enforce. Hard rules — operator input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-mock-at-boundary" testable="true" depth="essential">
+      <statement>Mock at the architectural boundary (filesystem, network, time, randomness, third-party services) — NEVER inside the system under test.</statement>
+      <rationale source="martinfowler.com/articles/mocksArentStubs.html">Internal mocks couple tests to implementation; boundary mocks let internal refactoring proceed without test churn.</rationale>
     </rule>
+
+    <rule id="r2-autospec-mandatory" testable="true" depth="essential">
+      <statement>Every Python mock MUST be created with spec=X or autospec=True. Bare MagicMock() is forbidden in production test code.</statement>
+      <rationale source="docs.python.org/3/library/unittest.mock">Without spec, MagicMock returns a new Mock for any attribute access; typos and signature drift become silent passes.</rationale>
+    </rule>
+
+    <rule id="r3-patch-where-used" testable="true" depth="essential">
+      <statement>Patch where the name is looked up (the importing module), NOT where it is defined.</statement>
+      <rationale source="docs.python.org/3/library/unittest.mock#where-to-patch">Python resolves names at call time in the importing namespace. Patching the origin leaves the local reference intact.</rationale>
+    </rule>
+
+    <rule id="r4-no-mock-not-owned" testable="true" depth="essential">
+      <statement>Do NOT mock third-party libraries directly. Wrap them in an adapter you own, then mock the adapter.</statement>
+      <rationale source="GOOS / Steve Freeman">Direct mocking of third-party APIs makes tests fragile to library updates. The adapter pattern gives you one place to absorb the API contract.</rationale>
+    </rule>
+
+    <rule id="r5-clear-all-mocks" testable="true" depth="essential">
+      <statement>JavaScript suites MUST call vi.clearAllMocks() or jest.clearAllMocks() in afterEach. Python suites MUST use pytest-mock's mocker fixture (auto-cleanup), NOT bare @patch decorators.</statement>
+      <rationale source="vitest.dev + pytest-mock docs">Mock state leaks between tests cause order-dependent flakes that don't reproduce locally.</rationale>
+    </rule>
+
+    <rule id="r6-time-via-freezegun" testable="true" depth="essential">
+      <statement>Time-dependent code MUST be tested with freezegun (Python), @sinonjs/fake-timers (JS), or clockwork (Go). Never test against real datetime.now().</statement>
+      <rationale source="freezegun docs">Real-time tests are nondeterministic by definition; they pass at noon and fail at midnight.</rationale>
+    </rule>
+
+    <rule id="r7-prefer-fake" testable="true" depth="essential">
+      <statement>For stateful dependencies used across many tests (repositories, caches), prefer a Fake implementation over recurring Mock expectations.</statement>
+      <rationale source="GOOS book">Fakes encapsulate the contract once; Mocks re-encode it per test, multiplying maintenance.</rationale>
+    </rule>
+
+    <rule id="r-stub-pick" testable="true" depth="essential">
+      <statement>When verify_calls_needed == false, the spec MUST classify the dependency as Stub (return canned values, no call assertions).</statement>
+      <rationale source="meszaros xUnit Test Patterns">Stubs document return-value expectations without coupling to call patterns.</rationale>
+    </rule>
+
+    <rule id="r-mock-pick" testable="true" depth="essential">
+      <statement>When verify_calls_needed == true, the spec MUST classify the dependency as Mock with autospec, and pin the expected call signature.</statement>
+      <rationale source="unittest.mock docs">Mock-with-autospec catches signature drift and required-arg omissions at test time.</rationale>
+    </rule>
+
+    <rule id="r-fake-pick" testable="true" depth="essential">
+      <statement>When dependency is stateful AND used in &gt;3 test files, the spec MUST classify as Fake (working in-memory implementation).</statement>
+      <rationale source="GOOS book">Beyond 3 reuse points, the per-test Mock cost exceeds the one-time Fake authoring cost.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

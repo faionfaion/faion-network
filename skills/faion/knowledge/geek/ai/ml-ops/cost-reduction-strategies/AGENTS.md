@@ -3,72 +3,95 @@ slug: cost-reduction-strategies
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production LLM cost optimization through four orthogonal techniques: response caching (SHA-256 content hash key, Redis or in-memory TTL), prompt compression (whitespace normalization, redundant phrase removal), async batching, and model routing (default cheap model with fallback).
-content_id: "0d2e13aeef1e038f"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Applies four orthogonal cost levers — response caching, prompt compression, async batching, and model routing — and reports per-lever savings against a baseline.
+content_id: "4550c133417111d3"
+complexity: deep
+produces: report
+est_tokens: 4800
 tags: [cost-optimization, llm-cost, prompt-caching, model-routing, batching]
 ---
-# Cost Reduction Strategies
+# LLM Cost Reduction Strategies
 
 ## Summary
 
-**One-sentence:** Production LLM cost optimization through four orthogonal techniques: response caching (SHA-256 content hash key, Redis or in-memory TTL), prompt compression (whitespace normalization, redundant phrase removal), async batching, and model routing (default cheap model with fallback).
+**One-sentence:** Applies four orthogonal cost levers — response caching, prompt compression, async batching, and model routing — and reports per-lever savings against a baseline.
 
-**One-paragraph:** Production LLM cost optimization through four orthogonal techniques: response caching (SHA-256 content hash key, Redis or in-memory TTL), prompt compression (whitespace normalization, redundant phrase removal), async batching, and model routing (default cheap model with fallback). The `CostOptimizedLLM` class composes all four into a single production-ready service layer.
+**One-paragraph:** Production LLM cost is rarely solved by one technique. This methodology audits the request stream, identifies cache-able patterns (SHA-256 prompt+model+temp key), compresses prompts (whitespace + boilerplate removal), batches non-interactive calls, and routes to cheaper models when the simpler model passes a confidence gate. Reports total $ saved per lever vs baseline plus latency / quality delta.
+
+**Ефективно для:**
+
+- Pipelines past $1k/mo where finance asks for a 30%+ reduction.
+- RAG systems where 30-50% of queries are near-duplicates.
+- Batch enrichment jobs that can tolerate 1-min latency.
+- Tiered SaaS where free users should not get opus.
 
 ## Applies If (ALL must hold)
 
-- Production LLM apps with high request volume (>1000 calls/day) where API costs are significant
-- Budget-constrained projects that need to scale without proportional cost increase
-- Multi-tenant SaaS where per-request costs must be predictable
-- Pipelines running batch classification, extraction, or summarization at scale
+- Monthly LLM spend > $500 and growing.
+- Request stream is mixed (interactive + batchable).
+- Quality metric exists (eval harness or LLM-as-judge).
 
 ## Skip If (ANY kills it)
 
-- Low-volume prototypes — premature optimization adds complexity with no payoff
-- Tasks requiring temperature > 0 (non-deterministic outputs) — caching is ineffective
-- Latency-critical real-time systems where cache lookup adds unacceptable overhead
-- Workflows where output freshness is mandatory (live data, personalized responses)
+- Spend < $100/mo — engineering time outweighs savings.
+- Every call is unique (no cache potential) and SLA blocks batching.
+- Single model already cheapest tier — no routing headroom.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Request log | JSONL of {prompt, model, ts, tokens} | Observability stack |
+| Quality eval | harness | evaluation-framework methodology |
+| Cost baseline | USD/mo | Last 30 days invoice |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit_request_log` | haiku | Cluster by prompt similarity; cheap. |
+| `design_cache_layer` | sonnet | Key scheme + TTL + eviction. |
+| `design_router` | sonnet | Confidence-gated cascade. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/cache-config.yaml` | Redis cache config skeleton |
+| `templates/router-policy.yaml` | Confidence-gated routing policy |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cost-reduction-strategies.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[llm-cost-basics]]
+- [[evaluation-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Does the request stream contain repeat prompts (cache potential)? Branches route to a rule id from `content/01-core-rules.xml` (cache-key-sha256, compress-whitespace-first, batch-only-non-interactive, ...) so every leaf is traceable to a testable statement.

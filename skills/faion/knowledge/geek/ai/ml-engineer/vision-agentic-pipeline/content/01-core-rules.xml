@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="vision-agentic-pipeline Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for vision-agentic-pipeline. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Vision Agentic Pipeline — Production Architecture Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules for vision-agentic-pipeline.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="separate-router-extractor-validator" testable="true" depth="essential">
+      <statement>Vision pipeline MUST split work into three subagents: router, extractor, validator.</statement>
+      <rationale source="v1-methodology">Single-prompt designs regress on accuracy as prompt size grows; separation lets each agent be tuned independently.</rationale>
     </rule>
+    <rule id="structured-output-pydantic" testable="true" depth="essential">
+      <statement>Extractor MUST return a Pydantic model; raw text returns are rejected.</statement>
+      <rationale source="v1-methodology">Structured output prevents downstream string-parsing fragility.</rationale>
+    </rule>
+    <rule id="validator-veto" testable="true" depth="essential">
+      <statement>Validator MUST be able to veto extractor output and route to human review.</statement>
+      <rationale source="v1-methodology">Without veto, garbage extractions silently propagate to downstream systems.</rationale>
+    </rule>
+    <rule id="router-cheap-model" testable="true" depth="essential">
+      <statement>Router MUST run a cheaper model than the extractor (e.g. haiku for router, sonnet for extractor).</statement>
+      <rationale source="v1-methodology">Routing is a classification; spending an opus call on a 2-class decision is a waste.</rationale>
+    </rule>
+    <rule id="retry-on-schema-fail" testable="true" depth="essential">
+      <statement>Extractor MUST retry once on schema-validation failure with a &apos;fix the JSON&apos; system message.</statement>
+      <rationale source="v1-methodology">VLMs intermittently emit malformed JSON; one retry recovers ~80% of failures.</rationale>
+    </rule>
+    <rule id="idempotent-by-hash" testable="true" depth="essential">
+      <statement>Pipeline MUST key its result cache by SHA-256 of the image bytes + doc_type.</statement>
+      <rationale source="v1-methodology">Re-running the pipeline on the same image is common; idempotency saves VLM credits.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

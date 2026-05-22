@@ -3,73 +3,95 @@ slug: evaluation-benchmarks
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Multi-model comparison and continuous production monitoring methodology.
-content_id: "884894067d8a791d"
-tags: [benchmarking, model-comparison, production-monitoring, evaluation, quality-assurance]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Runs a multi-model comparison benchmark (held-out set + LLM-as-judge) and a continuous production-sampling job to detect drift across model swaps.
+content_id: "a00ab8bc492c977e"
+complexity: deep
+produces: report
+est_tokens: 4400
+tags: [benchmarking, model-comparison, production-monitoring, evaluation, quality]
 ---
-# Evaluation Benchmarks
+# Evaluation Benchmarks — Multi-Model + Continuous Production
 
 ## Summary
 
-**One-sentence:** Multi-model comparison and continuous production monitoring methodology.
+**One-sentence:** Runs a multi-model comparison benchmark (held-out set + LLM-as-judge) and a continuous production-sampling job to detect drift across model swaps.
 
-**One-paragraph:** Multi-model comparison and continuous production monitoring methodology. ModelComparison runs the same test set across multiple LLMs and ranks them per metric. BenchmarkSuite standardizes evaluation across classification, QA, summarization, and code task types. ProductionEvaluator samples live traffic and runs automated quality checks with alerting.
+**One-paragraph:** Two complementary benchmarks: (1) offline multi-model comparison on a held-out task set to pick a winner; (2) continuous production sampling that re-scores 1-5% of live traffic with the same eval harness so a silent regression after a model swap is caught within hours, not weeks. Both publish a leaderboard and a drift alert.
+
+**Ефективно для:**
+
+- Model-swap decision (Sonnet 4.6 → 4.7 etc.) where regression risk is real.
+- Vendor evaluation (OpenAI vs Anthropic vs Gemini) on a domain task.
+- Continuous quality monitoring after launch.
+- A/B testing prompt rewrites against a known baseline.
 
 ## Applies If (ALL must hold)
 
-- Selecting a model or provider for a new project: run ModelComparison across candidate models on a domain-representative test set
-- Establishing a repeatable performance baseline before any major prompt or model change
-- Setting up continuous production monitoring that detects quality regressions before users report them
-- Comparing a fine-tuned model to the base model with consistent methodology
-- Building a CI quality gate that blocks deployment if benchmark scores drop below threshold
+- A held-out test set (≥100 examples) exists for the task.
+- Quality is measurable (LLM-as-judge or programmatic check).
+- Production sampling is permitted by data-privacy policy.
 
 ## Skip If (ANY kills it)
 
-- The test set has fewer than 100 cases — ModelComparison results will have confidence intervals too wide to be actionable
-- The benchmark dataset is derived from the same source as the training data — this produces artificially inflated scores; use a held-out dataset from a different collection
-- The goal is evaluating safety or alignment — ProductionEvaluator string checks are insufficient; use red-teaming and dedicated safety benchmarks (e.g., ToxiGen, BBQ)
-- A single benchmark run is expected to fully characterize model quality — benchmarks capture what they measure, not everything that matters in production
+- No held-out set — author one first.
+- Single-model deployment with no swap planned — benchmark cost is wasted.
+- Sampling production data violates contract — solve privacy first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Held-out test set | JSONL | BA + Eng |
+| Judge rubric | markdown | evaluation-metrics methodology |
+| Production log | JSONL | Observability stack |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
+| `content/04-procedure.xml` | reference | 5-step procedure | 700 |
+| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
+| `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `run_offline_bench` | haiku | Parallel API calls; deterministic. |
+| `llm_as_judge` | sonnet | Quality scoring. |
+| `drift_alert` | haiku | Compare to baseline; threshold check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/leaderboard.md` | Multi-model leaderboard skeleton |
+| `templates/drift-alert.yaml` | Alert policy + thresholds |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-evaluation-benchmarks.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
+- [[evaluation-framework]]
+- [[evaluation-metrics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root: Is this an offline model-swap decision? Branches route to a rule id from `content/01-core-rules.xml` (held-out-fresh, prod-sampling-1-5pct, baseline-versioned, ...) so every leaf is traceable to a testable statement.
