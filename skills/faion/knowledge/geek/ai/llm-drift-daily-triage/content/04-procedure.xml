@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LLM Drift Daily Triage Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step daily procedure (≤15 min) for drift triage and decision logging.</summary>
+
+  <section title="Steps">
+    <step n="1" name="pull-metrics">
+      <input>Yesterday's eval-run JSON + refusal-log JSONL + cost-log JSONL.</input>
+      <action>Runner pulls and aggregates. Outputs three numbers vs the previous 7-day rolling baseline.</action>
+      <output>deltas object in triage-report.json.</output>
+      <decision-gate>Any input missing → flag as data-pipeline incident, separate from drift.</decision-gate>
+    </step>
+    <step n="2" name="compute-deltas">
+      <input>Aggregated metrics.</input>
+      <action>Compute pp deltas for eval-score and refusal-rate; pct delta for cost.</action>
+      <output>deltas populated in report.</output>
+      <decision-gate>Cross-check: deltas reproducible if re-run.</decision-gate>
+    </step>
+    <step n="3" name="surface-traces">
+      <input>Yesterday's failing eval cases.</input>
+      <action>Pick top 3 (by impact) and write 1-sentence summary + expected vs got per case.</action>
+      <output>failing_traces array (0-3 items).</output>
+      <decision-gate>If 0 failing cases on a known-noisy day, double-check the eval ran at all.</decision-gate>
+    </step>
+    <step n="4" name="decide">
+      <input>Deltas + traces + threshold table from rule r4.</input>
+      <action>Apply thresholds → decision ∈ {continue, mitigate, escalate}. Write a 1-sentence rationale.</action>
+      <output>decision + 1-sentence follow_up.</output>
+      <decision-gate>If decision contradicts thresholds, owner must justify in follow_up.</decision-gate>
+    </step>
+    <step n="5" name="log">
+      <input>Filled report.</input>
+      <action>Append triage-report.json to the immutable log (git commit, S3 versioned object, etc.). Post a 5-line summary to the team channel.</action>
+      <output>committed report + channel post.</output>
+      <decision-gate>No retro edits; corrections go in tomorrow's entry referencing today's.</decision-gate>
+    </step>
+    <step n="6" name="schedule-follow-up">
+      <input>If decision ∈ {mitigate, escalate}.</input>
+      <action>Create ticket / page on-call / open incident channel per the playbook. Set follow-up review date.</action>
+      <output>ticket id in follow_up field.</output>
+      <decision-gate>Decision = escalate without ticket id = invalid report.</decision-gate>
+    </step>
+  </section>
+</text>

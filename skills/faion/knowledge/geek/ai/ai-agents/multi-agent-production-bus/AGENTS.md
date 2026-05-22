@@ -3,71 +3,98 @@ slug: multi-agent-production-bus
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A central MessageBus handles async agent-to-agent communication via three modes: direct (point-to-point), broadcast (fan-out to all except sender), and request.
-content_id: "739c8c546f1937c5"
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: ea5aba4a21f03178
+summary: Produces a production multi-agent-system spec wired to a central async MessageBus with three switchable strategies (hierarchical / parallel / sequential).
+complexity: deep
+produces: spec
+est_tokens: 4400
 tags: [multi-agent, message-bus, async, production, orchestration]
 ---
-# Production Multi-Agent System with Message Bus
+# Multi-Agent Production Bus
 
 ## Summary
 
-**One-sentence:** A central MessageBus handles async agent-to-agent communication via three modes: direct (point-to-point), broadcast (fan-out to all except sender), and request.
+**One-sentence:** Produces a production multi-agent-system spec wired to a central async MessageBus with three switchable strategies (hierarchical / parallel / sequential).
 
-**One-paragraph:** A central MessageBus handles async agent-to-agent communication via three modes: direct (point-to-point), broadcast (fan-out to all except sender), and request. ProductionMultiAgentSystem wraps the bus with three switchable execution strategies — hierarchical (orchestrator plan + worker dispatch + synthesis), parallel (asyncio.gather fan-out), and sequential (pipeline chain) — selected at run_task() call time.
+**One-paragraph:** Simple sync multi-agent patterns break in production: one slow worker blocks downstream agents; no audit trail of inter-agent messages; cost per run is invisible; coordination logic is hard-coded. This methodology emits a deterministic spec: MessageBus + structured Message schema + handler timeouts + per-strategy dispatch + cost gate + observability hookup (agentops / LangSmith).
+
+**Ефективно для:** team running 5+ specialised agents in production where current synchronous orchestration is hitting timeouts and the audit trail is the worst part of every postmortem.
 
 ## Applies If (ALL must hold)
 
-- Production systems that need to switch coordination strategy at runtime without rewriting agent code — the strategy parameter selects hierarchical, parallel, or sequential.
-- Systems requiring an audit trail of every inter-agent message (sender, receiver, content, type) for compliance or debugging.
-- Async environments where worker blocking is unacceptable — the bus decouples send from receive, preventing circular waits.
-- Cost-sensitive deployments where per-agent token usage must be attributed and budget-gated.
+- Production system needs to switch strategy at runtime without rewriting agent code.
+- Audit trail of every inter-agent message is required (compliance or debugging).
+- Async environment available (asyncio or equivalent).
+- Cost attribution per agent role is required.
+- ≥3 worker agents in the system.
 
 ## Skip If (ANY kills it)
 
-- Simple two-agent pipelines — the bus adds subscription setup overhead with no value for point-to-point synchronous chains.
-- Prototypes where iteration speed matters more than auditability — set up a plain ManagerAgent or CollaborativeGroup first.
-- Synchronous-only environments where asyncio is unavailable or forbidden — the bus is async-native.
+- Simple two-agent sync pipeline — bus adds setup overhead with no value.
+- Prototype where iteration speed beats auditability.
+- Sync-only environment (no asyncio).
+- Single-agent loop — no bus needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `agent-roster.yaml` | list of {name, role, model, budget_tokens} | operator |
+| `default_strategy` | hierarchical / parallel / sequential | operator |
+| `handler_timeout_seconds` | integer | ops |
+| `observability_backend` | agentops / langsmith / none | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[max-turns-circuit-breaker]] | Strategy execution must cap turns. |
+| [[manifest-then-fetch]] | Inter-agent payloads should follow the manifest protocol. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 rules: structured Message only, timeout-wrap handlers, broadcast excludes sender, no circular awaits, cost gate per agent, observability tags. | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the multi-agent-system-spec. | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: free-form string content, missing handler timeout, deadlock circular await, cost explosion, untagged tokens. | ~800 |
+| `content/04-procedure.xml` | recommended | 5-step procedure: enumerate roles → pick strategies → wire bus → set budgets → tag observability. | ~700 |
+| `content/05-examples.xml` | recommended | Reference MessageBus + ProductionMultiAgentSystem worked example. | ~700 |
+| `content/06-decision-tree.xml` | essential | Picks sequential vs parallel vs hierarchical from drivers. | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_roster` | haiku | Mechanical YAML→typed list. |
+| `pick_strategies` | sonnet | Tradeoff between throughput and traceability. |
+| `audit_deadlock_paths` | opus | Cross-agent circular-await detection — subtle. |
+| `emit_system_spec` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/message-bus.py` | MessageBus + Message + CommunicationType reference impl. |
+| `templates/production-system.py` | ProductionMultiAgentSystem with three strategies. |
+| `templates/_smoke-test.yaml` | Minimum 2-agent roster. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-multi-agent-production-bus.py` | Validates spec against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[multi-agent-conversational]]
+- [[max-turns-circuit-breaker]]
+- [[manifest-then-fetch]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on `subtasks_independent` (yes → parallel; no → continue), then on `chain_shape` (linear → sequential; dependent_dag → hierarchical with planner). Each leaf cites a rule id.
