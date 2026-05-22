@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Context Bleed Detection Recipe Procedure" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5-step procedure: probe to measure to score to classify to emit. Each step has typed input/output + a decision gate.</summary>
+
+  <step n="1" name="probe">
+    <input>session pool to monitor + per-session canary generator + system-prompt snapshot</input>
+    <action>Inject a unique canary token into each session's out-of-band instruction slot. Record the per-session canary in a side-channel map.</action>
+    <output>canary-map (session_hash to canary)</output>
+  </step>
+
+  <step n="2" name="measure">
+    <input>24h session log window + canary-map</input>
+    <action>Scan every response for any foreign canary. Independently compute pairwise turn-level embedding distances between sessions active in the same minute.</action>
+    <output>canary-hit list + distance-matrix top-K</output>
+    <decision-gate>If canary-hit list non-empty - mark candidate cross-tenant. If any pairwise distance &lt; threshold - mark candidate prior-turn.</decision-gate>
+  </step>
+
+  <step n="3" name="score">
+    <input>candidate list from step 2 + snapshot diff between probe-start and probe-end</input>
+    <action>Score each candidate: canary_hit (binary) + distance_value (float) + snapshot_drift (binary). Compose into a single signal record.</action>
+    <output>probe_signal payload per candidate</output>
+  </step>
+
+  <step n="4" name="classify">
+    <input>probe_signal payload</input>
+    <action>Apply decision tree (06-decision-tree.xml). Output bleed_type label: cross-tenant / prior-turn / system-drift / clean.</action>
+    <output>bleed_type + reasoning trace</output>
+    <decision-gate>If bleed_type=clean and no signal - exit with no-action. Else continue.</decision-gate>
+  </step>
+
+  <step n="5" name="emit">
+    <input>classified candidates + tenant - session frozen mapping</input>
+    <action>Construct incident record per 02-output-contract.xml. Hash all session-ids (SHA-256, 16 chars). Pick scoped kill_switch. Page named on-call owner.</action>
+    <output>incident_id, owner, bleed_type, probe_signal, session_hashes, threshold, kill_switch, version=1.0.0, detected_at=now</output>
+  </step>
+
+  <section title="Exit criteria">
+    <list>
+      <item>incident record validates against templates/context-bleed-detection-recipe.json</item>
+      <item>Named on-call owner has acknowledged the page</item>
+      <item>kill_switch scope is bounded (or human_approval=true)</item>
+      <item>No raw user-ids leaked into the incident</item>
+    </list>
+  </section>
+</text>
