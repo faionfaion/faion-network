@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="structured-output Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for structured-output. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Structured Output — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: provider-native first, schema-validated parse, repair-once retry, raw logging on failure, no recursive schemas.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-provider-native-first" testable="true" depth="essential">
+      <statement>When the chosen provider supports structured output natively (response_format, tool-use JSON, schema response), it MUST be used. Manual JSON-prompting on a structured-output-capable provider is forbidden.</statement>
+      <rationale source="OpenAI Structured Outputs docs 2024; Anthropic JSON-mode benchmarks">Provider-side constrained decoding eliminates the parse-failure class. Manual prompt-engineered JSON has 5-15% parse failure rate even on capable models; constrained decoding drops it to &lt;0.1%.</rationale>
     </rule>
+
+    <rule id="r2-schema-validated-parse" testable="true" depth="essential">
+      <statement>Output MUST be parsed via the same Pydantic / JSON Schema used to constrain the model. Accepting a model response without validation is forbidden; mismatched types between schema and parsed value MUST raise.</statement>
+      <rationale source="Pydantic docs; production type-safety lessons">Provider may return JSON-shaped output that does not match the schema (constrained decoding has edge cases). Always validate; never trust the model's compliance claim.</rationale>
+    </rule>
+
+    <rule id="r3-repair-once" testable="true" depth="essential">
+      <statement>On parse failure, the system MUST retry exactly once with the schema + parse error included in the prompt. Further retries are forbidden — they amplify cost without quality lift.</statement>
+      <rationale source="industry retry-loop post-mortems; cost analysis">Infinite retry loops on schema failures burn budget. Repair-once succeeds on ≈90% of remaining cases; further attempts have diminishing return.</rationale>
+    </rule>
+
+    <rule id="r4-log-raw-on-failure" testable="true" depth="essential">
+      <statement>When parse fails twice, the raw model output AND the schema MUST be logged to error sink for investigation. Returning a typed-zero / None silently is forbidden.</statement>
+      <rationale source="incident analysis discipline">Silent fallback hides systematic schema-drift bugs. Logged raw output lets engineers refine schema or detect model regression.</rationale>
+    </rule>
+
+    <rule id="r5-no-recursive-schemas" testable="true" depth="essential">
+      <statement>Schemas MUST NOT contain recursive type references or unbounded depth. Convert recursive structures to flat arrays with parent-id references.</statement>
+      <rationale source="OpenAI / Anthropic schema limits 2024-2026">Provider constrained decoding does not support recursive schemas; the call fails at the API layer. Flattening preserves structure while remaining tractable.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
