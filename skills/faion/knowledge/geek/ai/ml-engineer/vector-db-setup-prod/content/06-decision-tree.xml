@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Vector DB Prod Setup — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by DB kind + scale + ops profile to deploy mode.</summary>
+
+  <decision-tree>
+    <root-question id="q-kind">Which vector DB?</root-question>
+    <branch when="kind == 'pinecone'">
+      <conclusion ref="r5-pre-post-deploy-checklist" verdict="deploy_mode=managed; only configure tier + region; backup is provider responsibility"/>
+    </branch>
+    <branch when="kind in ['qdrant','weaviate','milvus','pgvector']">
+      <question id="q-scale">Vector count?</question>
+      <branch when="vector_count &gt; 100_000_000 or distributed_required">
+        <conclusion ref="r3-ha-per-db-class" verdict="deploy_mode=k8s-statefulset with Helm; 3+ replicas (Milvus / Weaviate)"/>
+      </branch>
+      <branch when="vector_count &lt;= 100_000_000">
+        <question id="q-team">Has K8s operations expertise?</question>
+        <branch when="k8s_ops == true">
+          <conclusion ref="r1-durable-persistence" verdict="deploy_mode=k8s-statefulset with durable PVC"/>
+        </branch>
+        <branch when="k8s_ops == false">
+          <conclusion ref="r4-backup-and-restore-drilled" verdict="deploy_mode=docker-compose on a single durable VM with backup CronJob"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+</text>

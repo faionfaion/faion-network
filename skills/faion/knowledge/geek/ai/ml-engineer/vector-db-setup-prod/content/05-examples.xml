@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Vector DB Prod Setup — Worked Example" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Worked example: Qdrant K8s StatefulSet with EBS gp3 + daily snapshot to S3.</summary>
+
+  <example title="prod-deploy.yaml for Qdrant 10M vectors prod">
+    <code lang="yaml"><![CDATA[
+deploy_mode: k8s-statefulset
+db_kind: qdrant
+image_tag: "qdrant/qdrant:v1.10.0"
+
+storage:
+  class: ebs-gp3
+  size_gb: 200
+  durable: true
+  iops: 6000
+
+resources:
+  cpu_request: "2"
+  cpu_limit: "4"
+  memory_request_gb: 16
+  memory_limit_gb: 24
+
+ha:
+  strategy: single-with-snapshot   # Qdrant OSS pattern
+  replicas: 1
+
+backup:
+  schedule_cron: "0 3 * * *"
+  retention_days: 30
+  destination: "s3://prod-backups/qdrant-snapshots/"
+  last_restore_drill: "2026-04-15"
+  drill_duration_min: 22
+
+checklist:
+  pre_deploy_passed: true
+  post_deploy_passed: true
+  monitoring_live: true
+  security_config_applied: true
+  smoke_search_ok: true
+]]></code>
+    <note>r1 durable EBS, r2 limits set, r3 Qdrant pattern (single + snapshot), r4 restore drilled within 60d, r5 both checklists green.</note>
+  </example>
+</text>

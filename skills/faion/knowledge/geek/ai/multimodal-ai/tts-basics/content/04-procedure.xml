@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="TTS Basics — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step procedure for a single-call TTS synthesis: preprocess → select voice → check cache → route provider → call API → log + return.</summary>
+
+  <section title="Steps">
+    <step n="1" name="preprocess-text">
+      <input>raw text payload (LLM output, news headline, notification body)</input>
+      <action>Apply preprocess_for_tts(): strip Markdown headings (`#{1,6}\s+`), strip bold/italic (`\*+([^*]+)\*+`, `_([^_]+)_`), strip HTML (`&lt;[^&gt;]+&gt;`), expand `$` → ` dollars `, `%` → ` percent `, expand abbreviation list (`API` → `A-P-I`).</action>
+      <output>cleaned UTF-8 string, ≤4000 chars (reject longer payloads, route to tts-implementation).</output>
+      <decision-gate>if len(cleaned) &gt; 4000 → return status="error", error="payload exceeds 4000 chars, route to tts-implementation".</decision-gate>
+    </step>
+
+    <step n="2" name="select-voice">
+      <input>content_type label (`news` / `assistant` / `narrator` / `neutral` / `whisper`)</input>
+      <action>Look up VOICE_MAP[content_type][provider] in `templates/voice-map.py`. Default provider is OpenAI unless overridden.</action>
+      <output>provider-native voice id (e.g., "nova" for OpenAI assistant, "en-US-Neural2-F" for Google narrator).</output>
+    </step>
+
+    <step n="3" name="check-cache">
+      <input>cleaned text, voice id, speed, model, provider</input>
+      <action>Compute `cache_key = sha256(f"{text}|{voice}|{speed}|{model}|{provider}").hexdigest()`. Probe `{cache_dir}/{cache_key}.{format}`; if exists, return {cached=true, path=...}.</action>
+      <output>cache_key (always); cached path (when hit).</output>
+      <decision-gate>if cache hit → skip steps 4–5, jump to step 6 with cached=true.</decision-gate>
+    </step>
+
+    <step n="4" name="route-provider">
+      <input>cleaned text, requested provider, SSML presence flag</input>
+      <action>Walk `content/06-decision-tree.xml`. If text contains `&lt;` and `&gt;` → force provider in {google, azure}. If language not in OpenAI's supported set → fall back to ElevenLabs or Google.</action>
+      <output>final provider + model selection.</output>
+    </step>
+
+    <step n="5" name="synthesize">
+      <input>cleaned text, voice id, speed, model, provider</input>
+      <action>Call provider SDK with retry (3 attempts, exponential backoff). Stream response to `{cache_dir}/{cache_key}.{format}`. For batch contexts, sleep(60/RPM) between calls (rule r6).</action>
+      <output>saved audio file path; raw provider response object.</output>
+    </step>
+
+    <step n="6" name="measure-and-log">
+      <input>saved audio path, provider response</input>
+      <action>Measure duration with `pydub.AudioSegment.from_file(path).duration_seconds`. If duration == 0.0, return status="error", error="0-second audio". Log {provider, voice, char_count, duration, cached} to the pipeline metrics sink.</action>
+      <output>full output contract object per `content/02-output-contract.xml`.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>
