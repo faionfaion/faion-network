@@ -2,7 +2,7 @@
 slug: storybook-setup
 tier: solo
 group: dev
-domain: frontend-developer
+domain: frontend
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

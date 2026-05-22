@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-065 phase 1: domain merge batch 14 (100 files).
 - F-065 phase 1: domain merge batch 13 (100 files).
 - F-065 phase 1: domain merge batch 12 (100 files).
 - F-065 phase 1: domain merge batch 11 (100 files).
