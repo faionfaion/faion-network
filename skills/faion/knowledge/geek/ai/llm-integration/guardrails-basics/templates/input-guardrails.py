@@ -1,3 +1,10 @@
+"""
+purpose: Layer-1 regex/length/PII pre-filter + prompt-injection detector for LLM input.
+consumes: untrusted user input + optional custom block patterns
+produces: ValidationResult (is_valid, sanitized_input, violations) and detect() tuple
+depends-on: content/01-core-rules.xml r1, r2
+token-budget-impact: zero — runtime side; microsecond CPU
+"""
 # InputGuardrails + PromptInjectionDetector templates
 # Usage: instantiate, call validate() / detect() before passing input to LLM
 

@@ -1,23 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="video-generation-async-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for video-generation-async-api. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Video Generation Async API — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: idempotency-key per submit, exponential backoff polling, total-wait cap, download-before-expiry, provider fallback.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Video generation agents MUST poll with a sleep interval (minimum 5s, recommended 10s) and a hard timeout (recommended 10 minutes / 600s). Never block synchronously waiting for a video generation job.</statement>
-      <rationale source="v1-source">All providers are async with 60-300s latency. Blocking synchronously freezes agent threads and wastes compute. A hard timeout prevents infinite hangs when providers silently fail.</rationale>
+
+    <rule id="r1-idempotency-key" testable="true" depth="essential">
+      <statement>Every submit() call MUST include an idempotency key (sha256(prompt + params + provider)). Retries on the same key MUST NOT trigger a new billable job.</statement>
+      <rationale source="provider idempotency docs; cost-overrun reports">Without idempotency, network retries double-bill the customer. Key-based dedup is the only safe retry primitive on async billable APIs.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>After receiving a SUCCEEDED status, download the video file immediately to local or persistent storage. Do NOT store provider-issued URLs as the final artifact — Runway and Luma URLs expire in 24-72h.</statement>
-      <rationale source="v1-source">Provider-issued video URLs expire, typically within 24-72h. Storing only the URL leads to broken references in downstream pipelines and content delivery.</rationale>
+
+    <rule id="r2-exp-backoff-polling" testable="true" depth="essential">
+      <statement>Poll loop MUST use exponential backoff (1s, 2s, 4s, 8s, 16s, capped at 30s). Tight polling (sleep &lt;1s) is forbidden.</statement>
+      <rationale source="provider rate limit lessons">Tight polling burns quota and hits 429s. Exponential backoff with jitter is the industry-standard pattern.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Always log the full raw API response on every poll cycle, including FAILED states. Generation failures can be silent (status: FAILED with empty failure_message field).</statement>
-      <rationale source="v1-source">Silent failures with empty error messages are common across providers. Without the full raw response logged, debugging production failures becomes impossible.</rationale>
+
+    <rule id="r3-total-wait-cap" testable="true" depth="essential">
+      <statement>Total poll duration MUST cap at 600s (10 min). On timeout, the job MUST be marked failed-timeout and a fallback path triggered.</statement>
+      <rationale source="provider operational reports">Some jobs hang silently. Without a cap, the worker is starved. 10min is enough for normal generation (60-300s).</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Implement per-provider rate limiting when generating multiple clips in parallel. Use provider-specific concurrency limits and add per-provider semaphores or queue guards.</statement>
-      <rationale source="v1-source">Parallel generation of many clips may hit provider rate limits (429 errors). Without per-provider rate limiting, all parallel jobs fail simultaneously and retry storms amplify the problem.</rationale>
+
+    <rule id="r4-download-before-expiry" testable="true" depth="essential">
+      <statement>On SUCCEEDED status, the artefact URL MUST be downloaded to durable storage (S3 / GCS) before the URL expires (provider TTLs 24-72h). Storing the provider URL as the final artefact is forbidden.</statement>
+      <rationale source="provider URL TTL docs; broken-link incidents">Provider URLs expire. Downstream pipelines built on raw URLs break silently when TTL elapses.</rationale>
     </rule>
+
+    <rule id="r5-provider-fallback" testable="true" depth="essential">
+      <statement>Pipeline MUST define a fallback provider. On timeout, permanent failure, or sustained 5xx, the same idempotency-key request retries against fallback. Single-provider deployment is forbidden in production.</statement>
+      <rationale source="provider outage post-mortems 2025-2026">Video providers have outages. Without fallback, the media pipeline stalls for hours.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

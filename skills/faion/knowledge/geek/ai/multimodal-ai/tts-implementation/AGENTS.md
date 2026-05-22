@@ -1,75 +1,106 @@
 ---
 slug: tts-implementation
 tier: geek
-group: ai
+group: ai-core
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production TTS service with multi-provider support (OpenAI, ElevenLabs, Google Cloud), content-hash caching, long-text chunking via LongTextTTS, real-time streaming via async PCM, and voice cloning via ElevenLabs.
-content_id: "e877b30726476edc"
-tags: [tts, audio-production, streaming, voice-cloning, multi-provider]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a production TTSService with sha256 cache + eviction, LongTextTTS chunking, async PCM streaming, and consent-gated ElevenLabs voice cloning.
+content_id: "b2e1f9a3c5d7406e"
+complexity: deep
+produces: code
+est_tokens: 4600
+tags: [tts, audio-production, streaming, voice-cloning, multi-provider, async]
 ---
 # Text-to-Speech Implementation
 
 ## Summary
 
-**One-sentence:** Production TTS service with multi-provider support (OpenAI, ElevenLabs, Google Cloud), content-hash caching, long-text chunking via LongTextTTS, real-time streaming via async PCM, and voice cloning via ElevenLabs.
+**One-sentence:** Wraps single-call TTS into a production service: cache eviction, LongTextTTS chunking, async PCM streaming, ElevenLabs voice cloning behind a consent gate.
 
-**One-paragraph:** Production TTS service with multi-provider support (OpenAI, ElevenLabs, Google Cloud), content-hash caching, long-text chunking via LongTextTTS, real-time streaming via async PCM, and voice cloning via ElevenLabs. Use when tts-basics patterns are insufficient — this layer adds TTSService, cache eviction, and streaming delivery.
+**One-paragraph:** TTSService centralises multi-provider TTS (OpenAI, ElevenLabs, Google Cloud) behind a unified synthesize() entry point with sha256-keyed cache including provider in the key, eviction by age + total size, transparent LongTextTTS chunking for payloads &gt; 4000 chars, async generator streaming for sub-second first-byte delivery, and consent-validated ElevenLabs clone_voice. Replaces direct provider calls from `tts-basics` once a pipeline produces long-form, multi-tenant, or streamed audio. Output is the standard contract from `tts-basics` plus a `chunks` array for assembled long-form audio.
+
+**Ефективно для:** інженера AI-конвеєра, що збирає подкасти / епізоди / WebSocket-стрім — закриває петлю між draft-TTS і прод-нагрузкою з обмеженням бюджету та консент-аудитом.
 
 ## Applies If (ALL must hold)
 
-- Long-form content (articles, podcast episodes) exceeding 4096-char API limits.
-- Production TTS service needing content-hash caching, retry, and multi-provider support.
-- Real-time streaming TTS to a speaker or WebSocket client.
-- Voice cloning from audio samples via ElevenLabs.
-- Multilingual synthesis where Google Neural2 outperforms OpenAI on specific languages.
+- Payload is long-form (article, podcast episode, book chapter) exceeding the 4000-char single-call cap.
+- Pipeline runs multiple synthesize calls per minute and needs sha256 cache + eviction.
+- Real-time streaming TTS (WebSocket, pyaudio speaker) is required, not just file delivery.
+- Voice cloning via ElevenLabs is on the roadmap and a consent-record store exists.
+- The agent operates in an async context (FastAPI, LiveKit, Daily) or controls a multi-worker pool.
 
 ## Skip If (ANY kills it)
 
-- Simple one-off audio generation — use tts-basics direct API call; TTSService setup adds overhead.
-- Voice cloning of persons without explicit consent — ElevenLabs ToS requires consent documentation.
-- Sub-200ms first-audio-byte latency in telephony — streaming helps but cannot reach <50ms.
-- Languages not covered by OpenAI TTS — use Google Cloud or Azure TTS directly.
+- Single one-off audio generation — use `tts-basics` directly; TTSService setup adds overhead.
+- Voice cloning without a stored consent record naming the speaker — ElevenLabs ToS blocker, hard stop.
+- Sub-200ms first-byte latency in telephony — even streaming PCM cannot reach below ~50ms.
+- Languages not covered by OpenAI TTS (≤16 supported) — use Google Cloud or Azure TTS directly.
+- No async runtime available — TTSService streaming requires asyncio; the sync path still works but loses the latency benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Long-form text | UTF-8 string (≥4000 chars allowed) | upstream LLM / CMS |
+| TTSConfig | dataclass: provider, voice, model, cache_dir, max_age_days, max_size_mb | pipeline config loader |
+| Provider credentials | env: `OPENAI_API_KEY`, `ELEVEN_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS` | secrets manager |
+| Consent record (clone path only) | JSON: `{speaker_id, signed_at, scope, sample_paths[]}` | consent store / ledger |
+| pydub + ffmpeg installed | apt / brew | host setup |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/multimodal-ai/tts-basics` | core preprocess, voice-map, single-call cache key — TTSService builds on these. |
+| `geek/ai/multimodal-ai/voice-implementation` | downstream consumer when TTSService output feeds a duplex voice agent. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: provider in cache key, eviction by age+size, tempfile.mkdtemp for chunks, semantic split, async stream, clone consent | ~1000 |
+| `content/02-output-contract.xml` | essential | TTSService.synthesize() schema + chunks[] for assembled long-form + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: predictable /tmp paths, regex split on code blocks, sync stream_to_file in async, missing duration check, clone without consent | ~900 |
+| `content/04-procedure.xml` | deep | 8-step procedure: probe cache → check length → chunk on semantic boundaries → parallel synth → assemble → measure → log → evict | ~900 |
+| `content/05-examples.xml` | medium | Worked podcast-episode synthesis: 18000-char article → 5 chunks → assembled mp3 | ~600 |
+| `content/06-decision-tree.xml` | essential | Routing: short vs long, cache hit vs miss, stream vs file, clone vs library voice | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `chunk-long-text` | sonnet | Semantic boundary detection: paragraphs, headings, sentence groups. |
+| `assemble-chunks` | haiku | pydub concat with silence padding; mechanical. |
+| `select-provider` | sonnet | Decision-tree walk: language, voice clone, cost cap, SSML. |
+| `validate-consent` | sonnet | Compare consent scope to requested clone use; gate the call. |
+| `synthesize-chunk` | haiku | Single API call per chunk; mechanical. |
+| `evict-cache` | haiku | LRU + size + age scan; mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tts_service.py` | TTSService + TTSConfig + cache eviction by age + total size. |
+| `templates/long_text_tts.py` | LongTextTTS with semantic split + tempfile.mkdtemp() for concurrent agent safety. |
+| `templates/stream_tts.py` | stream_tts() async generator + WebSocket forwarder pattern. |
+| `templates/elevenlabs_tts.py` | elevenlabs_tts() + clone_voice() gated on consent record. |
+| `templates/prompt-tts-prod.txt` | Agent task prompt for production TTS with cache semantics. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tts-implementation.py` | Validate TTSService output JSON (long-form with chunks[]) against 02-output-contract. | Post-synthesize, before downstream consumes. |
 
 ## Related
 
-- parent skill: `geek/ai/multimodal-ai/`
+- [[tts-basics]] — single-call layer this service builds on.
+- [[voice-implementation]] — duplex voice agent that consumes TTSService streaming output.
+- [[multimodal-ai/voice-basics]] — turn-based STT→LLM→TTS pipeline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks: payload length (short → tts-basics; long → chunk path), cache state (hit → return cached chunks; miss → synth), delivery mode (file → save to cache_dir; stream → async generator), voice mode (library → standard call; clone → consent gate then ElevenLabs). Use it at the synthesize() entry point of TTSService before any provider call.
