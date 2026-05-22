@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Judge Calibration Protocol Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure from label scope to a shipped calibrated judge.</summary>
+
+  <section title="Steps">
+    <step n="1" name="scope-labels">
+      <input>Use case + downstream consumer.</input>
+      <action>Enumerate the labels the judge must produce. Binary (refused/complied) is preferred; ordinal (1-5 rubric) requires more cases. Define what each label means with two reference examples per label.</action>
+      <output>label-spec.md + label-examples.jsonl.</output>
+      <decision-gate>If &gt;5 labels, split into multiple binary judges; nested categorical scoring is unreliable.</decision-gate>
+    </step>
+    <step n="2" name="build-holdout">
+      <input>Sample of system outputs (≥100 cases).</input>
+      <action>Stratified sample 30-50 cases ensuring ≥30% minority class. Hand-label by ≥1 rater (2 for safety-critical). Track inter-rater disagreement.</action>
+      <output>holdout.jsonl with {id, content, ref_label, raters_agreed}.</output>
+      <decision-gate>If inter-rater κ &lt; 0.7, label policy is unclear — fix the spec before proceeding.</decision-gate>
+    </step>
+    <step n="3" name="run-judge">
+      <input>Holdout + judge prompt draft.</input>
+      <action>Run judge over the holdout once. Record judge_label per case. Hash the judge prompt for traceability.</action>
+      <output>holdout-judge.jsonl with judge labels added.</output>
+      <decision-gate>Sanity-check: judge produced a label for every case; no parse errors.</decision-gate>
+    </step>
+    <step n="4" name="compute-metrics">
+      <input>holdout-judge.jsonl.</input>
+      <action>Compute confusion matrix, accuracy, Cohen's κ, false-pass rate, false-fail rate. Use sklearn or the included helper.</action>
+      <output>calibration-report.json conforming to content/02-output-contract.xml.</output>
+      <decision-gate>If κ ≥ 0.7 and per-class precision ≥ 0.8 → continue; else step 5.</decision-gate>
+    </step>
+    <step n="5" name="diagnose">
+      <input>Confusion matrix + sample of disagreements.</input>
+      <action>Cluster the disagreement cases. If one cluster dominates, revise the judge prompt to handle it (add a counter-example). If disagreements are diffuse, revise the label spec. Track which path was taken.</action>
+      <output>revised judge-prompt.md OR revised label-spec.md + record-of-changes.</output>
+      <decision-gate>Re-run from step 3 (max 3 iterations); after 3 iterations escalate to a different judge model.</decision-gate>
+    </step>
+    <step n="6" name="ship-or-block">
+      <input>Final calibration-report.json.</input>
+      <action>If κ ≥ 0.7 AND accuracy ≥ 0.85 AND minority-class recall ≥ 0.75 → decision=ship. Else decision=revise_prompt / revise_holdout / block per the failure path.</action>
+      <output>Final report + judge prompt + holdout pinned to commit.</output>
+      <decision-gate>"ship" decision is reversible — re-calibrate on next prompt or model change.</decision-gate>
+    </step>
+  </section>
+</text>
