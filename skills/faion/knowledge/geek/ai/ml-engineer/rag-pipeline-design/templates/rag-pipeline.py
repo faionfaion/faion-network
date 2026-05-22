@@ -1,3 +1,8 @@
+# purpose: production RAG pipeline skeleton (Qdrant + OpenAI embeddings + Anthropic synthesis)
+# consumes: documents[] + tenant_id; queries with mandatory tenant filter
+# produces: code (drop-in module for ingest + search + answer)
+# depends-on: qdrant-client, openai, anthropic; tenant_id required
+# token-budget-impact: ~3k tokens of code if loaded into LLM context for editing
 """Production RAG pipeline with Qdrant: ingest, hybrid search, metadata filter."""
 import hashlib
 import os

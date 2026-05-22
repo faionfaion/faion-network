@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="RAG Pipeline Design — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by query complexity + data-source count + latency envelope to Naive / Advanced / Modular / Agentic tier.</summary>
+
+  <decision-tree>
+    <root-question id="q-intents">How many distinguishable intent classes does query sample show?</root-question>
+    <branch when="intent_count == 1 and query_type == 'faq'">
+      <conclusion ref="r1-tier-selection" verdict="tier=naive — vector + generate; no reranker"/>
+    </branch>
+    <branch when="intent_count &gt;= 2 or query_type == 'ambiguous'">
+      <question id="q-sources">How many heterogeneous data sources feed retrieval?</question>
+      <branch when="data_sources == 1">
+        <question id="q-multistep">Does any intent require multi-step reasoning across passages?</question>
+        <branch when="multi_step == true">
+          <conclusion ref="r4-reranker-after-retrieval" verdict="tier=agentic — iterative retrieval + reformulation (≤3 rounds)"/>
+        </branch>
+        <branch when="multi_step == false">
+          <conclusion ref="r2-hybrid-default" verdict="tier=advanced — hybrid retrieval + cross-encoder reranker"/>
+        </branch>
+      </branch>
+      <branch when="data_sources &gt;= 2">
+        <conclusion ref="r4-reranker-after-retrieval" verdict="tier=modular — parallel retrieval across sources + reranker + merge"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="3 intents + 1 source + no multi-step → advanced">
+    <code lang="text"><![CDATA[
+intent_count=3 → q-sources → data_sources=1 → q-multistep → multi_step=false → r2-hybrid-default verdict: tier=advanced
+]]></code>
+  </example>
+</text>
