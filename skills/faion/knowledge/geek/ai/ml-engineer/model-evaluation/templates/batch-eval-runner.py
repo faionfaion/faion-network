@@ -1,3 +1,9 @@
+# purpose: Batch-runs an evaluation suite end to end and emits a report
+# consumes: eval suite + model id + dataset
+# produces: report JSON for templates/_smoke-test.md
+# depends-on: content/02-output-contract.xml + scripts/validate-model-evaluation.py
+# token-budget-impact: medium
+
 """
 Async batch evaluation runner using Anthropic SDK.
 Reads JUDGE_PROMPT from llm-judge-prompt.txt; rate-limits concurrent calls.

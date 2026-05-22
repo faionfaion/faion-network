@@ -23,6 +23,13 @@ tags: [eval, feedback-loop, llm-ops, regression-test, ml-engineer]
 
 **One-paragraph:** Most LLM products collect thumbs-up/down feedback but never funnel it into evals; the data dies in a Kafka topic. This methodology codifies a 4-stage pipeline (ingest → scrub → judge → admit) plus a stop-the-bleed escalation rule (3+ thumbs-down on same response pattern → human-on-call within 4h). Eval set growth is capped at 50 rows/week to keep CI runtime bounded. Output: `EvalCandidate` records routed to admit/reject + `EvalSet` with versioned rows. Built on OpenAI Evals, Anthropic AISI patterns, and the Lilian Weng "LLM ops" playbook.
 
+**Ефективно для:**
+
+- Продуктів із thumbs widget + регресійним eval suite — закриває loop між сигналом і регресією за 24h, не вручну.
+- Hallucination-sensitive feature (legal, medical, support) — stop-the-bleed gate ловить кластер однотипних відмов за 4h.
+- CI-budget-aware команд — cap 50 rows/week тримає eval runtime bounded; eval suite не вибухає.
+- Privacy-strict пайплайнів — обовʼязковий PII-scrub gate перед admit оберігає eval-suite від витоків.
+
 ## Applies If (ALL must hold)
 
 - production LLM feature with ≥ 1000 daily interactions
@@ -56,9 +63,12 @@ tags: [eval, feedback-loop, llm-ops, regression-test, ml-engineer]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 4-stage pipeline, PII scrub gate, judge voting, weekly cap, stop-the-bleed | ~1000 |
-| `content/02-output-contract.xml` | essential | `EvalCandidate` + admitted-row schema | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: noisy thumbs, PII leak, judge bias, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: 4-stage pipeline, PII scrub gate, judge voting, weekly cap, stop-the-bleed | 1000 |
+| `content/02-output-contract.xml` | essential | `EvalCandidate` + admitted-row schema | 700 |
+| `content/03-failure-modes.xml` | essential | 6 modes: noisy thumbs, PII leak, judge bias, etc. | 900 |
+| `content/04-procedure.xml` | essential | 6 steps: ingest → scrub → cluster → judge vote → admit → ship | 800 |
+| `content/05-examples.xml` | essential | Worked example: 3-thumbs-down cluster fires stop-the-bleed | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by cluster-size, judge-vote, PII-status, weekly-cap | 400 |
 
 ## Task Routing
 

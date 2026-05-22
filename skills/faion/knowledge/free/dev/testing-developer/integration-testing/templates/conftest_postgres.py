@@ -1,3 +1,8 @@
+# purpose: Postgres + rollback conftest emitted from integration-testing decision-record
+# consumes: testcontainers + sqlalchemy installed; Base.metadata defined
+# produces: session-scoped engine, function-scoped Session with rollback teardown
+# depends-on: r1-rollback-default, r2-container-scoping
+# token-budget-impact: ~300 tokens
 """
 conftest.py — PostgreSQL integration test setup.
 Session-scoped Testcontainers container + function-scoped transaction rollback.

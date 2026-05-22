@@ -1,3 +1,9 @@
+# purpose: RAGAS evaluation runner: faithfulness + answer-relevance + context metrics
+# consumes: questions + answers + contexts (+ ground_truth)
+# produces: RAGAS score dict for the report
+# depends-on: content/02-output-contract.xml + content/04-procedure.xml
+# token-budget-impact: medium
+
 """
 RAGAS evaluation runner for RAG pipelines.
 Requires: pip install ragas datasets

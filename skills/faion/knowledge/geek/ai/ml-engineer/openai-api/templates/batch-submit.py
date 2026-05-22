@@ -1,3 +1,9 @@
+# purpose: OpenAI Batch API submitter: serialises JSONL, uploads file, polls completion
+# consumes: list of request dicts + endpoint
+# produces: batch id + output JSONL once Batch completes
+# depends-on: content/04-procedure.xml
+# token-budget-impact: small
+
 """
 Batch API: build JSONL, upload, submit job, poll for results.
 50% cost discount; up to 24h completion window.

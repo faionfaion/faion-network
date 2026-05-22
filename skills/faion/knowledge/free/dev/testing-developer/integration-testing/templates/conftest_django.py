@@ -1,3 +1,8 @@
+# purpose: Django + Factory Boy conftest emitted from integration-testing
+# consumes: pytest-django, factory-boy installed; User model importable
+# produces: UserFactory + user + admin_user fixtures with savepoint rollback
+# depends-on: r1-rollback-default, r5-factory-uniqueness
+# token-budget-impact: ~250 tokens
 """
 conftest.py — Django integration test setup with Factory Boy.
 Requires: pytest-django, factory-boy

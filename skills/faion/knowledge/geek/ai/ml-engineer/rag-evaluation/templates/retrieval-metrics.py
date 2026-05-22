@@ -1,3 +1,9 @@
+# purpose: Retrieval metrics calculator: Precision@K, Recall@K, MRR, Hit Rate
+# consumes: retrieved doc ids + relevance labels
+# produces: metric dict for the report
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
+
 """
 Retrieval metrics: hit rate, MRR, Precision@K.
 Input: lists of retrieved and relevant document IDs per query.

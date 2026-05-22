@@ -1,3 +1,9 @@
+# purpose: Typed pipeline-state object for sequential / hierarchical multi-agent flows
+# consumes: agent-edge messages
+# produces: TypedDict / Pydantic state for the orchestrator
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
+
 """
 Typed state models for multi-agent patterns.
 Use with LangGraph StateGraph or pass as context dict to agent frameworks.

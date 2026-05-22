@@ -1,3 +1,9 @@
+# purpose: Exponential-backoff wrapper for OpenAI API calls handling 429 + 5xx
+# consumes: callable + args/kwargs
+# produces: retry-aware wrapper with capped delay
+# depends-on: content/03-failure-modes.xml
+# token-budget-impact: small
+
 """
 Exponential backoff wrapper for OpenAI API calls.
 Handles RateLimitError (429) and server errors (5xx).

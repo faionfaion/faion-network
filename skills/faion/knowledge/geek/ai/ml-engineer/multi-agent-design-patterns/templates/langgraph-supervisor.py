@@ -1,3 +1,9 @@
+# purpose: LangGraph supervisor skeleton: nodes, edges, conditional routing, termination
+# consumes: agents-config.yaml + per-role tools
+# produces: Python module wiring a LangGraph runnable
+# depends-on: content/02-output-contract.xml + content/04-procedure.xml
+# token-budget-impact: medium
+
 """
 Minimal LangGraph supervisor pattern.
 Replace route_with_llm, run_research, run_code_generation with real implementations.

@@ -1,57 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Judge Calibration Protocol Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Judge Calibration Protocol artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Judge Calibration Protocol Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for calibration-report.json: holdout meta, judge meta, agreement metrics, confusion matrix, decision.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/judge-calibration-report",
+  "type": "object",
+  "required": ["holdout", "judge", "metrics", "confusion", "decision"],
+  "properties": {
+    "holdout": {
+      "type": "object",
+      "required": ["path", "size", "raters", "labels"],
+      "properties": {
+        "path": {"type": "string"},
+        "size": {"type": "integer", "minimum": 30},
+        "raters": {"type": "integer", "minimum": 1},
+        "labels": {"type": "array", "minItems": 2, "items": {"type": "string"}}
+      }
+    },
+    "judge": {
+      "type": "object",
+      "required": ["model", "prompt_hash", "run_at"],
+      "properties": {
+        "model": {"type": "string"},
+        "prompt_hash": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+        "run_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["kappa", "accuracy", "false_pass_rate", "false_fail_rate"],
+      "properties": {
+        "kappa": {"type": "number", "minimum": -1, "maximum": 1},
+        "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "false_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "false_fail_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "confusion": {
+      "type": "object",
+      "description": "labels x labels integer counts; row=ref, col=judge"
+    },
+    "decision": {"enum": ["ship", "revise_prompt", "revise_holdout", "block"]}
+  }
+}]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "holdout": {"path": "evals/judge/holdout.jsonl", "size": 40, "raters": 2, "labels": ["refused", "complied"]},
+  "judge": {"model": "claude-opus-4-5", "prompt_hash": "0123456789abcdef0123456789abcdef01234567", "run_at": "2026-05-22T10:00:00Z"},
+  "metrics": {"kappa": 0.78, "accuracy": 0.90, "false_pass_rate": 0.05, "false_fail_rate": 0.10},
+  "confusion": {"refused": {"refused": 18, "complied": 2}, "complied": {"refused": 1, "complied": 19}},
+  "decision": "ship"
+}]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "holdout": {"path": "h.jsonl", "size": 12, "raters": 1, "labels": ["yes", "no"]},
+  "metrics": {"kappa": 0.42, "accuracy": 0.75},
+  "decision": "ship"
+}]]></code>
+      <note>Fails: holdout size &lt;30, κ below 0.7, missing confusion + false-rates, ship decision contradicts metrics.</note>
+    </example>
   </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
+      <item>holdout.size ≥ 30.</item>
+      <item>metrics.kappa ≥ 0.7 if decision is "ship".</item>
+      <item>confusion matrix has all label-x-label cells filled.</item>
+      <item>judge.prompt_hash matches the actual judge prompt file.</item>
+      <item>false_pass_rate + false_fail_rate explained against business cost.</item>
     </list>
   </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
 </text>

@@ -1,3 +1,9 @@
+# purpose: End-to-end RAG pipeline: chunk → embed → hybrid-search → rerank → generate
+# consumes: corpus + query
+# produces: Python module wiring retrieval + generation
+# depends-on: content/02-output-contract.xml + content/04-procedure.xml
+# token-budget-impact: medium
+
 # Production RAG pipeline: ingest → index → query with reranking (LlamaIndex)
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter

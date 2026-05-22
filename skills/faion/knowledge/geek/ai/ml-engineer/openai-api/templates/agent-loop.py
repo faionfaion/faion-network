@@ -1,3 +1,9 @@
+# purpose: OpenAI Responses API agent loop with tool dispatch and turn cap
+# consumes: tool registry + initial user message
+# produces: Python agent loop emitting trace + final answer
+# depends-on: content/02-output-contract.xml + content/04-procedure.xml
+# token-budget-impact: medium
+
 """
 Function-calling agent loop with tool execution.
 Handles tool calls → executes → appends result → continues loop.

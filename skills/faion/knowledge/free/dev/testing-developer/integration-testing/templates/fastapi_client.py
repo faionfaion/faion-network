@@ -1,3 +1,8 @@
+# purpose: FastAPI sync + async client fixtures with dependency overrides
+# consumes: app object, get_db dependency, session fixture
+# produces: client + async_client fixtures with proper override.clear() teardown
+# depends-on: r3-clear-overrides (overrides MUST be cleared in teardown)
+# token-budget-impact: ~250 tokens
 """
 FastAPI test client fixtures — sync (TestClient) and async (AsyncClient).
 Add to conftest.py; requires httpx.

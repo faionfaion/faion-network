@@ -1,3 +1,9 @@
+# purpose: Sequential pipeline runner: per-step state, retries, typed handoff contract
+# consumes: pipeline config + per-step prompts
+# produces: Python module running the pipeline with traces
+# depends-on: content/02-output-contract.xml + content/04-procedure.xml
+# token-budget-impact: medium
+
 """
 Minimal 3-agent sequential pipeline: researcher → writer → reviewer.
 State is serialized as JSON and passed explicitly between agents.
