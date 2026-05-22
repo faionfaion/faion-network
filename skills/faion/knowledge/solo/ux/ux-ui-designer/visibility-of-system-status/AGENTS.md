@@ -2,7 +2,7 @@
 slug: visibility-of-system-status
 tier: solo
 group: ux
-domain: ux-ui-designer
+domain: frontend
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
