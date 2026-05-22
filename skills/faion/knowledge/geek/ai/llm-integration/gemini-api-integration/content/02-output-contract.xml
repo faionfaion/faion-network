@@ -1,22 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="gemini-api-integration Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Gemini API Integration Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for gemini-config.json (model + generation_config + safety_settings).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/gemini-config",
+  "type": "object",
+  "required": ["model", "generation_config", "safety_settings"],
+  "properties": {
+    "model": {"type": "string", "pattern": "^gemini-"},
+    "generation_config": {
+      "type": "object",
+      "required": ["temperature", "max_output_tokens"],
+      "properties": {
+        "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+        "top_p": {"type": "number"},
+        "top_k": {"type": "integer"},
+        "max_output_tokens": {"type": "integer", "minimum": 1},
+        "response_mime_type": {"enum": ["text/plain", "application/json"]}
+      }
+    },
+    "safety_settings": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["category", "threshold"],
+        "properties": {
+          "category": {"enum": ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"]},
+          "threshold": {"enum": ["BLOCK_NONE", "BLOCK_LOW_AND_ABOVE", "BLOCK_MEDIUM_AND_ABOVE", "BLOCK_ONLY_HIGH"]}
+        }
+      }
+    },
+    "files_api": {
+      "type": "object",
+      "properties": {"use_for_media_kb": {"type": "integer", "minimum": 1}}
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "model": "gemini-2.5-flash",
+  "generation_config": {"temperature": 0.2, "max_output_tokens": 2048, "response_mime_type": "application/json"},
+  "safety_settings": [
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
+  ],
+  "files_api": {"use_for_media_kb": 10240}
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"model": "gpt-4o", "generation_config": {}, "safety_settings": []}]]></code>
+      <note>Fails: wrong model prefix, empty generation_config, &lt;4 safety settings.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>model starts with "gemini-".</item>
+      <item>generation_config has temperature + max_output_tokens.</item>
+      <item>safety_settings has all 4 standard categories.</item>
+      <item>files_api.use_for_media_kb &gt; 0 if multimodal.</item>
     </list>
   </section>
 </text>
