@@ -3,72 +3,95 @@ slug: mcp-servers
 tier: geek
 group: ai
 domain: claude-code
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Reference catalog of 40+ popular MCP servers for Claude Code, organized by service category (marketing, analytics, project management, development, design, etc.
-content_id: "ee844a3dbd5c85e6"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Curated, audited catalog of public MCP servers organized by category (marketing, analytics, dev, design, PM), with install commands + auth + tool-count + risk score.
+content_id: "ec6215f1c092cf9e"
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [mcp, claude-code, integration, api, tools]
 ---
 # MCP Server Catalog
 
 ## Summary
 
-**One-sentence:** Reference catalog of 40+ popular MCP servers for Claude Code, organized by service category (marketing, analytics, project management, development, design, etc.
+**One-sentence:** Curated, audited catalog of public MCP servers organized by category (marketing, analytics, dev, design, PM), with install commands + auth + tool-count + risk score.
 
-**One-paragraph:** Reference catalog of 40+ popular MCP servers for Claude Code, organized by service category (marketing, analytics, project management, development, design, etc.). Includes setup commands, authentication requirements, and best practices for agent integration.
+**One-paragraph:** Many teams rebuild MCP servers because they didn't know a public one exists. This methodology codifies a catalog audit: every candidate server scored on category, install command shape, auth model, tool-count, security posture (gitleaks-scanned, minimum-scope creds), maintenance signal (last release &lt; 90 days). Output is a Markdown + JSON catalog the team queries before considering a build-vs-buy decision.
+
+**Ефективно для:**
+
+- Build-vs-buy decision: глянути в catalog перед написанням свого MCP сервера.
+- Onboarding new team members: catalog показує які integrations доступні з коробки.
+- Security audit: server-level scoring (gitleaks + scope-min + maintenance) фільтрує ризикові пакети.
+- Marketing/PM/Dev — кожен тип ролі бачить релевантні tools у своїй категорії.
 
 ## Applies If (ALL must hold)
 
-- Agent needs to interact with an external service (GitHub, Slack, Notion, Stripe) without writing custom API code.
-- Standardizing tool interfaces across multiple agents — all agents use the same MCP tool, not ad-hoc curl calls.
-- Replacing fragile shell-script API wrappers with a typed, introspectable MCP interface.
-- Enabling Claude Code to read from or write to databases, CRMs, or project management tools mid-session.
+- Team uses Claude Code with MCP enabled.
+- Multiple integrations are in scope (≥ 3 services).
+- Quarterly review owner exists to refresh the catalog.
 
 ## Skip If (ANY kills it)
 
-- The service has no MCP server and the task is one-off — use WebFetch + Bash(curl) directly instead.
-- The MCP server requires an OAuth flow that cannot be completed non-interactively — authentication will block.
-- Security policy disallows external process spawning or network calls from within Claude Code.
-- The catalog server's tool count is very large (>50 tools) — it pollutes the model's tool namespace; filter or build a focused custom server instead.
+- Single MCP integration with no plans to add more.
+- Air-gapped environment where public servers cannot be used at all.
+- Catalog maintained centrally upstream by the platform team — link to it instead of forking.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service inventory | list of services agents integrate with | team survey |
+| MCP registry | modelcontextprotocol.io listing | public |
+| Security scorecard rubric | gitleaks + scope-min + maintenance | security team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: per-server-scorecard, category-required, maintenance-signal-90d, scope-min-required, quarterly-refresh-cadence | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for report + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `search-mcp-registry` | haiku | Mechanical lookup. |
+| `score-each-candidate` | sonnet | Light judgment on recommendation. |
+| `publish-catalog` | haiku | Markdown render. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/catalog.md` | Catalog Markdown template (per-category sections) |
+| `templates/catalog.json` | Machine-readable catalog JSON |
+| `templates/scorecard.md` | Per-server scorecard template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mcp-servers.py` | Validate the report artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/claude-code/`
+- [[mcp]]
+- [[mcp-basics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

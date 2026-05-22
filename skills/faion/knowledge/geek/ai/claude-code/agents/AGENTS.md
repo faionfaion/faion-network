@@ -3,73 +3,97 @@ slug: agents
 tier: geek
 group: ai
 domain: claude-code
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use this reference when creating a new agent or subagent, editing an existing agent, fixing or improving an agent, or adding functionality to an agent.
-content_id: "37259ea365fc4323"
-tags: [agents, subagents, autonomous-workers, task-delegation, parallel-execution]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Spec + config for Claude Code subagents: isolated context, whitelisted tools, designated role, decision rule when to use Agent vs Skill vs Command.
+content_id: "55c1b8993f6bc759"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [claude-code, agents, subagents, task-delegation, parallel-execution]
 ---
-# Creating or Updating Agents
+# Creating or Updating Claude Code Agents
 
 ## Summary
 
-**One-sentence:** Use this reference when creating a new agent or subagent, editing an existing agent, fixing or improving an agent, or adding functionality to an agent.
+**One-sentence:** Spec + config for Claude Code subagents: isolated context, whitelisted tools, designated role, decision rule when to use Agent vs Skill vs Command.
 
-**One-paragraph:** Use this reference when creating a new agent or subagent, editing an existing agent, fixing or improving an agent, or adding functionality to an agent. Agents are autonomous workers with isolated contexts, whitelisted tools, and designated roles.
+**One-paragraph:** Claude Code agents (subagents) are autonomous workers with dedicated context windows, whitelisted tools, and a designated role. Misusing the Task tool — wrapping a 1-step query in an agent, sharing mutable state with the parent, expecting interactive input mid-run — wastes 5-30K tokens per call. This methodology codifies the Agent / Skill / Command decision tree, the agent.md frontmatter, the tool-whitelisting rule, and the IPC-via-files pattern. Output is an agent definition file + a validator that checks the frontmatter shape.
+
+**Ефективно для:**
+
+- Параллельні незалежні задачі: 3+ модулі одночасно — Task tool fan-out.
+- Context isolation: research subagent не отруює primary context window.
+- Sequential pipeline stages: spec → design → impl → test — кожен у своєму context'і.
+- Long-running background research / scraping / report-generation з orchestrator'а.
 
 ## Applies If (ALL must hold)
 
-- Parallelizing independent tasks that do not share state, such as three modules implemented simultaneously.
-- Context isolation: preventing unrelated research from polluting the primary agent's context window.
-- Role specialization: a reviewer agent that only reads, a coder agent that only writes.
-- Long-running background work dispatched from an orchestrator, such as research, web scraping, or report generation.
-- Sequential pipeline stages where each stage needs a clean context: spec, then design, then implement, then test.
+- Task has clear single-shot semantics (no interactive input needed).
+- Subtask benefits from context isolation (research, code review, long synthesis).
+- Tool surface for the subtask can be tightly whitelisted (≤ 5 tools typically).
 
 ## Skip If (ANY kills it)
 
-- Simple single-step tasks that complete in one tool call: agent overhead is not justified.
-- The subtask requires interactive user input mid-execution: agents run autonomously.
-- Real-time streaming output is required: Task tool is async; results return on completion.
-- Task needs to share mutable in-memory state with the parent: agents are isolated, use files as IPC.
+- Single-step task that completes in one tool call — agent overhead unjustified.
+- Subtask requires interactive user input mid-execution — agents run autonomously.
+- Real-time streaming output required — Task tool is async; results return on completion.
+- Subtask needs shared mutable in-memory state with the parent — agents are isolated; use files as IPC.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Subtask spec | Markdown / prompt | task definition |
+| Tool whitelist | list of allowed tools | from subtask spec |
+| Output contract | JSON schema or Markdown | consumer of agent result |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: agent-vs-skill-vs-command, whitelist-tools-min, ipc-via-files-not-memory, output-contract-required, no-interactive-mid-run | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-agent-vs-alternative` | sonnet | Decision tree application. |
+| `declare-frontmatter` | haiku | Template fill. |
+| `write-agent-body` | sonnet | Prompt writing needs light judgment. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agent.md` | Agent definition template (frontmatter + role + inputs + steps + output contract) |
+| `templates/agent-code-reviewer.md` | Worked example: code-reviewer subagent |
+| `templates/agent-research.md` | Worked example: research subagent (Read+WebFetch only) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agents.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/claude-code/`
+- [[commands]]
+- [[skills]]
+- [[hooks]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

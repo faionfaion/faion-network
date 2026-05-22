@@ -1,67 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mcp-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mcp-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="MCP Basics: Model Context Protocol Server Development Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TypeScript "type": "module" requires Node.js &gt;= 18; silent runtime errors on older Node.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pin Node.js version in .nvmrc or engines field in package.json. Test with your minimum supported version.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>FastMCP does not support streaming tool responses — use the official mcp Python SDK for streaming.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>For streaming, use official mcp SDK. For non-streaming, FastMCP is simpler and faster to write.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>If process.env.API_KEY is undefined in the TypeScript server, the server starts successfully but all tool calls fail at runtime — validate env at startup.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Validate all env vars at server startup (before server.connect()), not inside tool handlers. Fail fast with a clear error message.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Large tool return values (&gt;50KB) are passed verbatim into the agent's context window; they crowd out other context.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always truncate large payloads before returning — text[:10000] or equivalent prevents context window bloat.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>npx -y package@latest at Claude Code startup pulls the latest package version — a breaking upstream release can silently break all agents relying on that server.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pin SDK versions in package.json and requirements.txt. Use "1.2.3" not "*". Pin packages in claude mcp add: npx my-mcp-server@1.2.3.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>MCP Inspector requires a browser (port 5173) — use --cli flag or direct stdin testing in headless environments.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use --cli mode for headless/CI environments. For development, browser GUI is convenient.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Python asyncio servers (async def tool handlers) cannot be tested with synchronous test harnesses; use asyncio.run() in test scripts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always use mcp.run() as the entry point for FastMCP servers. For official SDK, use asyncio.run(main()) in __main__.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>An agent that builds a server and runs claude mcp add cannot use the new server until Claude Code restarts — the agent must finish and inform the user to restart.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Plan multi-session workflows when server installation is part of the task. Document that agents must restart to use newly-installed servers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>MCP tool names are global within a registered server; if two registered servers expose a tool with the same name, Claude will invoke whichever it finds first — use descriptive, unique names.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use namespace prefixes in tool names: {service}_{action}. Example: db_query, db_list_tables.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>If a Python FastMCP server uses async def handlers but is launched with python server.py (not mcp.run()), it will start but all async calls silently return None.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always use mcp.run() as the entry point for FastMCP servers. For official SDK, use asyncio.run(main()) in __main__.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Agents cannot introspect what tools a server provides without calling list_tools — the MCP Inspector does this; in automated testing scripts, call list_tools first to verify server registration succeeded.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>In automated workflows, always call list_tools as the first validation step after registration.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Return values must be serializable to JSON text content — returning a Python object (dict, list) without json.dumps() will produce a [object Object] string in TypeScript or a type error in Python.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always call json.dumps() on Python objects before returning. In TypeScript, JSON.stringify() on complex objects.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="multi-tool-first-day" severity="medium">
+      <symptom>Author scaffolds 8 tools on day 1; debugging the SDK + transport + 8 schemas at once is overwhelming; project shelved.</symptom>
+      <root-cause source="Anthropic MCP basics guide">Skipped the one-tool-first rule.</root-cause>
+      <fix>Ship one tool. Add more after a week of real usage.</fix>
+    </antipattern>
+
+    <antipattern id="schema-less-first-tool" severity="high">
+      <symptom>Tool accepts free-text `payload` field. Agent passes garbage; debugging is impossible.</symptom>
+      <root-cause source="Anthropic MCP TypeScript SDK docs">Author thought schema was a polish concern.</root-cause>
+      <fix>Mandatory Zod / Pydantic schema even for the first tool.</fix>
+    </antipattern>
+
+    <antipattern id="no-install-command-in-readme" severity="medium">
+      <symptom>Team can't figure out how to install the server. Author has to share Slack snippets.</symptom>
+      <root-cause source="Internal — MCP onboarding playbook">Readme written from the developer's perspective, not the consumer's.</root-cause>
+      <fix>Top of README: 3-line install block with copy-paste `claude mcp add ...`.</fix>
+    </antipattern>
+
+    <antipattern id="no-inspector-test" severity="medium">
+      <symptom>Server doesn't register at the gateway because manifest field name was wrong. Users hit it before the author did.</symptom>
+      <root-cause source="Anthropic MCP TypeScript SDK docs">Smoke test skipped.</root-cause>
+      <fix>Mandatory `mcp-inspector` pass before any push to shared repo.</fix>
+    </antipattern>
+
   </section>
 </text>

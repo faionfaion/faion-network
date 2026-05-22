@@ -3,72 +3,96 @@ slug: mcp-basics
 tier: geek
 group: ai
 domain: claude-code
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Learn to build Model Context Protocol (MCP) servers that expose internal systems as typed, discoverable tools for Claude agents.
-content_id: "c529ded457346fca"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: 5-minute MCP basics primer + minimal stdio server scaffold (TypeScript / Python) producing a single typed tool.
+content_id: "0fb5971129b24c53"
+complexity: light
+produces: spec
+est_tokens: 4400
 tags: [mcp, basics, getting-started, server-development, integrations]
 ---
 # MCP Basics: Model Context Protocol Server Development
 
 ## Summary
 
-**One-sentence:** Learn to build Model Context Protocol (MCP) servers that expose internal systems as typed, discoverable tools for Claude agents.
+**One-sentence:** 5-minute MCP basics primer + minimal stdio server scaffold (TypeScript / Python) producing a single typed tool.
 
-**One-paragraph:** Learn to build Model Context Protocol (MCP) servers that expose internal systems as typed, discoverable tools for Claude agents. MCP provides standardized interfaces, automatic schema validation, and secure credential handling—replacing ad-hoc shell commands with production-ready integrations.
+**One-paragraph:** MCP basics is the entrypoint methodology: a 5-minute scaffold from `npm init` (or Python equivalent) to a working MCP server exposing a single typed tool the agent can call. It is the prerequisite for anyone hitting the deeper `mcp` (server-development) methodology. Output is a runnable repository with one tool, schema, README, and a `claude mcp add` install command.
+
+**Ефективно для:**
+
+- Перший MCP сервер: 5-хвилинний getting-started з мінімумом понять.
+- ML / data engineer wraps ML inference у MCP — typed interface від першого виклику.
+- Заміна curl/Bash виклику на named MCP tool, доступний усім агентам команди.
+- Розподілення через npm / PyPI — installable за одну команду.
 
 ## Applies If (ALL must hold)
 
-- Building a reusable typed interface between Claude agents and an internal system (database, API, filesystem abstraction).
-- Replacing ad-hoc Bash(curl:*) tool calls with a named, schema-validated MCP tool that other agents can discover.
-- Creating a Python ML inference server so Claude agents can invoke models as named tools.
-- Distributing a shared integration to a team via npm or PyPI — MCP servers are installable packages.
+- First MCP server (no existing one in the team).
+- Need a typed interface between agents and an internal system.
+- Volume justifies the upfront 30-60 min scaffold (≥ 50 calls/week to the integration).
 
 ## Skip If (ANY kills it)
 
-- An existing public MCP server covers the integration — prefer npx -y @existing/package over building from scratch.
-- Single-use task where a direct WebFetch or Bash call is simpler and won't be reused.
-- The server needs to maintain stateful sessions between tool calls — stdio transport creates a fresh process per session, no session affinity.
-- Sub-10ms latency is required per tool call — MCP transport overhead is 10-50ms minimum.
+- A public MCP server covers the integration — prefer `npx -y @existing/package`.
+- Single-use task where WebFetch / Bash is simpler.
+- Server needs stateful sessions (stdio creates fresh process per session).
+- Sub-10ms latency is required per call.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Node ≥ 18 or Python ≥ 3.10 | runtime | system |
+| Service API + auth model | doc | service team |
+| One tool spec | name + input + output | use-case |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: scaffold-one-tool-first, stdio-default-transport, schema-on-the-one-tool, install-command-in-readme, smoke-test-with-inspector | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `init-package` | haiku | Mechanical scaffold. |
+| `scaffold-one-tool` | sonnet | Schema + handler design. |
+| `smoke-test` | haiku | Inspector run. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ts-server.ts` | Minimal TypeScript MCP server with one tool |
+| `templates/py-server.py` | Minimal Python MCP server with one tool |
+| `templates/install-readme.md` | README install-command template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mcp-basics.py` | Validate the spec artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/claude-code/`
+- [[mcp]]
+- [[mcp-servers]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

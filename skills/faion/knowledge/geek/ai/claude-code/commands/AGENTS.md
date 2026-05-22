@@ -3,72 +3,96 @@ slug: commands
 tier: geek
 group: ai
 domain: claude-code
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use this reference when creating a new command, editing or updating an existing command, or fixing or improving a command.
-content_id: "d1ebdd83eaa335b8"
-tags: [commands, slash-commands, quick-actions, argument-syntax, tool-whitelisting]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Spec for /invoke commands under 250 lines: clear argument syntax, tool whitelist, !-prefix bash for live context, no overhead of skills or agents.
+content_id: "5899863bc6c17640"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [claude-code, commands, slash-commands, quick-actions, tool-whitelisting]
 ---
-# Creating or Updating Commands
+# Creating or Updating Claude Code Commands
 
 ## Summary
 
-**One-sentence:** Use this reference when creating a new command, editing or updating an existing command, or fixing or improving a command.
+**One-sentence:** Spec for /invoke commands under 250 lines: clear argument syntax, tool whitelist, !-prefix bash for live context, no overhead of skills or agents.
 
-**One-paragraph:** Use this reference when creating a new command, editing or updating an existing command, or fixing or improving a command. Commands are short manual /invoke actions with optional arguments and whitelisted tools. Keep them concise: under 150 lines ideal, max 250.
+**One-paragraph:** Commands are short manual /invoke actions with optional arguments and whitelisted tools. They are the lightest-weight Claude Code primitive: under 150 lines is ideal, 250 max. Past 250, split into a skill. Misuse — wrapping multi-stage workflows, expecting auto-trigger, padding with marketing prose — bloats the context budget and confuses users. This methodology codifies the line-count cap, the argument-syntax convention, the !-prefix bash pattern for live context, and the tool-whitelist rule. Output is a command file validated against the schema.
+
+**Ефективно для:**
+
+- Repeatable shortcut actions: /deploy, /commit, /review — predictable interface.
+- Wrapping bash + context injection: !-prefix dynamic execution.
+- Project-specific shortcuts, які не варті повноцінного skill'у.
+- Live context injection (current branch, diff, env) на invocation time.
 
 ## Applies If (ALL must hold)
 
-- Exposing a repeatable action to developers with a predictable interface such as /deploy, /commit, /review.
-- Wrapping a complex Bash plus context injection sequence that would be tedious to type every session.
-- Creating lightweight project-specific shortcuts that do not need the overhead of a full skill or agent.
-- Injecting live context, current branch, diff, or environment, at invocation time via !-prefix bash execution.
+- Action is manual (/invoke) and small (&lt; 250 lines).
+- Action has predictable interface — same arguments each time.
+- Tool surface is tightly bounded (≤ 5 tools).
 
 ## Skip If (ANY kills it)
 
-- Workflow requires multiple sequential agents, memory between steps, or parallel subtasks: use a skill or agent instead.
-- Action must run automatically, not via manual /invoke: use hooks.
-- Logic exceeds approximately 250 lines: split into a skill with SKILL.md.
-- Command is project-private and the team does not use faion-network: store locally, gitignore it.
+- Workflow needs multiple sequential agents OR memory between steps — use a Skill or Agent.
+- Action must auto-run (not /invoke) — use Hooks.
+- Logic &gt; 250 lines — split into a Skill with SKILL.md + reference.md.
+- Project-private + team doesn't use faion-network — store locally + gitignore.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Action spec | one-paragraph description | team / product |
+| Argument spec | list of named args + types | design |
+| Tool whitelist | list of allowed tools | permissions policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: line-count-cap, explicit-argument-syntax, bash-prefix-for-live-context, tool-whitelist-required, no-marketing-prose | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `declare-frontmatter` | haiku | Template fill. |
+| `write-body` | sonnet | Light judgment to stay terse. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/command.md` | Command Markdown template (frontmatter + arguments + body) |
+| `templates/command-deploy.md` | Worked example: /deploy command |
+| `templates/command-commit.md` | Worked example: /commit command with bash-prefix context |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-commands.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/claude-code/`
+- [[agents]]
+- [[skills]]
+- [[hooks]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

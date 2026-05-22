@@ -3,73 +3,98 @@ slug: skills
 tier: geek
 group: ai
 domain: claude-code
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Complete guide to skill creation and management in Claude Code.
-content_id: "fb74d67dab1b7d23"
-tags: [skills, claude-code, workflow, automation, configuration]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Spec for SKILL.md (frontmatter + body), tool-permission scope, global vs project-specific distinction, name conventions, auto-trigger keyword design.
+content_id: "2b4b85fd99095768"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [claude-code, skills, SKILL.md, automation, configuration]
 ---
 # Creating or Updating Claude Code Skills
 
 ## Summary
 
-**One-sentence:** Complete guide to skill creation and management in Claude Code.
+**One-sentence:** Spec for SKILL.md (frontmatter + body), tool-permission scope, global vs project-specific distinction, name conventions, auto-trigger keyword design.
 
-**One-paragraph:** Complete guide to skill creation and management in Claude Code. Skills are discoverable workflows that combine tools, permissions, and knowledge into reusable packages. This methodology covers SKILL.md structure, frontmatter fields, tool permissions, naming conventions, and the distinction between global skills (committed to faion-network) and project-specific skills (gitignored locally).
+**One-paragraph:** Claude Code skills are discoverable workflows: SKILL.md + optional reference.md + scripts/. Skills auto-trigger on keywords + appear in the `/` menu. Misuse — single-shot tasks wrapped as skills, missing tool whitelist, project-specific business logic stuffed into faion-network — bloats the skill catalog and erodes trust. This methodology codifies the SKILL.md frontmatter schema, the trigger-keyword rule, the tool-permission discipline, and the global-vs-project decision. Output is a SKILL.md validated by the schema.
+
+**Ефективно для:**
+
+- Reusable workflow, що повинен з'являтися в `/` menu Claude Code.
+- Tool permission scoping: read-only research skill = Read+Grep+Glob only.
+- Multi-file knowledge bundles (SKILL.md + reference.md + scripts/).
+- Global vs project-specific: shared в faion-network, локальний — gitignore.
 
 ## Applies If (ALL must hold)
 
-- User explicitly asks to create, edit, update, modify, fix, or improve a skill.
-- A complex workflow needs to be discoverable and reusable across sessions.
-- Tool permissions must be scoped (e.g., read-only agents).
-- Multi-file knowledge needs to be bundled together for Claude Code auto-discovery.
-- A workflow should appear in the `/` menu as a skill option.
+- Complex workflow needs to be discoverable + reusable across sessions.
+- Tool permissions must be scoped (read-only research vs full-write deploy).
+- Multi-file knowledge bundled together (SKILL.md + supporting refs).
 
 ## Skip If (ANY kills it)
 
-- The workflow is a one-time task — use a plain prompt instead.
-- You only need a slash command with arguments — create a command, not a skill.
-- The skill already exists in faion-network and only needs minor wording changes — edit the existing file.
-- The workflow is project-specific business logic that should not be shared across projects.
+- One-time task — use a plain prompt.
+- Need slash command with arguments only — use Command.
+- Skill already exists in faion-network with minor wording differences — edit the existing one.
+- Project-specific business logic that should not be shared cross-project — keep local + gitignore.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workflow spec | Markdown | team |
+| Trigger keywords | list of phrases that should auto-invoke | team / use-case |
+| Tool whitelist | minimum tools needed | permissions policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[project-docs-convention]] | upstream context required for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: skill-md-required-fields, minimum-tool-whitelist, global-vs-project-decision, reference-md-on-demand, trigger-keywords-test | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skill-vs-alternative` | sonnet | Decision tree application. |
+| `write-skill-md` | sonnet | Light judgment on body length + keywords. |
+| `test-trigger-keywords` | haiku | Mechanical 10-phrasing test. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/SKILL.md` | SKILL.md skeleton with required frontmatter + body sections |
+| `templates/reference.md` | On-demand reference.md template |
+| `templates/keyword-test.md` | 10-phrasing keyword test fixture template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-skills.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/claude-code/`
+- [[agents]]
+- [[commands]]
+- [[hooks]]
+- [[project-docs-convention]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

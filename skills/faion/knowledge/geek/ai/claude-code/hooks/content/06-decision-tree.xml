@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Claude Code Hooks Reference Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+      <root-question id="q-when">When should the action run?</root-question>
+
+      <branch when="trigger == manual">
+        <conclusion ref="event-matcher-explicit" verdict="not a hook — use a Command"/>
+      </branch>
+
+      <branch when="trigger == on_tool_call">
+        <question id="q-side-effect">Are side effects reversible?</question>
+        <branch when="reversible == false">
+          <conclusion ref="reversible-side-effects" verdict="not a hook — use a Command + explicit confirmation"/>
+        </branch>
+        <branch when="reversible == true">
+          <question id="q-when-precise">Before tool execution (block / approve / modify) or after (format / log)?</question>
+          <branch when="phase == before">
+            <conclusion ref="exit-code-discipline" verdict="PreToolUse hook with exit 0/1/2 semantics + audit log"/>
+          </branch>
+          <branch when="phase == after">
+            <conclusion ref="audit-log-discipline" verdict="PostToolUse hook for formatting / logging"/>
+          </branch>
+        </branch>
+      </branch>
+
+      <branch when="trigger == session_lifecycle">
+        <conclusion ref="event-matcher-explicit" verdict="SessionStart (inject context) OR Stop (guard premature exit) hook"/>
+      </branch>
+    </decision-tree>
+
+    <example trace="block-rm-rf">
+      trigger=on_tool_call → reversible=true → phase=before → PreToolUse hook on matcher 'Bash'; script greps for `rm -rf` and exits 2 with audit log.
+    </example>
+</text>

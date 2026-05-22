@@ -3,71 +3,95 @@ slug: project-docs-convention
 tier: geek
 group: ai
 domain: claude-code
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Convention for organizing documentation so both Claude Code and standalone agents (Agent SDK, subagents, autoheal) can discover and use the same context.
-content_id: "412d623f6315d1e0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Two-file CLAUDE.md + AGENTS.md pattern per directory: CLAUDE.md is @AGENTS.md reference; AGENTS.md is the 20-80 line essential context for both Claude Code and Agent SDK.
+content_id: "2304a3937d967da5"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [documentation, claude-code, agents, convention, multi-agent]
 ---
 # Project Documentation Convention
 
 ## Summary
 
-**One-sentence:** Convention for organizing documentation so both Claude Code and standalone agents (Agent SDK, subagents, autoheal) can discover and use the same context.
+**One-sentence:** Two-file CLAUDE.md + AGENTS.md pattern per directory: CLAUDE.md is @AGENTS.md reference; AGENTS.md is the 20-80 line essential context for both Claude Code and Agent SDK.
 
-**One-paragraph:** Convention for organizing documentation so both Claude Code and standalone agents (Agent SDK, subagents, autoheal) can discover and use the same context. Separates essential auto-loaded context (AGENTS.md) from detailed reference (in .agents/) using the @-ref pattern for Claude Code compatibility.
+**One-paragraph:** Claude Code auto-loads `CLAUDE.md`; standalone Agent SDK does not. Putting all context in CLAUDE.md makes it invisible to non-Claude-Code agents; putting it elsewhere makes Claude Code unaware. This convention partitions docs: `CLAUDE.md` = single line `@AGENTS.md`; `AGENTS.md` = essential 20-80 line context for this directory (auto-loaded by both); `.agents/` = on-demand detailed reference. Per-module coverage required — every directory with source code carries the pair. Output is a validated docs spec + scaffold script.
+
+**Ефективно для:**
+
+- Мультиагент-команди: CLAUDE.md для Claude Code, AGENTS.md для Agent SDK / autoheal / cron workers.
+- Onboarding нового репо: scaffold script створює всі pair'и за одну команду.
+- Audit існуючого репо: validator показує які dirs не мають pair'у.
+- Migration з 'все в CLAUDE.md' → two-file pattern.
 
 ## Applies If (ALL must hold)
 
-- Setting up a new repository or directory that will be worked on by both Claude Code and standalone agents (Agent SDK, autoheal, scheduled workers).
-- Auditing an existing repository to ensure all directories have discoverable context for multi-agent pipelines.
-- Onboarding a new project into the faion-network knowledge layer (CLAUDE.md + AGENTS.md pair required).
-- Migrating a project from "all context in CLAUDE.md" to the two-file pattern for agent compatibility.
+- Directory contains source code (not empty stub, not vendored).
+- Both Claude Code and standalone agents will work on the codebase.
+- Team uses faion-network conventions OR wants Agent-SDK-compatible docs.
 
 ## Skip If (ANY kills it)
 
-- Trivial directories with <3 files and no logic (e.g., empty `__init__.py` stubs) — skip creating the pair.
-- External vendored code — do not add CLAUDE.md/AGENTS.md to third-party directories.
-- Temporary scratch directories created during a build or test run — no documentation needed.
+- Trivial directories with &lt; 3 files and no logic (empty `__init__.py` stubs).
+- External vendored code (`node_modules/`, `vendor/`).
+- Temporary scratch dirs created during build / test.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Directory tree | repo source | git |
+| Per-directory context | what each dir does + commands + gotchas | team / owners |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: claude-md-is-just-ref, agents-md-line-budget, per-module-coverage, agents-md-required-sections, agents-dir-for-deep-content | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-existing-tree` | haiku | Walk + glob. |
+| `scaffold-missing-pairs` | haiku | Template fill. |
+| `split-or-trim-long` | sonnet | Light judgment on what to keep in AGENTS.md vs `.agents/`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/CLAUDE.md` | Single-line CLAUDE.md template: `@AGENTS.md` |
+| `templates/AGENTS.md` | AGENTS.md skeleton with required sections (dir purpose, file table, key types/commands, gotchas) |
+| `templates/.agents-INDEX.md` | Skeleton INDEX.md for `.agents/` directories |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-project-docs-convention.py` | Validate the spec artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/claude-code/`
+- [[skills]]
+- [[agents]]
+- [[commands]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
