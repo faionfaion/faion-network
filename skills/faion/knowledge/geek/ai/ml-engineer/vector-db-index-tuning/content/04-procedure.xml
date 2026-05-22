@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Index Tuning — Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Five steps: baseline → sweep M / ef_search → quantize → re-bench → ship.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="baseline-bench">
+      <input>current production index + query workload</input>
+      <action>Run 1k+ queries. Measure recall@k vs ground truth, p50/p95 latency, memory used. Record in `tuning-history.yaml` row "baseline".</action>
+      <output>baseline row</output>
+      <decision-gate>If baseline already passes SLA — STOP; tuning unnecessary (r1-bench-before-tune).</decision-gate>
+    </step>
+
+    <step n="2" name="sweep-m-and-ef">
+      <input>baseline + workload class</input>
+      <action>Pareto sweep across M ∈ {16, 32, 64} × ef_search ∈ {32, 64, 128, 200}. Record measurement each.</action>
+      <output>sweep table</output>
+      <decision-gate>If no M reaches recall_floor under latency cap — quantization needed (or rethink corpus).</decision-gate>
+    </step>
+
+    <step n="3" name="quantize">
+      <input>best (M, ef_search) candidate</input>
+      <action>Add scalar int8 first; bench. If still over memory cap, try product quantization. Binary only as last resort.</action>
+      <output>quantization choice + bench</output>
+      <decision-gate>If recall drops below floor — step back one quantization level (r2-quantize-with-recall-floor).</decision-gate>
+    </step>
+
+    <step n="4" name="re-bench">
+      <input>candidate config</input>
+      <action>Rebuild index with chosen params. Re-run 1k workload. Compare to baseline + SLA.</action>
+      <output>final bench row</output>
+      <decision-gate>If recall regression vs baseline OR &lt; floor — rollback (r5-recall-regression-gate).</decision-gate>
+    </step>
+
+    <step n="5" name="ship">
+      <input>verified config + audit log</input>
+      <action>Commit `index-tuning.yaml`. Append to `tuning-history.yaml`. Deploy via blue/green (rebuild not in-place).</action>
+      <output>Production index live with new config</output>
+      <decision-gate>If post-deploy latency drifts &gt;20% — investigate; may indicate corpus growth (re-bench).</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

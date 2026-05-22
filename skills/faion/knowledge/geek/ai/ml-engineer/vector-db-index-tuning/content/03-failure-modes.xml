@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="vector-db-index-tuning Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for vector-db-index-tuning as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Index Tuning — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns in HNSW + quantization tuning.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Enabling on-disk vectors (on_disk=True in HnswConfigDiff) while keeping quantization disabled on a collection that receives real-time RAG queries.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>On-disk vectors without quantization forces full disk reads for every query result rescore step. Enable scalar quantization first to keep the quantized vectors in RAM; move only the full-precision vectors to disk.</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Tune without bench — knobs changed based on "feels faster"; no measurement; sometimes worse than defaults.</description>
+      <detector>commit changing hnsw.* without paired bench output</detector>
+      <repair>Run baseline + tuned bench; commit both together.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Aggressive quantization (binary) breaks recall — 32× compression but recall drops to 0.65.</description>
+      <detector>quantization.scheme==binary AND bench.tuned.recall &lt; sla.recall_floor</detector>
+      <repair>Step down to product quantization (8×); if still below floor, scalar int8.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="medium">
+      <description>ef_search left at default (16) in production — latency low but recall mediocre on hard queries.</description>
+      <detector>hnsw.ef_search==16 AND production workload is read-heavy</detector>
+      <repair>Tune ef_search by sweep: 32, 64, 128. Pick best recall under latency cap.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>No tuning-history record — team re-debates tuning every quarter; institutional memory lost.</description>
+      <detector>tuning_history_path missing OR file does not exist</detector>
+      <repair>Initialise tuning-history.yaml. Append every iteration with date + params + bench.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="high">
+      <description>Memory cap ignored — M=64 sounded fast in bench; production OOM kills DB.</description>
+      <detector>bench.tuned.memory_gb &gt; sla.memory_cap_gb</detector>
+      <repair>Reduce M OR enable quantization. Never exceed memory cap in production.</repair>
+    </failure-mode>
+
   </section>
 </text>
