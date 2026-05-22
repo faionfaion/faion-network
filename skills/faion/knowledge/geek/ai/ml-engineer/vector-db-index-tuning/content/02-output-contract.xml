@@ -1,22 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="vector-db-index-tuning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Index Tuning — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins `index-tuning.yaml` shape consumed by the DB index builder.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="workload" type="enum" values="read-heavy|write-heavy|balanced"/>
+      <field name="hnsw" type="object" required_keys="m,ef_construct,ef_search"/>
+      <field name="quantization" type="object" required_keys="scheme"/>
+      <field name="sla" type="object" required_keys="recall_floor,latency_p95_max_ms,memory_cap_gb"/>
+      <field name="bench" type="object" required_keys="baseline,tuned"/>
+      <field name="tuning_history_path" type="string"/>
     </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+    <forbidden>
+      <pattern id="f1">hnsw.m &lt; 16 OR hnsw.m &gt; 64 (r3-workload-driven-m)</pattern>
+      <pattern id="f2">bench.tuned.recall &lt; sla.recall_floor (r2-quantize-with-recall-floor, r5-recall-regression-gate)</pattern>
+      <pattern id="f3">bench.baseline missing (r1-bench-before-tune)</pattern>
+      <pattern id="f4">tuning_history_path missing (r4-persist-tuning-record)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Tune ef_search per workload window if recall stays in band.</transformation>
+      <transformation>Quantization tighten — major bump; rebuild required.</transformation>
+    </allowed-transformations>
+
+    <schema-reference path="templates/index-tuning.schema.yaml"/>
+  </output-contract>
 </text>
