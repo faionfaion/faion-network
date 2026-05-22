@@ -1,3 +1,8 @@
+# purpose: structured-output schema with top-level refusal field per refusal-field-strict-schema
+# consumes: domain output type definition
+# produces: Pydantic / typed dict with refusal + nullable payload fields
+# depends-on: r1-top-level-refusal, r2-strict-mode
+# token-budget-impact: ~200 tokens
 """Strict-mode SO schema with explicit refusal field.
 
 Pattern: refusal first, every payload field nullable. The model writes

@@ -1,63 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="function-calling-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for function-calling-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Function Calling Patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Seven testable rules for cross-vendor function-calling design.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Execute independent tool calls from the same LLM response in parallel using ThreadPoolExecutor.</statement>
-      <rationale source="v1-source">When the LLM returns multiple tool calls in one response, they are often independent. Sequential execution wastes wall-clock time proportional to the number of tools called.</rationale>
+      <statement source="vendor-docs-2026">Visible tool count per request ≤ 20. Above this, models pick incorrectly; introduce a tool router that surfaces only a relevant subset.</statement>
+      <rationale>Both Anthropic and OpenAI selection accuracy degrades sharply past ~20 candidates; routing limits the choice set.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Execute tools with shared state or ordering constraints sequentially, not in parallel.</statement>
-      <rationale source="v1-source">Parallel execution of tools that read and write shared state produces race conditions. The LLM cannot express ordering constraints within a single tool_use block.</rationale>
+      <statement source="schema-discipline">Validate LLM-supplied arguments against the tool JSON Schema BEFORE executing. Reject on schema mismatch; return the validation error as content so the model can retry.</statement>
+      <rationale>LLMs hallucinate fields, types, and enum values; pre-execution validation prevents action-on-bad-data.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Validate tool arguments against the declared schema before calling the implementation. Reject invalid calls with a structured error in the tool_result.</statement>
-      <rationale source="v1-source">LLMs hallucinate argument values, especially enum values, IDs, and dates. Passing hallucinated args to a real implementation can cause data corruption or external API errors.</rationale>
+      <statement source="loop-discipline">Cap the agent loop at 10-20 iterations. On cap, return a partial result with the reason and log for triage.</statement>
+      <rationale>Unbounded loops are quota incidents in disguise; the cap converts them into observable bugs.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Return structured errors in tool_result with an "error" key and a "code" key (e.g., {"error": "not found", "code": "NOT_FOUND"}).</statement>
-      <rationale source="v1-source">A structured error format lets the model reason about what went wrong and decide the next action (retry, ask the user, use a different tool) rather than just seeing an opaque string.</rationale>
+      <statement source="latency-discipline">When the model returns multiple tool calls in one turn, dispatch them concurrently (ThreadPool / asyncio) and return all tool results in one user message.</statement>
+      <rationale>Vendors emit parallel tool calls specifically to amortise latency; sequential dispatch defeats the optimisation.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Use additionalProperties: false in tool schemas to prevent the model from inventing extra fields.</statement>
-      <rationale source="v1-source">Without this constraint, models may add undeclared fields that your schema validator rejects or your implementation ignores silently. Strict schemas catch hallucinated fields early.</rationale>
+      <statement source="error-handling-spec">Recoverable tool errors (timeout, not-found, retryable HTTP) returned as content/text; only terminal errors (auth fail, schema violation) use the vendor's `is_error` channel.</statement>
+      <rationale>Errors returned as content let the model self-correct (try a different arg, ask the user); is_error stops the loop.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Truncate tool results to at most 2000 tokens before returning them to context. Summarize if needed.</statement>
-      <rationale source="v1-source">Large tool results (full DB rows, API responses) inflate context rapidly. After 5+ tool turns, un-truncated results can push the conversation past the context limit.</rationale>
+      <statement source="vendor-discipline">One request uses one vendor's tool format. Do not mix Anthropic and OpenAI shapes in the same call; cross-vendor portability happens at the adapter layer.</statement>
+      <rationale>Vendors validate against their own shape; mixing produces opaque API errors.</rationale>
     </rule>
     <rule id="r7" testable="true" depth="essential">
-      <statement>After 5+ tool turns in a multi-turn agent, consider summarizing earlier results to avoid hitting context limits.</statement>
-      <rationale source="v1-source">Without summarization, full tool results accumulate and consume most of the context window, leaving little room for new interactions.</rationale>
+      <statement source="release-engineering">Each tool entry carries a `version` and a `schema_id`. Schema changes bump version; callers pin to a version for replayable behaviour.</statement>
+      <rationale>Tools evolve; version pinning prevents silent breakage across deploys.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Always enforce a max_iterations limit (10 or below in production). Log and alert when it triggers.</statement>
-      <rationale source="v1-source">Without a limit, an agent that repeatedly fails a tool call or cannot find a satisfactory answer loops indefinitely, consuming tokens and potentially causing side effects.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire tools + validator + loop + router per the procedure.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Continue the loop until stop_reason == "end_turn" or "max_tokens". stop_reason == "tool_use" means the task is not complete.</statement>
-      <rationale source="v1-source">Each tool_use stop_reason means the model wants to call a tool and continue. Treating tool_use as task completion returns a partial result and skips the model's intended next step.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>When stop_reason == "max_tokens", raise an exception rather than returning a partial response.</statement>
-      <rationale source="v1-source">max_tokens means the response was truncated and the model may have intended to add more tool calls or text. Returning the incomplete response misleads the user.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Require explicit human approval before dispatching any tool that sends messages, modifies data, or charges money.</statement>
-      <rationale source="v1-source">Agentic loops can trigger destructive actions without user awareness. A human-in-loop checkpoint before irreversible operations is the only reliable safety gate in automated pipelines.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Implement dry-run mode for all tools with side effects. Always test agentic loops in dry-run before enabling live execution.</statement>
-      <rationale source="v1-source">Without dry-run, verifying loop behavior requires making real external changes. Dry-run allows safe iteration on the loop logic without production risk.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>When a tool fails, return actionable error text in the tool_result. Avoid terse error messages that the model cannot reason about.</statement>
-      <rationale source="v1-source">The model decides its next action based on the tool_result content. A vague error like "500 Internal Server Error" gives no guidance. "order_id 12345 not found; valid IDs are 6-digit numbers" enables self-correction.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>When you have more than ~10-15 tools, implement a router that selects the relevant tool subset based on the query before passing to the LLM.</statement>
-      <rationale source="v1-source">Model tool selection accuracy degrades when the tool list is large; a router that pre-filters the tool set reduces the decision space and improves accuracy.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">No external action AND no structured output → skip; pure text completion suffices.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

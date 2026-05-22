@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Vector Databases — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by Postgres-exists + scale + ops profile to a DB.</summary>
+
+  <decision-tree>
+    <root-question id="q-scale">Vector count today + 12mo projection?</root-question>
+    <branch when="vector_count &gt; 100_000_000">
+      <conclusion ref="r1-pick-by-profile" verdict="kind=milvus — disaggregated architecture for billion-scale"/>
+    </branch>
+    <branch when="vector_count &lt;= 100_000_000">
+      <question id="q-postgres">Postgres already in stack?</question>
+      <branch when="postgres_exists == true and dim &lt;= 2000 and vector_count &lt; 10_000_000">
+        <conclusion ref="r1-pick-by-profile" verdict="kind=pgvector — reuse existing Postgres infra"/>
+      </branch>
+      <branch when="postgres_exists == false or dim &gt; 2000 or vector_count &gt;= 10_000_000">
+        <question id="q-managed">Prefer managed (no ops burden) or self-host?</question>
+        <branch when="managed_preference == true">
+          <conclusion ref="r1-pick-by-profile" verdict="kind=pinecone — managed serverless, auto-scale"/>
+        </branch>
+        <branch when="managed_preference == false">
+          <question id="q-graph">Need knowledge-graph + GraphQL?</question>
+          <branch when="graph_needed == true">
+            <conclusion ref="r1-pick-by-profile" verdict="kind=weaviate — GraphQL + modules"/>
+          </branch>
+          <branch when="graph_needed == false">
+            <conclusion ref="r1-pick-by-profile" verdict="kind=qdrant — fastest filtered search, single binary"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="10M vectors + no postgres + self-host → Qdrant">
+    <code lang="text"><![CDATA[
+vector_count=10M → q-postgres → postgres_exists=false → q-managed → managed_preference=false → q-graph → graph_needed=false → r1-pick-by-profile verdict: Qdrant
+]]></code>
+  </example>
+</text>

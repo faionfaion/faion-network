@@ -1,3 +1,8 @@
+# purpose: retrieve-then-rerank pipeline emitted by rerank-before-reasoning methodology
+# consumes: query string + vector store handle + reranker client
+# produces: top-k_final candidates after cross-encoder rerank
+# depends-on: r1-rerank-required, r3-reranker-model-shipped, r5-fallback-on-rerank-timeout
+# token-budget-impact: ~250 tokens
 """Two-stage retrieve-then-rerank pipeline.
 
 Input  → query string, vector store, reranker client.
