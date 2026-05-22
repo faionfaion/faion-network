@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Text-to-Speech — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by latency budget + voice cloning + on-prem to a provider.</summary>
+
+  <decision-tree>
+    <root-question id="q-clone">Is voice cloning required (specific person, brand voice)?</root-question>
+    <branch when="cloning == true">
+      <question id="q-consent">Signed consent record exists?</question>
+      <branch when="consent_signed == false">
+        <conclusion ref="r2-voice-cloning-consent" verdict="STOP — obtain consent first; do not deploy"/>
+      </branch>
+      <branch when="consent_signed == true">
+        <conclusion ref="r1-latency-bucket-pick" verdict="provider=ElevenLabs Voice Lab; clone with consent record attached"/>
+      </branch>
+    </branch>
+    <branch when="cloning == false">
+      <question id="q-latency">Latency requirement?</question>
+      <branch when="latency_bucket == 'real-time'">
+        <conclusion ref="r4-streaming-for-real-time" verdict="provider=Deepgram Aura (≈200ms) OR ElevenLabs Turbo (≈400ms); streaming on"/>
+      </branch>
+      <branch when="latency_bucket == 'near-real-time'">
+        <conclusion ref="r1-latency-bucket-pick" verdict="provider=OpenAI tts-1 OR Google Chirp 3; cache enabled"/>
+      </branch>
+      <branch when="latency_bucket == 'batch'">
+        <question id="q-onprem">On-prem required (privacy / regulation)?</question>
+        <branch when="on_prem == true">
+          <conclusion ref="r3-cache-by-text-hash" verdict="provider=local Coqui XTTS on GPU"/>
+        </branch>
+        <branch when="on_prem == false">
+          <conclusion ref="r1-latency-bucket-pick" verdict="provider=ElevenLabs multilingual; quality maxed"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="no cloning + real-time → Deepgram Aura">
+    <code lang="text"><![CDATA[
+cloning=false → q-latency=real-time → r4-streaming-for-real-time verdict: Deepgram Aura, streaming on
+]]></code>
+  </example>
+</text>
