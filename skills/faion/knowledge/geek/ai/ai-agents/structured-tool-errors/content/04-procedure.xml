@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="structured-tool-errors Procedure" version="1.1.0" est_tokens="800" depth="medium">
+  <summary>Six-step migration from free-form errors to the structured envelope + runner dispatch.</summary>
+
+  <step n="1" name="inventory-error-paths">
+    <input>Tool source file(s).</input>
+    <action>Walk every `raise` / `return error` path. For each, record: trigger condition, current message, upstream HTTP status, whether the failure is transient.</action>
+    <output>Table `(path, trigger, transient_bool)` for every error path.</output>
+  </step>
+
+  <step n="2" name="assign-semantic-codes">
+    <input>Path inventory.</input>
+    <action>Translate each upstream status to a semantic UPPER_SNAKE code (`429 → UPSTREAM_RATE_LIMITED`, `401 → AUTH_REQUIRED`, etc.). Reuse codes across paths where the failure category is the same.</action>
+    <output>Per-path `code` assignment.</output>
+  </step>
+
+  <step n="3" name="assign-recovery-hint">
+    <input>Path + code from step 2.</input>
+    <action>Apply the decision tree: rate-limit/transient → `RETRY_LATER`; bad-args → `CHECK_INPUT`; auth → `NEEDS_AUTH`; unrecoverable → `REPORT_TO_USER`; alternative-exists → `TRY_ALTERNATIVE`.</action>
+    <output>Per-path `recoveryHint` assignment.</output>
+    <decision-gate>If the path is genuinely unrecoverable, do NOT assign `RETRY_LATER` "to be safe" — that just burns the retry budget.</decision-gate>
+  </step>
+
+  <step n="4" name="emit-envelope">
+    <input>code, hint, message, upstream metadata.</input>
+    <action>Rewrite the error response to emit the envelope: `{error: {code, message ≤240 chars, recoveryHint, traceId: ulid(), retry_after_seconds?, details: sanitised}}`. Strip stack frames; preserve only what the agent can act on.</action>
+    <output>Patched tool source.</output>
+  </step>
+
+  <step n="5" name="wire-runner-dispatch">
+    <input>`templates/runner_policy.yaml` + agent runner code.</input>
+    <action>Add the hint→action map: `RETRY_LATER` → wait clamped(retry_after_seconds, 1, 300); `CHECK_INPUT` → return to model; `TRY_ALTERNATIVE` → return + signal; `REPORT_TO_USER` → halt; `NEEDS_AUTH` → halt + request creds. Add per-tool retry budget cap.</action>
+    <output>Runner dispatcher executing the closed map.</output>
+  </step>
+
+  <step n="6" name="validate-and-smoke">
+    <input>Tool + runner.</input>
+    <action>Run `scripts/validate-structured-tool-errors.py sample.json` against each sample error body produced by the tool. Add a runtime smoke test in the tool's test suite that asserts every error path emits a valid envelope.</action>
+    <output>Validated samples + smoke-test passing.</output>
+    <decision-gate>If any path emits an invalid envelope — block the deploy.</decision-gate>
+  </step>
+</text>

@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Rust Testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules covering layer coverage, the cargo-llvm-cov gate, doctest discipline, proptest scope, and integration-tests layout.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="three-layers-mandatory" testable="true" depth="essential">
+      <statement>Every published crate has unit (`#[cfg(test)] mod tests`), integration (`tests/*.rs`), AND doctest (`///` examples) layers. CI runs all three: `cargo test --lib && cargo test --tests && cargo test --doc`.</statement>
+      <rationale source="Rust Book ch.11">Each layer catches a different class of bug. Unit covers internal invariants. Integration verifies the public API like a downstream consumer. Doctests guarantee documentation does not drift from code.</rationale>
     </rule>
+
+    <rule id="llvm-cov-gate" testable="true" depth="essential">
+      <statement>Use `cargo-llvm-cov` for branch coverage. CI gate fails PR if diff-cover &lt; 85% on changed lines. Repo-wide threshold is reported but not blocking (per [[code-coverage]]).</statement>
+      <rationale source="cargo-llvm-cov docs">Tarpaulin is line-only and slower; llvm-cov measures branch + line via the LLVM source-coverage infrastructure. Diff-cover focuses the gate on new work.</rationale>
+    </rule>
+
+    <rule id="doctest-not-rustdoc-only" testable="true" depth="essential">
+      <statement>Every public function with a `///` doc block must include at least one `# Examples` section with a runnable code block (no `ignore` or `no_run` unless side-effecting code is involved).</statement>
+      <rationale source="Rust API Guidelines C-EXAMPLE">Documentation with no example becomes outdated silently. Doctests are tests — when the example breaks, CI catches it.</rationale>
+    </rule>
+
+    <rule id="proptest-on-parsers" testable="true" depth="essential">
+      <statement>Parsers, codecs, serializers, and data-structure invariants MUST have at least one `proptest!` block exercising the invariant. Roundtrip (`decode(encode(x)) == x`) is the canonical shape.</statement>
+      <rationale source="proptest docs; QuickCheck — Claessen & Hughes">Hand-written examples miss adversarial inputs. Proptest's shrinking finds minimal counter-examples automatically.</rationale>
+    </rule>
+
+    <rule id="no-test-in-pub-namespace" testable="true" depth="essential">
+      <statement>Test modules use `#[cfg(test)] mod tests { ... }` and are never `pub`. Test-only helpers go behind `#[cfg(test)]` or in a separate `dev-dependencies` test crate.</statement>
+      <rationale source="Rust Book ch.11; Cargo Book — dev-dependencies">Test code in pub namespace bloats downstream consumers' compile time and exposes internals that are not API.</rationale>
+    </rule>
+
+    <rule id="integration-tests-folder" testable="true" depth="essential">
+      <statement>Integration tests live in `tests/` at crate root. Each file is a separate crate — shared helpers go in `tests/common/mod.rs` (subdir, not file, so Cargo does not treat it as a test target).</statement>
+      <rationale source="Cargo Book — Tests directory">Cargo compiles every top-level file in `tests/` as its own integration crate. A `tests/common.rs` (single-file) would compile + run as an empty test target.</rationale>
+    </rule>
+
   </section>
 </text>

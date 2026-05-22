@@ -3,76 +3,96 @@ slug: image-generation
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: AI image generation from text prompts using DALL-E 3, Flux (Black Forest Labs), Stable Diffusion, and related APIs.
-content_id: "80dd113ad849d676"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an image-generation pipeline config — model choice (DALL-E 3 / Flux schnell / SD+LoRA / GPT-4o), structured 6-element prompt template, batch concurrency, and brand-consistency strategy.
+content_id: "4fee7e461fa24e44"
+complexity: medium
+produces: config
+est_tokens: 3200
 tags: [image-generation, dall-e, flux, stable-diffusion, multimodal]
 ---
-# AI Image Generation: Model Selection and Pipeline Automation
+# AI Image Generation — Model Selection & Pipeline
 
 ## Summary
 
-**One-sentence:** AI image generation from text prompts using DALL-E 3, Flux (Black Forest Labs), Stable Diffusion, and related APIs.
+**One-sentence:** Picks model by task class (text-in-image / photorealism / brand-consistent / bulk), enforces the 6-element prompt formula, and emits a batch pipeline config with cost + safety policy.
 
-**One-paragraph:** AI image generation from text prompts using DALL-E 3, Flux (Black Forest Labs), Stable Diffusion, and related APIs. Covers model selection, prompt engineering formula ([Subject] + [Style] + [Lighting] + [Composition] + [Details] + [Technical]), API integration patterns, and pipeline automation for content at scale.
+**One-paragraph:** No single model wins everywhere — DALL-E 3 / GPT-4o for in-image text, Flux Pro for photorealism, Flux schnell (Apache 2.0) for high-volume bulk, SD+LoRA for brand-consistent assets. This methodology codifies which model fits which task class, the mandatory 6-element prompt structure (Subject + Style + Lighting + Composition + Details + Technical), the batch concurrency and retry policy, and the safety filter for likeness / legal risk. Output: `image-gen-config.json`.
+
+**Ефективно для:**
+
+- AI news pipeline — кожна стаття отримує унікальний header image; cost per image критичний.
+- A/B test creatives — згенеруй 8 варіантів на тестування при тому ж бюджеті.
+- UI/UX prototyping — швидкий моок інтерфейсу до фігми.
+- Brand-consistent ілюстрації — LoRA / Flux Kontext fixed character identity через серію.
 
 ## Applies If (ALL must hold)
 
-- Generating marketing visuals, social media graphics, or product mockups as part of an automated content pipeline
-- Producing custom illustrations for articles, blog posts, or newsletters where stock photography is inadequate
-- Rapid UI/UX prototyping: visualizing interface concepts before implementation
-- Generating variation sets (A/B test creatives) at scale for advertising campaigns
-- Brand asset generation with consistent style through fine-tuned models or style references
-- AI news pipelines where each article requires a unique header image generated from the article summary
+- Need to generate ≥10 images programmatically (one-offs use the chat UI).
+- Output policy lets a generative model produce the asset (no real-person likeness, no legal/medical illustrations).
+- Per-image cost or latency matters enough to justify model selection (not flat-rate everything via DALL-E 3).
 
 ## Skip If (ANY kills it)
 
-- Legal/medical/financial documents where image hallucinations create liability
-- Photorealistic images of real named people — content policy violations plus legal risk (likeness rights)
-- Logo design requiring precise vector output — generative models produce raster; use a designer or vector tools
-- High-volume generation where per-image cost matters at scale — self-host Flux schnell (Apache 2.0) instead of paying per API call
-- Consistent character generation across many images without Flux Kontext or LoRA — models don't preserve identity by default
-- Anything requiring exact pixel-level control (infographics with precise data, technical diagrams)
+- Logos / vector assets — generative models output raster only.
+- Real named people photorealism — content policy + likeness rights kill it.
+- Single one-off image — chat UI is cheaper than building a pipeline.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Use-case spec | Markdown | product brief |
+| Budget per image | float USD | finance |
+| Brand style guide (if brand-consistent) | reference images | brand team |
+| API keys (OpenAI / Flux / SD host) | env | secrets manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `llm-decision-framework` | Provider choice mirrors LLM provider posture. |
+| `cost-optimization` | Per-image cost drives model selection. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: model-by-task, six-element-prompt, schnell-for-bulk, lora-for-brand, no-likeness | 1000 |
+| `content/02-output-contract.xml` | essential | Schema for image-gen-config.json | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: wrong-model-for-text, vague-prompt, missing-rate-limit, no-content-filter | 800 |
+| `content/04-procedure.xml` | essential | 5 steps: classify-task → pick-model → build-prompt-template → pipeline-batch → safety-filter | 600 |
+| `content/06-decision-tree.xml` | essential | Task → model selector | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick_image_model` | haiku | Decision-tree lookup. |
+| `craft_prompt_template` | sonnet | Creative + structural. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/image-gen-config.json` | Skeleton config |
+| `templates/prompt_formula.txt` | 6-element prompt template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-image-generation.py` | Validate image-gen-config.json | Pre-deploy gate |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[llm-decision-framework]] — same provider posture as text models
+- [[cost-optimization]] — per-image cost drives Flux schnell vs DALL-E choice
+- [[multimodal-ai]] — broader vision/audio context
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches on text-in-image y/n, brand-consistency requirement, and volume.

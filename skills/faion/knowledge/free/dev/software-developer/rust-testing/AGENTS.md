@@ -3,74 +3,96 @@ slug: rust-testing
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Testing patterns for Rust services: unit tests with `mockall` in `#[cfg(test)] mod tests` co-located with the SUT, async tests via `#[tokio::test]`, integration tests against real `axum::Router` via `tower::ServiceExt`, and property tests with `proptest`.
-content_id: "001fc58fae66182c"
-tags: [rust, testing, mockall, tokio, proptest]
+summary: Produces a Rust test-strategy config (unit + integration + doctest layout, cargo-llvm-cov gate, proptest budget) that lints fast iteration without sacrificing coverage.
+content_id: "a31f1c4e9b27f001"
+complexity: medium
+produces: config
+est_tokens: 3800
+tags: [rust, testing, cargo, proptest, llvm-cov]
 ---
 # Rust Testing
 
 ## Summary
 
-**One-sentence:** Testing patterns for Rust services: unit tests with `mockall` in `#[cfg(test)] mod tests` co-located with the SUT, async tests via `#[tokio::test]`, integration tests against real `axum::Router` via `tower::ServiceExt`, and property tests with `proptest`.
+**One-sentence:** Configures Rust's three test layers (inline `#[cfg(test)]` unit, `tests/*.rs` integration, `///` doctests) plus cargo-llvm-cov coverage gate and a proptest budget.
 
-**One-paragraph:** Testing patterns for Rust services: unit tests with `mockall` in `#[cfg(test)] mod tests` co-located with the SUT, async tests via `#[tokio::test]`, integration tests against real `axum::Router` via `tower::ServiceExt`, and property tests with `proptest`. Key rule: prefer fakes over mocks for trait-heavy code; always `await` joined async task handles; run `cargo nextest` in CI.
+**One-paragraph:** Rust testing has three orthogonal layers and most projects use only one. Unit tests inside `#[cfg(test)] mod tests` cover private functions cheaply. Integration tests in `tests/` exercise the public API like a downstream consumer. Doctests verify documented examples still compile and pass. This methodology forces all three to be present (gated by `cargo test --doc` + `cargo test --tests` in CI), wires `cargo-llvm-cov` for branch coverage with diff-cover on PR (target ≥85% on changed lines), reserves `proptest` for invariants on data structures and parsers, and forbids `.unwrap()` outside `#[cfg(test)]` (paired with [[rust-error-handling]]).
+
+**Ефективно для:**
+
+- Нова Rust бібліотека: doctests документуються та валідуються одночасно.
+- Парсери, кодеки, structures: proptest з shrinking ловить edge cases unit-tests пропускають.
+- Refactor публічного API: integration tests у `tests/` ловлять breaking change.
+- Switching mock framework: built-in `#[cfg(test)]` модуль + `mockall` крихітніший за external test harnesses.
 
 ## Applies If (ALL must hold)
 
-- Rust services where correctness is non-negotiable (auth, billing, infra control planes) — `cargo test` + `mockall` + `proptest` give compile-time + property-level guarantees beyond what dynamic-language tests reach.
-- Async services on `tokio` — `#[tokio::test]` is the de-facto runner; agents writing axum/tonic services need consistent test shape.
-- Library crates publishing to crates.io — doctest discipline (`/// # Examples`) prevents silent doc rot.
-- Refactor work where the borrow checker shifts function signatures — typed tests fail closed; LLM regressions surface immediately.
-- Codebases enforcing `cargo deny` + coverage threshold via `cargo llvm-cov` in CI.
+- Rust crate with `Cargo.toml`.
+- Public API or invariant-rich data structures present (anything beyond hello-world).
+- CI runs on every PR and can execute `cargo test --all-targets`.
 
 ## Skip If (ANY kills it)
 
-- Hot iteration prototypes — Rust's slow incremental compile + test startup punishes small loops; write the impl first.
-- Pure FFI shims to C libs — testing requires the linked C side; integration tests pay double cost. Prefer a thin Rust wrapper + tests on the wrapper.
-- Code where mocks dominate the test (`mockall` everywhere) — that's a sign the design is over-coupled. Refactor toward trait-based seams or use real implementations behind `#[cfg(test)]`.
-- Macro-heavy crates where the test of value is `trybuild` (compile-fail tests), not runtime assertions.
-- Embedded `no_std` targets — `cargo test` needs std; use `defmt-test` / on-target runners instead.
+- Build scripts and procedural macros — different testing harness; out of scope.
+- `#![no_std]` with limited test infrastructure (use `defmt-test` or `embedded-test` instead).
+- Spike code or experiment branches where coverage gate slows iteration.
+- Pure binary crate with no library extract — integration tests less applicable.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `Cargo.toml` | TOML | crate root |
+| CI workflow | YAML | `.github/workflows/` |
+| Critical-path manifest | path list | `Cargo.toml [package.metadata.faion]` or AGENTS.md |
+| Coverage tool | binary | `cargo install cargo-llvm-cov` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[rust-error-handling]] | Tests are allowed to `.unwrap()`; non-test code is not — clippy gate config shared. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: three-layers-mandatory, llvm-cov-gate, doctest-not-rustdoc-only, proptest-on-parsers, no-test-in-pub-namespace, integration-tests-folder | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for test-strategy config + coverage gate | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: only-unit-tests, doctest-without-runs, proptest-no-shrink, shared-mutable-state-tests | 700 |
+| `content/04-procedure.xml` | essential | 5-step setup: detect crate type → install llvm-cov → wire CI → add doctests → set proptest budget | 700 |
+| `content/06-decision-tree.xml` | essential | Routing: feature type → unit/integration/doctest/proptest mix | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `detect_crate_layout` | haiku | `cargo metadata` parse. |
+| `propose_test_layer` | sonnet | Decide which layer per feature. |
+| `write_doctest` | sonnet | Tied to documentation prose. |
+| `proptest_strategy_design` | opus | Invariant identification is cross-cutting. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/rust-coverage-gate.sh` | CI script running `cargo llvm-cov` + diff-cover against base branch |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rust-testing.py` | Validate test-strategy config JSON against schema | After config generation |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[rust-error-handling]] — test code escapes the `.unwrap()` gate via `#[cfg(test)]`.
+- [[code-coverage]] — language-agnostic coverage discipline; this methodology specialises to Rust.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches on test scope: private invariant → unit; public API behavior → integration; documentation example → doctest; data-structure / parser invariant → proptest. All leaves reference rules from `01-core-rules.xml`.

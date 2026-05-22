@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="embeddings-batch-and-cache Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for embeddings-batch-and-cache. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Embedding Batch + Cache Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules governing batch + cache embedding pipelines. Validator enforces each mechanically.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="batch-by-provider-limit" testable="true" depth="essential">
+      <statement>batch.size MUST be ≤ provider hard limit: OpenAI 2048 inputs/call, Voyage 128, Cohere 96, Mistral 512. Local sentence-transformers limited by GPU memory only.</statement>
+      <rationale source="OpenAI / Voyage / Cohere / Mistral embeddings API docs 2026">Exceeding the limit returns 400; matching the limit minimizes per-call overhead.</rationale>
     </rule>
+
+    <rule id="preserve-input-order" testable="true" depth="essential">
+      <statement>Output vectors MUST be returned in the same order as input texts. When using async parallel batches, results are reassembled by input index before return.</statement>
+      <rationale source="OpenAI embeddings API result-ordering guarantee">API itself preserves order within a batch, but async parallel returns batches in completion order; downstream upsert expects input-order alignment.</rationale>
+    </rule>
+
+    <rule id="content-hash-cache-key" testable="true" depth="essential">
+      <statement>Cache key = sha256(normalized_text) + ":" + model_id + ":" + dim. NOT just sha256(text). Cache namespace bumps on model/dim change.</statement>
+      <rationale source="industry embedding-cache patterns 2026">Re-runs after a model swap must miss the cache and recompute; sharing keys across models silently returns wrong-dimensional vectors.</rationale>
+    </rule>
+
+    <rule id="dedup-before-call" testable="true" depth="essential">
+      <statement>Before any API call, dedup inputs by their cache key. The unique-set is sent; results are fanned back out to the original positions.</statement>
+      <rationale source="benchmarked savings on repeated-input workloads">Boilerplate footers, repeated paragraphs, and chat history repeats often hit 30-60% dedup rate; sending unique-only halves the bill.</rationale>
+    </rule>
+
+    <rule id="exponential-backoff" testable="true" depth="essential">
+      <statement>Per-batch call is wrapped in retry-with-jitter (max_attempts=5, wait=min(2**attempt+jitter,60)). Only the failed batch retries; sibling batches continue.</statement>
+      <rationale source="OpenAI / Voyage SDK retry guidance">Long indexing runs trip 429 intermittently; full-pipeline crash on a single 429 wastes hours of partial work.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

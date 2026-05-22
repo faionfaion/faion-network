@@ -1,37 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="multi-agent-design-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for multi-agent-design-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Pattern Selection Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns in multi-agent pattern selection, with detector + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Assuming previous stage output will be perfectly formatted.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Real LLM outputs are messy. Add validation and error recovery at each stage.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Weak synthesizer loses value from good parallel work.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Parallel quality only matters if synthesis is strong. Use an Opus-grade synthesizer.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Generator and critic from the same base model converge on shared blind spots.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLMs trained on the same data share biases. Use different models or fine-tuned variants.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Loop exits at max_iterations regardless of quality.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always inspect the final output; do not assume max iterations implies a passing result.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Router misclassification sends queries to the wrong expert with no automatic recovery.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add a confidence score to routing decisions and fall back to a generalist agent below threshold.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Concurrent writes to shared blackboard keys. Last write wins silently.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use immutable append semantics or explicit locking to prevent data loss.</repair>
-    </failure-mode>
+  <section title="Selection">
+    <antipattern>
+      <description>Pattern stacking — design.md claims "Hierarchical + Loop + HITL" instead of nesting one inside another.</description>
+      <reason>Detect: validator flags `pattern` not in the 8-canonical enum. Fix: pick one primary pattern; declare nested sub-patterns explicitly in `rationale` (e.g. "Hierarchical primary; worker-3 runs an internal Loop pattern").</reason>
+    </antipattern>
+    <antipattern>
+      <description>Router pattern selected without a real classifier — the "router" is the LLM itself in a free-form dispatch prompt.</description>
+      <reason>Detect: `classifier_accuracy` missing or &lt;0.85. Fix: train or rule-set a real classifier; if accuracy cannot reach 0.85, pick `hierarchical` instead — the manager does the dispatch in one call.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Blackboard pattern without concurrency control — agents read/write the same workspace keys with last-write-wins semantics.</description>
+      <reason>Detect: `concurrency_plan` missing. Fix: serialize writes (single-writer queue), use append-only (NDJSON, SQLite WAL), or use a CRDT; if none of these is acceptable, pick `hierarchical` instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Quality">
+    <antipattern>
+      <description>Generator and critic on the same base model — both share training-data blind spots; critic approves whatever generator emits.</description>
+      <reason>Detect: trace shows critic approval rate &gt; 0.95. Fix: assign different model families (e.g. generator=Claude Sonnet, critic=GPT-5 Opus or vice versa); document in `tradeoffs`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>HITL gates not listed despite design containing irreversible actions (DB write, payment, deploy, external email).</description>
+      <reason>Detect: `hitl_gates` is empty AND task description contains any irreversible verb. Fix: enumerate every irreversible action; gate each with a typed approval check that pauses the run.</reason>
+    </antipattern>
   </section>
 </text>

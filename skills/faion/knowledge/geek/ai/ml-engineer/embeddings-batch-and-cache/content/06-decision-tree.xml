@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Embedding Batch + Cache Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Picks backend + concurrency + dedup strategy. Branches name observable inputs; leaves cite rule ids from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-volume">Is the corpus ≥1000 inputs OR repeat_rate ≥0.10?</root-question>
+
+    <branch when="batch_worth_it == false">
+      <conclusion ref="batch-by-provider-limit" verdict="no-op-corpus-too-small"/>
+    </branch>
+
+    <branch when="batch_worth_it == true">
+      <question id="q-topology">Deployment topology?</question>
+      <branch when="topology == 'multi-worker'">
+        <question id="q-rerun">Are re-runs expected (≥weekly re-index)?</question>
+        <branch when="reruns == true">
+          <conclusion ref="content-hash-cache-key" verdict="redis-async-batched-dedup"/>
+        </branch>
+        <branch when="reruns == false">
+          <conclusion ref="dedup-before-call" verdict="redis-async-batched-no-ttl"/>
+        </branch>
+      </branch>
+      <branch when="topology == 'single-host'">
+        <conclusion ref="content-hash-cache-key" verdict="sqlite-async-batched-dedup"/>
+      </branch>
+      <branch when="topology == 'ephemeral'">
+        <conclusion ref="dedup-before-call" verdict="memory-batched-dedup"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="news-archive-reindex">
+    batch_worth_it=true (120k chunks) → multi-worker (3 workers) → reruns=true (daily) → redis-async-batched-dedup referencing content-hash-cache-key.
+  </example>
+
+</text>

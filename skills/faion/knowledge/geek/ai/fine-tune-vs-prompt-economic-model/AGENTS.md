@@ -4,77 +4,96 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "cc7e27db9c309a25"
-summary: Fine Tune Vs Prompt Economic Model delivers a concrete, testable methodology that turns the recurring task of 'Fine-tune vs prompt-engineer decision flow (4 weeks worst case)' into an auditable artefact, addressing the gap: Decision frameworks exist as conceptual flows; what buil
-tags: [ai, geek, model, methodology]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a filled spreadsheet (token spend, tuning cost, latency wins, vendor risk premium, break-even months) that turns the FT vs prompt debate into one number per scenario.
+content_id: "ft-econ-model-2e3f"
+complexity: medium
+produces: spec
+est_tokens: 3300
+tags: [fine-tune, economics, model, spreadsheet, break-even]
 ---
-# Fine Tune Vs Prompt Economic Model
+# Fine-tune vs Prompt Economic Model
 
 ## Summary
 
-**One-sentence:** Fine Tune Vs Prompt Economic Model delivers a concrete, testable methodology that turns the recurring task of 'Fine-tune vs prompt-engineer decision flow (4 weeks worst case)' into an auditable artefact, addressing the gap: Decision frameworks exist as conceptual flows; what builders actually need is a spreadsheet template: token spend, tuning cost, latency wins, vendor risk. Missing as an authored methodology.
+**One-sentence:** Produces a filled spreadsheet (token spend, tuning cost, latency wins, vendor risk premium, break-even months) that turns the FT vs prompt debate into one number per scenario.
 
-**One-paragraph:** Decision frameworks exist as conceptual flows; what builders actually need is a spreadsheet template: token spend, tuning cost, latency wins, vendor risk. Missing as an authored methodology. Fine Tune Vs Prompt Economic Model closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Fine-tune vs prompt-engineer decision flow (4 weeks worst case)' (p7-llm-agent-developer, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Decision frameworks are conceptual; what builders actually need is the spreadsheet. This methodology produces a filled `economic-model.json` (machine-readable) + `economic-model.xlsx`-equivalent (human-readable) with inputs (volume, $/k tokens current+ft, training cost, ops overhead, vendor risk premium) and outputs (monthly delta $, NPV over 12 months, break-even month, sensitivity table). Scenarios required: base, 50% volume drop, 50% volume rise, +30% prompt+RAG cost reduction by year-end.
+
+**Ефективно для:** RFC numbers backing `[[fine-tune-vs-prompt-decision-tree]]`, FinOps challenges, board / investor questions on AI roadmap cost, eng manager pitching the FT spend.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Fine-tune vs prompt-engineer decision flow (4 weeks worst case)' (role: p7-llm-agent-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Production workload with measurable daily token volume.
+- Current $/k tokens known (provider invoice).
+- Candidate fine-tune training cost + hosting $/k tokens estimable.
+- Decision owner will use the numbers (not theatre).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No production traffic — model has no input data.
+- Less than $500/mo annualised spend — overhead exceeds savings.
+- Provider locks both prompt and FT into the same $/k bucket (no economic difference).
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Daily token volume | int (input_tok, output_tok per day) | observability |
+| Current $/k tokens | float (input + output) | provider invoice |
+| FT hosting $/k tokens | float | vendor quote |
+| FT training cost | float (one-off) | vendor quote |
+| Ops overhead | float ($/month, incl monitoring + on-call) | eng manager |
+| Vendor risk premium | float % | infosec/finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `[[fine-tune-vs-prompt-decision-tree]]` | Decision artefact consumes these numbers. |
+| `[[finetune-cost-vs-prompt-decision]]` | Sibling decision-record. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: ops overhead present, 4 scenarios, sensitivity table, vendor-risk %, monthly + NPV, break-even computed | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for `economic-model.json` + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: hidden ops, single scenario, ignored risk premium, units mismatch | ~600 |
+| `content/04-procedure.xml` | recommended | 7 steps: gather → unit-normalise → 4 scenarios → sensitivity → NPV → write narrative → sign | ~700 |
+| `content/05-examples.xml` | recommended | One worked model: support classifier 50k req/day | ~600 |
+| `content/06-decision-tree.xml` | essential | Use-or-skip and scenario-fan-out branches | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `fine_tune_vs_prompt_economic_model_template_fill` | haiku | Template fill, no judgment |
-| `fine_tune_vs_prompt_economic_model_evidence_check` | sonnet | Bounded comparison + judgment |
-| `fine_tune_vs_prompt_economic_model_synthesis` | opus | Cross-input synthesis + final write-up |
+| Unit-normalise inputs | haiku | Tokens → $/month conversion. |
+| Compute 4 scenarios | sonnet | Arithmetic + scenario logic. |
+| Write narrative | opus | Synthesis for human reader. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/economic-model.schema.json` | JSON Schema for the model. |
+| `templates/economic-model.example.json` | Worked filled model. |
+| `templates/economic-model.py` | Python compute kernel (deterministic). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-fine-tune-vs-prompt-economic-model.py` | Validate the JSON against schema + recompute monthly delta to confirm consistency. | Pre-RFC, post-update. |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `p7-llm-agent-developer/Fine-tune vs prompt-engineer decision flow (4 weeks worst case)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/ai/`
+- `[[fine-tune-vs-prompt-decision-tree]]` — consumes these numbers
+- `[[finetune-cost-vs-prompt-decision]]` — sibling decision-record
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters preconditions, then iterates the 4 scenarios; if break-even &gt; 12 months in 3+ scenarios the recommendation surfaces as "do not FT".

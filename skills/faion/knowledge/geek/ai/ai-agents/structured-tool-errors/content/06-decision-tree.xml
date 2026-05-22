@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="structured-tool-errors Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-root">What category of failure occurred?</root-question>
+    <branch when="failure.category in {'rate-limit', 'transient-5xx', 'network-timeout'}">
+      <conclusion ref="r4-runner-hint-action-map">Emit `recoveryHint: RETRY_LATER` with `retry_after_seconds` from the upstream `Retry-After` header or a sane default (5-30s).</conclusion>
+    </branch>
+    <branch when="failure.category == 'bad-arguments' or failure.upstream_status == 400">
+      <conclusion ref="r4-runner-hint-action-map">Emit `recoveryHint: CHECK_INPUT` — model rereads the arguments and tries again on its own.</conclusion>
+    </branch>
+    <branch when="failure.category == 'auth' or failure.upstream_status in {401, 403}">
+      <conclusion ref="r4-runner-hint-action-map">Emit `recoveryHint: NEEDS_AUTH` — runner halts the loop and requests credentials from the user.</conclusion>
+    </branch>
+    <branch when="failure.category in {'permanent-not-found', 'unrecoverable-5xx'}">
+      <conclusion ref="r4-runner-hint-action-map">Emit `recoveryHint: REPORT_TO_USER` — runner halts; do NOT use `RETRY_LATER` as a safety blanket.</conclusion>
+    </branch>
+    <branch when="failure.category == 'resource-missing-but-alternative-exists'">
+      <conclusion ref="r4-runner-hint-action-map">Emit `recoveryHint: TRY_ALTERNATIVE` — runner returns to the model and signals that a different tool is available.</conclusion>
+    </branch>
+    <branch when="failure.message_contains_stack_trace == true">
+      <conclusion ref="r5-no-stack-traces">Strip stack frames from `message`; move sanitised upstream status to `details`. Do not ship raw traces back to the model.</conclusion>
+    </branch>
+    <branch when="failure.code_is_http_status == true">
+      <conclusion ref="r1-envelope-required-fields">Replace HTTP-as-code with a semantic UPPER_SNAKE code: `429 → UPSTREAM_RATE_LIMITED`, `401 → AUTH_REQUIRED`, `404 → RESOURCE_NOT_FOUND`.</conclusion>
+    </branch>
+    <example trace="github-429">
+      <p>Upstream GitHub returns 429 with `Retry-After: 60`. Match → `rate-limit` branch → `RETRY_LATER`. Envelope: `{code: "UPSTREAM_RATE_LIMITED", message: "GitHub API returned 429.", recoveryHint: "RETRY_LATER", retry_after_seconds: 60, traceId: "01HX..."}`.</p>
+    </example>
+  </decision-tree>
+</text>

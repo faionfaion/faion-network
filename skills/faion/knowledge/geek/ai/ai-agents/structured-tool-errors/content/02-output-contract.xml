@@ -1,22 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="structured-tool-errors Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="structured-tool-errors Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the tool error envelope. Inline form here; the standalone file is `templates/error_envelope.json`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema format="json-schema">
+<![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ToolError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "recoveryHint", "traceId"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$"},
+        "message": {"type": "string", "minLength": 1, "maxLength": 240},
+        "recoveryHint": {"type": "string", "enum": ["RETRY_LATER", "CHECK_INPUT", "TRY_ALTERNATIVE", "REPORT_TO_USER", "NEEDS_AUTH"]},
+        "traceId": {"type": "string", "minLength": 8},
+        "retry_after_seconds": {"type": "integer", "minimum": 0, "maximum": 3600},
+        "details": {"type": "object"}
+      }
+    }
+  }
+}
+]]>
+  </schema>
+
+  <example valid="true">
+<![CDATA[
+{
+  "error": {
+    "code": "UPSTREAM_RATE_LIMITED",
+    "message": "GitHub API returned 429.",
+    "recoveryHint": "RETRY_LATER",
+    "retry_after_seconds": 60,
+    "traceId": "01HX9V7Q2XQF9P0M4Z"
+  }
+}
+]]>
+  </example>
+
+  <example valid="false">
+<![CDATA[
+{
+  "error": {
+    "code": "429",
+    "message": "TypeError: NoneType has no attribute 'json' at /app/tools/github.py:42\n  File ...",
+    "recoveryHint": "RETRY_NOW",
+    "traceId": "x"
+  }
+}
+]]>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`code` matches `^[A-Z][A-Z0-9_]+$`; never an HTTP status code as the semantic code.</item>
+      <item>`message` ≤240 chars; no stack frames or file paths.</item>
+      <item>`recoveryHint` is exactly one of the five closed-enum values.</item>
+      <item>`traceId` ≥8 chars; ideally ULID or UUID.</item>
+      <item>If `recoveryHint == "RETRY_LATER"`, `retry_after_seconds` SHOULD be present and 1-300.</item>
     </list>
   </section>
 </text>

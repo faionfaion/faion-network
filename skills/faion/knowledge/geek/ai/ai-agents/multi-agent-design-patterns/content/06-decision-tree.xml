@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Multi-Agent Pattern Decision Tree" version="1.0.0" est_tokens="450">
+  <decision-tree>
+    <root-question id="q-irreversible">Does the workflow contain any irreversible action (DB writes, payments, deploys, external emails)?</root-question>
+    <branch when="has_irreversible_action == true">
+      <conclusion ref="r5-hitl-on-irreversible">Primary pattern stays the one from the rest of the tree; ADD `hitl_gates` listing every irreversible action. HITL is overlay, not replacement.</conclusion>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true">
+      <question id="q-classifier">Is the task choice-of-specialist with a known classifier (accuracy ≥0.85)?</question>
+      <branch when="needs_classifier_dispatch == true AND classifier_accuracy &gt;= 0.85">
+        <conclusion ref="r4-router-needs-classifier">Pick `router`. Document classifier_accuracy; fall back to a generalist agent below threshold.</conclusion>
+      </branch>
+      <branch when="needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85">
+        <question id="q-shared-state">Do agents need shared mutable state visible to all (workspace, blackboard)?</question>
+        <branch when="shared_mutable_state == true">
+          <conclusion ref="r3-blackboard-locking">Pick `blackboard`. Document concurrency_plan (single-writer queue / CRDT / DB transactions).</conclusion>
+        </branch>
+        <branch when="shared_mutable_state == false">
+          <question id="q-quality-loop">Is iterative refinement with adversarial critique needed?</question>
+          <branch when="needs_critique == true">
+            <conclusion ref="r2-downstream-impl-link">Pick `generator_critic`. Generator + critic on different model families; downstream impl = `multi-agent-conversational`.</conclusion>
+          </branch>
+          <branch when="needs_critique == false">
+            <question id="q-iterative">Is the task open-ended with a halting criterion (refine until quality / convergence)?</question>
+            <branch when="needs_iteration == true">
+              <conclusion ref="r2-downstream-impl-link">Pick `loop`. Halting predicate required; downstream impl = `multi-agent-conversational` with `max_turns` cap.</conclusion>
+            </branch>
+            <branch when="needs_iteration == false">
+              <question id="q-decomposable">Is the task decomposable into independent parallel subtasks?</question>
+              <branch when="parallelisable == true">
+                <conclusion ref="r1-one-named-pattern">Pick `parallel_fanout`. Strong synthesizer at gather step (opus-grade); downstream impl = `multi-agent-basics`.</conclusion>
+              </branch>
+              <branch when="parallelisable == false">
+                <question id="q-manager">Need decomposition + dispatch + synthesis?</question>
+                <branch when="needs_manager == true">
+                  <conclusion ref="r2-downstream-impl-link">Pick `hierarchical`. Manager + stateless workers + synthesis; downstream impl = `multi-agent-hierarchical`.</conclusion>
+                </branch>
+                <branch when="needs_manager == false">
+                  <conclusion ref="r1-one-named-pattern">Pick `sequential`. Linear chain; downstream impl = `multi-agent-basics`.</conclusion>
+                </branch>
+              </branch>
+            </branch>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="blog-post-pipeline">
+      <p>1500-word explainer requiring factual accuracy; no irreversible action; one writer + one critic; no shared state; needs critique → q-irreversible=no → q-classifier=no → q-shared-state=no → q-quality-loop=yes → conclusion `generator_critic` (downstream `multi-agent-conversational`).</p>
+    </example>
+  </decision-tree>
+</text>

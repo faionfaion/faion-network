@@ -3,21 +3,27 @@ slug: django-service-layer
 tier: free
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: All write operations (create, update, delete, side effects) belong in service functions, not in views, serializers, or model save() overrides.
-content_id: "6ed563d8a9d30ed4"
-tags: [django, service-layer, architecture, transactions]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces Django service functions (kwarg-only writes wrapped in transaction.atomic, full_clean before save, domain exceptions, on_commit dispatch) centralising business logic outside views.
+content_id: "187d5dc932500074"
+complexity: medium
+produces: code
+est_tokens: 2900
+tags: [django, service-layer, hacksoft, transactions, architecture]
 ---
+
 # Django Service Layer Pattern
 
 ## Summary
 
-**One-sentence:** All write operations (create, update, delete, side effects) belong in service functions, not in views, serializers, or model save() overrides.
+**One-sentence:** Centralise every write operation in a keyword-only service function inside `apps/<app>/services.py` that wraps the work in `transaction.atomic()`, calls `full_clean()` before save, raises domain exceptions, and dispatches Celery tasks via `transaction.on_commit()`.
 
-**One-paragraph:** All write operations (create, update, delete, side effects) belong in service functions, not in views, serializers, or model save() overrides. Services take keyword-only arguments, wrap multi-model writes in transaction.atomic(), call full_clean() before save(), and raise domain exceptions instead of HTTP exceptions. This makes business logic independently testable and reusable across views, tasks, admin actions, and management commands.
+**One-paragraph:** Business logic in views cannot be tested without HTTP machinery; logic in serializers bypasses the service transaction; logic in model `save()` overrides leaks across managers and admin actions. The service layer is the single place where writes happen. Each service takes keyword-only arguments, opens one `transaction.atomic()` for multi-model writes, validates model instances with `full_clean()` before `save()`, raises domain exceptions (NotFoundError, ValidationError, PermissionDeniedError) instead of HTTP exceptions, and queues side-effects (emails, Celery tasks) via `transaction.on_commit()` so they only fire after a successful commit.
+
+**Ефективно для:** any Django app following HackSoft styleguide; views growing fat with logic; logic duplicated across view + Celery + admin; refactor to enable management commands to reuse the same code path.
 
 ## Applies If (ALL must hold)
 
@@ -29,47 +35,67 @@ tags: [django, service-layer, architecture, transactions]
 
 ## Skip If (ANY kills it)
 
-- Trivial wrappers that do nothing but Model.objects.create() — add no value, just boilerplate.
-- Read-only operations — those belong in selectors.
-- View-only glue (getting request data, setting HTTP headers) — that stays in the view.
-- Function-style scripts / management commands that orchestrate existing services — those call services, they are not services themselves.
+- Trivial wrappers that do nothing but `Model.objects.create()` — add no value.
+- Read-only operations — those belong in `selectors.py`.
+- View-only glue (parsing request, setting HTTP headers) — that stays in the view.
+- Orchestration scripts / management commands that call existing services — they consume services, they are not services themselves.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artifact | Format | Source |
+|----------|--------|--------|
+| `apps/<app>/models.py` | Python | repo |
+| `core/exceptions.py` (domain exception base) | Python | repo |
+| Existing view / admin / Celery call site holding the write | Python | repo |
+| `transaction.atomic` import path verified | Python | Django stdlib |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `django-selectors` | reads belong in selectors; services consume their output |
+| `django-quality-logging` | structlog discipline for logger calls inside services |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: kwarg-only, atomic, full_clean, domain exceptions, on_commit | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for service-function metadata + signature examples | ~600 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: extract → contract → atomic → exceptions → on_commit | ~500 |
+| `content/05-examples.xml` | optional | worked example: order creation with multi-model atomic write + on_commit notification | ~400 |
+| `content/06-decision-tree.xml` | essential | route between service, selector, view, model.save() override | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Signature design | sonnet | kwarg-only template |
+| Transaction boundary placement | opus | nested atomic / savepoint judgement |
+| Domain exception design | opus | exception hierarchy decisions |
+| on_commit refactor of side effects | sonnet | mechanical wrap of `task.delay` calls |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/service_create.py` | service skeleton for create with full_clean + on_commit |
+| `templates/service_update.py` | service skeleton for partial update |
+| `templates/exceptions.py` | domain exception base classes (ApplicationError + subtypes) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-service-layer.py` | AST check: kwarg-only, transaction.atomic present for multi-model writes, no `.delay(` outside on_commit, raises domain exceptions | pre-commit / CI |
 
 ## Related
 
-- parent skill: `free/dev/python-developer/`
+- [[django-selectors]] — read counterpart
+- [[django-serializers]] — views call services with `serializer.validated_data`
+- [[django-testing]] — services are tested directly without HTTP
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes from "is this a write?" through "multi-model?" and "side-effects?" to one of: service in `services.py`, inline (single-line `.create`), selector (read), or view (HTTP glue). Used to keep `services.py` from filling with trivial wrappers and to keep model `save()` overrides empty.

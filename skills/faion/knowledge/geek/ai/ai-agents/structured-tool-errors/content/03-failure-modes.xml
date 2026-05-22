@@ -1,22 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="structured-tool-errors Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for structured-tool-errors as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="structured-tool-errors Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that defeat the deterministic dispatch the closed-enum envelope is supposed to give.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Returning HTTP status code AS the error code (code: "429").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Status codes describe transport, not the agent action. Use semantic codes (UPSTREAM_RATE_LIMITED, INVALID_ARGUMENT) and let the hint enum drive the loop.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Stuffing the upstream stack trace into details.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Leaks implementation, fills context, and gives the model no actionable signal. Sanitise: keep what the agent can act on, drop the rest.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Returning the error envelope to the model on every hint and letting the model decide whether to retry.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Burns tokens, invites hallucinated retry decisions, and bypasses the runner's retry budget — the loop can spin forever.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-http-code-as-error-code" severity="medium">
+      <symptom>Tool returns `code: "429"` or `code: "500"` — transport-layer codes used as semantic codes.</symptom>
+      <root-cause>Author copied the HTTP status from the upstream response without translating.</root-cause>
+      <fix>Map to a semantic UPPER_SNAKE code: `429 → UPSTREAM_RATE_LIMITED`, `500 → UPSTREAM_INTERNAL_ERROR`, `401 → AUTH_REQUIRED`. Status codes describe transport; semantic codes drive the loop.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-stack-trace-in-details" severity="high">
+      <symptom>`details.raw_response` contains a full HTML error page or Python stack trace; model context blows past 30K tokens on a single failure.</symptom>
+      <root-cause>Author defensive-copied the upstream body into `details` "just in case".</root-cause>
+      <fix>Sanitise: keep `upstream_status: int`, `upstream_request_id: str`, and a sub-100-char excerpt. Drop stack frames, file paths, HTML.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-model-decides-retry" severity="high">
+      <symptom>Runner returns the error envelope to the model on every hint and lets the model decide whether to retry. Token spend balloons; loop runs over `--max-turns`.</symptom>
+      <root-cause>Author skipped the runner hint→action map; "the LLM will figure it out" pattern.</root-cause>
+      <fix>Wire the closed enum to deterministic runner actions per `templates/runner_policy.yaml`. The model only sees the error when the hint is `CHECK_INPUT` / `TRY_ALTERNATIVE`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-fabricated-retry-later" severity="high">
+      <symptom>Tool emits `RETRY_LATER` for unrecoverable failures (e.g., `404 Not Found`); runner retries N times then gives up after burning the budget.</symptom>
+      <root-cause>Author chose the safest-sounding hint instead of the correct one.</root-cause>
+      <fix>Map by failure category, not by safety: `404` → `REPORT_TO_USER`; only true transient failures (rate-limit, 503, network) get `RETRY_LATER`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-free-form-hint" severity="medium">
+      <symptom>`recoveryHint: "Try again later or contact support."` — natural-language string instead of an enum value.</symptom>
+      <root-cause>Author treated `recoveryHint` as user-facing copy.</root-cause>
+      <fix>Use exactly one of the five closed values. The string the model sees is irrelevant; the runner reads the enum. Put user-facing copy in `message`.</fix>
+    </antipattern>
   </section>
 </text>

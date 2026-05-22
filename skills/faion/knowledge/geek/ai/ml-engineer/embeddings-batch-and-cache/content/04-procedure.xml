@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Embedding Batch + Cache Procedure" version="1.1.0" est_tokens="500" depth="reference">
+  <summary>5-step procedure from rate-budget + corpus to validated batch+cache config.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="size-the-batch">
+      <input>Provider id; provider hard limit; per-input avg tokens.</input>
+      <action>Set batch.size = min(provider_limit, optimal_for_token_budget). For OpenAI 2048; Voyage 128; Cohere 96.</action>
+      <output>batch.size in config.</output>
+    </step>
+
+    <step n="2" name="compute-concurrency">
+      <input>rate_budget.rpm, rate_budget.tpm, batch.size, avg_tokens_per_input.</input>
+      <action>concurrency = min(floor(rpm / 60), floor(tpm / (batch.size * avg_tokens_per_input * 60))). Cap at 64.</action>
+      <output>batch.concurrency in config.</output>
+    </step>
+
+    <step n="3" name="pick-cache-backend">
+      <input>Deployment topology (single-host / multi-worker / ephemeral).</input>
+      <action>Single worker → SQLite. Multi-worker → Redis. Ephemeral CI → memory. Cache key_scheme = sha256-text-model-dim. TTL = 30 days for stable text, 1 day for chat-history snippets.</action>
+      <output>cache.backend + ttl_seconds + key_scheme.</output>
+    </step>
+
+    <step n="4" name="enable-dedup-and-order">
+      <input>Producer code.</input>
+      <action>Wrap call site: (a) dedup inputs by cache key; (b) carry input index; (c) reassemble in input order. Set dedup=true, preserve_order=true.</action>
+      <output>Updated producer; integration test verifying order + dedup.</output>
+    </step>
+
+    <step n="5" name="validate-and-commit">
+      <input>Completed config.</input>
+      <action>Emit JSON per content/02-output-contract.xml. Run scripts/validate-embeddings-batch-and-cache.py. Commit alongside producer code.</action>
+      <output>Validated ebc-* artefact.</output>
+    </step>
+
+  </section>
+
+  <reference path="templates/batch-cache.py">Reference implementation with all 5 rules wired.</reference>
+
+</text>

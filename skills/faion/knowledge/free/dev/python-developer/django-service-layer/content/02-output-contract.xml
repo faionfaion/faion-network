@@ -1,22 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-service-layer Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-service-layer Output Contract" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Output is Python source defining service functions. The validator parses each function and checks the schema below.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <reference path="templates/service_create.py">Service create skeleton.</reference>
+  <reference path="templates/service_update.py">Service update skeleton.</reference>
+  <reference path="scripts/validate-django-service-layer.py">AST validator.</reference>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (per-function metadata)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DjangoServiceFunction",
+  "type": "object",
+  "required": ["name", "file", "kwarg_only", "uses_atomic", "calls_full_clean", "raises_domain_exception", "delay_inside_atomic"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "file": { "type": "string", "pattern": ".+/services\\.py$" },
+    "kwarg_only": { "const": true },
+    "uses_atomic": { "type": "boolean" },
+    "calls_full_clean": { "type": "boolean" },
+    "raises_domain_exception": { "type": "boolean" },
+    "delay_inside_atomic": { "const": false }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Examples">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db import transaction
+from apps.orders.models import Order, OrderItem
+from core.exceptions import ValidationError
+
+
+def order_create(*, user, items: list[dict]) -> Order:
+    if not items:
+        raise ValidationError("at least one item required")
+
+    with transaction.atomic():
+        order = Order(user=user, total=sum(i["price"] for i in items))
+        order.full_clean()
+        order.save()
+        OrderItem.objects.bulk_create([OrderItem(order=order, **i) for i in items])
+
+        transaction.on_commit(lambda: notify_user.delay(order_id=order.id))
+
+    return order
+      ]]></code>
+      <note>Valid: kwarg-only signature, atomic boundary in service, full_clean before save, domain ValidationError, on_commit-wrapped Celery dispatch.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+from rest_framework.exceptions import ValidationError as DRFValidationError
+
+
+def order_create(user, items):                       # positional args
+    if not items:
+        raise DRFValidationError("empty")           # HTTP exception in service
+    order = Order.objects.create(                    # no full_clean
+        user=user,
+        total=sum(i["price"] for i in items),
+    )
+    for i in items:
+        OrderItem.objects.create(order=order, **i)
+    notify_user.delay(order_id=order.id)             # outside on_commit, no atomic
+    return order
+      ]]></code>
+      <note>Invalid: positional args, DRF exception (HTTP coupling), `objects.create` skips clean(), no atomic boundary, .delay() unguarded.</note>
+    </example>
   </section>
 </text>

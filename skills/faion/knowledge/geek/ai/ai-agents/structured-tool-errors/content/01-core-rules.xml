@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="structured-tool-errors Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for structured-tool-errors. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="structured-tool-errors Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules for shaping tool errors so an agent loop can branch deterministically.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every tool error response MUST be a JSON object with these required fields: code (UPPER_SNAKE machine code), message (one human sentence, no stack trace), recoveryHint (one of RETRY_LATER | CHECK_INPUT | TRY_ALTERNATIVE | REPORT_TO_USER | NEEDS_AUTH), traceId (correlation ID). Optional: retry_after_seconds, details (sanitised, no stack frames).</statement>
-      <rationale source="v1-source">SHIELDA and Kumaran's MCP error-design study measured a 30%+ drop in dead-end retry loops when tools emit a closed recoveryHint enum vs free-form messages. The closed enum is what makes the policy mapping deterministic.</rationale>
+  <section title="Envelope shape">
+    <rule id="r1-envelope-required-fields" testable="true" depth="essential">
+      <statement>Every tool error response MUST be a JSON object `{error: {code, message, recoveryHint, traceId, ...}}` with `code` (UPPER_SNAKE machine code), `message` (one human sentence, no stack trace), `recoveryHint` (closed enum), `traceId` (correlation ID). Optional: `retry_after_seconds`, sanitised `details`.</statement>
+      <rationale source="SHIELDA, Kumaran MCP error-design study">The closed-shape envelope is what makes downstream policy mapping deterministic. Studies measured 30%+ drop in dead-end retry loops vs free-form messages.</rationale>
+      <reference path="templates/error_envelope.json">JSON Schema for the envelope; copy into tool / MCP contract.</reference>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The agent runner MUST map each recoveryHint value to exactly one action: RETRY_LATER → wait retry_after_seconds (clamped 1-300s) and retry the same call up to a per-tool retry budget; CHECK_INPUT → return the error to the model with no automatic retry; TRY_ALTERNATIVE → return to the model, signal to pick a different tool; REPORT_TO_USER → halt the loop, surface to user; NEEDS_AUTH → halt the loop, request credentials.</statement>
-      <rationale source="v1-source">Without an explicit mapping, the model invents its own retry policy each turn, often retrying INVALID_ARGUMENT (waste) or escalating RATE_LIMITED (premature). Explicit dispatch is cheaper and safer.</rationale>
+    <rule id="r2-traceid-mandatory" testable="true" depth="essential">
+      <statement>`traceId` is required on every error response, ≥8 chars, ideally a ULID or UUID. Never omit; never use the message text as a stand-in. The traceId is what humans search for in logs when the agent escalates.</statement>
+      <rationale source="OpenTelemetry correlation conventions">Without traceId, post-mortem on an escalated failure requires reading every log line; with it, the human grep is one query. The cost of generating a ULID is negligible.</rationale>
+    </rule>
+  </section>
+
+  <section title="recoveryHint enum (closed)">
+    <rule id="r3-closed-enum" testable="true" depth="essential">
+      <statement>`recoveryHint` MUST be exactly one of `RETRY_LATER | CHECK_INPUT | TRY_ALTERNATIVE | REPORT_TO_USER | NEEDS_AUTH`. Any other value is a contract violation. Never invent new hints inline — extend the enum repo-wide if a new category is genuinely needed.</statement>
+      <rationale source="closed-enum design principle, structured-tool-errors paper">Free-form hint prose forces the agent (and the runner) to parse natural language to decide the next action. A closed enum compiles to a switch statement.</rationale>
+      <reference path="templates/recovery_hints.txt">One-line semantic per enum value; ship as a tool-author quick reference.</reference>
+    </rule>
+  </section>
+
+  <section title="Runner dispatch">
+    <rule id="r4-runner-hint-action-map" testable="true" depth="essential">
+      <statement>The agent runner MUST map each `recoveryHint` to exactly one action: `RETRY_LATER` → wait `retry_after_seconds` clamped 1-300s and retry up to a per-tool retry budget; `CHECK_INPUT` → return to the model with no automatic retry; `TRY_ALTERNATIVE` → return to model, signal to pick a different tool; `REPORT_TO_USER` → halt loop, surface to user; `NEEDS_AUTH` → halt loop, request credentials.</statement>
+      <rationale source="agent-runner production logs">Without explicit dispatch, the model invents its own retry policy each turn, often retrying `INVALID_ARGUMENT` (waste) or escalating `RATE_LIMITED` (premature). Explicit dispatch is cheaper and safer.</rationale>
+      <reference path="templates/runner_policy.yaml">YAML map from hint → action with default retry budgets.</reference>
+    </rule>
+  </section>
+
+  <section title="Sanitisation">
+    <rule id="r5-no-stack-traces" testable="true" depth="essential">
+      <statement>`message` MUST NOT contain stack frames, file paths, line numbers, or upstream JSON. `details` MUST NOT contain raw stack traces. Replace with semantic codes and sanitised fields (e.g., `"upstream_status": 503`, not `"raw_response": "<full HTML>"`).</statement>
+      <rationale source="OWASP API Security Top 10, A09 — Information Exposure">Stack traces leak implementation, fill context budget, and confuse the model into pretend-debugging. Sanitisation is a security AND correctness gain.</rationale>
     </rule>
   </section>
 </text>
