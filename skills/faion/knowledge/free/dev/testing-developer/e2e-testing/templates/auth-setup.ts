@@ -1,3 +1,8 @@
+// purpose: storageState auth setup project (runs once before all test projects)
+// consumes: TEST_USER_EMAIL + TEST_USER_PASSWORD env vars
+// produces: persisted .auth/user.json that other projects load via storageState
+// depends-on: setup project wired in playwright.config.ts via dependencies: ['setup']
+// token-budget-impact: ~150 tokens
 import { test as setup, expect } from '@playwright/test';
 import path from 'path';
 

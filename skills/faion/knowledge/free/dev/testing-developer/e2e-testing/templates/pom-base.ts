@@ -1,3 +1,8 @@
+// purpose: abstract Page Object base class for the e2e-testing methodology
+// consumes: Playwright Page; subclassed per concrete route
+// produces: typed scaffolding for navigate/waitForLoad/title helpers
+// depends-on: @playwright/test types
+// token-budget-impact: ~200 tokens
 import { type Page, type Locator } from '@playwright/test';
 
 /**

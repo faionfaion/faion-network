@@ -1,3 +1,8 @@
+// purpose: faker-driven data factories + builder for E2E test fixtures
+// consumes: optional overrides per factory call
+// produces: typed UserData / ProductData / OrderBuilder instances
+// depends-on: @faker-js/faker installed
+// token-budget-impact: ~250 tokens
 import { faker } from '@faker-js/faker';
 
 // ---- Type definitions (adapt to your domain models) ----
