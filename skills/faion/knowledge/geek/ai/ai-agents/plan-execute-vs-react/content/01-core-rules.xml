@@ -1,11 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="plan-execute-vs-react Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for plan-execute-vs-react. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Plan-Execute vs ReAct Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every agent-loop selection MUST enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-plan-when-predictable" testable="true" depth="essential">
+      <statement>When known_substeps is 3-10 AND adaptability_needed == false AND horizon &lt;= 10, the spec MUST select Plan-Execute.</statement>
+      <rationale source="langchain-ai.github.io/langgraph/tutorials/plan-and-execute">Plan-Execute auditability + parallelisability beat ReAct adaptability when steps are predictable.</rationale>
     </rule>
+
+    <rule id="r2-react-when-exploratory" testable="true" depth="essential">
+      <statement>When known_substeps == 'unknown' OR adaptability_needed == true, the spec MUST select ReAct.</statement>
+      <rationale source="arxiv.org/abs/2210.03629">Each Action's Observation reshapes the next Thought; only ReAct adapts to surprising tool outputs.</rationale>
+    </rule>
+
+    <rule id="r3-hybrid-long-horizon" testable="true" depth="essential">
+      <statement>When horizon &gt; 10 AND mixed_predictability == true, the spec MUST select Hybrid (top-level plan + per-step ReAct with max_turns=5).</statement>
+      <rationale source="anthropic.com/research/built-multi-agent-research-system">Top-level plan stays auditable; per-step loops bound exploration. The deep-agents pattern.</rationale>
+    </rule>
+
+    <rule id="r4-max-turns-mandatory" testable="true" depth="essential">
+      <statement>Every ReAct or Hybrid spec MUST set max_turns &gt;= 1. Unbounded loops are forbidden.</statement>
+      <rationale source="agent ops postmortems">Infinite loops on bad tool output drain budget silently. max_turns is the only honest safeguard.</rationale>
+    </rule>
+
+    <rule id="r5-separate-plan-execute" testable="true" depth="essential">
+      <statement>Plan-Execute MUST emit the plan in ONE call, then deterministic code dispatches execution. Plans embedded inside execution turns are forbidden.</statement>
+      <rationale source="trace auditability">Mid-run plan mutation produces unauditable traces that no human can review.</rationale>
+    </rule>
+
+    <rule id="r6-slim-state-doc" testable="true" depth="essential">
+      <statement>Hybrid runs MUST aggregate per-step results into a single state document (&lt;2K tokens). Re-loading full sub-results into the planner context is forbidden.</statement>
+      <rationale source="context-budget hygiene">Re-loading explodes context budget; slim state doc keeps the planner under 5K tokens of history.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
