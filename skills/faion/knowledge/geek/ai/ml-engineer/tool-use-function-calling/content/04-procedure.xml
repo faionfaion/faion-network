@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Tool Use — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five-step procedure: catalog tools → write schemas → dispatcher with validate-execute → safety classification + gating → ship + audit.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="catalog-tools">
+      <input>product spec + user-facing actions list</input>
+      <action>Enumerate the ≤20 actions the agent should be able to take. Cluster into read-only / mutating / destructive.</action>
+      <output>`tools.yaml` skeleton with name + description per tool</output>
+      <decision-gate>If &gt;20 tools — split agent into specialists; one agent with too many tools picks badly.</decision-gate>
+    </step>
+
+    <step n="2" name="write-schemas">
+      <input>tool list</input>
+      <action>Define JSON Schema per tool. Tighten where possible (enum types, regex for IDs, min/max numerics). Document each arg with `description`.</action>
+      <output>complete args_schema per tool</output>
+      <decision-gate>If schema has `additionalProperties: true` — tighten before continuing (r1-typed-schema).</decision-gate>
+    </step>
+
+    <step n="3" name="dispatcher-with-validate-execute">
+      <input>tools.yaml + Python callables</input>
+      <action>Build dispatcher: lookup by name, validate args against schema, check safety_class against caller permissions, execute, return result OR error.</action>
+      <output>`dispatcher.py` module</output>
+      <decision-gate>If dispatcher skips validation — block (r2-validate-before-execute).</decision-gate>
+    </step>
+
+    <step n="4" name="safety-class-and-gating">
+      <input>safety classification + human gate plumbing</input>
+      <action>For each destructive tool, wire human-approval gate (UI button / Slack approve). Mutating tools rate-limited. Read-only auto-execute.</action>
+      <output>gating policy wired to dispatcher</output>
+      <decision-gate>If destructive tool auto-executes — block ship (r4-human-gate-irreversible).</decision-gate>
+    </step>
+
+    <step n="5" name="ship-and-audit">
+      <input>audit sink + dashboards</input>
+      <action>Wire AuditEntry emission per dispatch. Ship behind feature flag at 5% → 50% → 100%. Monitor tool_choice_accuracy, hallucinated_name_rate, gate_approval_rate.</action>
+      <output>Production tool-use live with audit log</output>
+      <decision-gate>If hallucinated_name_rate &gt;1% — fix tool descriptions; model is confused.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

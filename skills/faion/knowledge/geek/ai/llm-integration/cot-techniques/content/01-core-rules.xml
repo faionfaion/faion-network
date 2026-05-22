@@ -1,35 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cot-techniques Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cot-techniques. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="CoT Techniques Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules for advanced chain-of-thought patterns.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Set a hard max_depth of 2–3 levels in Tree of Thoughts; with num_branches=3 and max_depth=3 you make up to 9+ API calls per problem — cost explodes without a depth cap.</statement>
-      <rationale source="v1-source">ToT is not bounded by default. A 3-branch, 3-level tree makes at least 9 evaluation calls. In a production agent, this can stall a pipeline for minutes and exhaust rate limits.</rationale>
+      <statement source="ablation-folklore">Pick exactly one advanced pattern per call site: few-shot CoT OR self-consistency OR least-to-most OR tree-of-thoughts. Stacking patterns multiplies cost without proportional lift.</statement>
+      <rationale>Compounded patterns are hard to debug; pick the dominant axis (cost vs lift vs branching) and commit.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Use response_format={"type": "json_object"} for thought evaluation in ToT; assign score=0 on JSON parse failure rather than raising an exception.</statement>
-      <rationale source="v1-source">Models occasionally produce malformed JSON under structured reasoning load. A crashed evaluation kills the entire ToT run; score=0 gracefully eliminates the path.</rationale>
+      <statement source="baseline-discipline">Zero-shot CoT baseline must be measured first. Advanced pattern is justified only if baseline accuracy &lt; target AND failure pattern matches the candidate technique.</statement>
+      <rationale>Without baseline we cannot tell if advanced pattern is helping or just adding cost.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Set a wall-clock timeout on ToT runs in agentic pipelines — slow API responses with 9+ branches can stall the pipeline for minutes without a timeout.</statement>
-      <rationale source="v1-source">ToT with slow API responses is unbounded in wall time. An agent pool that blocks on one long ToT run starves other tasks.</rationale>
+      <statement source="eval-folklore">Lift gate: keep advanced pattern only if it beats baseline by ≥3 absolute pp on a ≥50-case eval. Smaller lifts are within noise floor.</statement>
+      <rationale>Lift below 3pp is statistically thin; cost is concrete (Nx); ratio is poor.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Cache the decomposition step output in Least-to-Most — if the LLM already decomposed the problem, do not re-decompose on retry; only retry the failed subproblem solution.</statement>
-      <rationale source="v1-source">Decomposition calls are expensive. If only one subproblem solution fails, re-running decomposition wastes tokens and risks getting a different (possibly worse) decomposition.</rationale>
+      <statement source="cost-discipline">Cost guard: per-call cost cap configured. Self-consistency with N=5 and ToT with branch=4 depth=3 can be 4-20x baseline; cap prevents runaway.</statement>
+      <rationale>Cost guards catch a misconfigured N or branch factor before the invoice does.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Always try zero-shot CoT ("Think step by step.") first — it solves 70–80% of cases at the cost of only a few extra tokens. Escalate to advanced techniques only after zero-shot fails on your specific problem class.</statement>
-      <rationale source="v1-source">Advanced techniques multiply API calls, cost, and latency. Zero-shot is free in terms of additional API calls. Measure before upgrading strategy.</rationale>
+      <statement source="self-consistency-spec">Self-consistency requires an explicit voting rule: majority for categorical answers; median for numeric; LLM judge for free-text (judge must be calibrated per `[[judge-calibration-protocol]]`).</statement>
+      <rationale>Without a defined voting rule, ties and judge drift become silent quality bugs.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Use o1/o3 (OpenAI) or Claude extended thinking (Anthropic) for problems that natively benefit from deep reasoning — they handle CoT internally and are cheaper than explicit multi-call ToT.</statement>
-      <rationale source="v1-source">Extended thinking tokens are billed but not visible in the response text — they represent internal reasoning the model does natively. Running explicit ToT on top of o1 is redundant and expensive.</rationale>
+      <statement source="tot-spec">Tree-of-thoughts requires a branch-pruning value function (LLM scorer or programmatic). Unpruned trees explode in cost; max branches per node ≤4, max depth ≤4.</statement>
+      <rationale>Bounds prevent exponential cost blowup; pruning concentrates compute on promising paths.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>For self-consistency: sample at temperature=0.7, deduplicate identical outputs before majority vote, and benchmark accuracy gain vs. cost before using more than 5 samples.</statement>
-      <rationale source="v1-source">Low-temperature sampling produces identical outputs that artificially inflate one answer's count. Cost multiplies linearly with sample count — 10 samples = 10x the cost of a single call.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Baseline measured + budget OK + pattern picked → wire runner and run A/B.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Zero-shot CoT already at target OR budget too tight → skip; revert to baseline.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

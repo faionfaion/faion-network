@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Tool Use — Worked Example" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Worked example: support agent with `lookup_customer` (read-only), `send_email` (mutating), `delete_account` (destructive, human-gated).</summary>
+
+  <example title="tools.yaml for support agent">
+    <code lang="yaml"><![CDATA[
+version: 1.0.0
+audit_sink:
+  kind: clickhouse
+  location: ch://audit/agent_tools
+
+tools:
+  - name: lookup_customer
+    description: "Returns customer record by ID. No side effects."
+    safety_class: read-only
+    rate_limit_per_minute: 60
+    args_schema:
+      type: object
+      required: [customer_id]
+      properties:
+        customer_id: {type: string, pattern: "^c-[a-f0-9]{16}$"}
+
+  - name: send_email
+    description: "Sends one email to the customer. Idempotent within 5 min."
+    safety_class: mutating
+    rate_limit_per_minute: 5
+    args_schema:
+      type: object
+      required: [to, subject, body]
+      properties:
+        to: {type: string, format: email}
+        subject: {type: string, minLength: 5, maxLength: 200}
+        body: {type: string, minLength: 20}
+
+  - name: delete_account
+    description: "Permanently deletes customer account. Cannot be undone."
+    safety_class: destructive
+    human_gate: true
+    rate_limit_per_minute: 1
+    args_schema:
+      type: object
+      required: [customer_id, reason_code]
+      properties:
+        customer_id: {type: string}
+        reason_code: {type: string, enum: [user-request, fraud, gdpr-erasure]}
+]]></code>
+    <note>Demonstrates r1 (typed schemas), r3 (safety class per tool), r4 (destructive gated). Pattern matched in dispatcher to refuse unauthorised classes.</note>
+  </example>
+</text>
