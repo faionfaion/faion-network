@@ -246,6 +246,7 @@ All notable changes to this project will be documented in this file.
 - add: tier-playbook pro/market-research/competitor-analysis
 - add: tier-playbook pro/ux-research/user-interviews-at-scale
 - add: tier-playbook pro/delivery-ops/sprint-planning-agency
+- add: tier-playbook pro/team-management/onboarding-30-60-90
 - add: tier-playbook pro/paid-acquisition/meta-ads-b2c
 - add: tier-playbook pro/growth-marketing/aarrr-funnel
 - add: tier-playbook pro/infra-engineering/aws-gcp-basics
