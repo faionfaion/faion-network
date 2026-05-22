@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-065 phase 2: L2 INDEX.xml for ml-engineering/backend/frontend/ba (606 methodologies).
 - F-065 phase 2: L2 INDEX.xml for comms/hr/claude-code/security (51 methodologies).
 - F-065 phase 2: L2 INDEX.xml for dev/pm/infra/marketing (1267 methodologies).
 - F-065 phase 4: playbook goal classification chunk 1 (91 dirs).
