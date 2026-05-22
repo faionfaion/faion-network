@@ -1,22 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="multi-agent-design-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Pattern Decision Record Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the multi-agent pattern decision record (ADR-shaped).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/pattern-decision-record.v1.json",
+  "title": "PatternDecisionRecord",
+  "type": "object",
+  "required": ["task", "pattern", "rationale", "alternatives_considered", "tradeoffs", "downstream_methodology", "hitl_gates"],
+  "properties": {
+    "task": {"type": "string", "minLength": 16},
+    "pattern": {"type": "string", "enum": ["sequential", "parallel_fanout", "hierarchical", "generator_critic", "loop", "human_in_loop", "router", "blackboard"]},
+    "rationale": {"type": "string", "minLength": 32},
+    "alternatives_considered": {
+      "type": "array", "minItems": 2,
+      "items": {"type": "object", "required": ["pattern", "why_rejected"], "properties": {"pattern": {"type": "string"}, "why_rejected": {"type": "string", "minLength": 16}}}
+    },
+    "tradeoffs": {
+      "type": "object", "required": ["latency", "cost", "audit", "parallelism"],
+      "properties": {"latency": {"type": "string"}, "cost": {"type": "string"}, "audit": {"type": "string"}, "parallelism": {"type": "string"}}
+    },
+    "downstream_methodology": {"type": "string", "pattern": "^geek/ai/ai-agents/.+"},
+    "hitl_gates": {"type": "array", "items": {"type": "string"}},
+    "concurrency_plan": {"type": "string"},
+    "classifier_accuracy": {"type": "number", "minimum": 0.85}
+  },
+  "allOf": [
+    {"if": {"properties": {"pattern": {"const": "blackboard"}}}, "then": {"required": ["concurrency_plan"]}},
+    {"if": {"properties": {"pattern": {"const": "router"}}}, "then": {"required": ["classifier_accuracy"]}}
+  ]
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+task: "Generate, critique, and finalize a 1500-word EU AI Act explainer for an engineering blog"
+pattern: generator_critic
+rationale: "Quality-critical text; a single generator misses factual drift. Generator + opus critic loop catches errors a sequential editor misses."
+alternatives_considered:
+  - {pattern: sequential, why_rejected: "research→write→edit chain does not surface factual drift if editor and researcher agree"}
+  - {pattern: hierarchical, why_rejected: "No clear subtask split; one writer, one critic — no manager needed"}
+tradeoffs:
+  latency: "+50% vs sequential (extra critic round)"
+  cost: "+30% (critic uses opus)"
+  audit: "Best — every claim has a generator + critic decision trail"
+  parallelism: "None — pattern is inherently sequential loop"
+downstream_methodology: "geek/ai/ai-agents/multi-agent-conversational"
+hitl_gates: ["before publish-to-blog action"]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example (fails contract)">
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+task: "x"
+pattern: "hierarchical + loop + hitl"
+rationale: "stacks of patterns"
+]]></code>
+      <note>Pattern is a stack (rule r1), task too short, missing alternatives_considered, tradeoffs, downstream_methodology, hitl_gates.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Pattern is one of the 8 canonical names exactly.</item>
+      <item>Rationale ≥32 chars and references the dominant trade-off axis.</item>
+      <item>≥2 alternatives considered, each with `why_rejected`.</item>
+      <item>`downstream_methodology` path resolves to a real impl methodology.</item>
+      <item>Every irreversible action listed in `hitl_gates`.</item>
+      <item>If `pattern==blackboard`, `concurrency_plan` present.</item>
+      <item>If `pattern==router`, `classifier_accuracy ≥ 0.85`.</item>
     </list>
   </section>
 </text>

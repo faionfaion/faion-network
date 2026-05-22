@@ -1,18 +1,15 @@
-# purpose: TBD-template-header
-# consumes: input from methodology
-# produces: output artefact
-# depends-on: 01-core-rules.xml
-# token-budget-impact: small
+# purpose: Minimal Claude client logging response.model + usage + elapsed + x-request-id.
+# consumes: (role, system, messages, max_tokens).
+# produces: anthropic.types.Message; logs every call (rule r2).
+# depends-on: rules r1+r2+r3 in content/01-core-rules.xml.
+# token-budget-impact: zero (pure logging on top of one API call).
+"""Minimal Claude client with model + usage + latency + cache + request-id logging."""
+from __future__ import annotations
 
-"""Minimal Claude client with token usage and latency logging.
-
-Usage:
-    r = call("generator", system, messages)
-    text = r.content[0].text
-"""
-import anthropic
 import logging
 import time
+
+import anthropic
 
 log = logging.getLogger(__name__)
 client = anthropic.Anthropic()
@@ -24,39 +21,26 @@ MODELS = {
 }
 
 
-def call(
-    role: str,
-    system: list,
-    messages: list,
-    max_tokens: int = 2048,
-) -> anthropic.types.Message:
-    """Call Claude with logging of model, tokens, latency, and cache metrics.
-
-    Args:
-        role: One of "router", "generator", "reasoner" — selects model tier.
-        system: System prompt as list of content blocks.
-        messages: Conversation history.
-        max_tokens: Explicit max tokens (required — never rely on default).
-
-    Raises:
-        ValueError: If response is truncated (stop_reason == "max_tokens").
-    """
+def call(role: str, system, messages: list, max_tokens: int = 2048):
+    """Call Claude with logging of model, tokens, latency, and cache metrics."""
     model = MODELS[role]
     t0 = time.monotonic()
-    r = client.messages.create(
+    r = client.messages.with_raw_response.create(  # captures headers for x-request-id.
         model=model,
         max_tokens=max_tokens,
         system=system,
         messages=messages,
     )
+    msg = r.parse()
     elapsed = time.monotonic() - t0
-    u = r.usage
+    u = msg.usage
     total = u.input_tokens + u.output_tokens
     cache_hit = getattr(u, "cache_read_input_tokens", 0)
+    request_id = r.headers.get("x-request-id", "")
     log.info(
-        "role=%s model=%s tokens=%d cache_read=%d elapsed=%.2fs",
-        role, model, total, cache_hit, elapsed,
+        "role=%s requested=%s response=%s tokens=%d cache_read=%d elapsed=%.2fs request_id=%s",
+        role, model, msg.model, total, cache_hit, elapsed, request_id,
     )
-    if r.stop_reason == "max_tokens":
+    if msg.stop_reason == "max_tokens":  # rule r3.
         raise ValueError(f"Response truncated for role={role}. Retry with higher max_tokens.")
-    return r
+    return msg

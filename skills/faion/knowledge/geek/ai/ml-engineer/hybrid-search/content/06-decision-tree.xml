@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Hybrid Search Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Fusion + rerank decision tree.</summary>
+
+  <decision-tree>
+    <root-question id="q-native">Does the vector DB expose a native hybrid endpoint?</root-question>
+    <branch when="native_endpoint == true">
+      <conclusion ref="native-over-manual" verdict="use native hybrid + RRF default"/>
+    </branch>
+    <branch when="native_endpoint == false">
+      <question id="q-corpus">Is the corpus &gt; 100k documents?</question>
+      <branch when="corpus_gt_100k == true">
+        <conclusion ref="rrf-default" verdict="manual two-call with RRF in code; cache rank arrays"/>
+      </branch>
+      <branch when="corpus_gt_100k == false">
+        <conclusion ref="rrf-default" verdict="manual two-call with RRF; simpler, lower throughput acceptable"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <decision-tree>
+    <root-question id="q-rerank">Is precision@10 after fusion ≥ 0.85?</root-question>
+    <branch when="precision_at_10_ge_0_85 == true">
+      <conclusion ref="precision-floor" verdict="ship; skip reranker"/>
+    </branch>
+    <branch when="precision_at_10_ge_0_85 == false">
+      <question id="q-latency-headroom">Is latency headroom ≥ 100 ms?</question>
+      <branch when="latency_headroom_ge_100ms == true">
+        <conclusion ref="rerank-top100" verdict="enable cross-encoder rerank; top-100 → top-10"/>
+      </branch>
+      <branch when="latency_headroom_ge_100ms == false">
+        <conclusion ref="precision-floor" verdict="do not ship hybrid — fall back to simpler retriever"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="qdrant + low precision → native + rerank">
+    <code lang="text"><![CDATA[
+native=true → native FusionQuery. precision=0.78 → enable bge-reranker-v2-m3 top-100 → ship.
+]]></code>
+  </example>
+</text>

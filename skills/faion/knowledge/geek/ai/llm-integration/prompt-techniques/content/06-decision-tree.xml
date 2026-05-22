@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Prompt Techniques Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-context-shape">Is this a single-call task or a multi-step pipeline?</root-question>
+    <branch when="step_count == 1">
+      <question id="q-improvement-source">Do we have ≥3 documented failure cases to learn from?</question>
+      <branch when="failure_cases &gt;= 3">
+        <conclusion ref="r2-meta-prompt-review">Meta-prompt with opus seeded by failure cases. Human-review, then A/B against baseline.</conclusion>
+      </branch>
+      <branch when="failure_cases &lt; 3">
+        <conclusion ref="r5-yaml-versioned">Manual prompt tuning. Commit candidate. A/B test before promote.</conclusion>
+      </branch>
+    </branch>
+    <branch when="step_count &gt; 1">
+      <question id="q-independence">Are the steps independent (each step's output is the next step's only input)?</question>
+      <branch when="step_independence == 'high'">
+        <conclusion ref="r3-chain-idempotency">PromptChain with idempotent steps. Side-effects only in a sink stage after the chain.</conclusion>
+      </branch>
+      <branch when="step_independence == 'low'">
+        <conclusion ref="r3-chain-idempotency">Refactor into independent steps first; otherwise use a single richer PromptTemplate, not a chain.</conclusion>
+      </branch>
+    </branch>
+    <branch when="deployment_risk == 'high'">
+      <conclusion ref="r4-ab-before-promote">Mandatory A/B + canary rollout (5% → 25% → 100%) before full promotion.</conclusion>
+    </branch>
+    <example trace="summary-3-bullet-tuning">
+      <p>summary-3-bullet has 8 documented failure cases → meta-prompt with opus → human review → A/B against v1 on golden-set 'summary-bench-2026q2' → lift +4%, no regression → promote to v2. Conclusion r2+r4.</p>
+    </example>
+  </decision-tree>
+</text>

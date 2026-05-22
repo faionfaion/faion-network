@@ -1,57 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="hybrid-search Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for hybrid-search as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Hybrid Search Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns specific to hybrid retrieval.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using raw BM25 scores in linear combination without normalization.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>BM25 scores for a 10K-document corpus can range 0-30+; vector similarity scores range 0-1. Without min-max or z-score normalization, BM25 dominates entirely and linear combination degrades to pure BM25.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Two parallel network calls for manual fusion without timeout handling.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If vector DB is slow but BM25 is fast, waiting for both adds tail latency. Set a timeout on the slower call and fall back to the fast one's results alone.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using Qdrant hybrid with a standard BM25 library instead of a sparse encoder (SPLADE).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Qdrant hybrid requires sparse vectors (e.g., SPLADE) as the sparse component — not the same as a Python BM25 library. Ensure the sparse encoder is deployed and version-pinned.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Fetching top-10 for fusion and then reranking the same 10.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The reranker can only reorder what it receives. Fetch top-100 for fusion, rerank the pool, return top-10. A relevant document at rank 15 is invisible to a reranker that receives only 10 candidates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Score normalization for linear fusion is non-trivial: BM25 scores are unbounded; vector scores are 0-1; without proper min-max or z-score normalization, one signal dominates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Proper score normalization requires understanding the distribution of both signals across your corpus. It is dataset-specific and requires empirical tuning.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Alpha tuning is dataset-specific: the optimal alpha value for one corpus may perform poorly on another.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without empirical tuning on your specific query distribution and corpus, a fixed alpha may not be optimal. Consider implementing query-adaptive alpha selection.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>RRF ignores actual score magnitudes: two documents with very different relevance scores but similar ranks get similar RRF scores.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This may not reflect true quality difference. If magnitude matters, switch to linear combination with proper normalization.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Reranking top-100 adds 50-100ms and 5x cost compared to retrieval alone.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Only enable reranking when precision matters more than speed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>BM25 tokenization matters: if BM25 uses a standard English tokenizer but the corpus contains code, product codes, or non-English text, keyword matching degrades significantly.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always configure BM25's tokenizer to match your corpus characteristics.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Hybrid search from separate stores (manual RRF) has higher failure surface than native hybrid (Weaviate/Qdrant built-in).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Two network calls = two failure modes. Native hybrid avoids this.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="unnormalised-linear" severity="high">
+      <symptom>Linear fusion configured; BM25 scores dominate; vector signal contributes near-zero; results barely differ from BM25-only.</symptom>
+      <root-cause source="LlamaIndex retrieval debugging guides">Linear combination applied without normalising BM25 (unbounded) and vector (bounded ~0-1) scores. BM25 magnitudes swamp the linear sum.</root-cause>
+      <fix>Switch to RRF (rank-only, no normalisation) OR add min-max normalisation per signal before linear combination.</fix>
+    </antipattern>
+
+    <antipattern id="top-10-rerank" severity="medium">
+      <symptom>Reranker enabled; precision uplift is &lt; 1 point; latency up 80 ms.</symptom>
+      <root-cause source="Cohere Rerank docs; bge-reranker benchmarks">Reranker fed only top-10 fusion candidates; nothing for it to recover.</root-cause>
+      <fix>Fetch top-100 from fusion; rerank to top-10. If precision still insufficient, increase candidate pool to 200.</fix>
+    </antipattern>
+
+    <antipattern id="fixed-alpha" severity="medium">
+      <symptom>Hybrid wins on natural-language eval queries but loses on product-code queries vs BM25-only.</symptom>
+      <root-cause source="Internal RAG audits">Single global alpha (e.g. 0.7) tuned for natural language penalises exact-match queries.</root-cause>
+      <fix>Apply query-adaptive alpha schedule (quoted=0.2, code=0.3, short=0.5, default=0.7). Re-bench against both query types.</fix>
+    </antipattern>
+
+    <antipattern id="two-call-when-native-exists" severity="low">
+      <symptom>App layer issues two requests (BM25 + vector) and fuses in Python; latency = sum of two calls; one slow node stalls the request.</symptom>
+      <root-cause source="Qdrant / Weaviate native docs">Team unfamiliar with native FusionQuery / hybrid endpoints.</root-cause>
+      <fix>Use the vendor's native hybrid endpoint; single network call; vendor does fusion server-side.</fix>
+    </antipattern>
+
   </section>
 </text>

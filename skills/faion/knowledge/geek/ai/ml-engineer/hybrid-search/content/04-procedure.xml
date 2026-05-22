@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Hybrid Search Procedure" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>5 steps to ship the config.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="baseline">
+      <input>Held-out query set with labels</input>
+      <action>Measure precision@10 + p99 latency for BM25-only and vector-only.</action>
+      <output>Two baselines.</output>
+    </step>
+
+    <step n="2" name="pick-fusion">
+      <input>Vector DB capability list + baselines</input>
+      <action>If native hybrid endpoint exists → use it (RRF by default). Else → manual two-call with RRF in code.</action>
+      <output>Fusion method + native flag.</output>
+    </step>
+
+    <step n="3" name="alpha-schedule">
+      <input>Query distribution sample</input>
+      <action>If linear fusion: define alpha schedule by query shape. If RRF: skip.</action>
+      <output>Alpha schedule (or omitted).</output>
+    </step>
+
+    <step n="4" name="rerank-decision">
+      <input>Precision@10 after fusion + latency headroom</input>
+      <action>If precision &lt; 0.85 AND latency &lt; budget - 100 ms → enable reranker; fetch top-100 → rerank to top-10.</action>
+      <output>Rerank block in config.</output>
+      <decision-gate>If precision still &lt; 0.85 with rerank enabled, do NOT ship hybrid — fall back to simpler retriever and document.</decision-gate>
+    </step>
+
+    <step n="5" name="bench">
+      <input>Final config</input>
+      <action>Re-run eval on held-out set; record precision@10 + p99 in `metrics` block.</action>
+      <output>hybrid-search-config.json with metrics.</output>
+    </step>
+
+  </section>
+</text>
