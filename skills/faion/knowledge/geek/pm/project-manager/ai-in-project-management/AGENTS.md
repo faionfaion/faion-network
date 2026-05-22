@@ -3,73 +3,92 @@ slug: ai-in-project-management
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: PMBOK 8's first dedicated AI appendix: principles for ethical AI use, AI-assisted decision traceability, and sustainable project delivery.
-content_id: "221f19eb9bde100c"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "PMBOK 8's first AI appendix as an operating frame — principles for ethical AI use, AI-assisted decision traceability, sustainable delivery — with DORA paradox guards."
+content_id: "1a6c16a78a705add"
+complexity: deep
+produces: decision-record
+est_tokens: 4100
 tags: [ai-in-pm, pmbok-8, productivity-paradox, dora, decision-traceability]
 ---
-# AI in Project Management
+# Ai In Project Management
 
 ## Summary
 
-**One-sentence:** PMBOK 8's first dedicated AI appendix: principles for ethical AI use, AI-assisted decision traceability, and sustainable project delivery.
+**One-sentence:** PMBOK 8's first AI appendix as an operating frame — principles for ethical AI use, AI-assisted decision traceability, sustainable delivery — with DORA paradox guards.
 
-**One-paragraph:** PMBOK 8's first dedicated AI appendix: principles for ethical AI use, AI-assisted decision traceability, and sustainable project delivery. The AI productivity paradox from DORA 2025 reveals AI coding assistants produce 21% more tasks and 98% more PRs at individual level, but organizational delivery metrics stay flat because bottlenecks shift to review, integration, and deployment phases. Every AI-assisted PM decision must be logged as "AI-suggested [X] based on [data]; human PM approved/modified/rejected because [reason]".
+**One-paragraph:** PMBOK 8's first AI appendix as an operating frame — principles for ethical AI use, AI-assisted decision traceability, sustainable delivery — with DORA paradox guards. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** PM-у, який пише AI-decision policy — щоб PMBOK 8 alignment не залишався паперовим документом.
 
 ## Applies If (ALL must hold)
 
-- Assessing where AI can reduce PM overhead in an existing project workflow (risk management, task automation, schedule optimization).
-- Implementing PMBOK 8 AI appendix guidance: documenting AI-assisted decisions and establishing human oversight gates.
-- Detecting bottleneck shifts caused by AI productivity gains that have not translated to org-level delivery improvements (DORA 2025 paradox).
-- Building AI-assisted risk identification and probability forecasting into project health monitoring.
-- Establishing team AI literacy baselines before rolling out AI PM tools.
+- Org is adopting PMBOK 8 alignment.
+- AI is being introduced into PM rituals (risk, scheduling, reporting).
+- AI-decision documentation policy is on the roadmap.
+- DORA baseline metrics are tracked.
 
 ## Skip If (ANY kills it)
 
-- As justification for removing human PM oversight — PMBOK 8 explicitly requires human control for AI-assisted decisions.
 - Single-person, short-duration tasks where PM overhead exceeds coordination benefit.
-- Regulated industries (medical devices, aerospace) without established AI decision documentation in compliance framework.
-- When the team has not established baseline metrics — AI optimization without baseline measurement cannot demonstrate improvement.
+- Regulated industries without established AI decision documentation in compliance framework.
+- Team has not established baseline metrics — AI optimisation without baseline cannot demonstrate improvement.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| PMBOK 8 reference | doc | PMI |
+| DORA baseline | dashboard | engineering metrics tool |
+| AI-decision documentation policy draft | doc | compliance |
+| AI integration plan | Markdown | PM lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/pm/pm-agile/ai-in-project-management` | Sister framework (pm-agile variant) — same paradox + audit rules. |
+| `geek/pm/project-manager/ai-pm-tool-integration-recipes` | Concrete recipes the policy applies to. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `policy-mapping` | sonnet | Map PMBOK 8 sections to current rituals. |
+| `decision-record-scaffold` | haiku | Template fill per decision. |
+| `audit-trail-narrative` | opus | Cross-decision synthesis for compliance. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | AI-decision record skeleton: model + input hash + reviewer + approved/modified/rejected + rationale. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-in-project-management.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
+- [[ai-pm-tool-integration-recipes]]
+- [[ai-powered-pm-tools]]
+- [[ai-earned-value-management]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to adopt PMBOK 8 + AI traceability operating frame (baseline + alignment + policy draft) or block until prerequisites exist. Run at adoption kickoff before any AI tool is wired.

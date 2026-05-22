@@ -3,82 +3,92 @@ slug: program-dependency-aging-chart-recipe
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c14f347fdd4ba7de"
-summary: Program Dependency Aging Chart Recipe — pinned recipe for the project manager: fixed shape + named owner + evidence anchors + outcome review, so multi-team coordination program (continuous, weekly checkpoints) stops being folklore and starts being a reviewable operating tool.
-tags: [pm, geek, recipe, program, dependency, aging, chart]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Builds a program-dependency aging chart (count-of-blocked-tasks vs days-since-dependency-opened) so program managers spot dependency rot before milestones slip."
+content_id: "4e9c06763e0e4c2d"
+complexity: medium
+produces: report
+est_tokens: 3500
+tags: [pm, program, dependency, aging-chart, multi-team]
 ---
 # Program Dependency Aging Chart Recipe
 
 ## Summary
 
-**One-sentence:** Program Dependency Aging Chart Recipe — pinned recipe for the project manager: fixed shape + named owner + evidence anchors + outcome review, so multi-team coordination program (continuous, weekly checkpoints) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Builds a program-dependency aging chart (count-of-blocked-tasks vs days-since-dependency-opened) so program managers spot dependency rot before milestones slip.
 
-**One-paragraph:** In project / programme management, the project manager runs multi-team coordination program (continuous, weekly checkpoints) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Multi-team coordination lives or dies on dependency tracking, but Jira/ADO methodologies stop at workflow setup. Need a concrete dependency-aging visualisation recipe (how to compute, how to render, how to act on it). `program-dependency-aging-chart-recipe` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored recipe committed to the team's knowledge space.
+**One-paragraph:** Builds a program-dependency aging chart (count-of-blocked-tasks vs days-since-dependency-opened) so program managers spot dependency rot before milestones slip. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** Програмному PM-у — щоб залежність, яка 'тихо лежить' три тижні, не зривала milestone у 6-му.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Program involves ≥3 teams with documented cross-team dependencies.
+- A typed dependency graph exists (or the dependency-graph-reasoning methodology runs).
+- Weekly checkpoint cadence is in place.
+- A named program PM owns the chart.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Single-team project — aging chart adds no signal.
+- No dependency graph — chart has nothing to age.
+- Cadence is less than monthly — aging signal will be too late.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Dependency graph file | JSON/Mermaid | dependency-graph-reasoning output |
+| Tracker dependency timestamps | API | Jira / Linear / GitHub Projects |
+| Weekly checkpoint slot | calendar | program rituals |
+| Named program PM | person | delivery-org |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `geek/pm/dependency-graph-reasoning` | Source of the typed dependency graph. |
+| `geek/pm/okr-cascade-team-to-company` | Cross-team OKR dependencies surface here too. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `age-band-compute` | haiku | Pure age math against graph timestamps. |
+| `remediation-action-pick` | sonnet | Bounded judgement per edge. |
+| `ritual-narrative` | opus | Cross-band synthesis for program review. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/skeleton.md` | Aging chart artefact skeleton: chart image link + table of edges by age band + remediation actions per band. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-program-dependency-aging-chart-recipe.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[dependency-graph-reasoning]]
+- [[okr-cascade-team-to-company]]
+- [[portfolio-evm-rollup-method]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to plot the chart weekly (graph + ≥3 teams + weekly cadence + PM), block (no graph), or skip (single team / sparse cadence). Run before the chart is added to the program ritual.

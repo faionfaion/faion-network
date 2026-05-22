@@ -3,77 +3,92 @@ slug: 1on1-template-managers
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for 1on1 template managers that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
-content_id: "9c348d335fda2bd9"
-tags: [1on1, pm, template]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a manager 1:1 template (agenda + carry-forward + growth check-in + action items) with named owner + last_reviewed so 1:1s become reviewable artefacts."
+content_id: "88521e98e201de9d"
+complexity: light
+produces: spec
+est_tokens: 3000
+tags: [1on1, manager, template, growth-plan, engineering-management]
 ---
-# 1on1 Template Managers
+# 1On1 Template Managers
 
 ## Summary
 
-**One-sentence:** Reusable template for 1on1 template managers that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Produces a manager 1:1 template (agenda + carry-forward + growth check-in + action items) with named owner + last_reviewed so 1:1s become reviewable artefacts.
 
-**One-paragraph:** Reusable template for 1on1 template managers that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. Once team is 5+ people the founder/PM does 4-8 weekly 1:1s. Faion has no template (agenda, growth-question rotation, blocker-escalation hand-off, doc-as-you-go). Adjacent to `feedback` in comms but that's about giving feedback, not running the meeting itself.
+**One-paragraph:** Produces a manager 1:1 template (agenda + carry-forward + growth check-in + action items) with named owner + last_reviewed so 1:1s become reviewable artefacts. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** EM/PM-у — щоб 1:1 з кожним інженером був документований, з actions і next-review, а не 'просто розмова'.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by 1on1 template managers (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Manager owns ≥3 direct reports.
+- 1:1 cadence is in place (weekly / biweekly).
+- Manager has a private notes space (Notion / Obsidian / Logseq / shared HR).
+- At least one direct report has flagged 'growth path unclear'.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Manager owns < 3 direct reports — single-page memo is cheaper.
+- Org mandates a different 1:1 template — comply.
+- Reports refuse documented 1:1s — respect; do not impose.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Input artifact | Format | Source |
+|---|---|---|
+| Notes space | Notion / Obsidian / Logseq | manager |
+| 1:1 calendar slots | calendar | manager + reports |
+| Prior 1:1 notes (if any) | files | manager |
+| Growth-plan reference | ladder doc | engineering-ladder-and-growth-plan output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/pm/engineering-ladder-and-growth-plan` | Growth-plan reference the 1:1 attaches to. |
+| `geek/pm/project-manager/cross-role-handoff-protocol` | Handoff vocabulary the 1:1 uses. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `scaffold-1on1-page` | haiku | Template fill from attendee + last 1:1 notes. |
+| `carry-forward-extract` | sonnet | Bounded judgement: which prior actions remain open. |
+| `growth-narrative` | opus | Per-engineer narrative across cycles. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | 1:1 Markdown skeleton: header (date, attendee, last_reviewed) + agenda + carry-forward + growth + actions + next-review. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-1on1-template-managers.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
-- peer methodologies: see siblings under `geek/pm/project-manager/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[engineering-ladder-and-growth-plan]]
+- [[cross-role-handoff-protocol]]
+- [[exception-driven-standup-protocol]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to adopt the template (≥3 reports + cadence + notes space), block (no notes space), or skip (≤2 reports). Run before the first 1:1 of the new cycle.

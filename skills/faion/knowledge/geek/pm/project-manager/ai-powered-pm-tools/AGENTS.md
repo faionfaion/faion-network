@@ -3,73 +3,92 @@ slug: ai-powered-pm-tools
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A 2026 survey of AI-augmented PM platforms: Jira+Rovo (enterprise), Monday.
-content_id: "04a85ceec4c30f40"
-tags: [pm-tools, jira, agents, api-integration, work-breakdown]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "2026 survey of AI-augmented PM platforms (Jira+Rovo, Monday AI, ClickUp Brain, Linear AI, Asana AI) — buyer's decision record by stack + role + budget fit."
+content_id: "36959d822e5317cc"
+complexity: medium
+produces: decision-record
+est_tokens: 3700
+tags: [pm-tools, ai-pm, platform-selection, jira-rovo, linear-ai]
 ---
-# AI-Powered PM Tools 2026
+# Ai Powered Pm Tools
 
 ## Summary
 
-**One-sentence:** A 2026 survey of AI-augmented PM platforms: Jira+Rovo (enterprise), Monday.
+**One-sentence:** 2026 survey of AI-augmented PM platforms (Jira+Rovo, Monday AI, ClickUp Brain, Linear AI, Asana AI) — buyer's decision record by stack + role + budget fit.
 
-**One-paragraph:** A 2026 survey of AI-augmented PM platforms: Jira+Rovo (enterprise), Monday.com (work management), ClickUp Brain (all-in-one), Wrike (ML risk prediction), Forecast App (resource matching), and Motion/Epicflow (scheduling). Covers each platform's AI capabilities, API agent-friendliness, and the DORA 2025 AI productivity paradox: AI tools boost individual output metrics while organizational delivery metrics stay flat because bottlenecks shift to review, integration, and deployment.
+**One-paragraph:** 2026 survey of AI-augmented PM platforms (Jira+Rovo, Monday AI, ClickUp Brain, Linear AI, Asana AI) — buyer's decision record by stack + role + budget fit. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** Покупцю AI-PM tool — щоб вибір був за реальними інтеграціями, не за рекламою.
 
 ## Applies If (ALL must hold)
 
-- Evaluating which AI-powered PM platform (Jira+Rovo, Monday.com, ClickUp, Wrike) fits the team's needs
-- Integrating Claude subagents with an existing PM tool via its API to automate issue creation, work breakdown, or status reporting
-- Setting up automated risk prediction or bottleneck detection workflows using PM tool AI features
-- Generating work breakdown structures from project briefs using PM tool AI (Jira's AI Work Breakdown, ClickUp Brain)
-- Automating meeting notes → task creation pipelines (Jira's Rewatch integration, ClickUp AI Notetaker)
+- Org is evaluating or already on a major PM platform.
+- Budget exists for AI-tier upgrade.
+- Named buyer owns the procurement decision.
+- Integration baseline exists (SSO, audit log, connectors).
 
 ## Skip If (ANY kills it)
 
-- When the team has fewer than 3 people and project overhead from a full PM platform exceeds the coordination benefit
-- For pure engineering execution tracking where a simple Linear or GitHub Issues workflow is sufficient
-- When PM tool AI features require vendor-specific models that conflict with organizational data governance policies
-- For critical path management in construction or hardware projects — nPlan is specialized; generic AI PM tools do not understand physical dependencies
+- Team < 10 seats — per-seat uplift seldom pays back.
+- Custom in-house tracker — these vendor AIs do not integrate.
+- Org already invested in custom Claude / OpenAI workflows — fork instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Current contract | PDF | procurement |
+| Usage baseline | vendor dashboard | platform owner |
+| Integration inventory | list | IT/security |
+| Named buyer | person | VPE / procurement |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/pm/pm-agile/ai-powered-pm-tools` | Twin survey from the pm-agile angle. |
+| `geek/pm/project-manager/ai-pm-tool-integration-recipes` | Recipes the tool can replace OR plug into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `price-fit-extract` | haiku | Pure data pull from vendor pricing pages. |
+| `integration-gap-analysis` | sonnet | Bounded judgement against current stack. |
+| `ROI-narrative` | opus | Cross-vendor synthesis for buyer. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Decision record: incumbent + AI-tier price + integration fit + ROI gate + outcome. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-powered-pm-tools.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
+- [[ai-pm-tool-integration-recipes]]
+- [[ai-in-project-management]]
+- [[ai-assisted-velocity-anomaly-detection]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to run the selection (platform + ≥10 seats + buyer + budget), block (no budget), or skip (small team / custom stack). Run before vendor demo calendar is filled.

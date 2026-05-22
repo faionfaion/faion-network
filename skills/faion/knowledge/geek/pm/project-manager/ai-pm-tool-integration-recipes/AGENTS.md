@@ -3,89 +3,92 @@ slug: ai-pm-tool-integration-recipes
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "321446301b273422"
-summary: Runnable recipes that wire Jira → Claude → Slack digest, GitHub PR events → risk register update, and Loom transcripts → retro notes — with code, schemas, and the exact prompt scaffolds the PM ships.
-tags: [pm, automation, claude, jira, github, loom, recipes, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Runnable PM integration recipes — Jira → Claude → Slack digest, GitHub PR → risk register, Loom transcripts → retro notes — with prompts, schemas, and code."
+content_id: "f9b69d74b126b187"
+complexity: medium
+produces: code
+est_tokens: 3900
+tags: [pm, automation, claude, jira, github, loom, recipes]
 ---
-# AI PM Tool Integration Recipes
+# Ai Pm Tool Integration Recipes
 
 ## Summary
 
-**One-sentence:** Three runnable recipes that wire common PM tools to Claude — Jira → Claude → Slack digest, GitHub PR events → risk register update, Loom transcripts → retro notes — with checked-in code, JSON schemas, and the exact prompt scaffolds.
+**One-sentence:** Runnable PM integration recipes — Jira → Claude → Slack digest, GitHub PR → risk register, Loom transcripts → retro notes — with prompts, schemas, and code.
 
-**One-paragraph:** `ai-powered-pm-tools` is a survey essay; this methodology ships executable. Each recipe is a small Python or TypeScript package the PM clones, configures with provider keys (`anthropic`, `github`, `jira`), and runs on a cron / webhook. Recipe 1: Jira → Claude → Slack — daily synthesis of in-progress tickets into a digest with risk callouts, posted to the team channel. Recipe 2: GitHub PR events → risk register — every PR that touches a flagged component re-evaluates the project's risk register entries. Recipe 3: Loom transcripts → retro notes — converts session transcripts into structured retro inputs (what worked / what didn't / actions). Output: three working integrations the PM can fork, configure, and run within one afternoon.
+**One-paragraph:** Runnable PM integration recipes — Jira → Claude → Slack digest, GitHub PR → risk register, Loom transcripts → retro notes — with prompts, schemas, and code. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** PM-у — щоб не писати інтеграції з нуля; брати готовий рецепт і адаптувати.
 
 ## Applies If (ALL must hold)
 
-- PM has admin access (or API tokens) to Jira / Linear, GitHub, Slack, Loom.
-- A provider key for Claude (or equivalent) is available.
-- A cron / webhook runner is reachable (GitHub Actions, scheduled SDK agent, n8n, Pipedream).
-- Team has a Slack channel or equivalent for the digest output.
+- Team uses one of {Jira, Linear, GitHub Projects} as tracker.
+- Slack / Teams used for daily comms.
+- Loom / Granola / Otter used for meeting capture.
+- PM has scripting access (laptop or CI).
 
 ## Skip If (ANY kills it)
 
-- PM cannot get tool tokens (security policy) — use manual versions of the recipes.
-- Team does not use Jira / GitHub / Loom — wire equivalents (Linear / GitLab / Granola) or skip the recipe.
-- PM does not own a single team's project — broader integrations need the `dependency-graph-reasoning` methodology.
-- Slack / Teams digest fatigue already an issue — start with one recipe instead of three.
+- Team uses a tracker outside the supported set — adapt manually.
+- No comms platform for output — recipes need a destination.
+- Regulated context requires custom audit handling — author from scratch instead.
 
 ## Prerequisites
 
-- API tokens for Jira / Linear, GitHub, Slack, Loom (scoped read-only where possible).
-- A repo to host the recipe configs (private; secrets in env / vault, never committed).
-- A scheduling runtime (GitHub Actions, scheduled Anthropic SDK agent, n8n).
-- An LLM provider with structured output support (Anthropic Claude with JSON mode, or equivalent).
+| Input artifact | Format | Source |
+|---|---|---|
+| Tracker API token | secret | Jira / Linear / GitHub Projects |
+| Comms webhook | URL | Slack / Teams |
+| Transcript source API | token/URL | Loom / Granola / Otter |
+| Claude API key | secret | Anthropic console |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager/ai-powered-pm-tools` | Survey-level methodology that introduces the concepts. |
-| `geek/pm/project-manager/ai-in-project-management` | Background on AI-in-PM patterns. |
-| `geek/sdlc-ai/tracker-jira-rovo-mcp-agents` | Sibling for Jira MCP integration. |
+| `geek/pm/pm-agile/ai-in-project-management` | Framework the recipes live inside. |
+| `geek/pm/exception-driven-standup-protocol` | One of the consumers of the digest output. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: scoped tokens, structured output required, digest budget, retro-note template, PM signoff | ~1100 |
-| `content/02-output-contract.xml` | essential | Digest schema, risk-register update schema, retro-note schema | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: token leak, runaway cost, hallucinated risk, retro fabrication | ~1000 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `digest-summarise` | sonnet | Bounded synthesis across N tickets |
-| `risk-classify-and-update` | sonnet | Per-PR judgement against risk register |
-| `retro-extract` | sonnet | Structured extraction from transcript |
-| `slack-format` | haiku | Mechanical: render to Slack markdown |
+| `recipe-scaffold-fill` | haiku | Template fill for the picked recipe. |
+| `prompt-adapter` | sonnet | Bounded judgement: customise the prompt for team voice. |
+| `multi-source-narrative` | opus | Cross-tool synthesis (e.g. Loom + Jira → retro). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/digest-schema.json` | JSON schema for the Jira digest |
-| `templates/risk-register.json` | JSON schema for risk-register entries |
-| `templates/retro-notes.json` | JSON schema for retro outputs |
-| `templates/prompts/digest.xml` | XML prompt scaffold for digest recipe |
-| `templates/prompts/risk.xml` | XML prompt scaffold for risk recipe |
-| `templates/prompts/retro.xml` | XML prompt scaffold for retro recipe |
+| `templates/skeleton.py` | Python recipe skeleton: pull from Jira → call Claude with canonical prompt → post to Slack. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/recipe-1-jira-digest.py` | Pull Jira tickets, call Claude, post Slack digest | Daily cron |
-| `scripts/recipe-2-pr-risk-update.py` | Triggered by GitHub webhook on PR events; updates risk register | On PR event |
-| `scripts/recipe-3-loom-retro.py` | Process a Loom transcript URL into retro notes | After each retro Loom |
+| `scripts/validate-ai-pm-tool-integration-recipes.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
-- peer methodologies: `ai-powered-pm-tools`, `ai-earned-value-management`, `ai-in-project-management`
-- external: [Anthropic SDK](https://docs.claude.com/en/api/) · [Jira REST API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/) · [GitHub Webhooks](https://docs.github.com/en/webhooks)
+- [[ai-in-project-management]]
+- [[ai-powered-pm-tools]]
+- [[exception-driven-standup-protocol]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to ship a recipe (all four feeds + scripting access), block (no API/key), or fall back to no-code AI PM tools. Run before any recipe code is touched.
