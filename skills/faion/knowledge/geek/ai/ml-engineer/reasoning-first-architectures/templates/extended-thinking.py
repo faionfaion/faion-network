@@ -1,3 +1,8 @@
+# purpose: Claude Extended Thinking with per-task-type budget + classifier-first router
+# consumes: task: str, task_type: str
+# produces: code (drop-in module for reasoning routing)
+# depends-on: anthropic SDK; ANTHROPIC_API_KEY env var
+# token-budget-impact: ~120 tokens of code if loaded into LLM context
 """Claude Extended Thinking invocation with task-type budget selector."""
 import anthropic
 

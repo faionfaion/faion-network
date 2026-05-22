@@ -1,3 +1,8 @@
+# purpose: transactional rollback fixtures for pytest-django emitted by test-fixtures
+# consumes: pytest-django installed; Django settings module
+# produces: db + transactional_db fixtures with savepoint rollback
+# depends-on: r1-scope-matches-state, r6-xdist-worker-db
+# token-budget-impact: ~250 tokens
 """
 Transactional rollback fixture for pytest-django.
 Each test wraps DB changes in a transaction that is rolled back at the end.
