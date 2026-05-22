@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="semantic-field-naming Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="semantic-field-naming Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the rename-rubric report produced by an agent applying this methodology.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema format="json-schema">
+<![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SemanticFieldRenameReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["model_path", "schema_version", "renames", "kept", "ab_eval"],
+  "properties": {
+    "model_path": {"type": "string", "minLength": 1},
+    "schema_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "renames": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field_path", "old_name", "new_name", "reason_code", "rationale"],
+        "properties": {
+          "field_path": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.]*$"},
+          "old_name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+          "new_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "reason_code": {"type": "string", "enum": ["generic-placeholder", "missing-unit", "missing-direction", "redundant-suffix", "non-english", "cardinality-mismatch", "cryptic-enum"]},
+          "rationale": {"type": "string", "minLength": 12}
+        }
+      }
+    },
+    "kept": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "ab_eval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "baseline_accuracy", "renamed_accuracy", "delta_points"],
+      "properties": {
+        "rows": {"type": "integer", "minimum": 5},
+        "baseline_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "renamed_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "delta_points": {"type": "number"}
+      }
+    }
+  }
+}
+]]>
+  </schema>
+
+  <example valid="true">
+<![CDATA[
+{
+  "model_path": "myapp/schemas/order.py",
+  "schema_version": "1.1.0",
+  "renames": [
+    {"field_path": "Order.flag", "old_name": "flag", "new_name": "is_paid", "reason_code": "missing-direction", "rationale": "Boolean lacks is_/has_ prefix; True/False ambiguous."},
+    {"field_path": "Order.total", "old_name": "total", "new_name": "total_cents", "reason_code": "missing-unit", "rationale": "Float total drifted between cents and dollars in production."}
+  ],
+  "kept": ["Order.customer_id"],
+  "ab_eval": {"rows": 20, "baseline_accuracy": 0.55, "renamed_accuracy": 0.95, "delta_points": 0.40}
+}
+]]>
+  </example>
+
+  <example valid="false">
+<![CDATA[
+{
+  "model_path": "myapp/schemas/order.py",
+  "renames": [
+    {"field_path": "Order.flag", "old_name": "flag", "new_name": "IsPaid", "reason_code": "generic-placeholder"}
+  ],
+  "ab_eval": {"rows": 2, "baseline_accuracy": 0.5, "renamed_accuracy": 0.9}
+}
+]]>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every renamed field passes `^[a-z][a-z0-9_]*$` and has ≥2 underscored tokens or a unit/direction marker.</item>
+      <item>`reason_code` is one of the closed enum values; never freeform prose.</item>
+      <item>`ab_eval.rows ≥ 5`; smaller A/B runs are non-signal.</item>
+      <item>`schema_version` is bumped (minor or patch) whenever the rename set is non-empty.</item>
+      <item>`delta_points` matches `renamed_accuracy - baseline_accuracy` ± 1e-6.</item>
     </list>
   </section>
 </text>

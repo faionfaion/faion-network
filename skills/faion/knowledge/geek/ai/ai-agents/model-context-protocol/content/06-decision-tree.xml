@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="MCP Decision Tree — Transport &amp; Posture" version="1.0.0" est_tokens="350">
+  <decision-tree>
+    <root-question id="q-need-mcp">Is at least one tool going to be reused by ≥2 agents or projects?</root-question>
+    <branch when="reused_across_agents == false">
+      <conclusion ref="r3-flat-schema">Skip MCP. Define the tool directly via LangChain / OpenAI tool-call SDK and ship in-process. No protocol overhead for a single-consumer tool.</conclusion>
+    </branch>
+    <branch when="reused_across_agents == true">
+      <question id="q-clients-and-location">How many concurrent clients and where do they run?</question>
+      <branch when="concurrent_clients == 1 AND location == 'localhost'">
+        <conclusion ref="r4-transport-choice">Pick `stdio` transport. Set `auth.mode=none`. Scaffold from `templates/python-server-stdio.py`. Register via Claude Code `mcpServers.command`.</conclusion>
+      </branch>
+      <branch when="concurrent_clients &gt;= 2 OR location != 'localhost'">
+        <question id="q-latency">Is the latency budget &lt; 50 ms?</question>
+        <branch when="latency_budget_ms &lt; 50">
+          <conclusion ref="r3-flat-schema">Skip MCP. Streamable HTTP round-trip alone is ~30-80 ms; the latency floor breaks the SLO. Embed the tool as in-process code or co-locate as a sidecar.</conclusion>
+        </branch>
+        <branch when="latency_budget_ms &gt;= 50">
+          <question id="q-auth">What is the auth posture?</question>
+          <branch when="auth_mode == 'none' AND location == 'localhost'">
+            <conclusion ref="r5-remote-oauth">Pick `streamable-http` bound on `127.0.0.1` only. Set `auth.mode=none`. Acceptable for local multi-process fan-out; never bind on `0.0.0.0`.</conclusion>
+          </branch>
+          <branch when="auth_mode == 'bearer' OR auth_mode == 'oauth2.1'">
+            <conclusion ref="r5-remote-oauth">Pick `streamable-http` with OAuth 2.1 Resource Server posture. Scaffold from `templates/python-server-streamable-http.py`. Advertise `/.well-known/oauth-protected-resource`. Set proxy idle timeout ≥ longest expected agent turn.</conclusion>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="logistics-weather-db">
+      <p>1 client (Claude Code), localhost, 2 tools to be reused across upcoming logistics agents → q-need-mcp=yes → q-clients-and-location=1+localhost → conclusion r4-transport-choice (stdio).</p>
+    </example>
+  </decision-tree>
+</text>

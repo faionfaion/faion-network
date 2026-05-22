@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="OpenAI Chat Completions — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step procedure for shipping a Chat Completions call from spec to logged record. Each step has typed input + bounded action + observable output.</summary>
+
+  <section title="Steps">
+    <step n="1" name="pick-model">
+      <input>Task class (extraction, classification, generation, reasoning), latency budget, cost ceiling.</input>
+      <action>Map to one of {gpt-4o-mini, gpt-4o, o3-mini, o1} using the routing table. Default to mini for inner loops.</action>
+      <output>Model id pinned in `models.py`.</output>
+      <decision-gate>If latency &lt; 800ms required, skip o1; if reasoning chain &gt; 5 hops, use o-series.</decision-gate>
+    </step>
+    <step n="2" name="build-messages">
+      <input>System prompt + user content + (optional) prior assistant turns.</input>
+      <action>Construct `messages` list with explicit roles. Validate no role mixing inside a single message dict.</action>
+      <output>`messages: list[dict]` ready for `.create()`.</output>
+    </step>
+    <step n="3" name="set-params">
+      <input>Task class.</input>
+      <action>Set `temperature` (0.0–0.2 for extraction, 0.7+ for creative), `max_tokens` (sized to expected output × 1.5), `response_format` ({"type":"json_object"} when JSON), `seed` for reproducibility.</action>
+      <output>Params dict.</output>
+    </step>
+    <step n="4" name="call-with-retry">
+      <input>Model, messages, params.</input>
+      <action>Invoke via the tenacity-wrapped client (`templates/retry-client.py`). Retry only on `RateLimitError` and `APIError`. Fail-fast on `BadRequestError`.</action>
+      <output>`response` object + raw HTTP headers.</output>
+    </step>
+    <step n="5" name="check-finish-reason">
+      <input>`response.choices[0].finish_reason`.</input>
+      <action>If `length` → raise and retry with larger `max_tokens`. If `content_filter` → surface to operator. If `stop`/`tool_calls` → proceed.</action>
+      <output>Validated `content` or escalation signal.</output>
+      <decision-gate>Truncated content is never forwarded downstream.</decision-gate>
+    </step>
+    <step n="6" name="log-usage">
+      <input>response.usage, response.headers, latency.</input>
+      <action>Persist a record matching the output contract (model, messages_hash, params, usage, finish_reason, content, latency_ms, request_id).</action>
+      <output>JSON record written to call log; cost accounted to the pipeline run.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

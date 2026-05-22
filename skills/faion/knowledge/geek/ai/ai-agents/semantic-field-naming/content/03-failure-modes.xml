@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="semantic-field-naming Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for semantic-field-naming as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="semantic-field-naming Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Six antipatterns that cancel the accuracy lift of semantic renaming.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>output_data, result_value, final_answer (redundant suffixes).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Drop the suffix; let the field name carry the meaning.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>field_a, field_b, field_c.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Replace with what they mean.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Languages mixed (montant_usd, total_eur).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Stick to one language; English has the highest prior.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Single-letter (x, y, n).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spell out (x_coordinate, count).</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Plurals when single (items: Item).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Match the cardinality.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-redundant-suffix" severity="medium">
+      <symptom>Fields like `age_value`, `name_data`, `total_result` survive the rename pass.</symptom>
+      <root-cause>The author treated the rename as "add a noun suffix" instead of "encode the meaning". `_value`/`_data` carry no information the type does not already convey.</root-cause>
+      <fix>Drop the suffix: `age_value` → `age_years`, `name_data` → `full_name`, `total_result` → `total_revenue_usd`. Let the rest of the name carry the meaning.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-alphabet-fields" severity="high">
+      <symptom>Output schema contains `field_a`, `field_b`, `field_c` or single-letter `x: int, y: int, n: int`.</symptom>
+      <root-cause>Schema migrated from a CSV header or scratch prototype without semantic enrichment.</root-cause>
+      <fix>Replace each with what it actually represents: `x` → `x_coordinate_pixels`, `n` → `customer_count`, `field_a` → the underlying domain noun.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-mixed-language" severity="medium">
+      <symptom>Field names mix English with another language: `montant_usd`, `total_eur`, `nazwa_klienta`.</symptom>
+      <root-cause>Original codebase localised; the rename pass left the local-language token in place.</root-cause>
+      <fix>Pick one language — English has the strongest training-data prior. Translate the tokens: `montant_usd` → `amount_usd`, `nazwa_klienta` → `customer_name`. Preserve the original via `validation_alias` if an external API requires it.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-empty-string-sentinel" severity="high">
+      <symptom>Renamed field uses `""` (empty string) or `-1` to mean "absent" instead of `None`.</symptom>
+      <root-cause>Strict-mode bridges historically did not support `None`, so teams used sentinels. Modern bridges (Pydantic ≥2.5, openai-python ≥1.50) support `T | None`.</root-cause>
+      <fix>Use `field: T | None = None` and `ConfigDict(extra="forbid")` to keep the field required-with-nullable under strict mode. See [[strict-mode-required-fields]].</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-cardinality-mismatch" severity="high">
+      <symptom>`items: Item` (singular name for scalar field that actually holds a list) or `order: list[Order]` (singular name for list field).</symptom>
+      <root-cause>Field name written before the type was finalised; type changed later but the name did not.</root-cause>
+      <fix>Sync name to cardinality every commit: singular for scalars, plural for lists, dict-prefixed for maps (`order_by_id`).</fix>
+    </antipattern>
+
+    <antipattern id="fm-06-cryptic-enum-codes" severity="medium">
+      <symptom>Enum literals are `"OK"|"NOK"|"ERR"`, single letters, or numeric codes.</symptom>
+      <root-cause>Schema mirrors a legacy system's error-code vocabulary the model has never seen.</root-cause>
+      <fix>Map to semantic vocabulary: `"OK"` → `"success"`, `"NOK"` → `"failure"`, `"ERR"` → `"error"`. Keep the legacy code in a separate `legacy_code: str` field if downstream consumers need it.</fix>
+    </antipattern>
   </section>
 </text>

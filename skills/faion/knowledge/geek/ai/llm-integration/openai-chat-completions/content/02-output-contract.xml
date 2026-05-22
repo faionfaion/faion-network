@@ -1,22 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="openai-chat-completions Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="OpenAI Chat Completions — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Per-call JSON record persisted alongside the model output. Captures model, usage, finish_reason, and content for downstream auditing and validator scripts.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://openai-chat-completions/output.schema.json",
+  "type": "object",
+  "required": ["model", "messages_hash", "params", "usage", "finish_reason", "content", "latency_ms", "request_id"],
+  "properties": {
+    "model": {"type": "string", "minLength": 3},
+    "messages_hash": {"type": "string", "pattern": "^[a-f0-9]{16,64}$"},
+    "params": {
+      "type": "object",
+      "required": ["temperature", "max_tokens"],
+      "properties": {
+        "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+        "max_tokens": {"type": "integer", "minimum": 1},
+        "response_format": {"type": ["string", "object", "null"]},
+        "seed": {"type": ["integer", "null"]}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+      "properties": {
+        "prompt_tokens": {"type": "integer", "minimum": 0},
+        "completion_tokens": {"type": "integer", "minimum": 0},
+        "total_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "finish_reason": {"type": "string", "enum": ["stop", "length", "tool_calls", "content_filter", "function_call"]},
+    "content": {"type": ["string", "null"]},
+    "latency_ms": {"type": "integer", "minimum": 0},
+    "request_id": {"type": "string", "minLength": 4}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>model — exact id used (`gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini`, etc.).</item>
+      <item>params.temperature and params.max_tokens explicitly set (no defaults).</item>
+      <item>usage.* triplet captured from `response.usage`.</item>
+      <item>finish_reason recorded; if `length`, the call must already have been retried or surfaced.</item>
+      <item>request_id from response header `x-request-id` for OpenAI support tickets.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Logged record with `content` set but `finish_reason == "length"`.</description>
+      <reason>Truncated content downstream is silently invalid; the validator must reject.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Missing `usage` block.</description>
+      <reason>Without usage we cannot price the call or detect runaway token spend.</reason>
+    </antipattern>
+    <antipattern>
+      <description>params.temperature left null or omitted.</description>
+      <reason>Default-temperature calls are non-reproducible; explicit setting is mandatory.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "model": "gpt-4o-mini",
+  "messages_hash": "a1b2c3d4e5f60718",
+  "params": {"temperature": 0.2, "max_tokens": 1024, "response_format": "json_object", "seed": 42},
+  "usage": {"prompt_tokens": 312, "completion_tokens": 187, "total_tokens": 499},
+  "finish_reason": "stop",
+  "content": "{\"answer\": \"ok\"}",
+  "latency_ms": 612,
+  "request_id": "req_abc123def456"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "model": "gpt-4",
+  "params": {"temperature": null, "max_tokens": 2048},
+  "usage": {},
+  "finish_reason": "length",
+  "content": "{\"answer\": \"partial..."
+}
+]]></code>
+      <note>Invalid: temperature null, usage empty, finish_reason `length` with truncated content still being logged as final.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>finish_reason ∈ {stop, tool_calls} for any record passed downstream.</item>
+      <item>usage triplet present and non-negative.</item>
+      <item>temperature explicitly set; not null, not missing.</item>
+      <item>request_id recorded for traceability.</item>
     </list>
   </section>
 </text>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Python Type Hints Worked Example" version="1.1.0" est_tokens="900" depth="optional">
+  <summary>One end-to-end example: untyped FastAPI handler module migrated to PEP 604 + Protocol + TypedDict + mypy --strict gate green.</summary>
+
+  <section title="Before — untyped">
+    <code lang="python"><![CDATA[
+# src/api/users.py — untyped
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.post("/users")
+def create_user(payload):
+    if "email" not in payload:
+        return {"error": "email required"}
+    user = save_user(payload)
+    return {"id": user.id, "email": user.email}
+
+def save_user(data):
+    return User.objects.create(**data)
+]]></code>
+  </section>
+
+  <section title="After — typed (Python 3.12, PEP 604, TypedDict)">
+    <code lang="python"><![CDATA[
+# src/api/users.py — typed
+from typing import TypedDict
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, EmailStr
+
+from src.models import User
+
+router = APIRouter()
+
+
+class CreateUserPayload(BaseModel):
+    email: EmailStr
+    name: str
+    age: int | None = None
+
+
+class CreateUserResponse(TypedDict):
+    id: int
+    email: str
+
+
+@router.post("/users", response_model=CreateUserResponse)
+def create_user(payload: CreateUserPayload) -> CreateUserResponse:
+    user = save_user(payload)
+    return {"id": user.id, "email": user.email}
+
+
+def save_user(data: CreateUserPayload) -> User:
+    return User.objects.create(**data.model_dump())
+]]></code>
+    <note>Pydantic guards the HTTP boundary; TypedDict types the internal response shape. No mixed Optional/Union syntax. Return type explicit on every signature.</note>
+  </section>
+
+  <section title="mypy --strict run">
+    <code lang="bash"><![CDATA[
+$ mypy --strict src/api/users.py
+Success: no issues found in 1 source file
+
+$ ruff check --select UP007 src/api/users.py
+All checks passed!
+]]></code>
+  </section>
+
+  <section title="CI gate trace">
+    <p>PR touches `src/api/users.py`. `typecheck-touched.sh main` runs `git diff --name-only main -- '*.py'` → `src/api/users.py`. `mypy --strict src/api/users.py` exits 0. PR check turns green. Append `src/api/users.py` to `[tool.mypy] files` to lock the file as strict-typed going forward.</p>
+  </section>
+
+  <reference path="templates/mypy.toml">Config used in this run</reference>
+  <reference path="templates/typecheck-touched.sh">CI script used in this run</reference>
+</text>

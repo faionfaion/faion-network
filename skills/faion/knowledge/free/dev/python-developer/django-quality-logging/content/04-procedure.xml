@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-quality-logging Procedure" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>Six-step procedure to audit and remediate a Django project's logging + observability stack. Each step has explicit input, action, output, and a decision gate.</summary>
+
+  <section title="Steps">
+    <step n="1" name="audit-current-state">
+      <input>repository root path, settings module path (`config.settings.production`)</input>
+      <action>grep `MIDDLEWARE`, `LOGGING`, `import logging`, `import structlog`, `sentry_sdk.init` across the repo. Capture installed packages (`pip list | grep -Ei "structlog|sentry-sdk"`).</action>
+      <output>baseline report: structlog y/n, django-structlog y/n, sentry y/n, mixed-logger modules list.</output>
+      <decision-gate>If structlog + django-structlog + sentry-sdk already present AND middleware registered AND Sentry has DSN — skip to step 5 (verify) rather than reinstalling.</decision-gate>
+    </step>
+
+    <step n="2" name="install-deps">
+      <input>package manager (uv / poetry / pip)</input>
+      <action>Add `structlog>=24`, `django-structlog>=10`, `sentry-sdk>=2`. Run `uv sync` (or equivalent). Pin transitive versions in lockfile.</action>
+      <output>updated `pyproject.toml` + lockfile</output>
+      <decision-gate>Lockfile diff reviewed by a human before commit.</decision-gate>
+    </step>
+
+    <step n="3" name="wire-structlog">
+      <input>`config/settings/base.py`, `config/settings/production.py`</input>
+      <action>Copy `templates/logging.py` snippet into base.py — configure structlog processor chain and LOGGING dict; insert `django_structlog.middlewares.RequestMiddleware` into MIDDLEWARE after AuthenticationMiddleware.</action>
+      <output>settings diff with structlog active</output>
+      <decision-gate>Run `python -c "import django; django.setup(); import structlog; structlog.get_logger().info('test', request_id='x')"` and confirm JSON output.</decision-gate>
+    </step>
+
+    <step n="4" name="wire-sentry">
+      <input>`config/settings/production.py`, `SENTRY_DSN` env var</input>
+      <action>Copy `templates/sentry_init.py` into production.py. Implement `scrub_sensitive_data` mutating event["request"]["data"] / event["request"]["headers"]. Register custom system check warning when SENTRY_DSN unset.</action>
+      <output>Sentry init block + scrubber + system check</output>
+      <decision-gate>Trigger a deliberate test exception in staging; verify event appears in Sentry with PII keys scrubbed.</decision-gate>
+    </step>
+
+    <step n="5" name="run-check-deploy">
+      <input>production settings module</input>
+      <action>Execute `python manage.py check --deploy --fail-level WARNING --settings=config.settings.production`.</action>
+      <output>verdict: pass | warning | error + warning list</output>
+      <decision-gate>Block merge if any WARNING or ERROR remains.</decision-gate>
+    </step>
+
+    <step n="6" name="emit-report">
+      <input>findings from steps 1-5</input>
+      <action>Render `templates/audit-report.md` with the JSON Schema frontmatter from `02-output-contract.xml`. Run `scripts/validate-django-quality-logging.py` against the report.</action>
+      <output>committed audit report at `.aidocs/<feature>/logging-audit.md`</output>
+      <decision-gate>Validator must exit 0.</decision-gate>
+    </step>
+  </section>
+</text>

@@ -1,42 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Eval Set Stratified Sampling Recipe Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Eval Set Stratified Sampling Recipe must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
+<text id="01-core-rules" title="Stratified sampling recipe — core rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules every recipe must satisfy.</summary>
+
+  <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Every step is dry-run before its first real execution. Dry-run artefact (output capture) is stored with the runbook version.</statement>
-      <rationale source="SRE runbook discipline (Google SRE book, 2016)">SRE runbook discipline (Google SRE book, 2016).</rationale>
+      <statement source="Cochran-1977">Quota per stratum = max(floor, proportional). Raw proportional sampling alone always drops rare strata to 0 once N is small; the floor (default 5 cases per non-empty stratum) is non-negotiable.</statement>
+      <rationale>Without a floor the daily slice systematically ignores low-volume cohorts (new tenants, new tools), where regressions land first.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Each step has an explicit success signal (command exit, dashboard delta, alert silence). Steps without success signals are rejected.</statement>
-      <rationale source="Anti-vague-step principle">'check it works' is not a step.</rationale>
+      <statement source="reproducible-eval-practice">Every recipe declares a single integer `seed`. The sampler is deterministic given (manifest, recipe, seed). Re-running the sample on the same inputs MUST yield the identical case-ids.</statement>
+      <rationale>Non-deterministic samples make day-over-day deltas un-debuggable — you cannot tell drift from sample variance.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Rollback path is written before forward path. A runbook without a documented rollback is incomplete.</statement>
-      <rationale source="Change-management practice from ITIL v4">Change-management practice from ITIL v4.</rationale>
+      <statement source="self">A stratum's share of the daily slice MUST NOT exceed 40%, even if production traffic concentrates there. Cap excess on the head; redistribute to tail strata up to their `tail_floor` ceiling.</statement>
+      <rationale>One head intent dominating the slice masks tail regressions and turns the drift check into a single-intent canary.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="self">The recipe is refreshed when traffic distribution shifts &gt;10% absolute in any stratum's share, OR every 30 days, whichever comes first. Otherwise the prior recipe is carried forward verbatim.</statement>
+      <rationale>Refreshing every run thrashes case ids and breaks day-over-day diffability; never refreshing freezes the recipe against a stale traffic mix.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="self">Every recipe declares `version` (semver), `created_at` (ISO 8601), and `parent_version` (the prior recipe id or null). New recipes that differ in quotas MUST bump minor; new strata bump major.</statement>
+      <rationale>Without versioning the eval harness cannot answer "what recipe produced yesterday's slice?" — a blocker for post-hoc forensic.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="self">`N_daily` (total slice size) is fixed by budget, not by sum of per-stratum quotas. If proportional+floor over-shoots N_daily, scale the head down first; if it under-shoots, distribute leftover to tail strata.</statement>
+      <rationale>Letting quotas decide N_daily causes silent budget creep — the eval bill drifts up week over week.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">All six rules satisfied: floor present, seed set, no head &gt;40%, drift policy declared, version pinned, N_daily honoured.</statement>
+      <rationale>Aggregate positive conclusion for the decision tree.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Eval set ≤500 cases OR single stratum OR no traffic data — recipe overhead does not pay back.</statement>
+      <rationale>Aggregate negative conclusion for the decision tree.</rationale>
     </rule>
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Daily eval-set drift check
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: ≥1 named source per rule (URL, ticket, transcript_id)
-Decision: downstream consumer can act without re-deriving reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger → artefact → decision — with auditability at each step.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: 'we should do this thing'
-Artefact: prose paragraph, no schema
-Evidence: 'industry best practice'
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is a failure mode catalogued in content/03-failure-modes.xml. The methodology exists to prevent exactly this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

@@ -1,22 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="claude-advanced-features Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Claude Advanced Features Output Contract" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>JSON-schema output contract the subagent applying claude-advanced-features produces. Captures which features were wired in, the cache hit ratio, and per-feature configuration knobs.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "claude-advanced-features-output",
+  "required": [
+    "features_enabled",
+    "model_id",
+    "cache_hit_ratio",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "features_enabled": {
+      "description": "Subset of {extended_thinking, prompt_caching, batch_api, computer_use}."
+    },
+    "model_id": {
+      "description": "Full-date pinned model id e.g. claude-opus-4-5-20251101."
+    },
+    "extended_thinking": {
+      "description": "Object with budget_tokens, max_tokens, temperature (must be absent)."
+    },
+    "prompt_caching": {
+      "description": "Object with cached_prefix_tokens, hit_ratio_target."
+    },
+    "batch_api": {
+      "description": "Object with poll_interval_seconds, custom_id_source."
+    },
+    "computer_use": {
+      "description": "Object with sandbox_kind, max_iterations, action_timeout_seconds."
+    },
+    "cache_hit_ratio": {
+      "description": "Observed cache_read_input_tokens / input_tokens over a 100-call window."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="features_enabled" format="array&lt;string&gt;" required="true">Subset of {extended_thinking, prompt_caching, batch_api, computer_use}.</field>
+      <field name="model_id" format="string" required="true">Full-date pinned model id.</field>
+      <field name="cache_hit_ratio" format="number 0..1" required="true">Observed cache hit ratio, NaN-safe.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched; must be empty.</field>
+      <field name="extended_thinking" format="object" required="false">budget_tokens, max_tokens; temperature MUST be absent.</field>
+      <field name="prompt_caching" format="object" required="false">cached_prefix_tokens &gt;= 1024, hit_ratio_target.</field>
+      <field name="batch_api" format="object" required="false">poll_interval_seconds &gt;= 60, custom_id_source.</field>
+      <field name="computer_use" format="object" required="false">sandbox_kind, max_iterations, action_timeout_seconds.</field>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Model id without a full-date suffix (alias only).</pattern>
+      <pattern id="f2">`extended_thinking.temperature` field present.</pattern>
+      <pattern id="f3">`prompt_caching.cached_prefix_tokens` &lt; 1024.</pattern>
+      <pattern id="f4">`batch_api.poll_interval_seconds` &lt; 60.</pattern>
+      <pattern id="f5">`computer_use` block present without `sandbox_kind`.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort `features_enabled` alphabetically before serialising.</transformation>
+      <transformation>Round `cache_hit_ratio` to 2 decimal places.</transformation>
+      <transformation>Normalise model id to lowercase.</transformation>
     </allowed-transformations>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "features_enabled": ["extended_thinking", "prompt_caching"],
+  "model_id": "claude-opus-4-5-20251101",
+  "extended_thinking": {"budget_tokens": 5000, "max_tokens": 9096},
+  "prompt_caching": {"cached_prefix_tokens": 4200, "hit_ratio_target": 0.75},
+  "cache_hit_ratio": 0.82,
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; thinking max_tokens = budget + 4096; cached prefix above floor.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "features_enabled": ["prompt_caching"],
+  "model_id": "claude-sonnet-4",
+  "prompt_caching": {"cached_prefix_tokens": 800, "hit_ratio_target": 0.75},
+  "cache_hit_ratio": 0.10,
+  "forbidden_seen": ["f1", "f3"]
+}]]></code>
+    <note>Alias model id (f1), prefix below 1024 (f3), and `forbidden_seen` non-empty — schema rejects.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>`scripts/validate-claude-advanced-features.py` exits 0.</item>
     </list>
   </section>
 </text>

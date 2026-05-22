@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Stratified sampling recipe — worked example" version="1.0.0" est_tokens="600" depth="recommended">
+  <summary>One end-to-end recipe for a 4-cohort × 3-tool × 2-intent agent on a 200-case/day budget.</summary>
+
+  <section title="Inputs">
+    <p>Eval manifest holds 1,800 cases. Production traffic distribution (last 30d) and the daily budget feed the recipe build.</p>
+    <code lang="csv"><![CDATA[
+stratum_key,count_30d,share
+cohort=ent.tool=search.intent=lookup,55000,0.55
+cohort=ent.tool=summarise.intent=long-form,20000,0.20
+cohort=smb.tool=search.intent=lookup,15000,0.15
+cohort=trial.tool=search.intent=lookup,10000,0.10
+]]></code>
+    <p>Daily budget: 200 cases/day. tail_floor=5, head_cap_share=0.4.</p>
+  </section>
+
+  <section title="Quota arithmetic">
+    <list>
+      <item>Raw proportional: 110, 40, 30, 20. Head 110/200 = 55% &gt; cap 40%.</item>
+      <item>Cap head at floor(200 * 0.4) = 80. Spillover 30 cases redistributed equally to tail strata: +10 to each.</item>
+      <item>Final: 80, 50, 40, 30. Sum = 200. All quotas ≥ tail_floor 5. Max share 40%.</item>
+    </list>
+  </section>
+
+  <section title="Final recipe">
+    <code lang="json"><![CDATA[{
+  "version": "1.2.0",
+  "parent_version": "1.1.0",
+  "created_at": "2026-05-22T07:00:00Z",
+  "N_daily": 200,
+  "seed": 42,
+  "tail_floor": 5,
+  "head_cap_share": 0.4,
+  "drift_policy": {"abs_share_threshold": 0.1, "max_age_days": 30},
+  "strata": [
+    {"key": "cohort=ent.tool=search.intent=lookup", "traffic_share": 0.55, "quota": 80},
+    {"key": "cohort=ent.tool=summarise.intent=long-form", "traffic_share": 0.20, "quota": 50},
+    {"key": "cohort=smb.tool=search.intent=lookup", "traffic_share": 0.15, "quota": 40},
+    {"key": "cohort=trial.tool=search.intent=lookup", "traffic_share": 0.10, "quota": 30}
+  ]
+}]]></code>
+  </section>
+
+  <section title="Diff vs prior recipe (1.1.0)">
+    <p>Prior version had `trial` share 0.04 (now 0.10) — Δ = 0.06, below 0.10 threshold, BUT max_age was 32 days → forced refresh by age. parent_version pinned to 1.1.0.</p>
+  </section>
+
+  <section title="Day-2 behaviour">
+    <p>Next morning, traffic shares move by 1–3% absolute. Recipe age 1 day. Carry-forward — same case ids, day-over-day deltas are diffable. Logged: `carry-forward parent=1.2.0 age=1d max_dshare=0.03`.</p>
+  </section>
+</text>

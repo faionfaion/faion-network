@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Guardrails Concepts Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>End-to-end: RAG-backed customer support bot. p99 latency budget 1500 ms, HIPAA scope, Claude Sonnet base model.</summary>
+
+  <section title="Worked example">
+
+    <example type="good">
+      <note>Step 1: classify_pipeline → rag (retrieval + chat, single agent). Step 2: stages → input, retrieval, output. Step 3: threat-model rails → pii-mask (input), chunk-injection-scan (retrieval), schema-validate + medical-advice-block (output). Step 4: actions → pii=transform; injection-scan=filter; schema=block; advice-block=block (HIPAA). Step 5: tiers → regex (5 ms) + classifier (50 ms); LLM-judge dropped (budget too tight given Claude inference). Step 6: frameworks → custom (pii regex), custom (chunk scan), guardrails-ai (schema), llama-guard (advice classifier).</note>
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "gp-support-bot-2026-05",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "pipeline_shape": "rag",
+  "rails": [
+    {"stage": "input", "rail_type": "pii-mask", "action": "transform", "framework": "custom", "severity": "high"},
+    {"stage": "retrieval", "rail_type": "chunk-injection-scan", "action": "filter", "framework": "custom", "severity": "high"},
+    {"stage": "output", "rail_type": "schema-validate", "action": "block", "framework": "guardrails-ai", "severity": "critical"},
+    {"stage": "output", "rail_type": "medical-advice-block", "action": "block", "framework": "llama-guard", "severity": "critical"}
+  ],
+  "tiers": [
+    {"order": 1, "kind": "regex", "max_latency_ms": 5},
+    {"order": 2, "kind": "classifier", "max_latency_ms": 50}
+  ],
+  "frameworks": ["guardrails-ai", "llama-guard", "custom"]
+}
+]]></code>
+    </example>
+
+    <example type="bad">
+      <note>Same scenario, but stage=output gets one giant LLM-as-judge rail and no tier-1 regex. Median latency triples; injection in retrieval slips through because no retrieval rail exists.</note>
+      <code lang="json"><![CDATA[
+{
+  "pipeline_shape": "rag",
+  "rails": [
+    {"stage": "output", "rail_type": "all-in-one-llm-judge", "action": "block", "framework": "custom", "severity": "high"}
+  ],
+  "tiers": [{"order": 1, "kind": "llm-judge", "max_latency_ms": 1500}]
+}
+]]></code>
+    </example>
+
+  </section>
+</text>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Python Type Hints Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping Python version + repo state to a typing-rollout configuration. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-py-version">What Python version does `pyproject.toml requires-python` declare?</root-question>
+
+    <branch when="python_version &lt; 3.9">
+      <conclusion ref="pep604-only" verdict="abort; methodology requires 3.9+ for `list[T]` and 3.10+ for `X | None`. Upgrade Python before adopting."/>
+    </branch>
+
+    <branch when="python_version == 3.9">
+      <conclusion ref="pep604-only" verdict="`list[T]` available; `X | None` requires `from __future__ import annotations` (caveat: Pydantic v2 only). Use `Optional[X]` if v1 still in use."/>
+    </branch>
+
+    <branch when="python_version &gt;= 3.10 AND python_version &lt; 3.12">
+      <question id="q-coverage">Is current typing coverage &gt; 80%?</question>
+      <branch when="coverage &gt; 80">
+        <conclusion ref="no-strict-on-day-1" verdict="mode=greenfield; `strict = true` globally; ban bare ignores via ruff PGH003"/>
+      </branch>
+      <branch when="coverage &lt;= 80">
+        <conclusion ref="no-strict-on-day-1" verdict="mode=legacy; `files = [public-API allowlist]`; grow per PR; CI runs strict only on changed files"/>
+      </branch>
+    </branch>
+
+    <branch when="python_version &gt;= 3.12">
+      <question id="q-publish">Is this repo a PyPI-published library?</question>
+      <branch when="published == true">
+        <conclusion ref="protocol-over-abc" verdict="mode=library; `disallow_any_generics = true`; use PEP 695 `def f[T]()` for new generics; document Protocol contracts publicly"/>
+      </branch>
+      <branch when="published == false">
+        <conclusion ref="annotate-boundary" verdict="mode=greenfield or legacy depending on coverage; PEP 695 generic syntax allowed in new files"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="legacy-python-3.11">
+    python_version=3.11 → q-coverage: coverage=35% → mode=legacy → `[tool.mypy] files=[src/api/handlers.py]` (seed with public API). PR touches `src/api/handlers.py` → CI runs `mypy --strict` on that file only → green. Each new typed file gets appended to `files`. Repo-wide percentage never blocks PRs.
+  </example>
+</text>

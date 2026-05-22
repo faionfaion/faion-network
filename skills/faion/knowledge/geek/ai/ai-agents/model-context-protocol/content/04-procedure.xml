@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="MCP Server Build Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure from tool brief to a paste-ready Claude Code registration.</summary>
+
+  <section title="Procedure">
+    <p>Each step has an input, an action, an output, and a decision gate. Do not advance past a gate that fails.</p>
+
+    <code lang="text"><![CDATA[
+STEP 1 — Tool brief intake
+  input:  text or YAML list of {name, description, inputs, handler}
+  action: normalize names (snake_case, prefix with server), trim descriptions to ≤512 chars, fail if any inputs use polymorphism
+  output: normalized tool list
+  gate:   reject if <1 tool OR description <16 chars OR name not unique
+
+STEP 2 — Transport choice
+  input:  deployment plan (clients, location, auth posture, latency)
+  action: run content/06-decision-tree.xml
+  output: transport = stdio | streamable-http
+  gate:   if streamable-http, auth.mode != none
+
+STEP 3 — JSON Schema design
+  input:  normalized tool list
+  action: for each tool, write a flat inputSchema (type=object, explicit `required`, primitive properties only); add field descriptions
+  output: tools[*].inputSchema
+  gate:   `grep -E 'oneOf|anyOf|\\$ref' schemas/` returns nothing
+
+STEP 4 — Handler scaffold
+  input:  tool list + chosen transport
+  action: instantiate templates/python-server-stdio.py OR templates/python-server-streamable-http.py; bind handlers; add `ping` tool that returns {status, version}; wrap every handler in the structured error envelope from rule r7
+  output: server.py
+  gate:   server.py imports cleanly; `python -c "import server"` exits 0
+
+STEP 5 — Smoke test with mcp-inspector
+  input:  server.py
+  action: `npx @modelcontextprotocol/inspector python server.py` ; call ping; call one domain tool with a fixture input
+  output: inspector trace
+  gate:   ping returns {status:"ok"} AND domain tool returns within 2 s AND inputSchema renders flat in inspector UI
+
+STEP 6 — Client registration
+  input:  server name, transport, command/url
+  action: emit settings.json snippet (Claude Code `mcpServers` block); for streamable-http, include `url` and bearer header source
+  output: registration.json (paste-ready)
+  gate:   `scripts/validate-model-context-protocol.py manifest.json` exits 0
+]]></code>
+  </section>
+
+  <section title="Inputs and outputs at a glance">
+    <list>
+      <item>STEP 1 in: tool brief → out: normalized tool list</item>
+      <item>STEP 2 in: deployment plan → out: transport choice</item>
+      <item>STEP 3 in: tool list → out: tools[*].inputSchema (flat)</item>
+      <item>STEP 4 in: list + transport → out: server.py</item>
+      <item>STEP 5 in: server.py → out: green inspector trace</item>
+      <item>STEP 6 in: trace + transport → out: paste-ready registration block</item>
+    </list>
+  </section>
+
+  <reference path="templates/python-server-stdio.py">stdio scaffold</reference>
+  <reference path="templates/python-server-streamable-http.py">HTTP scaffold</reference>
+  <reference path="scripts/validate-model-context-protocol.py">final-gate validator</reference>
+</text>

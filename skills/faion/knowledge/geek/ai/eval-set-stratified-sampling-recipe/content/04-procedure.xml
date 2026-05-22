@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Stratified sampling recipe — procedure" version="1.0.0" est_tokens="700" depth="recommended">
+  <summary>Six steps from manifest + traffic + budget to a versioned recipe.</summary>
+
+  <section title="Steps">
+    <step n="1" name="Enumerate strata">
+      <input>Eval manifest JSONL with cohort/tool/intent/difficulty fields.</input>
+      <action>Group-by the declared stratification keys; produce the set of non-empty strata.</action>
+      <output>List of stratum keys with eval-set counts.</output>
+    </step>
+    <step n="2" name="Fetch traffic distribution">
+      <input>Analytics dump for last 30 days.</input>
+      <action>Aggregate calls by the same keys; compute `traffic_share` per stratum.</action>
+      <output>Map stratum_key → traffic_share (sum=1.0).</output>
+    </step>
+    <step n="3" name="Set N_daily">
+      <input>Daily budget ($/day or cases/day).</input>
+      <action>If $/day: N_daily = floor(budget / cost_per_case). If cases/day: N_daily = direct.</action>
+      <output>Single integer N_daily.</output>
+      <decision-gate>If N_daily &lt; 2 × num_strata × tail_floor: warn — budget cannot satisfy floor across all strata. Either raise budget or drop low-priority strata.</decision-gate>
+    </step>
+    <step n="4" name="Apply proportional+floor with head cap">
+      <input>N_daily, traffic shares, tail_floor=5, head_cap_share=0.4.</input>
+      <action>For each stratum: quota_raw = round(N_daily * share); quota = max(tail_floor, min(quota_raw, floor(N_daily * head_cap_share))). Re-normalise so sum(quota) == N_daily (spillover into tail strata).</action>
+      <output>Map stratum_key → quota (integers, sum == N_daily).</output>
+    </step>
+    <step n="5" name="Set seed and serialise">
+      <input>Stratum keys + quotas + N_daily + drift_policy.</input>
+      <action>Assign integer seed (default `seed = hash(version) &amp; 0xFFFFFFFF` or fixed `42` for the first version). Serialise per the JSON Schema in 02-output-contract.</action>
+      <output>`sampling-recipe.json` candidate.</output>
+    </step>
+    <step n="6" name="Diff vs prior recipe and decide refresh">
+      <input>Candidate recipe + parent recipe (if any).</input>
+      <action>Compute Δshare per stratum. If max|Δ| &lt; abs_share_threshold AND age(parent) &lt; max_age_days: carry-forward parent; else publish candidate, set parent_version = parent.version, bump version.</action>
+      <output>Final recipe written to eval/sampling-recipe.json. Log decision (carry-forward vs refresh).</output>
+      <decision-gate>If &gt;2 new strata appeared: bump MAJOR; if only quotas changed: bump MINOR.</decision-gate>
+    </step>
+  </section>
+</text>

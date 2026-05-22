@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Guardrails Concepts Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to emit guardrail-plan.json.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="classify-pipeline">
+      <input>Architecture diagram</input>
+      <action>Pick one of basic / rag / multi-agent. If both retrieval and tool-use present, classify as multi-agent.</action>
+      <output>pipeline_shape enum value</output>
+    </step>
+
+    <step n="2" name="enumerate-stages">
+      <input>pipeline_shape</input>
+      <action>List the stages present: input always; output always; retrieval iff rag; dialog iff multi-turn; execution iff tool-use.</action>
+      <output>stage list</output>
+    </step>
+
+    <step n="3" name="map-rails">
+      <input>stage list + threat model</input>
+      <action>For each stage, assign rail_type from threat model (pii-mask, schema-validate, chunk-injection-scan, persona-enforce, tool-allowlist, etc.).</action>
+      <output>rails[] entries without action/framework</output>
+    </step>
+
+    <step n="4" name="pick-actions">
+      <input>rails[] entries + severity</input>
+      <action>Per rail, pick one of block / filter / transform / warn / log using severity ladder: critical+no-safe-fallback→block; high+partial-value→filter; medium→transform; low→warn; observable-only→log.</action>
+      <output>rails[] with action set</output>
+      <decision-gate>If severity is critical and action is warn — escalate; warning critical violations is forbidden.</decision-gate>
+    </step>
+
+    <step n="5" name="set-tiers">
+      <input>SLO latency budget</input>
+      <action>Allocate latency across tiers: tier 1 regex (1-5 ms), tier 2 classifier (10-50 ms), tier 3 LLM-judge only if budget &gt; 500 ms remains. Drop tier 3 entirely if SLO &lt; 200 ms.</action>
+      <output>tiers[] with max_latency_ms</output>
+    </step>
+
+    <step n="6" name="pick-frameworks">
+      <input>rails[] + team familiarity</input>
+      <action>Per rail, pick framework: dialog→nemo; output-schema→guardrails-ai; safety-class→llama-guard; everything else→custom. Embedded for free safety from Claude / GPT.</action>
+      <output>Final guardrail-plan.json</output>
+    </step>
+
+  </section>
+</text>

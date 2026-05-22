@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Claude Advanced Features Decision Tree" version="1.0.0" est_tokens="550" depth="essential">
+  <summary>Decision tree gating which advanced Claude feature(s) apply to the current workload. Root question is a latency observable; branches name concrete observables (`when`) and conclude with a rule id from 01-core-rules.xml or a skip directive.</summary>
+
+  <decision-tree>
+    <root-question>Does the workload tolerate ≥minutes latency AND is it non-user-facing (offline enrichment / nightly analysis)?</root-question>
+      <branch when="yes AND call_volume &gt; 100/session"><conclusion ref="r5">Use Batch API per rule r5.</conclusion></branch>
+      <branch when="no AND system_prompt_tokens &gt;= 1024 AND prefix_stable=true AND calls_per_session &gt;= 10"><conclusion ref="r3">Wire Prompt Caching per rule r3 and monitor per rule r4.</conclusion></branch>
+      <branch when="no AND task=multi_step_reasoning AND reasoning_trace_required=true"><conclusion ref="r1">Enable Extended Thinking per rule r1; observe constraints from rule r2.</conclusion></branch>
+      <branch when="task=gui_automation AND sandbox_available=true"><conclusion ref="r7">Enable Computer Use per rule r7.</conclusion></branch>
+      <branch when="task=gui_automation AND sandbox_available=false"><conclusion ref="skip-this-methodology">Skip Computer Use — provision a sandbox first; revisit.</conclusion></branch>
+      <branch when="prefix_stable=false OR calls_per_session &lt; 10"><conclusion ref="skip-this-methodology">Skip Prompt Caching — write surcharge will exceed savings.</conclusion></branch>
+      <branch when="user_facing=true AND latency_budget &lt; 5s"><conclusion ref="skip-this-methodology">Skip Batch API and Extended Thinking — use the base Messages API path.</conclusion></branch>
+    <example trace="root → no AND system_prompt_tokens &gt;= 1024 AND prefix_stable=true AND calls_per_session &gt;= 10 → r3">
+      <description>A long-document QA assistant calling Claude 50 times per session with a 6k-token doc as the system prefix matches the second branch; the tree concludes `r3`, so the agent must mark the doc with `cache_control:{"type":"ephemeral"}` and monitor the hit ratio per `r4`.</description>
+    </example>
+  </decision-tree>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

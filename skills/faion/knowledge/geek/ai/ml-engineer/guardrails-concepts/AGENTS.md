@@ -3,73 +3,99 @@ slug: guardrails-concepts
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Guardrails (or "rails") are specific mechanisms for controlling LLM behavior.
-content_id: "54accd58c30beb31"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a guardrail architecture report mapping rail types (input/output/dialog/retrieval/execution) to pipeline stages with action strategy and tiered-latency budget.
+content_id: "c5ed8f58f20680c8"
+complexity: deep
+produces: report
+est_tokens: 4400
 tags: [guardrails, llm-safety, content-moderation, prompt-injection, pii]
 ---
 # LLM Guardrails — Concepts, Types, and Architecture
 
 ## Summary
 
-**One-sentence:** Guardrails (or "rails") are specific mechanisms for controlling LLM behavior.
+**One-sentence:** Maps the five guardrail rail types to pipeline stages, picks block/filter/transform/warn/log per stage, and sets a tiered-latency budget (regex → classifier → LLM-judge).
 
-**One-paragraph:** Guardrails (or "rails") are specific mechanisms for controlling LLM behavior. They transform unpredictable generative models into reliable, safe, and compliant systems by preventing harmful content, enforcing topic boundaries, validating output format and structure, detecting prompt injection attacks, filtering PII and sensitive data, and reducing hallucinations.
+**One-paragraph:** Guardrails are runtime mechanisms that constrain LLM behaviour without retraining. This methodology turns a vague "we need safety" requirement into a concrete report: which rail type fires at which pipeline stage (input / output / dialog / retrieval / execution), which action it takes on a violation (block / filter / transform / warn / log), what the latency budget per tier is, and which framework owns each layer (NeMo for dialog, Guardrails AI for output, Llama Guard for safety class, custom for the rest). Output is a `guardrail-plan.json` consumed by downstream methodologies (`guardrails-nemo`, `guardrails-custom-pipeline`, `guardrails-testing`).
+
+**Ефективно для:**
+
+- Customer-facing LLM апки в регульованих доменах (health/fin/legal) — комплаєнс без retraining.
+- Agent pipelines з tool-use — execution rails — єдиний кордон між LLM-рішенням і побічним ефектом.
+- RAG-системи — retrieval rails чистять контекст від injection і PII у chunks.
+- Будь-який pipeline з multi-turn dialog — dialog rails ловлять topic drift і persona-break.
 
 ## Applies If (ALL must hold)
 
-- Any customer-facing LLM application where uncontrolled output could harm users or expose the business to liability.
-- Regulated domains: healthcare, finance, legal — where hallucinations or off-topic responses have compliance consequences.
-- Agent pipelines that execute tool calls or write to external systems — execution rails prevent unauthorized actions.
-- Multi-turn conversations where topic drift or persona breaking is a risk.
-- Applications handling PII — input/output rails must mask before logging and processing.
+- Customer-facing LLM application where uncontrolled output exposes business to liability or harm.
+- Regulated domain (healthcare, finance, legal) or PII-handling — compliance dictates input/output rails.
+- Agent or RAG pipeline with tool-use, retrieval, or multi-turn state where one rail type is insufficient.
 
 ## Skip If (ANY kills it)
 
-- Internal developer tooling where trust is high and false positives waste time.
-- Latency-critical paths under 50ms budget — LLM-as-judge guardrails add 500ms+ and break the budget.
-- Guardrails add no value if the base model already refuses the content class (e.g., Claude refusing CSAM).
-- Prototyping and local experimentation — premature guardrails slow iteration.
+- Internal developer tooling with high-trust users — false positives waste time, ROI negative.
+- Latency budget < 50 ms — LLM-as-judge alone adds 500 ms+, breaks SLO.
+- Base model already refuses the content class (Claude refusing CSAM) — extra rail adds no value.
+- Prototyping / local experimentation — premature guardrails slow iteration.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pipeline diagram | Mermaid / Markdown | `architecture-doc` |
+| Threat model | Markdown bullet list | `security-review` or `stride` methodology |
+| Latency SLO | float (ms p99) | `slo-doc` |
+| Compliance scope | enum (HIPAA / SOC2 / GDPR / none) | `compliance-register` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `prompt-injection-defense` | Input-rail rule set assumes injection patterns already enumerated. |
+| `llm-decision-framework` | Model + provider choice informs which embedded guardrails are already present. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: rail-types, embedded-vs-programmable, action-strategy, tiered-latency, defense-in-depth, log-sanitized | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for `guardrail-plan.json` + valid + invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: agent-relay, llm-judge-injectable, no-isolation, coupled-to-prompt | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: classify pipeline → map rails → pick actions → set tiers → pick frameworks → emit plan | 800 |
+| `content/05-examples.xml` | essential | One end-to-end example: RAG support-bot guardrail plan | 600 |
+| `content/06-decision-tree.xml` | essential | Pipeline shape → rail set → framework selector | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify_pipeline_shape` | haiku | Pattern-match against 3 canonical shapes (basic/RAG/multi-agent). |
+| `draft_guardrail_plan` | sonnet | Synthesis across rails + frameworks; needs reasoning, not raw recall. |
+| `review_threat_coverage` | opus | High-stakes — missed rail = compliance gap; deep coverage check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/guardrail-plan.json` | JSON skeleton of the output artefact |
+| `templates/_smoke-test.json` | Minimum viable filled-in plan for a basic pipeline |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-guardrails-concepts.py` | Validate `guardrail-plan.json` against the schema | Before handing off to `guardrails-nemo` / `guardrails-custom-pipeline` |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[guardrails-nemo]] — Colang dialog rails referenced from the plan
+- [[guardrails-custom-pipeline]] — input/output rail implementation
+- [[guardrails-testing]] — adversarial harness that the plan must pass
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches on pipeline shape (basic / RAG / multi-agent), then on compliance scope and latency budget. Leaves reference the rule that picks the rail set, action policy, and framework slot.

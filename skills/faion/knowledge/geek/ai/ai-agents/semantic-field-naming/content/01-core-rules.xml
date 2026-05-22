@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="semantic-field-naming Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for semantic-field-naming. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="semantic-field-naming Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Seven testable rules for naming structured-output fields so the model recruits its pre-trained priors instead of guessing.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every field name must be specific, English, lower_snake_case, and encode unit/format/cardinality information where relevant. No generic placeholders like val, field1, output, result, or flag.</statement>
-      <rationale source="v1-source">Generic names force the model to guess what to put there, based only on context. Specific names recruit the model's pre-trained knowledge of what typically goes in an answer, age_years, or is_paid field.</rationale>
+  <section title="Name shape">
+    <rule id="r1-specific-snake" testable="true" depth="essential">
+      <statement>Every field name is English, lower_snake_case, and at least 2 tokens. Reject any field named `val`, `flag`, `output`, `result`, `data`, `info`, `field1`, or a single letter.</statement>
+      <rationale source="Instructor 2024-09 case: final_choice → answer raised benchmark accuracy from 4.5% to 95%.">Generic placeholders force the model to guess what to put there from context alone; specific names recruit pre-trained priors at zero token cost.</rationale>
+    </rule>
+    <rule id="r2-no-redundant-suffix" testable="true" depth="essential">
+      <statement>Never suffix field names with `_value`, `_data`, `_result`, or `_output` when the rest of the name already carries the meaning. `age_value` → `age_years`; `name_data` → `full_name`; `total_result` → `total_revenue_usd`.</statement>
+      <rationale source="https://docs.pydantic.dev/latest/concepts/json_schema/">Redundant suffixes spend tokens, dilute the prior, and add no information that the field type does not already convey.</rationale>
+    </rule>
+  </section>
+
+  <section title="Units, direction, format">
+    <rule id="r3-unit-in-name" testable="true" depth="essential">
+      <statement>Numeric fields encode the unit in the name: `age_years`, `monthly_spend_usd`, `weight_kg`, `days_since_last_login`, `confidence_0_to_1`. Currency fields prefer integer minor units (`total_cents`) over float majors (`total_usd`).</statement>
+      <rationale source="Pydantic + OpenAI structured outputs">Without the unit token in the name, the model picks an arbitrary unit (cents vs dollars, kg vs lb, 0-1 vs 0-100). Pinning the unit in the name eliminates a whole class of silent hallucinations.</rationale>
+    </rule>
+    <rule id="r4-bool-direction" testable="true" depth="essential">
+      <statement>Boolean fields start with `is_`, `has_`, `should_`, or `requires_`. `flag: bool` is forbidden; `is_returning_customer: bool` is mandatory. Avoid double-negatives (`is_not_disabled`).</statement>
+      <rationale source="Pydantic best-practice + OpenAPI tooling priors">Without a direction prefix, `True` is ambiguous (`flag=True` could mean enabled or flagged-as-bad). Direction prefixes are the dominant pattern in training data — the model has seen `is_paid` orders of magnitude more often than `paid_flag`.</rationale>
+    </rule>
+    <rule id="r5-enum-semantic-literals" testable="true" depth="essential">
+      <statement>Enum-typed strings use semantically-loaded literal vocabularies: `Literal["approve", "reject", "needs_more_info"]`, `Literal["low", "medium", "high", "critical"]`. Reject single-letter or numeric labels (`a|b|c`, `0|1|2`) and reject ambiguous codes (`OK|ERR|NOK`).</statement>
+      <rationale source="https://platform.openai.com/docs/guides/structured-outputs">Semantic literal values double as their own documentation; the model maps them to its pre-trained understanding of priority/severity/decision domains without needing a description block.</rationale>
+    </rule>
+  </section>
+
+  <section title="Format and cardinality">
+    <rule id="r6-format-in-string-name" testable="true" depth="essential">
+      <statement>String fields with format constraints encode the format in the name: `body_markdown`, `title_max_70_chars`, `slug_kebab`, `iso_published_date`, `email_address`, `e164_phone`. Reserve plain `name`, `text`, `value` only for free-form strings with no constraint.</statement>
+      <rationale source="Pydantic best practice + RFC nomenclature">The format suffix tells the model the parse target up front; otherwise the model emits a freeform string and downstream Pydantic validation has to reject + retry.</rationale>
+    </rule>
+    <rule id="r7-cardinality-singular-plural" testable="true" depth="essential">
+      <statement>Field names match the field's cardinality: scalar fields are singular (`order: Order`), list fields are plural (`orders: list[Order]`), dict-of fields encode the key (`order_by_id: dict[str, Order]`). Never use plural for a scalar (`items: Item`) or singular for a list (`order: list[Order]`).</statement>
+      <rationale source="Pydantic / Django ORM naming convention">The pluralisation prior is extremely strong in training data; mismatched cardinality nudges the model toward emitting the wrong shape (an array when a scalar was expected, or vice versa).</rationale>
     </rule>
   </section>
 </text>

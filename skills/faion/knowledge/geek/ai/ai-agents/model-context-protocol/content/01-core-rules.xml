@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="model-context-protocol Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for model-context-protocol. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="MCP Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Seven testable rules for shipping an MCP server that LLM clients can actually discover, call, and operate against.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Server surface">
+    <rule id="r1-health-probe" testable="true" depth="essential">
+      <statement>Every MCP server MUST expose a tool named `ping` (or `health`) returning `{"status":"ok","version":"<server.version>"}` so clients can verify availability before invoking domain tools.</statement>
+      <rationale source="anthropic-mcp-best-practices-2026">Without a probe, agents cannot distinguish "server down" from "tool returned empty" — both surface as a generic connection error on the next call.</rationale>
+    </rule>
+    <rule id="r2-unique-names" testable="true" depth="essential">
+      <statement>Tool names MUST be globally unique across all servers registered in the client (verify with `mcp-inspector list-tools --all`). Use a server-prefix scheme (`weather.get_current`, `db.run_query`) when collisions are likely.</statement>
+      <rationale source="claude-code-mcp-docs">Two servers exposing `search` causes non-deterministic dispatch — the client picks one and ignores the other without raising.</rationale>
+    </rule>
+    <rule id="r3-flat-schema" testable="true" depth="essential">
+      <statement>Tool `inputSchema` MUST be flat (no `oneOf`, `anyOf`, `$ref`, or nested polymorphism deeper than 2 levels). Use separate tools instead of polymorphic dispatch.</statement>
+      <rationale source="anthropic-tool-use-guidance">LLMs interpret polymorphic JSON Schema poorly; a flat schema with explicit `required` fields is what tool selection actually trains on.</rationale>
+    </rule>
+  </section>
+
+  <section title="Transport &amp; auth">
+    <rule id="r4-transport-choice" testable="true" depth="essential">
+      <statement>Pick transport by client topology: stdio when server runs co-located with the client (single process), Streamable HTTP when ≥2 clients or remote. SSE-only transport is deprecated post-2025-03-26 spec — do not author new servers on it.</statement>
+      <rationale source="mcp-spec-2026-07-28-rc">Streamable HTTP supersedes SSE because it works on commodity HTTP infra; stdio is still optimal for local single-process scenarios.</rationale>
+    </rule>
+    <rule id="r5-remote-oauth" testable="true" depth="essential">
+      <statement>Remote Streamable HTTP servers MUST act as OAuth 2.1 Resource Servers — advertise `/.well-known/oauth-protected-resource` and validate bearer tokens against the declared issuer. Servers without auth MUST NOT bind on `0.0.0.0`.</statement>
+      <rationale source="mcp-auth-spec-2025-06">Public remote MCP without auth is the canonical exfiltration vector since June 2025 spec; OAuth Resource Server is the standard posture.</rationale>
+    </rule>
+  </section>
+
+  <section title="Versioning &amp; errors">
+    <rule id="r6-version-pin" testable="true" depth="essential">
+      <statement>Embed `server_version` in every tool response payload (string, semver). Bump on every breaking change; keep N-1 parser registered for one rollback window.</statement>
+      <rationale source="schema-version-pinning-methodology">Without per-payload versioning, downstream agents silently corrupt state when a tool's response shape drifts.</rationale>
+    </rule>
+    <rule id="r7-error-envelope" testable="true" depth="essential">
+      <statement>Tool errors MUST be returned as `{"error":{"code":"<machine_code>","message":"<human>","retryable":<bool>}}` in the result text — never raise to the client transport layer. Reserve `retryable=true` for timeouts and 5xx-class upstream failures.</statement>
+      <rationale source="mcp-spec-error-handling">Base MCP spec only carries string errors at transport; a structured envelope inside the result lets agents branch on `retryable` without parsing prose.</rationale>
     </rule>
   </section>
 </text>

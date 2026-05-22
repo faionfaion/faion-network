@@ -1,32 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-quality-logging Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-quality-logging as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-quality-logging Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns with concrete symptom, root cause, and fix. Use as a diff checklist when reviewing settings changes.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mixing structlog.get_logger() and logging.getLogger() in the same module.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without ProcessorFormatter bridging them, half the logs from the module are unstructured plain text. The bridge requires explicit configuration. Pick one per module: use structlog everywhere for new code.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Setting Sentry traces_sample_rate=1.0 in production.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Full transaction tracing at 1.0 captures every request and can cost 10x the base Sentry bill on high-traffic services. Start at 0.01 and increase based on cost tolerance.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Sentry before_send filter that drops entire events to avoid PII.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Dropping events to avoid PII removes the error context entirely. Scrub specific fields (password, token) from the event dict instead of returning None.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
+  <section title="Antipatterns">
+    <antipattern id="fm-01-mixed-loggers" severity="high">
+      <description>Mixing structlog.get_logger() and logging.getLogger() in the same module without ProcessorFormatter bridging.</description>
+      <symptom>Log aggregator query language fails on half the lines — JSON parser errors in Datadog or Loki; production grep returns inconsistent fields.</symptom>
+      <root-cause>The stdlib logger emits plain text; structlog emits JSON. Without the ProcessorFormatter bridge they coexist but produce two distinct serialisations.</root-cause>
+      <fix>Pick one factory per module. For new code use `structlog.get_logger(__name__)` everywhere. For migration, wire stdlib loggers through `structlog.stdlib.ProcessorFormatter.wrap_for_formatter` and configure LOGGING handlers with that formatter.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-traces-100pct" severity="high">
+      <description>Setting `traces_sample_rate=1.0` (or profiles_sample_rate=1.0) in production.</description>
+      <symptom>Sentry monthly bill spikes 10x after first deploy; transaction quota exhausted; performance overhead from span instrumentation visible in p99.</symptom>
+      <root-cause>Sentry charges per transaction. 1.0 captures every request including health checks; on 1000 req/s that is 86.4M transactions/day.</root-cause>
+      <fix>Set traces_sample_rate=0.1 (10%) as starting point; reduce to 0.01 for high-traffic services. Use `traces_sampler` callable to exclude health checks and static assets explicitly.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-before-send-drops-event" severity="medium">
+      <description>Sentry `before_send` filter returns None to avoid PII, dropping the entire error event.</description>
+      <symptom>Sentry shows zero errors despite production incidents; alerts never fire; engineers debug in the dark.</symptom>
+      <root-cause>Returning None from before_send drops the event. Authors intend to scrub a field but accidentally suppress everything.</root-cause>
+      <fix>Mutate `event["request"]["data"]` and `event["request"]["headers"]` to remove PII keys, then `return event`. Never return None unless deliberately blocking an event class.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-silk-no-sample" severity="medium">
       <description>django-silk profiling every request in production at default settings.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>django-silk stores every request's SQL queries and metadata to the database by default. Without SILKY_INTERCEPT_PERCENT = 1 (1% sampling), it doubles the database write load and fills disk.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Logging DEBUG-level SQL queries in production (django.db.backends at DEBUG).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every ORM query generates a DEBUG log event. In a view issuing 10 queries to serve 1000 req/s, that is 10,000 log events/second — saturating log pipelines and causing log drop.</repair>
-    </failure-mode>
+      <symptom>Database write volume doubles after silk deploy; disk fills within days; primary database CPU rises 30%+.</symptom>
+      <root-cause>Silk persists every captured SQL query and request metadata to the configured database. Default `SILKY_INTERCEPT_PERCENT` is 100.</root-cause>
+      <fix>Set `SILKY_INTERCEPT_PERCENT = 1` (1% sampling) and `SILKY_AUTHENTICATION = True`. For high-traffic services, restrict to staging only.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-debug-sql-prod" severity="high">
+      <description>Logging DEBUG-level SQL queries in production (`django.db.backends` set to DEBUG).</description>
+      <symptom>Log pipeline saturates; log shipper drops events; aggregator ingest cost rises 5-10x; ORM-heavy endpoints become I/O-bound on log writes.</symptom>
+      <root-cause>Every ORM query emits a DEBUG event. A view issuing 10 queries on 1000 req/s emits 10,000 events/sec.</root-cause>
+      <fix>Set `django.db.backends` to WARNING in production LOGGING; only enable DEBUG temporarily on a single host when debugging a slow query, and revert immediately.</fix>
+    </antipattern>
   </section>
 </text>

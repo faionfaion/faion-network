@@ -1,11 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="claude-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for claude-api. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Claude API Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>9 testable rules every direct-SDK Claude integration must satisfy. The validator enforces them mechanically; product prose cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="explicit-max-tokens" testable="true" depth="essential">
+      <statement>Every messages.create call passes max_tokens explicitly: 512 for Haiku classification, 4096 for Sonnet generation, 8192+ for Opus extended reasoning.</statement>
+      <rationale source="platform.claude.com/docs Messages API 2026">Default behaviour is model-dependent and changes between SDK versions; implicit defaults cause truncated outputs in production.</rationale>
     </rule>
+
+    <rule id="enforce-max-turns" testable="true" depth="essential">
+      <statement>Any tool-use loop wraps the messages.create call in a for-range(MAX_TURNS) with default MAX_TURNS=10. On exhaustion the code raises RuntimeError carrying turn count and the conversation array.</statement>
+      <rationale source="platform.claude.com/docs tool-use loop guidance">An agent without the cap loops indefinitely when Claude never returns stop_reason=end_turn — at Sonnet pricing a 1000-turn runaway costs ~$5 before hitting tier rate limits.</rationale>
+    </rule>
+
+    <rule id="forced-tool-for-structured-output" testable="true" depth="essential">
+      <statement>For JSON-shaped output use tool_choice={"type":"tool","name":"output_schema"} with a single output tool whose input_schema is the desired shape. Do not prompt for JSON in the user message.</statement>
+      <rationale source="Anthropic structured-output guidance 2026">Forced tool use is the only contract-level guarantee of schema conformance across model updates; prompted JSON breaks silently after model upgrades.</rationale>
+    </rule>
+
+    <rule id="cache-longest-stable-prefix" testable="true" depth="essential">
+      <statement>cache_control:{"type":"ephemeral"} attaches to the longest stable prefix of the system+content array. All dynamic content (user turn, retrieved snippets, timestamps) appears AFTER the cached block.</statement>
+      <rationale source="platform.claude.com/docs prompt caching">Cache matching is prefix-based — any change before the cached block invalidates the cache and forces a cache-write (1.25× input rate for 5-min TTL).</rationale>
+    </rule>
+
+    <rule id="cacheable-block-minimum-size" testable="true" depth="essential">
+      <statement>A block with cache_control set must be ≥1024 tokens (Sonnet/Opus) or ≥2048 tokens (Haiku family). Smaller blocks are silently not cached.</statement>
+      <rationale source="platform.claude.com/docs prompt caching minimums 2026">Below the threshold the API accepts the cache_control header but does not cache; usage.cache_read_input_tokens stays 0 across all subsequent calls.</rationale>
+    </rule>
+
+    <rule id="extended-thinking-payoff-gate" testable="true" depth="essential">
+      <statement>Extended Thinking (thinking={"type":"enabled","budget_tokens":N}) is enabled only when expected output is ≥200 tokens AND task is in {math, code-debugging, contract-analysis, multi-step-planning, research-synthesis}. Minimum budget=1024.</statement>
+      <rationale source="platform.claude.com/docs extended thinking; Opus 4.7 release notes">Thinking tokens bill at output rate; the 1024-token minimum makes ET economically wasteful for classification, extraction, or short answers regardless of complexity claim.</rationale>
+    </rule>
+
+    <rule id="no-hardcoded-api-key" testable="true" depth="essential">
+      <statement>ANTHROPIC_API_KEY is loaded from environment or a secrets manager (1Password, AWS Secrets Manager, Vault). Source code, repo, and container images contain no literal key string.</statement>
+      <rationale source="OWASP secrets management; Anthropic key-rotation guidance">Hardcoded keys leak via git history, container layers, CI logs, and crash dumps; once leaked they bill against the owning account until rotated.</rationale>
+    </rule>
+
+    <rule id="exponential-backoff-on-429-5xx" testable="true" depth="essential">
+      <statement>Every API call is wrapped in retry-with-jitter: wait = min(2**attempt + random.uniform(0,1), 60). Max 5 attempts. Retry on RateLimitError, APIError where status_code &gt;= 500, and APIConnectionError. Do not retry on 4xx other than 429.</statement>
+      <rationale source="Anthropic SDK retry guidance; tier rate-limit docs">Tier rate limits (requests/min, tokens/min) trip quickly under parallel load; crash-on-first-429 wastes the in-flight conversation state.</rationale>
+    </rule>
+
+    <rule id="batch-never-for-interactive" testable="true" depth="essential">
+      <statement>Batch API (client.beta.messages.batches.create) is used only when no human is waiting on the result. Interactive chat, agent loops, and any UI-bound flow must use messages.create (sync or streaming).</statement>
+      <rationale source="platform.claude.com/docs Batch API; Anthropic Pricing 2026 batch entry">Batch carries a 24-hour SLA and 50% discount; routing user-facing calls through it produces "the model is still thinking" stalls measured in hours, not seconds.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

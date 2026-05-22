@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Guardrails Concepts Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Pipeline shape → rail set → framework picker.</summary>
+
+  <decision-tree>
+    <root-question id="q-shape">What is the pipeline shape?</root-question>
+    <branch when="shape == basic">
+      <question id="q-latency-basic">Is SLO p99 &lt; 200 ms?</question>
+      <branch when="latency_lt_200ms == true">
+        <conclusion ref="tiered-latency" verdict="regex+classifier only; drop llm-judge"/>
+      </branch>
+      <branch when="latency_lt_200ms == false">
+        <conclusion ref="rail-types-mapped" verdict="input+output rails; llm-judge optional for borderline"/>
+      </branch>
+    </branch>
+    <branch when="shape == rag">
+      <question id="q-compliance-rag">Compliance scope HIPAA / GDPR / SOC2?</question>
+      <branch when="compliance != none">
+        <conclusion ref="defense-in-depth" verdict="input+retrieval+output+pii-mask+isolation"/>
+      </branch>
+      <branch when="compliance == none">
+        <conclusion ref="rail-types-mapped" verdict="input+retrieval+output"/>
+      </branch>
+    </branch>
+    <branch when="shape == multi-agent">
+      <conclusion ref="rail-types-mapped" verdict="input+execution(per-agent)+output(over-trace)"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="rag + HIPAA → defense-in-depth → 4 rails picked">
+    <code lang="text"><![CDATA[
+shape=rag → q-compliance-rag → compliance=HIPAA → defense-in-depth
+  → rails: pii-mask(input), chunk-injection-scan(retrieval), schema-validate(output), advice-block(output)
+]]></code>
+  </example>
+</text>

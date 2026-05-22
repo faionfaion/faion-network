@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="semantic-field-naming Worked Examples" version="1.1.0" est_tokens="800" depth="medium">
+  <summary>Five end-to-end rename cases drawn from production benchmarks and real pipelines.</summary>
+
+  <example id="ex-01-instructor-90pt" produces="rubric">
+    <title>Instructor 2024-09: 90-point accuracy swing from one rename</title>
+    <before><![CDATA[
+class Answer(BaseModel):
+    final_choice: Literal["a", "b", "c", "d"]
+]]></before>
+    <after><![CDATA[
+class Answer(BaseModel):
+    answer: Literal["a", "b", "c", "d"]
+]]></after>
+    <delta>Multiple-choice benchmark accuracy: 4.5% → 95%. Same prompt, same model, same options.</delta>
+    <reason>The token `answer` has orders of magnitude more occurrences than `final_choice` in pre-training corpora. The model's prior on what follows `"answer":` is enormous.</reason>
+  </example>
+
+  <example id="ex-02-currency-confusion" produces="rubric">
+    <title>Currency unit drift</title>
+    <before><![CDATA[
+class Invoice(BaseModel):
+    total: float  # is this $19.99 or 1999?
+]]></before>
+    <after><![CDATA[
+class Invoice(BaseModel):
+    total_cents: int
+]]></after>
+    <delta>Unit-confusion errors dropped from 8% to &lt;0.5%.</delta>
+    <reason>Float dollars led the model to alternately emit `19.99` and `1999`. Pinning `total_cents: int` removes the float-vs-int ambiguity AND the cents-vs-dollars one in one move.</reason>
+  </example>
+
+  <example id="ex-03-boolean-direction" produces="rubric">
+    <title>Boolean direction</title>
+    <before><![CDATA[
+class Order(BaseModel):
+    flag: bool
+    status: str
+]]></before>
+    <after><![CDATA[
+class Order(BaseModel):
+    is_paid: bool
+    is_shipped: bool
+    payment_status: Literal["pending", "paid", "refunded"]
+]]></after>
+    <delta>Downstream code stopped having to consult the description to know what True meant.</delta>
+    <reason>`flag` requires the reader (and the model) to remember which direction True points. `is_paid` is self-documenting; True/False map directly to the verb.</reason>
+  </example>
+
+  <example id="ex-04-neromedia-pipeline" produces="rubric">
+    <title>neromedia story pipeline</title>
+    <before><![CDATA[
+class Story(BaseModel):
+    text: str
+    output: str
+    score: float
+]]></before>
+    <after><![CDATA[
+class Story(BaseModel):
+    body_markdown: str
+    one_line_hook: str
+    relevance_score_0_to_1: float
+]]></after>
+    <delta>Model stopped putting Markdown in the wrong field; `relevance_score` stopped drifting outside [0,1].</delta>
+    <reason>Each new name encodes a constraint the previous name did not: format (`_markdown`), purpose (`one_line_hook`), range (`_0_to_1`). The model's hallucinations dropped because the prompt now constrains the shape.</reason>
+  </example>
+
+  <example id="ex-05-enum-semantics" produces="rubric">
+    <title>Triage enum semantics</title>
+    <before><![CDATA[
+class Triage(BaseModel):
+    label: Literal["a", "b", "c"]
+]]></before>
+    <after><![CDATA[
+class Triage(BaseModel):
+    priority: Literal["low", "medium", "high", "critical"]
+]]></after>
+    <delta>Inter-run consistency on triage rose from 67% to 94%.</delta>
+    <reason>The cryptic `a|b|c` forced the model to consult the prompt context every time; `low|medium|high|critical` taps a universally-trained domain vocabulary.</reason>
+  </example>
+</text>

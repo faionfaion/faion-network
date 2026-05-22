@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="claude-advanced-features Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for claude-advanced-features as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Claude Advanced Features Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed when wiring Extended Thinking, Prompt Caching, Batch API, and Computer Use. Each entry has a symptom (`description`), root cause (`reason`), and corrective fix (`note`).</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Extended Thinking with budget_tokens=0 disables thinking silently.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A budget of 0 disables thinking silently but the API still processes the thinking parameter, causing confusion. Always set at least 1024 or use the explicit disable form.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Stripping thinking blocks from multi-turn history when continuing a thinking conversation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Thinking blocks must be preserved in multi-turn history. Stripping them breaks context and produces lower-quality responses.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Prompt Cache write cost is 25% higher than regular input tokens.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>On first call you pay more; savings start from second call. Expect to pay more overall if cache hit rate is below ~70%.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Batch API has no webhook; only poll-based status check.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Build your own polling loop or use a cron job. Batch API does not notify you of completion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Computer Use generates OS-level commands (click, type, key) — executing them without sandboxing is a critical security risk.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Never run Computer Use actions on production systems. Always sandbox and implement human oversight.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Batch API errored results do not retry automatically.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>You must detect result.result.type == "errored" and resubmit failed items explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Extended Thinking outputs can include model reasoning about its own limitations — exposing thinking blocks to end users undermines trust.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Keep thinking blocks internal to the agent. Use only the answer block for user-facing output.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Extended Thinking answer block is truncated mid-sentence; `stop_reason="max_tokens"` but no error is raised.</description>
+      <reason>`max_tokens` was set equal to or near `budget_tokens`; thinking tokens consumed the budget before the answer block started.</reason>
+      <note>Fix: enforce `max_tokens >= budget_tokens + 4096` in the wrapper (`templates/think-deeply.py`). Add an assertion at call time.</note>
+    </antipattern>
+    <antipattern>
+      <description>Prompt cache hit ratio sits at ~0% in production logs while the system prompt looks identical.</description>
+      <reason>A dynamic value (timestamp, request id, user name, JSON re-serialised with shifting key order) lives before the cached block; even one byte of drift busts the prefix match.</reason>
+      <note>Fix: move all dynamic values into the user turn or after the cached block. Lock JSON serialisation key order, or feed a pre-built string instead of an object.</note>
+    </antipattern>
+    <antipattern>
+      <description>Batch API pipeline appears stuck for hours; client side reports "no results" while Anthropic console shows the batch as `ended`.</description>
+      <reason>Caller iterates `client.messages.batches.results(batch_id)` once and discards `result.type == "errored"` items as failures, not realising they need explicit resubmission.</reason>
+      <note>Fix: collect errored items into a re-submit queue, requeue with the same `custom_id`, and only mark the job complete when both succeeded + errored counts equal the original submission size.</note>
+    </antipattern>
+    <antipattern>
+      <description>Computer Use agent loops on an unfamiliar dialog, repeating the same click until quota is exhausted.</description>
+      <reason>No max-iteration cap on the action loop; no human-review escalation when the model produced the same action N times in a row on the same screenshot.</reason>
+      <note>Fix: bound the loop (`MAX_ITER=20`), detect duplicate-action / duplicate-screenshot cycles, escalate to a human reviewer instead of auto-retrying.</note>
+    </antipattern>
+    <antipattern>
+      <description>Streaming Extended Thinking emits jumbled text; thinking content appears intermixed with answer content.</description>
+      <reason>Consumer is parsing only `text_delta` events from SSE; `thinking_delta` events are being interleaved into the same buffer.</reason>
+      <note>Fix: parse `event.delta.type` and route `thinking_delta` to a private trace buffer (never shown to end users) and `text_delta` to the user-facing stream.</note>
+    </antipattern>
   </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

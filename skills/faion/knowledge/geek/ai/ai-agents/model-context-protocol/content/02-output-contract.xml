@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="model-context-protocol Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="MCP Server Manifest Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the MCP server manifest the methodology produces — server identity, tool list, transport, auth, registration block.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft 2020-12)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/mcp-server-manifest.v1.json",
+  "title": "MCPServerManifest",
+  "type": "object",
+  "required": ["server_name", "server_version", "transport", "tools", "registration"],
+  "properties": {
+    "server_name": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,63}$"},
+    "server_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "transport": {"type": "string", "enum": ["stdio", "streamable-http"]},
+    "auth": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {"type": "string", "enum": ["none", "bearer", "oauth2.1"]},
+        "issuer": {"type": "string", "format": "uri"},
+        "well_known": {"type": "string", "format": "uri-reference"}
+      },
+      "allOf": [
+        {"if": {"properties": {"mode": {"const": "oauth2.1"}}}, "then": {"required": ["issuer", "well_known"]}}
+      ]
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "inputSchema"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.]{1,63}$"},
+          "description": {"type": "string", "minLength": 16, "maxLength": 512},
+          "inputSchema": {"type": "object"}
+        }
+      },
+      "contains": {"properties": {"name": {"enum": ["ping", "health"]}}}
+    },
+    "registration": {
+      "type": "object",
+      "required": ["claude_code_settings"],
+      "properties": {"claude_code_settings": {"type": "object"}}
+    }
+  },
+  "if": {"properties": {"transport": {"const": "streamable-http"}}},
+  "then": {"properties": {"auth": {"properties": {"mode": {"not": {"const": "none"}}}}}}
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "server_name": "faion-weather",
+  "server_version": "1.2.0",
+  "transport": "stdio",
+  "auth": {"mode": "none"},
+  "tools": [
+    {"name": "ping", "description": "Health probe; returns server status and version", "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "weather.get_current", "description": "Get current weather for a city by name", "inputSchema": {"type": "object", "required": ["city"], "properties": {"city": {"type": "string", "description": "City name in English, e.g. 'Lisbon'"}}}}
+  ],
+  "registration": {
+    "claude_code_settings": {"mcpServers": {"faion-weather": {"command": "python", "args": ["/srv/mcp/weather/server.py"]}}}
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example (fails contract)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "server_name": "WeatherV2",
+  "server_version": "v1",
+  "transport": "sse",
+  "auth": {"mode": "none"},
+  "tools": [
+    {"name": "do", "description": "do stuff", "inputSchema": {"oneOf": [{"type": "string"}, {"type": "object"}]}}
+  ]
+}
+]]></code>
+      <note>Upper-case server_name (pattern fail), non-semver version, deprecated `sse` transport, no health probe, vague tool name, polymorphic schema, missing `registration` block, remote-style transport implied but `auth.mode=none`.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Server name kebab/snake-cased and unique within target client config.</item>
+      <item>At least one tool is `ping` or `health` with empty inputSchema.</item>
+      <item>Every tool description ≥16 chars and action-oriented ("Get…", "Run…", "List…").</item>
+      <item>No `oneOf` / `anyOf` / `$ref` in any inputSchema.</item>
+      <item>If transport is `streamable-http`, `auth.mode` is `bearer` or `oauth2.1` (never `none`).</item>
+      <item>Registration block is paste-ready for Claude Code `settings.json`.</item>
     </list>
   </section>
 </text>

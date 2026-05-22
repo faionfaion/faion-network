@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="claude-advanced-features Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for claude-advanced-features. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Claude Advanced Features Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>7 testable rules covering Extended Thinking, Computer Use, Prompt Caching and Batch API. Each rule has an imperative statement, a rationale anchored to the Anthropic API contract, and a source citation.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>For any Extended Thinking call, set `max_tokens >= budget_tokens + 4096` so the answer block cannot be truncated by the thinking budget.</statement>
+      <rationale source="docs.anthropic.com/en/docs/build-with-claude/extended-thinking">Thinking tokens count against `max_tokens`. If `max_tokens == budget_tokens` the answer block is silently cut mid-sentence with `stop_reason="max_tokens"`.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Never set `temperature` together with `thinking.type="enabled"`; never stream Extended Thinking unless the consumer parses `thinking_delta` events distinctly from `text_delta`.</statement>
+      <rationale source="docs.anthropic.com/en/api/messages">Extended Thinking has its own sampling semantics. The API rejects the combination with `temperature`; the SSE delta type differs from regular text, so a text-only stream parser produces garbled output.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Place the most stable content first in `system`, mark it `cache_control:{"type":"ephemeral"}`, and put all dynamic content (timestamps, user ids, request ids) strictly after the cached block.</statement>
+      <rationale source="platform.claude.com/docs/en/build-with-claude/prompt-caching">Prompt cache is a byte-identical prefix match. Any drift before the cached block invalidates the cache and you pay full input cost plus a 25% write surcharge.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Log `usage.cache_read_input_tokens` on every cached call and assert hit ratio > 0.70 over any rolling 100-call window.</statement>
+      <rationale source="Anthropic prompt-caching production guide 2026">Cache misses are silent — the API returns 200 OK with full-priced tokens. Below ~70% hit ratio the write surcharge erodes the 90%-read savings.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>For Batch API submissions use `custom_id` equal to your database primary key or job id, group requests by identical `model` and `max_tokens`, and poll `client.messages.batches.retrieve` at intervals ≥60s until `processing_status == "ended"`.</statement>
+      <rationale source="docs.anthropic.com/en/api/messages-batches">Results return out of order, so `custom_id` is the only join key. Tight polling wastes quota and adds zero speedup since batches take minutes to hours.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Iterate Batch API results and treat any item with `result.type == "errored"` as a re-submit candidate; never assume success from a 200 on the batch endpoint.</statement>
+      <rationale source="docs.anthropic.com/en/api/messages-batches">Failed sub-requests are returned in the results stream with `type="errored"`. They are not retried automatically; the caller must detect and resubmit.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Run Computer Use only inside a sandboxed VM with no host credentials, bound by per-action timeout and a max-iteration count, and route any unrecognised UI state to human review instead of auto-retry.</statement>
+      <rationale source="anthropic.com/research/claude-computer-use">Computer Use issues OS-level click/type/key actions. Without sandboxing and bounded iteration the agent can corrupt host state on an unfamiliar UI; auto-retry on hallucinated actions amplifies the damage.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

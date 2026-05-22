@@ -1,22 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-quality-logging Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-quality-logging Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>The methodology produces a Markdown audit report. The frontmatter of that report must validate against the JSON Schema below.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <reference path="templates/audit-report.md">Markdown skeleton matching this contract.</reference>
+  <reference path="scripts/validate-django-quality-logging.py">Validator script — exit 0 on pass, 1 on violation list.</reference>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (frontmatter of the audit report)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DjangoLoggingAuditReport",
+  "type": "object",
+  "required": [
+    "methodology", "target_repo", "django_version", "python_version",
+    "structlog_status", "sentry_status", "check_deploy_verdict", "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "methodology": { "const": "django-quality-logging" },
+    "target_repo": { "type": "string", "minLength": 1 },
+    "django_version": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+    "python_version": { "type": "string", "pattern": "^3\\.(11|12|13|14)(\\.\\d+)?$" },
+    "structlog_status": {
+      "type": "object",
+      "required": ["installed", "middleware_registered", "json_renderer", "issues"],
+      "properties": {
+        "installed": { "type": "boolean" },
+        "middleware_registered": { "type": "boolean" },
+        "json_renderer": { "type": "boolean" },
+        "issues": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sentry_status": {
+      "type": "object",
+      "required": ["dsn_present", "traces_sample_rate", "send_default_pii", "before_send_present"],
+      "properties": {
+        "dsn_present": { "type": "boolean" },
+        "traces_sample_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "send_default_pii": { "type": "boolean" },
+        "before_send_present": { "type": "boolean" }
+      }
+    },
+    "check_deploy_verdict": { "enum": ["pass", "warning", "error"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "severity", "file", "line", "fix"],
+        "properties": {
+          "rule_id": { "enum": ["r1-structlog","r2-sentry","r3-llm-context","r4-no-print","r5-no-debug-sql"] },
+          "severity": { "enum": ["error","warning","info"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 0 },
+          "fix": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Examples">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+---
+methodology: django-quality-logging
+target_repo: faionfaion/faion-net
+django_version: "5.2"
+python_version: "3.12"
+structlog_status:
+  installed: true
+  middleware_registered: true
+  json_renderer: true
+  issues: []
+sentry_status:
+  dsn_present: true
+  traces_sample_rate: 0.1
+  send_default_pii: false
+  before_send_present: true
+check_deploy_verdict: pass
+findings: []
+---
+      ]]></code>
+      <note>Valid: every required key present, traces_sample_rate within [0,1], no findings.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+---
+methodology: django-quality-logging
+target_repo: faion-net
+django_version: "5.2"
+python_version: "3.12"
+structlog_status:
+  installed: true
+sentry_status:
+  dsn_present: false
+  traces_sample_rate: 1.0
+check_deploy_verdict: error
+findings:
+  - severity: error
+    fix: install structlog
+---
+      ]]></code>
+      <note>Invalid: structlog_status missing middleware_registered/json_renderer/issues; sentry traces_sample_rate=1.0 violates rule r2-sentry; finding missing rule_id/file/line.</note>
+    </example>
   </section>
 </text>

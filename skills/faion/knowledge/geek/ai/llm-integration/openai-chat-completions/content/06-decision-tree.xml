@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="OpenAI Chat Completions Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-strict-schema">Does the call require strict-schema JSON compliance (every field present and typed)?</root-question>
+    <branch when="schema_strict == true">
+      <conclusion ref="r2-temperature-discipline">Switch to `client.beta.chat.completions.parse` with a Pydantic model — see [[openai-function-calling]]. JSON Mode does not enforce field presence.</conclusion>
+    </branch>
+    <branch when="schema_strict == false">
+      <question id="q-task-class">Is the task an inner-loop extraction/classification (latency-sensitive, cost-sensitive)?</question>
+      <branch when="task_class == 'inner-loop'">
+        <question id="q-parallel-fanout">Is parallel fan-out &gt; 2 calls?</question>
+        <branch when="parallel_fanout &gt; 2">
+          <conclusion ref="r4-async-throttle">Use `AsyncOpenAI` + `asyncio.Semaphore`. Model = gpt-4o-mini. Temperature ≤ 0.2.</conclusion>
+        </branch>
+        <branch when="parallel_fanout &lt;= 2">
+          <conclusion ref="r3-mini-first-routing">Sync `OpenAI` client. Model = gpt-4o-mini. Temperature ≤ 0.2.</conclusion>
+        </branch>
+      </branch>
+      <branch when="task_class == 'reasoning'">
+        <question id="q-latency-budget">Is latency budget &gt; 5s acceptable?</question>
+        <branch when="latency_budget_s &gt;= 5">
+          <conclusion ref="r3-mini-first-routing">Use o3-mini or o1 for chain-of-thought; skip temperature param (o-series ignores it).</conclusion>
+        </branch>
+        <branch when="latency_budget_s &lt; 5">
+          <conclusion ref="r3-mini-first-routing">Use gpt-4o with a small CoT prefix — o-series is too slow for sub-5s targets.</conclusion>
+        </branch>
+      </branch>
+      <branch when="task_class == 'creative'">
+        <conclusion ref="r2-temperature-discipline">Use gpt-4o, temperature 0.7–1.0, no `response_format`. Set `seed` only if you need reproducibility.</conclusion>
+      </branch>
+    </branch>
+    <example trace="batch-extraction-50-calls">
+      <p>50 product descriptions to extract title+price → schema_strict=false, task_class=inner-loop, parallel_fanout=50 → async + mini + semaphore(10). Conclusion r4-async-throttle.</p>
+    </example>
+  </decision-tree>
+</text>

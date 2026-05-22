@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-type-hints Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-type-hints. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Python Type Hints Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules covering union syntax, boundary annotation, ignore-comment policy, structural typing, payload-vs-body type choice, and incremental adoption.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="pep604-only" testable="true" depth="essential">
+      <statement>Use PEP 604 unions (`X | None`, `int | str`) and built-in generics (`list[T]`, `dict[K, V]`) exclusively in new code. Ban `Optional`, `List`, `Dict`, `Tuple` imports from `typing` via ruff rule UP007 (`pyupgrade`).</statement>
+      <rationale source="PEP 604; ruff UP007 docs">Mixing `Optional[X]` and `X | None` in one repo triggers linter warnings and degrades readability. PEP 604 syntax is shorter and Python 3.10+ runtime-supported. Pick one and enforce it project-wide via auto-fix.</rationale>
     </rule>
+
+    <rule id="annotate-boundary" testable="true" depth="essential">
+      <statement>Annotate boundary signatures first: HTTP handlers, queue consumers, DB models, library public exports. Internal helpers get arg + return annotations only; locals only when mypy complains. Type the boundary before the body.</statement>
+      <rationale source="Internal — gradual-typing rollouts Q4 2025">Boundaries are where bugs cross module ownership lines; that's where types pay off most. Annotating every local variable bloats diff without proportional bug-catch.</rationale>
+    </rule>
+
+    <rule id="no-bare-ignore" testable="true" depth="essential">
+      <statement>Never write `# type: ignore` without a specific error code. Use `# type: ignore[attr-defined]` / `[arg-type]` / `[return-value]`. Enable `warn_unused_ignores = true` so stale ignores fail CI.</statement>
+      <rationale source="mypy docs — error codes">Bare ignores mask future bugs silently. Specific codes document the reason and allow CI to surface ignores that no longer apply once the upstream issue is fixed.</rationale>
+    </rule>
+
+    <rule id="protocol-over-abc" testable="true" depth="essential">
+      <statement>For cross-package contracts use `typing.Protocol`. Use `ABC` only when you control all implementers AND need shared concrete methods. Add `@runtime_checkable` only when actually calling `isinstance(x, Proto)` at runtime.</statement>
+      <rationale source="PEP 544; typing.Protocol docs">Protocol avoids ABC inheritance coupling — third-party types satisfy a Protocol structurally without inheriting from your package. `runtime_checkable` is opt-in because it makes `isinstance` walk the MRO, which is slow on hot paths.</rationale>
+    </rule>
+
+    <rule id="typeddict-vs-pydantic" testable="true" depth="essential">
+      <statement>`TypedDict` for cache payloads, queue messages, and internal dicts crossing module boundaries. `Pydantic` (v2) for HTTP request/response bodies and external-input validation. Never define both `TypedDict` and `Pydantic` for the same data shape — pick one per shape and use everywhere.</statement>
+      <rationale source="Pydantic v2 docs; TypedDict — PEP 589">TypedDict is zero-runtime-cost typing for already-validated data. Pydantic adds validation + serialization but costs CPU on every instantiation. Maintaining parallel definitions for the same shape doubles the maintenance and the two drift apart.</rationale>
+    </rule>
+
+    <rule id="no-strict-on-day-1" testable="true" depth="essential">
+      <statement>Never run `mypy --strict` repo-wide on an untyped codebase. Adopt file-by-file: enable strict on touched files only via `mypy --strict $(git diff --name-only --diff-filter=AM main -- '*.py')`. Fix one error class per pass (no-untyped-def → var-annotated → arg-type).</statement>
+      <rationale source="Internal — observed legacy-repo migrations">Strict on day 1 produces 1000+ errors and freezes adoption. Incremental gating lets the team make continuous progress while never regressing typed files.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

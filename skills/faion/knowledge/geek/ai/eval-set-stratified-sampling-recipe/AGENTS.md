@@ -4,77 +4,95 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "8fc752ad8a8fdb24"
-summary: Eval Set Stratified Sampling Recipe delivers a concrete, testable methodology that turns the recurring task of 'Daily eval-set drift check' into an auditable artefact, addressing the gap: Daily drift checks need a concrete sampling recipe (per-cohort, per-tool, per-intent) so the
-tags: [ai, geek, runbook, methodology]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a stratified sampling recipe (per-cohort × per-tool × per-intent quotas) for daily LLM eval-set drift checks so the slice is representative without paying full-eval cost.
+content_id: "eval-set-strat-1a2b"
+complexity: medium
+produces: spec
+est_tokens: 3400
+tags: [eval, sampling, drift, stratification, ai-eval]
 ---
 # Eval Set Stratified Sampling Recipe
 
 ## Summary
 
-**One-sentence:** Eval Set Stratified Sampling Recipe delivers a concrete, testable methodology that turns the recurring task of 'Daily eval-set drift check' into an auditable artefact, addressing the gap: Daily drift checks need a concrete sampling recipe (per-cohort, per-tool, per-intent) so the slice is representative without being expensive. Current eval-* docs cover metrics but not sampling design.
+**One-sentence:** Produces a stratified sampling recipe (per-cohort × per-tool × per-intent quotas) for daily LLM eval-set drift checks so the slice is representative without paying full-eval cost.
 
-**One-paragraph:** Daily drift checks need a concrete sampling recipe (per-cohort, per-tool, per-intent) so the slice is representative without being expensive. Current eval-* docs cover metrics but not sampling design. Eval Set Stratified Sampling Recipe closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Daily eval-set drift check' (p7-llm-agent-developer, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Daily drift checks cannot run the full eval set — too slow, too expensive. A naive random subsample misses tails (low-volume intents, new cohorts, rare tools). This methodology produces a written sampling recipe: declared strata (cohort × tool × intent × difficulty), per-stratum quota (proportional-with-floor, never raw-proportional), seed-locked sampler, fixed daily N, and a drift comparator that triggers re-sample only when the prod traffic distribution shifts >10%. Output is a `sampling-recipe.json` that the eval harness reads each morning.
+
+**Ефективно для:** daily eval-suite triage, p7-llm-agent-developer drift monitoring, ML-ops on-call who needs a fixed-cost slice that still covers the long tail, teams whose eval bill 10x'd after they added cohorts.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Daily eval-set drift check' (role: p7-llm-agent-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Production LLM workload has ≥3 named cohorts, tools, or intents.
+- A full eval set ≥500 cases exists and is too expensive to run daily.
+- Traffic distribution per stratum is known (analytics or trace logs).
+- A daily slice budget (cases-per-day or $/day) is fixed.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Full eval set ≤500 cases — run it whole, sampling adds noise without saving money.
+- No traffic distribution data — fix observability before designing strata.
+- Single cohort/intent — random subsample is equivalent, no stratification needed.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Eval set manifest | JSONL with `cohort`, `tool`, `intent`, `difficulty` fields | eval repo |
+| Production traffic distribution | CSV `stratum,count_30d,share_pct` | analytics warehouse |
+| Daily slice budget | int (cases/day) or float ($/day with $/case rate) | finops / on-call lead |
+| Prior recipe (if exists) | `sampling-recipe.json` | eval repo `eval/` dir |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `[[llm-drift-daily-triage]]` | Consumer of the daily slice; recipe must match its cadence. |
+| `geek/ai/llm-integration/AGENTS.md` | Parent group vocabulary. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: proportional-with-floor, seed lock, drift trigger, stratum max-share cap, tail-floor 5 cases, recipe versioning | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for `sampling-recipe.json` + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: head-only sample, no floor, unchanged recipe under drift, no seed | ~600 |
+| `content/04-procedure.xml` | recommended | 6 steps: enumerate strata → fetch traffic → set N → apply proportional+floor → seed → diff vs prior | ~700 |
+| `content/05-examples.xml` | recommended | One full worked recipe for a 4-cohort × 3-tool agent | ~600 |
+| `content/06-decision-tree.xml` | essential | Apply-or-skip + recipe-shape branches | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `eval_set_stratified_sampling_recipe_template_fill` | haiku | Template fill, no judgment |
-| `eval_set_stratified_sampling_recipe_evidence_check` | sonnet | Bounded comparison + judgment |
-| `eval_set_stratified_sampling_recipe_synthesis` | opus | Cross-input synthesis + final write-up |
+| Enumerate strata from manifest | haiku | Mechanical group-by. |
+| Compute per-stratum quotas | sonnet | Arithmetic + floor/cap judgment. |
+| Diff vs prior recipe + decide refresh | sonnet | Bounded comparison. |
+| Recipe rationale write-up | opus | Synthesis for human reviewer. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/sampling-recipe.schema.json` | JSON Schema for the recipe artefact. |
+| `templates/sampling-recipe.example.json` | Reference filled recipe for a 4×3×2 grid. |
+| `templates/strata-quota.py` | Proportional-with-floor quota calculator. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-eval-set-stratified-sampling-recipe.py` | Validate a recipe JSON against the schema + rule checks. | After recipe write, before eval harness consumes. |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `p7-llm-agent-developer/Daily eval-set drift check`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/ai/llm-integration/`
+- `[[llm-drift-daily-triage]]` — downstream consumer
+- `[[judge-calibration-protocol]]` — orthogonal eval-quality lever
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters: eval-set size ≥500, multi-stratum, traffic data available, then chooses between fresh-recipe or carry-forward branches based on traffic drift vs prior recipe.

@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="claude-api Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Claude API Integration Record Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the integration-record artefact the methodology emits. Describes which API features the integration code uses so an auditor / cost-tracker can replay the spec.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/claude-api-integration.json",
+  "type": "object",
+  "required": ["artefact_id", "model", "max_tokens", "shape", "retry", "caching", "tooling", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":   {"type": "string", "pattern": "^cai-[a-z0-9-]{6,}$"},
+    "model":         {"enum": ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-7"]},
+    "max_tokens":    {"type": "integer", "minimum": 1, "maximum": 32000},
+    "shape":         {"enum": ["sync", "streaming", "tool-loop", "batch"]},
+    "max_turns":     {"type": "integer", "minimum": 1, "maximum": 50},
+    "retry": {
+      "type": "object",
+      "required": ["enabled", "max_attempts", "strategy"],
+      "properties": {
+        "enabled":      {"type": "boolean"},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+        "strategy":     {"enum": ["exponential-jitter", "linear", "none"]}
+      }
+    },
+    "caching": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled":         {"type": "boolean"},
+        "block_token_size":{"type": "integer", "minimum": 0},
+        "ttl_seconds":     {"enum": [300, 3600]},
+        "prefix_position": {"enum": ["system", "first-content-block"]}
+      }
+    },
+    "tooling": {
+      "type": "object",
+      "properties": {
+        "tool_count":    {"type": "integer", "minimum": 0, "maximum": 10},
+        "forced_tool":   {"type": "boolean"},
+        "schema_validation": {"type": "boolean"}
+      }
+    },
+    "extended_thinking": {
+      "type": "object",
+      "properties": {
+        "enabled":       {"type": "boolean"},
+        "budget_tokens": {"type": "integer", "minimum": 1024, "maximum": 32000}
+      }
+    },
+    "secrets_source": {"enum": ["env", "1password", "aws-secrets-manager", "vault"]},
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "cai-rag-summariser",
+  "model": "claude-sonnet-4-6",
+  "max_tokens": 4096,
+  "shape": "tool-loop",
+  "max_turns": 10,
+  "retry": {"enabled": true, "max_attempts": 5, "strategy": "exponential-jitter"},
+  "caching": {"enabled": true, "block_token_size": 2400, "ttl_seconds": 300, "prefix_position": "system"},
+  "tooling": {"tool_count": 3, "forced_tool": false, "schema_validation": true},
+  "extended_thinking": {"enabled": false},
+  "secrets_source": "1password",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "model": "claude-3-5-sonnet",
+  "max_tokens": 999999,
+  "shape": "batch",
+  "max_turns": 100,
+  "retry": {"enabled": false, "max_attempts": 0, "strategy": "none"},
+  "caching": {"enabled": true, "block_token_size": 500, "ttl_seconds": 60},
+  "tooling": {"tool_count": 25, "forced_tool": false},
+  "secrets_source": "hardcoded"
+}
+]]></code>
+    <note>artefact_id fails pattern; model not in enum (old name); max_tokens out of range; shape=batch with max_turns=100 is non-sensical (Batch has no turns); retry disabled with 0 attempts; caching block 500 tokens is below cacheable minimum; tool_count exceeds the recommended cap of 10; secrets_source not in enum; version + last_reviewed missing.</note>
+  </example>
+
+  <reference path="scripts/validate-claude-api.py">Validator that enforces this contract.</reference>
+
 </text>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="MCP Worked Example — Weather + DB Server" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>End-to-end worked example: ship a Python MCP server exposing a weather lookup and a read-only DB query, registered in Claude Code via stdio.</summary>
+
+  <section title="Brief">
+    <p>Internal data team wants Claude Code to access (a) current weather for a city for a logistics-planning agent, and (b) a read-only SELECT against an analytics postgres replica. One developer, one workstation, stdio is fine.</p>
+  </section>
+
+  <section title="STEP 1 — Normalized tool list">
+    <code lang="yaml"><![CDATA[
+- name: ping
+  description: Health probe; returns server status and version
+  inputs: {}
+- name: weather.get_current
+  description: Get current weather conditions for a city
+  inputs:
+    city: {type: string, required: true, description: "City name in English, e.g. 'Porto'"}
+- name: db.run_query
+  description: Run a read-only SQL SELECT against analytics replica; returns ≤500 rows
+  inputs:
+    sql: {type: string, required: true, description: "SELECT statement; INSERT/UPDATE/DELETE rejected"}
+]]></code>
+  </section>
+
+  <section title="STEP 2 — Transport choice">
+    <p>One client (Claude Code on same workstation), no cross-host traffic, no concurrent users → stdio. Auth.mode = none.</p>
+  </section>
+
+  <section title="STEP 4 — Server scaffold (excerpt)">
+    <code lang="python"><![CDATA[
+# server.py — instantiated from templates/python-server-stdio.py
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import Tool, TextContent
+import asyncio, json, psycopg
+
+SERVER_NAME = "faion-internal"
+SERVER_VERSION = "1.0.0"
+app = Server(SERVER_NAME)
+
+@app.list_tools()
+async def list_tools() -> list[Tool]:
+    return [
+        Tool(name="ping", description="Health probe; returns server status and version",
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="weather.get_current", description="Get current weather conditions for a city",
+             inputSchema={"type": "object", "required": ["city"],
+                          "properties": {"city": {"type": "string"}}}),
+        Tool(name="db.run_query", description="Run a read-only SQL SELECT against analytics replica; returns up to 500 rows",
+             inputSchema={"type": "object", "required": ["sql"],
+                          "properties": {"sql": {"type": "string"}}}),
+    ]
+
+def envelope(payload=None, error=None):
+    return [TextContent(type="text", text=json.dumps(
+        {"server_version": SERVER_VERSION, "payload": payload, "error": error}))]
+
+@app.call_tool()
+async def call_tool(name, args):
+    if name == "ping":
+        return envelope({"status": "ok"})
+    if name == "weather.get_current":
+        return envelope({"city": args["city"], "temp_c": 22, "cond": "clear"})
+    if name == "db.run_query":
+        sql = args["sql"].strip().lower()
+        if not sql.startswith("select"):
+            return envelope(error={"code": "forbidden", "message": "only SELECT allowed", "retryable": False})
+        with psycopg.connect("postgresql://analytics-ro/local") as cx:
+            rows = cx.execute(args["sql"]).fetchmany(500)
+        return envelope({"rows": [list(r) for r in rows]})
+    return envelope(error={"code": "unknown_tool", "message": name, "retryable": False})
+
+asyncio.run(stdio_server(lambda r, w: app.run(r, w, app.create_initialization_options())))
+]]></code>
+  </section>
+
+  <section title="STEP 5 — Smoke test trace">
+    <code lang="text"><![CDATA[
+$ npx @modelcontextprotocol/inspector python server.py
+[handshake] negotiated spec 2026-07-28
+[list_tools] 3 tools: ping, weather.get_current, db.run_query
+[call_tool] ping → {"server_version":"1.0.0","payload":{"status":"ok"},"error":null}   ✓ 28 ms
+[call_tool] weather.get_current {"city":"Porto"} → 22°C, clear ✓ 41 ms
+[call_tool] db.run_query {"sql":"DROP TABLE x"} → error.forbidden ✓ guard works
+]]></code>
+  </section>
+
+  <section title="STEP 6 — Claude Code registration block">
+    <code lang="json"><![CDATA[
+{
+  "mcpServers": {
+    "faion-internal": {
+      "command": "python",
+      "args": ["/srv/mcp/faion-internal/server.py"]
+    }
+  }
+}
+]]></code>
+  </section>
+</text>

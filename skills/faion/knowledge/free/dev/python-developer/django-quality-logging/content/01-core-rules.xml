@@ -1,19 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-quality-logging Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-quality-logging. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-quality-logging Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules for Django production logging + Sentry. Each rule has a statement, rationale, and canonical source.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Django projects MUST use structlog + django-structlog for structured JSON logging in production. Configure structlog in settings with: contextvars merge, filter_by_level, add_logger_name, add_log_level, TimeStamper(fmt="iso"), and JSONRenderer for production / ConsoleRenderer for development. Add django_structlog.middlewares.RequestMiddleware to MIDDLEWARE to auto-bind request context. NEVER mix structlog.get_logger() and logging.getLogger() in the same module — pick one per file.</statement>
-      <rationale source="v1-source">structlog's processor chain ensures every log event is JSON-serialized with consistent fields. django-structlog's middleware adds request_id, user_id, and ip automatically — without it, every service function must manually bind context. Mixing structlog and stdlib loggers in the same module produces hybrid output where half the logs are structured and half are plain text, making log queries unreliable.</rationale>
+    <rule id="r1-structlog" testable="true" depth="essential">
+      <statement>Django projects in production MUST use structlog + django-structlog. Configure structlog with the canonical processor chain (contextvars.merge_contextvars, stdlib.filter_by_level, stdlib.add_logger_name, stdlib.add_log_level, processors.TimeStamper(fmt="iso"), processors.StackInfoRenderer, processors.format_exc_info, processors.UnicodeDecoder, stdlib.ProcessorFormatter.wrap_for_formatter) and add django_structlog.middlewares.RequestMiddleware to MIDDLEWARE. NEVER mix structlog.get_logger() and logging.getLogger() in the same module.</statement>
+      <rationale source="django-structlog 10.0 docs https://django-structlog.readthedocs.io/en/latest/getting_started.html">RequestMiddleware auto-binds request_id, user_id, ip to every log event within the request scope. Mixing logger factories produces hybrid output where half the lines are JSON and half are plain text, breaking log-aggregator query language (Datadog, Loki).</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>All Django production applications MUST configure Sentry with: DjangoIntegration(), CeleryIntegration() if using Celery, RedisIntegration() if using Redis. Set traces_sample_rate=0.1 and profiles_sample_rate=0.1 (not 1.0 — full tracing is expensive). Set send_default_pii=False. Configure before_send to scrub sensitive data. Load SENTRY_DSN from environment variable, never hardcode. Use a custom system check to warn when SENTRY_DSN is missing in production.</statement>
-      <rationale source="v1-source">DjangoIntegration hooks into Django's signal system to capture every 500 error with request context automatically. traces_sample_rate=0.1 captures 10% of transactions — sufficient for performance monitoring without the cost of full tracing. send_default_pii=False prevents automatic capture of cookies, session data, and IP addresses that may violate GDPR. The custom system check catches missing DSN configuration before deployment.</rationale>
+
+    <rule id="r2-sentry" testable="true" depth="essential">
+      <statement>All Django production applications MUST configure Sentry with DjangoIntegration(), traces_sample_rate=0.1, profiles_sample_rate=0.1, send_default_pii=False, and a before_send hook that scrubs the keys ("password","token","secret","credit_card","api_key","authorization") from `event["request"]["data"]` and `event["request"]["headers"]`. Load SENTRY_DSN from environment, never hardcode. Register a Django system check that emits Warning when SENTRY_DSN is unset in non-DEBUG settings.</statement>
+      <rationale source="Sentry Python SDK Django guide https://docs.sentry.io/platforms/python/integrations/django/">traces_sample_rate=1.0 in production produces 10x the base Sentry bill on high-traffic services; 0.1 is the documented sweet spot. send_default_pii=False prevents automatic capture of cookies and IP, which GDPR treats as PII. The system check catches missing DSN before deploy instead of after the first 500.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>When using LLMs to generate Django code, always provide: (1) Django + Python version, (2) API framework (DRF or Django Ninja), (3) whether service layer pattern is used, (4) quality requirements (type hints, docstrings, exception handling, query optimization, logging). Generic "write Django code" requests produce untypeable, unoptimized output that requires full rewrite. Provide the function signature and models involved for service generation tasks.</statement>
-      <rationale source="v1-source">LLMs default to the most common Django patterns they've seen, which often lack type hints, use bare except, and miss query optimization. Explicit requirements produce code that passes ruff, mypy, and review without iteration. Function signature + models constrains the LLM to the correct interface instead of inventing its own.</rationale>
+
+    <rule id="r3-llm-context" testable="true" depth="essential">
+      <statement>When using an LLM to generate Django logging code, the prompt MUST include: (1) Django + Python version, (2) API framework (DRF / django-ninja / vanilla), (3) whether the service layer pattern is used, (4) explicit quality requirements (type hints, structlog over print, specific exception handling, exc_info=True on logger.error). Generic "write Django logging code" produces stdlib logging.getLogger output with bare except and no traceback.</statement>
+      <rationale source="empirical — Faion-network methodology authoring logs, Q1-Q2 2026">LLMs default to the most-frequent training pattern (stdlib logging). Explicit constraints redirect to structlog + JSON. Without the constraints, generated code passes neither ruff T20 nor mypy --strict and requires manual rewrite.</rationale>
+    </rule>
+
+    <rule id="r4-no-print" testable="true" depth="essential">
+      <statement>Production Django code MUST NOT contain print() or pprint() statements. Enforce ruff rule group T20 in CI. Replace every print with logger.info / logger.debug using structlog and bound context. Bare `except:` and `except Exception:` are forbidden — catch the specific exception class and call logger.error(..., exc_info=True).</statement>
+      <rationale source="ruff T20 documentation https://docs.astral.sh/ruff/rules/print/">print() bypasses the logging configuration entirely — output goes to stdout regardless of handlers. In a production WSGI/ASGI worker that output is invisible (no handler), in a dev console it leaks PII. Bare except hides AttributeError / KeyError / NameError that should fail loudly.</rationale>
+    </rule>
+
+    <rule id="r5-no-debug-sql" testable="true" depth="essential">
+      <statement>In production settings, `django.db.backends` logger MUST be set to WARNING or higher. Never enable DEBUG-level SQL logging in production. Django Debug Toolbar middleware MUST be conditional on DEBUG and restricted to INTERNAL_IPS. django-silk profiling MUST set SILKY_INTERCEPT_PERCENT ≤ 1 in production.</statement>
+      <rationale source="Django logging docs https://docs.djangoproject.com/en/stable/topics/logging/">A single view issuing 10 ORM queries at 1000 req/s generates 10,000 DEBUG log events per second — saturates log pipelines and triggers log drop. Debug Toolbar leaking to production exposes SQL, template variables, and settings through its UI.</rationale>
     </rule>
   </section>
 </text>

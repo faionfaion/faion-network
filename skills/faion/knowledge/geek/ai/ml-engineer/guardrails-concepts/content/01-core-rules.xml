@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="guardrails-concepts Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for guardrails-concepts. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Guardrails Concepts Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules for guardrail architecture selection.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="rail-types-mapped" testable="true" depth="essential">
+      <statement>Every pipeline stage receives at least one rail: input rail before LLM call, output rail before user, retrieval rail between vector search and LLM (RAG), dialog rail across turns (multi-turn), execution rail before tool call (agent).</statement>
+      <rationale source="NeMo Guardrails docs + Guardrails AI architecture">Stages without rails are unmitigated attack surfaces. Per-stage rails are independent — input rail alone cannot catch unsafe outputs and output rail alone cannot prevent injection.</rationale>
     </rule>
+
+    <rule id="embedded-vs-programmable" testable="true" depth="essential">
+      <statement>Embedded guardrails (RLHF, Llama Guard classification) cover general safety; programmable guardrails (NeMo, Guardrails AI, custom validators) cover business-specific rules — never substitute one for the other.</statement>
+      <rationale source="Anthropic / NVIDIA safety docs">Embedded rails are baked into the model and add zero latency but cannot be tuned per-request; programmable rails are auditable and domain-specific but cost latency. Both are required for a defensible posture.</rationale>
+    </rule>
+
+    <rule id="action-strategy" testable="true" depth="essential">
+      <statement>Each rail declares one of five actions on violation: block (no safe fallback), filter (remove fragment, keep context), transform (mask / rephrase), warn (flag for human review), log (record only). Action choice follows severity, not convenience.</statement>
+      <rationale source="Guardrails AI validator docs">Universal-block is the lazy default and destroys UX; universal-warn is the lazy default and creates compliance debt. Per-violation action mapping is the only sustainable policy.</rationale>
+    </rule>
+
+    <rule id="tiered-latency" testable="true" depth="essential">
+      <statement>Run checks in tiered order: regex / pattern match first (under 1 ms), fast classifier second (10-50 ms), LLM-as-judge only for borderline cases (500 ms+). Stop at the first tier that fires a violation.</statement>
+      <rationale source="Guardrails AI benchmarks; NeMo perf notes">LLM-as-judge is most accurate but breaks any production latency budget at 100% application. Tiered evaluation cuts median guardrail latency 10-100x while preserving recall.</rationale>
+    </rule>
+
+    <rule id="defense-in-depth" testable="true" depth="essential">
+      <statement>Prompt-injection defence requires four layers: input sanitisation, instruction hierarchy (system &gt; user &gt; tool output), output validation (instruction-echo check), and isolation (user content wrapped in delimiters). One layer alone is insufficient.</statement>
+      <rationale source="OWASP LLM Top 10 2026; OpenAI injection postmortem">Single-layer defences are defeated by known attack chains within weeks of disclosure. Four layers create combinatorial cost for the attacker.</rationale>
+    </rule>
+
+    <rule id="log-sanitized-only" testable="true" depth="essential">
+      <statement>Logs store sanitised content + metadata only: timestamp, request_id, guardrail_type, result (pass/fail/warn), latency_ms, violation_details, hashed user_id. Never log raw user input or raw LLM output.</statement>
+      <rationale source="GDPR Art. 32; HIPAA §164.312">Raw logs become a new PII surface and a compliance liability. Structured metadata gives all signal needed for tuning and incident response without the regulatory cost.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

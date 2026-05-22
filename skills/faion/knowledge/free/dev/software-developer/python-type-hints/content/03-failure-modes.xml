@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-type-hints Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-type-hints as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Python Type Hints Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns observed in real Python typing rollouts. Each has a symptom, a root cause, and a fix the validator or CI gate can enforce.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="future-annotations-pydantic-v1" severity="high">
+      <symptom>`from __future__ import annotations` added project-wide; FastAPI body parsing or Pydantic v1 models throw `Type 'X' is not defined` at runtime; type-check passes silently.</symptom>
+      <root-cause source="FastAPI issue tracker; Pydantic v1 docs">`from __future__ import annotations` stringifies all annotations at runtime. Pydantic v1 and older FastAPI body-parameter resolution use runtime type inspection and break silently when annotations are strings.</root-cause>
+      <fix>Pin Pydantic v2 + FastAPI ≥0.100 if `from __future__ import annotations` is desired, or omit the future import on files that define Pydantic v1 models / FastAPI body params. CI grep: `grep -l 'from __future__ import annotations' $(grep -rl 'BaseModel\|@app\.\(get\|post\)')`.</fix>
+    </antipattern>
+
+    <antipattern id="bare-type-ignore" severity="high">
+      <symptom>Files contain `# type: ignore` with no error code; new type bugs are masked because mypy can no longer surface them; `warn_unused_ignores` cannot fire because there's no code to compare.</symptom>
+      <root-cause source="Internal — observed in test-author subagent runs Q1 2026">Under pressure from a mypy gate the agent reaches for the broadest silencer first. Bare `# type: ignore` is faster to write than diagnosing the actual mismatch.</root-cause>
+      <fix>ruff rule PGH003 forbids bare `# type: ignore`. Enforce `warn_unused_ignores = true` in mypy config so stale coded ignores fail too. Block PRs that introduce bare ignores.</fix>
+    </antipattern>
+
+    <antipattern id="protocol-without-runtime-checkable" severity="medium">
+      <symptom>Code calls `isinstance(obj, MyProto)` where `MyProto(Protocol)` lacks `@runtime_checkable`. Runtime `TypeError: Instance and class checks can only be used with @runtime_checkable protocols`.</symptom>
+      <root-cause source="typing.Protocol docs">Protocol is opt-in for `isinstance` because runtime structural checks walk the MRO and signature list — too slow to enable by default. The error surfaces only at runtime, not at type-check.</root-cause>
+      <fix>Either add `@runtime_checkable` (accept the perf cost) OR replace `isinstance(x, Proto)` with structural duck-typing (`hasattr(x, 'send')`). Lint: `mypy --strict` does not catch this; add a custom grep rule.</fix>
+    </antipattern>
+
+    <antipattern id="mixed-union-syntax" severity="low">
+      <symptom>Same module mixes `Optional[X]`, `X | None`, and `Union[X, None]`. Ruff UP007 warnings accumulate; new contributors copy the closest example, perpetuating the mix.</symptom>
+      <root-cause source="ruff UP007 docs">Multiple equivalent syntaxes exist for historical reasons; without a linter, drift is the default. The single-syntax convention requires enforcement, not preference.</root-cause>
+      <fix>Enable ruff rule UP007 and run `ruff check --fix --select UP007 .` as a one-shot migration. Add the rule to pre-commit. Result: only `X | None` remains in the codebase.</fix>
+    </antipattern>
+
   </section>
 </text>

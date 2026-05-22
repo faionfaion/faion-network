@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Python Type Hints Adoption Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure for incremental typing adoption: from an untyped module to a CI-gated typed file.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="detect-state">
+      <input>repo root with `pyproject.toml` + `.py` source tree</input>
+      <action>Detect python_version from `pyproject.toml [project] requires-python`. Detect existing typing coverage with `mypy --html-report` or `ruff check --statistics --select ANN`. Classify repo as greenfield (≥80% typed), legacy (&lt;50% typed), or library (PyPI-published).</action>
+      <output>repo_state = {python_version, mode, current_typed_pct}</output>
+    </step>
+
+    <step n="2" name="install-config">
+      <input>repo_state</input>
+      <action>Copy `templates/mypy.toml` into `pyproject.toml`. Adjust `python_version` to detected value. For mode=legacy, replace `strict = true` with `files = ["src/api/handlers.py", ...]` allowlist seeded with the public-API manifest. For mode=greenfield, keep `strict = true`. For mode=library, add `disallow_any_generics = true`.</action>
+      <output>committed `pyproject.toml [tool.mypy]` block</output>
+      <decision-gate>If repo mixes Pydantic v1 and Pydantic v2 — abort and remediate v1 first; this methodology assumes v2.</decision-gate>
+    </step>
+
+    <step n="3" name="wire-ci">
+      <input>mypy config + CI workflow file</input>
+      <action>Add `templates/typecheck-touched.sh` to `.github/workflows/typecheck.yml`. Set `BASE_REF` to `${{ github.base_ref }}`. Fail the job on mypy non-zero exit.</action>
+      <output>PRs show mypy check status</output>
+    </step>
+
+    <step n="4" name="annotate-touched-file">
+      <input>one Python file the current task is editing</input>
+      <action>Annotate every public signature (args + return). Annotate module-level vars where mypy errors. Replace `Optional[X]` with `X | None` and `List[T]` with `list[T]` via `ruff check --fix --select UP007 &lt;file&gt;`. Run `mypy --strict &lt;file&gt;`. Fix one error class per pass: no-untyped-def → var-annotated → arg-type → return-value.</action>
+      <output>typed file passing `mypy --strict`</output>
+      <decision-gate>If a single file hits &gt;30 errors and contains heavy dynamic metaprogramming → mark it `# mypy: ignore-errors` at top with a justifying comment and escalate to a refactor task; do not deep-type metaprogramming code.</decision-gate>
+    </step>
+
+    <step n="5" name="extend-allowlist">
+      <input>green file + current strict_files allowlist</input>
+      <action>Append the file path to `[tool.mypy] files = [...]` (legacy mode) or rely on global strict (greenfield mode). Commit. Re-run CI to confirm. Repeat from step 4 on the next file.</action>
+      <output>growing strict-typed surface; CI gate never regresses</output>
+    </step>
+
+  </section>
+</text>

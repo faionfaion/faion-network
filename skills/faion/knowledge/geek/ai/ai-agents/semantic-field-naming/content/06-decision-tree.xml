@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="semantic-field-naming Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-root">What is the type and role of the field being renamed?</root-question>
+    <branch when="field.type == 'bool'">
+      <conclusion ref="r4-bool-direction">Prefix with `is_`, `has_`, `should_`, or `requires_`; reject `flag`, `enabled`, `active` without direction.</conclusion>
+    </branch>
+    <branch when="field.type in {'int','float','Decimal'} and field.has_unit == true">
+      <conclusion ref="r3-unit-in-name">Suffix the unit token: `_years`, `_usd`, `_cents`, `_kg`, `_0_to_1`, `_days`, `_pixels`.</conclusion>
+    </branch>
+    <branch when="field.type in {'int','float'} and field.is_currency == true">
+      <conclusion ref="r3-unit-in-name">Pick integer minor units: `_cents` over `_usd`; eliminates float/int and currency-magnitude ambiguity in one move.</conclusion>
+    </branch>
+    <branch when="field.type == 'Literal' and field.literal_count &lt;= 6">
+      <conclusion ref="r5-enum-semantic-literals">Use semantic vocabulary (`approve|reject`, `low|medium|high|critical`); never `a|b|c` or numeric codes.</conclusion>
+    </branch>
+    <branch when="field.type == 'str' and field.has_format_constraint == true">
+      <conclusion ref="r6-format-in-string-name">Encode the format in the name: `body_markdown`, `slug_kebab`, `iso_published_date`, `e164_phone`, `email_address`.</conclusion>
+    </branch>
+    <branch when="field.type starts_with 'list[' or field.type starts_with 'tuple['">
+      <conclusion ref="r7-cardinality-singular-plural">Use plural noun (`orders`, `customers`, `validated_email_addresses`); never singular for list types.</conclusion>
+    </branch>
+    <branch when="field.type starts_with 'dict[' and field.value_type != 'str'">
+      <conclusion ref="r7-cardinality-singular-plural">Encode the key in the name: `order_by_id`, `score_by_slug`. The reader sees the map structure from the name.</conclusion>
+    </branch>
+    <branch when="field.name matches '^(val|flag|output|result|data|info|field[0-9]+|[a-z])$'">
+      <conclusion ref="r1-specific-snake">Rename to a domain-specific noun phrase ≥2 tokens; consult the type and the surrounding context for the right English token.</conclusion>
+    </branch>
+    <branch when="field.name endswith '_value' or field.name endswith '_data' or field.name endswith '_result'">
+      <conclusion ref="r2-no-redundant-suffix">Drop the suffix; let the rest of the name carry the meaning.</conclusion>
+    </branch>
+    <branch when="field.name matches non-english tokens">
+      <conclusion ref="fm-03-mixed-language">Translate to English; preserve external contract via `validation_alias` if necessary.</conclusion>
+    </branch>
+    <example trace="rename-Order.flag">
+      <p>Input: field `Order.flag: bool`. Match: `field.type == 'bool'` branch → conclusion `r4-bool-direction`. Output: rename to `is_paid` (or whichever direction the original True maps to).</p>
+    </example>
+  </decision-tree>
+</text>

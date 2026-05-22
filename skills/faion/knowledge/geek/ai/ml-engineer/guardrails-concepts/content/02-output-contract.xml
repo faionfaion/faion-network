@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="guardrails-concepts Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Guardrails Concepts Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for guardrail-plan.json — the report this methodology produces.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/guardrails-concepts.json",
+  "type": "object",
+  "required": ["artefact_id", "version", "last_reviewed", "pipeline_shape", "rails", "tiers", "frameworks"],
+  "properties": {
+    "artefact_id": {"type": "string"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "pipeline_shape": {"enum": ["basic", "rag", "multi-agent"]},
+    "rails": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["stage", "rail_type", "action", "framework"],
+        "properties": {
+          "stage": {"enum": ["input", "output", "dialog", "retrieval", "execution"]},
+          "rail_type": {"type": "string"},
+          "action": {"enum": ["block", "filter", "transform", "warn", "log"]},
+          "framework": {"enum": ["nemo", "guardrails-ai", "llama-guard", "custom", "embedded"]},
+          "severity": {"enum": ["low", "medium", "high", "critical"]}
+        }
+      }
+    },
+    "tiers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["order", "kind", "max_latency_ms"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1, "maximum": 3},
+          "kind": {"enum": ["regex", "classifier", "llm-judge"]},
+          "max_latency_ms": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "frameworks": {
+      "type": "array",
+      "items": {"enum": ["nemo", "guardrails-ai", "llama-guard", "custom", "embedded"]}
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "gp-support-bot-2026-05",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "pipeline_shape": "rag",
+  "rails": [
+    {"stage": "input", "rail_type": "pii-mask", "action": "transform", "framework": "custom", "severity": "high"},
+    {"stage": "retrieval", "rail_type": "chunk-injection-scan", "action": "filter", "framework": "custom", "severity": "high"},
+    {"stage": "output", "rail_type": "schema-validate", "action": "block", "framework": "guardrails-ai", "severity": "critical"}
+  ],
+  "tiers": [
+    {"order": 1, "kind": "regex", "max_latency_ms": 5},
+    {"order": 2, "kind": "classifier", "max_latency_ms": 50}
+  ],
+  "frameworks": ["guardrails-ai", "custom"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "pipeline_shape": "single-shot",
+  "rails": [{"stage": "input"}]
+}
+]]></code>
+    <note>pipeline_shape not in enum; rails entry missing rail_type/action/framework; missing tiers/frameworks/version/last_reviewed.</note>
+  </example>
+
+  <reference path="scripts/validate-guardrails-concepts.py">schema validator</reference>
+  <reference path="templates/guardrail-plan.json">JSON skeleton</reference>
 </text>
