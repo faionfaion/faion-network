@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 conftest-db.py — SQLAlchemy database fixtures with savepoint rollback.
 Each test gets a clean state without DROP/CREATE overhead.

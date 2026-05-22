@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="terse-default-tool-output Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for terse-default-tool-output as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Terse Default Tool Output Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>3 antipatterns the response-envelope validator catches. Each pairs symptom + root cause + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Summary mode that drops the IDs the agent needs to escalate to full mode.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If the summary is not pointable, the agent has to re-search to get the same row. Always include the primary key in the terse shape.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Implicit truncation — silently cutting output to N tokens without telling the agent.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model thinks it saw all results. Always return an explicit truncated: true flag plus the count it would have returned.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="summary-without-id" severity="high">
+      <symptom>Summary mode emits headline-only rows; agent has to re-call to discover IDs before escalating to `full`.</symptom>
+      <root-cause source="Internal — search_logs first-cut design Q1 2026">Author optimised the visible width of the table and dropped the id column to fit the terminal. The round-trip cost on the next call exceeded the saved tokens.</root-cause>
+      <fix>Make `id` the first column in every summary row. Validator rejects responses where any summary entry lacks an `id` field.</fix>
+    </antipattern>
+
+    <antipattern id="silent-truncation" severity="high">
+      <symptom>Tool cuts result set to `limit` but returns no `truncated` flag and no `total_hits`.</symptom>
+      <root-cause source="Harness — Agent loop OS; pagination postmortems">Author thought "limit" was a feature, not state. Model interprets "12 hits returned" as "12 hits exist" and stops searching.</root-cause>
+      <fix>Always return `truncated: bool` + `total_hits: int` (or upper-bound estimate). CI fails any tool whose response lacks both keys.</fix>
+    </antipattern>
+
+    <antipattern id="format-full-default-creep" severity="medium">
+      <symptom>Agent issues `format="full"` on every call "just to be safe". Average call cost climbs from 100 to 3000 tokens after deployment.</symptom>
+      <root-cause source="Internal — long-loop audit Q1 2026">Tool description says "use summary for short, full for everything else" — wide opt-in clause invites the model to over-escalate.</root-cause>
+      <fix>Require a `reason` argument when `format="full"`. Eval gates raw-mode usage rate; alert if > 30% of calls request full without a logged reason.</fix>
+    </antipattern>
+
   </section>
 </text>

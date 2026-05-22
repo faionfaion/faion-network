@@ -1,22 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="terse-default-tool-output Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Terse Default Tool Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the response envelope every list/search tool returns when this methodology is applied. Schema enforces format mode + truncation flag + primary-key per item.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Response-envelope schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/terse-tool-output.json",
+  "type": "object",
+  "required": ["format", "total_hits", "truncated"],
+  "properties": {
+    "format":      {"enum": ["summary", "full"]},
+    "total_hits":  {"type": "integer", "minimum": 0},
+    "truncated":   {"type": "boolean"},
+    "table":       {"type": "string"},
+    "rows":        {"type": "array", "items": {"type": "object", "required": ["id"], "properties": {"id": {"type": "string"}}}},
+    "reason":      {"type": "string", "minLength": 4}
+  },
+  "oneOf": [
+    {"required": ["table"], "properties": {"format": {"const": "summary"}}},
+    {"required": ["rows", "reason"], "properties": {"format": {"const": "full"}}}
+  ]
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "format": "summary",
+  "total_hits": 12,
+  "truncated": true,
+  "table": "| id | ts | level | msg |\n|----|----|-------|-----|\n| L-001 | 2026-05-22T11:00Z | ERROR | timeout from upstream |"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "format": "full",
+  "rows": [{"path": "src/a.py", "lines": 42}]
+}
+]]></code>
+    <note>Missing total_hits + truncated; rows entries missing required id; full mode missing reason.</note>
+  </example>
+
+  <reference path="templates/search_tool.py">Reference implementation</reference>
+  <reference path="scripts/validate-terse-default-tool-output.py">Validator script</reference>
 </text>

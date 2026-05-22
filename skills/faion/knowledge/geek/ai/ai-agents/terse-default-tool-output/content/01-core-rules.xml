@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="terse-default-tool-output Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for terse-default-tool-output. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Terse Default Tool Output Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules forcing tools to default to compact, semantic output and accept a verbosity opt-in parameter.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Any tool whose worst-case output exceeds ~500 tokens MUST default to a compact shape (summary line, table of IDs, top-N) AND accept a format: Literal["summary","full"] (or equivalent verbosity enum) parameter so the agent can opt into raw payloads on demand.</statement>
-      <rationale source="v1-source">SkillReducer (arXiv 2603.29919) compressed tool descriptions and bodies by ~40% and observed a 2.8% absolute task-quality LIFT — verbose context distracts the model and inflates per-call cost across the rest of the loop. Compact-by-default plus opt-in verbose preserves correctness without the bloat.</rationale>
+
+    <rule id="terse-default-required" testable="true" depth="essential">
+      <statement>Any tool whose worst-case output exceeds ~500 tokens MUST default to a compact shape (summary line, table of IDs, top-N) AND accept `format: Literal["summary","full"]` (or equivalent verbosity enum) so the agent can opt into raw payloads on demand.</statement>
+      <rationale source="SkillReducer arXiv:2603.29919; Anthropic tool-writing guidance 2026-04">SkillReducer compressed tool bodies by ~40% and observed a 2.8% absolute task-quality LIFT — verbose context distracts the model and inflates per-call cost across the rest of the loop. Compact-by-default plus opt-in verbose preserves correctness without the bloat.</rationale>
     </rule>
+
+    <rule id="primary-key-in-summary" testable="true" depth="essential">
+      <statement>The summary shape MUST include a stable identifier (row id, file path, span_id) per item so the agent can escalate that specific row to `format="full"` without re-querying.</statement>
+      <rationale source="Internal — observed in test-author subagent runs Q1 2026">A summary that lists only headlines forces a second search call to find the ID; the round trip costs more tokens than the verbose default would have.</rationale>
+    </rule>
+
+    <rule id="explicit-truncation-flag" testable="true" depth="essential">
+      <statement>When the result set is cut to a `limit`, the response MUST carry `truncated: true` and `total_hits` (or upper-bound estimate); silent truncation is forbidden.</statement>
+      <rationale source="Harness — Agent loop new OS; internal pagination postmortems">If the model thinks it saw all results, it stops calling. Explicit truncation flags force it to paginate or widen the query.</rationale>
+    </rule>
+
+    <rule id="tokens-budget-doc" testable="true" depth="essential">
+      <statement>Tool description MUST state the expected token-cost band for each format mode (e.g. `summary` ~30 tok/hit, `full` ~300-1200 tok/hit) so the planner can budget calls.</statement>
+      <rationale source="Anthropic tool-writing guidance">The planner picks between tools partly on context cost; without a documented band the model under-estimates by 5-10x.</rationale>
+    </rule>
+
+    <rule id="full-mode-justification" testable="true" depth="essential">
+      <statement>When the agent passes `format="full"`, the call MUST include a one-sentence `reason` argument (audit, debug, exact-match) that the host can log. Eval gates raw-mode usage rate per task.</statement>
+      <rationale source="Internal — long-loop token-cost audits">Without justification, agents default to `format="full"` to "be safe", and context bloat returns. Logged justifications surface the few cases where it is actually needed.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces an embedding evaluation report (Recall@K, MRR, nDCG, A/B comparison + golden set design) that ranks candidate embedding models on the team's own retrieval workload.
-content_id: "emb-eval-0014567890abcdef"
+content_id: "5c60d28246f02c58"
 complexity: medium
 produces: report
 est_tokens: 3500
