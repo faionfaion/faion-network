@@ -1,4 +1,9 @@
-"""Gemini text-embedding-004 batch embedding helper.
+"""
+purpose: Batch embedding helper for Gemini text-embedding-004 (768-dim).
+consumes: list of texts + task type
+produces: list of 768-dim embeddings
+depends-on: gemini-function-calling sibling RAG patterns
+token-budget-impact: per-text embedding cost
 
 Usage:
     doc_embeddings = embed_batch(document_texts)                     # for indexing
