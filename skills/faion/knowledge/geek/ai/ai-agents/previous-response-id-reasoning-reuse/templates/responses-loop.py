@@ -1,3 +1,8 @@
+# purpose: Responses API multi-turn loop with previous_response_id continuity
+# consumes: session store handle + user_id/conversation_id + prompt
+# produces: model response with reasoning items preserved server-side
+# depends-on: r1-pass-previous-id, r2-store-per-conversation, r3-fallback-on-404
+# token-budget-impact: ~250 tokens
 """Reasoning-item-preserving agent loop on the OpenAI Responses API.
 
 Two paths:
