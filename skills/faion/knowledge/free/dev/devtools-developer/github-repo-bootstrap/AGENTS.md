@@ -2,7 +2,7 @@
 slug: github-repo-bootstrap
 tier: free
 group: dev
-domain: devtools-developer
+domain: dev
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

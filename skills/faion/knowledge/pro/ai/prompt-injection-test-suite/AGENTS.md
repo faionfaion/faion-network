@@ -2,7 +2,7 @@
 slug: prompt-injection-test-suite
 tier: pro
 group: ai
-domain: ai
+domain: ai-core
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

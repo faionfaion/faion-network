@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-065 phase 1: domain merge batch 1 (100 files).
 - tier-manifest sync: include all v2 methodologies + gap entries.
 - F-064 final wave: playbook batch 6 (+20 files).
 - F-064 final wave: playbook batch 5 (+100 files).
