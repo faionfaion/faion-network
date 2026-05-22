@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Gemini API Integration Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure to integrate Gemini in a production call site.</summary>
+
+  <section title="Steps">
+    <step n="1" name="pick-model">
+      <input>Latency / quality / cost budget; expected context size; multimodal needs.</input>
+      <action>Pick gemini-flash by default; switch to Pro only if eval shows ≥5pp quality gap that matters.</action>
+      <output>model field in gemini-config.json.</output>
+      <decision-gate>Document rationale in PR; eval evidence if Pro.</decision-gate>
+    </step>
+    <step n="2" name="set-generation-config">
+      <input>Use-case (deterministic vs creative).</input>
+      <action>Set temperature, max_output_tokens, response_mime_type explicitly.</action>
+      <output>generation_config block.</output>
+      <decision-gate>Default temperature 0.2 for extraction; 0.7 for creative.</decision-gate>
+    </step>
+    <step n="3" name="files-api">
+      <input>Media inputs.</input>
+      <action>If any input is &gt;10MB OR video/audio, upload via Files API + reference; track TTL (48h) and re-upload if needed.</action>
+      <output>file_uri references in request.</output>
+      <decision-gate>Verify quota for Files API operations; budget for per-upload cost.</decision-gate>
+    </step>
+    <step n="4" name="wire-safety">
+      <input>Safety policy.</input>
+      <action>Configure all 4 categories with chosen thresholds.</action>
+      <output>safety_settings array.</output>
+      <decision-gate>If policy requires "always allow", use BLOCK_NONE per category explicitly with sign-off.</decision-gate>
+    </step>
+    <step n="5" name="handle-block-reasons">
+      <input>Response handler.</input>
+      <action>Inspect finish_reason and block_reason; surface to application + log; do not coerce empty.</action>
+      <output>Response-handler code.</output>
+      <decision-gate>Sample 5 deliberately-bad prompts; verify block_reason surfaces in logs.</decision-gate>
+    </step>
+    <step n="6" name="retry-and-monitor">
+      <input>Production traffic.</input>
+      <action>Exponential backoff on 429; surface non-200 metrics in dashboard; alert on &gt;1% error rate.</action>
+      <output>Retry config + dashboard tile.</output>
+      <decision-gate>Quarterly review of finish_reason histogram.</decision-gate>
+    </step>
+  </section>
+</text>
