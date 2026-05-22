@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Rust Ownership Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routes 3-question answers to canonical parameter kind. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-keeps">Does the function keep the value after returning (store / return / drop later)?</root-question>
+
+    <branch when="keeps_value == true">
+      <question id="q-shared-owned">Does another scope also keep the value?</question>
+      <branch when="other_keeps == false">
+        <conclusion ref="prefer-borrow" verdict="owned move — `fn f(x: T)`"/>
+      </branch>
+      <branch when="other_keeps == true">
+        <question id="q-thread">Do the holders live in different threads?</question>
+        <branch when="threads == true">
+          <conclusion ref="arc-only-for-thread-share" verdict="`Arc&lt;T&gt;` (or `Arc&lt;Mutex&lt;T&gt;&gt;` if shared mutable)"/>
+        </branch>
+        <branch when="threads == false">
+          <conclusion ref="no-rc-refcell-default" verdict="`Rc&lt;T&gt;` (single-threaded ref count). RefCell only if genuine graph cycle."/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="keeps_value == false">
+      <question id="q-mut">Does the function modify the value?</question>
+      <branch when="modifies == true">
+        <conclusion ref="mut-only-if-needed" verdict="`&amp;mut T`"/>
+      </branch>
+      <branch when="modifies == false">
+        <conclusion ref="prefer-borrow" verdict="`&amp;T` (or `&amp;str`/`&amp;[T]`/`&amp;Path` for the corresponding owned)"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="read-only-load">
+    keeps_value=false (function reads file, returns parsed struct, drops input path) → modifies=false → `&amp;Path` parameter. Compare to `fn load(path: PathBuf)` antipattern in 03-failure-modes.xml str-vs-string-confusion.
+  </example>
+</text>

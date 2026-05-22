@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Fine-tune vs prompt decision tree — worked example" version="1.0.0" est_tokens="600" depth="recommended">
+  <summary>A worked decision where routing beats fine-tune for a chat-classifier workload.</summary>
+
+  <section title="Context">
+    <p>Workload: incoming-message classifier (8 labels). 80k req/day. p95 latency 320ms. Current $/req 1.4c. F1 0.79 vs target 0.85.</p>
+  </section>
+
+  <section title="Axis scores">
+    <list>
+      <item>quality = 3 (F1 below target but not catastrophic).</item>
+      <item>cost = 2 (well above target).</item>
+      <item>latency = 4 (slightly over target, not load-bearing).</item>
+      <item>maintenance = 4 (1 prompt, easy).</item>
+    </list>
+    <p>Two axes scored ≤ 2 (cost only at "below target"). Quality at 3 is borderline.</p>
+  </section>
+
+  <section title="Alternatives tried">
+    <list>
+      <item>prompt-improve: +0.02 F1, no cost change.</item>
+      <item>RAG: +0.0 F1 (labels are content-bound, retrieval helps little).</item>
+      <item>routing (Haiku for high-confidence, Sonnet for low): +0.04 F1, $/req drops to 0.7c.</item>
+      <item>distillation: untried (would add 6 weeks).</item>
+    </list>
+  </section>
+
+  <section title="Decision">
+    <p>Routing alone closes quality gap (+0.04 ≥ +0.06 needed? close) AND halves cost. Fine-tune is uncertain because: only one axis below target after routing, training spend $1500, ops overhead persistent. Recommendation: `routing` now, revisit at triggers.</p>
+  </section>
+
+  <section title="Final record">
+    <code lang="json"><![CDATA[{
+  "workload": "chat-classifier",
+  "owner": "alice@example.com",
+  "created_at": "2026-05-22",
+  "axes": {
+    "quality":     {"score": 3, "note": "F1 0.79 vs target 0.85; routing brings 0.83"},
+    "cost":        {"score": 2, "note": "1.4c/req vs 0.8c target; routing brings 0.7c"},
+    "latency":     {"score": 4, "note": "p95 320ms, target 350ms"},
+    "maintenance": {"score": 4, "note": "single prompt, low burden"}
+  },
+  "alternatives_tried": [
+    {"alt": "prompt-improve", "lift": 0.02, "status": "tried"},
+    {"alt": "rag", "lift": 0.0, "status": "tried"},
+    {"alt": "routing", "lift": 0.04, "status": "tried"},
+    {"alt": "distillation", "lift": null, "status": "untried"}
+  ],
+  "recommendation": "routing",
+  "revisit_triggers": ["volume crosses 200k req/day", "Haiku 3.6 ships at -30% price", "F1 drops below 0.78 for 3 consecutive days"]
+}]]></code>
+  </section>
+</text>

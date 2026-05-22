@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="hybrid-search Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Hybrid Search Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Schema for hybrid-search-config.json.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/hybrid-search.json",
+  "type": "object",
+  "required": ["artefact_id", "version", "last_reviewed", "vector_db", "fusion", "rerank", "metrics"],
+  "properties": {
+    "artefact_id": {"type": "string"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "vector_db": {"enum": ["qdrant", "weaviate", "pinecone", "elasticsearch", "pgvector", "mongodb-atlas"]},
+    "native_endpoint": {"type": "boolean"},
+    "fusion": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {
+        "method": {"enum": ["rrf", "linear"]},
+        "rrf_k": {"type": "integer", "minimum": 1},
+        "alpha_schedule": {
+          "type": "object",
+          "properties": {
+            "quoted": {"type": "number"},
+            "code": {"type": "number"},
+            "short": {"type": "number"},
+            "default": {"type": "number"}
+          }
+        }
+      }
+    },
+    "rerank": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "model": {"type": "string"},
+        "candidates": {"type": "integer", "minimum": 10}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["precision_at_10", "p99_latency_ms"],
+      "properties": {
+        "precision_at_10": {"type": "number", "minimum": 0, "maximum": 1},
+        "p99_latency_ms": {"type": "number"},
+        "recall_at_50": {"type": "number"}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "hs-docs-2026-05",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "vector_db": "qdrant",
+  "native_endpoint": true,
+  "fusion": {"method": "rrf", "rrf_k": 60},
+  "rerank": {"enabled": true, "model": "bge-reranker-v2-m3", "candidates": 100},
+  "metrics": {"precision_at_10": 0.87, "p99_latency_ms": 95, "recall_at_50": 0.94}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "vector_db": "unknown",
+  "fusion": {"method": "magic"},
+  "metrics": {}
+}
+]]></code>
+    <note>vector_db not in enum; fusion.method not in enum; metrics empty; missing required fields.</note>
+  </example>
+
+  <reference path="scripts/validate-hybrid-search.py">schema validator</reference>
 </text>

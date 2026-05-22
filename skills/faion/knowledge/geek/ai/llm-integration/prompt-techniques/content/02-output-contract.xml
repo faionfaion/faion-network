@@ -1,22 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="prompt-techniques Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Prompt Techniques — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>One PromptLibrary entry persisted as JSON or YAML. Captures slug, version, model, prompt text, eval_score on the golden set, and timestamps.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://prompt-techniques/output.schema.json",
+  "type": "object",
+  "required": ["slug", "version", "model", "prompt", "eval_score", "golden_set_id", "created_at", "owner"],
+  "properties": {
+    "slug": {"type": "string", "pattern": "^[a-z0-9\\-]+$", "minLength": 3},
+    "version": {"type": "string", "pattern": "^v[0-9]+(\\.[0-9]+)*$"},
+    "model": {"type": "string", "minLength": 3},
+    "prompt": {"type": "string", "minLength": 10},
+    "eval_score": {"type": "number", "minimum": 0, "maximum": 1},
+    "golden_set_id": {"type": "string", "minLength": 4},
+    "created_at": {"type": "string", "format": "date-time"},
+    "owner": {"type": "string", "pattern": "^[a-z]+:.+$"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>slug — stable kebab-case id; `sentiment-classifier`, `summary-3-bullet`.</item>
+      <item>version — `v1`, `v1.2`, `v2`.</item>
+      <item>eval_score — float in [0, 1] on a named golden set.</item>
+      <item>owner — `role:person` (not team).</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>eval_score absent or null.</description>
+      <reason>Untested entries cannot be promoted; reviewers cannot compare regression.</reason>
+    </antipattern>
+    <antipattern>
+      <description>owner is "team" or a Slack channel.</description>
+      <reason>Anonymous prompts rot; chain of accountability needed.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "slug": "summary-3-bullet",
+  "version": "v2",
+  "model": "gpt-4o-mini",
+  "prompt": "Summarise in exactly 3 bullet points, each <= 15 words, factual tone.",
+  "eval_score": 0.92,
+  "golden_set_id": "summary-bench-2026q2",
+  "created_at": "2026-05-22T12:00:00Z",
+  "owner": "ml-eng:alice"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "slug": "Summary 3 Bullet",
+  "version": "2",
+  "model": "gpt",
+  "prompt": "Summarise",
+  "owner": "team"
+}
+]]></code>
+      <note>Invalid: slug not kebab-case; version not v-prefixed; prompt too short; owner is team; eval_score missing.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>slug matches `^[a-z0-9\-]+$`.</item>
+      <item>version starts with `v`.</item>
+      <item>eval_score recorded against a named golden set.</item>
+      <item>owner is `role:person`.</item>
     </list>
   </section>
 </text>

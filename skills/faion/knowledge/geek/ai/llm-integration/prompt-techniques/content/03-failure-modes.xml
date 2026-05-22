@@ -1,52 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="prompt-techniques Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for prompt-techniques as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Prompt Techniques — Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 known failure modes when running advanced prompting in production. Each carries symptom / root-cause / fix.</summary>
 
   <section title="Failure modes">
     <failure-mode id="fm-01" severity="medium">
-      <description>Meta-prompting produces prompts that work on the generating model but underperform on a smaller/different target model</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Prompts optimized for GPT-4o degrade on Haiku or other providers due to model-specific quirks.</repair>
+      <description>Meta-prompt output is hyper-tuned to one model (gpt-4o) and degrades when copied to gpt-4o-mini or Claude.</description>
+      <detector>A/B vs source model: lift &gt; 10%; A/B vs target model: regression &gt; 5%.</detector>
+      <repair>Generate the meta-prompt against the deploy model, not a stronger one. Add a "verify on target model" gate before promotion.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>PromptChain error propagation: an error in step N produces garbage that step N+1 silently accepts, making root cause analysis hard</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each step operates independently without validation of the previous step's output.</repair>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>PromptChain step N fails; steps 1..N-1 already wrote to external state; downstream sees inconsistent partial output.</description>
+      <detector>Chain log shows write-then-fail trace; row count after run != expected.</detector>
+      <repair>Move side-effects out of the chain. Chain steps only transform; a sink stage commits transactionally after the chain completes.</repair>
     </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>A/B testing requires a stable evaluator; LLM-as-evaluator is itself non-deterministic and can flip results between runs</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model outputs vary with temperature, context, and updates.</repair>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Golden set drift — the test data is stale and no longer reflects production distribution; eval_score lies.</description>
+      <detector>Production accuracy &lt; eval_score by &gt;10% on the same prompt.</detector>
+      <repair>Refresh golden set quarterly from production samples (with human relabel). Version the golden set; ties eval_score to a specific snapshot id.</repair>
     </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>PromptLibrary.format() with {variable} in templates breaks if the input contains literal curly braces — must escape {{ / }}</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Python string formatting treats { } specially.</repair>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Prompt promoted to production without A/B; quality silently drops.</description>
+      <detector>PromptLibrary entry has new `version` but no preceding `ab_record_id`.</detector>
+      <repair>CI gate: any PromptLibrary version bump requires an attached A/B run with eval_score ≥ baseline – 1%. PR is blocked otherwise.</repair>
     </failure-mode>
+
     <failure-mode id="fm-05" severity="medium">
-      <description>Prompt versioning without a test suite is theater; bumping versions without accuracy tracking gives false confidence</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Versions without validation metrics provide no proof of improvement.</repair>
+      <description>Delimiter collision — content contains the same delimiter (```), the model misreads section boundaries; output corrupts.</description>
+      <detector>Output truncated at a content-internal triple-backtick.</detector>
+      <repair>Use XML tags with rare, descriptive names (`<document>`, `<question>`); never reuse backticks as delimiter for code-bearing content.</repair>
     </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Variable substitution: PromptLibrary templates use Python .format(); if user input contains {text} literally, it raises KeyError</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Input validation required before formatting.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Prompt injection via user data: XML tag injection (&lt;/document&gt;&lt;injection&gt;) in untrusted input can break structured prompts</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wrap user content in a neutral delimiter and strip close-tags before insertion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Chained prompts accumulate latency; a 5-step chain with 2s average latency per step = 10s total</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Subagents should parallelize independent chain branches when possible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>PromptABTest winner selection is sensitive to test set size; with &lt;20 test cases, random variance can declare a losing prompt as "winner"</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use at least 50 diverse cases for reliable comparison.</repair>
-    </failure-mode>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Documents inserted into multi-part prompts are DATA. XML tag boundaries are the model's strongest cue for what is instruction vs content. Never let user input escape into the instruction section unfiltered.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Promoting a meta-prompt-generated PromptLibrary version to production requires sign-off by a named engineer who has reviewed the prompt body and the A/B record.</p>
   </section>
 </text>

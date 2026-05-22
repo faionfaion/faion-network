@@ -1,47 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="hybrid-search Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for hybrid-search. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Hybrid Search Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for hybrid retrieval config.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use Reciprocal Rank Fusion (RRF) as the default. Formula: RRF_score(d) = SUM(1 / (k + rank_i(d))), k=60. No score normalization needed; works across different score scales.</statement>
-      <rationale source="v1-source">RRF ignores actual score magnitudes and only uses rank positions. This makes it robust when BM25 and vector scores are on completely different scales, which is always the case without normalization.</rationale>
+    <rule id="rrf-default" testable="true" depth="essential">
+      <statement>Default fusion is Reciprocal Rank Fusion with k=60. Switch to linear combination ONLY when RRF is measurably worse on a held-out set AND team can normalise + tune.</statement>
+      <rationale source="Cormack et al. 2009 RRF paper; LlamaIndex retrieval benchmarks">RRF uses rank positions only, ignoring score magnitudes. Linear combination needs min-max or z-score normalisation; without it, BM25's unbounded scores dominate.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use linear combination (hybrid_score = alpha * vector + (1-alpha) * bm25) only when RRF is measurably worse on your query set and you have the capacity to normalize and tune. Default alpha=0.7 (semantic-leaning).</statement>
-      <rationale source="v1-source">Linear combination provides fine-grained control but requires min-max or z-score normalization of both signals. Without normalization, BM25's unbounded scores dominate entirely.</rationale>
+    <rule id="native-over-manual" testable="true" depth="essential">
+      <statement>Prefer native hybrid endpoints (Qdrant `FusionQuery`, Weaviate `hybrid`, Pinecone sparse-dense, ES knn+BM25) over manual two-call fusion in application code.</statement>
+      <rationale source="Qdrant / Weaviate docs">Manual fusion = two network calls + two failure modes + custom RRF impl. Native endpoints do it in one call with fewer corner cases.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Apply query-adaptive alpha: quoted phrases → 0.2; product/ref codes → 0.3; short queries → 0.5; natural language → 0.7.</statement>
-      <rationale source="v1-source">A fixed alpha is suboptimal for mixed query distributions. A lightweight classifier adds negligible overhead but significantly improves precision across query types.</rationale>
+    <rule id="query-adaptive-alpha" testable="true" depth="essential">
+      <statement>When using linear fusion, alpha is computed per-query: quoted phrase → 0.2; numeric / product code → 0.3; ≤ 3-token query → 0.5; natural-language ≥ 4 tokens → 0.7.</statement>
+      <rationale source="Microsoft Bing hybrid; internal RAG benchmarks">A fixed alpha is suboptimal across query distributions; a lightweight classifier adds negligible overhead but lifts precision by 5-10 pts.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Rerank top-100 candidates (not top-10). Fetch 2-3x the final k for fusion, rerank the pool, then return top-10. A reranker given too few candidates cannot recover good results that ranked poorly in either retriever.</statement>
-      <rationale source="v1-source">Reranking adds ~50-100ms and 5x cost compared to retrieval alone. Only worth enabling when precision matters more than latency. Common rerankers: Cohere Rerank (API), bge-reranker-v2-m3 (self-hosted).</rationale>
+    <rule id="rerank-top100" testable="true" depth="essential">
+      <statement>When cross-encoder reranker is enabled, fetch top-100 from fusion and rerank to top-10. Never feed only top-10 to the reranker.</statement>
+      <rationale source="Cohere Rerank docs; bge-reranker benchmarks">Reranker can only re-order what it sees; small candidate pools cap its upside and waste its 50-100 ms cost.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use native hybrid search endpoints (Weaviate alpha, Qdrant FusionQuery) over manual two-call fusion. Native: lower latency, fewer failure modes, less code.</statement>
-      <rationale source="v1-source">Manual fusion requires two separate network calls, two failure modes, and custom RRF implementation. Native endpoints do all of this in a single API call.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Set BM25 parameters for your content: short document chunks need b=0.3-0.5; long documents need b=0.75; technical content needs k1=1.5-2.0; general content k1=1.2. Match BM25 tokenizer to corpus language.</statement>
-      <rationale source="v1-source">Default BM25 parameters (k1=1.5, b=0.75) are calibrated for long English prose. Applying them to short chunks or code degrades keyword matching significantly.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Log retriever attribution: which retriever contributed each successful result. After 2 weeks, if BM25 contributes less than 10% of final results, hybrid may not be justified for that query distribution.</statement>
-      <rationale source="v1-source">Hybrid adds complexity and ~20% latency. If your query distribution is purely semantic, the BM25 component is waste. Data-driven decisions about disabling hybrid prevent unnecessary complexity.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Before switching from pure vector to hybrid in production, A/B test on 5% of traffic and measure a quality metric. Latency + complexity cost must be justified by measurable gain.</statement>
-      <rationale source="v1-source">Hybrid is not always better. On conversational or creative corpora, BM25 can add noise. Measure on real traffic, not on a benchmark that may not reflect your query distribution.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>For mixed queries, the agent runs BM25 and vector search in parallel, applies RRF fusion, and optionally passes the top-100 candidates through a cross-encoder reranker to get the final top-10.</statement>
-      <rationale source="v1-source">This approach maximizes recall and precision while keeping latency bounded.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>The agent logs which retriever contributed to each final result for monitoring and tuning.</statement>
-      <rationale source="v1-source">This data drives decisions about whether hybrid search is still necessary and whether the cost is justified.</rationale>
+    <rule id="precision-floor" testable="true" depth="essential">
+      <statement>Hybrid config ships only if precision@10 ≥ 0.85 on the held-out set AND p99 latency ≤ budget. Below floor, fall back to the simpler retriever rather than ship hybrid.</statement>
+      <rationale source="Internal RAG audits">Hybrid that fails its precision floor is added complexity for no value. Better to ship the simpler retriever and re-eval at the next corpus refresh.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

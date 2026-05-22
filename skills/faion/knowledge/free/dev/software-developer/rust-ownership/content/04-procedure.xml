@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rust Ownership Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step audit applied per function before writing the body.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="list-callers">
+      <input>function path</input>
+      <action>Run `grep -rn 'fn_name(' src/` or `cargo check` to enumerate call sites. Note for each whether caller has owned or borrowed value.</action>
+      <output>call-site list</output>
+    </step>
+
+    <step n="2" name="answer-3-questions">
+      <input>function purpose + call sites</input>
+      <action>Answer: (1) keeps_value — does the fn store the input, return it, or drop it? (2) modifies_value — does it write through the input? (3) shares_across_threads — does any path spawn a thread / async task with the input?</action>
+      <output>{keeps_value, modifies_value, shares_across_threads}</output>
+    </step>
+
+    <step n="3" name="pick-signature">
+      <input>answers</input>
+      <action>Apply decision tree in 06-decision-tree.xml. Write the chosen signature. Add a 3-line audit comment above the fn using `templates/ownership-audit-comment.tmpl.rs`.</action>
+      <output>signature + audit comment</output>
+    </step>
+
+    <step n="4" name="cargo-check">
+      <input>signature + draft body</input>
+      <action>Run `cargo check`. If borrow checker complains: re-audit; do NOT add `.clone()` or `Rc&lt;RefCell&gt;` reflexively. Common fix: split call site so two `&mut` references do not overlap.</action>
+      <output>compiling code</output>
+      <decision-gate>If body genuinely cannot compile without `.clone()` AND the value is small (Copy or small struct): accept the clone with a `// clone justified: small + cold path` comment.</decision-gate>
+    </step>
+
+    <step n="5" name="record">
+      <input>final signature + answers</input>
+      <action>Emit decision-record JSON per 02-output-contract.xml schema. Append to crate-level `ownership-decisions.json`.</action>
+      <output>decision-record entry</output>
+    </step>
+
+  </section>
+</text>

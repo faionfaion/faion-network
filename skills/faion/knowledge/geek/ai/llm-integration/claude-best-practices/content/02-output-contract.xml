@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="claude-best-practices Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Claude Best Practices Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON-schema output contract for the policy pack: model-tier table, fallback logging on/off, shared rate bucket, cache layout, retry-after parsing.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "claude-best-practices-output",
+  "required": [
+    "model_tier_table",
+    "fallback_logging",
+    "shared_rate_bucket",
+    "cache_layout",
+    "retry_after_parsing",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "model_tier_table": {"description": "Object {routing, generation, reasoning} all full-date model ids."},
+    "fallback_logging": {"description": "Boolean — response.model logged on every call."},
+    "shared_rate_bucket": {"description": "Boolean — multi-worker pool uses a shared token bucket."},
+    "cache_layout": {"description": "Object {stable_prefix_first: bool, cached_prefix_tokens: int>=1024}."},
+    "retry_after_parsing": {"description": "Boolean — retry-after header parsed instead of guessing."},
+    "batch_api_enabled": {"description": "Boolean — Batch API used where workload allows."},
+    "forbidden_seen": {"description": "Forbidden patterns matched; must be empty."}
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="model_tier_table" format="object" required="true">routing / generation / reasoning all pinned with full-date ids.</field>
+      <field name="fallback_logging" format="boolean" required="true">`response.model` logged on every call.</field>
+      <field name="shared_rate_bucket" format="boolean" required="true">Shared bucket across workers.</field>
+      <field name="cache_layout" format="object" required="true">stable_prefix_first + cached_prefix_tokens.</field>
+      <field name="retry_after_parsing" format="boolean" required="true">retry-after header is parsed.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched; must be empty.</field>
+      <field name="batch_api_enabled" format="boolean" required="false">Batch API used where workload allows.</field>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Any model id in `model_tier_table` without full-date suffix.</pattern>
+      <pattern id="f2">`fallback_logging == false`.</pattern>
+      <pattern id="f3">`shared_rate_bucket == false` when multi-worker.</pattern>
+      <pattern id="f4">`cache_layout.cached_prefix_tokens` &lt; 1024.</pattern>
+      <pattern id="f5">`retry_after_parsing == false`.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Normalise model ids to lowercase.</transformation>
+      <transformation>Sort `forbidden_seen` alphabetically.</transformation>
     </allowed-transformations>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "model_tier_table": {
+    "routing": "claude-3-5-haiku-20241022",
+    "generation": "claude-sonnet-4-20250514",
+    "reasoning": "claude-opus-4-5-20251101"
+  },
+  "fallback_logging": true,
+  "shared_rate_bucket": true,
+  "cache_layout": {"stable_prefix_first": true, "cached_prefix_tokens": 4200},
+  "retry_after_parsing": true,
+  "batch_api_enabled": true,
+  "forbidden_seen": []
+}]]></code>
+    <note>All forbidden patterns absent; tier table fully pinned.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "model_tier_table": {"routing": "claude-haiku", "generation": "claude-sonnet-4", "reasoning": "claude-opus"},
+  "fallback_logging": false,
+  "shared_rate_bucket": false,
+  "cache_layout": {"stable_prefix_first": false, "cached_prefix_tokens": 600},
+  "retry_after_parsing": false,
+  "forbidden_seen": ["f1", "f2", "f3", "f4", "f5"]
+}]]></code>
+    <note>Every forbidden pattern triggered — schema rejects.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>`scripts/validate-claude-best-practices.py` exits 0.</item>
     </list>
   </section>
 </text>
