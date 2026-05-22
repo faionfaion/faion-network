@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Multi-Agent Production Bus Worked Example" version="2.0.0" est_tokens="700" depth="recommended">
+  <summary>MessageBus + ProductionMultiAgentSystem skeleton with three strategies.</summary>
+
+  <example type="good">
+    <note>Structured Message with handler timeout (r1, r2).</note>
+    <code lang="python"><![CDATA[
+import asyncio
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Callable
+
+
+class CommunicationType(Enum):
+    DIRECT = "direct"
+    BROADCAST = "broadcast"
+    REQUEST = "request"
+
+
+@dataclass
+class Message:
+    sender: str
+    receiver: str
+    content: dict       # structured payload — r1
+    msg_type: CommunicationType
+    correlation_id: str
+
+
+class MessageBus:
+    def __init__(self, handler_timeout_seconds: int = 60):
+        self.subscribers: Dict[str, List[Callable]] = {}
+        self.history: List[Message] = []
+        self.timeout = handler_timeout_seconds
+
+    def subscribe(self, name: str, handler: Callable):
+        self.subscribers.setdefault(name, []).append(handler)
+
+    async def send(self, msg: Message):
+        self.history.append(msg)
+        targets = (
+            [n for n in self.subscribers if n != msg.sender]
+            if msg.msg_type is CommunicationType.BROADCAST
+            else [msg.receiver]
+        )
+        for name in targets:
+            for h in self.subscribers.get(name, []):
+                await asyncio.wait_for(h(msg), timeout=self.timeout)  # r2
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>Parallel strategy with per-task timeout + cost gate (r-parallel, r5).</note>
+    <code lang="python"><![CDATA[
+async def _parallel(self, task, plan):
+    async def run_one(assignment):
+        agent = self.agents[assignment["agent"]]
+        if self.tokens_used(agent.name) >= agent.budget_tokens:
+            return {"agent": agent.name, "error": "budget_exhausted"}
+        return await asyncio.wait_for(agent.respond(assignment["task"]), timeout=self.timeout)
+
+    results = await asyncio.gather(*[run_one(a) for a in plan["assignments"]])
+    return await self._synthesize(task, results)
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Bad — circular await deadlocks (r4 violation).</note>
+    <code lang="python"><![CDATA[
+async def planner_handler(msg):
+    response = await bus.send(Message(sender="planner", receiver="worker", content={"task": "x"}))
+    # planner waits for worker
+async def worker_handler(msg):
+    # worker tries to ask planner back — deadlock
+    return await bus.send(Message(sender="worker", receiver="planner", content={"clarify": "?"}))
+]]></code>
+  </example>
+</text>

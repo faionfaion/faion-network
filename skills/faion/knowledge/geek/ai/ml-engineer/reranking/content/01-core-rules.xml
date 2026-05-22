@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="reranking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for reranking. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Reranking — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules covering when to add a reranker, top-N capacity, latency budget enforcement, eval before adopt, fallback on provider outage.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-reranker-after-retrieval" testable="true" depth="essential">
+      <statement>The reranker MUST run AFTER first-stage retrieval, not as a replacement. Retrieve top-N (N ∈ [20, 100]), rerank to top-K (K ∈ [3, 10]).</statement>
+      <rationale source="Cohere docs; BGE benchmark 2026">Cross-encoders are expensive (O(N) full forward passes per query). Running them as first-stage on a large corpus is infeasible. The two-stage pattern is the canonical resolution.</rationale>
     </rule>
+
+    <rule id="r2-top-n-capacity" testable="true" depth="essential">
+      <statement>top_n MUST be sized to fit within the reranker provider's max input cap (Cohere: 1000; FlashRank: configurable; Voyage: 100). Setting top_n &gt; cap silently truncates and biases reordering.</statement>
+      <rationale source="Cohere Rerank API limits; provider docs">Exceeding the cap returns partial results; queries that depend on a doc beyond the cap lose the doc entirely. Pin top_n explicitly per provider.</rationale>
+    </rule>
+
+    <rule id="r3-latency-budget" testable="true" depth="essential">
+      <statement>Pipeline MUST track end-to-end reranker latency budget. If observed p95 reranker latency &gt; budget, the system MUST either (a) reduce top_n, (b) switch to a faster provider, or (c) bypass reranker with a degraded-quality warning.</statement>
+      <rationale source="production SLO discipline">Silent latency creep degrades UX. Explicit budget makes the trade-off visible and triggers corrective action instead of slow drift.</rationale>
+    </rule>
+
+    <rule id="r4-eval-before-adopt" testable="true" depth="essential">
+      <statement>Adopting a reranker MUST be preceded by an eval on ≥50 labelled `(query, candidate_ids, relevance)` rows showing ≥10% precision@K lift over the same retrieval without reranker.</statement>
+      <rationale source="reranker provider benchmarks; eval discipline">Reranker cost is real (managed API charges, local GPU memory). Without measured lift on the actual task, the spend has no defence.</rationale>
+    </rule>
+
+    <rule id="r5-fallback-on-outage" testable="true" depth="essential">
+      <statement>If the chosen reranker provider becomes unhealthy (5xx, timeout), the pipeline MUST fall through to either (a) a local lightweight reranker, OR (b) return the first-stage top-K with a `degraded: true` flag. Hard fail is forbidden.</statement>
+      <rationale source="resilience patterns; Cohere outage post-mortems 2025-2026">Managed reranker providers have outages. Without fallback the RAG product fails for the duration. Degraded quality &gt; downtime.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
