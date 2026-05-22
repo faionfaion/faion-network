@@ -4,71 +4,99 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: A manager agent receives a top-level task, creates a JSON assignment plan by querying available workers and their roles, dispatches each subtask to the matching worker, and finally synthesizes all worker results into one response.
+summary: Generates a manager-worker multi-agent runner where one opus-class manager produces a typed JSON assignment plan, dispatches each subtask to a stateless worker, and synthesizes results into a final structured output.
 content_id: "d5efbc70529c8033"
+complexity: medium
+produces: code
+est_tokens: 3700
 tags: [multi-agent, hierarchical, orchestration, delegation, task-decomposition]
 ---
 # Hierarchical Manager-Worker Multi-Agent Pattern
 
 ## Summary
 
-**One-sentence:** A manager agent receives a top-level task, creates a JSON assignment plan by querying available workers and their roles, dispatches each subtask to the matching worker, and finally synthesizes all worker results into one response.
+**One-sentence:** Generates a manager-worker multi-agent runner where one opus-class manager produces a typed JSON assignment plan, dispatches each subtask to a stateless worker, and synthesizes results into a final structured output.
 
-**One-paragraph:** A manager agent receives a top-level task, creates a JSON assignment plan by querying available workers and their roles, dispatches each subtask to the matching worker, and finally synthesizes all worker results into one response. Workers are stateless specialists; only the manager holds the overall task context.
+**One-paragraph:** The manager is the only agent that holds the overall task context. It produces a `Plan` (typed JSON: assignments[] of `{worker_name, subtask, deps[]}`), the orchestrator dispatches subtasks to stateless workers respecting `deps[]`, gathers results, and feeds them back to the manager for synthesis. Workers never talk to each other — all communication routes through the manager. Cycle detection runs at plan-time; partial-failure policy is declared upfront (`abort`, `degrade`, `retry`).
+
+**Ефективно для:** інженера, який ділить велике завдання на ролі — менеджер бачить ціле, воркери виконують свою частину; найбільш audit-friendly з multi-agent патернів.
 
 ## Applies If (ALL must hold)
 
-- Complex project work where different agents have genuinely different roles (researcher, coder, reviewer) — role overlap must be minimal.
-- Tasks that decompose into sequential but dependent subtasks: each worker's output feeds the synthesis step.
-- Production systems requiring auditability: hierarchical delegation produces a traceable assignment log.
-- When the top-level task scope exceeds a single context window but can be partitioned clearly.
+- Task decomposes into ≥2 specialist subtasks (researcher / coder / reviewer, etc.).
+- Worker roles are non-overlapping AND workers can be stateless (no shared memory needed).
+- Manager can produce a structured assignment plan — task shape is knowable from the brief.
+- Auditability matters — each subtask + result row goes into the trace.
+- Latency budget tolerates 2 extra round-trips (manager plan + synthesis) on top of worker calls.
 
 ## Skip If (ANY kills it)
 
-- Simple tasks that fit in a single context window — manager overhead (plan call + synthesis call) adds cost without value.
-- When agent roles overlap significantly — workers with redundant roles echo each other rather than contribute.
-- Tight latency budgets: hierarchical delegation adds at minimum 2 extra LLM round-trips (plan + synthesis) on top of worker calls.
-- Tasks requiring fine-grained shared mutable state between workers — pass-by-message is the only inter-agent channel.
+- Task fits in a single context window — manager overhead is wasted.
+- Workers need shared mutable state — switch to `collaborative` (blackboard) instead.
+- Latency under 5 s — plan + dispatch + synthesis adds ~3 round-trips minimum.
+- Free-form dynamic exploration needed — switch to `conversational`.
+- Workers' roles overlap significantly — `multi-agent-basics` will flag overlap during spec validation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Validated multi-agent spec | YAML with `pattern: hierarchical` | `multi-agent-basics` |
+| Worker roster + system prompts | list of `{name, role, model, system_prompt}` | spec |
+| Top-level task statement | string | spec.task |
+| Partial-failure policy | one of `abort`, `degrade`, `retry` | ops handbook |
+| Per-agent budgets | int per worker | spec.agents |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/multi-agent-basics` | Upstream spec. |
+| `geek/ai/ai-agents/schema-version-pinning` | Plan + result envelope carry `schema_version`. |
+| `geek/ai/ai-agents/role-specialized-models` | Manager on opus, workers on sonnet/haiku per cognitive role. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: typed Plan schema, stateless workers, plan-time cycle check, declared failure policy, per-worker timeout | ~750 |
+| `content/02-output-contract.xml` | essential | JSON Schema for `Plan` + `WorkerResult` + final `Synthesis` envelope; valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: cycles in plan, workers talking to workers, manager-also-worker, missing failure policy, no per-worker timeout | ~700 |
+| `content/04-procedure.xml` | medium | 6-step build: validate spec → manager plans → cycle check → dispatch → gather → synthesize | ~800 |
+| `content/06-decision-tree.xml` | essential | Pick hierarchical vs sequential vs collaborative vs conversational based on plan-knowability + audit need | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Manager plan + synthesis | opus | Decomposition + cross-result synthesis are the strongest reasoning steps. |
+| Worker execution | sonnet | Reliable focused execution within a single role. |
+| Trivial workers (classify / format) | haiku | Cost-saver per role-specialized-models. |
+| Cycle-check on plan | code (no LLM) | Plan-time graph check; deterministic. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/hierarchical_runner.py` | `HierarchicalRunner` class with manager plan + worker dispatch + synthesis; respects `deps[]` and per-worker timeouts. |
+| `templates/plan-schema.json` | JSON Schema for the `Plan` the manager emits. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-multi-agent-hierarchical.py` | Validates a hierarchical config and a sample plan (cycle check, deps resolve, failure policy named, worker timeouts present). | Pre-merge of any hierarchical-pattern PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[multi-agent-basics]] — upstream spec.
+- [[multi-agent-design-patterns]] — selects this pattern.
+- [[multi-agent-production-bus]] — ships hierarchical via async message bus.
+- [[role-specialized-models]] — manager=opus, workers=sonnet/haiku.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` decides whether hierarchical is the right pattern: pick it when the task is decomposable into non-overlapping roles with stateless workers AND audit matters. Pick sequential when the chain is linear and no manager judgement is needed; pick collaborative when workers need shared mutable state; pick conversational when the plan is unknowable upfront. Run it before scaffolding.

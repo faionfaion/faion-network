@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-service-layer Procedure" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>Five-step procedure to extract business logic into a service function.</summary>
+
+  <section title="Steps">
+    <step n="1" name="extract">
+      <input>view / Celery task / admin action containing write logic</input>
+      <action>Identify every mutation (`save`, `update`, `delete`, `bulk_create`) plus side effects. Cut them from the caller; paste into a function in `apps/<app>/services.py`.</action>
+      <output>draft service function with raw logic</output>
+      <decision-gate>Caller now contains only orchestration (serializer validation + service call + response).</decision-gate>
+    </step>
+
+    <step n="2" name="contract">
+      <input>draft function</input>
+      <action>Convert signature to kwarg-only: `def <verb>_<entity>(*, …)`. Replace `**kwargs` with explicit parameters. Add type hints + docstring.</action>
+      <output>typed service signature</output>
+      <decision-gate>No `**kwargs`; every parameter has a type hint.</decision-gate>
+    </step>
+
+    <step n="3" name="atomic">
+      <input>typed service body</input>
+      <action>If multiple model writes are present, wrap them in `with transaction.atomic():`. Replace `Model.objects.create(...)` with `Model(...); full_clean(); save()` for instances that have `clean()` defined.</action>
+      <output>transactional service body</output>
+      <decision-gate>A test that raises an exception inside the atomic block leaves zero rows committed.</decision-gate>
+    </step>
+
+    <step n="4" name="domain-exceptions">
+      <input>existing HTTP/DRF exception sites within the service</input>
+      <action>Replace each with the corresponding domain exception (`NotFoundError`, `ValidationError`, `PermissionDeniedError`, `ApplicationError`). Add a DRF exception handler in `core/exception_handler.py` mapping domain → HTTP if not present.</action>
+      <output>service raises domain exceptions only</output>
+      <decision-gate>`grep -E "rest_framework.exceptions|Http404" apps/*/services.py` returns nothing.</decision-gate>
+    </step>
+
+    <step n="5" name="on-commit">
+      <input>side-effect calls (Celery, email, webhook) currently inside the atomic block</input>
+      <action>Wrap each as `transaction.on_commit(lambda: <effect>)`. Move the call outside the atomic block (still inside the service function) if the effect is read-only.</action>
+      <output>side effects fire only after commit</output>
+      <decision-gate>A test that rolls back the transaction does NOT trigger the side effect.</decision-gate>
+    </step>
+  </section>
+</text>

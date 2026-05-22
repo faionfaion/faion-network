@@ -1,47 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="image-generation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for image-generation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Image Generation Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for image-gen pipeline config.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use DALL-E 3 or GPT-4o when the image must contain readable text; no other model reliably renders strings under 25 characters.</statement>
-      <rationale source="v1-source">Text rendering is unreliable across all generative models for strings longer than 25 characters. DALL-E 3 and GPT-4o have the highest text accuracy but still fail on longer strings.</rationale>
+    <rule id="model-by-task" testable="true" depth="essential">
+      <statement>Pick model by task class: text-in-image → DALL-E 3 / GPT-4o; photorealism → Flux Pro; brand identity → SD + LoRA or Flux Kontext; bulk volume → Flux schnell (Apache 2.0, self-hosted).</statement>
+      <rationale source="Flux benchmarks; OpenAI model cards 2026">Per-task strength profiles dominate quality and cost. Wrong model = either bad output or 5-10x cost.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use Flux schnell (Apache 2.0, self-hosted) for high-volume bulk generation where per-API-call cost matters; use Flux Dev or Pro for quality-critical photorealistic output.</statement>
-      <rationale source="v1-source">At scale, $0.014+ per image compounds quickly. Flux schnell is Apache 2.0 licensed, runs in 1-4 steps, and is suitable for social media post images and bulk pipeline output.</rationale>
+    <rule id="six-element-prompt" testable="true" depth="essential">
+      <statement>Every prompt has six dimensions: Subject + Style + Lighting + Composition + Details + Technical. Missing any one regresses to noisy / flat output.</statement>
+      <rationale source="DALL-E 3 prompt guide; Flux prompt docs">Each dimension controls a separate visual axis; omissions yield inconsistent regenerations and burn retry budget.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use Stable Diffusion + LoRA for brand-specific assets requiring consistent visual identity that cannot be achieved through prompt keywords alone.</statement>
-      <rationale source="v1-source">Standard API models produce visually different results on identical prompts. Only fine-tuned models (LoRA) or reference-image workflows (Flux Kontext) preserve brand identity reliably.</rationale>
+    <rule id="schnell-for-bulk" testable="true" depth="essential">
+      <statement>For batch ≥ 1000 images/day, self-host Flux schnell. Do NOT pay-per-call on DALL-E for bulk pipelines.</statement>
+      <rationale source="Cost analysis 2026">At $0.014/img × 1000/day × 30 ≈ $420/month vs flat self-host ~$80/month GPU.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Always use the structured prompt formula: [Subject] + [Style] + [Lighting] + [Composition] + [Details] + [Technical]; vague prompts produce inconsistent results across regenerations.</statement>
-      <rationale source="v1-source">Each dimension controls a different visual aspect. Missing lighting or composition often produces flat, uninteresting images that require expensive retry cycles.</rationale>
+    <rule id="lora-for-brand" testable="true" depth="essential">
+      <statement>Brand-consistent series requires LoRA fine-tune (10-20 reference images) OR Flux Kontext with character anchor. Prompt-keyword "in brand style" alone is unreliable.</statement>
+      <rationale source="LoRA training research; brand consistency audits">Standard API models produce visually different outputs on identical prompts; only fine-tune or reference workflow preserves identity.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use a three-stage pipeline: prompt-engineer subagent transforms brief → image-generator selects model and calls API → quality-checker VLM verifies output matches requirements.</statement>
-      <rationale source="v1-source">Separating concerns prevents the generator from making prompt quality decisions and the prompt engineer from handling API errors. Each stage has a clear, testable responsibility.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Pre-filter prompts through a content-policy checker before hitting the API; rejected requests still consume latency and may count against rate limits.</statement>
-      <rationale source="v1-source">Content policy rejections are unpredictable on borderline prompts. Pre-filtering with a lightweight classifier reduces API 400 errors and improves pipeline throughput.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Cache all generated images immediately using prompt+parameters hash as the cache key; identical prompts sent twice waste money and API rate limits.</statement>
-      <rationale source="v1-source">Image generation APIs are expensive relative to text. Regenerating the same image in a pipeline retry loop compounds costs without benefit.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use a prompt-engineer subagent to transform a raw content brief into a structured image prompt using the formula [Subject] + [Style] + [Lighting] + [Composition] + [Details] + [Technical], then pass the structured prompt to an image-generator subagent.</statement>
-      <rationale source="v1-source">This separation of concerns ensures high-quality prompts and proper error handling.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>The image-generator subagent selects the model based on requirements (artistic → Midjourney-style prompts for Flux Dev; OCR text in image → DALL-E 3/GPT-4o; high-volume batch → Flux schnell self-hosted) and calls the API.</statement>
-      <rationale source="v1-source">Model selection must be automated based on task requirements, not guessed.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>A quality-checker subagent uses a vision model to verify the generated image matches key requirements before accepting it; on failure, the loop retries with a revised prompt up to 3 times.</statement>
-      <rationale source="v1-source">Automated quality checking catches obvious failures early without human intervention, but should not replace human review for high-stakes content.</rationale>
+    <rule id="no-likeness" testable="true" depth="essential">
+      <statement>Pipeline rejects prompts mentioning real named people for photorealism. Returns canonical refusal + alerts on attempt.</statement>
+      <rationale source="OpenAI usage policy 2026; EU AI Act art. 50">Likeness rights + content policy violation; both legal and platform risk.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

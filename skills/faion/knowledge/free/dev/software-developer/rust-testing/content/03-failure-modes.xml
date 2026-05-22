@@ -1,37 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="rust-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rust-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Rust Testing Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns: missing layers, ignored doctests, weak proptest configuration, test-isolation leaks.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>`unwrap()` called inside the SUT code path under test (not in the test body).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>`unwrap()` in tests is fine — it's the expected failure mode for test assertions. `unwrap()` in the SUT means the code panics on errors instead of returning Result. Use `?` in production code.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>mockall `.times(1)` placed before `.returning(...)` in the wrong order.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The order of mockall expectation builder calls matters. `.times(1)` after `.returning(...)` specifies the call count. Placed before, it has different semantics. Agents copy from old examples and produce silent under/over-call errors.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>`tokio::spawn` called in a test without awaiting the returned handle.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The test runtime exits before the spawned task completes; assertions inside the task never run. Always await `JoinHandle` or use `JoinSet`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Running `cargo insta accept` in CI to auto-accept all snapshots.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Auto-accepting snapshots locks in any regression as the "expected" value. `cargo insta review` must be run locally; CI should reject unapproved snapshot changes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>`std::env::set_var` called inside a test without a serial mutex.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Environment variable mutations are process-wide. Parallel test threads calling `set_var` for the same key collide, causing non-deterministic failures. Use `serial_test::serial` or refactor the SUT to accept config via DI.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>`tokio::time::sleep` in tests using real wall clock time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Real sleep is flaky on loaded CI runners. Use `tokio::time::pause()` + `tokio::time::advance(Duration)` for deterministic time control in async tests.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="only-unit-tests" severity="high">
+      <symptom>Crate has `#[cfg(test)] mod tests` everywhere but no `tests/*.rs` and no `///` examples. Refactor breaks downstream silently.</symptom>
+      <root-cause source="Rust Book ch.11">Author treats unit tests as enough because they ran in the same crate. Integration tests catch a different class — they exercise the public surface as a consumer would.</root-cause>
+      <fix>Add at least one file under `tests/` exercising the public API. Add `# Examples` sections to every public `///` doc block.</fix>
+    </antipattern>
+
+    <antipattern id="doctest-without-runs" severity="medium">
+      <symptom>Documentation contains code fences marked ```` ```rust,ignore ```` or ```` ```rust,no_run ```` without justification. CI passes; broken examples shipped to docs.rs.</symptom>
+      <root-cause source="rustdoc — doctest attributes">`ignore` and `no_run` are escape hatches. Used unjustifiedly they hide rot.</root-cause>
+      <fix>Replace `ignore` with `no_run` only when example needs unavailable resources (DB, network). Replace `no_run` with full execution when feasible. Lint: grep for `rust,ignore` requiring justifying comment.</fix>
+    </antipattern>
+
+    <antipattern id="proptest-no-shrink" severity="medium">
+      <symptom>`proptest!` block uses `prop_assert!` and shrinks; but the strategy generator uses `any::&lt;String&gt;()` producing 10MB strings, slowing CI to 30s+ per case.</symptom>
+      <root-cause source="proptest docs — strategy shrinking">Default `any::&lt;String&gt;` has no size limit. Without `prop::collection::vec(any::&lt;u8&gt;(), 0..100)` style bounds, tests run on adversarial pathological inputs.</root-cause>
+      <fix>Size-bound every generator: `prop::string::string_regex("[a-z]{0,16}")`, `prop::collection::vec(_, 0..32)`. Set `proptest_cases` to 256 for fast feedback, 4096 for nightly.</fix>
+    </antipattern>
+
+    <antipattern id="shared-mutable-state-tests" severity="high">
+      <symptom>Tests pass when run individually, fail under `cargo test --jobs 1` or in CI. Diagnosis: shared `static mut`, file-system writes to `/tmp/fixed-path`, or env-var setters.</symptom>
+      <root-cause source="Rust Book ch.11; cargo test parallelism">Cargo runs tests in parallel threads by default. Shared global mutable state or fixed filesystem paths produce flakes.</root-cause>
+      <fix>Use `tempfile::TempDir` for per-test directories. Use `static once_cell::sync::Lazy` + interior mutability for genuinely shared resources. Document `#[serial]` (via `serial_test`) when serialisation is required.</fix>
+    </antipattern>
+
   </section>
 </text>

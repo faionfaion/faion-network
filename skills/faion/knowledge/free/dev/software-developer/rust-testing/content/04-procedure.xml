@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rust Testing Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure: detect layout → install llvm-cov → wire CI → write tests → set proptest budget.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="detect-layout">
+      <input>`Cargo.toml` + existing `src/` + `tests/` directories</input>
+      <action>Run `cargo metadata --format-version=1 | jq .packages[0].targets`. Identify whether crate has `[lib]`, `[[bin]]`, and existing `tests/` dir.</action>
+      <output>{has_lib, has_bin, integration_test_count, doctest_count}</output>
+    </step>
+
+    <step n="2" name="install-llvm-cov">
+      <input>crate root</input>
+      <action>Add to CI: `cargo install --locked cargo-llvm-cov`. Verify with `cargo llvm-cov --version`.</action>
+      <output>llvm-cov available in CI</output>
+    </step>
+
+    <step n="3" name="wire-ci">
+      <input>`.github/workflows/test.yml`</input>
+      <action>Copy `templates/rust-coverage-gate.sh` into the workflow. Run `cargo test --all-targets --doc` then `cargo llvm-cov --lcov --output-path lcov.info` then `diff-cover lcov.info --compare-branch=origin/main --fail-under=85`.</action>
+      <output>CI gate active</output>
+    </step>
+
+    <step n="4" name="write-tests">
+      <input>list of public fn / data structures without coverage</input>
+      <action>For each: add a `# Examples` doc block, an integration test under `tests/`, and (if parser/codec) a `proptest!` block with size-bounded strategies.</action>
+      <output>passing test suite</output>
+      <decision-gate>If proptest cases exceed 1024 and CI takes &gt;5 min — cap at 256 in CI, run 4096 nightly with a separate cron workflow.</decision-gate>
+    </step>
+
+    <step n="5" name="lock">
+      <input>green build</input>
+      <action>Emit test-strategy spec JSON per 02-output-contract.xml. Commit. Future PRs run against the locked gate.</action>
+      <output>committed strategy spec</output>
+    </step>
+
+  </section>
+</text>

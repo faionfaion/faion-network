@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="image-generation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Image Generation Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Schema for image-gen-config.json.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/image-generation.json",
+  "type": "object",
+  "required": ["artefact_id", "version", "last_reviewed", "task_class", "model", "prompt_template", "pipeline", "safety"],
+  "properties": {
+    "artefact_id": {"type": "string"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "task_class": {"enum": ["text-in-image", "photorealism", "brand-consistent", "bulk", "illustration"]},
+    "model": {"enum": ["dall-e-3", "gpt-4o-image", "flux-pro", "flux-dev", "flux-schnell", "sd-xl", "sd-lora", "flux-kontext"]},
+    "prompt_template": {
+      "type": "object",
+      "required": ["subject", "style", "lighting", "composition", "details", "technical"],
+      "properties": {
+        "subject": {"type": "string"},
+        "style": {"type": "string"},
+        "lighting": {"type": "string"},
+        "composition": {"type": "string"},
+        "details": {"type": "string"},
+        "technical": {"type": "string"}
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "required": ["concurrency", "retry_max", "cost_per_image_usd"],
+      "properties": {
+        "concurrency": {"type": "integer", "minimum": 1},
+        "retry_max": {"type": "integer", "minimum": 0},
+        "cost_per_image_usd": {"type": "number", "minimum": 0}
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["likeness_block", "content_filter"],
+      "properties": {
+        "likeness_block": {"type": "boolean"},
+        "content_filter": {"enum": ["openai-moderation", "stability-safety", "custom", "none"]}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ig-news-headers-2026-05",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "task_class": "bulk",
+  "model": "flux-schnell",
+  "prompt_template": {
+    "subject": "{{topic}}",
+    "style": "editorial illustration, muted palette",
+    "lighting": "soft diffused daylight",
+    "composition": "wide 16:9 with focal subject left of centre",
+    "details": "subtle texture, no text in image",
+    "technical": "1024x576, 4 steps, seed 42"
+  },
+  "pipeline": {"concurrency": 8, "retry_max": 2, "cost_per_image_usd": 0.002},
+  "safety": {"likeness_block": true, "content_filter": "stability-safety"}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{"task_class": "art", "model": "midjourney", "prompt_template": {"subject": "x"}}
+]]></code>
+    <note>task_class + model not in enums; prompt_template missing 5 of 6 dimensions; missing pipeline, safety, version, etc.</note>
+  </example>
+
+  <reference path="scripts/validate-image-generation.py">schema validator</reference>
 </text>

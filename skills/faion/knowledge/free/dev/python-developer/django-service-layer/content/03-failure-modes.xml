@@ -1,12 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-service-layer Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-service-layer as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-service-layer Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five concrete antipatterns. Each maps to a rule in `01-core-rules.xml`.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-logic-in-view" severity="high">
+      <description>Business logic embedded in view methods (multi-model writes, side effects in the same function as request parsing).</description>
+      <symptom>Service unit tests require mock HTTP requests; same logic copy-pasted into Celery task with subtle drift; view file grows past 300 lines.</symptom>
+      <root-cause>"Just one quick endpoint" — no place to put logic exists yet, so it lives in the view.</root-cause>
+      <fix>Extract into `apps/<app>/services.py` with kwarg-only signature. Views become 3 lines: validate input via serializer, call service, wrap response.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-create-bypasses-clean" severity="high">
+      <description>`Model.objects.create(...)` used for new instances whose model defines `clean()` or composite constraints.</description>
+      <symptom>Invalid rows reach the database; downstream services blow up on missing or contradictory fields; integrity errors surface days later.</symptom>
+      <root-cause>`objects.create` is a one-liner; `Model(...) + full_clean() + save()` is three lines. Convenience wins until incidents.</root-cause>
+      <fix>Replace with `instance = Model(...); instance.full_clean(); instance.save()`. Keep `objects.create` only for trivial inserts where `clean()` is empty.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-http-exceptions-in-service" severity="high">
+      <description>Service raises `rest_framework.exceptions.ValidationError`, `Http404`, or returns a DRF Response.</description>
+      <symptom>Celery task / management command imports the service and crashes on import or fails with `ImproperlyConfigured` at runtime; the same business rule cannot be reused outside the web context.</symptom>
+      <root-cause>Convenience again — the DRF exception "just works" in the view's exception handler.</root-cause>
+      <fix>Raise domain exceptions (`ApplicationError`, `NotFoundError`, `ValidationError`, `PermissionDeniedError`) defined in `core/exceptions.py`. Add a DRF custom exception handler that maps domain → HTTP.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-delay-inside-atomic" severity="high">
+      <description>Celery `task.delay(...)` called inside the `transaction.atomic()` block.</description>
+      <symptom>Worker logs show "Order matching query does not exist" immediately after a creation endpoint — the task ran before the transaction committed.</symptom>
+      <root-cause>Author treats `.delay()` as async-fire-and-forget; doesn't realise the broker accepts the message before the SQL commits.</root-cause>
+      <fix>Wrap every side-effect dispatch in `transaction.on_commit(lambda: task.delay(...))`. The lambda fires after commit and is dropped on rollback.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-no-atomic-multi-model" severity="high">
+      <description>Service writes to two or more models without a single enclosing `transaction.atomic()` block.</description>
+      <symptom>Partial state: Order rows exist with no OrderItems; payment row created but order not; manual cleanup tickets pile up.</symptom>
+      <root-cause>Author assumes Django default behaviour wraps everything; it does not (unless `ATOMIC_REQUESTS=True` is set, which is a different antipattern).</root-cause>
+      <fix>Open `with transaction.atomic():` at the service body. Verify rollback by deliberately raising mid-service in tests.</fix>
+    </antipattern>
   </section>
 </text>

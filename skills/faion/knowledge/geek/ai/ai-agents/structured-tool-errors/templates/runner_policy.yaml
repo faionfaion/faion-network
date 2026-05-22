@@ -1,0 +1,41 @@
+# purpose: closed map from recoveryHint enum value -> runner action with default budgets
+# consumes: tool error envelope (templates/error_envelope.json)
+# produces: per-tool retry / halt decisions in the agent runner
+# depends-on: agent runner that reads YAML on startup; per-tool overrides supported
+# token-budget-impact: ~250 tokens to render in agent context
+
+policy_version: "1.1.0"
+default_retry_budget_per_tool: 3
+retry_after_seconds_clamp:
+  min: 1
+  max: 300
+
+dispatch:
+  RETRY_LATER:
+    action: wait_and_retry
+    use_retry_after_seconds: true
+    fallback_seconds: 10
+    counts_against_retry_budget: true
+  CHECK_INPUT:
+    action: return_to_model
+    counts_against_retry_budget: false
+  TRY_ALTERNATIVE:
+    action: return_to_model
+    suggest_different_tool: true
+    counts_against_retry_budget: false
+  REPORT_TO_USER:
+    action: halt_loop
+    surface_envelope_to_user: true
+  NEEDS_AUTH:
+    action: halt_loop
+    trigger_auth_flow: true
+
+# Per-tool overrides (example)
+overrides:
+  github_api:
+    default_retry_budget_per_tool: 5
+  payment_gateway:
+    dispatch:
+      RETRY_LATER:
+        action: halt_loop   # never auto-retry payment side-effects
+        surface_envelope_to_user: true

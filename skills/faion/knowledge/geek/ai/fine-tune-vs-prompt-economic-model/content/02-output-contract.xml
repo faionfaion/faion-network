@@ -1,42 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Fine Tune Vs Prompt Economic Model Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Fine Tune Vs Prompt Economic Model deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
+<text id="02-output-contract" title="Fine-tune vs prompt economic model — output contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the economic-model artefact + examples.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ft-vs-prompt-economic-model",
+  "type": "object",
+  "required": ["workload", "owner", "created_at", "inputs", "scenarios", "sensitivity", "outputs_base", "recommendation"],
+  "properties": {
+    "workload": {"type": "string"},
+    "owner": {"type": "string", "not": {"enum": ["team", "TBD"]}},
+    "created_at": {"type": "string", "format": "date"},
+    "inputs": {
+      "type": "object",
+      "required": ["input_tokens_per_day", "output_tokens_per_day", "current_input_cost_per_k", "current_output_cost_per_k", "ft_input_cost_per_k", "ft_output_cost_per_k", "ft_training_cost", "ops_overhead_per_month", "vendor_risk_premium_pct"],
+      "properties": {
+        "input_tokens_per_day": {"type": "number", "minimum": 0},
+        "output_tokens_per_day": {"type": "number", "minimum": 0},
+        "current_input_cost_per_k": {"type": "number", "minimum": 0},
+        "current_output_cost_per_k": {"type": "number", "minimum": 0},
+        "ft_input_cost_per_k": {"type": "number", "minimum": 0},
+        "ft_output_cost_per_k": {"type": "number", "minimum": 0},
+        "ft_training_cost": {"type": "number", "minimum": 0},
+        "ops_overhead_per_month": {"type": "number", "exclusiveMinimum": 0},
+        "vendor_risk_premium_pct": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
+    "scenarios": {
+      "type": "object",
+      "required": ["base", "volume_minus_50", "volume_plus_50", "prompt_cost_minus_30_eoy"],
+      "properties": {
+        "base":                       {"type": "object", "required": ["monthly_delta_usd", "npv_12mo_usd", "break_even_month"]},
+        "volume_minus_50":            {"type": "object", "required": ["monthly_delta_usd", "npv_12mo_usd", "break_even_month"]},
+        "volume_plus_50":             {"type": "object", "required": ["monthly_delta_usd", "npv_12mo_usd", "break_even_month"]},
+        "prompt_cost_minus_30_eoy":   {"type": "object", "required": ["monthly_delta_usd", "npv_12mo_usd", "break_even_month"]}
+      }
+    },
+    "sensitivity": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["dimension", "delta_pct", "break_even_month"]
+      }
+    },
+    "outputs_base": {
+      "type": "object",
+      "required": ["monthly_prompt_cost", "monthly_ft_cost"]
+    },
+    "recommendation": {"enum": ["fine-tune", "prompt-or-other", "borderline"]}
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example (excerpt)">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "workload": "support-classifier",
+  "owner": "alice@example.com",
+  "created_at": "2026-05-22",
+  "inputs": {
+    "input_tokens_per_day": 8000000, "output_tokens_per_day": 1000000,
+    "current_input_cost_per_k": 3.0, "current_output_cost_per_k": 15.0,
+    "ft_input_cost_per_k": 0.25, "ft_output_cost_per_k": 1.25,
+    "ft_training_cost": 800, "ops_overhead_per_month": 400, "vendor_risk_premium_pct": 15
+  },
+  "scenarios": {
+    "base":                       {"monthly_delta_usd": 4750, "npv_12mo_usd": 56200, "break_even_month": 1},
+    "volume_minus_50":            {"monthly_delta_usd": 1900, "npv_12mo_usd": 21800, "break_even_month": 2},
+    "volume_plus_50":             {"monthly_delta_usd": 7600, "npv_12mo_usd": 90400, "break_even_month": 1},
+    "prompt_cost_minus_30_eoy":   {"monthly_delta_usd": 1200, "npv_12mo_usd": 13600, "break_even_month": 4}
+  },
+  "sensitivity": [
+    {"dimension": "volume", "delta_pct": -20, "break_even_month": 2},
+    {"dimension": "$/k_input", "delta_pct": -20, "break_even_month": 3},
+    {"dimension": "ops_overhead", "delta_pct": +50, "break_even_month": 4}
+  ],
+  "outputs_base": {"monthly_prompt_cost": 1170, "monthly_ft_cost": 920},
+  "recommendation": "fine-tune"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "workload": "x", "owner": "team", "created_at": "2026-05-22",
+  "inputs": {
+    "input_tokens_per_day": 1, "output_tokens_per_day": 1,
+    "current_input_cost_per_k": 3, "current_output_cost_per_k": 0,
+    "ft_input_cost_per_k": 0, "ft_output_cost_per_k": 0,
+    "ft_training_cost": 800, "ops_overhead_per_month": 0, "vendor_risk_premium_pct": 0
+  },
+  "scenarios": {"base": {"monthly_delta_usd": 0, "npv_12mo_usd": 0, "break_even_month": null}},
+  "sensitivity": [],
+  "outputs_base": {"monthly_prompt_cost": 0, "monthly_ft_cost": 0},
+  "recommendation": "fine-tune"
+}]]></code>
+      <note>ops_overhead = 0 (r1), only one scenario (r2), no sensitivity (r3), output cost = 0 (r6 mixing), owner = team.</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>ops_overhead_per_month &gt; 0.</item>
+      <item>All four scenarios populated.</item>
+      <item>sensitivity table ≥ 3 rows.</item>
+      <item>input + output token rates split, both &gt;= 0.</item>
     </list>
   </section>
 </text>
