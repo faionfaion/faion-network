@@ -2,74 +2,95 @@
 slug: agents
 tier: geek
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Two Claude subagents for product scoping work: faion-mvp-scope-analyzer-agent analyzes competitor features to recommend a minimum feature set for a new product; faion-mlp-agent upgrades an MVP to an MLP (Minimum Lovable Product) through a five-mode sequential pipeline (analyze → find-gaps → propose → update → plan).
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "37259ea365fc4323"
-tags: [product-agents, mvp, mlp, competitor-analysis, product-planning]
+complexity: medium
+produces: spec
+est_tokens: 3200
+summary: Two Claude subagents for product scoping — faion-mvp-scope-analyzer-agent (competitor-grounded MVP scope) and faion-mlp-agent (5-mode MLP pipeline analyze→find-gaps→propose→update→plan) — with hard human-checkpoint and VCS-clean preconditions on autonomous spec edits.
+tags: [product, geek, subagent, mvp, mlp, scope, competitor-analysis, claude-agent-sdk]
 ---
 # Product Manager Agents
 
 ## Summary
 
-**One-sentence:** Two Claude subagents for product scoping work: faion-mvp-scope-analyzer-agent analyzes competitor features to recommend a minimum feature set for a new product; faion-mlp-agent upgrades an MVP to an MLP (Minimum Lovable Product) through a five-mode sequential pipeline (analyze → find-gaps → propose → update → plan).
+**One-sentence:** Two Claude subagents for product scoping work: `faion-mvp-scope-analyzer-agent` analyses competitor features to recommend a minimum feature set for a new product, and `faion-mlp-agent` upgrades an MVP to an MLP through a five-mode sequential pipeline (analyze → find-gaps → propose → update → plan) with a mandatory human checkpoint between `propose` and `update`.
 
-**One-paragraph:** Two Claude subagents for product scoping work: faion-mvp-scope-analyzer-agent analyzes competitor features to recommend a minimum feature set for a new product; faion-mlp-agent upgrades an MVP to an MLP (Minimum Lovable Product) through a five-mode sequential pipeline (analyze → find-gaps → propose → update → plan). The MLP dimensions are Delight, Ease, Speed, Trust, and Personality.
+**One-paragraph:** Two Claude subagents that turn MVP→MLP scoping into a traceable pipeline instead of a vibes-led roadmap session. `faion-mvp-scope-analyzer-agent` requires ≥3 named comparables, refusing to run without them so it cannot hallucinate a feature floor. `faion-mlp-agent` runs 5 modes in strict sequence — analyze the current state, find-gaps against MLP dimensions (Delight, Ease, Speed, Trust, Personality), propose WOW features, update spec files autonomously after human review, and plan implementation order. The mandatory checkpoint between `propose` and `update` plus a "VCS clean tree" precondition on `update` keep autonomous spec edits reviewable. B2B contexts down-weight Delight and Personality.
+
+**Ефективно для:** PM, який скейлить продукт з MVP до "продукт, який клієнт любить" і втомився, що roadmap-сесії — це 4-годинна срачка про "wow-фічі".
 
 ## Applies If (ALL must hold)
 
-- Defining MVP scope for a new product where competitor analysis is needed to determine the minimum feature set
-- Upgrading an MVP to an MLP (Minimum Lovable Product) by identifying the "WOW" features that differentiate the product
-- Running a structured gap analysis between current product state and MLP targets before a roadmap planning session
-- Updating spec files with MLP requirements after a gap analysis or discovery session
-- Sequencing MLP feature implementation when multiple WOW features are identified and need to be prioritized
+- Defining MVP scope for a new product OR upgrading an MVP to an MLP.
+- ≥3 comparable products exist (for MVP-scope-analyzer).
+- Spec files are committed to version control (for MLP mode:update).
+- A PM is available to approve mode:propose output before mode:update runs.
+- The team is ready to act on spec updates (not mid-sprint / code freeze).
 
 ## Skip If (ANY kills it)
 
-- Product is at ideation stage only — no existing specs or MVP definition to analyze; start with discovery methodology instead
-- Competitor landscape is entirely novel and no comparable products exist; the MVP scope analyzer needs comparables to work from
-- Team is not ready to act on spec updates (e.g., mid-sprint, code freeze); run mode: analyze and mode: find-gaps for prep, defer mode: update until the team is ready
-- The product is B2B enterprise with highly custom requirements; cookie-cutter MLP dimensions (Delight, Ease, Speed, Trust, Personality) may not apply without modification
+- Product at ideation stage with no existing specs — start with discovery methodology instead.
+- Competitor landscape entirely novel, no comparables — the MVP scope analyzer needs comparables.
+- Team not ready to act on spec updates — run analyze + find-gaps for prep, defer update.
+- B2B enterprise with highly custom requirements where MLP dimensions don't apply — modify weights first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Target market + segment | text | product brief |
+| ≥3 named comparables | list | competitive research |
+| Existing spec files | markdown | product repo |
+| Clean VCS state | git status output | local repo |
+| PM available for review | role + person | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/product/product-manager/ai-native-product-development` | Product-positioning context this pipeline consumes. |
+| `geek/product/product-manager/agentic-ai-product-development` | Sibling autonomous-agent methodology; shares VCS-state hygiene. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: strict-sequence, human-checkpoint-before-update, VCS-clean precondition, ≥3 comparables, B2B trust+ease weights | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (mode:plan as backlog, rigid 5-dim checklist, stale analyzer output, unapproved update, dirty tree) | ~950 |
+| `content/06-decision-tree.xml` | essential | New-product-or-existing branch + B2B-or-B2C weight branch + clean-VCS gate | ~350 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scope-analyze` | sonnet | Competitor-grounded judgment; cites comparables. |
+| `mlp-find-gaps` | sonnet | Per-dimension judgment from current state vs target. |
+| `mlp-propose-wow-features` | opus | Strategic synthesis; surfaces non-obvious differentiators. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mlp-pipeline.py` | Sequential 5-mode pipeline coordinator with human-checkpoint pause. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agents.py` | Validate a subagent run record (mode, vcs_state, comparables count, human_review_status). | After every subagent invocation. |
 
 ## Related
 
-- parent skill: `geek/product/product-manager/`
+- [[agentic-ai-product-development]] — sibling autonomous-agent product methodology.
+- [[ai-feature-de-risking]] — peer methodology for shipping AI features safely.
+- [[ai-native-product-development]] — provides positioning context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first asks whether this is a new-product scope or MVP→MLP upgrade. New-product branch checks ≥3 comparables → run scope-analyzer. MLP branch checks VCS clean + PM available → run sequential pipeline. B2B vs B2C decides dimension weights (B2B: trust+ease > delight+personality).

@@ -1,22 +1,135 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="agentic-ai-product-development Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Agentic AI Product Ops — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of an ops-readiness package for a production agent: goal predicate + enumerated actions with budgets + escalation runbook + dashboard config + behavioural-regression hook.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Required fields (JSON Schema)">
+    <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["agent", "owner", "version", "goal_state", "autonomous_actions", "escalation_runbook", "dashboard", "behavioural_regression"],
+  "properties": {
+    "agent": {"type": "string"},
+    "owner": {"type": "string", "pattern": "^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "goal_state": {
+      "type": "object",
+      "required": ["predicate", "evidence_source"],
+      "properties": {
+        "predicate": {"type": "string", "minLength": 10},
+        "evidence_source": {"type": "string"}
+      }
+    },
+    "autonomous_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["action", "trigger", "daily_budget"],
+        "properties": {
+          "action": {"type": "string"},
+          "trigger": {"type": "string"},
+          "daily_budget": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "escalation_runbook": {
+      "type": "object",
+      "required": ["human_role", "channel", "sla_minutes", "triggers", "written_before_launch"],
+      "properties": {
+        "human_role": {"type": "string"},
+        "channel": {"type": "string"},
+        "sla_minutes": {"type": "integer", "minimum": 1},
+        "triggers": {"type": "array", "minItems": 1},
+        "written_before_launch": {"const": true}
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "required": ["goal_achievement_rate", "autonomy_ratio", "cost_per_task", "escalation_rate"],
+      "properties": {
+        "goal_achievement_rate": {"type": "string"},
+        "autonomy_ratio": {"type": "string"},
+        "cost_per_task": {"type": "string"},
+        "escalation_rate": {"type": "string"}
+      }
+    },
+    "behavioural_regression": {
+      "type": "object",
+      "required": ["test_set_path", "trigger_on_model_bump"],
+      "properties": {
+        "test_set_path": {"type": "string"},
+        "trigger_on_model_bump": {"const": true}
+      }
+    }
+  }
+}
+    ]]></schema>
+  </section>
+
+  <section title="Examples">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "agent": "support-agent-v1",
+  "owner": "ai-ops:bob",
+  "version": "1.0.0",
+  "goal_state": {"predicate": "ticket.status == 'resolved' AND csat >= 4", "evidence_source": "tickets_table + csat_survey"},
+  "autonomous_actions": [
+    {"action": "issue-refund", "trigger": "amount <= 50", "daily_budget": 100}
+  ],
+  "escalation_runbook": {
+    "human_role": "support-lead",
+    "channel": "#support-on-call",
+    "sla_minutes": 30,
+    "triggers": ["confidence < 0.7", "refund > 100"],
+    "written_before_launch": true
+  },
+  "dashboard": {
+    "goal_achievement_rate": "panel://ai-ops/agent.goal_rate",
+    "autonomy_ratio": "panel://ai-ops/agent.autonomy",
+    "cost_per_task": "panel://ai-ops/agent.cost",
+    "escalation_rate": "panel://ai-ops/agent.escalation"
+  },
+  "behavioural_regression": {"test_set_path": "tests/behavioural/v1.jsonl", "trigger_on_model_bump": true}
+}
+      ]]></code>
+    </example>
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "agent": "x",
+  "autonomous_actions": [{"action": "refund"}],
+  "escalation_runbook": {"written_before_launch": false},
+  "dashboard": {"ctr": 0.31}
+}
+      ]]></code>
+      <note>Missing budgets; runbook written post-launch; dashboard uses CTR not agentic metrics.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>autonomous_actions item without daily_budget</description>
+      <reason>Unbounded blast radius.</reason>
+    </antipattern>
+    <antipattern>
+      <description>escalation_runbook.written_before_launch != true</description>
+      <reason>Improvised escalation costs incidents.</reason>
+    </antipattern>
+    <antipattern>
+      <description>dashboard using CTR / cost_per_user / session_length as primary</description>
+      <reason>Wrong scaling axis for agentic ops.</reason>
+    </antipattern>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>goal_state.predicate uses operators (not free prose).</item>
+      <item>Every autonomous_action has a daily_budget.</item>
+      <item>escalation_runbook.written_before_launch == true.</item>
+      <item>dashboard surfaces all four agentic ops metrics.</item>
+      <item>behavioural_regression.trigger_on_model_bump == true.</item>
     </list>
   </section>
 </text>

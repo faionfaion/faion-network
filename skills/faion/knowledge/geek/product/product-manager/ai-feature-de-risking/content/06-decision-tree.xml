@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AI Feature De-Risking Decision Tree" version="1.0.0" est_tokens="340">
+  <decision-tree>
+    <root-question id="q-pre-reg-and-frozen">Are kill-criteria pre-registered AND is the eval set frozen AND is a cost ceiling set?</root-question>
+    <branch when="kill_criteria_committed == true AND eval_set_frozen == true AND cost_ceiling_set == true">
+      <question id="q-judge-recent">Was the judge-LLM recalibrated within the last 90 days?</question>
+      <branch when="judge_calibration_age_days &lt;= 90">
+        <conclusion ref="r3-statistical-reporting">Run the eval. Emit n + mean + CI per comparison. Apply r1-r2-r5 to enforce pre-registered thresholds, frozen set, and bounded cost.</conclusion>
+      </branch>
+      <branch when="judge_calibration_age_days &gt; 90">
+        <conclusion ref="r4-judge-recalibration">Block. Recalibrate the judge against ≥20 human-labeled examples before running the eval — stale judge invalidates the result.</conclusion>
+      </branch>
+    </branch>
+    <branch when="kill_criteria_committed == false">
+      <conclusion ref="r1-kill-criteria-pre-registered">Block. Write and commit pass / fail / freeze thresholds BEFORE any eval run — post-hoc thresholds invite rationalisation.</conclusion>
+    </branch>
+    <branch when="eval_set_frozen == false">
+      <conclusion ref="r2-frozen-eval-set">Block. Pin and version the ground-truth set before this comparison — mid-comparison additions invalidate the metric.</conclusion>
+    </branch>
+    <branch when="cost_ceiling_set == false">
+      <conclusion ref="r5-bounded-eval-cost">Block. Define the per-run cost ceiling (≤ 2× daily production traffic cost) before running — unbounded eval budgets break the cost case.</conclusion>
+    </branch>
+    <example trace="opus-vs-sonnet-prompt-bump">
+      <p>Kill criteria committed (pass-rate ≥ 0.80). Set golden-v3 frozen at 247 examples. Cost ceiling $80/run. Judge recalibrated 30 days ago. → conclusion r3-statistical-reporting → run + emit n + mean + CI.</p>
+    </example>
+  </decision-tree>
+</text>

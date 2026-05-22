@@ -4,70 +4,86 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Integrate reranking into a production RAG pipeline by wrapping the two-stage retrieve + rerank flow in a RerankingRAG class, supporting cross-encoder, Cohere API, and LLM-based rerankers.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Wraps two-stage retrieve + rerank in a RerankingRAG class supporting cross-encoder, Cohere, and LLM rerankers behind one interface.
 content_id: "8092802b0df40911"
+complexity: deep
+produces: code
+est_tokens: 3400
 tags: [reranking, rag, pipeline, cohere, production]
 ---
 # Reranking Pipeline Integration for RAG
 
 ## Summary
 
-**One-sentence:** Integrate reranking into a production RAG pipeline by wrapping the two-stage retrieve + rerank flow in a RerankingRAG class, supporting cross-encoder, Cohere API, and LLM-based rerankers.
+**One-sentence:** Wraps two-stage retrieve + rerank in a RerankingRAG class supporting cross-encoder, Cohere, and LLM rerankers behind one interface.
 
-**One-paragraph:** Integrate reranking into a production RAG pipeline by wrapping the two-stage retrieve + rerank flow in a RerankingRAG class, supporting cross-encoder, Cohere API, and LLM-based rerankers. Includes batch reranking with ThreadPoolExecutor, production fallback pattern, and agentic workflow guidance.
+**One-paragraph:** Integrate reranking into a production RAG pipeline by wrapping the two-stage retrieve + rerank flow in a RerankingRAG class, supporting cross-encoder, Cohere API, and LLM-based rerankers behind a uniform interface with a circuit breaker, warmup, and graceful fallback to ANN top-K on rerank failure.
+
+**Ефективно для:** інженерів, які доводять reranking-models вибір до боєвого pipeline-сервісу з warmup, circuit-breaker і fallback.
 
 ## Applies If (ALL must hold)
 
-- Building a production RAG pipeline that needs to switch between local cross-encoder and Cohere/Voyage API rerankers.
-- High-throughput systems processing multiple queries simultaneously that need parallel batch reranking.
-- Any pipeline where the reranker is on the critical path and must degrade gracefully to initial retrieval order on failure.
-- Agentic systems where a retrieval subagent passes candidates to a downstream generation agent.
+- Two-stage RAG retrieval is the chosen architecture.
+- Multiple reranker backends must be swappable behind one interface.
+- Pipeline must keep working when the reranker is unavailable.
+- Need consistent metrics + logging across all reranker types.
 
 ## Skip If (ANY kills it)
 
-- Single-query scripts or notebooks — the full integration class adds overhead without value.
-- When the reranker is always local and always available — skip the fallback machinery.
-- Cost is the primary constraint and Cohere/API reranking fees are prohibitive at scale — use a local cross-encoder only.
+- Single-stage retrieval is the design.
+- Only one reranker backend is ever used and no abstraction is needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Reranker choice + config | yaml | reranking-models |
+| Vector retrieval client | callable | vector-database-setup |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `geek/ai/rag-engineer/reranking-models` | Decides which reranker. |
+| `geek/ai/rag-engineer/reranking-two-stage` | Two-stage flow shape. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~700 |
+| `content/06-decision-tree.xml` | essential | Decision tree with rule-id refs | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Write RerankingRAG class | sonnet | Multi-backend abstraction. |
+| Wire circuit breaker | haiku | Mechanical pattern. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/reranking_rag.py.tmpl` | RerankingRAG class skeleton with backends + circuit breaker. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-reranking-pipeline-integration.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[reranking-models]]
+- [[reranking-two-stage]]
+- [[rag-implementation]]
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` decides class abstraction vs minimal wrap vs skip based on swap likelihood. Each leaf references a rule id from `01-core-rules.xml`.

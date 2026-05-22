@@ -4,72 +4,90 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Decision methodology for choosing and provisioning a vector database at the start of a RAG project: comparison of Pinecone, Weaviate, Chroma, Qdrant, Milvus, and pgvector; HNSW vs IVF vs Flat index selection; setup code for each provider; and a provider-agnostic VectorStoreBase abstraction.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Picks and provisions a vector DB (Pinecone/Weaviate/Chroma/Qdrant/Milvus/pgvector) with the right index (HNSW/IVF/Flat) for the RAG workload.
 content_id: "0c21a5740b2aff61"
+complexity: deep
+produces: decision-record
+est_tokens: 4000
 tags: [vector-database, rag, embeddings, ann, pinecone, qdrant]
 ---
 # Vector Database Setup
 
 ## Summary
 
-**One-sentence:** Decision methodology for choosing and provisioning a vector database at the start of a RAG project: comparison of Pinecone, Weaviate, Chroma, Qdrant, Milvus, and pgvector; HNSW vs IVF vs Flat index selection; setup code for each provider; and a provider-agnostic VectorStoreBase abstraction.
+**One-sentence:** Picks and provisions a vector DB (Pinecone/Weaviate/Chroma/Qdrant/Milvus/pgvector) with the right index (HNSW/IVF/Flat) for the RAG workload.
 
-**One-paragraph:** Decision methodology for choosing and provisioning a vector database at the start of a RAG project: comparison of Pinecone, Weaviate, Chroma, Qdrant, Milvus, and pgvector; HNSW vs IVF vs Flat index selection; setup code for each provider; and a provider-agnostic VectorStoreBase abstraction. Distance metric and index type must be decided before the first upsert because both are irreversible without recreating the collection.
+**One-paragraph:** Decision methodology for choosing and provisioning a vector database at the start of a RAG project: comparison of Pinecone, Weaviate, Chroma, Qdrant, Milvus, and pgvector; HNSW vs IVF vs Flat index selection; setup code for each provider; and a provider-agnostic VectorStoreBase abstraction.
+
+**Ефективно для:** інженерів, які роблять перший вибір сховища векторів і не хочуть бути замкненими на одного вендора.
 
 ## Applies If (ALL must hold)
 
-- Starting a new RAG pipeline that needs a vector store
-- Migrating from one vector DB to another (e.g., Chroma → Qdrant for production)
-- Building multi-tenant search requiring data isolation by namespace/collection
-- Embedding datasets with >10K vectors where in-memory numpy arrays are no longer viable
-- Recommendation or duplicate-detection systems needing fast ANN at scale
+- Starting a new RAG project and choosing the vector DB.
+- Migrating from a prototype DB (Chroma) to production DB.
+- Workload characteristics (vector count, queries/sec, filtering needs) are known.
+- Self-host vs managed decision is open.
 
 ## Skip If (ANY kills it)
 
-- Fewer than 5K vectors with no strict latency SLA — numpy cosine search is sufficient, zero infra
-- Relational data with complex JOINs — pgvector's SQL expressiveness matters more than ANN speed
-- Text search where full BM25/TF-IDF ranking is primary — use Elasticsearch or Typesense instead
-- Throwaway experiments with no persistence — in-memory Chroma is simpler
+- Existing vector DB already in production and switching is not justified.
+- Vector count < 10k and prototyping — Chroma is the default; no decision needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Expected vector count + growth rate | estimate | product |
+| Queries/sec target | estimate | product |
+| Filtering needs (metadata predicates) | list | product |
+| Self-host vs managed policy | decision | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `geek/ai/rag-engineer/embedding-models` | Dimensionality from embedding choice. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~700 |
+| `content/06-decision-tree.xml` | essential | Decision tree with rule-id refs | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Bench candidate DBs | haiku | Mechanical loop. |
+| Draft decision record | sonnet | Trade-off framing. |
+| Novel deployment patterns | opus | Cross-vendor judgement. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vector-store-base.py` | VectorStoreBase abstraction with cosine / dot / l2 dispatch. |
+| `templates/vector-db-decision.md` | Decision record skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vector-database-setup.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[rag-architecture]]
+- [[embedding-models]]
+- [[hybrid-search-implementation]]
+- [[db-qdrant]]
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` picks vector DB + index by scale + ops policy + filter needs. Each leaf references a rule id from `01-core-rules.xml`.

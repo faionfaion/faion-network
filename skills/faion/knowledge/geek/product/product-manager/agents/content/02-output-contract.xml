@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="agents Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Product Manager Agents — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the output shape of a mode-tagged subagent invocation: every run carries mode + input_artefacts + output_artefacts + human_review_status.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Required fields (JSON Schema)">
+    <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["agent", "mode", "input_artefacts", "output_artefacts", "human_review_status"],
+  "properties": {
+    "agent": {"enum": ["faion-mvp-scope-analyzer-agent", "faion-mlp-agent"]},
+    "mode": {"enum": ["analyze", "find-gaps", "propose", "update", "plan", "mvp-scope"]},
+    "input_artefacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"],
+        "properties": {"name": {"type": "string"}, "source": {"type": "string"}}
+      }
+    },
+    "output_artefacts": {"type": "array", "minItems": 1},
+    "human_review_status": {"enum": ["not-required", "pending", "approved", "rejected"]},
+    "vcs_state": {
+      "type": "object",
+      "required": ["clean_tree_before_run", "commit_sha_before_run"],
+      "properties": {
+        "clean_tree_before_run": {"type": "boolean"},
+        "commit_sha_before_run": {"type": "string"}
+      }
+    },
+    "comparables": {
+      "type": "array",
+      "minItems": 3
+    },
+    "mlp_dimensions_weights": {
+      "type": "object",
+      "properties": {
+        "delight": {"type": "number", "minimum": 0, "maximum": 1},
+        "ease": {"type": "number", "minimum": 0, "maximum": 1},
+        "speed": {"type": "number", "minimum": 0, "maximum": 1},
+        "trust": {"type": "number", "minimum": 0, "maximum": 1},
+        "personality": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}
+    ]]></schema>
+  </section>
+
+  <section title="Examples">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "agent": "faion-mlp-agent",
+  "mode": "update",
+  "input_artefacts": [{"name": "propose-output", "source": "runs/2026-05-22/propose.json"}],
+  "output_artefacts": ["specs/mlp-v2.md"],
+  "human_review_status": "approved",
+  "vcs_state": {"clean_tree_before_run": true, "commit_sha_before_run": "abc123"}
+}
+      ]]></code>
+    </example>
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "agent": "faion-mlp-agent",
+  "mode": "update",
+  "input_artefacts": [],
+  "output_artefacts": ["specs/mlp-v2.md"],
+  "human_review_status": "pending"
+}
+      ]]></code>
+      <note>mode:update without human_review_status='approved' and without clean vcs tree.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>mode:update with human_review_status != 'approved'</description>
+      <reason>Spec files modified without human sign-off.</reason>
+    </antipattern>
+    <antipattern>
+      <description>faion-mvp-scope-analyzer-agent with comparables.length &lt; 3</description>
+      <reason>Hallucinated feature floor.</reason>
+    </antipattern>
+    <antipattern>
+      <description>mode:update with vcs_state.clean_tree_before_run == false</description>
+      <reason>Uncommitted changes mean post-run diff is unreviewable.</reason>
+    </antipattern>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Mode is one of the 6 allowed values.</item>
+      <item>If mode == 'update', human_review_status == 'approved' AND vcs_state.clean_tree_before_run == true.</item>
+      <item>If agent == 'faion-mvp-scope-analyzer-agent', comparables.length &gt;= 3.</item>
+      <item>Output artefacts are listed and resolvable.</item>
     </list>
   </section>
 </text>

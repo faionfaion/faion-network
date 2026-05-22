@@ -1,3 +1,9 @@
+# purpose: VectorStoreBase abstraction (legacy duplicate of .py with no .tmpl)
+# consumes: vector + metadata upserts; query embeddings on search
+# produces: list of {id, score, payload}
+# depends-on: content/01-core-rules.xml r3-abstract-behind-base
+# token-budget-impact: zero at runtime; abstraction
+
 """
 VectorStoreBase — provider-agnostic ABC for vector stores.
 

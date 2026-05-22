@@ -1,3 +1,8 @@
+# purpose: Build-vs-buy decision model for an AI feature.
+# consumes: AIFeature dataclass with differentiator + data advantage + speed priority.
+# produces: dict with build/buy recommendation + 12-month revisit date.
+# depends-on: dataclasses (stdlib).
+# token-budget-impact: zero — code only.
 """AIFeature build-vs-buy decision model.
 
 Input: feature attributes (differentiator, data advantage, speed priority).

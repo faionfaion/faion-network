@@ -1,3 +1,8 @@
+# purpose: Sequential five-mode MLP pipeline coordinator.
+# consumes: project_path + product_type + per-mode propose-output approval.
+# produces: List of per-mode result dicts (analyze → find-gaps → propose → update → plan).
+# depends-on: Anthropic Agent SDK Task() helper (called externally).
+# token-budget-impact: ~150 tokens per mode invocation.
 """Sequential five-mode MLP pipeline coordinator.
 
 Runs faion-mlp-agent across all 5 modes in order.

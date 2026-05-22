@@ -2,76 +2,95 @@
 slug: agentic-ai-product-development
 tier: geek
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for designing autonomous agentic AI systems in products where the core value proposition is autonomous action (auto-triage, auto-scheduling, auto-publishing).
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "724546098006c3d7"
-tags: [agentic-ai, autonomous-systems, human-in-loop, goal-achievement, mvi-scope]
+complexity: deep
+produces: spec
+est_tokens: 3500
+summary: Produces an ops-readiness package for an autonomous agentic AI product — machine-verifiable goal predicate + budgeted autonomous actions + pre-launch escalation runbook + agentic-ops dashboard + behavioural-regression hook — so the agent can safely take traffic in production.
+tags: [product, geek, product-operations, agentic-ai, ops-readiness, escalation-runbook, blast-radius, behavioural-regression]
 ---
-# Agentic AI Product Development
+# Agentic AI Product Operations
 
 ## Summary
 
-**One-sentence:** Methodology for designing autonomous agentic AI systems in products where the core value proposition is autonomous action (auto-triage, auto-scheduling, auto-publishing).
+**One-sentence:** An ops-readiness methodology for autonomous agentic AI products that pins five preconditions before the agent takes production traffic: a machine-verifiable goal predicate, daily-budgeted autonomous actions, a pre-launch escalation runbook, an agentic-ops dashboard (goal-achievement-rate / autonomy-ratio / cost-per-task / escalation-rate / regression status), and a behavioural-regression hook on every model bump.
 
-**One-paragraph:** Methodology for designing autonomous agentic AI systems in products where the core value proposition is autonomous action (auto-triage, auto-scheduling, auto-publishing). Covers goal state definition, autonomous action enumeration, human-in-the-loop checkpoints, escalation design, and production monitoring. Emphasizes Minimum Viable Intelligence (MVI) scope over MVP and tracks goal achievement rate and autonomy ratio.
+**One-paragraph:** Reactive AI features (user submits → model responds) can be operated like normal SaaS. Autonomous agentic AI systems cannot — they act without prompt, have non-trivial blast radius, and silently regress on provider model updates. This methodology pins the ops-side counterpart of `geek/product/product-manager/agentic-ai-product-development`: budgets per autonomous action, escalation runbook written BEFORE traffic shifts, agentic unit metrics surfaced on the ops dashboard, and an automated regression test set that holds traffic until green. Output: an ops-readiness JSON the launch gate validates.
+
+**Ефективно для:** ops / SRE, який пускає першого автономного агента в продакшен і не хоче, щоб баг у trigger дав 1000 refunds за 30 хв.
 
 ## Applies If (ALL must hold)
 
-- Designing a new product feature where the core value proposition is autonomous action (e.g., auto-triage, auto-scheduling, auto-publishing)
-- Shifting an existing reactive AI feature (user submits → model responds) to a proactive agentic one (agent monitors → acts without prompt)
-- Defining acceptance criteria for agentic products: goal achievement rate, escalation rate, autonomy ratio
-- Evaluating whether a candidate product use case justifies the cost and risk of agentic autonomy vs. a simpler assistant pattern
-- Planning the human-in-the-loop model: which decisions the agent makes autonomously, which require human approval, and what triggers escalation
-- Creating MVI (Minimum Viable Intelligence) scope instead of MVP when the product's core is an AI capability
+- An autonomous agentic AI feature is being launched OR is already in production but lacks ops-readiness.
+- Observability infrastructure exists (agent tracing, prompt logging, cost telemetry).
+- The team has the cost model to support inference-heavy loops.
+- A named ops owner exists for the runbook.
+- Provider model identifiers can be pinned in config.
 
 ## Skip If (ANY kills it)
 
-- Building a simple AI-augmented tool where the user always initiates and reviews each step — use the standard AI-native product development pattern instead
-- Agentic autonomy has no clear success metric — if you cannot define "did the agent achieve the goal?", do not build agentic
-- Regulatory environment prohibits autonomous action (e.g., healthcare diagnosis, financial order execution without human approval) — use assistant pattern with mandatory human confirmation
-- Team lacks observability infrastructure: without agent tracing, monitoring, and logging, production incidents are undebuggable
-- Cost model does not support inference-heavy loops — agentic systems that call multiple models per task can cost 10–50x more than single-call AI features
+- Simple AI-augmented tool where user initiates and reviews each step — use the AI-native ops pattern instead.
+- No clear agent success metric — if "did the agent achieve the goal?" cannot be defined, do not operate agentic.
+- Regulatory environment prohibits autonomous action (healthcare diagnosis, financial order execution without human approval).
+- No observability stack — production incidents will be undebuggable.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Goal predicate | YAML | product spec from PM-side methodology |
+| Action budgets | YAML | ops + finance |
+| On-call rota | YAML | ops roster |
+| Dashboard panels | URLs | ops tooling |
+| Behavioural test set | jsonl | eval engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/product/product-manager/agentic-ai-product-development` | PM-side counterpart that authors the spec this ops-readiness pack operates. |
+| `geek/product/product-manager/ai-feature-de-risking` | Provides the behavioural-regression eval set this methodology hooks into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: goal predicate, escalation runbook pre-launch, budgeted actions, regression on model bump, agentic metrics on dashboard | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~950 |
+| `content/06-decision-tree.xml` | essential | Ops-ready gate with per-precondition branches | ~340 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `runbook_draft` | sonnet | Per-agent runbook with SLA / channel / role. |
+| `budget_calibration` | sonnet | Calibrate daily budgets from historical task volume. |
+| `regression_set_synthesis` | opus | Cross-task behavioural-test design. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ops-readiness.yaml` | Ops-readiness pack schema (goal + actions + runbook + dashboard + regression). |
+| `templates/escalation-runbook.md` | Escalation runbook skeleton (role + channel + SLA + triggers). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agentic-ai-product-development.py` | Validate ops-readiness pack against the contract (predicate, budgets, runbook pre-launch, dashboard wired, regression hook). | Launch-gate; pre-production. |
 
 ## Related
 
-- parent skill: `geek/product/product-operations/`
+- [[ai-native-product-development]] — sibling ops methodology for non-autonomous AI-native products.
+- [[ai-feature-de-risking]] — peer methodology providing the regression test set.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` checks five preconditions: goal predicate set, every action has a daily budget, runbook is pre-launch, dashboard is wired with agentic metrics, regression hook is set. Any failure → block launch. All green → route traffic.
