@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="NeMo Guardrails Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Pick rail set by flow complexity and KB presence.</summary>
+
+  <decision-tree>
+    <root-question id="q-turns">Is the application multi-turn?</root-question>
+    <branch when="multi_turn == false">
+      <conclusion ref="config-from-path" verdict="skip NeMo — use Guardrails AI for single-turn"/>
+    </branch>
+    <branch when="multi_turn == true">
+      <question id="q-rag">Does it ground answers in a knowledge base?</question>
+      <branch when="rag == true">
+        <conclusion ref="kb-grounded-facts" verdict="enable check facts + knowledge_base block; flows.output += check facts"/>
+      </branch>
+      <branch when="rag == false">
+        <question id="q-jailbreak">Untrusted users?</question>
+        <branch when="external == true">
+          <conclusion ref="separated-flows" verdict="enable check jailbreak + check topic on input; self check output"/>
+        </branch>
+        <branch when="external == false">
+          <conclusion ref="canonical-intents" verdict="minimum: intents + flows + self check output"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="multi-turn + RAG → fact-check rail">
+    <code lang="text"><![CDATA[
+multi_turn=true → q-rag → rag=true → kb-grounded-facts verdict applied
+]]></code>
+  </example>
+</text>

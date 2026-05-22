@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="NeMo Guardrails Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7-step config build.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-config">
+      <input>guardrail-plan.json + flow diagram</input>
+      <action>Create `config/` with `config.yml`, `rails/`, `actions.py`. Add `models:` block with the chosen provider.</action>
+      <output>Empty config skeleton</output>
+    </step>
+
+    <step n="2" name="write-intents">
+      <input>Flow diagram</input>
+      <action>Per user intent, write `define user <intent>` with ≥3 utterance examples. Per bot canonical form, write `define bot <form>` with template string.</action>
+      <output>`rails/intents.co`</output>
+    </step>
+
+    <step n="3" name="wire-flows">
+      <input>intents.co</input>
+      <action>Wire intents into `define flow X` blocks. Use `when` branches for state-dependent paths.</action>
+      <output>`rails/flows.co`</output>
+    </step>
+
+    <step n="4" name="add-jailbreak">
+      <input>actions.py</input>
+      <action>Implement `async def check_jailbreak_action(user_input)` with pattern set + LLM verification. Add `check jailbreak` to `rails.input.flows`.</action>
+      <output>Jailbreak action + flow wired.</output>
+      <decision-gate>If jailbreak is positive, flow must `stop` and bot says canonical refusal — never continue to other flows.</decision-gate>
+    </step>
+
+    <step n="5" name="add-fact-check">
+      <input>Knowledge base path</input>
+      <action>Add `knowledge_base:` block to `config.yml`. Implement `async def check_facts(context, llm, kb)` returning bool. Add `check facts` to `rails.output.flows`.</action>
+      <output>Fact-check action + KB wired.</output>
+    </step>
+
+    <step n="6" name="register">
+      <input>LLMRails instance</input>
+      <action>Before any `rails.generate()`, call `rails.register_action(fn)` for every custom action.</action>
+      <output>Runtime-ready rails.</output>
+    </step>
+
+    <step n="7" name="smoke">
+      <input>Smoke fixtures: greet, in-topic, off-topic, jailbreak attempt, RAG question with no KB support</input>
+      <action>Run each through `rails.generate()`. Assert: greet → bot greeting; in-topic → normal answer; off-topic → refusal; jailbreak → refusal; ungrounded → fact-check blocks.</action>
+      <output>Green smoke OR violations report.</output>
+    </step>
+
+  </section>
+</text>

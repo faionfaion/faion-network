@@ -1,6 +1,10 @@
-# Pydantic structured extraction with OpenAI parse() + JSON mode fallback
-# Usage: call extract(client, text, MyModel) → MyModel instance or None
-
+"""
+purpose: Pydantic structured extraction via OpenAI parse() with json_object fallback.
+consumes: OpenAI client, text string, Pydantic model class.
+produces: model instance OR None if refusal / parsing exhausted retries.
+depends-on: openai>=1.50 (parse), pydantic>=2.0.
+token-budget-impact: typical 200-1000 tokens per extraction; parse adds ~5% overhead vs json_object.
+"""
 from typing import Type, TypeVar, Optional
 from pydantic import BaseModel, ValidationError
 import json

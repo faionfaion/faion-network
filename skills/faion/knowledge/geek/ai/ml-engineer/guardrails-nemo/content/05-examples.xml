@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="NeMo Guardrails Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Support bot with greet + order status + refund + jailbreak refusal.</summary>
+
+  <example type="good">
+    <note>`config/rails/customer_support.co` plus matching `actions.py`. Hits all five rules from 01-core-rules.</note>
+    <code lang="colang"><![CDATA[
+define user greet
+    "hello"
+    "hi"
+    "good morning"
+
+define user ask about order status
+    "where is my order"
+    "what's the status of order 12345"
+    "track my package"
+
+define bot greet
+    "Hello! I'm the support bot. How can I help with your order?"
+
+define flow customer_support
+    user greet
+    bot greet
+
+    when user ask about order status
+        bot ask for order number
+        user provide order number
+        $order = execute lookup_order(order_number=$user_input)
+        bot provide order status using $order
+
+    when user ask about refund
+        bot explain refund policy
+        user confirm refund request
+        $refund = execute process_refund(order_id=$order.id)
+        bot confirm refund using $refund
+
+    when user say goodbye
+        bot say goodbye
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Same scenario, but `check facts` rail missing AND `lookup_order` action is sync. Hallucinations on KB-required answers; throughput collapses under load.</note>
+    <code lang="yaml"><![CDATA[
+rails:
+  input:
+    flows:
+      - check jailbreak
+  output: {}  # missing — bot answers ungrounded
+]]></code>
+  </example>
+</text>

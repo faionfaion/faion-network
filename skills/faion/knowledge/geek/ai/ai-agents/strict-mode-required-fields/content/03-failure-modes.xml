@@ -1,17 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="strict-mode-required-fields Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for strict-mode-required-fields as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="strict-mode-required-fields Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that get a schema rejected by the strict-mode compiler at request time.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Defining apartment: str = "" (empty-string sentinel) instead of str | None.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Empty string is a valid value, indistinguishable from "explicitly empty". Downstream code cannot tell "field absent" from "field empty"; data quality degrades silently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using total: int | None for a strict-mode money field.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>int | None allows the model to skip the calculation by emitting null. Use a non-nullable type and pair it with so-08-style refusal handling for the genuine "cannot compute" case.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-empty-string-sentinel" severity="high">
+      <symptom>Field declared `apartment: str = ""` to mean "absent". Downstream code cannot distinguish "no apartment" from "deliberately empty apartment".</symptom>
+      <root-cause>Author avoided `Optional` because they thought strict mode rejects null. It rejects optional, not nullable.</root-cause>
+      <fix>Use `apartment: str | None = None`. Strict mode accepts `{"type": ["string", "null"]}` with the field still in `required`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-nullable-money" severity="high">
+      <symptom>Strict-mode invoice extraction declares `total: int | None`. Model emits `null` whenever it cannot compute the value, hiding the failure.</symptom>
+      <root-cause>Author over-applied the nullable pattern to fields that should never be absent in valid input.</root-cause>
+      <fix>Keep the field non-nullable and pair it with refusal-field-strict-schema (a separate `refusal: str | None` field that the model writes when it genuinely cannot answer).</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-missing-additional-properties" severity="critical">
+      <symptom>OpenAI returns `400 Invalid schema for response_format: additionalProperties must be false when strict is true`.</symptom>
+      <root-cause>Pydantic model lacks `ConfigDict(extra="forbid")`. Default Pydantic config does not emit `additionalProperties: false`.</root-cause>
+      <fix>Add `model_config = ConfigDict(extra="forbid")` to every model in the strict-mode tree, including nested ones. Re-emit the schema and re-submit.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-required-not-equal-properties" severity="critical">
+      <symptom>OpenAI returns `400 Invalid schema: required list does not match properties`. Some property is declared but not in `required`.</symptom>
+      <root-cause>Pydantic field declared without `= None` default; the bridge marked it non-required while still listing it in `properties`.</root-cause>
+      <fix>Either make the field truly required (no default) or convert to `T | None = None` (nullable, default None — bridge keeps it in required).</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-metadata-bag-in-strict" severity="medium">
+      <symptom>Strict-mode schema includes `metadata: dict[str, Any]` to accept arbitrary user keys. Bridge emits `additionalProperties: true` somewhere in the tree; strict mode rejects.</symptom>
+      <root-cause>Author conflated "free-form metadata" with "strict-mode schema". The two cannot coexist on the same object.</root-cause>
+      <fix>Either drop strict mode (use loose JSON mode) or split: typed sub-object with closed keys + separate `audit_blob: str` field carrying the JSON-encoded freeform.</fix>
+    </antipattern>
   </section>
 </text>

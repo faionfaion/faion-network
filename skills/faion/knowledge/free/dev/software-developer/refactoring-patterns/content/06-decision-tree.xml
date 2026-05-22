@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Refactoring Patterns Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routes detected smell to canonical transform. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-tests">Are tests green AND cover the affected paths?</root-question>
+
+    <branch when="tests_covered == false">
+      <conclusion ref="tests-green-gate" verdict="STOP. Add characterisation tests first (separate commit). Then return to this tree."/>
+    </branch>
+
+    <branch when="tests_covered == true">
+      <question id="q-smell">What smell did the lint / coverage / review surface?</question>
+
+      <branch when="smell == long-method">
+        <conclusion ref="one-transform-per-commit" verdict="Extract Method on logical chunks; name by intent; one commit per extraction"/>
+      </branch>
+
+      <branch when="smell == complex-conditional">
+        <question id="q-poly">Are there ≥3 branches mapping cleanly to types?</question>
+        <branch when="poly_fit == true">
+          <conclusion ref="one-transform-per-commit" verdict="Replace Conditional with Polymorphism — introduce strategy/visitor"/>
+        </branch>
+        <branch when="poly_fit == false">
+          <conclusion ref="one-transform-per-commit" verdict="Decompose Conditional — extract guard expression + branch bodies into named methods"/>
+        </branch>
+      </branch>
+
+      <branch when="smell == long-parameter-list">
+        <conclusion ref="one-transform-per-commit" verdict="Introduce Parameter Object — bundle related args into a dataclass / Pydantic model"/>
+      </branch>
+
+      <branch when="smell == magic-number">
+        <conclusion ref="one-transform-per-commit" verdict="Replace Magic Number with Symbolic Constant — module-level constant + reference"/>
+      </branch>
+
+      <branch when="smell == unclear-name">
+        <conclusion ref="rename-by-tooling" verdict="Use IDE/language-server rename; never sed; verify dynamic string-key references"/>
+      </branch>
+
+      <branch when="smell == cross-class-coupling OR smell == god-class">
+        <conclusion ref="scope-cap-5-files" verdict="Escalate to [[code-decomposition-patterns]] — refactoring-patterns cap is 5 files"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="long-method-billing">
+    smell=long-method, tests_covered=true → Extract Method (rule one-transform-per-commit). Three sequential commits as in 05-examples.xml. Each commit ≤1 file, tests green before/after, scope-guard pre-commit hook satisfied.
+  </example>
+</text>

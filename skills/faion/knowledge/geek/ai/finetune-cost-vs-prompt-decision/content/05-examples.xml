@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Fine-tune cost vs prompt decision — worked example" version="1.0.0" est_tokens="600" depth="recommended">
+  <summary>A worked decision where prompt-improve beats fine-tune at 50k req/day support classifier.</summary>
+
+  <section title="Context">
+    <p>Workload: support-ticket classifier, 50k req/day. Baseline (current Sonnet prompt): F1 = 0.78, $3/k tokens. Goal: cut cost without dropping quality.</p>
+    <p>Product owner pre-commits `lift_bar = 0.03` (anything below is not worth the engineering).</p>
+  </section>
+
+  <section title="Candidate maths">
+    <list>
+      <item>Fine-tune Haiku: training cost ~$800, hosting $0.5/k. Estimated lift +0.02 F1 (from a 1k-example pilot).</item>
+      <item>Prompt-improve (better few-shot + structured output): $0 training, $3/k stays. Estimated lift +0.04 F1 (from a 200-prompt A/B).</item>
+      <item>Hybrid (prompt-improve + Haiku route for low-confidence): training $0, blended $/k drops to $1.8 in shadow. Estimated lift +0.04 F1 + 40% cost cut.</item>
+    </list>
+  </section>
+
+  <section title="Decision">
+    <p>Fine-tune lift (+0.02) does NOT meet lift_bar (0.03). Strong signals: only `data-volume-5k+` (we have 6k). Single signal → r3 blocks fine-tune.</p>
+    <p>Prompt-improve lift (+0.04) clears the bar with zero training cost. Hybrid adds the cost cut.</p>
+  </section>
+
+  <section title="Final record">
+    <code lang="json"><![CDATA[{
+  "workload": "support-classifier",
+  "owner": "alice.chen@example.com",
+  "created_at": "2026-05-22",
+  "recheck_at": "2026-11-22",
+  "lift_bar": 0.03,
+  "baseline": {"score": 0.78, "cost_per_k_tokens": 3.0, "daily_volume": 50000},
+  "candidate": {"training_cost": 0, "hosting_cost_per_k_tokens": 1.8, "training_examples": 0},
+  "break_even_months": null,
+  "strong_signals": [],
+  "recommendation": "hybrid",
+  "narrative": "Prompt-improve + Haiku route clears lift_bar with no training spend. FT pilot returned only +0.02 lift, below bar. Recheck if volume jumps 3x or Anthropic adds Sonnet 4.6 with $1.5/k pricing."
+}]]></code>
+  </section>
+
+  <section title="Six-month recheck (2026-11-22)">
+    <p>Trigger date arrives. Re-run with new pricing. If Sonnet 4.6 ships at $1.5/k, prompt-only beats hybrid; if not, hybrid carries forward. Record is renewed (parent_version = previous record id), not deleted.</p>
+  </section>
+</text>

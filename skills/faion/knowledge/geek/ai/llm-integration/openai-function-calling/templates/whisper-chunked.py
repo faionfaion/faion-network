@@ -1,6 +1,10 @@
-# Chunked Whisper transcription for audio files > 25MB
-# Requires: ffmpeg installed, openai SDK
-
+"""
+purpose: Chunked Whisper transcription for audio files exceeding the 25MB API limit.
+consumes: OpenAI client, audio file path, optional proper-noun prompt.
+produces: full transcript string joined from chunk transcriptions.
+depends-on: ffmpeg system binary, openai>=1.0.
+token-budget-impact: pricing per audio minute; chunking does not increase cost.
+"""
 import subprocess
 import tempfile
 import os

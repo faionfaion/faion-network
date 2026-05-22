@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="OpenAI Function Calling Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-need">Does the call need (a) external action via tools, (b) strict-schema JSON extraction, or (c) free-form text?</root-question>
+    <branch when="need == 'tools'">
+      <question id="q-required">Does the pipeline depend on a tool result downstream?</question>
+      <branch when="downstream_requires_result == true">
+        <conclusion ref="r5-tool-choice-gate">Use `tool_choice="required"`. If only one tool can produce the result, pin by name. Run coherence_check before dispatch.</conclusion>
+      </branch>
+      <branch when="downstream_requires_result == false">
+        <conclusion ref="r1-message-order">Use `tool_choice="auto"`. Still enforce message-order discipline on any tool result.</conclusion>
+      </branch>
+    </branch>
+    <branch when="need == 'extraction'">
+      <question id="q-model-supports-parse">Is the model gpt-4o or newer?</question>
+      <branch when="model_id in {'gpt-4o','gpt-4o-mini','o1','o3-mini'}">
+        <conclusion ref="r2-parse-on-gpt4o-only">Use `client.beta.chat.completions.parse(response_format=PydanticModel)`. Null-check refusal before reading parsed.</conclusion>
+      </branch>
+      <branch when="model_id not in {'gpt-4o','gpt-4o-mini','o1','o3-mini'}">
+        <conclusion ref="r2-parse-on-gpt4o-only">Use `response_format={"type":"json_object"}` + manual Pydantic validation in the wrapper.</conclusion>
+      </branch>
+    </branch>
+    <branch when="need == 'content'">
+      <conclusion ref="r5-tool-choice-gate">Use plain Chat Completions (see [[openai-chat-completions]]). No tools, no parse.</conclusion>
+    </branch>
+    <example trace="extract-person-record">
+      <p>"Extract name+age from this paragraph" → need=extraction, model=gpt-4o → parse with `class Person(BaseModel)`. Conclusion r2-parse-on-gpt4o-only.</p>
+    </example>
+  </decision-tree>
+</text>

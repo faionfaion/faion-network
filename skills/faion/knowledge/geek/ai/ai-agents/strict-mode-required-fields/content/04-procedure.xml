@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="strict-mode-required-fields Procedure" version="1.1.0" est_tokens="800" depth="medium">
+  <summary>Five-step migration procedure for a Pydantic model going under OpenAI / Anthropic / Azure / Gemini strict mode.</summary>
+
+  <step n="1" name="scan-models">
+    <input>Pydantic model file(s) in `models/` or `schemas/`.</input>
+    <action>Walk every `BaseModel` subclass. For each model, check: presence of `ConfigDict(extra="forbid")`, fields with `Optional[X]` or default values that drop them from `required`, sentinel encodings (`""`, `-1`), nested `dict[str, Any]` fields.</action>
+    <output>List of violations matching the closed-enum `code` values in `02-output-contract.xml`.</output>
+  </step>
+
+  <step n="2" name="add-extra-forbid">
+    <input>Models lacking `extra="forbid"`.</input>
+    <action>Insert `model_config = ConfigDict(extra="forbid")` at the top of every offending class. Propagate to all nested models referenced via Pydantic field types.</action>
+    <output>Patched files with `extra="forbid"` everywhere in the strict-mode tree.</output>
+    <decision-gate>If a model has a legitimate metadata bag (`dict[str, Any]`) — escalate to step 4.</decision-gate>
+  </step>
+
+  <step n="3" name="convert-optional-to-nullable">
+    <input>Fields declared `Optional[X]` / `X = None` / `X = ""` / `X = -1`.</input>
+    <action>Rewrite as `field_name: X | None = None`. Remove sentinel defaults. Update downstream consumers to handle the `None` case explicitly (no `if x:` truthiness shortcuts).</action>
+    <output>Patched models with nullable-not-optional encoding.</output>
+  </step>
+
+  <step n="4" name="split-or-drop-metadata-bag">
+    <input>Models with `dict[str, Any]` or unconstrained nested objects.</input>
+    <action>Decide between: (a) split into typed sub-object + audit field, (b) drop strict mode for this call and use loose JSON mode, (c) keep strict and require the model to pick from a closed-key set.</action>
+    <output>One of: typed sub-object + `audit_blob: str`, decision record to use loose mode, or closed-key sub-schema.</output>
+    <decision-gate>If neither (a) nor (c) fits, document the (b) decision in the model's docstring with rationale.</decision-gate>
+  </step>
+
+  <step n="5" name="add-ci-assert">
+    <input>Patched models from steps 2-4.</input>
+    <action>Add a CI test that calls `assert_strict_schema(Model)` for every model used in a strict-mode call. The walker fails the build if any object node has missing `additionalProperties: false` or `required != properties`.</action>
+    <output>CI test file `tests/test_strict_mode.py` running the walker on the full strict-mode model set.</output>
+    <decision-gate>If a model legitimately needs `additionalProperties: true`, the model is in the wrong list — remove from strict-mode set instead of weakening the CI walker.</decision-gate>
+  </step>
+</text>

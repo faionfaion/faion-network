@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="claude-api-integration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for claude-api-integration. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Claude API Integration Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules covering the full Claude integration surface: sync/async/streaming, tool use, vision, Extended Thinking, Prompt Caching, Batch API. Each has a statement, rationale, source.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Validate `response.stop_reason` in the service layer (NOT in each subagent): raise on `max_tokens`, branch on `tool_use`, return on `end_turn`.</statement>
+      <rationale source="docs.anthropic.com/en/api/messages">Truncation is silent. Treating a truncated response as complete corrupts downstream parsing. Tool use loop continuation must be uniform across call sites.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>When streaming, prefer `messages.stream` with `text_stream` for plain text and explicit event-level iteration only when tool use or thinking deltas are expected; never parse partial JSON inline — accumulate `input_json_delta` and parse after `content_block_stop`.</statement>
+      <rationale source="docs.anthropic.com/en/api/messages-streaming">Partial JSON is not valid; inline parsing raises `JSONDecodeError`. Event format differs from OpenAI SSE so blind cross-provider parsing fails.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>For tool use, always submit `{"role":"assistant","content": response.content}` (the full block list) before the `tool_result`, and supply `tool_use_id` matching the model's `id` on each tool result.</statement>
+      <rationale source="claude-tool-use migration notes">Omitting `tool_use` blocks from history breaks role-alternation and triggers 400 on the next turn; missing `tool_use_id` makes results unmappable.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>For vision: encode local files to base64 and place image content BEFORE text content in the user `content` array; pre-fetch URL images for production reliability.</statement>
+      <rationale source="docs.anthropic.com/en/docs/build-with-claude/vision">Image-first ordering empirically improves comprehension; URL-based images can return content-error blocks at inference time.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Never combine Extended Thinking (`thinking.type="enabled"`) with `temperature`; set `max_tokens &gt;= budget_tokens + 4096`.</statement>
+      <rationale source="docs.anthropic.com/en/docs/build-with-claude/extended-thinking">The API rejects the combination; insufficient `max_tokens` truncates the answer block silently.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>For Prompt Caching, mark a ≥1024-token stable prefix with `cache_control:{"type":"ephemeral"}` and keep ALL dynamic content (timestamps, user ids) AFTER the cached block; monitor `usage.cache_read_input_tokens / usage.input_tokens` and assert &gt;0.70.</statement>
+      <rationale source="platform.claude.com/docs/en/build-with-claude/prompt-caching">Prefix is byte-identical match. Drift before the cached block invalidates the cache; below ~70% hit ratio the 25% write surcharge erodes the 90% read savings.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>For Batch API: poll at intervals ≥60s using `client.messages.batches.retrieve` until `processing_status == "ended"`; iterate results and resubmit `result.type == "errored"` items; use `custom_id` equal to your DB primary key.</statement>
+      <rationale source="docs.anthropic.com/en/api/messages-batches">Tight polling adds zero speedup; errored items are not auto-retried; `custom_id` is the only join key against out-of-order results.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
