@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="CoT Techniques Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure to pick, wire, and gate an advanced CoT pattern.</summary>
+
+  <section title="Steps">
+    <step n="1" name="measure-baseline">
+      <input>Eval set + zero-shot CoT prompt.</input>
+      <action>Run zero-shot CoT on ≥50 cases; record accuracy + cost.</action>
+      <output>baseline.json with accuracy_baseline + cost_baseline_per_call.</output>
+      <decision-gate>If baseline ≥ target → skip-this-methodology.</decision-gate>
+    </step>
+    <step n="2" name="pick-pattern">
+      <input>Baseline + task shape.</input>
+      <action>Map failure mode to pattern: random errors → self-consistency; sequential dep → least-to-most; branching choice → ToT; format issues → few-shot CoT.</action>
+      <output>cot-config.json with pattern selected.</output>
+      <decision-gate>Sign-off by reviewer that mapping is sane.</decision-gate>
+    </step>
+    <step n="3" name="wire-runner">
+      <input>cot-config.json + base prompt.</input>
+      <action>Implement the pattern: few-shot CoT updates prompt; self-consistency uses templates/self-consistency-runner.py; least-to-most chains calls; ToT requires branching code.</action>
+      <output>Runner code + integration with the LLM client.</output>
+      <decision-gate>Unit test pattern produces expected shape on a known case.</decision-gate>
+    </step>
+    <step n="4" name="ab-evaluate">
+      <input>Runner + eval set.</input>
+      <action>Run candidate on the same ≥50 cases; record accuracy + per-call cost.</action>
+      <output>lift-report.json.</output>
+      <decision-gate>If delta_pp &lt; 3 OR cost_multiplier &gt;5x without lift &gt;5pp → decision=revert.</decision-gate>
+    </step>
+    <step n="5" name="decide">
+      <input>lift-report.json + budget table.</input>
+      <action>Decide keep vs revert. If keep, set the cost_guard in cot-config to 1.2x observed per-call cost.</action>
+      <output>final cot-config.json + decision.</output>
+      <decision-gate>Senior reviewer approves before merge.</decision-gate>
+    </step>
+    <step n="6" name="log">
+      <input>Final config + report.</input>
+      <action>Commit cot-config.json + lift-report.md; link in the call-site code; add monitor for cost_guard breach.</action>
+      <output>Repo PR + monitor alert.</output>
+      <decision-gate>Alert fires &gt;2x in a week → re-evaluate pattern.</decision-gate>
+    </step>
+  </section>
+</text>
