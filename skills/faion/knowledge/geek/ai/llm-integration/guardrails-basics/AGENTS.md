@@ -74,10 +74,8 @@ tags: [guardrails, safety, defense-in-depth, pii, prompt-injection]
 
 | File | Purpose |
 |---|---|
-| `templates/guardrails-spec.schema.json` | JSON Schema for the spec. |
-| `templates/guardrail-stack.py` | Reference 4-layer ordered runner. |
-| `templates/regex-patterns.txt` | Common PII/token regex set. |
-| `templates/_smoke-test.json` | Minimum valid spec. |
+| `templates/input-guardrails.py` | Layer-1 regex/PII/length pre-filter + prompt-injection detector. |
+| `templates/layered-check.py` | Ordered 4-layer runner returning a structured dict. |
 
 ## Scripts
 

@@ -4,77 +4,90 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "194a41a24e76350a"
-summary: "Team Charter Working Agreement: produces a versioned, owner-signed artefact that closes the gap 'p6-product-dev-team/Adopt faion org-wide and override with company patterns'."
-tags: [team-charter-working-agreement, pm, geek]
+complexity: medium
+produces: spec
+est_tokens: 3000
+summary: Produces a 1-page team charter (mission, decision rights, working hours, AI-tool policy, code-review SLA, on-call rotation) so a product team scaling past 5 people stops re-litigating norms every sprint.
+tags: [pm, geek, team-charter, working-agreement, decision-rights, scaling]
 ---
 # Team Charter Working Agreement
 
 ## Summary
 
-**One-sentence:** Team Charter Working Agreement: produces a versioned, owner-signed artefact that closes the gap 'p6-product-dev-team/Adopt faion org-wide and override with company patterns'.
+**One-sentence:** Produces a 1-page, versioned, owner-signed team charter (mission, decision rights, working hours, AI-tool usage policy, code-review SLA, on-call rotation) so a product-dev team scaling past 5 people stops re-litigating norms every sprint.
 
-**One-paragraph:** Addresses the gap surfaced by 'p6-product-dev-team/Adopt faion org-wide and override with company patterns': `team-development` covers Tuckman stages but there is no concrete artifact: a 1-page team charter (mission, decision rights, working hours, AI-tool usage policy, code-review SLA, on-call rotation rules). This is the single most-cited missing doc on Y-Combinator/HN threads about scaling a product team past 5 people Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a team charter working agreement artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** `team-development` literature covers Tuckman stages but ships no concrete artefact teams can actually adopt. The single most-cited missing doc on YC / HN threads about scaling product teams past 5 people is a one-page working agreement covering mission, decision rights, working hours, AI-tool usage policy, code-review SLA, and on-call rotation. This methodology pins that artefact's shape: bounded single-instance scope (per team, per chapter), typed inputs with source citations, a named human owner, semver + last_reviewed, and every section anchored to the specific gap it closes. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans consume without re-deriving rationale.
+
+**Ефективно для:** tech lead / EM, який скейлить продуктову команду з 5 до 15 людей і вже втомився відповідати на питання "як ми тут вирішуємо" вдесяте.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p6-product-dev-team/Adopt faion org-wide and override with company patterns' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team is scaling past 5 people OR multiple chapters need an aligned baseline.
+- Operator has the artefacts named in Prerequisites before starting.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- A named human owner exists for the charter.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working team charter working agreement artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- The team already maintains a working team charter — replace, do not duplicate.
+- The change is a greenfield prototype with no production users.
+- Regulatory / compliance context overrides in-methodology guidance (defer to legal).
 
 ## Prerequisites
 
-- recent context for the 'p6-product-dev-team/Adopt faion org-wide and override with company patterns' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Recent context for the scaling decision | doc / retro notes | last 30 days team channel |
+| Write-access to the artefact store | repo / wiki | team SDD space |
+| Named owner | role + person | team roster |
+| Existing tribal norms (verbal) | interview notes | onboarding shadow sessions |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/pm` | parent domain group — provides operating context for Team Charter Working Agreement |
+| `pro/pm/project-manager` | Provides operating context for the charter's decision-rights section. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; charter lives in the team's SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: bound-scope, typed-input, named-owner, versioned, grounded-in-rationale | ~900 |
 | `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
 | `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Single-instance gate + ownership branch | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation. |
+| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs. |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/team-charter-working-agreement.json` | JSON schema for the Team Charter Working Agreement output contract |
-| `templates/team-charter-working-agreement.md` | Markdown skeleton with the required fields |
+| `templates/team-charter-working-agreement.json` | JSON schema for the charter output contract. |
+| `templates/team-charter-working-agreement.md` | Markdown skeleton with the required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-team-charter-working-agreement.py` | Enforce Team Charter Working Agreement output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-team-charter-working-agreement.py` | Enforce charter output contract (owner is a person, version is semver, every section cites the gap it closes). | After subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `geek/pm/`
-- upstream playbook: `p6-product-dev-team/Adopt faion org-wide and override with company patterns`
-- geek/pm/p6-product-dev-team
+- [[ramp-task-difficulty-ladder]] — peer operating artefact for the same scaling team.
+- [[vendor-risk-assessment-template]] — sibling versioned-artefact methodology that shares the same envelope.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks single-instance scope and a named human owner. If the team is batching multiple unrelated norm decisions → split first. If owner is "team" or empty → block until a person is named. Otherwise → emit the charter using the rule set.

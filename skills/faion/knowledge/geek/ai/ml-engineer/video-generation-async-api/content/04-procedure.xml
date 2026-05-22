@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Video Async API — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five steps: submit with idempotency key → poll with backoff → fetch artefact → download to storage → audit + fallback if needed.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="submit-with-idem-key">
+      <input>prompt + params + provider</input>
+      <action>Compute key = sha256(prompt + params + provider). Submit with Idempotency-Key header. Receive job_id.</action>
+      <output>job_id + idempotency_key recorded</output>
+      <decision-gate>If submit returns 4xx other than rate limit — surface error; do not retry blindly (r1-idempotency-key).</decision-gate>
+    </step>
+
+    <step n="2" name="poll-with-backoff">
+      <input>job_id</input>
+      <action>Loop: sleep, then GET status. Sleep = min(2^attempt, 30) + jitter. Stop on terminal status or total_wait_cap reached.</action>
+      <output>terminal status (succeeded | failed | timeout)</output>
+      <decision-gate>If timeout reached — trigger fallback (r3-total-wait-cap, r5-provider-fallback).</decision-gate>
+    </step>
+
+    <step n="3" name="fetch-artefact">
+      <input>SUCCEEDED status + artefact URL</input>
+      <action>GET provider URL into a streaming download; do NOT retain URL as reference.</action>
+      <output>raw mp4 bytes</output>
+      <decision-gate>If download fails — retry within URL TTL; do not let URL expire (r4-download-before-expiry).</decision-gate>
+    </step>
+
+    <step n="4" name="store-and-record">
+      <input>raw bytes + storage bucket config</input>
+      <action>Upload to s3://media/yyyy/mm/dd/<job_id>.mp4. Update VideoJob.artefact_url to internal S3 URI.</action>
+      <output>durable artefact_url stored in VideoJob</output>
+    </step>
+
+    <step n="5" name="audit-and-fallback">
+      <input>VideoJob outcome</input>
+      <action>Emit AuditEntry with cost + duration + outcome. On failure-permanent or timeout, repeat steps 1-4 with fallback provider using SAME idempotency key.</action>
+      <output>final VideoJob with success OR escalation</output>
+      <decision-gate>If even fallback fails — alert + queue for manual review.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
