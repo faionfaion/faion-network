@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="react-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for react-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="react-patterns Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Four feature-module antipatterns the spec must forbid.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Exporting anonymous arrow function components: export default () =&gt; &lt;div /&gt;</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Anonymous components show as "Unknown" in React DevTools and error stack traces, making debugging harder.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Passing inline objects or arrays as JSX props: &lt;Comp style={{ color: 'red' }} /&gt;</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A new object is created on every render, breaking React.memo equality checks and causing unnecessary child re-renders.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-anonymous-default">
+      <symptom>React DevTools shows tree nodes labelled "Unknown" / "&lt;Anonymous&gt;". Error stack traces print no recognisable component name.</symptom>
+      <root-cause>Component is exported as `export default () =&gt; …` or `export default function () {}`. The function name binding never gets attached because the function literal is anonymous.</root-cause>
+      <fix>Replace with named function declaration: `export function Card(props: CardProps) { … }`. Spec field components[].declaration MUST equal "function-declaration".</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-inline-object-prop">
+      <symptom>React.memo wrapper produces no benefit; profiler shows the memoized child re-rendering every parent render.</symptom>
+      <root-cause>Parent passes a fresh object literal each render: `&lt;Card style={{color:'red'}} onSelect={() =&gt; …}/&gt;`. New reference defeats Object.is shallow comparison.</root-cause>
+      <fix>Hoist constant objects outside the component body. Wrap callbacks with useCallback (and justify in the spec's memoization field per [[react-hooks]] r6-memo-after-profile).</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-context-fake-default">
+      <symptom>Consumer code outside the provider silently returns the fake default; a bug shows up much later as wrong data in a nested view, hard to trace.</symptom>
+      <root-cause>`createContext&lt;AuthContextValue&gt;({ user: null, login: noop } as AuthContextValue)` provides a usable default, hiding the missing provider.</root-cause>
+      <fix>Initialise with `createContext&lt;AuthContextValue | null&gt;(null)`. The useAuth hook throws if context is null naming the expected provider. Spec field context.null_sentinel MUST be true.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-prop-drilling">
+      <symptom>The same prop is threaded through 4+ intermediate components that don't use it themselves; refactors require touching every level.</symptom>
+      <root-cause>A piece of state lives at the feature root but the consumer is 4 levels deep. Each intermediate component forwards the prop verbatim.</root-cause>
+      <fix>Promote to a Context (layer=shared-context) OR route to an external store (layer=global-ui). Spec's state_routing MUST not contain a prop-drilled slice with depth &gt; 2; the decision tree branches on this.</fix>
+    </antipattern>
+
   </section>
 </text>

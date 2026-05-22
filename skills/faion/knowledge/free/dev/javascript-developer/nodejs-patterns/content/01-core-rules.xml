@@ -1,11 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nodejs-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nodejs-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="nodejs-patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Seven testable rules for a layered TypeScript Express service. Each rule is enforceable by a script or code review.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-middleware-order" testable="true" depth="essential">
+      <statement>Register middleware in this order inside createApp(): helmet → cors → express.json → express.urlencoded → compression → requestLogger → routes → errorHandler. The error handler MUST be the last app.use(...) call.</statement>
+      <rationale source="expressjs.com/en/guide/error-handling">Helmet/CORS must wrap responses before any handler runs. The error middleware only fires for downstream errors — placing it before routes makes it unreachable.</rationale>
     </rule>
+
+    <rule id="r2-pure-create-app" testable="true" depth="essential">
+      <statement>Export a pure createApp(): Express factory that returns the configured app without calling app.listen(). Listening happens only in server.ts.</statement>
+      <rationale source="supertest docs + nodebestpractices">Tests must pump requests through createApp() without binding a port. Calling listen() inside the factory forces every test file to allocate a free port, blocking parallelism and producing flakes.</rationale>
+    </rule>
+
+    <rule id="r3-config-once" testable="true" depth="essential">
+      <statement>Resolve process.env exactly once, in config/env.ts, validated with Zod (or equivalent). All other modules import the frozen config object.</statement>
+      <rationale source="12-factor + Zod">Scattered process.env reads cannot be type-checked or stubbed in tests. A single validated boundary fails the process on startup if a required variable is missing, rather than at 3am inside a request handler.</rationale>
+    </rule>
+
+    <rule id="r4-error-class-hierarchy" testable="true" depth="essential">
+      <statement>Every thrown error extends a base AppError class carrying statusCode, code, and isOperational fields. Use Error.captureStackTrace in the base constructor.</statement>
+      <rationale source="nodebestpractices">Distinguishing operational (expected: 404, 400, 401) from programmer errors lets the error handler reply safely to clients and lets the process crash on bugs so systemd can restart. captureStackTrace preserves call sites for debugging.</rationale>
+    </rule>
+
+    <rule id="r5-async-error-forwarding" testable="true" depth="essential">
+      <statement>Every async handler is either wrapped with asyncHandler() or contains an explicit try/catch with next(error). No raw async route handlers without one of these.</statement>
+      <rationale source="Express 4 limitation">Unhandled promise rejections inside async handlers in Express 4 are not caught by the error middleware. Express 5 fixes this; while supporting 4 the wrapper is mandatory.</rationale>
+    </rule>
+
+    <rule id="r6-structured-logging" testable="true" depth="essential">
+      <statement>Log via the Pino logger (or app.log). Direct console.log/console.error calls are forbidden in non-bootstrap code. The requestLogger middleware emits one info line per finished request with requestId, method, url, statusCode, duration_ms.</statement>
+      <rationale source="getpino.io">console.* outputs unstructured strings; production log aggregators expect JSON lines. Per-request structured lines enable trace correlation and SLO dashboards without re-parsing.</rationale>
+    </rule>
+
+    <rule id="r7-flush-on-shutdown" testable="true" depth="essential">
+      <statement>Install a SIGTERM/SIGINT handler that (a) stops accepting new connections, (b) drains active requests for ≤ 30s, (c) calls logger.flush() before process.exit().</statement>
+      <rationale source="systemd + Pino transport docs">Pino transports buffer log lines; an unflushed shutdown loses the last seconds of logs — exactly the seconds that explain the crash. Graceful drain prevents truncated responses to clients.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

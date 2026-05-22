@@ -1,3 +1,9 @@
+# purpose: template for pair-programming (pair-journal.sh)
+# consumes: pair-programming methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # pair-journal.sh — log pair session events with timestamps.
 # Survives agent compaction; re-read at session start to restore context.

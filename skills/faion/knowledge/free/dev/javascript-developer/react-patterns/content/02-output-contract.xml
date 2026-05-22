@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="react-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="react-patterns Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON schema for a feature-module spec output.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "feature_name", "react_version", "folder_tree", "components", "context", "state_routing", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "feature_name": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "react_version": {"type": "string"},
+    "folder_tree": {"type": "array", "minItems": 4, "items": {"type": "string"}},
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "props_interface", "declaration"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$"},
+          "props_interface": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Props$"},
+          "declaration": {"type": "string", "enum": ["function-declaration", "named-const-arrow"]}
+        }
+      }
+    },
+    "context": {
+      "type": ["null", "object"],
+      "properties": {
+        "name": {"type": "string"},
+        "null_sentinel": {"type": "boolean"},
+        "value_memoized": {"type": "boolean"},
+        "consumer_hook": {"type": "string"}
+      }
+    },
+    "state_routing": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["slice", "layer"],
+        "properties": {
+          "slice": {"type": "string"},
+          "layer": {"type": "string", "enum": ["server", "form", "global-ui", "local", "shared-context"]}
+        }
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">a component with declaration="named-const-arrow" and an inline anonymous default export</pattern>
+      <pattern id="f2">context != null but null_sentinel=false or value_memoized=false</pattern>
+      <pattern id="f3">two state_routing entries with the same slice name</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort folder_tree alphabetically within each depth.</transformation>
+      <transformation>Sort components by name.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "auth-feature-spec",
+  "owner": "ruslan@faion.net",
+  "feature_name": "auth",
+  "react_version": "^19.0.0",
+  "folder_tree": [
+    "src/features/auth/components/LoginForm.tsx",
+    "src/features/auth/hooks/useAuth.ts",
+    "src/features/auth/api.ts",
+    "src/features/auth/types.ts",
+    "src/features/auth/AuthProvider.tsx"
+  ],
+  "components": [
+    {"name": "LoginForm", "props_interface": "LoginFormProps", "declaration": "function-declaration"},
+    {"name": "AuthProvider", "props_interface": "AuthProviderProps", "declaration": "function-declaration"}
+  ],
+  "context": {"name": "AuthContext", "null_sentinel": true, "value_memoized": true, "consumer_hook": "useAuth"},
+  "state_routing": [
+    {"slice": "currentUser", "layer": "shared-context"},
+    {"slice": "loginForm", "layer": "form"}
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "feature_name": "Auth",
+  "react_version": "19",
+  "folder_tree": ["src/Auth.tsx"],
+  "components": [{"name": "auth", "props_interface": "Props", "declaration": "named-const-arrow"}],
+  "context": {"name": "AuthContext", "null_sentinel": false, "value_memoized": false},
+  "state_routing": [{"slice": "x", "layer": "local"}, {"slice": "x", "layer": "form"}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

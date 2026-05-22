@@ -1,39 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="javascript-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for javascript-testing. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="JavaScript Testing Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 hard rules.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>MUST configure vitest.config.ts with: plugins: [react()], test: { globals: true, environment: 'jsdom', setupFiles: './src/test/setup.ts', coverage: { provider: 'v8', reporter: ['text', 'json', 'html'], exclude: ['node_modules/', 'src/test/'] } }. Setup file MUST call afterEach cleanup() and vi.restoreAllMocks(), and define IntersectionObserver, ResizeObserver, matchMedia polyfills.</statement>
-      <rationale source="v1-source">Globals: true allows `describe`, `it`, `expect` without imports (less boilerplate). jsdom mimics browser behavior (DOM, window, fetch). Coverage providers track lines/branches. Polyfills prevent jsdom-unimplemented APIs from breaking tests (IntersectionObserver, ResizeObserver, matchMedia are common).</rationale>
+    <rule id="vitest-default" testable="true" depth="essential">
+      <statement>Default to Vitest; pick Jest only when a Jest-only tool blocks migration.</statement>
+      <rationale source="Vitest docs; Vitest vs Jest benchmark">Vitest is faster, ESM-native, Jest-API-compatible; Jest carries legacy ESM friction.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Unit tests MUST follow arrange-act-assert: arrange (set up inputs, mocks, state), act (call the function), assert (check outputs or side effects). Each `it(...)` case MUST test one behavior. Use `describe` to group related tests. Error cases (throw, rejection) are behaviors.</statement>
-      <rationale source="v1-source">Arrange-act-assert is crystal-clear structure. Readers immediately understand test intent. One behavior per test makes failures unambiguous. Grouped describes keep test files organized.</rationale>
+    <rule id="testing-library-for-dom" testable="true" depth="essential">
+      <statement>DOM-level tests use Testing Library; enzyme / direct ReactDOM is forbidden.</statement>
+      <rationale source="testing-library.com docs">Testing Library forces accessibility-friendly queries; enzyme tied to React internals.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>MUST query by role first (getByRole, getByLabelText), then by text (getByText), then display value (getByDisplayValue). getByTestId is the last resort and requires justification. Use userEvent (not fireEvent) for all user interactions. Wrap async operations in waitFor.</statement>
-      <rationale source="v1-source">Querying by role/label ensures tests verify accessibility. userEvent mimics real browser interactions (focus, blur, paste events), not just DOM updates. waitFor polls until async operations settle, preventing flaky timing issues.</rationale>
+    <rule id="msw-for-http" testable="true" depth="essential">
+      <statement>HTTP mocking goes through MSW (request interception at network level), never Jest's `fetch` spy.</statement>
+      <rationale source="mswjs.io docs">MSW handlers are reusable across unit / integration / e2e; spies are per-test boilerplate.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>vi.mock() calls MUST be at module scope (not inside test). vi.mock() is hoisted, so order with imports does not matter. Use vi.hoisted() for shared state across tests. clearAllMocks in beforeEach to reset call counts and return values.</statement>
-      <rationale source="v1-source">Module-scope mocks are static and predictable. Hoisting ensures they are set before imports. Clearing mocks between tests prevents test pollution (one test's mock affecting another).</rationale>
+    <rule id="branch-coverage" testable="true" depth="essential">
+      <statement>Coverage runs with V8 provider + branch coverage; same thresholds as code-coverage methodology.</statement>
+      <rationale source="Vitest docs — coverage">Without branch coverage the gate misses untested else-branches.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>MSW handlers MUST be defined once in src/test/mocks/handlers.ts with http.get/post/put/delete. Server setup MUST be in src/test/mocks/server.ts. Test setup MUST call beforeAll(server.listen), afterEach(server.resetHandlers), afterAll(server.close). Handlers return HttpResponse.json() or HttpResponse.text().</statement>
-      <rationale source="v1-source">Single source of truth for API mocks. Reusable handlers across test types. server.listen/close ensures MSW starts and stops correctly. resetHandlers clears overrides from individual tests, ensuring isolation.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Planner MUST produce test plan as table: behavior name | inputs | expected outputs | side effects | error cases | mocks needed (which modules, which endpoints). Do NOT write tests yet.</statement>
-      <rationale source="v1-source">Plan guides implementer; it is reviewed before code is written. Behavior-driven approach ensures tests match requirements, not implementation.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Implementer MUST write tests from plan. Each test follows arrange/act/assert. RTL queries by role/label first. MSW for HTTP. No as any in mocks. Run vitest run --coverage after implementation.</statement>
-      <rationale source="v1-source">Code review of tests is easier when plan is pre-approved. Test quality improves with explicit structure. Coverage check gates unintended coverage drops.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>CI MUST run `vitest run --coverage` with thresholds: --coverage.thresholds.lines=80 --coverage.thresholds.functions=80. Uncovered lines MUST be reviewed before merge. Coverage chasing (writing tests with no assertions) is forbidden; pair coverage with mutation testing or manual branch review.</statement>
-      <rationale source="v1-source">80% threshold catches obvious gaps without forcing meaningless tests. 100% coverage is a false god (dead code, defensive assertions). Mutation testing (Stryker) identifies coverage that is "checked but not used" and should be prioritized in a second pass.</rationale>
+    <rule id="no-snapshot-only" testable="true" depth="essential">
+      <statement>A test that only asserts via toMatchSnapshot() is rejected; every test has ≥1 behavioural assertion alongside any snapshot.</statement>
+      <rationale source="Internal — snapshot drift Q1 2026">Snapshot-only tests turn into rubber stamps; behavioural assertions stay legible.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

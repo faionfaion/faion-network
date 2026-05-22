@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-api Worked Example" version="1.1.0" est_tokens="700" depth="deep">
+  <summary>Billing API: Invoice ModelViewSet end-to-end.</summary>
+
+  <section title="Inputs">
+    <list>
+      <item>framework: drf (existing codebase)</item>
+      <item>django_version: 5.2.1</item>
+      <item>resources: Invoice (CRUD + activate action)</item>
+      <item>auth: JWT via HttpOnly cookie</item>
+      <item>SLO: list endpoint p95 ≤ 200ms, expect ~100k invoices/customer</item>
+    </list>
+  </section>
+
+  <section title="Spec output">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "billing-api-spec",
+  "owner": "ruslan@faion.net",
+  "framework": "drf",
+  "django_version": "5.2.1",
+  "endpoints": [
+    {
+      "resource": "Invoice",
+      "kind": "model-viewset",
+      "methods": ["GET", "POST", "PATCH", "DELETE"],
+      "input_serializer": "CreateInvoiceSerializer",
+      "output_serializer": "InvoiceDetailSerializer",
+      "permission_classes": ["IsAuthenticated", "IsOrganizationMember"],
+      "throttle_scope": "user",
+      "pagination": "cursor"
+    },
+    {
+      "resource": "InvoiceActivate",
+      "kind": "apiview",
+      "methods": ["POST"],
+      "input_serializer": "ActivateInvoiceSerializer",
+      "output_serializer": "InvoiceDetailSerializer",
+      "permission_classes": ["IsAuthenticated", "IsOrganizationMember"],
+      "throttle_scope": "burst",
+      "pagination": "none"
+    }
+  ],
+  "auth": {
+    "mode": "jwt-simplejwt",
+    "access_ttl_minutes": 15,
+    "refresh_ttl_days": 7,
+    "rotate_refresh": true,
+    "blacklist_after_rotation": true,
+    "transport": "httponly-cookie"
+  },
+  "throttle": {"scopes": ["anon", "user", "burst", "login"]},
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Notes derived from spec">
+    <list>
+      <item>List endpoint uses cursor pagination ordered by (-created_at, -id) — required because Invoice volume per customer is unbounded.</item>
+      <item>The activate action is APIView, not a @action on the ViewSet — it aggregates the invoice + a payment provider call, so it is not a clean ViewSet action.</item>
+      <item>Both endpoints reuse IsOrganizationMember to scope rows to the requesting user's organisation (has_object_permission).</item>
+    </list>
+  </section>
+</text>

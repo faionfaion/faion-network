@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-api Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-endpoint kind + per-list pagination routing.</summary>
+
+  <decision-tree>
+    <root-question id="q-shape">Does the endpoint map cleanly to standard CRUD on a single model?</root-question>
+
+    <branch when="q-shape == true">
+      <conclusion ref="r2-thin-views">kind="model-viewset" (DRF) or "ninja-router-crud" (Ninja). Use a Router with default URLs. Set input/output serializer pair via get_serializer_class.</conclusion>
+    </branch>
+
+    <branch when="q-shape == false">
+      <question id="q-action-shape">Is the endpoint an action verb (activate, archive, retry) or aggregates multiple models?</question>
+
+      <branch when="q-action-shape == 'verb-or-aggregate'">
+        <conclusion ref="r2-thin-views">kind="apiview" (DRF) or "ninja-router-action" (Ninja). Thin handler: parse → service → return. No ViewSet, no router auto-URL.</conclusion>
+      </branch>
+
+      <branch when="q-action-shape == 'list-only-readonly'">
+        <question id="q-list-size">Can the list grow unbounded (timeline-style data, audit log)?</question>
+
+        <branch when="q-list-size == true">
+          <conclusion ref="r8-scoped-throttle-cursor-pagination">pagination="cursor", ordered by (-created_at, -id). Page-number on unbounded lists triggers OFFSET scans and breaks under churn.</conclusion>
+        </branch>
+
+        <branch when="q-list-size == false">
+          <conclusion ref="r8-scoped-throttle-cursor-pagination">pagination="page-number" with explicit page_size cap. Acceptable for static counts &lt; ~10k.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="invoice-list"><![CDATA[
+endpoint=Invoice list, single-model CRUD, ~100k/customer unbounded
+q-shape -> true
+=> conclusion r2-thin-views: kind=model-viewset, pagination=cursor.
+]]></example>
+</text>

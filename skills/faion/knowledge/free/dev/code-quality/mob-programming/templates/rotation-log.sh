@@ -1,3 +1,9 @@
+# purpose: template for mob-programming (rotation-log.sh)
+# consumes: mob-programming methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # rotation-log.sh — append a rotation entry to MOB_LOG.md and trigger handoff.
 # Usage: rotation-log.sh <driver> <navigator> [intent]

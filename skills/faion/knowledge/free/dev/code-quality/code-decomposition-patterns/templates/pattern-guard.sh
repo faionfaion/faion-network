@@ -1,3 +1,9 @@
+# purpose: template for code-decomposition-patterns (pattern-guard.sh)
+# consumes: code-decomposition-patterns methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # pattern-guard.sh — enforce decomposition pattern invariants post-refactor.
 # Usage: ./pattern-guard.sh [path]

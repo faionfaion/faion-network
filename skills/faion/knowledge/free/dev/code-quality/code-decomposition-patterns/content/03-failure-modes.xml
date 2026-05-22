@@ -1,37 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="code-decomposition-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for code-decomposition-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Code Decomposition Patterns Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns the detector catches before the refactor compounds into history loss or broken callers.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Leaky service: extracted service method accepts request/response/HttpContext parameters.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Framework types in service signatures tie the service to the HTTP layer, defeating testability. Services must accept only plain domain types.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Over-extraction: agent creates a micro-service for a 5-line helper with a single caller.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unnecessary files increase cognitive overhead without adding testability or reusability. Apply a minimum threshold: a service/component must be &gt;=40 lines or have &gt;=3 callers to justify extraction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Import update misses: agent moves a file but only updates the moved file, not its importers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Broken imports cause runtime errors that only appear when the code path is exercised. Always run a grep pass on importers + `tsc --noEmit` or `python -c 'import app'` after each move.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Barrel re-export sprawl: agent adds `export *` in index.ts to make imports convenient after Extract Module.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>`export *` re-exports everything including internals, breaks tree-shaking, creates implicit public APIs, and causes circular dependency risks. Forbid `export *`; export named symbols only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Settings circular import: env file (production.py) imports from base.py which imports from production.py.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Circular imports in config fail at import time with an inscrutable error. Enforce one-way load: __init__.py imports env file; env file imports base; base imports nothing from the settings package.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Doc drift: pattern application without updating the directory's AGENTS.md in the same PR.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>AGENTS.md file tables go stale immediately after a structural change. Always update AGENTS.md in the same commit as the decomposition.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="wrong-pattern-picked" severity="high">
+      <symptom>Move list violates the pattern's own constraints (e.g. extract-module pulls out I/O code).</symptom>
+      <root-cause source="Fowler — Refactoring; internal review notes">Pattern picked from file name rather than from symbol kinds inside; agent skipped the detect_pattern step.</root-cause>
+      <fix>Reject the move list. Re-run detect_pattern on the actual symbol table; require the agent to cite the pattern's trigger condition that matched.</fix>
+    </antipattern>
+    <antipattern id="bulk-move-no-tests" severity="high">
+      <symptom>Single commit moves 40+ symbols across 8 files; test command not run in between.</symptom>
+      <root-cause source="Internal — PR #2389">Agent optimises for one big commit instead of incremental green-test sequence.</root-cause>
+      <fix>Reject the PR; require one commit per symbol cluster with the test command captured in the commit message.</fix>
+    </antipattern>
+    <antipattern id="broken-imports" severity="high">
+      <symptom>Downstream files import the symbol from the old path; CI red at import-time.</symptom>
+      <root-cause source="Python ImportError postmortems">The original file no longer re-exports the moved symbol; rule public-api-stable was skipped.</root-cause>
+      <fix>Reinstate the re-export at the original path; defer the API break to a follow-up PR.</fix>
+    </antipattern>
+    <antipattern id="history-lost-on-rename" severity="medium">
+      <symptom>`git log --follow` on the moved file shows only the rename commit; pre-move history is detached.</symptom>
+      <root-cause source="git --follow caveats">Delete + create instead of `git mv`; or content edited in the same commit as the rename.</root-cause>
+      <fix>Redo the move with `git mv` and split the rename + content edit into two commits.</fix>
+    </antipattern>
+
   </section>
 </text>

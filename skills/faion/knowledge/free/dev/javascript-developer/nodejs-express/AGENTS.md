@@ -2,73 +2,97 @@
 slug: nodejs-express
 tier: free
 group: dev
-domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-grade REST API framework for Node.
-content_id: "4b1e6ba1d24c67f8"
-tags: [nodejs, express, rest-api, typescript, middleware]
+domain: dev
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Scaffolds a production REST API on Express with layered middleware (helmet, cors, compression, pinoHttp, rate-limit), centralised error handling, and graceful shutdown.
+content_id: "856ced48c3c11a15"
+complexity: medium
+produces: code
+est_tokens: 3700
+tags: [express, nodejs, rest-api, middleware, security]
 ---
-# Express Framework Patterns
+# Node.js Express
 
 ## Summary
 
-**One-sentence:** Production-grade REST API framework for Node.
+**One-sentence:** Emits an Express service skeleton with the canonical middleware stack, centralised error handler, and graceful shutdown on SIGINT/SIGTERM.
 
-**One-paragraph:** Production-grade REST API framework for Node.js. Set up Express with middleware in order (helmet → cors → compression → json → pinoHttp → rateLimit → routes → notFoundHandler → errorHandler). Use Zod schemas for input validation, centralized error handler for consistent responses, graceful shutdown (SIGTERM/SIGINT), and structured JSON logging with Pino.
+**One-paragraph:** Express stays the default Node REST framework because of ecosystem inertia. A production-shape Express service needs: helmet (security headers), cors (origin policy), compression (response gzip), pino-http (structured logs), express-rate-limit (DDoS/brute floor), centralised error middleware, and a graceful-shutdown handler that closes the server + drains in-flight before exit. This methodology emits the skeleton + decision-record for each choice (e.g. why not morgan, why not winston). Output is a runnable repo skeleton plus a 'middleware order matters' note.
+
+**Ефективно для:**
+
+- Net-new Express service: 'one shot' production skeleton.
+- Audit існуючого Express: чи присутні helmet / rate-limit / graceful-shutdown.
+- Onboarding: новачок розуміє WHY кожен middleware, не просто скопіювати.
+- Migration з Express 4 → Express 5: pin сumber, pin async-error handling.
 
 ## Applies If (ALL must hold)
 
-- REST APIs and microservices on Node 20/22 where ecosystem compatibility is priority.
-- Adding a new resource (router + controller + service + schema + tests) to an existing Express service.
-- Hardening a hand-rolled Express server: add helmet, cors, compression, pino-http, express-rate-limit, graceful shutdown.
-- Centralizing error handling with AppError + Zod-aware error middleware in a project that currently mixes res.status(...).json(...) everywhere.
+- Runtime is Node ≥20 (LTS).
+- Framework is Express (≥ 4.18) — Fastify lives in a separate methodology.
+- Service exposes HTTP / REST (not WebSocket / GraphQL only).
 
 ## Skip If (ANY kills it)
 
-- New projects targeting peak throughput — Fastify is 2-3x faster on the same hardware.
-- Edge runtimes (Cloudflare Workers, Vercel Edge) — Express depends on Node-only APIs.
-- Greenfield Bun-only services where Bun.serve removes the framework entirely.
-- A microservice that only needs WebSockets — bare ws or uWebSockets.js beats Express middleware overhead.
+- Runtime is Bun — use bun-runtime-simple + Hono.
+- Framework is Fastify — see nodejs-fastify.
+- Service is GraphQL-only — different middleware stack.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Node version | string | node --version |
+| Service name + routes | list | API spec |
+| Auth shape | enum | owner decision |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: helmet-first, rate-limit-floor, central-error-handler, graceful-shutdown, pino-not-morgan | 1000 |
+| `content/02-output-contract.xml` | essential | Schema for Express service spec | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: callback-error-leak, no-graceful-shutdown, helmet-missing | 700 |
+| `content/04-procedure.xml` | essential | 5-step scaffold procedure | 700 |
+| `content/05-examples.xml` | reference | Worked middleware-order example | 500 |
+| `content/06-decision-tree.xml` | essential | Auth + scale tree | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold` | haiku | File generation. |
+| `draft_routes` | sonnet | Per-route TS code. |
+| `draft_error_handler` | sonnet | Per-error-kind branching. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/express-app.ts` | Hello-world Express app with middleware stack |
+| `templates/error-middleware.ts` | Centralised error handler skeleton |
+| `templates/graceful-shutdown.ts` | SIGINT/SIGTERM shutdown helper |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-nodejs-express.py` | Validate Express service spec + middleware order | After scaffold, before commit |
 
 ## Related
 
-- parent skill: `free/dev/javascript-developer/`
+- [[nodejs-fastify]] — higher-perf alternative; pick if &gt;5k rps target.
+- [[javascript-modern]] — TS strict + named exports apply.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches: auth (none / token / session) → middleware. Expected scale (low &lt;1k rps / medium / high) → consider Fastify above 5k rps. Multi-tenant? → context propagation via AsyncLocalStorage.

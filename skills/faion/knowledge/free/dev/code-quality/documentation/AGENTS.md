@@ -3,72 +3,95 @@ slug: documentation
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Create AI-readable documentation pairs for every code directory: CLAUDE.
-content_id: "8932853683be833c"
-tags: [documentation, ai-readability, agents-md, routing, code-organization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an AI-readable AGENTS.md (20-80 lines) for every code dir paired with CLAUDE.md, enabling agents to navigate without hallucinating file paths.
+content_id: "410690a54da729ca"
+complexity: medium
+produces: spec
+est_tokens: 3700
+tags: [documentation, agents-md, claude-md, navigation]
 ---
-# Documentation (AGENTS.md and CLAUDE.md)
+# Documentation
 
 ## Summary
 
-**One-sentence:** Create AI-readable documentation pairs for every code directory: CLAUDE.
+**One-sentence:** Defines the AGENTS.md + CLAUDE.md per-dir doc convention so agents can navigate any code dir under ~80 lines of context.
 
-**One-paragraph:** Create AI-readable documentation pairs for every code directory: CLAUDE.md (one line: @AGENTS.md) and AGENTS.md (20-80 lines describing what the dir is, its files, entry points, and gotchas). Without this pair, agents load no context and scan files blindly, wasting tokens and hallucinating structure.
+**One-paragraph:** Agents that lack a routing doc fall back to guessing file paths; the guesses go stale and the agent edits the wrong place. This methodology mandates one AGENTS.md per code directory (20-80 lines, structured: purpose + key files + commands + gotchas) and one CLAUDE.md that just contains `@AGENTS.md`. The pair fits in any agent's auto-load budget and answers four questions: what is this dir, what files matter, how do I build/test, what are the pitfalls. Output is a spec artefact listing every dir + its required headers + a smoke-test that verifies the pair exists.
+
+**Ефективно для:**
+
+- Repos з 50+ subdirs: agent-navigation collapse без routing-doc.
+- Multi-agent workflows (faion/poll-agents): кожен субагент стартує в незнайомому dir — потрібен 20-line context.
+- Onboarding new dev: AGENTS.md = живий orientation tour без 50-page handbook.
+- Migration: old README.md → AGENTS.md як частина refactor PR.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping AI-readable docs in a new repo, sub-package, or refactored directory.
-- After a refactor where the file tree changed and existing AGENTS.md tables are stale.
-- Multi-repo monorepos: each package needs its own AGENTS.md per the project convention.
-- Legacy codebases with only a top-level README — rolling out per-module coverage.
+- Repo has ≥10 code directories (below that, root AGENTS.md suffices).
+- Agents are routinely launched in subdirectories (cwd-scoped sessions).
+- Team treats docs as code (PR-reviewed, versioned).
 
 ## Skip If (ANY kills it)
 
-- Repos under ~200 lines with one obvious entry point — a README suffices.
-- Generated/derived directories (dist/, build/, node_modules/) — docs just repeat tooling output.
-- Short-lived experiments where the doc rots faster than the code iterates.
-- Public-facing user docs (Docusaurus/Mintlify) — this methodology targets AI readers, not customers.
+- Single-file repo or one-shot script.
+- Pure data repo (no code modules).
+- Vendored / generated subdirs — exempted.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo root | path | git rev-parse --show-toplevel |
+| Existing AGENTS.md inventory | list | find . -name AGENTS.md |
+| Code-dir inventory | list | find . -type d with source files |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: pair-required, 20-80-lines, structured-sections, no-readme-shadowing, refresh-on-edit | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for doc-spec artefact | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: drift-from-code, stretch-past-80, readme-shadow | 600 |
+| `content/04-procedure.xml` | essential | 5-step rollout procedure | 700 |
+| `content/05-examples.xml` | reference | Example AGENTS.md for a python module | 500 |
+| `content/06-decision-tree.xml` | essential | Dir-shape tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `inventory_dirs` | haiku | find + filter; deterministic. |
+| `draft_agents_md` | sonnet | Per-dir custom content; needs source skim. |
+| `verify_pair` | haiku | File-exists checks. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agents-md-universal.md` | Universal AGENTS.md skeleton with placeholders |
+| `templates/doc-outline.sh` | Shell that scans a dir and prints draft AGENTS.md sections |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-documentation.py` | Validate the doc-spec artefact + per-dir pair existence | After draft, before landing the docs PR |
 
 ## Related
 
-- parent skill: `free/dev/code-quality/`
+- - [[code-review-process]] — docs PRs use the same review template.
+- - [[code-decomposition-patterns]] — decomposition PRs MUST update / create AGENTS.md per moved dir.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches: dir has source code? → pair required. Dir is tests-only / generated / vendored? → exempt. Repo-root vs sub-dir → root carries top-level map, sub-dir carries local map.

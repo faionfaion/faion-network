@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Code Coverage Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping stack + repo state to a coverage-gate configuration choice. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-stack">What is the primary language stack (detected by lockfile)?</root-question>
+
+    <branch when="stack == python">
+      <question id="q-py-legacy">Is current repo coverage &lt; 60% (legacy)?</question>
+      <branch when="legacy == true">
+        <conclusion ref="diff-cover-on-pr" verdict="diff-cover-only mode; global_threshold = current value"/>
+      </branch>
+      <branch when="legacy == false">
+        <conclusion ref="branch-coverage-required" verdict="branch=true, global 80, diff 90, per_dir from critical-path manifest"/>
+      </branch>
+    </branch>
+
+    <branch when="stack == js OR stack == ts">
+      <question id="q-js-runner">Which runner is in use (Jest / Vitest / Node native)?</question>
+      <branch when="runner == jest OR runner == vitest">
+        <conclusion ref="branch-coverage-required" verdict="coverageProvider='v8'; thresholds object with global + per-dir"/>
+      </branch>
+      <branch when="runner == node-native">
+        <conclusion ref="extract-dont-paste" verdict="c8 wrapper; emit lcov; thresholds enforced by external diff-cover"/>
+      </branch>
+    </branch>
+
+    <branch when="stack == go">
+      <conclusion ref="branch-coverage-required" verdict="go test -covermode=atomic -coverprofile; diff-cover against main"/>
+    </branch>
+
+    <branch when="stack == rust">
+      <conclusion ref="branch-coverage-required" verdict="cargo llvm-cov; lcov export; diff-cover against main"/>
+    </branch>
+
+    <branch when="stack == mixed">
+      <conclusion ref="per-dir-thresholds" verdict="per-language sub-configs merged via diff-cover combine"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="python-legacy">
+    stack=python → q-py-legacy: legacy=true → diff-cover-only mode (ref diff-cover-on-pr). No global threshold added; PRs only need diff-coverage to be ≥90% on changed lines.
+  </example>
+</text>

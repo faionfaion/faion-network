@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="react-hooks Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for react-hooks as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="react-hooks Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Four high-frequency hook antipatterns the spec must never produce.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Reading ref.current inside JSX or during the render function body.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The value may differ between React's two rendering passes (Concurrent Mode), causing visual inconsistencies.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Omitting a variable from the dependency array to avoid re-running the effect — fixing with a functional state updater instead.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Stale closure: the effect captures an old value of count. Use the functional updater form to read the current value without declaring it as a dependency.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Passing an object or array literal as a dependency — it creates a new reference every render, causing the effect to re-run continuously.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Object identity comparison: {} !== {} even with equal contents. Use primitive deps or memoize the object with useMemo.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Wrapping cheap calculations in useMemo.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The memoization overhead exceeds the cost of the computation; just calculate inline.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Calling hooks conditionally based on a prop or runtime flag.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>React relies on a stable hook call order across renders. Conditional hooks violate the Rules of Hooks and cause runtime errors.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-stale-closure">
+      <symptom>Counter starts at 0, increments to 1 on the first tick, then stays at 1 forever. UI shows wrong values; tests pass on first render but fail on assertions after timer fires.</symptom>
+      <root-cause>setInterval captured the initial render's `count` (= 0). The effect's [] deps prevented re-binding, so the captured closure stays at 0 forever; setCount(0 + 1) writes 1 every tick.</root-cause>
+      <fix>Use the functional updater: setCount(prev =&gt; prev + 1). Add a rule_ref="r4-functional-updater" entry in state_slices. ESLint exhaustive-deps will also suggest adding count to deps, but the functional updater is preferred for setIntervals.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-conditional-hook">
+      <symptom>"React has detected a change in the order of Hooks called" runtime error; component crashes after a prop toggles.</symptom>
+      <root-cause>A useState / useEffect is wrapped in `if (prop)` or sits after an `if (!enabled) return null;` early return. The hook count differs between renders, breaking React's slot-indexed state model.</root-cause>
+      <fix>Move all hook calls to the top of the function body, before any early return or conditional. Move the conditional into the JSX or into the effect body, not around the hook call. Exception: use() in React 19 may be called conditionally.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-object-literal-deps">
+      <symptom>The effect re-fires on every render, often producing an infinite render loop. React DevTools shows the same component re-rendering forever.</symptom>
+      <root-cause>An object or array literal is passed as a useEffect dep: useEffect(() =&gt; {...}, [{a, b}]). Each render creates a new reference; Object.is comparison returns false; effect re-runs; effect updates state; new render; repeat.</root-cause>
+      <fix>Destructure to primitive deps: [a, b]. If the object MUST be passed somewhere, memoize it with useMemo and put the memoized reference in the deps. Add an ESLint exhaustive-deps lint rule that flags inline objects.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-over-memo">
+      <symptom>The component still re-renders just as often; benchmarks show no improvement, but the code is now harder to read and review.</symptom>
+      <root-cause>Every value, including cheap arithmetic and string concatenation, was wrapped in useMemo/useCallback. The hook overhead (allocation + comparison) is larger than the value's computation cost, so memoization is a pure tax.</root-cause>
+      <fix>Apply rule r6-memo-after-profile. Run the Profiler in dev, identify the slow component, only then memoize. Justify each memoization entry with a profiling fact. Enable React Compiler if available.</fix>
+    </antipattern>
+
   </section>
 </text>

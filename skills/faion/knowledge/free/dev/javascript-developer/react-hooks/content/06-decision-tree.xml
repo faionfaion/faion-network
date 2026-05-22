@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="react-hooks Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-slice ownership tree. Run once for every state slice the feature owns.</summary>
+
+  <decision-tree>
+    <root-question id="q-state-origin">Where does this slice's value come from?</root-question>
+
+    <branch when="q-state-origin == 'server-api'">
+      <conclusion ref="r6-memo-after-profile">Route to TanStack Query / SWR. Do NOT replicate with useState + useEffect; that produces stale-cache bugs.</conclusion>
+    </branch>
+
+    <branch when="q-state-origin == 'form-input'">
+      <conclusion ref="r5-primitive-deps-only">Route to React Hook Form. Local useState is acceptable only for a single-field input.</conclusion>
+    </branch>
+
+    <branch when="q-state-origin == 'global-ui'">
+      <conclusion ref="r1-stable-call-order">Route to existing Zustand/Jotai/Redux store. Do not introduce a new Context layer when an external store already exists.</conclusion>
+    </branch>
+
+    <branch when="q-state-origin == 'component-local'">
+      <question id="q-shape">How many fields does the slice carry and are their transitions coupled?</question>
+
+      <branch when="q-shape == 'single-primitive-or-pair'">
+        <conclusion ref="r4-functional-updater">Use useState. Use the functional updater whenever the next state depends on the previous.</conclusion>
+      </branch>
+
+      <branch when="q-shape == 'three-plus-coupled-fields'">
+        <conclusion ref="r2-effect-cleanup">Use useReducer. Define an Action discriminated union and a pure reducer; effects dispatch into it.</conclusion>
+      </branch>
+
+      <branch when="q-shape == 'imperative-mutable-non-render'">
+        <conclusion ref="r3-no-async-effect-body">Use useRef. Mutations don't trigger re-renders; cleanup is the owner's responsibility in the effect.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="search-box-query"><![CDATA[
+slice=query
+q-state-origin -> 'component-local'
+q-shape -> 'single-primitive-or-pair'
+=> conclusion r4-functional-updater: useState with functional updater for setQuery.
+]]></example>
+</text>

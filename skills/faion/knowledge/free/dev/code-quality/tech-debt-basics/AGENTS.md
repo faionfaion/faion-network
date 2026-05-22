@@ -3,72 +3,94 @@ slug: tech-debt-basics
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A framework for making technical debt visible, typed, and actionable.
-content_id: "d3129117f85edec8"
-tags: [technical-debt, code-quality, risk-management, refactoring, monitoring]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a 20-30 row TECH_DEBT_REGISTER.md classified by Fowler's quadrant (deliberate-reckless / deliberate-prudent / inadvertent-reckless / inadvertent-prudent) with severity, location, and interest cost.
+content_id: "7bfdacf666a1952d"
+complexity: light
+produces: report
+est_tokens: 3000
+tags: [tech-debt, fowler-quadrant, debt-register, prioritisation]
 ---
-# Technical Debt Basics
+# Tech Debt Basics
 
 ## Summary
 
-**One-sentence:** A framework for making technical debt visible, typed, and actionable.
+**One-sentence:** Builds a capped tech-debt register (≤30 rows) classified by Fowler's quadrant with severity, evidence, and weekly interest cost per row.
 
-**One-paragraph:** A framework for making technical debt visible, typed, and actionable. Debt items are classified in Martin Fowler's quadrant (deliberate/inadvertent × reckless/prudent) and tracked in a TECH_DEBT_REGISTER.md with type, severity, location, evidence, and interest cost. Agents scan for candidates; humans approve before items are registered. Cap the register at 20–30 items.
+**One-paragraph:** Untracked tech debt accrues silently; tracking everything turns the register into a graveyard. This methodology produces a TECH_DEBT_REGISTER.md capped at 20-30 active rows, each carrying: type (Fowler quadrant), severity, file location, evidence link (PR / postmortem), and a weekly interest cost estimate. Agents scan to surface candidates; humans approve before adding. Register is reviewed monthly: items past 90 days without action are escalated or closed.
+
+**Ефективно для:**
+
+- Команди, що 'знають що в нас борг', але не можуть назвати топ-3.
+- Quarterly planning: register дає reasoning 'що рефакторити' замість gut feel.
+- Onboarding senior: register показує 'тут небезпеки' за 5 хв замість трьох тижнів.
+- AI-driven scan: агент пропонує кандидатів, людина approves.
 
 ## Applies If (ALL must hold)
 
-- Sprint/quarterly planning: surface debt before picking payoff items.
-- Post-incident review: register the debt that caused the incident with severity and evidence.
-- New-codebase onboarding: inventory existing debt before estimating work.
-- Feature trade-off: deliberately taking prudent debt and logging it in the same commit.
+- Codebase is &gt;6 months old.
+- Team has authority to schedule refactor time.
+- An owner is willing to maintain the register monthly.
 
 ## Skip If (ANY kills it)
 
-- Greenfield prototypes likely to be thrown away — registering debt is overhead with no reader.
-- Sub-100-line scripts where the debt framework is heavier than the code.
-- Code under active full rewrite — log the rewrite, not item-level debt deleted next week.
-- Teams with no payoff process — registering debt no one will pay is theatre.
+- Pre-product-market-fit prototype — debt is mostly intentional and uniform.
+- Codebase is end-of-life — register has no payoff.
+- Team already has a working bug-tracker that handles debt — don't duplicate.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo + git history | path | git rev-parse |
+| Postmortem archive | path or URL | team docs |
+| Owner | string | team handbook |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: register-cap, fowler-quadrant, evidence-link, monthly-review, agent-scan-human-approve | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for debt register entries | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: graveyard, unclassified, no-owner | 600 |
+| `content/05-examples.xml` | reference | Sample 3-row register | 500 |
+| `content/06-decision-tree.xml` | essential | Quadrant picker tree | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scan_candidates` | haiku | Static scan + churn metrics. |
+| `classify_quadrant` | sonnet | Per-item Fowler classification. |
+| `estimate_interest` | sonnet | Per-item cost estimate. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/TECH_DEBT_REGISTER.md` | Skeleton register the team commits to repo |
+| `templates/scan-debt.sh` | Shell scan that surfaces candidates |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tech-debt-basics.py` | Validate register against schema | Before commit |
 
 ## Related
 
-- parent skill: `free/dev/code-quality/`
+- - [[refactoring-patterns]] — register items in 'reckless' quadrant route here for fix.
+- - [[code-decomposition-principles]] — register often surfaces decomposition candidates.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree asks: was the debt incurred deliberately? was the team aware of the consequence? Combines the two into the four Fowler quadrants; each quadrant routes to a recommended action (refactor / accept / educate / monitor).

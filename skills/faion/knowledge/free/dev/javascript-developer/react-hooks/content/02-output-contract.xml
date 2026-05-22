@@ -1,22 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="react-hooks Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="react-hooks Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Schema and examples for the hooks-usage spec produced by this methodology.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "feature_name", "react_version", "state_slices", "effects", "memoization", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string", "minLength": 1},
+    "feature_name": {"type": "string"},
+    "react_version": {"type": "string", "pattern": "^[>=^~]*[0-9]+(\\.[0-9]+){0,2}$"},
+    "state_slices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "owner_hook", "type"],
+        "properties": {
+          "name": {"type": "string"},
+          "owner_hook": {"type": "string", "enum": ["useState", "useReducer", "useContext", "useRef", "external-store", "tanstack-query", "react-hook-form", "use-promise"]},
+          "type": {"type": "string"},
+          "rule_ref": {"type": "string"}
+        }
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "deps", "cleanup_present"],
+        "properties": {
+          "name": {"type": "string"},
+          "deps": {"type": "array", "items": {"type": "string"}},
+          "cleanup_present": {"type": "boolean"},
+          "uses_abort_controller": {"type": "boolean"}
+        }
+      }
+    },
+    "memoization": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target", "hook", "justification"],
+        "properties": {
+          "target": {"type": "string"},
+          "hook": {"type": "string", "enum": ["useMemo", "useCallback", "React.memo"]},
+          "justification": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">An effect with cleanup_present=false but containing keywords addEventListener / setInterval / subscribe / fetch in name</pattern>
+      <pattern id="f2">deps contains a token that is an inline object/array literal (begins with '{' or '[')</pattern>
+      <pattern id="f3">memoization entry whose justification is shorter than 10 chars or contains the phrase "just-in-case"</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort state_slices alphabetically by name for deterministic diffs.</transformation>
+      <transformation>Lowercase the feature_name.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "search-box-hooks",
+  "owner": "ruslan@faion.net",
+  "feature_name": "search-box",
+  "react_version": "^19.0.0",
+  "state_slices": [
+    {"name": "query", "owner_hook": "useState", "type": "string", "rule_ref": "r4-functional-updater"},
+    {"name": "results", "owner_hook": "tanstack-query", "type": "SearchResult[]", "rule_ref": "r6-memo-after-profile"}
+  ],
+  "effects": [
+    {"name": "fetch-results-on-debounced-query", "deps": ["debouncedQuery"], "cleanup_present": true, "uses_abort_controller": true}
+  ],
+  "memoization": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad-spec",
+  "owner": "team",
+  "feature_name": "x",
+  "react_version": "19",
+  "state_slices": [{"name": "q", "owner_hook": "useState", "type": "string"}],
+  "effects": [{"name": "subscribe-ws", "deps": ["{options}"], "cleanup_present": false}],
+  "memoization": [{"target": "doubled", "hook": "useMemo", "justification": "x"}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

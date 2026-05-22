@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-constants Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-constants. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-constants Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules for centralised Django constants.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>All CharField and IntegerField with choices MUST use TextChoices or IntegerChoices subclasses. The field definition uses choices=ClassName.choices and default=ClassName.VALUE. Raw strings in choices= are forbidden.</statement>
-      <rationale source="v1-source">TextChoices integrates with Django's migration framework, provides .choices for field definitions, .values for filtering, and .labels for display. Raw string choices scatter values across the codebase and cannot be refactored with rename tools.</rationale>
+
+    <rule id="r1-textchoices-everywhere" testable="true" depth="essential">
+      <statement>Every CharField/IntegerField with a fixed-value set MUST declare choices via a TextChoices or IntegerChoices subclass. Raw tuples like `choices=(('pending','Pending'),...)` are forbidden.</statement>
+      <rationale source="docs.djangoproject.com choices">TextChoices is hashable, IDE-completable, refactorable, and integrates with migrations. Raw tuples scatter string values across the codebase and resist rename tools.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Each app MUST have a constants.py containing all TextChoices/IntegerChoices classes and named numeric limits for that domain. Limits MUST be UPPER_SNAKE_CASE. No numeric literals or string literals for business constraints anywhere in services, selectors, or models — always import from constants.py.</statement>
-      <rationale source="v1-source">Centralizing limits makes them visible, documented, and changeable in one place. A developer changing MAX_ORDERS_PER_USER from 50 to 100 edits one line. Without named constants, they must grep for 50 across the entire codebase and hope no other field has that value.</rationale>
+
+    <rule id="r2-constants-py-per-app" testable="true" depth="essential">
+      <statement>Each app has a `constants.py` containing every TextChoices/IntegerChoices class and every business limit for that domain. models.py, services.py, and views.py import from it.</statement>
+      <rationale source="cosmic-python + django-styleguide">Centralising constants gives one change location, one place for code review to scrutinise, and one import path for tests. Scattered constants make refactor and reasoning O(N).</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use TextChoices for string status fields, not raw str tuples. Access enum values as ClassName.VALUE not as string literals. Compare enum values to each other (status == OrderStatus.PENDING) not to strings (status == "pending").</statement>
-      <rationale source="v1-source">Comparing against enum values is refactoring-safe and IDE-completable. Comparing against string literals creates invisible dependencies on exact string values that are invisible to rename tools. TextChoices.VALUE is also easier to discover via autocomplete.</rationale>
+
+    <rule id="r3-upper-snake-limits" testable="true" depth="essential">
+      <statement>Numeric business limits referenced in ≥ 2 files (max items, page size, retry count, rate limit) MUST be named UPPER_SNAKE_CASE module-level constants in constants.py. Numeric literals in services/selectors/models are forbidden when the value matches a known limit.</statement>
+      <rationale source="naming-conventions + change-cost">UPPER_SNAKE signals "do not edit casually". One named source means a value change is one diff line; magic numbers require grep across the repo and hope.</rationale>
     </rule>
+
+    <rule id="r4-enum-to-enum-compare" testable="true" depth="essential">
+      <statement>Compare and assign enum members to other enum members or call-site values, NEVER to string literals. `status == OrderStatus.PENDING` is required; `status == "pending"` is forbidden.</statement>
+      <rationale source="refactor-safety">Enum-to-enum comparisons survive any rename of the underlying string. String comparisons hard-code the value at every call site and break silently on rename.</rationale>
+    </rule>
+
+    <rule id="r5-label-on-member" testable="true" depth="essential">
+      <statement>To display a label, use `OrderStatus.PENDING.label` directly. `dict(OrderStatus.choices).get(value)` is forbidden.</statement>
+      <rationale source="django source code">Each TextChoices member has a `.label` attribute. Constructing a dict from `.choices` per call is wasteful and obscures intent.</rationale>
+    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

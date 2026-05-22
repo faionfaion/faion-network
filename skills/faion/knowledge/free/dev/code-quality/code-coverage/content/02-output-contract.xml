@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="code-coverage Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Code Coverage Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the coverage-gate config artefact AND the uncovered-lines extract consumed by test-author subagents.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Gate-config schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/coverage-gate-config.json",
+  "type": "object",
+  "required": ["stack", "global_threshold", "diff_threshold", "per_dir", "exclude", "version", "last_reviewed"],
+  "properties": {
+    "stack":            {"enum": ["python", "js", "ts", "go", "rust", "mixed"]},
+    "branch_coverage":  {"type": "boolean", "const": true},
+    "global_threshold": {"type": "integer", "minimum": 70, "maximum": 95},
+    "diff_threshold":   {"type": "integer", "minimum": 80, "maximum": 95},
+    "per_dir": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 70, "maximum": 100}
+    },
+    "exclude": {"type": "array", "items": {"type": "string"}},
+    "mutation_quarterly": {"type": "array", "items": {"type": "string"}},
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <section title="Uncovered-lines extract schema">
+    <code lang="json"><![CDATA[
+{
+  "type": "object",
+  "required": ["files"],
+  "properties": {
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "uncovered_lines"],
+        "properties": {
+          "path":            {"type": "string"},
+          "uncovered_lines": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+          "uncovered_branches": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "stack": "python",
+  "branch_coverage": true,
+  "global_threshold": 80,
+  "diff_threshold": 90,
+  "per_dir": {"src/auth/": 95, "src/billing/": 95, "src/glue/": 70},
+  "exclude": ["src/migrations/*", "src/generated/*"],
+  "mutation_quarterly": ["src/auth/", "src/billing/"],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "stack": "python",
+  "branch_coverage": false,
+  "global_threshold": 60,
+  "per_dir": {}
+}
+]]></code>
+    <note>branch_coverage must be true; threshold below 70; missing diff_threshold, exclude, version, last_reviewed.</note>
+  </example>
+
+  <reference path="templates/coverage.pyproject.toml">Python config canonical location</reference>
+  <reference path="templates/jest.coverage.config.js">JS/TS config canonical location</reference>
+  <reference path="scripts/validate-code-coverage.py">Validator script</reference>
 </text>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-base-model Worked Example" version="1.1.0" est_tokens="600" depth="deep">
+  <summary>Billing service: Customer + Order with soft-delete + uid + protected FK.</summary>
+
+  <section title="Inputs">
+    <list>
+      <item>django_version: 5.2.1</item>
+      <item>db_engine: postgresql</item>
+      <item>soft-delete scope: Customer, Order</item>
+      <item>tenant scope: none (single-tenant)</item>
+      <item>API exposes: Customer.uid, Order.uid</item>
+      <item>FKs: Order.customer → Customer (must retain history when Customer is soft-deleted)</item>
+    </list>
+  </section>
+
+  <section title="Spec output">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "billing-base-model-spec",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "db_engine": "postgresql",
+  "bases": [
+    {"name": "BaseModel",          "abstract": true, "mixins": ["TimestampMixin", "UidMixin"]},
+    {"name": "SoftDeletableModel", "abstract": true, "mixins": ["TimestampMixin", "UidMixin", "SoftDeleteMixin"]}
+  ],
+  "models": [
+    {
+      "name": "Customer",
+      "extends": "SoftDeletableModel",
+      "soft_delete": true,
+      "exposes_uid": true,
+      "tenant_scoped": false,
+      "unique_fields": ["email"],
+      "foreign_keys": []
+    },
+    {
+      "name": "Order",
+      "extends": "SoftDeletableModel",
+      "soft_delete": true,
+      "exposes_uid": true,
+      "tenant_scoped": false,
+      "unique_fields": [],
+      "foreign_keys": [
+        {"field": "customer", "on_delete": "PROTECT", "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."}
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Migration notes derived from spec">
+    <list>
+      <item>Customer.email migration: replace `unique=True` with `UniqueConstraint(fields=['email'], condition=Q(deleted_at__isnull=True), name='unique_active_customer_email')`.</item>
+      <item>Both models add UUIDField uid + a separate unique index on uid (NOT swapping the PK).</item>
+      <item>Order.customer uses on_delete=PROTECT — deleting an active Customer with Orders fails loudly.</item>
+    </list>
+  </section>
+</text>

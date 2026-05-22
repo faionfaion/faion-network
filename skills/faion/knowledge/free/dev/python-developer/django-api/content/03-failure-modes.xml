@@ -1,42 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-api Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-api as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-api Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Five Django API antipatterns the spec must forbid.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Fat view: business logic (DB queries, balance checks, email sending) written directly in the view's post() method.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fat views cannot be unit-tested without an HTTP request. Business logic in views is also unreachable from management commands, Celery tasks, or other entry points.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Business logic placed in serializer validate_* methods instead of a service function.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Serializers should validate shape and type only. Logic in validate_* is hard to test in isolation and creates hidden coupling between validation and business rules.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using Meta.fields = "__all__" on a user-facing serializer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>New model fields (passwords, tokens, internal IDs) are automatically exposed when the model changes. An explicit allowlist is the only safe approach.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using Serializer(data=request.data, partial=True) for PATCH without a separate UpdateSerializer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reusing the create serializer with partial=True allows required fields to be cleared — violating invariants. A separate Update serializer makes all fields optional explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Enabling BrowsableAPIRenderer in production.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The browsable API changes content negotiation behavior (returns HTML when Accept: */* is sent), turns CSRF into a surprise vector, and leaks API structure to unauthenticated users.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Writing async def methods in plain DRF views without adrf — the method runs synchronously.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DRF's dispatch pipeline is synchronous. An async def view handler is called in a sync context; it appears to work but blocks the event loop in ASGI deployments.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Adding URLPathVersioning to REST_FRAMEWORK settings without adding &lt;version&gt; to the URL pattern.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The versioning class is applied but request.version is None — no error, silent failure. Tests must assert request.version is populated, not just that the endpoint responds.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-fat-view">
+      <symptom>View's `post()` runs 80 lines: validation, balance check, email send, audit log, DB writes. Test setup requires HTTP fixtures + mocked email. Reusing logic from a Celery task means duplicating it.</symptom>
+      <root-cause>Business logic ended up in the view instead of a service function. Easy to write in the moment; impossible to test cleanly.</root-cause>
+      <fix>Move business logic to `&lt;app&gt;/services.py` with explicit dependencies. The view becomes: parse → call service → return. Spec rule r2-thin-views forbids fat views.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-serializer-business-logic">
+      <symptom>Test setup requires constructing a fake DRF request to test "can the user place this order?". Business validation depends on serializer state.</symptom>
+      <root-cause>validate_* methods on serializers contain balance checks, ownership checks, or workflow guards. The serializer's job is shape + type validation; business rules belong elsewhere.</root-cause>
+      <fix>Strip validate_* down to shape/type. Move business validation to the service function, where it can be tested with plain Python args.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-all-fields">
+      <symptom>Migration adds an internal `password_hash` field to a User-like model. Next day, the field appears in the public API response.</symptom>
+      <root-cause>`Meta.fields = "__all__"` on the serializer auto-exposes every model field. There is no compile-time check; only a security review can catch it.</root-cause>
+      <fix>Replace `__all__` with an explicit field list. Use `read_only_fields` to lock id/uid/timestamps. Spec rule r4-no-all-fields is checked by the validator.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-browsable-prod">
+      <symptom>Production API responds with HTML when called with `Accept: */*` from a misconfigured client. CSRF errors appear sporadically.</symptom>
+      <root-cause>BrowsableAPIRenderer is in DEFAULT_RENDERER_CLASSES on production settings. The HTML browsable API changes content negotiation and exposes API structure.</root-cause>
+      <fix>Production renderers = [JSONRenderer]. Browsable API is dev-only (settings.dev splits the renderer list). Spec consumer's drf-settings.py template forbids BrowsableAPIRenderer in prod.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-async-without-adrf">
+      <symptom>Endpoint declared `async def`. Tests pass under WSGI dev server. Under ASGI in production, latency under load doubles instead of dropping.</symptom>
+      <root-cause>Plain DRF dispatches handlers synchronously. An `async def` method on a DRF view is awaited by Django but the surrounding pipeline still blocks the event loop.</root-cause>
+      <fix>Either: use `adrf` (Async DRF) which adds an async dispatch path, OR switch the resource to Ninja, which is async-native. The spec's framework field locks the choice; mixed sync/async DRF is forbidden.</fix>
+    </antipattern>
+
   </section>
 </text>

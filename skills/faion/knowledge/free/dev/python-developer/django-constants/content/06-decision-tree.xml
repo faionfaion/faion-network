@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-constants Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-field enum kind + per-limit centralisation routing.</summary>
+
+  <decision-tree>
+    <root-question id="q-fixed-set">Does this field have a small, fixed, named set of allowed values?</root-question>
+
+    <branch when="q-fixed-set == false">
+      <conclusion ref="r1-textchoices-everywhere">Not an enum. Free-text CharField or BooleanField as appropriate.</conclusion>
+    </branch>
+
+    <branch when="q-fixed-set == true">
+      <question id="q-storage-critical">Is the column on a hot path AND the table has millions of rows AND storage cost matters?</question>
+
+      <branch when="q-storage-critical == true">
+        <conclusion ref="r1-textchoices-everywhere">IntegerChoices. Document rationale in the spec; this choice is permanent (cannot be changed retroactively).</conclusion>
+      </branch>
+
+      <branch when="q-storage-critical == false">
+        <conclusion ref="r1-textchoices-everywhere">TextChoices. Default; readable in admin, migrations, logs.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-fixed-set == 'numeric-limit'">
+      <question id="q-cross-file">Is the literal referenced in more than one file?</question>
+
+      <branch when="q-cross-file == true">
+        <conclusion ref="r3-upper-snake-limits">Move to constants.py as UPPER_SNAKE_CASE with rationale.</conclusion>
+      </branch>
+
+      <branch when="q-cross-file == false">
+        <conclusion ref="r2-constants-py-per-app">Keep inline. Single-call-site magic numbers are tolerable.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="order-status"><![CDATA[
+field=Order.status, four values, low-traffic admin table
+q-fixed-set -> true
+q-storage-critical -> false
+=> conclusion r1: TextChoices.
+]]></example>
+</text>

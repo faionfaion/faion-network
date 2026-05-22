@@ -1,39 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Bug Report Quality Rubric Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Bug Report Quality Rubric output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Bug Report Quality Rubric Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema that the rubric scorer must emit. Defines the rubric verdict shape, per-dimension scores, and field-level repair pointers.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/bug-report-quality-rubric.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/bug-report-quality-rubric.json</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/bug-report-quality-rubric.json",
+  "type": "object",
+  "required": ["artefact_id", "ticket_ref", "verdict", "score", "dimensions", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^brq-[a-z0-9-]{6,}$"},
+    "ticket_ref":  {"type": "string", "description": "URL or short id of the source ticket"},
+    "verdict":     {"enum": ["accept", "block-need-repro", "block-need-evidence", "block-need-ai-context", "block-need-env"]},
+    "score":       {"type": "integer", "minimum": 0, "maximum": 100},
+    "dimensions": {
+      "type": "object",
+      "required": ["title", "repro", "expected_vs_actual", "environment", "severity", "priority", "evidence"],
+      "properties": {
+        "title":              {"type": "integer", "minimum": 0, "maximum": 10},
+        "repro":              {"type": "integer", "minimum": 0, "maximum": 20},
+        "expected_vs_actual": {"type": "integer", "minimum": 0, "maximum": 15},
+        "environment":        {"type": "integer", "minimum": 0, "maximum": 15},
+        "severity":           {"type": "integer", "minimum": 0, "maximum": 10},
+        "priority":           {"type": "integer", "minimum": 0, "maximum": 10},
+        "evidence":           {"type": "integer", "minimum": 0, "maximum": 10},
+        "ai_context":         {"type": "integer", "minimum": 0, "maximum": 10}
+      }
+    },
+    "field_fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "issue", "suggested_fix"],
+        "properties": {
+          "field":         {"type": "string"},
+          "issue":         {"type": "string"},
+          "suggested_fix": {"type": "string"}
+        }
+      }
+    },
+    "is_ai_feature": {"type": "boolean"},
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "brq-issue-4421",
+  "ticket_ref": "https://github.com/org/repo/issues/4421",
+  "verdict": "accept",
+  "score": 88,
+  "dimensions": {"title":9,"repro":18,"expected_vs_actual":14,"environment":14,"severity":9,"priority":9,"evidence":8,"ai_context":7},
+  "field_fixes": [],
+  "is_ai_feature": true,
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "brq-issue-4422",
+  "ticket_ref": "issue-4422",
+  "verdict": "accept",
+  "score": 35,
+  "dimensions": {"title":5,"repro":4,"expected_vs_actual":3,"environment":1,"severity":5,"priority":5,"evidence":0,"ai_context":0},
+  "field_fixes": []
+}
+]]></code>
+    <note>Verdict "accept" with score 35 is impossible — threshold is 70. Missing version, last_reviewed, is_ai_feature. field_fixes empty despite zero evidence.</note>
+  </example>
+
+  <reference path="templates/bug-report-quality-rubric.json">JSON Schema file canonical location</reference>
+  <reference path="scripts/validate-bug-report-quality-rubric.py">Validator that enforces this contract</reference>
+
 </text>

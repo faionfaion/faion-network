@@ -1,3 +1,9 @@
+# purpose: template for code-review-process (pr-size-guard.sh)
+# consumes: code-review-process methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # pr-size-guard.sh — Warn above 400 lines, block above 1500 lines.
 # Outputs GitHub Actions annotations: ::warning and ::error.

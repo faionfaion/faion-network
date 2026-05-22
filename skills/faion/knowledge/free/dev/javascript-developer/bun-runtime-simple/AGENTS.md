@@ -2,73 +2,95 @@
 slug: bun-runtime-simple
 tier: free
 group: dev
-domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Bun is a high-performance JavaScript runtime with built-in TypeScript support, a fast HTTP server (Bun.
-content_id: "2b80461370facee6"
-tags: [bun, runtime, typescript, http-server, javascript]
+domain: dev
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Scaffolds a Bun-based TypeScript service (Hono router, native file I/O, Bun password hashing, .env loading, Bun:test) with one bun command.
+content_id: "c562041393f3823e"
+complexity: medium
+produces: code
+est_tokens: 3500
+tags: [bun, runtime, hono, typescript, fast]
 ---
-# Bun Runtime
+# Bun Runtime (Simple)
 
 ## Summary
 
-**One-sentence:** Bun is a high-performance JavaScript runtime with built-in TypeScript support, a fast HTTP server (Bun.
+**One-sentence:** Generates a minimal but production-shaped Bun + TypeScript + Hono service skeleton using only Bun stdlib (no external Express, no bcrypt, no dotenv).
 
-**One-paragraph:** Bun is a high-performance JavaScript runtime with built-in TypeScript support, a fast HTTP server (Bun.serve), native file I/O (Bun.file/Bun.write), built-in password hashing, automatic .env loading, and a Jest-compatible test runner. Use Hono as the preferred web framework. Bun eliminates the need for dotenv, bcrypt, node-fetch, and separate test runners.
+**One-paragraph:** Bun consolidates runtime + bundler + test runner + package manager + transpiler; using Bun while still pulling express + bcrypt + dotenv wastes half its value. This methodology scaffolds a Bun service that uses Hono for routing, Bun.password for hashing, Bun.file for I/O, native `.env` loading, and `bun:test` for tests. Output is a runnable repo skeleton plus a 'why Bun primitives over npm equivalents' rationale per choice.
+
+**Ефективно для:**
+
+- Стартові projects, що хочуть Bun-perf без npm-tax.
+- Microservices that pin Bun as their only runtime (no Node fallback).
+- Demo / tutorial code: смужка коду 50 рядків замість 200 з Express.
+- Edge / serverless deploys where startup time matters (Bun cold-start &lt; Node).
 
 ## Applies If (ALL must hold)
 
-- New TypeScript projects requiring maximum startup or throughput performance
-- Projects needing a unified runtime + test + bundler toolchain
-- Replacing node-fetch, bcrypt, or dotenv in an existing project
-- Monorepos benefiting from Bun's fast install speed
+- Target runtime is Bun (≥1.1 with stable Bun.password API).
+- Service is greenfield (legacy Express migration is a different exercise).
+- Team accepts dropping Node-only deps (express, bcrypt, dotenv).
 
 ## Skip If (ANY kills it)
 
-- AWS Lambda deployments (Bun support is limited; use Node.js target)
-- Projects with C++ native addon dependencies that lack Bun bindings
-- Enterprise environments with strict Node.js LTS runtime policies
-- When migrating: verify all dependencies work in Bun before committing
+- Production already on Node + needs incremental migration.
+- Dep tree requires native-compiled packages incompatible with Bun.
+- Hosting platform doesn't support Bun (locked to Node runtime).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Bun version | string | bun --version |
+| Service name | string | owner decision |
+| Target routes | list | API spec or sketch |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: bun-primitives-first, hono-for-routing, bun-test-not-jest, bun-file-not-fs, bun-password-not-bcrypt | 1000 |
+| `content/02-output-contract.xml` | essential | Schema for generated service spec | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: express-pulled-in, dotenv-imported, bcrypt-imported | 700 |
+| `content/04-procedure.xml` | essential | 5-step scaffold procedure | 700 |
+| `content/05-examples.xml` | reference | Worked Hono + Bun.password example | 500 |
+| `content/06-decision-tree.xml` | essential | Route shape + auth shape tree | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold` | haiku | Deterministic file emission. |
+| `draft_routes` | sonnet | Per-route TS code. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/bun-service-skeleton.ts` | Hello-world Bun + Hono entry |
+| `templates/bun-test-skeleton.ts` | bun:test skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-bun-runtime-simple.py` | Validate the service-spec artefact + Bun version | After scaffold, before commit |
 
 ## Related
 
-- parent skill: `free/dev/javascript-developer/`
+- - [[javascript-modern]] — TS-first principles still apply.
+- - [[javascript-testing]] — bun:test is Jest-compatible; same patterns transfer.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches: route count (≤5 simple / &gt;5 needs grouping) → Hono with or without grouping. Auth shape (none / token / session) → Bun.password and which primitive to use.

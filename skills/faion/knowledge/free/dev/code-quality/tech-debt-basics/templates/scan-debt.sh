@@ -1,3 +1,9 @@
+# purpose: template for tech-debt-basics (scan-debt.sh)
+# consumes: tech-debt-basics methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # scan-debt.sh — emit candidate technical debt items as JSONL.
 # Pipe output into a triage agent for deduplication and severity classification.

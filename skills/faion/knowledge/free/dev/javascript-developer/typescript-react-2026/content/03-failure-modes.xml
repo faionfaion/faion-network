@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="typescript-react-2026 Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for typescript-react-2026 as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="typescript-react-2026 Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four 2026-stack antipatterns the spec must forbid.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Flipping noUncheckedIndexedAccess and reflexively asserting with ! on indexed access (e.g., array[0]!).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>noUncheckedIndexedAccess returns T | undefined from array[0]. The ! assertion suppresses the type check and reintroduces runtime crashes. Proper handling requires length checks or optional chaining.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding 'use client' to entire layouts to "make hooks work" instead of creating a thin client boundary.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This flips the whole tree to client, losing Server Component benefits and increasing JavaScript sent to the browser.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Forgetting revalidatePath or revalidateTag after mutations in Server Actions. UI shows stale data.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Next.js caches fetches by default. After a mutation, the cache must be invalidated, or the next fetch returns cached stale data.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using useFormState (React 18 name) instead of useActionState (React 19). Hook will be removed in future versions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>useFormState is the legacy name. React 19 renamed it to useActionState. Using the old name targets code for removal.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-layout-use-client">
+      <symptom>Whole dashboard route ships ~80 KB of JS, no streaming, no static render. Lighthouse RSC bytes counter near zero.</symptom>
+      <root-cause>app/dashboard/layout.tsx starts with `'use client'` (a developer added it to "make the sidebar's useState work"). Every descendant is now a client component.</root-cause>
+      <fix>Remove the directive from the layout. Move the stateful sidebar into its own file (`app/dashboard/Sidebar.tsx`) with `'use client'` at the top. The layout composes &lt;Sidebar /&gt; as a child. Spec field routes[].files[].boundary MUST not be "use-client" for files matching *layout.tsx.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-useformstate">
+      <symptom>Migration to React 19 produces deprecation warnings; on the next major version, the form crashes at boot ("useFormState is not a function").</symptom>
+      <root-cause>Code imports `useFormState` from 'react-dom'. This is the legacy React 18 name; React 19 renamed the hook to `useActionState`.</root-cause>
+      <fix>Replace import + call site with `useActionState`. The signature is identical. Spec MUST NOT contain references to useFormState anywhere.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-missing-revalidate">
+      <symptom>User submits the form, gets a success toast, but the list still shows the old data. Refresh fixes it.</symptom>
+      <root-cause>The Server Action mutated the DB and returned `{ success: true }` without calling `revalidatePath` or `revalidateTag`. Next.js's default fetch cache served the stale list on the next read.</root-cause>
+      <fix>Add `revalidatePath('/invoices')` (or revalidateTag('invoices')) before returning. Spec actions[].revalidate.kind MUST equal "path" or "tag" when mutates=true.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-bang-on-indexed-access">
+      <symptom>Runtime TypeError "Cannot read property of undefined" on a route that worked yesterday; the data shape didn't change but the array was empty.</symptom>
+      <root-cause>Code uses `users[0]!.email` while noUncheckedIndexedAccess is on. The `!` told TS to trust the developer; the array was empty in this request and the assertion was wrong.</root-cause>
+      <fix>Destructure with default: `const [first] = users; if (!first) return …`. Or use optional chaining: `users[0]?.email ?? 'unknown'`. Lint rule: ban `!` on any indexed access expression.</fix>
+    </antipattern>
+
   </section>
 </text>

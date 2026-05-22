@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="nodejs-patterns Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>Six-step procedure from inputs to a validated scaffold-spec output. Each step has an input artefact, an action, and an output artefact consumed by the next step.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="collect-inputs">
+      <input>Product brief listing the resources (users, products, …) + the chosen auth_mode + Node engines field from package.json.</input>
+      <action>Read the Prerequisites table from AGENTS.md. Confirm every artefact is present; reject if any input is missing.</action>
+      <output>Validated inputs object: {service_name, node_version, resources[], auth_mode}.</output>
+    </step>
+
+    <step n="2" name="emit-folder-tree">
+      <input>Validated inputs object from step 1.</input>
+      <action>Expand the canonical folder template (templates/create-app.ts neighbourhood) for each resource: routes/&lt;r&gt;.ts, controllers/&lt;r&gt;.controller.ts, services/&lt;r&gt;.service.ts. Add middleware/auth.ts only when auth_mode != "none".</action>
+      <output>folder_tree: string[] (≥ 5 entries).</output>
+      <decision-gate>If auth_mode is "jwt", folder_tree MUST include src/middleware/auth.ts. If absent, fail step 2.</decision-gate>
+    </step>
+
+    <step n="3" name="emit-middleware-order">
+      <input>folder_tree from step 2, auth_mode.</input>
+      <action>Produce middleware_order using rule r1-middleware-order from 01-core-rules.xml. Insert "auth" between "requestLogger" and "routes" when auth_mode != "none".</action>
+      <output>middleware_order: string[] satisfying schema enum and ending with "errorHandler".</output>
+      <decision-gate>Reject any order where errorHandler is not the last element.</decision-gate>
+    </step>
+
+    <step n="4" name="emit-error-classes">
+      <input>auth_mode + resources list.</input>
+      <action>Emit error_classes array with mandatory base AppError plus NotFoundError, ValidationError. Add UnauthorizedError iff auth_mode != "none".</action>
+      <output>error_classes: array of ≥ 2 entries with statusCode in 400–599.</output>
+    </step>
+
+    <step n="5" name="emit-logger-config">
+      <input>node_version.</input>
+      <action>Pick library: "pino" (default for ≥ Node 20). Set request_id_header to "x-request-id".</action>
+      <output>logger: {library, request_id_header}.</output>
+    </step>
+
+    <step n="6" name="assemble-and-validate">
+      <input>All outputs from steps 1–5.</input>
+      <action>Assemble the JSON document. Run scripts/validate-nodejs-patterns.py on the file. If validation fails, print violations and re-run the failed step.</action>
+      <output>scaffold-spec.json that exits 0 from the validator.</output>
+      <decision-gate>If validator returns non-zero, do not return the spec to the caller. Re-run from the failed step.</decision-gate>
+    </step>
+
+  </section>
+</text>

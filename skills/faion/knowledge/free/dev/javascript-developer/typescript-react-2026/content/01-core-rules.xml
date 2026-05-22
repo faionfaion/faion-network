@@ -1,11 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="typescript-react-2026 Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for typescript-react-2026. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="typescript-react-2026 Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Seven testable rules for the 2026 stack (TS 5.x strict + React 19 + Next.js 15 App Router).</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-server-default" testable="true" depth="essential">
+      <statement>Every component in app/ is a Server Component by default. Add 'use client' only at components that use hooks, browser APIs, or event handlers.</statement>
+      <rationale source="react.dev rsc + nextjs docs">Server Components ship zero JS for the static parts of the tree, allow direct database access, and avoid hydration mismatches. Reflexive 'use client' flips the whole subtree to client and forfeits these gains.</rationale>
     </rule>
+
+    <rule id="r2-thin-client-boundary" testable="true" depth="essential">
+      <statement>'use client' lives on a leaf component (a button, a sidebar widget) — NEVER on a layout. The parent server layout composes the client widget.</statement>
+      <rationale source="next.js 15 docs">A 'use client' on a layout flips every descendant to client; you lose RSC benefits across the whole route. Composing a small client component inside a server layout preserves the boundary.</rationale>
+    </rule>
+
+    <rule id="r3-server-only-imports" testable="true" depth="essential">
+      <statement>Any module that touches DB credentials, signing keys, or service-account tokens MUST start with `import 'server-only'`. The build fails if a client file transitively imports it.</statement>
+      <rationale source="react.dev server-only + tc39">Without the guard, an accidental client import ships secrets to the browser. 'server-only' is the only mechanism that catches the leak at build time, not in prod.</rationale>
+    </rule>
+
+    <rule id="r4-useactionstate" testable="true" depth="essential">
+      <statement>Forms wired to Server Actions use `useActionState` (React 19) — NOT `useFormState`. Pair with `useFormStatus` inside a SubmitButton component for pending UI.</statement>
+      <rationale source="react.dev/reference/react/useActionState">useFormState is the React 18 alias and is slated for removal. New code must use useActionState; old code must migrate at the next touch.</rationale>
+    </rule>
+
+    <rule id="r5-revalidate-after-mutation" testable="true" depth="essential">
+      <statement>Every Server Action that mutates data MUST call revalidatePath(path) OR revalidateTag(tag) before returning success. Read-only actions are exempt.</statement>
+      <rationale source="next.js 15 caching docs">Next caches fetches by default; without revalidate, UI shows stale data after a successful mutation. revalidatePath invalidates one route; revalidateTag invalidates every fetch with that tag.</rationale>
+    </rule>
+
+    <rule id="r6-no-bang-on-indexed-access" testable="true" depth="essential">
+      <statement>With noUncheckedIndexedAccess enabled, `array[0]` has type `T | undefined`. The non-null assertion `array[0]!` is forbidden; handle the undefined branch with a length check, optional chaining, or destructuring with a default.</statement>
+      <rationale source="ts-handbook strict-flags">`!` silently reintroduces the runtime crash the flag was added to prevent. Handling the union explicitly is the only safe path.</rationale>
+    </rule>
+
+    <rule id="r7-parallel-fetch" testable="true" depth="essential">
+      <statement>Inside a Server Component that loads multiple independent resources, fire them in parallel via `Promise.all([fetchA(), fetchB(), fetchC()])`. Sequential `await` chains are forbidden when there is no data dependency.</statement>
+      <rationale source="web.dev + nextjs-perf">Sequential awaits make TTFB O(N) instead of O(1). Parallel fetch is the 2026 standard performance baseline.</rationale>
+    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

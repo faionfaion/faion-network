@@ -1,11 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="typescript-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for typescript-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="typescript-patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Seven testable rules for domain-typed TypeScript code under strict mode.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-utility-types" testable="true" depth="essential">
+      <statement>Use the built-in utility types — Partial, Required, Readonly, Pick, Omit, Record, Awaited, ReturnType, Parameters — over hand-rolled mapped types when the standard form fits.</statement>
+      <rationale source="ts-handbook">Standard utility types are compiler-optimised, universally recognised by reviewers, and inferred faster than custom mapped types. Hand-rolled equivalents add maintenance cost without payoff.</rationale>
     </rule>
+
+    <rule id="r2-discriminated-union" testable="true" depth="essential">
+      <statement>Model success/failure or variant returns as a discriminated union with a literal-string or boolean discriminant — never as a nullable single-shape return.</statement>
+      <rationale source="ts-handbook narrowing">Discriminated unions force the caller to handle each variant via the narrowing check, and `switch (x.kind)` becomes exhaustive. Nullable returns are silently ignorable and carry no error information.</rationale>
+    </rule>
+
+    <rule id="r3-zod-as-source" testable="true" depth="essential">
+      <statement>Validate every external input (HTTP body, env, queue message, form data) at the boundary with Zod (or equivalent). Derive the static TS type via z.infer; never declare a parallel interface for the same shape.</statement>
+      <rationale source="zod docs + drift studies">A duplicate interface drifts from the schema; tests pass against one and prod fails against the other. z.infer pins the static type to the runtime validator's source of truth.</rationale>
+    </rule>
+
+    <rule id="r4-branded-ids" testable="true" depth="essential">
+      <statement>For any string-typed ID that can be confused with another (UserId vs OrderId vs SessionId), brand it: `type UserId = string &amp; { readonly __brand: 'UserId' }`. Add a factory function that performs the only allowed cast.</statement>
+      <rationale source="effective-typescript">Without branding, getUser(orderId) compiles. Branding fails the compile at the call site rather than at the data layer. Factory functions concentrate the unsafe cast in one auditable place.</rationale>
+    </rule>
+
+    <rule id="r5-type-guards" testable="true" depth="essential">
+      <statement>Narrow `unknown` with type-predicate functions (`value is T`) or Zod parse, never with `as T` casts. The only acceptable cast is the factory inside a branded-ID helper.</statement>
+      <rationale source="ts-handbook + type-safety reviews">`as T` is unchecked: invalid shapes pass at compile time and crash at runtime. Type predicates put the narrowing logic in code that can be unit-tested.</rationale>
+    </rule>
+
+    <rule id="r6-asserts-not-bang" testable="true" depth="essential">
+      <statement>When the caller guarantees a value exists, use an assertion function (`asserts value is T`) that throws with a message. The non-null assertion operator (`!`) is forbidden on values that can legitimately be null/undefined.</statement>
+      <rationale source="ts-handbook narrowing">Assertion functions document intent ("I require this; here is why") and produce traceable error messages. `!` is invisible at runtime and shifts the failure to a meaningless TypeError downstream.</rationale>
+    </rule>
+
+    <rule id="r7-no-any-boundary" testable="true" depth="essential">
+      <statement>Function signatures crossing a public API or a module boundary MUST NOT contain `any`. Use `unknown` for unverified input and narrow before use. Internal helpers may use `any` only inside private utility code, never on exported signatures.</statement>
+      <rationale source="ts-handbook + dts-lib-guidance">`any` propagates through call sites and disables every downstream check. `unknown` forces explicit narrowing at the consumer, keeping safety local.</rationale>
+    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

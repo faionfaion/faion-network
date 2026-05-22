@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 refactor: harvest +287 files (batch 0).
 - F-065 phase 6: retriever reads L1 (domains.xml + taxonomy.xml) before L2 INDEX.xml before leaf files. Saves ~80% retrieval context.
 - F-065 phase 5: L2 goal indexes (11 categories, 455 playbooks).
 - F-065 phase 5: canonical playbook taxonomy + validator.

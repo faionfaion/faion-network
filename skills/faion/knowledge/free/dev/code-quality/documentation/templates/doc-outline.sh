@@ -1,3 +1,9 @@
+# purpose: template for documentation (doc-outline.sh)
+# consumes: documentation methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # doc-outline.sh — emit a JSON outline for a directory the writer agent will fill.
 # Usage: doc-outline.sh path/to/dir

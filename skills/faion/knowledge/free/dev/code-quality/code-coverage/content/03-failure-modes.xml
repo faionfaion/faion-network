@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="code-coverage Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for code-coverage as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Code Coverage Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns the CI detector catches. Each has a symptom, a root-cause grounded in observed LLM / human behaviour, and a fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Coverage gaming: agent writes tests that call functions and ignore return values.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require at least one explicit assert/expect per test; enforce with pytest-flake8-assertions or eslint-plugin-jest/expect-expect.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Threshold ratcheting: agent adds pragma: no cover to changed files to pass the gate.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fail the build if pragmas are added to changed files unless explicitly justified in the PR body.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent lowering a coverage threshold to make CI green.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Threshold changes require a labelled PR with human sign-off; never let an agent modify thresholds autonomously.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Async coverage gaps: pytest-asyncio or Jest fake timers need extra config; agent does not notice.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Provide a complete coverage-config snippet in the test-writing prompt; do not rely on the agent inferring async requirements.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="coverage-gaming-no-asserts" severity="high">
+      <symptom>New tests increase coverage but contain zero `assert` / `expect` calls — code is exercised, behaviour is not validated.</symptom>
+      <root-cause source="Internal — observed in test-author subagent Q4 2025">Agent optimises the visible metric (coverage %); without an assertion linter, asserting nothing is the cheapest path to green CI.</root-cause>
+      <fix>Add pytest-assertions / eslint-plugin-jest expect-expect to the lint chain. Fail the gate if any test function has zero assertions.</fix>
+    </antipattern>
+
+    <antipattern id="pragma-ratcheting" severity="high">
+      <symptom>Diff introduces `pragma: no cover` / `istanbul ignore` on files the same PR modifies.</symptom>
+      <root-cause source="Internal — postmortems on PR #2241, #2289">Agent encounters the gate, finds the shortcut path is to silence the gate. Diff-coverage tool does not detect that the shortcut was applied.</root-cause>
+      <fix>Lint rule: any new exclusion comment on a changed file requires an adjacent "// justified-by: &lt;name or ticket&gt;" line. CI fails the build otherwise.</fix>
+    </antipattern>
+
+    <antipattern id="threshold-lowering" severity="high">
+      <symptom>PR touches `coverage` config to drop `fail_under` / `coverageThreshold` to make red CI green.</symptom>
+      <root-cause source="coverage.py docs — caution on fail_under">Coverage config is plain text and unmonitored. Agent / junior engineer mistakes "tweaking the gate" for fixing the problem.</root-cause>
+      <fix>Treat coverage config as protected. Require CODEOWNERS approval on any change to it; reject auto-generated PRs that modify it.</fix>
+    </antipattern>
+
+    <antipattern id="async-config-gap" severity="medium">
+      <symptom>Coverage reports under-count async code (pytest-asyncio, Jest fake timers, Node worker_threads).</symptom>
+      <root-cause source="Jest --coverage docs; pytest-asyncio FAQ">Default coverage instrumentation misses async closures unless wired specifically; agent doesn't notice because the % still looks high.</root-cause>
+      <fix>Ship complete coverage snippets per stack (with async wiring) in the prompt; do not rely on the agent inferring async requirements.</fix>
+    </antipattern>
+
   </section>
 </text>

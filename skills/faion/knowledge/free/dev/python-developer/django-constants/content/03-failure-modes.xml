@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-constants Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-constants as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-constants Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Four constants antipatterns the spec must forbid.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using .label lookup via dict(STATUS_CHOICES).get(status) instead of the .label attribute on TextChoices members.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>dict lookup requires constructing a dict from tuples on every call. TextChoices members have .label directly: OrderStatus.PENDING.label returns "Pending Payment" without any dict construction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Switching from string TextChoices to integer IntegerChoices after data is in production.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The stored values change type, requiring a data migration for all existing rows. Choose the type at design time. Use TextChoices for readability in Django admin and migrations; use IntegerChoices only when storage size matters at very large scale.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-magic-strings">
+      <symptom>A rename of "pending" → "awaiting_payment" misses three places; tests pass; production starts comparing the new value against the old string and silently treats every order as not-pending.</symptom>
+      <root-cause>Strings like "pending" are scattered across model defaults, service comparisons, template tags, and tests. None of them are connected; IDE rename can't traverse strings.</root-cause>
+      <fix>Replace every string literal with OrderStatus.PENDING (or equivalent). Rule r4-enum-to-enum-compare enforces this. A lint rule (Ruff custom or grep CI step) blocks comparisons against string literals on enum-typed fields.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-dict-of-tuples-label">
+      <symptom>get_status_display() works but a custom display function constructs a dict from .choices on every request; performance regression in list views.</symptom>
+      <root-cause>Code does `dict(OrderStatus.choices).get(order.status)` to look up the label. Wasteful + obscures intent.</root-cause>
+      <fix>Use `OrderStatus(order.status).label` or `order.get_status_display()`. Per rule r5-label-on-member.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-integer-after-text">
+      <symptom>Data migration breaks; existing string values cannot cast to integers; data conversion script needed; downtime imposed.</symptom>
+      <root-cause>Team switched OrderStatus from TextChoices to IntegerChoices "for storage efficiency". Production already has stored string values.</root-cause>
+      <fix>Decide kind at design time. Default to TextChoices for readability in admin and migrations. IntegerChoices only when storage size matters at very large scale (millions of rows) AND the column is on a hot path.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-scattered-limits">
+      <symptom>Operations want to change MAX_ORDERS_PER_USER from 50 to 100. Developer changes one file; production behaviour does not change because another file still uses the literal 50.</symptom>
+      <root-cause>The same numeric literal 50 lives inline in two services + one migration. No single source.</root-cause>
+      <fix>Move every cross-file numeric limit into constants.py with an UPPER_SNAKE name and a `rationale` string. Rule r3-upper-snake-limits is enforced by the validator.</fix>
+    </antipattern>
+
   </section>
 </text>

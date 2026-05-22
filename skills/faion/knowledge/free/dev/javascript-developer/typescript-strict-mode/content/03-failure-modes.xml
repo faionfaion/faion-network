@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="typescript-strict-mode Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for typescript-strict-mode as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="typescript-strict-mode Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Four migration / sustainment antipatterns the spec must prevent.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the non-null assertion chain: user!.name!.first!</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every ! silently produces a TypeError at runtime if the value is actually null; use optional chaining and nullish coalescing instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Casting unknown external data with "as User".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Type assertions are unchecked — invalid shapes pass at compile time but crash at runtime. Validate with a type guard or Zod instead.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-bang-chain">
+      <symptom>Sporadic TypeErrors "Cannot read properties of undefined". Repro requires production data; tests pass.</symptom>
+      <root-cause>Code uses `user!.profile!.address!.city`. Each `!` silently strips a `| null | undefined`; the first actual nullish value down the chain throws.</root-cause>
+      <fix>Optional chain + nullish coalescing: `user?.profile?.address?.city ?? '—'`. OR assertion function: `assertDefined(user); …`. Add lint backstop `@typescript-eslint/no-non-null-assertion`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-as-on-unknown">
+      <symptom>HTTP 500s in production after deploying a new endpoint; the controller receives the request but the service crashes on a missing field.</symptom>
+      <root-cause>`const body = req.body as Order` casts unknown to Order without runtime validation. The body actually shipped missing `amount`.</root-cause>
+      <fix>Replace with OrderSchema.parse(req.body) or safeParse. The cast is forbidden by rule r5-no-as-cast-on-unknown.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-ts-expect-error">
+      <symptom>CI passes but a downstream consumer crashes with TypeError; the strict flag's error was suppressed and reappeared at runtime.</symptom>
+      <root-cause>Developer added `// @ts-expect-error: too lazy to fix` above the offending line. Strict flag's compiler error was silenced; the underlying bug remained.</root-cause>
+      <fix>Remove the suppression. Apply the canonical fix strategy from migration_steps[].fix_strategy. Ban `@ts-expect-error` and `@ts-ignore` in CI lint.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-big-bang-migration">
+      <symptom>One PR enables `strict: true`, surfaces 800 errors, sits open for weeks, accumulates conflicts, never merges.</symptom>
+      <root-cause>The team flipped all strict flags at once. Each error class needs a different fix strategy; mixing them blocks review.</root-cause>
+      <fix>Migration spec lists one flag per migration_step; each step is one focused PR within the error_budget. The migration order is fixed: strict → noUncheckedIndexedAccess → exactOptionalPropertyTypes.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Code Coverage Setup Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure from a repo with no coverage gate to a CI-enforced branch + diff-coverage configuration.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="detect-stack">
+      <input>repo root with `pyproject.toml` / `package.json` / `go.mod` / `Cargo.toml`</input>
+      <action>Run a fingerprint check: presence of `pyproject.toml` → python; `package.json` with jest or vitest → js/ts; `go.mod` → go; `Cargo.toml` → rust. Mixed if more than one is found.</action>
+      <output>stack value: one of {python, js, ts, go, rust, mixed}</output>
+    </step>
+
+    <step n="2" name="write-config">
+      <input>stack value + critical-path manifest (list of dirs)</input>
+      <action>Copy the matching template (`templates/coverage.pyproject.toml` or `templates/jest.coverage.config.js`); fill global_threshold=80, diff_threshold=90, populate per_dir from critical-path manifest with 90+.</action>
+      <output>committed coverage config file in repo</output>
+      <decision-gate>If repo is legacy with current coverage &lt;60%, drop global_threshold to current value and rely on diff_threshold only — do not block PRs on legacy gaps.</decision-gate>
+    </step>
+
+    <step n="3" name="wire-ci">
+      <input>coverage config + CI workflow file</input>
+      <action>Add a step to the CI workflow: run tests with coverage, publish lcov.info / coverage.xml as artefact, run diff-cover against `main`, fail the job if diff coverage &lt; diff_threshold.</action>
+      <output>PR runs show coverage check status</output>
+    </step>
+
+    <step n="4" name="extract-uncovered">
+      <input>coverage.xml or lcov.info from latest CI run</input>
+      <action>Run `scripts/extract-uncovered.sh` (or `templates/diff-cov-report.sh`) to produce a small JSON of uncovered lines per touched file.</action>
+      <output>uncovered-lines extract, conforming to the schema in 02-output-contract.xml</output>
+    </step>
+
+    <step n="5" name="hand-off-to-test-author">
+      <input>uncovered-lines extract + source files</input>
+      <action>Pass extract + source to the test-author subagent (sonnet). Agent writes targeted tests, asserting behaviour. Re-run CI. If diff coverage still below threshold, repeat or escalate.</action>
+      <output>new tests committed, coverage gate green</output>
+      <decision-gate>If after 2 iterations the gate is still red and no new test is feasible (e.g. dead code), escalate to human review — do not let the agent silence the gate.</decision-gate>
+    </step>
+
+  </section>
+</text>

@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="code-coverage Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for code-coverage. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Code Coverage Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>7 hard rules for coverage gating. The scorer / CI gate enforces each; reporter prose cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="branch-coverage-required" testable="true" depth="essential">
+      <statement>Branch coverage is mandatory; line coverage alone is not a valid signal. Configure branch=true (coverage.py) or coverageProvider='v8' (Jest/Vitest).</statement>
+      <rationale source="coverage.py docs; Fowler — Test Coverage">A test that fires an if-branch but never the else shows 100% line coverage with half the logic untested. Branch coverage is the minimum viable assertion.</rationale>
     </rule>
+
+    <rule id="diff-cover-on-pr" testable="true" depth="essential">
+      <statement>PRs are gated by diff-cover on changed lines (target 80-95%); repo-wide percentage is reported but not blocking.</statement>
+      <rationale source="diff_cover (Bachmann1234)">Repo-wide gates punish new work for historical debt. Diff-cover focuses the requirement on the changes being reviewed.</rationale>
+    </rule>
+
+    <rule id="per-dir-thresholds" testable="true" depth="essential">
+      <statement>Critical paths (auth, billing, data integrity) carry per-directory threshold ≥90%; glue / UI code may be ≥70%. A single global number is forbidden when the repo has named critical paths.</statement>
+      <rationale source="Jest coverageThreshold docs">Different file types have different risks; one number either over-specifies low-risk code or under-specifies the parts where bugs cost money.</rationale>
+    </rule>
+
+    <rule id="exclusion-policy" testable="true" depth="essential">
+      <statement>Coverage exclusions are limited to: abstract stubs, TYPE_CHECKING blocks, `__main__` entry, NotImplementedError raises, and auto-generated code. Every `pragma: no cover` / `/* istanbul ignore */` requires a justifying comment in the same line.</statement>
+      <rationale source="coverage.py — exclude_lines">Unjustified pragmas silently lower the effective threshold; mandatory inline justification keeps the gate honest.</rationale>
+    </rule>
+
+    <rule id="no-pragma-ratcheting" testable="true" depth="essential">
+      <statement>An LLM / automated PR MUST NOT add new pragma / ignore comments to files it modifies. CI fails the build if any new exclusion appears on a changed file without a human-authored "// justified-by:" line.</statement>
+      <rationale source="Internal — observed in test-author subagent runs Q1 2026">Agents under pressure of a coverage gate take the shortcut of silencing the gate. The detector blocks the shortcut.</rationale>
+    </rule>
+
+    <rule id="extract-dont-paste" testable="true" depth="essential">
+      <statement>When feeding coverage data to a test-author subagent, extract uncovered lines per touched file as a small JSON; do not paste full coverage.xml / lcov.info.</statement>
+      <rationale source="Internal — token-cost measurements">Full coverage XML is hundreds of kilobytes; extracting uncovered lines reduces context cost by ~50x and removes irrelevant noise.</rationale>
+    </rule>
+
+    <rule id="mutation-quarterly" testable="true" depth="essential">
+      <statement>Critical modules run mutation testing (mutmut / stryker) on a quarterly cadence; the mutation surviving rate is reported alongside coverage.</statement>
+      <rationale source="stryker-mutator.io; mutmut docs">A test that calls a function and asserts nothing shows 100% line coverage. Mutation testing detects assertions that are too weak to catch real changes.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

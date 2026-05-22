@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="nodejs-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="nodejs-patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON schema describing a valid scaffold-spec output produced by this methodology. Validated by scripts/validate-nodejs-patterns.py.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "service_name", "node_version", "folder_tree", "middleware_order", "error_classes", "logger", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string", "minLength": 1},
+    "service_name": {"type": "string"},
+    "node_version": {"type": "string", "pattern": "^[>=^~]*[0-9]+(\\.[0-9]+){0,2}$"},
+    "folder_tree": {
+      "type": "array",
+      "minItems": 5,
+      "items": {"type": "string"}
+    },
+    "middleware_order": {
+      "type": "array",
+      "minItems": 6,
+      "items": {"type": "string", "enum": ["helmet", "cors", "json", "urlencoded", "compression", "requestLogger", "auth", "routes", "errorHandler"]}
+    },
+    "error_classes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["name", "statusCode", "code", "isOperational"],
+        "properties": {
+          "name": {"type": "string"},
+          "statusCode": {"type": "integer", "minimum": 400, "maximum": 599},
+          "code": {"type": "string"},
+          "isOperational": {"type": "boolean"}
+        }
+      }
+    },
+    "logger": {
+      "type": "object",
+      "required": ["library", "request_id_header"],
+      "properties": {
+        "library": {"type": "string", "enum": ["pino", "winston"]},
+        "request_id_header": {"type": "string"}
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">middleware_order does not end with "errorHandler"</pattern>
+      <pattern id="f2">middleware_order contains "errorHandler" before "routes"</pattern>
+      <pattern id="f3">folder_tree contains app.listen anywhere in createApp.ts</pattern>
+      <pattern id="f4">owner equals "team", "we", or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Reorder folder_tree alphabetically within each depth level (does not change semantics).</transformation>
+      <transformation>Lowercase the service_name slug.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "billing-api-scaffold",
+  "owner": "ruslan@faion.net",
+  "service_name": "billing-api",
+  "node_version": ">=20.11.0",
+  "folder_tree": [
+    "src/app.ts",
+    "src/server.ts",
+    "src/config/env.ts",
+    "src/routes/index.ts",
+    "src/controllers/invoices.controller.ts",
+    "src/services/invoices.service.ts",
+    "src/middleware/auth.ts",
+    "src/middleware/errorHandler.ts",
+    "src/utils/errors.ts",
+    "src/utils/logger.ts"
+  ],
+  "middleware_order": ["helmet", "cors", "json", "urlencoded", "compression", "requestLogger", "auth", "routes", "errorHandler"],
+  "error_classes": [
+    {"name": "AppError", "statusCode": 500, "code": "INTERNAL_ERROR", "isOperational": true},
+    {"name": "NotFoundError", "statusCode": 404, "code": "NOT_FOUND", "isOperational": true},
+    {"name": "ValidationError", "statusCode": 400, "code": "VALIDATION_ERROR", "isOperational": true}
+  ],
+  "logger": {"library": "pino", "request_id_header": "x-request-id"},
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "service_name": "bad",
+  "node_version": "20",
+  "folder_tree": ["src/app.ts", "src/server.ts"],
+  "middleware_order": ["errorHandler", "helmet", "routes"],
+  "error_classes": [{"name": "Err", "statusCode": 500, "code": "X", "isOperational": true}],
+  "logger": {"library": "pino", "request_id_header": "x-request-id"},
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

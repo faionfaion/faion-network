@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-base-model Procedure" version="1.1.0" est_tokens="700" depth="deep">
+  <summary>Six-step procedure to convert an ERD into a validated base-model spec.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="declare-bases">
+      <input>Soft-delete scope + tenant-scoping list.</input>
+      <action>Declare BaseModel (always: TimestampMixin + UidMixin) and SoftDeletableModel (BaseModel + SoftDeleteMixin) and, if multi-tenant, TenantAwareModel.</action>
+      <output>bases array.</output>
+    </step>
+
+    <step n="2" name="route-models">
+      <input>List of concrete models from ERD.</input>
+      <action>For each concrete model: pick extends ∈ {BaseModel, SoftDeletableModel, TenantAwareModel}; set soft_delete + exposes_uid + tenant_scoped flags accordingly.</action>
+      <output>models array with extends field set.</output>
+    </step>
+
+    <step n="3" name="enumerate-unique-fields">
+      <input>models[] with soft_delete flag.</input>
+      <action>For every soft-deletable model, list unique fields. They MUST be implemented as partial UniqueConstraints; document in the spec consumer's migration notes.</action>
+      <output>models[].unique_fields set.</output>
+      <decision-gate>Reject any soft-deletable model that retains plain `unique=True` declarations.</decision-gate>
+    </step>
+
+    <step n="4" name="audit-foreign-keys">
+      <input>Foreign-key relationships from the ERD.</input>
+      <action>For every FK, name on_delete explicitly with a `reason` &gt;= 10 chars. Default-CASCADE without a reason is rejected.</action>
+      <output>models[].foreign_keys array.</output>
+      <decision-gate>If on_delete=CASCADE and the parent model has soft_delete=true, require reason naming explicit cascade intent.</decision-gate>
+    </step>
+
+    <step n="5" name="declare-tenant-context">
+      <input>tenant_scoped models.</input>
+      <action>For each tenant-scoped model, document that Celery / management-command access must wrap in tenant_context(tenant) per rule r7-tenant-context.</action>
+      <output>spec consumer notes.</output>
+    </step>
+
+    <step n="6" name="assemble-validate">
+      <input>All outputs.</input>
+      <action>Emit base-model-spec.json. Run scripts/validate-django-base-model.py.</action>
+      <output>Validated spec.</output>
+    </step>
+
+  </section>
+</text>

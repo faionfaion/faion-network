@@ -3,72 +3,92 @@ slug: code-review-basics
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured approach to examining code changes before merge: reviewer reads the diff plus touched files, categorizes findings using Conventional Comments labels (blocking/suggestion/nit/question/praise), and emits at most 20 comments prioritized correctness → security → maintainability → nits.
-content_id: "d6c797b1e8e9847d"
-tags: [code-review, pr-review, conventional-comments, review-checklist, beginner]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a minimal-viable PR review checklist (5-item) using Conventional Comments labels with a 400-line cap and no-agent-approver rule.
+content_id: "ebfbd4c873ba00ab"
+complexity: light
+produces: checklist
+est_tokens: 2800
+tags: [code-review, basics, conventional-comments, pr]
 ---
 # Code Review Basics
 
 ## Summary
 
-**One-sentence:** A structured approach to examining code changes before merge: reviewer reads the diff plus touched files, categorizes findings using Conventional Comments labels (blocking/suggestion/nit/question/praise), and emits at most 20 comments prioritized correctness → security → maintainability → nits.
+**One-sentence:** Five-item PR review checklist with Conventional Comments labels; 400-line cap; agent never sole approver.
 
-**One-paragraph:** A structured approach to examining code changes before merge: reviewer reads the diff plus touched files, categorizes findings using Conventional Comments labels (blocking/suggestion/nit/question/praise), and emits at most 20 comments prioritized correctness → security → maintainability → nits. PR size cap: 400 changed lines. Agent is never the sole approver on a merge to main.
+**One-paragraph:** The simplest workable review: five questions, five comment labels, hard caps on PR size and comment volume. Output is a checklist artefact a junior reviewer can use without prior training. Intended as the floor for `code-review` and the input to `code-review-process`. Conventional Comments give the label vocabulary; the cap stops mega-PRs from polluting the inbox.
+
+**Ефективно для:**
+
+- Junior-QA / junior-eng review training: чек-лист дає 'що поставити в комент'.
+- Solo / 2-person team: процес-overhead мінімальний, але якість фіксована.
+- AI-агенти: draft a structured 5-item PR review без надмірних reasoning steps.
+- Hot-fix flow: легка форма дозволяє швидкий, але not-zero review.
 
 ## Applies If (ALL must hold)
 
-- Pre-review pass on every PR before a human reviewer is assigned.
-- Self-review automation for agent-authored diffs before pushing.
-- Mentoring junior contributors: agent leaves educational comments with explanations.
-- Bulk review of mechanical PRs (dependabot, renovate) where breaking-change risk varies.
+- PR workflow exists.
+- Reviewer needs a deterministic starting point.
+- Team accepts Conventional Comments vocabulary.
 
 ## Skip If (ANY kills it)
 
-- Architecture/design PRs needing product context the agent does not have — humans only.
-- Security-sensitive merges where regulatory sign-off (PCI, HIPAA) is required — agent advises but cannot approve.
-- Trivial single-line fixes already covered by lint + CI — agent comment is noise.
-- Repos where rubber-stamping is already the failure mode — adding another approval signal worsens it.
+- Repo already runs the full code-review methodology — basics is the floor, full is the ceiling.
+- Solo project with no second reviewer.
+- Vendored / generated code PRs.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| PR diff | unified diff | git / PR API |
+| PR description | Markdown | PR body |
+| CI status | string | GitHub check API |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: conventional-labels, 400-cap, 20-cap, ask-not-assert, human-approver | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for checklist artefact | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: nit-bombing, opinion-as-issue, agent-merging-own-PR | 600 |
+| `content/06-decision-tree.xml` | essential | Size + label decision tree | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `size_gate` | haiku | Deterministic; line count check. |
+| `checklist_walk` | sonnet | Per-question structured pass over the diff. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pr-context.sh` | Shell that gathers PR context (diff, CI status, description) for the reviewer |
+| `templates/review-prompt.txt` | LLM prompt that drives the checklist walk |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-code-review-basics.py` | Validate the checklist artefact against schema | After checklist walk, before posting |
 
 ## Related
 
-- parent skill: `free/dev/code-quality/`
+- - [[code-review]] — the full 6-category methodology.
+- - [[code-review-process]] — workflow templates this checklist plugs into.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches: PR &gt; 400 lines? → block. Else walk the 5-item checklist; emit issue-labels if any gap; recommend approve if all 5 pass and CI is green.

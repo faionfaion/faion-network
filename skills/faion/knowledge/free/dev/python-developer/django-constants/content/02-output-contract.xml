@@ -1,22 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-constants Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-constants Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for per-app constants spec.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "app", "django_version", "enums", "limits", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "app": {"type": "string"},
+    "django_version": {"type": "string"},
+    "enums": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "members"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$"},
+          "kind": {"type": "string", "enum": ["TextChoices", "IntegerChoices"]},
+          "members": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["name", "value", "label"],
+              "properties": {
+                "name": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+                "value": {"type": ["string", "integer"]},
+                "label": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "value", "rationale"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+          "value": {"type": ["number", "string"]},
+          "rationale": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">limit.name not matching UPPER_SNAKE_CASE</pattern>
+      <pattern id="f2">enum.kind=="IntegerChoices" with no rationale field nearby (must justify storage choice)</pattern>
+      <pattern id="f3">enum with fewer than 2 members</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort enums alphabetically by name.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "orders-constants",
+  "owner": "ruslan@faion.net",
+  "app": "orders",
+  "django_version": "5.2.1",
+  "enums": [
+    {
+      "name": "OrderStatus",
+      "kind": "TextChoices",
+      "members": [
+        {"name": "PENDING",   "value": "pending",   "label": "Pending Payment"},
+        {"name": "PAID",      "value": "paid",      "label": "Paid"},
+        {"name": "SHIPPED",   "value": "shipped",   "label": "Shipped"},
+        {"name": "CANCELLED", "value": "cancelled", "label": "Cancelled"}
+      ]
+    }
+  ],
+  "limits": [
+    {"name": "MAX_ORDERS_PER_USER", "value": 100, "rationale": "Compliance + abuse cap; reviewed quarterly."},
+    {"name": "DEFAULT_PAGE_SIZE",   "value": 25,  "rationale": "Matches mobile UI list size."}
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "app": "orders",
+  "django_version": "5",
+  "enums": [{"name": "orderstatus", "kind": "TextChoices", "members": [{"name": "pending", "value": "p", "label": "p"}]}],
+  "limits": [{"name": "maxOrders", "value": 100, "rationale": "x"}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

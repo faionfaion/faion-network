@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Bug Report Quality Rubric Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing tree the scorer walks per incoming report. Branches name observable input fields; leaves point at rule ids in 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-is-ai">Is the failing surface an AI / LLM feature (input.is_ai_feature == true)?</root-question>
+
+    <branch when="is_ai_feature == true">
+      <question id="q-ai-context">Are all four AI-context fields present (prompt_id, model_id, seed_or_temperature, full_conversation)?</question>
+      <branch when="ai_context_complete == false">
+        <conclusion ref="ai-context-when-ai" verdict="block-need-ai-context"/>
+      </branch>
+      <branch when="ai_context_complete == true">
+        <question id="q-evidence-ai">Is at least one piece of visual / log evidence attached?</question>
+        <branch when="evidence_count == 0">
+          <conclusion ref="evidence-attached" verdict="block-need-evidence"/>
+        </branch>
+        <branch when="evidence_count &gt;= 1">
+          <question id="q-env-ai">Does the environment block carry pinned build SHA / browser version (no 'latest' / 'main')?</question>
+          <branch when="env_pinned == false">
+            <conclusion ref="env-snapshot-required" verdict="block-need-env"/>
+          </branch>
+          <branch when="env_pinned == true">
+            <conclusion ref="repro-from-known-state" verdict="accept"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="is_ai_feature == false">
+      <question id="q-repro">Are repro steps numbered, from a named initial state, with one atomic action per step?</question>
+      <branch when="repro_well_formed == false">
+        <conclusion ref="repro-from-known-state" verdict="block-need-repro"/>
+      </branch>
+      <branch when="repro_well_formed == true">
+        <question id="q-sev-pri">Are severity AND priority filled with distinct semantics (not blank, not identical-by-default)?</question>
+        <branch when="sev_pri_split == false">
+          <conclusion ref="severity-vs-priority-split" verdict="block-need-repro"/>
+        </branch>
+        <branch when="sev_pri_split == true">
+          <question id="q-evidence">Is at least one piece of evidence attached?</question>
+          <branch when="evidence_count == 0">
+            <conclusion ref="evidence-attached" verdict="block-need-evidence"/>
+          </branch>
+          <branch when="evidence_count &gt;= 1">
+            <conclusion ref="env-snapshot-required" verdict="accept"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="ai-bug-incomplete">
+    is_ai_feature=true → q-ai-context: ai_context_complete=false → block-need-ai-context (ref ai-context-when-ai).
+  </example>
+
+</text>

@@ -1,3 +1,9 @@
+# purpose: template for code-quality-trends (detect-stack.sh)
+# consumes: code-quality-trends methodology inputs (see AGENTS.md Prerequisites)
+# produces: filled-in artefact conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml + tool-runtime in same dir
+# token-budget-impact: ~200-400 tokens when loaded as context
+
 #!/usr/bin/env bash
 # detect-stack.sh — coarse stack classifier for the audit agent.
 # Reads manifest files and emits lang/framework/version tags.

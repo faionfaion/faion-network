@@ -1,3 +1,9 @@
+<!-- purpose: template for code-review-process (pr-description.md) -->
+<!-- consumes: code-review-process methodology inputs (see AGENTS.md Prerequisites) -->
+<!-- produces: filled-in artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: 01-core-rules.xml + tool-runtime in same dir -->
+<!-- token-budget-impact: ~200-400 tokens when loaded as context -->
+
 ## Description
 
 Brief description of what this PR does and why.

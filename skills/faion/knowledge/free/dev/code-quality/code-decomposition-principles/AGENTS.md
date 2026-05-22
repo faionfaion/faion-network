@@ -3,72 +3,95 @@ slug: code-decomposition-principles
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: LLMs produce partial or incorrect diffs when a file plus its tests exceed the effective context window (~20–50k tokens).
-content_id: "dfd14751b485235b"
-tags: [decomposition, refactoring, architecture, maintainability, code-organization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a per-file decomposition decision record (split / leave / merge) based on size, churn, responsibilities, and LLM-context fit signals.
+content_id: "aed496f162c7cc67"
+complexity: medium
+produces: decision-record
+est_tokens: 3800
+tags: [decomposition, srp, modularity, refactor]
 ---
 # Code Decomposition Principles
 
 ## Summary
 
-**One-sentence:** LLMs produce partial or incorrect diffs when a file plus its tests exceed the effective context window (~20–50k tokens).
+**One-sentence:** Audits a file against the three decomposition principles (size, single-responsibility, LLM-context fit) and emits a decision record: split / leave / merge.
 
-**One-paragraph:** LLMs produce partial or incorrect diffs when a file plus its tests exceed the effective context window (~20–50k tokens). Humans review poorly past ~300 lines. Modular architectures correlate with 973× higher deployment frequency (2024 DORA report). The DORA findings and Addy Osmani's LLM workflow both confirm that small, single-responsibility files unlock both human and agent productivity.
+**One-paragraph:** A file is decomposable when three signals align: LOC > 300 / tokens > 10k, multiple responsibilities, and frequent churn against unrelated callers. This methodology audits each candidate file, emits a decision record with the triggering signals + the proposed action, and feeds candidates into `code-decomposition-patterns` for the actual move list. Output is a decision record (markdown frontmatter or JSON) — versioned, owner-named, reviewable. Anti-pattern: splitting because it 'feels big'.
+
+**Ефективно для:**
+
+- Аудит monorepo на decomposition candidates: ranking за churn + size — топ-10 кандидатів за один прохід.
+- Code-review: рев'юер має детермінований чек 'чи варто розбивати'.
+- Onboarding: новий розробник бачить, які файли planned-to-split (decision = split + status=queued).
+- LLM-context tuning: файли &gt;10k токенів дражать context-window; рішення = split &lt;5k шматків.
 
 ## Applies If (ALL must hold)
 
-- A target file exceeds ~300 lines and a subagent must edit it under a tight context budget.
-- LLM keeps producing partial/incorrect diffs because it cannot hold the full file plus tests in one window.
-- Designing a new module from a spec and laying out the file tree from the start.
-- Onboarding an LLM to an unfamiliar repo: split first, then have the agent read the new tree.
+- Repo has files ≥300 LOC OR ≥10k tokens (candidate pool exists).
+- Working git history (≥3 months) so churn can be measured.
+- A reviewer / owner can act on the decision record.
 
 ## Skip If (ANY kills it)
 
-- File is under 100 lines and tightly cohesive — splitting adds indirection without context savings.
-- Hot path with a measured performance cost from indirection (rare in app code).
-- Generated code (migrations, protobuf stubs) — apply rules to the source, not the output.
-- Throwaway scripts and one-shot notebooks where the file is the unit of thought.
+- Repo is &lt;500 files total — overhead beats payoff.
+- Greenfield prototype where files will be rewritten before they stabilise.
+- Files are auto-generated.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| File path list | newline-separated | find . -name '*.py' -size +5k |
+| Git churn data | json | git log --pretty=format per file |
+| Token counts | integer | tiktoken / tokenizer on file content |
+| Responsibility map | tags per file | static analysis or AGENTS.md docs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: size-trigger, srp-detector, churn-signal, llm-fit, owner-named | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for decision record | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: split-by-feeling, ignore-churn, decompose-and-rewrite, no-owner | 700 |
+| `content/04-procedure.xml` | essential | 5-step audit procedure | 700 |
+| `content/06-decision-tree.xml` | essential | split / leave / merge tree | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scan_candidates` | haiku | Static metrics: LOC, tokens, churn — deterministic. |
+| `classify_responsibilities` | sonnet | Per-file judgment of which responsibilities exist; needs context. |
+| `draft_decision_record` | sonnet | Synthesises signals into a one-page record. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decomp-candidates.sh` | Shell scan that lists files crossing decomposition thresholds |
+| `templates/planner-prompt.txt` | LLM prompt that turns scan output into a decision record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-code-decomposition-principles.py` | Validate a decision record against the schema | After draft_decision_record, before posting to PR / owner |
 
 ## Related
 
-- parent skill: `free/dev/code-quality/`
+- - [[code-decomposition-patterns]] — once a file is decided 'split', pick the pattern.
+- - [[refactoring-patterns]] — low-level transforms inside each split.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree branches: size threshold met? → responsibilities ≥2? → churn high vs. unrelated? Leaves: split (highest-confidence candidate), leave (one signal only), merge (file is unusually small but always edited with a sibling).

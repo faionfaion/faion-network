@@ -1,67 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-api. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-api Core Rules" version="1.1.0" est_tokens="1400" depth="essential">
+  <summary>Eight testable rules for Django REST APIs (DRF or Ninja).</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Choose DRF when the project requires a large ecosystem, complex permission hierarchies, or team familiarity with Django class-based views.</statement>
-      <rationale source="v1-source">DRF has 14 years of battle-testing, 1000+ third-party packages, built-in browsable API, and plugin stubs (django-stubs, djangorestframework-stubs) for mypy. Django Ninja has a smaller ecosystem (since 2021).</rationale>
+
+    <rule id="r1-framework-lock" testable="true" depth="essential">
+      <statement>Pick DRF OR Ninja at project bootstrap and lock it. Mixing DRF and Ninja in the same Django app is forbidden.</statement>
+      <rationale source="drf + django-ninja docs">URL routing, authentication context, and OpenAPI generation diverge between the two stacks. Mixing them multiplies failure surface and produces inconsistent client SDKs.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Choose Django Ninja for new greenfield projects that require native async, Pydantic v2 validation, or FastAPI-like ergonomics.</statement>
-      <rationale source="v1-source">Ninja's async path is first-class; adding async to DRF via adrf is bolted-on and produces sync-looking code that can silently not be async. Ninja is ~2-3x faster in high-concurrency benchmarks due to async I/O, not request overhead.</rationale>
+
+    <rule id="r2-thin-views" testable="true" depth="essential">
+      <statement>Views contain no business logic. The view: parses request via the input serializer/schema → calls a service function → returns the output serializer/schema. Business logic (DB writes beyond ORM saves, side effects, multi-step transactions) lives in `&lt;app&gt;/services.py`.</statement>
+      <rationale source="cosmic-python + django-styleguide">Fat views cannot be unit-tested without an HTTP request and cannot be reused from Celery tasks or management commands. Service layer is the only path to consistent business rules.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Never mix DRF and Ninja in the same Django app — URL conflicts and authentication context diverge.</statement>
-      <rationale source="v1-source">Lock the choice at project bootstrap. Mixing multiplies the failure surface and makes OpenAPI spec generation inconsistent.</rationale>
+
+    <rule id="r3-serializer-pair" testable="true" depth="essential">
+      <statement>Each resource has separate Create/Update input serializers and a Detail/List output serializer. Never use one serializer for both directions.</statement>
+      <rationale source="drf docs + production audits">A single bidirectional serializer mixes write-only with read-only fields, makes permission-based field gating impossible, and causes refactor cascades when one side needs to change.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use ModelViewSet for standard CRUD operations on a single model with DefaultRouter URLs.</statement>
-      <rationale source="v1-source">ViewSets reduce boilerplate: list/create/retrieve/update/partial_update/destroy are generated from a queryset and serializer class. DefaultRouter handles URL naming automatically.</rationale>
+
+    <rule id="r4-no-all-fields" testable="true" depth="essential">
+      <statement>`Meta.fields = "__all__"` is FORBIDDEN on every user-facing serializer or schema. List fields explicitly; mark id/uid/created_at/updated_at as read_only_fields.</statement>
+      <rationale source="security audit history">Adding a column to the model silently exposes it through the API. Past leaks include password hashes, JWT secrets, and internal foreign-key IDs. Explicit allowlist is the only safe path.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use APIView for action verbs (activate, archive, retry) or endpoints that aggregate multiple models.</statement>
-      <rationale source="v1-source">APIView gives full control over HTTP method dispatch without forcing router URL patterns. Use when the endpoint doesn't map cleanly to a single model resource.</rationale>
+
+    <rule id="r5-jwt-config" testable="true" depth="essential">
+      <statement>simplejwt configured with access token TTL ≤ 15 minutes, refresh token TTL ≤ 7 days, ROTATE_REFRESH_TOKENS=true, BLACKLIST_AFTER_ROTATION=true. Tokens transmitted via HttpOnly cookies (preferred) or Authorization header.</statement>
+      <rationale source="djangorestframework-simplejwt + OWASP cheat-sheet">Short access tokens cap the blast radius of a leaked token; rotation + blacklist prevent refresh-token replay. localStorage is XSS-readable; HttpOnly cookies are not.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use separate input serializers (validation) and output serializers (representation) — never one serializer for both.</statement>
-      <rationale source="v1-source">A single serializer that handles both input and output forces compromises: write-only fields mix with read-only fields, and changing one breaks the other. Separate serializers also make permission-based field differences explicit.</rationale>
+
+    <rule id="r6-isauthenticated-default" testable="true" depth="essential">
+      <statement>DEFAULT_PERMISSION_CLASSES = ['rest_framework.permissions.IsAuthenticated']. AllowAny is forbidden as a default; endpoints that must be public opt in explicitly.</statement>
+      <rationale source="drf + breach-history">A locked-down default means a developer who forgets to set permissions cannot accidentally ship a public endpoint. The opposite default has caused multiple public-data-leak incidents.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Never use Meta.fields = "__all__" on any user-facing serializer.</statement>
-      <rationale source="v1-source">New columns added to the model are automatically exposed to API consumers. This has caused accidental password hash, token, and internal ID leaks in production systems.</rationale>
+
+    <rule id="r7-object-level-perms" testable="true" depth="essential">
+      <statement>Resource-ownership checks live in `has_object_permission(request, view, obj)`. `has_permission(request, view)` handles only method + auth gating. Skipping object-level checks is forbidden when the resource is user/org-owned.</statement>
+      <rationale source="drf permissions docs">has_permission runs before object fetch (cheap, can't see the object). has_object_permission runs after get_object() and is the only correct place for ownership checks. Putting ownership in has_permission either over-fetches or misses the check entirely.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>List fields explicitly in Meta.fields and declare read_only_fields for computed and auto-set fields.</statement>
-      <rationale source="v1-source">An allowlist prevents new columns from leaking. read_only_fields ensures id, uid, created_at, updated_at cannot be set via PATCH/PUT.</rationale>
+
+    <rule id="r8-scoped-throttle-cursor-pagination" testable="true" depth="essential">
+      <statement>Throttle by scope: at minimum `anon`, `user`, `burst` (for write endpoints), `login` (for auth endpoints). List endpoints use cursor pagination ordered by `(-created_at, -id)` when the dataset can grow unbounded; page-number pagination otherwise.</statement>
+      <rationale source="drf throttling + cursor-pagination docs">A single anon/user limit can't distinguish a read flood from a login brute-force. Cursor pagination on an unindexed field causes table scans; the -id tie-breaker ensures stable ordering across same-timestamp rows.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use ModelSchema for output; use Schema (Pydantic) for input with explicit validators.</statement>
-      <rationale source="v1-source">ModelSchema auto-generates fields from the Django model for output, which is safe for read paths. Input schemas need explicit Pydantic validators to enforce business rules.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Configure simplejwt with 15-minute access tokens, 7-day refresh tokens, token rotation, and blacklisting enabled.</statement>
-      <rationale source="v1-source">Short access token lifetimes limit the blast radius of a leaked token. Rotation + blacklisting prevents refresh token replay after logout.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Store JWT tokens in HttpOnly cookies, not localStorage — or use dj-rest-auth for cookie middleware wiring.</statement>
-      <rationale source="v1-source">localStorage is accessible to JavaScript; XSS attacks can steal tokens. HttpOnly cookies are not accessible from JS and are sent automatically with same-origin requests.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Set IsAuthenticated as the global default; never set AllowAny as the default permission class.</statement>
-      <rationale source="v1-source">AllowAny as default means any new endpoint is publicly accessible until explicitly protected. A locked-down default forces explicit opt-in to public access.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Object-level permissions go in has_object_permission; permission_classes handles only route-level (method + auth) checks.</statement>
-      <rationale source="v1-source">has_permission runs before the object is fetched — cheap. has_object_permission runs after get_object() — allows ownership/org membership checks per resource.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Throttle by scope, not only anon/user. Add a burst scope for write endpoints and a login scope for auth endpoints.</statement>
-      <rationale source="v1-source">A single anon/user rate limit cannot differentiate between a safe read flood and a brute-force login attempt. Scoped throttling applies tighter limits where it matters.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Use cursor pagination only on indexed ordering fields (e.g., (-created_at, -id)); always paginate list endpoints.</statement>
-      <rationale source="v1-source">Cursor pagination on an unindexed field causes full table scans. The -id tie-breaker is required for stable ordering when multiple rows share the same created_at timestamp.</rationale>
-    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

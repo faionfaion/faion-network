@@ -2,75 +2,102 @@
 slug: typescript-react-2026
 tier: free
 group: dev
-domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Modern patterns for TypeScript 5.
-content_id: "cf979d8928342f3b"
-tags: [typescript, react, nextjs, server-components, 2026]
+domain: javascript-developer
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an App-Router scaffold spec (server/client boundary map, useActionState forms, revalidate calls, strict tsconfig) for a Next.js 15 + React 19 + TS 5 project.
+content_id: "0a364efa89f36f6d"
+complexity: deep
+produces: spec
+est_tokens: 4500
+tags: [typescript, react-19, nextjs-15, server-components, server-actions]
 ---
+
 # TypeScript & React 2026
 
 ## Summary
 
-**One-sentence:** Modern patterns for TypeScript 5.
+**One-sentence:** Produces an App-Router scaffold spec for a Next.js 15 + React 19 + TS 5.x project, naming the server/client component boundary, the useActionState form wiring, the revalidate strategy, and the strict-mode tsconfig flags.
 
-**One-paragraph:** Modern patterns for TypeScript 5.x strict mode, React 19 Server Components, Server Actions, and Next.js 15 App Router. Covers the complete stack for building performant, type-safe full-stack applications in 2026.
+**Ефективно для:** Greenfield Next.js 15 app or a focused App-Router migration where the team must decide per-component server-vs-client, per-mutation revalidatePath, and per-form useActionState wiring without re-arguing every PR.
+
+**One-paragraph:** The 2026 stack (TS 5.x strict + React 19 + Next 15 App Router) shifts defaults from React 18 in three ways: server components by default, Server Actions replace bespoke API routes, useActionState replaces useFormState. This methodology produces an auditable spec naming for every page/segment whether it is a Server Component or Client Component, what 'use server' actions it exposes, what revalidatePath/revalidateTag calls fire after mutation, and which strict tsconfig flags are enabled. Forbids: `useFormState` (legacy), `'use client'` on layouts, missing revalidate after mutation, `array[0]!` to suppress noUncheckedIndexedAccess.
 
 ## Applies If (ALL must hold)
 
-- Greenfield Next.js 15 + React 19 apps where Server Components and Server Actions are the default architecture.
-- Migrating a Create React App or Vite SPA to Next.js App Router with a clear server/client component split.
-- Tightening an existing TypeScript project's tsconfig.json to 2026 strict baseline.
-- Adding form mutations via Server Actions instead of bespoke API routes + client fetch wrappers.
-- Teams adopting React 19's new hooks (useActionState) and directive-based boundaries ('use client', 'use server').
+- Target stack is Next.js ≥ 15.0 + React ≥ 19.0 + TypeScript ≥ 5.0 with App Router.
+- The app deploys to a Node-capable runtime (Vercel Node, AWS Lambda, self-hosted) — not edge-only with limited Node APIs.
+- The team commits to RSC-by-default with thin `'use client'` boundaries.
+- Forms use Server Actions, not bespoke `/api/*` routes + client fetch.
+- Output drives codegen and PR review on every route segment.
 
 ## Skip If (ANY kills it)
 
-- React Native / Expo — Server Components RFC for native is not stable; this methodology is web-only.
-- Static-only marketing sites — Astro or Gatsby produce smaller bundles. Next.js 15 RSC adds runtime weight you don't need.
-- Pages Router projects you intend to keep — most patterns assume App Router and break Pages Router data fetching.
-- Library/SDK packages — verbatimModuleSyntax and allowImportingTsExtensions complicate dual-publish (CJS+ESM).
-- Non-Vercel platforms without robust Node.js/RSC support (e.g., Cloudflare Workers with limited APIs).
+- React Native / Expo — RSC for native is not stable.
+- Static-only marketing sites — Astro / Gatsby produce smaller bundles.
+- Pages Router project intended to remain on Pages Router.
+- Library / SDK package — verbatimModuleSyntax complicates dual-publish.
+- Edge-only runtime without robust Node.js APIs (some Cloudflare Workers tiers).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| Page / route map | tree | feature brief |
+| Per-page state needs | bullets | UX analysis |
+| Mutation list (action name, affected paths) | YAML | feature brief |
+| Current tsconfig.json | JSON | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[typescript-strict-mode]]` | Strict tsconfig baseline this spec extends. |
+| `[[react-hooks]]` | useActionState / useFormStatus shape consumed by the form wiring. |
+| `[[react-patterns]]` | Feature folder layout this spec annotates. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 7 testable rules: server-default, 'use client' boundary, server-only import guard, useActionState, revalidate after mutation, no-bang on indexed access, parallel Promise.all loading | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON schema for app-router spec | ~1000 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: layout-wide 'use client', useFormState, missing revalidate, array[0]! | ~800 |
+| `content/04-procedure.xml` | deep | 6 steps: map → boundary classify → actions → revalidate → tsconfig → validate | ~700 |
+| `content/05-examples.xml` | deep | Worked example: /dashboard with client sidebar + Server Action createInvoice + revalidatePath | ~600 |
+| `content/06-decision-tree.xml` | essential | Per-component: server-default vs client; per-mutation: revalidatePath vs revalidateTag | ~200 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `map_routes` | haiku | Mechanical expansion of app/ tree from the brief. |
+| `classify_boundary` | sonnet | Per-component server/client decision with reasoning. |
+| `audit_security` | opus | server-only imports + secret leakage + boundary inversions. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/server-action.ts` | Reference `'use server'` action with Zod parse + revalidatePath. |
+| `templates/use-action-state-form.tsx` | Client form using useActionState + useFormStatus. |
+| `templates/tsconfig.strict-2026.json` | TS 5.x strict baseline tsconfig. |
+| `templates/app-router-spec.json` | Reference output document. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-typescript-react-2026.py` | Validate an app-router spec JSON against the contract. | After the agent emits the spec, before codegen runs. |
 
 ## Related
 
-- parent skill: `free/dev/javascript-developer/`
+- [[typescript-strict-mode]] — tsconfig flags this spec assumes are enabled.
+- [[react-hooks]] — useActionState / useFormStatus form wiring.
+- [[react-patterns]] — feature folder layout.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates per-component: does the component use a hook, browser API, or event handler? → 'use client'. Otherwise → server-default. For mutations: does the revalidation target a known path? → revalidatePath. Tag-keyed cache? → revalidateTag.

@@ -4,76 +4,91 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: One Command Dev Env Template: codified dev practice that turns the recurring 'role-software-developer/Local dev env reset' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a versioned dev-env reset decision-record (artefact_id, owner, decision, rationale, inputs_used) for the recurring "make dev-up" template gap.
 content_id: "50d6b54a7ef27182"
-tags: [one-command-dev-env-template, dev, free]
+complexity: light
+produces: decision-record
+est_tokens: 3200
+tags: [dev-env, decision-record, software-developer, template]
 ---
+
 # One Command Dev Env Template
 
 ## Summary
 
-**One-sentence:** One Command Dev Env Template: codified dev practice that turns the recurring 'role-software-developer/Local dev env reset' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a versioned decision-record artefact that captures the team's canonical "one command to reset local dev env" choice — the tool, the script entry point, the data fixtures it loads, and the named owner.
 
-**One-paragraph:** One Command Dev Env Template addresses the gap identified by the role-software-developer/Local dev env reset playbook: First-project playbooks exist for Python/JS but not a 'make dev-up' canonical template for product repos. High leverage for onboarding speed in P6. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Teams onboarding new developers on a product repo where local dev currently requires five tribal-knowledge steps and the runbook is stale or missing.
+
+**One-paragraph:** Codifies the recurring `role-software-developer/Local dev env reset` decision into a single auditable record. The output names one accountable owner (no "we"/"team"), cites the input artefacts that justified the choice, carries semver + last_reviewed for decay control, and refuses untraceable claims. Designed for the gap identified by the role-software-developer playbook: per-language `make dev-up` templates exist for Python and JS in isolation, but no canonical decision-record exists for a product repo's full reset story.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-developer/Local dev env reset OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == free or higher (gating enforced by tier-manifest)
+- Task is an instance of `role-software-developer/Local dev env reset` OR a closely-adjacent variant.
+- The operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
+- Tier == free or higher (gating enforced by tier-manifest).
+- A single accountable owner can be named (no "team" / "we").
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- The team already maintains a working artefact for this gap — replace, do not duplicate.
+- The change being decided is a greenfield prototype with no production users.
+- Regulatory / compliance context overrides any in-methodology guidance (defer to legal).
+- Dev env is fully managed by the platform team (no per-repo decision needed).
 
 ## Prerequisites
 
-- recent context for the role-software-developer/Local dev env reset task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|---|---|---|
+| Recent context for `Local dev env reset` task (last 30 days) | text / chat log | engineering ticket |
+| Write-access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `free/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `free/dev/software-developer` | Parent role skill providing the operating context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
+|---|---|---|---|
 | `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate based on preconditions | ~200 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Template fill, bounded transformation. |
+| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs. |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/one-command-dev-env-template.json` | JSON schema for the One Command Dev Env Template output contract |
-| `templates/one-command-dev-env-template.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/one-command-dev-env-template.json` | JSON schema for the output contract (machine-validatable). |
+| `templates/one-command-dev-env-template.md` | Markdown skeleton with the required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-one-command-dev-env-template.py` | Enforce One Command Dev Env Template output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-one-command-dev-env-template.py` | Enforce the output contract. | After the subagent returns, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
-- upstream playbook: `role-software-developer/Local dev env reset`
+- [[role-software-developer]] — parent role skill.
+- Upstream playbook: `role-software-developer/Local dev env reset`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? owner nameable? store writable?) and routes the decision into either "run-it" (produce the record) or "skip-it" (defer, naming the missing precondition).

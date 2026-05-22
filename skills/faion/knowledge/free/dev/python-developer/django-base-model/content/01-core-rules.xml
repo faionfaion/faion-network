@@ -1,11 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-base-model Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-base-model. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-base-model Core Rules" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>Seven testable rules for a Django abstract base-model hierarchy.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-separate-uid" testable="true" depth="essential">
+      <statement>Keep auto-increment `id` as the primary key. Add a separate `uid = UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)` for external exposure. NEVER swap the PK to UUID retroactively.</statement>
+      <rationale source="Django ORM + B-tree index theory">Swapping PK invalidates every foreign key and breaks every migration. The dual-field pattern keeps internal joins fast (4-byte int) and external IDs opaque (UUID).</rationale>
     </rule>
+
+    <rule id="r2-abstract-base" testable="true" depth="essential">
+      <statement>BaseModel is `abstract = True` and inherits `models.Model` plus the chosen mixins. Concrete models inherit from BaseModel — never from `models.Model` directly when the base exists.</statement>
+      <rationale source="docs.djangoproject.com abstract-base-classes">Abstract base classes get inlined into each child table; no extra join, no surprise multi-table inheritance. Direct inheritance from models.Model in a project that has a base is a code smell.</rationale>
+    </rule>
+
+    <rule id="r3-partial-unique-under-soft-delete" testable="true" depth="essential">
+      <statement>When a SoftDeleteMixin-enabled model has any `unique=True` field, that uniqueness MUST be re-expressed as `UniqueConstraint(fields=[...], condition=Q(deleted_at__isnull=True))`. Plain unique=True is forbidden on soft-deletable models.</statement>
+      <rationale source="postgres partial-index docs">A soft-deleted row still occupies the unique index. Restoring or creating a row with the same value fails with IntegrityError. Partial index scopes uniqueness to live rows only.</rationale>
+    </rule>
+
+    <rule id="r4-queryset-override" testable="true" depth="essential">
+      <statement>SoftDeleteMixin overrides both the model's `delete()` AND the queryset's `delete()`. The custom Manager wraps a SoftDeleteQuerySet whose delete() sets `deleted_at = timezone.now()` for every matched row.</statement>
+      <rationale source="docs.djangoproject.com queryset-delete">QuerySet.delete() bypasses Model.delete(). Without a queryset override, `Foo.objects.filter(...).delete()` hard-deletes despite the model override.</rationale>
+    </rule>
+
+    <rule id="r5-preserve-all-objects" testable="true" depth="essential">
+      <statement>The default `objects = SoftDeleteManager()` filters out soft-deleted rows. A second manager `all_objects = models.Manager()` MUST be defined to give admin / loaddata / migrations access to every row.</statement>
+      <rationale source="django admin + loaddata behaviour">Without all_objects, admin can't show deleted rows, migrations can't rewrite them, fixtures can't reload them. The pair is mandatory.</rationale>
+    </rule>
+
+    <rule id="r6-cascade-audit" testable="true" depth="essential">
+      <statement>For every ForeignKey or OneToOneField on a soft-deletable model, on_delete is explicitly chosen from {CASCADE, SET_NULL, PROTECT, DO_NOTHING} with a comment naming the reason. Default CASCADE through soft-delete is forbidden.</statement>
+      <rationale source="postgres referential-integrity">CASCADE hard-deletes children even when the parent is only soft-deleted; data leaks the soft-delete contract. PROTECT or SET_NULL are usually correct for child rows.</rationale>
+    </rule>
+
+    <rule id="r7-tenant-context" testable="true" depth="essential">
+      <statement>TenantAwareModel access from Celery tasks / management commands MUST use `with tenant_context(tenant): …`. Reading from thread-local-only middleware state outside HTTP is forbidden.</statement>
+      <rationale source="django-tenants + thread-local pitfalls">Middleware sets thread-local at request time. Celery worker threads do not inherit that context; without explicit tenant_context, queries return cross-tenant rows.</rationale>
+    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

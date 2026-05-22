@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="react-hooks Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for react-hooks. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="react-hooks Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Six testable rules covering hook call order, effect cleanup, dependency arrays, and memoization. Each rule has a script-detectable signal.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-stable-call-order" testable="true" depth="essential">
+      <statement>Call every hook at the top level of the component function, before any conditional or early return. Never call a hook inside an if, loop, or callback.</statement>
+      <rationale source="react.dev rules-of-hooks">React relies on the call-order of hooks across renders to associate each call with its internal state slot. Conditional calls shift the slot index and corrupt state. The exception is React 19's use() which is the only hook that can be called conditionally.</rationale>
     </rule>
+
+    <rule id="r2-effect-cleanup" testable="true" depth="essential">
+      <statement>Every useEffect that subscribes to an external resource (event listener, subscription, interval, fetch) MUST return a cleanup function. The cleanup is non-optional.</statement>
+      <rationale source="react.dev/reference/react/useEffect">Without cleanup, effects accumulate subscriptions on every render or mount under StrictMode/Concurrent. The cleanup is the only safe way to release a resource; React 19 guarantees the cleanup runs before each re-run.</rationale>
+    </rule>
+
+    <rule id="r3-no-async-effect-body" testable="true" depth="essential">
+      <statement>Do NOT pass an async function as the effect body. Declare a named async function inside the effect and call it; pair with AbortController for fetches.</statement>
+      <rationale source="react.dev common-issues">Async functions return a Promise, so the cleanup function React expects is silently lost. AbortController gives the cleanup something to call to cancel the in-flight fetch on unmount or dep change.</rationale>
+    </rule>
+
+    <rule id="r4-functional-updater" testable="true" depth="essential">
+      <statement>When the next state depends on the previous state, use the functional updater form: setX(prev =&gt; …). Reading the captured value and writing it back creates stale-closure bugs.</statement>
+      <rationale source="react.dev/reference/react/useState">setInterval, setTimeout, and event handlers registered with [] deps capture their values once. The functional updater always sees the current React state, eliminating the most common useEffect bug.</rationale>
+    </rule>
+
+    <rule id="r5-primitive-deps-only" testable="true" depth="essential">
+      <statement>Effect dependency arrays contain ONLY primitives or references that are stable across renders (useCallback, useMemo, useRef.current). Object/array literals as deps are forbidden.</statement>
+      <rationale source="eslint-plugin-react-hooks exhaustive-deps">{} !== {} between renders. An object literal in the dep array re-triggers the effect on every render, often producing infinite loops. Destructure to primitives or wrap in useMemo.</rationale>
+    </rule>
+
+    <rule id="r6-memo-after-profile" testable="true" depth="essential">
+      <statement>Apply useMemo / useCallback / React.memo only when (a) profiling demonstrates a re-render bottleneck, OR (b) the memoized value is consumed as a stable reference by an effect dep or a memoized child. Otherwise: do not memoize.</statement>
+      <rationale source="react.dev + react-compiler-rfc">useMemo and useCallback add allocation + comparison overhead per render. Reflexive memoization makes the bundle slower, not faster. With React Compiler enabled, most cases auto-memoize.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

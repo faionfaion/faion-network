@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-base-model Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-model routing through soft-delete, tenant, uid exposure decisions.</summary>
+
+  <decision-tree>
+    <root-question id="q-needs-soft-delete">Does this model represent durable user/business data where an "undo" or compliance retention is required?</root-question>
+
+    <branch when="q-needs-soft-delete == true">
+      <question id="q-multi-tenant">Is this model row-isolated per tenant in a multi-tenant SaaS?</question>
+
+      <branch when="q-multi-tenant == true">
+        <conclusion ref="r7-tenant-context">extends="TenantAwareSoftDeletableModel". All Celery/management access wraps in tenant_context(). Partial unique constraints scope to (tenant, field).</conclusion>
+      </branch>
+
+      <branch when="q-multi-tenant == false">
+        <conclusion ref="r3-partial-unique-under-soft-delete">extends="SoftDeletableModel". Convert every unique=True into a partial UniqueConstraint.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-needs-soft-delete == false">
+      <question id="q-exposes-uid">Does the model surface in a public API where exposing auto-increment ids is a leak?</question>
+
+      <branch when="q-exposes-uid == true">
+        <conclusion ref="r1-separate-uid">extends="BaseModel" (TimestampMixin + UidMixin). Expose `uid` in API responses; never expose `id`.</conclusion>
+      </branch>
+
+      <branch when="q-exposes-uid == false">
+        <conclusion ref="r2-abstract-base">extends="BaseModel" with TimestampMixin only. uid optional.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="customer-soft-delete-public-api"><![CDATA[
+model=Customer, soft-delete required, single-tenant, public API exposure
+q-needs-soft-delete -> true
+q-multi-tenant -> false
+=> conclusion r3-partial-unique-under-soft-delete: SoftDeletableModel + partial unique on email.
+]]></example>
+</text>

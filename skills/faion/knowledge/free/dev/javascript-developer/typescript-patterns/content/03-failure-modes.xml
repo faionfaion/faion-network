@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="typescript-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for typescript-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="typescript-patterns Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Four type-system antipatterns the spec must never produce.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using any[] as the items type in a reusable list component.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Loses type safety in renderItem — errors like accessing a non-existent property only surface at runtime.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using the non-null assertion operator (!) on values that could legitimately be null.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>! silently produces a runtime error; assertDefined throws with a message and narrows the type correctly.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-any-at-boundary">
+      <symptom>Refactor in one module breaks runtime behaviour in five unrelated modules with no compile errors; bug reports describe "wrong field" or "undefined is not a function".</symptom>
+      <root-cause>An exported function or HTTP handler declares `(body: any) =&gt; …`. The `any` propagates through every call site and disables type-checking downstream.</root-cause>
+      <fix>Replace with `(body: unknown)` plus Zod parse at the boundary. Spec field types.kind="external-input" MUST have validation in {zod-parse, zod-safe-parse}.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-as-cast-on-unknown">
+      <symptom>HTTP 500s in production with TypeError ("Cannot read property of undefined"). Stack trace points to a service file, not the controller.</symptom>
+      <root-cause>Code uses `const user = req.body as User`. The compile passes regardless of req.body's actual shape; the shape mismatch surfaces only when downstream code reads a missing field.</root-cause>
+      <fix>Parse with UserSchema.parse(req.body) (throws ValidationError on mismatch) or safeParse for explicit handling. Spec validation field MUST be zod-parse / zod-safe-parse / type-guard / assertion-fn.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-bang-chain">
+      <symptom>Sporadic TypeErrors at deep property access in production; cannot reproduce locally because the data happened to be present in dev.</symptom>
+      <root-cause>Code uses `user!.profile!.address!.city`. Every `!` silently asserts non-null; the first actual null deep in the chain throws an unhelpful TypeError.</root-cause>
+      <fix>Replace with optional chaining + nullish coalescing (`user?.profile?.address?.city ?? '—'`) OR with an assertion function `assertDefined(user, 'user must be loaded by middleware')`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-schema-drift">
+      <symptom>API responses pass server-side tests but the client errors with "missing field foo". The OpenAPI schema and the runtime validator disagree.</symptom>
+      <root-cause>Two parallel sources of truth: a manually declared TS interface and a Zod schema. A new field was added to one and not the other.</root-cause>
+      <fix>Use z.infer&lt;typeof Schema&gt; for the TS type; the schema is the only source of truth. Spec field representation MUST be "zod-schema" for external-input kinds.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="react-hooks Procedure" version="1.1.0" est_tokens="600" depth="medium">
+  <summary>Five-step procedure converting a feature brief into a validated hooks-spec.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="classify-state-slices">
+      <input>Feature brief listing every piece of state the feature owns or reads.</input>
+      <action>For each slice, ask: server / form / global-UI / local. Route to TanStack Query / React Hook Form / Zustand / useState respectively.</action>
+      <output>state_slices: array of {name, owner_hook, type}.</output>
+    </step>
+
+    <step n="2" name="decide-local-hook-shape">
+      <input>Slices marked owner_hook=useState.</input>
+      <action>If the slice is a single primitive or a 1–2 field object → keep useState. If multi-field interrelated state (3+ fields whose transitions are coupled) → upgrade to useReducer.</action>
+      <output>Refined state_slices with useState ↔ useReducer corrected.</output>
+      <decision-gate>Reject any state_slice that uses useState for &gt;3 interrelated fields without an explicit justification.</decision-gate>
+    </step>
+
+    <step n="3" name="declare-effects-and-deps">
+      <input>Side-effect list from the feature brief (subscribe, fetch, listener, timer).</input>
+      <action>For each effect, declare deps as primitives only; mark cleanup_present=true; mark uses_abort_controller=true for fetches.</action>
+      <output>effects: array of {name, deps[], cleanup_present, uses_abort_controller}.</output>
+      <decision-gate>Reject any effect with cleanup_present=false whose name contains subscribe / listener / interval / fetch.</decision-gate>
+    </step>
+
+    <step n="4" name="memoize-decisions">
+      <input>Profiler trace (if available) + the list of values passed to memoized children or effect deps.</input>
+      <action>Add memoization entries only with a justification &gt; 10 chars referencing a profiling fact or a downstream stable-ref consumer.</action>
+      <output>memoization: array (often empty when React Compiler is enabled).</output>
+    </step>
+
+    <step n="5" name="assemble-and-validate">
+      <input>All outputs from steps 1–4.</input>
+      <action>Assemble hooks-spec.json. Run scripts/validate-react-hooks.py.</action>
+      <output>Validated spec ready for the codegen agent.</output>
+      <decision-gate>Validator must exit 0 before the spec is returned to the caller.</decision-gate>
+    </step>
+
+  </section>
+</text>

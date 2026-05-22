@@ -2,71 +2,98 @@
 slug: typescript-strict-mode
 tier: free
 group: dev
-domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Full strict-mode configuration with additional safety checks, null safety patterns, type narrowing, branded types, and const assertions for catching whole classes of bugs at compile time.
-content_id: "12394fa50d7d784d"
-tags: [typescript, strict-mode, configuration]
+domain: javascript-developer
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a strict-mode adoption spec (flag set, migration plan, lint rules) for a TS codebase moving from default to fully strict baseline.
+content_id: "ddde1688d0f86275"
+complexity: medium
+produces: spec
+est_tokens: 3600
+tags: [typescript, strict-mode, configuration, type-safety, migration]
 ---
+
 # TypeScript Strict Mode
 
 ## Summary
 
-**One-sentence:** Full strict-mode configuration with additional safety checks, null safety patterns, type narrowing, branded types, and const assertions for catching whole classes of bugs at compile time.
+**One-sentence:** Produces a strict-mode adoption spec listing the compiler flags to enable (strict + noUncheckedIndexedAccess + exactOptionalPropertyTypes + …), the migration order (one flag per PR), and the lint rules that backstop common workarounds.
 
-**One-paragraph:** Full strict-mode configuration with additional safety checks, null safety patterns, type narrowing, branded types, and const assertions for catching whole classes of bugs at compile time.
+**Ефективно для:** Greenfield project that wants strict from day one, OR a brownfield codebase planning an incremental migration where each strict flag is its own PR with a fix budget.
+
+**One-paragraph:** Turns the question "which strict flags do we enable and in what order?" into an auditable spec. The output lists every flag to enable, the per-flag fix strategy (e.g., for noUncheckedIndexedAccess: destructure with default, optional chain, length check), and the backstop ESLint rules (no-non-null-assertion on indexed access, no-explicit-any on exports). Forbids `!` chains on nullable values, `as T` on unknown input, missing `unknown` at trust boundaries, and `@ts-expect-error` to suppress strict-flag errors.
 
 ## Applies If (ALL must hold)
 
-- All new TypeScript projects from day one
-- JavaScript-to-TypeScript migration (enable flags incrementally)
-- Library development where consumers depend on correct types
-- Production applications requiring high reliability
+- TypeScript ≥ 5.0.
+- Codebase has either (a) zero strict flags set, or (b) a partial set the team wants to complete.
+- The team has buy-in to merge "one flag = one PR" rather than flip everything at once.
+- A clear owner exists for the migration plan.
+- Output drives a tracked migration backlog.
 
 ## Skip If (ANY kills it)
 
-- Auto-generated code (e.g., protobuf output) — add // @ts-nocheck per file instead
-- Legacy codebases where enabling strict causes thousands of errors before a remediation plan exists — enable flags one at a time
+- Auto-generated code (protobuf, OpenAPI client stubs) — `@ts-nocheck` per file is the right tool.
+- Throwaway script or one-off automation where strict noise outweighs benefit.
+- Codebase already at the 2026 baseline (strict + noUncheckedIndexedAccess + exactOptionalPropertyTypes) — nothing to do.
+- Team explicitly chose loose typing for velocity — methodology adds friction.
+- Library where strictness conflicts with required d.ts emit shape (rare; document the exception).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| Current tsconfig.json | JSON | repo root |
+| `tsc --noEmit` error count baseline | text | CI log |
+| Migration owner | handle/email | decision record |
+| Acceptable error budget per PR | int | team agreement |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[typescript-patterns]]` | Result + assertion functions consumed in the per-flag fix strategies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 testable rules: strict on, noUncheckedIndexedAccess on, exactOptionalPropertyTypes on, no-bang-chain, no-as-cast, unknown at boundary | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON schema for the migration spec | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: bang chain, as-on-unknown, ts-expect-error suppress, big-bang migration | ~700 |
+| `content/04-procedure.xml` | medium | 5 steps: baseline → enable strict → enable noUnchecked → enable exact-optional → backstop lint | ~600 |
+| `content/05-examples.xml` | medium | One worked example: migrating a service file through each flag | ~500 |
+| `content/06-decision-tree.xml` | essential | Per error: optional chain vs assertion fn vs destructure default | ~200 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `baseline_errors` | haiku | Mechanical: run tsc, count errors, classify. |
+| `emit_migration_plan` | sonnet | Per-flag PR plan with fix strategies. |
+| `review_for_lint_backstops` | opus | Cross-checks ESLint config against the fix strategies. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/tsconfig.strict.json` | TS 5.x strict baseline tsconfig. |
+| `templates/migration-spec.json` | Reference migration spec output. |
+| `templates/.eslintrc.strict-backstop.json` | ESLint rules that backstop common workarounds. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-typescript-strict-mode.py` | Validate a migration spec against the contract. | After the spec is produced; before the first migration PR opens. |
 
 ## Related
 
-- parent skill: `free/dev/javascript-developer/`
+- [[typescript-patterns]] — domain typing patterns the strict flags enforce.
+- [[typescript-react-2026]] — App Router scaffold spec that assumes these flags are enabled.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree picks the per-error fix strategy: optional chain when the read is single-shot; destructure-with-default when iterating; assertion function when the call site guarantees presence; type predicate when narrowing unknown.

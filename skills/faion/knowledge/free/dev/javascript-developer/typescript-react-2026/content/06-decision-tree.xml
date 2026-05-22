@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="typescript-react-2026 Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-file boundary classification and per-mutation revalidate strategy.</summary>
+
+  <decision-tree>
+    <root-question id="q-uses-client">Does the file use any React hook, browser API, or event handler?</root-question>
+
+    <branch when="q-uses-client == false">
+      <conclusion ref="r1-server-default">boundary="server-default". No 'use client'. Server Components can directly access DB and secrets.</conclusion>
+    </branch>
+
+    <branch when="q-uses-client == true">
+      <question id="q-is-layout">Is the file a layout (matches *layout.tsx)?</question>
+
+      <branch when="q-is-layout == true">
+        <conclusion ref="r2-thin-client-boundary">REJECT. Extract the stateful subtree into its own client component file; keep the layout server. The decision tree fails this branch.</conclusion>
+      </branch>
+
+      <branch when="q-is-layout == false">
+        <conclusion ref="r4-useactionstate">boundary="use-client". If the file is a form, wire it with useActionState (NOT useFormState) + a SubmitButton using useFormStatus.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-uses-client == 'action-module'">
+      <question id="q-mutates">Does this Server Action mutate data?</question>
+
+      <branch when="q-mutates == false">
+        <conclusion ref="r5-revalidate-after-mutation">revalidate.kind="none". Read-only actions do not invalidate cache.</conclusion>
+      </branch>
+
+      <branch when="q-mutates == true">
+        <question id="q-scope">Does the mutation affect one known route or multiple unrelated routes that share a tag?</question>
+
+        <branch when="q-scope == 'one-route'">
+          <conclusion ref="r5-revalidate-after-mutation">revalidate.kind="path", target=&lt;route&gt;. Add revalidatePath(target) before returning success.</conclusion>
+        </branch>
+
+        <branch when="q-scope == 'many-routes-shared-tag'">
+          <conclusion ref="r5-revalidate-after-mutation">revalidate.kind="tag", target=&lt;tag&gt;. All fetches with that tag invalidate together.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="sidebar-component"><![CDATA[
+file=app/dashboard/Sidebar.tsx, uses hooks=true, is layout=false
+q-uses-client -> true
+q-is-layout -> false
+=> conclusion r4-useactionstate: boundary=use-client.
+]]></example>
+</text>

@@ -1,3 +1,9 @@
+// purpose: template for code-coverage (jest.coverage.config.js)
+// consumes: code-coverage methodology inputs (see AGENTS.md Prerequisites)
+// produces: filled-in artefact conforming to content/02-output-contract.xml
+// depends-on: 01-core-rules.xml + tool-runtime in same dir
+// token-budget-impact: ~200-400 tokens when loaded as context
+
 // jest.config.js — coverage configuration
 // Adjust collectCoverageFrom paths for your project structure.
 /** @type {import('jest').Config} */

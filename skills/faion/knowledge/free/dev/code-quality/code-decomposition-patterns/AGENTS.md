@@ -3,74 +3,94 @@ slug: code-decomposition-patterns
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Fat files (controllers >100 lines, React components >150 lines, settings >150 lines) reduce testability, increase merge conflicts, and obscure responsibility.
-content_id: "58e6faadf73e3749"
-tags: [refactoring, decomposition, patterns, architecture, code-organization]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Selects one of five named decomposition patterns (Extract Service / Component / Module / Configuration / Types) based on size + boundary signals and outputs an actionable move list.
+content_id: "8dfffc62bd20eb12"
+complexity: medium
+produces: playbook-step
+est_tokens: 4000
+tags: [decomposition, refactor, modules, architecture]
 ---
 # Code Decomposition Patterns
 
 ## Summary
 
-**One-sentence:** Fat files (controllers >100 lines, React components >150 lines, settings >150 lines) reduce testability, increase merge conflicts, and obscure responsibility.
+**One-sentence:** Pattern-matches a source file's bloat against five canonical decomposition shapes and emits the move list a refactor agent executes.
 
-**One-paragraph:** Fat files (controllers >100 lines, React components >150 lines, settings >150 lines) reduce testability, increase merge conflicts, and obscure responsibility. Named patterns give agents and reviewers a shared vocabulary and precise post-conditions: view files stay thin, services are framework-free, components compose, config splits by environment.
+**One-paragraph:** When a file crosses ~300 lines or ~10k tokens, the question is not 'should we split' but 'which pattern fits the shape of the bloat'. This methodology recognises five canonical patterns: Extract Service (stateful + I/O), Extract Component (UI), Extract Module (pure logic), Extract Configuration (constants tables), Extract Types (type-only declarations). For each it gives the trigger, the cut points, and a language-specific layout (Python / TypeScript / Go). Output is a concrete move list — source paths + line ranges + destination paths — that a refactor agent or developer applies one move at a time with green tests between.
+
+**Ефективно для:**
+
+- Файли &gt;300 рядків з очевидною мікс-логікою: декомпозиція по патерну дешевша за повний rewrite.
+- Команди, що мігрують monorepo з 'one big module' на доменно-розрізаний код.
+- AI-агенти, що мають детермінований перелік 'що в що рухаємо' замість 'reorganize this file'.
+- Code-review гейт: рев'юер ловить 'wrong pattern picked' до того, як refactor мерджиться.
 
 ## Applies If (ALL must hold)
 
-- Controller/view exceeds 100 lines with mixed HTTP handling and business logic → Extract Service.
-- React/Vue component exceeds 150 lines with multiple UI concerns → Extract Component.
-- Flat directory exceeds 20 files or team ownership is unclear → Extract Module.
-- Settings file exceeds 150 lines or mixes environment-specific config → Extract Configuration.
-- TypeScript files mix types with logic or types are reused across multiple files → Extract Types.
-- New feature scaffolding where the agent must lay out files before writing code.
+- A source file exceeds 300 lines OR ~10k tokens.
+- The file mixes responsibilities (≥2 of: I/O, pure logic, UI, types, constants).
+- The repo has a working test suite that can run between moves.
 
 ## Skip If (ANY kills it)
 
-- Features totalling ≤200 lines — applying a pattern creates more files than logic.
-- Framework-mandated single files (e.g., Django `urls.py`) — forced coupling is not a decomposition target.
-- Generated code or ORM migrations — structural changes break the generator contract.
-- Performance-critical hot loops where indirection has a measured cost.
+- File is generated / vendored — splitting fights upstream regenerate.
+- File is a deliberate facade (re-exports) — splitting breaks the public API.
+- Test suite is broken — moves without green tests turn one refactor into a debugging marathon.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source file path | absolute | repo working tree |
+| LOC + token count | integer | wc -l + tokenizer |
+| Test command | shell | repo README / CI |
+| Public API surface | list of exports | static analysis or grep |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Standalone — no upstream artefacts required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: pattern-match-first, move-with-tests, preserve-history, atomic-moves, public-api-stable | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for move-list artefact | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: wrong-pattern, bulk-move, broken-imports, lost-history | 700 |
+| `content/04-procedure.xml` | essential | 5-step pattern-pick → move-list → execute → verify procedure | 800 |
+| `content/06-decision-tree.xml` | essential | Routing on file shape → one of five patterns | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `detect_pattern` | haiku | Pattern match on imports + symbol kinds; deterministic. |
+| `draft_move_list` | sonnet | Per-symbol judgement of destination; bounded by detected pattern. |
+| `verify_moves` | haiku | Run test command; deterministic pass/fail. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pattern-guard.sh` | Shell guard that checks file size + symbol mix before allowing a decomposition refactor |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-code-decomposition-patterns.py` | Validate a move-list artefact against the schema | After draft_move_list, before execute |
 
 ## Related
 
-- parent skill: `free/dev/code-quality/`
+- - [[code-decomposition-principles]] — the size + SRP principles this methodology encodes as patterns.
+- - [[refactoring-patterns]] — the catalog of low-level moves each pattern compiles to.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree asks first 'does this file have I/O?' → if yes, Extract Service. Otherwise it asks 'is it UI?' → Extract Component. 'Pure logic?' → Extract Module. 'Constants table?' → Extract Configuration. 'Types only?' → Extract Types. Each leaf references a rule from `01-core-rules.xml` and points at the procedure for that pattern.

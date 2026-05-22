@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nodejs-express Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nodejs-express. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Node.js Express Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 hard rules.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>MUST register middleware in order: helmet(), cors(), compression(), express.json(), pinoHttp(), rateLimit(), routes, notFoundHandler, errorHandler. helmet MUST be first (adds HTTP headers). errorHandler MUST be last (async errors bubble up). Health check /health MUST be before rate-limiter (load balancers poll it).</statement>
-      <rationale source="v1-source">Helmet early prevents header injection. CORS before routes ensures preflight requests succeed. Compression after parsing (json) means the body is already in memory. Rate-limit late means legitimate requests (authenticated users) get counted before rejection. errorHandler last ensures all async errors (from routes) are caught.</rationale>
+    <rule id="helmet-first" testable="true" depth="essential">
+      <statement>helmet() is the FIRST app.use() after the body parser; before any route.</statement>
+      <rationale source="helmet docs; OWASP secure headers">Security headers must apply to every response; ordering misses break the guarantee.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>MUST organize routes as: routes/index.ts (mount all sub-routers), routes/&lt;resource&gt;.routes.ts (define routes for a resource). Controllers in controllers/&lt;resource&gt;.controller.ts (40-60 lines, handles req/res). Services in services/&lt;resource&gt;.service.ts (business logic, 50-80 lines). Schemas in schemas/&lt;resource&gt;.ts (Zod definitions). Async handlers wrapped in asyncHandler or using Express 5 auto-forwarding.</statement>
-      <rationale source="v1-source">Layered structure separates concerns. Controllers are thin (req → validate → call service → respond). Services are testable, reusable. Schemas are single source of truth for input validation. One route per HTTP verb on a resource.</rationale>
+    <rule id="rate-limit-floor" testable="true" depth="essential">
+      <statement>Every public route is behind express-rate-limit (or upstream WAF) at the door; bursts not allowed to hit the app.</statement>
+      <rationale source="express-rate-limit docs">Without rate-limit, a single misbehaved client can OOM the process.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>MUST validate req.body AND req.params AND req.query. Define Zod schemas in schemas/&lt;resource&gt;.ts. Use validateAll({ body, params, query }) middleware to parse all three. On validation error, throw ValidationError (custom subclass of AppError with field details). Schemas MUST export types for TypeScript.</statement>
-      <rationale source="v1-source">Zod parses and coerces (strings to numbers, enum checks). validateAll catches errors before controllers run. Field-level errors (e.g., "email invalid") are returned to client. Exported types keep frontend and backend schemas in sync.</rationale>
+    <rule id="central-error-handler" testable="true" depth="essential">
+      <statement>One error middleware (signature `(err, req, res, next)`) handles all errors; route handlers `next(err)` instead of `res.status(500)...`.</statement>
+      <rationale source="Express docs — Error handling">Centralised mapping ensures consistent error shape and avoids leaking stack traces.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>MUST define AppError base class with (statusCode, message, details?). Controllers throw AppError on validation/auth/not-found. errorHandler middleware catches all errors, logs to Pino, returns JSON with status/message. Do NOT call process.exit() in errorHandler — let infra restart. SIGTERM handler closes HTTP server and drains DB/queue connections.</statement>
-      <rationale source="v1-source">One error shape (status, message, details) across all endpoints. Logging is centralized (Pino middleware logs req/res). Errors are observable (status codes, logs). Graceful shutdown prevents connection leaks.</rationale>
+    <rule id="graceful-shutdown" testable="true" depth="essential">
+      <statement>Server listens to SIGINT + SIGTERM; on signal: stop accepting, drain in-flight (timeout 30s), close DB pool, exit.</statement>
+      <rationale source="Node docs — process.signal; k8s lifecycle">Without graceful shutdown, container kill drops in-flight requests; users see 502.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>MUST extract token from Authorization header (Bearer &lt;token&gt;). Verify token with jwt.verify and JWT_SECRET (from config, never in code). Augment req with user payload. Throw UnauthorizedError on missing/invalid token. Declare req.user type globally in types/express.d.ts (do NOT repeat in multiple files).</statement>
-      <rationale source="v1-source">Bearer tokens are standard. jwt.verify is cryptographic and fails fast on tampering. Global type declaration prevents drift (Express Request type pollution). 401/403 HTTP codes signal auth failures to clients and proxies.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>MUST handle SIGTERM and SIGINT signals. Close HTTP server via server.close((). Drain external connections (DB pool, Redis, queues) before resolving. Force exit after 30s timeout. Log shutdown events. Test graceful shutdown with `docker stop` (sends SIGTERM) or `kill -TERM &lt;pid&gt;`.</statement>
-      <rationale source="v1-source">Containers (Docker, Kubernetes) send SIGTERM to allow graceful shutdown. Draining connections prevents data loss and connection leaks. Timeout prevents infinite hangs. Logging tracks shutdown history.</rationale>
+    <rule id="pino-not-morgan" testable="true" depth="essential">
+      <statement>Logging uses pino + pino-http; morgan / winston are forbidden in new services.</statement>
+      <rationale source="pino docs; pino vs winston benchmark">pino is JSON-structured, fastest, integrates with k8s log collectors out-of-the-box.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

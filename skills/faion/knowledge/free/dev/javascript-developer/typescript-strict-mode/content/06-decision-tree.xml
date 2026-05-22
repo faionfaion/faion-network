@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="typescript-strict-mode Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-error fix-strategy routing.</summary>
+
+  <decision-tree>
+    <root-question id="q-error-kind">What kind of strict-mode error is this?</root-question>
+
+    <branch when="q-error-kind == 'indexed-access-undefined'">
+      <question id="q-context">Is the read part of an iteration loop or a single one-shot access?</question>
+
+      <branch when="q-context == 'iteration'">
+        <conclusion ref="r2-no-unchecked-indexed-access">Destructure with default: `const [first = fallback] = items;`. Or use a check `if (i &lt; items.length) …`.</conclusion>
+      </branch>
+
+      <branch when="q-context == 'single-access'">
+        <conclusion ref="r2-no-unchecked-indexed-access">Optional chaining + nullish coalescing: `items[0]?.name ?? '—'`.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-error-kind == 'nullable-property'">
+      <question id="q-caller-guarantee">Does the caller guarantee the value is present at this point?</question>
+
+      <branch when="q-caller-guarantee == true">
+        <conclusion ref="r4-no-bang-chain">Use an assertion function `assertDefined(x, 'must be loaded by middleware')` — NEVER `!`.</conclusion>
+      </branch>
+
+      <branch when="q-caller-guarantee == false">
+        <conclusion ref="r4-no-bang-chain">Optional chaining + default. Or refactor to a discriminated-union Result.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-error-kind == 'unknown-narrow'">
+      <conclusion ref="r5-no-as-cast-on-unknown">Add a type predicate `function isFoo(v: unknown): v is Foo { … }`. Or Zod-parse if the value crosses a trust boundary.</conclusion>
+    </branch>
+  </decision-tree>
+
+  <example trace="users-array-empty"><![CDATA[
+error: 'users[0]' is possibly 'undefined'.
+q-error-kind -> 'indexed-access-undefined'
+q-context -> 'single-access'
+=> conclusion r2: `users[0]?.email ?? 'unknown@—'`.
+]]></example>
+</text>
