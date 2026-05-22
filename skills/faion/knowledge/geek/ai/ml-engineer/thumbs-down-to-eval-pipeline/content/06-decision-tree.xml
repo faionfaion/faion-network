@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Thumbs-Down Pipeline — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes a feedback row through PII → cluster → judge-vote → admit-or-cap gates.</summary>
+
+  <decision-tree>
+    <root-question id="q-pii">Has the PII scrubber marked the candidate `pii_clean: true`?</root-question>
+    <branch when="pii_clean == false">
+      <conclusion ref="r2-pii-scrub-gate" verdict="QUARANTINE — never enter eval set; human review required"/>
+    </branch>
+    <branch when="pii_clean == true">
+      <question id="q-cluster">Is the candidate part of a cluster ≥3 within last 4h?</question>
+      <branch when="cluster_size &gt;= 3">
+        <conclusion ref="r5-stop-the-bleed" verdict="PAGE on-call; pause ship gate for affected intent; admit cluster after triage"/>
+      </branch>
+      <branch when="cluster_size &lt; 3">
+        <question id="q-vote">Did ≥2 of 3 judges vote ADMIT?</question>
+        <branch when="judge_admit_count &lt; 2">
+          <conclusion ref="r3-three-judge-vote" verdict="REJECT this iteration; route to next week's manual triage"/>
+        </branch>
+        <branch when="judge_admit_count &gt;= 2">
+          <question id="q-cap">Weekly cap remaining (admitted_this_week &lt; 50)?</question>
+          <branch when="weekly_cap_remaining == 0">
+            <conclusion ref="r4-weekly-cap" verdict="DEFER to next week; do NOT raise the cap"/>
+          </branch>
+          <branch when="weekly_cap_remaining &gt; 0">
+            <conclusion ref="r1-four-stage-pipeline" verdict="ADMIT to eval suite via PR; bump eval-suite version"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="3-cluster + clean PII + unanimous judges + cap available → admit + page">
+    <code lang="text"><![CDATA[
+pii_clean=true → cluster_size=3 → r5-stop-the-bleed verdict; subsequent admit after triage applies r1
+]]></code>
+  </example>
+</text>
