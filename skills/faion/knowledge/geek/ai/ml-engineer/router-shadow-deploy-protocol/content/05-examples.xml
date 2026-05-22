@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Router Shadow Deploy — Worked Example" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Worked example: cheap-router candidate routed unexpectedly to expensive leg; cost guardrail blocked promotion.</summary>
+
+  <example title="Cost-spike caught by shadow">
+    <code lang="yaml"><![CDATA[
+shadow-report.yaml:
+  candidate_id: router-v2-rc1
+  baseline_router_id: router-v1
+  window_start: 2026-04-15
+  window_end:   2026-04-22  # 7 days
+  judge:
+    model: claude-sonnet-4-5
+    prompt_version: judge-v3
+    sme_agreement: 0.89  # passes calibration gate
+
+  metrics:
+    scoring_delta_median: -0.012   # candidate 0.012 lower — within ±0.02 contract band
+    scoring_delta_95ci: [-0.018, -0.006]
+    cost_delta_mean: 1.34          # candidate costs 1.34x baseline — FAIL (gate <= 1.10)
+    schema_parity_min_daily: 1.00  # 100% — PASS
+
+  gate_evaluation:
+    scoring_gate: PASS
+    cost_gate: FAIL    # 1.34 > 1.10
+    schema_gate: PASS
+  decision: NO-GO
+
+  root_cause_analysis:
+    finding: "candidate router classified 31% of routine queries as 'complex' and sent them to gpt-4-turbo instead of gpt-4o-mini"
+    fix: "tighten router classifier threshold from 0.6 → 0.75; re-run shadow"
+]]></code>
+    <note>Demonstrates r3-cost-guardrail catching a router-class failure that classic A/B (which measures only quality + latency) would have missed. Cost regression silent in product metrics but blocking on the cost gate.</note>
+  </example>
+
+  <example title="Clean promotion after fix">
+    <code lang="yaml"><![CDATA[
+shadow-report.yaml v2:
+  candidate_id: router-v2-rc2
+  window: 2026-04-25 → 2026-05-02 (7 days)
+  metrics:
+    scoring_delta_median: -0.008
+    cost_delta_mean: 0.97          # cheaper than baseline
+    schema_parity_min_daily: 1.00
+  gate_evaluation: {scoring: PASS, cost: PASS, schema: PASS}
+  decision: GO
+  rollout_plan: 1% → 10% → 50% → 100% over 5 days
+]]></code>
+    <note>After fixing the classifier threshold, all three gates pass. Rollout proceeds with the gradual percentage plan from step 5.</note>
+  </example>
+
+  <see-also>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

@@ -3,80 +3,96 @@ slug: cost-per-dau-defense-template
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cost Per Dau Defense Template: codified ai practice that turns the recurring 'role-ml-engineer/Production inference cost optimization sweep' decision into a repeatable, auditable artefact.
-content_id: "f1101cbaba0f9374"
-tags: [cost-per-dau-defense-template, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a 1-page cost-per-DAU defense report (inference $/DAU, drivers, peer benchmark, 90-day defense plan) for the finance review when an AI feature's unit economics get challenged.
+content_id: "f16bc4dd803fc4ee"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [unit-economics, cost-per-dau, ai-finance, fin-review, ai-core, geek]
 ---
-# Cost Per Dau Defense Template
+
+# Cost-Per-DAU Defense Template
 
 ## Summary
 
-**One-sentence:** Cost Per Dau Defense Template: codified ai practice that turns the recurring 'role-ml-engineer/Production inference cost optimization sweep' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a 1-page cost-per-DAU defense report citing measured inference $/DAU, top three drivers, peer benchmark, and a named 90-day cost-reduction plan for an AI feature whose unit economics are under finance review.
 
-**One-paragraph:** Cost Per Dau Defense Template addresses the gap surfaced by 'role-ml-engineer/Production inference cost optimization sweep'. How an ML engineer presents and defends an AI unit-economics number to finance / leadership. Bridges ml-engineering and finops. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Product leads whose AI feature is being challenged in monthly business review ("this is bleeding money"), where they need a defensible single-page artefact showing the actual cost-per-DAU, what drives it, where peers land, and a credible reduction path — not vibes.
+
+**One-paragraph:** Pins the recurring "defend the AI feature against the CFO" conversation into a typed artefact. The template forces inputs to come from measured telemetry (cost ledger + DAU counter), not extrapolation. Drivers are ranked by contribution to total cost. Peer benchmark cites at least one external reference (vendor pricing page, public earnings call disclosure, named blog post). The 90-day plan names a single owner, a target cost-per-DAU, and the three concrete interventions (model swap, caching, prompt cut) that will get there.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-ml-engineer/Production inference cost optimization sweep' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Feature has been live ≥30 days with measured DAU and a unit-economics ledger.
+- Finance has opened a review OR the cost/revenue ratio crosses a tracked threshold.
+- Operator has cost ledger + DAU counts + at least one peer reference available.
+- A single accountable feature owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Feature has &lt;30 days of data — defend with a roadmap not a report.
+- Cost is dominated by non-AI components (DB, network) — wrong methodology.
+- Feature is already slated for shutdown — write a sunset memo, not a defense.
 
 ## Prerequisites
 
-- recent context for the 'role-ml-engineer/Production inference cost optimization sweep' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|---|---|---|
+| 30-day inference cost ledger (per call) | parquet / csv | billing / gateway |
+| DAU counter for the feature | csv | product analytics |
+| Peer reference (vendor price, public disclosure, blog) | URL | manual research |
+| Current feature owner roster | text | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `geek/ai/cost-quality-tradeoff-framework` | upstream framework that defines the SLO targets |
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: r1-measured-not-modeled, r2-three-drivers, r3-named-owner-and-target, r4-peer-citation, r5-90-day-bound | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema for the report + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: extrapolated-cost / driver-handwave / vendor-pricing-stale / unowned-target / forever-plan | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: pull ledger to rank drivers to benchmark to plan to format | ~1000 |
+| `content/06-decision-tree.xml` | essential | Decision: defend (under target) / cut-scope (over target) / sunset (over 3x target) | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| `pull_ledger_aggregate` | haiku | Bounded SQL + aggregate |
+| `rank_drivers_with_explanations` | sonnet | Bounded synthesis |
+| `format_executive_report` | sonnet | Tight format, audience-aware tone |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/cost-per-dau-defense-template.json` | JSON schema for the Cost Per Dau Defense Template output contract |
-| `templates/cost-per-dau-defense-template.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/cost-per-dau-defense-template.json` | JSON schema for the defense report contract |
+| `templates/cost-per-dau-defense-template.md` | 1-page Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-cost-per-dau-defense-template.py` | Enforce Cost Per Dau Defense Template output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-cost-per-dau-defense-template.py` | Enforce the report contract | Before publishing to finance / business review |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- upstream playbook: `role-ml-engineer/Production inference cost optimization sweep`
-- methodology family: `geek/ai/` (gap-p2 batch, F-059-063)
+- [[cost-quality-tradeoff-framework]] — upstream framework.
+- [[cost-quality-pareto-template]] — adjacent (visual Pareto).
+- [[cost-slo-per-task-template]] — adjacent (per-task SLO).
+- Upstream playbook: `p4-ai-finance/Defend feature unit economics`.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Three-question tree: preconditions present? cost-per-DAU under target? under 3x target? Routes to defend / cut-scope / sunset. Branches reference rules in `content/01-core-rules.xml`.
