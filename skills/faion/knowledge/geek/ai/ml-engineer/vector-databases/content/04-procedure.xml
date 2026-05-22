@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Vector Databases — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five-step procedure: profile corpus → pick DB → ingest plan → tenant policy → ship + backup.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="profile-corpus">
+      <input>data inventory</input>
+      <action>Estimate vector count today + 12mo growth. List metadata fields and required filters. Note embedding model + dim + metric.</action>
+      <output>`corpus-profile.yaml`</output>
+      <decision-gate>If &lt;1k vectors — STOP; use numpy in-memory; no DB needed.</decision-gate>
+    </step>
+
+    <step n="2" name="pick-db">
+      <input>corpus profile + ops constraints</input>
+      <action>Apply decision tree. Pin kind + connection + collection schema in vector-db.yaml.</action>
+      <output>`vector-db.yaml` v1</output>
+      <decision-gate>If kind==chroma but profile says production — choose another (fm-01).</decision-gate>
+    </step>
+
+    <step n="3" name="ingest-plan">
+      <input>source corpus + embedding model</input>
+      <action>Batch-embed with content-hash dedup. Pin model version. Time the ingest; budget for re-ingest.</action>
+      <output>ingest plan + timing report</output>
+      <decision-gate>If re-ingest time exceeds operational tolerance — choose a DB with faster bulk-load (Milvus, Qdrant).</decision-gate>
+    </step>
+
+    <step n="4" name="tenant-policy">
+      <input>multi-tenant requirements</input>
+      <action>Pick strategy: payload filter (Qdrant), namespace (Pinecone), separate collection per tenant. Wire tenant_id as required arg in retrieve().</action>
+      <output>tenant filter live; canary test added</output>
+      <decision-gate>If tenant_id not required at signature — block ship (r3-tenant-filter-required).</decision-gate>
+    </step>
+
+    <step n="5" name="ship-and-backup">
+      <input>connection live + monitoring + backup job</input>
+      <action>Roll out 10% → 50% → 100%. Schedule daily snapshot. Verify restore in staging.</action>
+      <output>Production DB live; backup verified</output>
+      <decision-gate>If backup not verified — block declare-done; data risk unacceptable.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
