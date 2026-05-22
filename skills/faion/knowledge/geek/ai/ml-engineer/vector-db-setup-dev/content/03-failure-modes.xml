@@ -1,17 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="vector-db-setup-dev Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for vector-db-setup-dev as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Vector DB Dev Setup — Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns in dev setup.</summary>
 
   <section title="Failure modes">
+
     <failure-mode id="fm-01" severity="medium">
-      <description>Calling recreate_collection unconditionally on every agent run.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Drops existing data silently. Always check collection existence and skip creation if already present.</repair>
+      <description>:latest tag — silent version drift; week-old setup differs from teammate's.</description>
+      <detector>image tag ends in ":latest"</detector>
+      <repair>Pin to major.minor; document in dev-setup.yaml.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using Chroma in-memory for anything beyond single-session prototyping.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Data is lost on process exit. Use PersistentClient or migrate to Qdrant/pgvector once the pipeline is past initial exploration.</repair>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Ephemeral volume — `docker rm` wipes all data; team re-ingests every restart.</description>
+      <detector>no volume mount in docker-compose</detector>
+      <repair>Mount `./qdrant_storage:/qdrant/storage` or DB-specific path.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-03" severity="medium">
+      <description>Client version mismatch — `search returns []` even though data is there.</description>
+      <detector>pip freeze shows client version different major.minor from image_tag</detector>
+      <repair>Pin client to server version. Verify wire-format compatibility.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>No smoke test — dev debugs pipeline for hours; turns out collection name typo.</description>
+      <detector>no verify-dev.py OR smoke_passed unrecorded</detector>
+      <repair>Run `verify-dev.py` on every new dev environment; commit a passing fixture.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Data dir committed — `git status` shows 2GB of qdrant_storage staged.</description>
+      <detector>git check-ignore reports data dir not ignored</detector>
+      <repair>Add data dir to .gitignore. Remove from history with git filter-repo if already committed.</repair>
+    </failure-mode>
+
   </section>
 </text>
