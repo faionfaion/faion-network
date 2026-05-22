@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Fine-tuning (LoRA) — Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-root">What is VRAM budget relative to base-model size?</root-question>
+    <branch when="vram_gb &lt; 1.5 * model_size_gb">
+      <conclusion ref="r3-qlora-when-vram-tight">Use QLoRA (4-bit base + LoRA adapter). r=16, alpha=32, target_modules=ALL linear.</conclusion>
+    </branch>
+    <branch when="vram_gb &gt;= 1.5 * model_size_gb">
+      <question id="q-sub">Is the task signal subtle (style/tone/brand voice) needing magnitude+direction decomposition?</question>
+        <branch when="subtle_signal == true">
+          <conclusion ref="r1-target-all-linear">Use DoRA. ~10% slower but better on subtle tasks.</conclusion>
+        </branch>
+        <branch when="subtle_signal == false AND target_r &gt;= 32">
+          <conclusion ref="r2-r-alpha-defaults">Use rsLoRA. Rank-stabilised scaling for high-rank adapters.</conclusion>
+        </branch>
+        <branch when="subtle_signal == false AND target_r &lt;= 16">
+          <conclusion ref="r1-target-all-linear">Use vanilla LoRA. r=16, alpha=32, lr=2e-4.</conclusion>
+        </branch>
+    </branch>
+    <example trace="worked-example">
+      <p>Mistral-7B fp16 14GB, single A6000 48GB → 48&gt;=1.5*14 → vanilla LoRA branch; r=16 → conclusion r1-target-all-linear.</p>
+    </example>
+  </decision-tree>
+</text>

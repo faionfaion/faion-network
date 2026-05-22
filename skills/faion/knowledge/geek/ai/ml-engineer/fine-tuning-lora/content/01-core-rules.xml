@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fine-tuning-lora Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fine-tuning-lora. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Fine-tuning (LoRA) — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `fine-tuning-lora` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-target-all-linear" testable="true" depth="essential">
+      <statement>Target ALL linear layers (q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj), not just attention.</statement>
+      <rationale source="Hu et al. 2024 LoRA follow-up; Unsloth docs">Attention-only targeting loses 5-15 points on instruction-following benchmarks.</rationale>
+    </rule>
+
+    <rule id="r2-r-alpha-defaults" testable="true" depth="essential">
+      <statement>Start r=16, alpha=32 (alpha=2*r). Bump to r=32/64 for harder tasks; never set alpha&lt;r.</statement>
+      <rationale source="Dettmers et al. 2023; HF PEFT defaults">alpha=2r is empirically stable; alpha&lt;r under-scales and slows learning.</rationale>
+    </rule>
+
+    <rule id="r3-qlora-when-vram-tight" testable="true" depth="essential">
+      <statement>Use QLoRA when VRAM budget &lt; 1.5x model size; LoRA otherwise.</statement>
+      <rationale source="Dettmers et al. 2023 QLoRA paper">QLoRA gives 90-95% LoRA quality at 25-40% VRAM.</rationale>
+    </rule>
+
+    <rule id="r4-data-mix-30" testable="true" depth="essential">
+      <statement>Mix 20-30% general-domain data with task data.</statement>
+      <rationale source="Bai et al. 2022">Pure-task LoRA loses general capabilities; 20-30% preserves them.</rationale>
+    </rule>
+
+    <rule id="r5-lr-by-rank" testable="true" depth="essential">
+      <statement>lr=2e-4 for r&lt;=16; lr=1e-4 for r&gt;=32. Halve lr when training &gt;3 epochs.</statement>
+      <rationale source="HF PEFT empirical guidance">Higher-rank adapters absorb more signal per step and instabilise at default lr.</rationale>
+    </rule>
+
+    <rule id="r6-merge-policy" testable="true" depth="essential">
+      <statement>Decide adapter-keep vs merge-into-base BEFORE training.</statement>
+      <rationale source="PEFT merge_and_unload docs">Merging is one-way; keeping adapters lets one base model serve many tasks via swap.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

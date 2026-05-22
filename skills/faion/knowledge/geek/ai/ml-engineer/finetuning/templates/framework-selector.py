@@ -1,3 +1,11 @@
+"""
+purpose: CLI choosing framework given (model, hardware, data shape).
+consumes: see AGENTS.md ## Prerequisites
+produces: decision-record
+depends-on: content/02-output-contract.xml schema for finetuning
+token-budget-impact: ≤500 tokens to fill
+"""
+
 """Fine-tuning framework selector based on constraints."""
 from dataclasses import dataclass
 from typing import Optional

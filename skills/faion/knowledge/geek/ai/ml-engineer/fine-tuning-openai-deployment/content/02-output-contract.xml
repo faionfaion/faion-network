@@ -1,22 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="fine-tuning-openai-deployment Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="OpenAI Fine-Tuned Model Production Deployment — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>The artifact produced by applying `fine-tuning-openai-deployment`. Schema below pins the shape; valid + invalid examples bracket the contract.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <schema lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://fine-tuning-openai-deployment/output.schema.json",
+  "type": "object",
+  "required": ["model_id", "eval_gate_evidence", "ramp_schedule", "rollback_signal", "cost_watch_alert", "model_id_registry_path"],
+  "properties": {
+    "model_id": {"type": "string", "pattern": "^ft:"},
+    "eval_gate_evidence": {"type": "object", "required": ["baseline_score", "ft_score", "metric"]},
+    "ramp_schedule": {"type": "array", "minItems": 3, "items": {"type": "object", "required": ["pct", "hold_h"]}},
+    "rollback_signal": {"type": "object", "required": ["latency_threshold", "error_rate_threshold", "quality_drop_threshold"]},
+    "cost_watch_alert": {"type": "object", "required": ["ratio_threshold", "window_h"]},
+    "model_id_registry_path": {"type": "string"}
+  }
+}
+]]></schema>
+  </section>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "model_id": "ft:gpt-4o-mini-2024-07-18:org::abc123",
+  "eval_gate_evidence": {
+    "baseline_score": 0.68,
+    "ft_score": 0.88,
+    "metric": "accuracy"
+  },
+  "ramp_schedule": [
+    {
+      "pct": 10,
+      "hold_h": 24
+    },
+    {
+      "pct": 50,
+      "hold_h": 48
+    },
+    {
+      "pct": 100,
+      "hold_h": 0
+    }
+  ],
+  "rollback_signal": {
+    "latency_threshold": "p95_2x",
+    "error_rate_threshold": 0.01,
+    "quality_drop_threshold": 0.05
+  },
+  "cost_watch_alert": {
+    "ratio_threshold": 2.0,
+    "window_h": 1
+  },
+  "model_id_registry_path": "infra/model-id-registry.yaml"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "model_id": "gpt-4o-mini",
+  "eval_gate_evidence": {},
+  "ramp_schedule": [
+    {
+      "pct": 100,
+      "hold_h": 0
+    }
+  ],
+  "rollback_signal": {},
+  "cost_watch_alert": {},
+  "model_id_registry_path": ""
+}
+]]></code>
+      <note>Invalid: model_id missing ft: prefix; no eval evidence; single-step ramp; no rollback signal; no cost watch.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present.</item>
+      <item>No TBD / placeholder strings in any required field.</item>
+      <item>scripts/validate-fine-tuning-openai-deployment.py --self-test exits 0.</item>
     </list>
   </section>
 </text>

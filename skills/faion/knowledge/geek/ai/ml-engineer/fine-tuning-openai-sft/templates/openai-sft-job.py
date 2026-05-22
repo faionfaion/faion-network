@@ -1,0 +1,9 @@
+"""
+purpose: Job-launch + polling script.
+consumes: see AGENTS.md ## Prerequisites
+produces: config
+depends-on: content/02-output-contract.xml schema for fine-tuning-openai-sft
+token-budget-impact: ≤500 tokens to fill
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.

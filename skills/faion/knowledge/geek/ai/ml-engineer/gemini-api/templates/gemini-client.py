@@ -1,4 +1,12 @@
 """
+purpose: Production client: retry, streaming, function calling, structured output.
+consumes: see AGENTS.md ## Prerequisites
+produces: code
+depends-on: content/02-output-contract.xml schema for gemini-api
+token-budget-impact: ≤500 tokens to fill
+"""
+
+"""
 Production Gemini client: model setup, retry logic, streaming, function calling.
 Requires: pip install google-generativeai
 """

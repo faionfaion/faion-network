@@ -1,3 +1,11 @@
+"""
+purpose: peft LoraConfig + QLoraConfig factory.
+consumes: see AGENTS.md ## Prerequisites
+produces: config
+depends-on: content/02-output-contract.xml schema for fine-tuning-lora
+token-budget-impact: ≤500 tokens to fill
+"""
+
 """LoRA/QLoRA configuration for common model families."""
 from peft import LoraConfig, TaskType
 from transformers import BitsAndBytesConfig

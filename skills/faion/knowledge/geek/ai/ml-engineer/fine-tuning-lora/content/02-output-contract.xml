@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="fine-tuning-lora Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Fine-tuning (LoRA) — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>The artifact produced by applying `fine-tuning-lora`. Schema below pins the shape; valid + invalid examples bracket the contract.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <schema lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://fine-tuning-lora/output.schema.json",
+  "type": "object",
+  "required": ["base_model", "variant", "r", "alpha", "target_modules", "lr", "epochs", "data_mix", "eval_gate_passed"],
+  "properties": {
+    "base_model": {"type": "string"},
+    "variant": {"enum": ["lora", "qlora", "dora", "rslora"]},
+    "r": {"type": "integer", "minimum": 4, "maximum": 256},
+    "alpha": {"type": "integer", "minimum": 4},
+    "target_modules": {"type": "array", "minItems": 4, "items": {"type": "string"}},
+    "lr": {"type": "number", "exclusiveMinimum": 0, "maximum": 0.01},
+    "epochs": {"type": "integer", "minimum": 1, "maximum": 10},
+    "data_mix": {"type": "object", "required": ["task_pct", "general_pct"]},
+    "eval_gate_passed": {"type": "boolean"}
+  }
+}
+]]></schema>
+  </section>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "base_model": "mistralai/Mistral-7B-Instruct-v0.3",
+  "variant": "qlora",
+  "r": 16,
+  "alpha": 32,
+  "target_modules": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "lr": 0.0002,
+  "epochs": 3,
+  "data_mix": {
+    "task_pct": 75.0,
+    "general_pct": 25.0
+  },
+  "eval_gate_passed": true
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "base_model": "",
+  "variant": "magic",
+  "r": 1,
+  "alpha": 1,
+  "target_modules": [
+    "q_proj"
+  ],
+  "lr": 1.0,
+  "epochs": 0,
+  "data_mix": {
+    "task_pct": 100.0,
+    "general_pct": 0.0
+  },
+  "eval_gate_passed": false
+}
+]]></code>
+      <note>Invalid: r&lt;4, alpha&lt;r, attention-only, lr way too high, epochs&lt;1, no general-data mix, eval-gate failed.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present.</item>
+      <item>No TBD / placeholder strings in any required field.</item>
+      <item>scripts/validate-fine-tuning-lora.py --self-test exits 0.</item>
     </list>
   </section>
 </text>

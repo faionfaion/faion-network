@@ -1,3 +1,11 @@
+"""
+purpose: Pre-flight validator for training JSONL (schema + token counts).
+consumes: see AGENTS.md ## Prerequisites
+produces: decision-record
+depends-on: content/02-output-contract.xml schema for finetuning
+token-budget-impact: ≤500 tokens to fill
+"""
+
 """JSONL fine-tuning dataset validator with deduplication check."""
 import hashlib
 import json

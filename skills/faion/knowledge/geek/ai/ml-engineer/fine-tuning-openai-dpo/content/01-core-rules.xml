@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fine-tuning-openai-dpo Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fine-tuning-openai-dpo. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="OpenAI Direct Preference Optimization (DPO) — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `fine-tuning-openai-dpo` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-sft-base-required" testable="true" depth="essential">
+      <statement>DPO MUST start from an SFT fine-tune base, never from the foundation model directly.</statement>
+      <rationale source="Rafailov et al. 2023 DPO paper; OpenAI DPO docs">DPO without SFT is unstable and rarely converges; OpenAI requires an SFT base for the dpo job type.</rationale>
+    </rule>
+
+    <rule id="r2-pair-floor" testable="true" depth="essential">
+      <statement>Require ≥500 preference pairs (≥2000 for production-grade); reject jobs below floor.</statement>
+      <rationale source="Rafailov et al. 2023; HuggingFace TRL DPO guide">Below 500 pairs DPO overfits to label noise.</rationale>
+    </rule>
+
+    <rule id="r3-inter-rater-agreement" testable="true" depth="essential">
+      <statement>Pair labelling must achieve ≥0.6 Cohen's kappa (or 80% agreement) on a 100-pair audit subset.</statement>
+      <rationale source="Cohen 1960; labelling-quality practice">Low-agreement pairs introduce noise indistinguishable from signal.</rationale>
+    </rule>
+
+    <rule id="r4-beta-default" testable="true" depth="essential">
+      <statement>Start beta=0.1; raise to 0.3 if model drifts too far from SFT; lower to 0.05 if preferences barely shift.</statement>
+      <rationale source="Rafailov et al. 2023 DPO">beta controls the KL penalty to SFT; default 0.1 is empirically robust across tasks.</rationale>
+    </rule>
+
+    <rule id="r5-preference-eval-gate" testable="true" depth="essential">
+      <statement>Block deployment until preference_rate &gt; 0.55 on held-out pairs (LLM-as-judge or human).</statement>
+      <rationale source="OpenAI DPO docs; LLM-as-judge literature">Without preference eval the model could be worse than SFT on the metric DPO targeted.</rationale>
+    </rule>
+
+    <rule id="r6-label-consistency" testable="true" depth="essential">
+      <statement>Same labelling guideline + same labeller pool across all pairs; never mix sources without per-source flag.</statement>
+      <rationale source="Labelling-ops best practice">Mixed-source labelling produces non-stationary preferences; DPO drifts toward majority source.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

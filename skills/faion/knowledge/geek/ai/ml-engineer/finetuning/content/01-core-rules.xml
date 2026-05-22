@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="finetuning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for finetuning. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LLM Fine-tuning (General Guide) — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `finetuning` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-prompt-rag-first" testable="true" depth="essential">
+      <statement>Score prompt+RAG baselines on the held-out eval set BEFORE committing to fine-tuning.</statement>
+      <rationale source="Anthropic prompt-engineering guidance; OpenAI fine-tuning docs">Fine-tuning is least reversible; prompt+RAG often closes 60-80% of the quality gap at 1% of the cost.</rationale>
+    </rule>
+
+    <rule id="r2-data-floor" testable="true" depth="essential">
+      <statement>Require ≥100 examples for LoRA/QLoRA, ≥1000 for full FT, ≥10000 for safety/alignment SFT.</statement>
+      <rationale source="Hu et al. 2021 LoRA; OpenAI best practices">Below floors the fine-tune overfits and degrades on held-out examples.</rationale>
+    </rule>
+
+    <rule id="r3-eval-gate" testable="true" depth="essential">
+      <statement>Block deployment until the fine-tune beats baseline on held-out eval on ≥2 task-relevant metrics.</statement>
+      <rationale source="OpenAI Evals; LangSmith eval">Without an eval gate, fine-tunes ship that look better on training data and worse on production traffic.</rationale>
+    </rule>
+
+    <rule id="r4-technique-by-budget" testable="true" depth="essential">
+      <statement>API SFT ≤10k examples; QLoRA for 7-13B + single A100; LoRA for 7-70B + multi-GPU; Full FT only when ≥100k + 8×A100.</statement>
+      <rationale source="Dettmers et al. 2023 QLoRA; HuggingFace PEFT">Each technique has a known break-even on data/hardware; wrong tier wastes money or signal.</rationale>
+    </rule>
+
+    <rule id="r5-data-mixing" testable="true" depth="essential">
+      <statement>Mix 20-30% general-domain data with task data to prevent catastrophic forgetting.</statement>
+      <rationale source="Bai et al. 2022; Anthropic constitutional AI">Pure-task fine-tunes lose general capabilities and degrade off-distribution.</rationale>
+    </rule>
+
+    <rule id="r6-document-decision" testable="true" depth="essential">
+      <statement>Every fine-tune ships with a decision record listing technique, data, framework, baseline + eval-gate scores, rollback owner.</statement>
+      <rationale source="ADR practice; Diátaxis">Without an ADR the org cannot reproduce the choice or roll back.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,46 +1,25 @@
-// tailwind.config.ts — canonical config with semantic tokens
-import type { Config } from "tailwindcss"
+/*
+ * purpose: Tokens (colors, spacing, typography) declared via theme.extend.
+ * consumes: 01-core-rules.xml
+ * produces: config
+ * depends-on: content/01-core-rules.xml
+ * token-budget-impact: small
+ */
 
-export default {
-  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: ["./src/**/*.{ts,tsx}", "./.storybook/**/*.{ts,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
-      // Semantic colors via CSS variables — supports dark mode without dark: on every class
       colors: {
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        border: "hsl(var(--border))",
+        primary: "var(--color-primary)",
+        destructive: "var(--color-destructive)",
       },
-      // Semantic spacing tokens — avoids arbitrary values for common layout measures
-      spacing: {
-        section: "6rem",
-        container: "80rem",
-      },
-      borderRadius: {
-        card: "0.75rem",
-        button: "0.5rem",
-      },
-      fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-      },
+      spacing: { "1": "4px", "2": "8px", "3": "12px", "4": "16px" },
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("@tailwindcss/typography"),
-    require("@tailwindcss/container-queries"),
-  ],
-} satisfies Config
+};
+
+export default config;

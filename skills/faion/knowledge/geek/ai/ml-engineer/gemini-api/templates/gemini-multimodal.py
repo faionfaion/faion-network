@@ -1,4 +1,12 @@
 """
+purpose: Image / audio / video input variants.
+consumes: see AGENTS.md ## Prerequisites
+produces: code
+depends-on: content/02-output-contract.xml schema for gemini-api
+token-budget-impact: ≤500 tokens to fill
+"""
+
+"""
 Gemini multimodal helpers: image analyzer, video analyzer, document processor.
 Requires: pip install google-generativeai pillow
 """

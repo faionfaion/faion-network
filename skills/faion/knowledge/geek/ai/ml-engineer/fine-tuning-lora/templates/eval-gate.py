@@ -1,3 +1,11 @@
+"""
+purpose: Held-out eval-gate runner, exits non-zero on regression.
+consumes: see AGENTS.md ## Prerequisites
+produces: config
+depends-on: content/02-output-contract.xml schema for fine-tuning-lora
+token-budget-impact: ≤500 tokens to fill
+"""
+
 """Eval gate: block deployment of LoRA-fine-tuned models that fail quality thresholds."""
 from dataclasses import dataclass
 from typing import Callable

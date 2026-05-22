@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fine-tuning-openai-deployment Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fine-tuning-openai-deployment. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="OpenAI Fine-Tuned Model Production Deployment — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `fine-tuning-openai-deployment` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-eval-gate-required" testable="true" depth="essential">
+      <statement>Never deploy any fine-tuned model that has not passed the eval-gate on a held-out set.</statement>
+      <rationale source="OpenAI deployment guidance; LangSmith eval">Deploying un-gated fine-tunes is the #1 cause of silent production regressions.</rationale>
+    </rule>
+
+    <rule id="r2-gradual-rollout" testable="true" depth="essential">
+      <statement>Ramp 10% → 50% → 100% with ≥24h at each step (≥1000 requests minimum).</statement>
+      <rationale source="Statistical-rollout practice; LinkedIn engineering blog">Statistical noise at &lt;1000 samples masks regressions; full deploy hides what 10% would reveal.</rationale>
+    </rule>
+
+    <rule id="r3-cost-watch" testable="true" depth="essential">
+      <statement>Monitor inference cost vs base model; alert if cost ratio &gt;2x for &gt;1h.</statement>
+      <rationale source="OpenAI pricing 2026; observability ops">Fine-tuned models cost 1.5-2x base; runaway cost suggests longer outputs or retry storms.</rationale>
+    </rule>
+
+    <rule id="r4-rollback-signal" testable="true" depth="essential">
+      <statement>Define rollback signal BEFORE ramp: latency p95 &gt;2x baseline OR error_rate &gt;1% OR quality_score_drop &gt;5pts.</statement>
+      <rationale source="SRE error-budget practice">Without pre-defined signals, rollback debates eat the regression window.</rationale>
+    </rule>
+
+    <rule id="r5-model-id-version-controlled" testable="true" depth="essential">
+      <statement>Store model_id in a version-controlled registry (yaml / json), never inline in code.</statement>
+      <rationale source="Twelve-Factor App config">Inline model IDs become un-rollbackable when code ships without the previous ID.</rationale>
+    </rule>
+
+    <rule id="r6-async-job-poll" testable="true" depth="essential">
+      <statement>Polling of long-running fine-tune jobs uses async + exponential backoff (5s, 10s, 30s, 60s capped).</statement>
+      <rationale source="OpenAI fine-tuning jobs API docs">Synchronous polling burns API quota and hits rate limits.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

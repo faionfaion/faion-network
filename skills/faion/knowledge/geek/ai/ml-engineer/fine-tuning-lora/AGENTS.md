@@ -3,74 +3,96 @@ slug: fine-tuning-lora
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Parameter-efficient fine-tuning of LLMs using LoRA (Low-Rank Adaptation) and its variants (QLoRA, DoRA, rsLoRA).
-content_id: "4d13fa1c6ea48100"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a LoRA/QLoRA/DoRA/rsLoRA training config (rank, alpha, target modules, data mix) for a chosen base model, fitted to single-GPU or multi-GPU budgets.
+content_id: "855dc2d2c1527fab"
+complexity: deep
+produces: config
+est_tokens: 3700
 tags: [lora, qlora, fine-tuning, adapters, llm]
 ---
 # Fine-tuning (LoRA)
 
 ## Summary
 
-**One-sentence:** Parameter-efficient fine-tuning of LLMs using LoRA (Low-Rank Adaptation) and its variants (QLoRA, DoRA, rsLoRA).
+**One-sentence:** Produces a LoRA/QLoRA/DoRA/rsLoRA training config (rank, alpha, target modules, data mix) for a chosen base model, fitted to single-GPU or multi-GPU budgets.
 
-**One-paragraph:** Parameter-efficient fine-tuning of LLMs using LoRA (Low-Rank Adaptation) and its variants (QLoRA, DoRA, rsLoRA). LoRA trains small adapter layers (rank r) instead of updating all weights, reducing memory 10-20x while retaining 90-95% of full fine-tuning quality. Target all linear layers (q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj), start with r=16, alpha=32, and mix 20-30% general data to prevent catastrophic forgetting.
+**One-paragraph:** Produces a LoRA / QLoRA / DoRA / rsLoRA training configuration. LoRA trains small adapter matrices (rank r) instead of full weights, cutting memory 10-20x while retaining 90-95% of full-FT quality. Default: target ALL linear layers (q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj), r=16, alpha=32, lr=2e-4, batch 4-8 with grad-accum, mix 20-30% general data. QLoRA adds 4-bit base-model loading for further memory savings.
+
+**Ефективно для:** ML інженер на single-GPU — за один прохід генерує робочий axolotl.yaml + peft config, не марнує GPU-години на debug.
 
 ## Applies If (ALL must hold)
 
-- Need consistent domain-specific terminology or jargon the base model handles inconsistently
-- Output format must be exact and reliable (JSON schema, medical codes, proprietary syntax)
-- Inference cost reduction: fine-tuned models need shorter system prompts
-- You have 500+ quality labeled examples in the target distribution
-- Style/brand voice consistency required at high volume
+- Fine-tuning decision record (parent `finetuning`) landed on LoRA, QLoRA, DoRA, or rsLoRA.
+- Base model 1B-70B params (Llama, Mistral, Qwen, Phi typically).
+- Task-specific corpus ≥100 labelled examples, JSONL-validated.
+- Single GPU ≥24GB (QLoRA on 7B) or multi-GPU budget.
+- Eval harness exists with task metric + general-capability holdout.
 
 ## Skip If (ANY kills it)
 
-- Fewer than 100 quality examples — few-shot prompting will outperform
-- Requirements are changing — fine-tuned model becomes a liability when task evolves
-- Need real-time knowledge — fine-tuning bakes in a snapshot; use RAG for live data
-- No GPU access and limited budget — OpenAI fine-tuning API is a better path
-- Model must handle wildly different tasks — specialized adapter degrades generality
+- Base model is API-only (OpenAI/Anthropic/Gemini) — use API SFT instead.
+- Data <100 examples — adapter overfits.
+- Full-FT decision recorded — use TRL / Torchtune full path.
+- VRAM <16GB even with 4-bit — escalate to cloud.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Training corpus | jsonl (sft_chat schema) | validate-jsonl.py |
+| Base-model name / HF path | string | model registry |
+| Eval harness path | py module | ml-ops repo |
+| Hardware envelope | yaml (gpu_count, vram_gb) | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ml-engineer/finetuning` | Parent decision record; this methodology consumes its 'LoRA' branch. |
+| `geek/ai/ml-engineer/fine-tuning-openai-eval` | Eval pattern reused for held-out scoring. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules each with rationale + source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check. | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: validate-data → choose-config → train → checkpoint → eval-gate → merge-or-keep. | ~800 |
+| `content/06-decision-tree.xml` | essential | Branch by VRAM / variant (LoRA / QLoRA / DoRA / rsLoRA). | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Fill axolotl.yaml + lora-config.py from decisions — pure templating. |
+| `tune-hyperparams` | sonnet | Choose r / alpha / lr / batch from r4 trade-off table — structured reasoning. |
+| `debug-divergence` | opus | Loss-spike / NaN / instability triage — Opus diagnoses cross-cutting symptoms. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/axolotl.yaml` | Axolotl config skeleton with LoRA + QLoRA toggles. |
+| `templates/lora-config.py` | peft LoraConfig + QLoraConfig factory. |
+| `templates/eval-gate.py` | Held-out eval-gate runner, exits non-zero on regression. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-fine-tuning-lora.py` | Validate that the LoRA config matches the schema (r, alpha, target_modules, lr). | Pre-merge of every LoRA config PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[finetuning]] — parent decision; this methodology implements its LoRA branch.
+- [[fine-tuning-openai-eval]] — eval pattern reused.
+- [[llm-decision-framework]] — context: when LoRA fits the broader LLM strategy.
+
+## Decision tree
+
+Decision tree at `content/06-decision-tree.xml` picks variant: LoRA (full-precision), QLoRA (4-bit base + LoRA adapter), DoRA (decomposed magnitude+direction), rsLoRA (rank-stabilised). Use BEFORE writing the yaml.

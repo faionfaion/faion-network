@@ -3,74 +3,95 @@ slug: fine-tuning-openai-sft
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Supervised Fine-Tuning (SFT) customizes OpenAI GPT-4.
-content_id: "c8b667f65ed324cb"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an OpenAI SFT job config + launched fine-tune job, customising GPT-4.1 / GPT-4o on input-output JSONL pairs with eval-gate-gated deployment.
+content_id: "e25456c1bee0a12d"
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [fine-tuning, openai, sft, gpt, training]
 ---
 # OpenAI Supervised Fine-Tuning (SFT)
 
 ## Summary
 
-**One-sentence:** Supervised Fine-Tuning (SFT) customizes OpenAI GPT-4.
+**One-sentence:** Produces an OpenAI SFT job config + launched fine-tune job, customising GPT-4.1 / GPT-4o on input-output JSONL pairs with eval-gate-gated deployment.
 
-**One-paragraph:** Supervised Fine-Tuning (SFT) customizes OpenAI GPT-4.1 and GPT-4o models by training on input-output pairs in JSONL format. It is the default and primary fine-tuning method: upload a JSONL training file, create a fine-tuning job, poll for completion, then use the returned model ID in production.
+**One-paragraph:** Produces an OpenAI Supervised Fine-Tuning (SFT) job config + launched job. SFT is the default and primary OpenAI fine-tuning method: upload a JSONL training file, create a fine-tuning job with chosen base model + hyperparameters, poll until completion, then use the returned model ID. This methodology pins the config (base model, epochs, batch, lr_multiplier, n_epochs auto vs fixed) and the launch playbook.
+
+**Ефективно для:** ML інженер для production tuning — fixed SFT job spec з base, hyperparams, polling pattern.
 
 ## Applies If (ALL must hold)
 
-- Clear correct answers exist and 50+ high-quality labeled examples are available.
-- Domain-specific tasks where the base model underperforms (medical coding, legal extraction, brand voice).
-- Reducing long system prompts that are repeated on every call — internalize them into the model.
-- Consistent structured output (JSON schema, specific formats) is required at high call volume.
-- Prompt engineering alone cannot achieve the required quality bar.
+- Decision record selected 'api-sft' (per `finetuning` methodology).
+- Training JSONL validated (per `fine-tuning-openai-data-prep`).
+- Validation JSONL split (≥10 examples) available for OpenAI eval traces.
+- Base model chosen: gpt-4o-mini-2024-07-18 (cheap, fast), gpt-4o-2024-08-06 (quality), gpt-4.1-2025-04-14 (latest, multimodal).
+- Budget envelope: $/job approved (typically $1-100 for ≤10k examples).
 
 ## Skip If (ANY kills it)
 
-- Fewer than 50 quality labeled examples — use few-shot prompting instead; SFT with noisy data degrades quality.
-- Real-time data dependency — fine-tuned models have a static knowledge snapshot; use RAG.
-- Need a private or on-premise model — OpenAI fine-tuned models stay on OpenAI infrastructure; weights are not exported.
-- Task is exploratory or requirements change within weeks — retrain cost makes iteration prohibitive.
-- Low call volume — inference cost premium over base model does not pay off.
+- Decision record selected LoRA / Full FT — use HF training path.
+- Training data not yet validated — run data-prep methodology first.
+- Base model not on OpenAI catalogue — use HF path.
+- Budget unapproved — escalate before launch.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| OpenAI training file ID | string (file_...) | fine-tuning-openai-data-prep |
+| OpenAI validation file ID | string | fine-tuning-openai-data-prep |
+| Base model name | string | model registry |
+| Job hyperparams | yaml | ml-ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ml-engineer/fine-tuning-openai-data-prep` | Supplies file IDs. |
+| `geek/ai/ml-engineer/fine-tuning-openai-eval` | Downstream eval-gate. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules each with rationale + source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check. | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
+| `content/04-procedure.xml` | essential | 4-step procedure: prepare-job → launch → poll → record-model-id. | ~600 |
+| `content/06-decision-tree.xml` | essential | Branch by base-model + epoch count + n_epochs auto vs fixed. | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-job-config` | haiku | Fill openai-sft-job.py from inputs. |
+| `choose-hyperparams` | sonnet | Pick epochs/lr_multiplier from data volume + task type. |
+| `debug-job-failure` | opus | Diagnose validation failures / cost spikes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/openai-sft-job.py` | Job-launch + polling script. |
+| `templates/sft-config.yaml` | Hyperparams: base, epochs, lr_multiplier, batch. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-fine-tuning-openai-sft.py` | Validate the SFT config (base, epochs, file IDs, hyperparams). | Pre-merge of every SFT job PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[fine-tuning-openai-data-prep]] — upstream.
+- [[fine-tuning-openai-eval]] — downstream eval-gate.
+- [[fine-tuning-openai-deployment]] — downstream rollout.
+
+## Decision tree
+
+Decision tree at `content/06-decision-tree.xml` picks base model + epoch policy + lr_multiplier from (data volume, task type, budget).

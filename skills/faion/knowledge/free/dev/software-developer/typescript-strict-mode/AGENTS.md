@@ -4,77 +4,90 @@ tier: free
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: TypeScript strict mode is a compiler flag group (`strict: true` + four recommended extras) that eliminates implicit `any`, enforces null safety, catches unchecked index access, and requires explicit return types.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: tsconfig strict + 4 extras (noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitReturns, noFallthroughCasesInSwitch); Zod at IO; unknown over any.
 content_id: "12394fa50d7d784d"
+complexity: medium
+produces: config
+est_tokens: 3700
 tags: [typescript, strict-mode, type-safety, tsconfig, zod]
 ---
 # TypeScript Strict Mode
 
 ## Summary
 
-**One-sentence:** TypeScript strict mode is a compiler flag group (`strict: true` + four recommended extras) that eliminates implicit `any`, enforces null safety, catches unchecked index access, and requires explicit return types.
+**One-sentence:** tsconfig strict + 4 extras (noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitReturns, noFallthroughCasesInSwitch); Zod at IO; unknown over any.
 
-**One-paragraph:** TypeScript strict mode is a compiler flag group (`strict: true` + four recommended extras) that eliminates implicit `any`, enforces null safety, catches unchecked index access, and requires explicit return types. The canonical 2026 baseline adds `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`, and `noFallthroughCasesInSwitch` on top of `strict: true`. IO boundaries are validated with Zod; `unknown` replaces `any` throughout.
+**One-paragraph:** TypeScript strict mode is a compiler flag group (strict: true + four recommended extras) that eliminates implicit any, enforces null safety, catches unchecked index access, and requires explicit return types. The canonical 2026 baseline adds noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitReturns, noFallthroughCasesInSwitch on top of strict: true. IO boundaries are validated with Zod; unknown replaces any throughout.
+
+**Ефективно для:** TS-інженера, який налаштовує tsconfig або робить strict-міграцію — закриває петлю між сирим any і Zod-валідованими границями.
 
 ## Applies If (ALL must hold)
 
-- All new TypeScript projects — strict mode is the only sane production default.
+- All new TypeScript projects.
 - JS-to-TS migrations — adopt incrementally per directory.
-- Library / SDK development — `.d.ts` strictness is part of the API contract.
-- Critical paths (auth, billing, IAM) where null/undefined bugs are unacceptable.
-- LLM-authored codebases — strict is the cheapest static gate against hallucinated APIs.
-- Migrating a JS codebase — adopt strict in stages (`strict: true` → `noImplicitAny` → `strictNullChecks` per directory).
-- Multi-team monorepos where shared types are the integration contract.
-- Critical paths (auth, billing, IAM, parsing) where null/undefined bugs are unacceptable.
+- Strict-mode rollout in a partially typed codebase.
+- Validating HTTP / queue / DB boundaries with Zod.
 
 ## Skip If (ANY kills it)
 
-- Throwaway prototypes / spike branches — strict mode doubles iteration cost.
-- Bridging legacy JS with thousands of `noImplicitAny` violations — adopt per-file via `// @ts-check` first.
-- Heavily dynamic plugin systems where types fight extension hooks — use Zod parse boundaries instead.
-- Codebases with poorly typed third-party libs lacking `@types/*` — add typed adapters first.
-- Codebases that depend on poorly typed third-party libs without `@types/*` — `skipLibCheck: true` + targeted `unknown` adapters first.
-- Highly dynamic plugin systems where types fight extension hooks; structural alternatives (Zod schemas + parse boundaries) cleaner.
+- Pure JS codebase with no TS plans.
+- Tooling-only repo (Babel plugins, build configs) where TS overhead exceeds value.
+- Generated code where types are upstream-owned.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| TypeScript 5.4+ installed | package | npm i -D typescript |
+| tsconfig.json | JSON | repo root |
+| Zod for IO validation | package | npm i zod |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `none` | Foundational TS config methodology. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: strict: true, the four extras, Zod at IO, unknown over any, no // @ts-ignore without code, explicit return types on exports. | ~1000 |
+| `content/02-output-contract.xml` | essential | Shape: tsconfig.json with strict: true + four extras; Zod schemas at IO boundary; no any in src; no // @ts-ignore without reason. Forbidden: implicit any, // @ts-ignore bare. | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: any everywhere, // @ts-ignore bare, narrowing without unknown, optional chaining over null check, Zod skipped at boundary. | ~800 |
+| `content/04-procedure.xml` | medium | Steps: enable strict → enable four extras → eliminate any → add Zod at IO → enforce in CI. | ~700 |
+| `content/06-decision-tree.xml` | essential | Tree: IO boundary? → Zod parse. Internal data? → discriminated union. Unknown shape? → unknown. Need any? → explain in comment. | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-tsconfig` | haiku | Template fill. |
+| `eliminate-any` | sonnet | Per-file judgement: unknown vs concrete type. |
+| `design-zod-schemas` | sonnet | IO boundary modeling. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tsconfig.json` | Canonical 2026 baseline with strict + four extras + module/moduleResolution. |
+| `templates/zod-schema.ts` | Zod schema + parse function for an HTTP boundary. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-typescript-strict-mode.py` | Check tsconfig has strict + four extras; grep src for bare any and // @ts-ignore without code. | Pre-commit. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[unit-testing]]
+- [[storybook-setup]]
+- [[tailwind]]
+
+## Decision tree
+
+The tree at content/06-decision-tree.xml routes between Zod parse, discriminated union, unknown, and (justified) any. Walk it whenever a new data shape crosses module or process boundaries.

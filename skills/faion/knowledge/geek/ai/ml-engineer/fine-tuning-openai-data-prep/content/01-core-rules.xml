@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fine-tuning-openai-data-prep Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fine-tuning-openai-data-prep. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="OpenAI Fine-Tuning Data Preparation — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `fine-tuning-openai-data-prep` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-jsonl-schema" testable="true" depth="essential">
+      <statement>Every line MUST be valid JSON with a top-level 'messages' array (chat fine-tune) or 'prompt'/'completion' (legacy completion).</statement>
+      <rationale source="OpenAI fine-tuning API docs 2026">OpenAI rejects malformed lines or wrong-schema lines at upload — partial uploads cost no credits but waste cycle time.</rationale>
+    </rule>
+
+    <rule id="r2-token-budget" testable="true" depth="essential">
+      <statement>Count tokens per example; reject examples exceeding model context (8k/16k/128k depending on model).</statement>
+      <rationale source="tiktoken; OpenAI model context docs">Over-context examples are truncated silently, corrupting training signal.</rationale>
+    </rule>
+
+    <rule id="r3-train-val-split" testable="true" depth="essential">
+      <statement>80/20 train/val default; use 70/30 when data &lt;500; never train on validation.</statement>
+      <rationale source="OpenAI fine-tuning best practices">Without a held-out validation set the fine-tune cannot be eval-gated.</rationale>
+    </rule>
+
+    <rule id="r4-balanced-classes" testable="true" depth="essential">
+      <statement>For classification tasks, balance classes within 1.5x ratio; oversample or downsample as needed.</statement>
+      <rationale source="Imbalanced learning literature">Class imbalance drives the fine-tune toward the majority class.</rationale>
+    </rule>
+
+    <rule id="r5-deterministic-system-prompt" testable="true" depth="essential">
+      <statement>Use a single canonical system prompt across all training examples; never vary per-example.</statement>
+      <rationale source="OpenAI fine-tuning docs">Inconsistent system prompts teach the model the system message is variable, hurting downstream prompting.</rationale>
+    </rule>
+
+    <rule id="r6-no-pii" testable="true" depth="essential">
+      <statement>Strip / hash PII (emails, phone numbers, IDs) before upload.</statement>
+      <rationale source="OpenAI data-use policy; GDPR Article 32">OpenAI fine-tunes are stored on Azure infrastructure; PII leakage is a GDPR breach.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
