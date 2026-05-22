@@ -3,82 +3,96 @@ slug: architect-skill-index-geek-tier
 tier: geek
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "46a609b78e4c229f"
-summary: A thin, opinionated geek-tier architect index that re-anchors the 50+ geek/sdlc-ai entries (spec-kit, plan-mode, RAG, graph reviewer) from the software architect's point of view — closing the perceived coverage gap without authoring new content.
-tags: [index, software-architect, sdlc-ai, geek, navigation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a curated geek-tier architect skill index — 50+ entries from sdlc-ai (spec-kit, plan-mode, RAG-for-arch, graph-reviewer) re-anchored from a software architect's point of view — closing the perceived coverage gap without authoring new content.
+content_id: "3dc0a35bef44ed77"
+complexity: light
+produces: report
+est_tokens: 2400
+tags: [index, software-architect, sdlc-ai, navigation, dev, geek]
 ---
 # Geek-Tier Software Architect Skill Index
 
 ## Summary
 
-**One-sentence:** A thin, opinionated index that re-anchors the existing 50+ `geek/sdlc-ai/` entries (spec-kit, plan-mode, RAG reviewer, graph-vs-diff reviewer, governance rules) from the software architect's point of view — five role-shaped lenses that close the perceived coverage gap without authoring new content.
+**One-sentence:** Produces a curated geek-tier architect skill index — 50+ entries from sdlc-ai (spec-kit, plan-mode, RAG-for-arch, graph-reviewer) re-anchored from a software architect's point of view — closing the perceived coverage gap without authoring new content.
 
-**One-paragraph:** Geek tier ships dozens of methodologies useful to architects, but they are organised by SDLC stage (lang, lint, test, mr, inc, sec, gov) — not by role. An architect entering the tier sees no `geek/dev/software-architect/` index and concludes "geek has nothing for me", missing actually-relevant content. This methodology is the missing index: five architect-shaped lenses (specification, plan-mode discipline, knowledge-base and RAG, merge-request review automation, governance + audit) that point into the relevant sibling methodologies in `geek/sdlc-ai/`. Output: a one-page navigation doc the architect reads on day 1 of geek-tier adoption, plus a per-lens reading order so adoption is incremental, not overwhelming.
+**One-paragraph:** Produces a curated geek-tier architect skill index — 50+ entries from sdlc-ai (spec-kit, plan-mode, RAG-for-arch, graph-reviewer) re-anchored from a software architect's point of view — closing the perceived coverage gap without authoring new content. The methodology pins shape + owner + evidence + outcome review so the artefact becomes a reviewable operating tool rather than folklore. Inputs are validated against a JSON schema; outputs are gated by the `## Decision tree` so the agent skips the methodology when preconditions don't hold.
+
+**Ефективно для:** software architects opening Faion's geek tier for the first time who need a single index that maps existing sdlc-ai entries (spec-kit, plan-mode, RAG, graph reviewer) onto architecture tasks, not just dev tasks.
 
 ## Applies If (ALL must hold)
 
-- Reader is a software architect (or senior engineer with architecture responsibilities).
-- Reader has access to geek tier.
-- Reader is adopting AI-assistant tooling in their architecture practice.
-- Existing `geek/sdlc-ai/` methodologies are loaded in the knowledge base.
+- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
+- The owner is a named person (role:handle), not a team alias or channel.
+- The required input artefacts in `## Prerequisites` are available and machine-readable.
+- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
 
 ## Skip If (ANY kills it)
 
-- Reader is a generalist developer (use `pro/dev/software-architect/` first).
-- Geek-tier `sdlc-ai` group has migrated or restructured — index references break; rebuild.
-- Reader is using a different role-shaped index (e.g. ML engineer) — different lens.
-- Reader prefers stage-shaped navigation already provided by `geek/sdlc-ai/AGENTS.md`.
+- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
+- No named owner — refuse to produce; assign first.
+- Inputs are missing or non-deterministic; fix the upstream observability before applying.
+- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
 
 ## Prerequisites
 
-- Geek tier access confirmed via tier-manifest.
-- Reader has skim-read `geek/sdlc-ai/AGENTS.md` and recognises the stage groups.
-- Reader has at least one concrete architecture task in flight (spec, ADR, review, audit).
+| Input artifact | Format | Source |
+|---|---|---|
+| Trigger record | text / ticket link | upstream alerting / planning queue |
+| Owner identity | `role:handle` string | RACI / org directory |
+| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
+| Prior artefact (if exists) | JSON matching the output contract | repo `.product/architect-skill-index-geek-tier/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/AGENTS.md` (the group index) | The stage-shaped view; this methodology re-projects it. |
-| `pro/dev/software-architect/SKILL.md` | Pro-tier architect skill; the geek-tier index complements it. |
-| `geek/ai/claude-code/SKILL.md` | Tooling foundation referenced by several entries. |
+| `[[code-review]]` | Peer methodology that reviews the artefact before merge. |
+| `[[incident-decision-template]]` | Peer methodology for incident-time decisions referenced by this artefact. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: index immutability, every entry must reference real methodology, reading-order discipline, lens cap, quarterly refresh | ~1100 |
-| `content/02-output-contract.xml` | essential | Index file schema, per-lens reading order, navigation surface | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: broken refs, lens sprawl, stale ordering | ~1000 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `lens-validate` | haiku | Mechanical: confirm each lens entry points to a real path |
-| `reading-order-suggest` | sonnet | Bounded judgement: given a task, suggest the lens + first 2 entries |
-| `quarterly-refresh-audit` | sonnet | Walk the geek/sdlc-ai/ tree; flag new methodologies for inclusion |
+| Parse inputs + check preconditions | haiku | Mechanical schema parse. |
+| Author the artefact body | sonnet | Bounded synthesis from typed inputs. |
+| Review for compliance + cross-cutting impact | opus | Cross-input judgement when stakes are high. |
+| Outcome-review synthesis at cadence | opus | Did the artefact change behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/architect-index.md` | The 5-lens index file the architect reads day 1 |
-| `templates/lens-entry.json` | Schema for a single lens-entry record |
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
+| `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-index.py` | Walk the index; assert each entry's path exists | Pre-publish + quarterly |
-| `scripts/quarterly-refresh.py` | Diff geek/sdlc-ai/ tree against the index; emit candidate-additions list | Quarterly |
+| `scripts/validate-architect-skill-index-geek-tier.py` | Validate an artefact JSON against the output-contract schema + cross-field rules. | Pre-merge of the artefact PR + weekly staleness scan. |
 
 ## Related
 
-- parent skill: `geek/dev/software-developer/`
-- peer methodologies: cross-references the entire `geek/sdlc-ai/` group from an architect angle
-- external: [Mark Richards architecture content](https://www.developertoarchitect.com/) · [Gregor Hohpe enterprise integration](https://www.enterpriseintegrationpatterns.com/)
+- [[code-review]] — gates the artefact before merge.
+- [[incident-decision-template]] — sibling 2-minute decision record.
+- [[regression-test-first-bugfix-workflow]] — sibling workflow that pins red-test-first discipline.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.
