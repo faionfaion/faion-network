@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="react-hooks Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for react-hooks. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="React Hooks Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules: call-site discipline, dependency exhaustiveness, cleanup, derivation, measured memoization, custom-hook naming.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="unconditional-call" testable="true" depth="essential">
+      <statement>All hook calls (`useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`, custom hooks) MUST appear at the top level of a function component or another hook. Never inside `if`, `for`, `switch`, `try`, after early `return`, or after `await`. Enforce via ESLint rule `react-hooks/rules-of-hooks: error`.</statement>
+      <rationale source="react.dev/learn/rules-of-hooks">React identifies hooks by call order. A conditional call shifts the order on subsequent renders, corrupting the linked-list of hook states and producing silent bugs ("Rendered fewer hooks than expected").</rationale>
     </rule>
+
+    <rule id="exhaustive-deps-error" testable="true" depth="essential">
+      <statement>`react-hooks/exhaustive-deps` MUST be set to `error`, never `warn`. Every variable referenced inside an effect / memo / callback closure must appear in its dependency array (or be wrapped in a ref).</statement>
+      <rationale source="react.dev rules; eslint-plugin-react-hooks docs">Stale closures over mutable values are the #1 source of "it works once then breaks" bugs. Warn-level lets the warning accumulate in noise; error blocks merge until the dep array is correct or the code is restructured (e.g. moved to event handler).</rationale>
+    </rule>
+
+    <rule id="cleanup-mandatory" testable="true" depth="essential">
+      <statement>Any `useEffect` that opens a subscription, timer, listener, fetch, or websocket MUST return a cleanup function. Cleanup function must release the same resource the effect acquired (symmetric pair).</statement>
+      <rationale source="react.dev/reference/react/useEffect">React 18 Strict Mode runs effects twice in development to surface missing cleanup. Memory leaks and double-firing event handlers are the visible failure; in concurrent mode they also cause race conditions.</rationale>
+    </rule>
+
+    <rule id="derive-not-sync" testable="true" depth="essential">
+      <statement>If a value can be computed from props or other state during render, compute it inline — do NOT mirror it into `useState` with a `useEffect` that re-syncs. Pattern `useState(derived) + useEffect(() =&gt; setState(derived), [deps])` is forbidden.</statement>
+      <rationale source="react.dev/learn/you-might-not-need-an-effect">Sync-via-effect runs twice (initial render, then post-effect re-render with new value), produces a stale frame in between, and triples the bug surface. Direct derivation is one render, no stale window.</rationale>
+    </rule>
+
+    <rule id="memo-with-measurement" testable="true" depth="essential">
+      <statement>`useMemo` / `useCallback` are added ONLY when (a) the value is passed to a `React.memo`'d child or (b) the value is a dependency of another hook OR (c) the computation has been profiled and exceeds 1ms. Otherwise leave unmemoized — adding memo costs more (allocation + comparison) than it saves on cheap renders.</statement>
+      <rationale source="react.dev — React Compiler / forget docs">React 19 compiler auto-memoizes; manual memoization on simple values now mostly adds noise. The remaining justified cases are referential-equality contracts (memo'd children, hook deps) and measurable hot paths.</rationale>
+    </rule>
+
+    <rule id="custom-hook-prefix" testable="true" depth="essential">
+      <statement>Every custom hook function MUST be named `use*` (camelCase, lowercase `u`). Only functions named `use*` may call other hooks. Enforce via the same `rules-of-hooks` lint.</statement>
+      <rationale source="react.dev/reference/react — rules of hooks">Linter detects hook-call sites by name. A custom hook not prefixed `use` cannot be linted for hook rules and silently breaks rules-of-hooks coverage.</rationale>
+    </rule>
+
   </section>
 </text>

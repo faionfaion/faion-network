@@ -1,42 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Faion Cli As Agent Skill Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Faion Cli As Agent Skill must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
+<text id="01-core-rules" title="Faion CLI as agent skill — core rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules for wiring `faion` into a custom agent.</summary>
+
+  <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Every application produces a named artefact stored in a known location with a known schema. No artefact, no application.</statement>
-      <rationale source="Operational discipline">un-stored work is un-done work.</rationale>
+      <statement source="self">Per-turn budget: ≤3 tool calls to `faion_*` AND ≤2000 tokens of fetched content. The dispatcher enforces; the agent must not retry past the cap.</statement>
+      <rationale>Unbounded fan-out blows the budget and pulls competing methodologies into context, where the agent picks the wrong one.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Inputs to the method are explicitly listed with their source. Methods that 'use intuition' are rejected as un-auditable.</statement>
-      <rationale source="Decision-traceability principle from audit / compliance literature">Decision-traceability principle from audit / compliance literature.</rationale>
+      <statement source="self">Tool args are typed: `faion_search(query:string, tier_hint:string|null, max_results:int=5)`, `faion_get_content(slug:string, file:string="AGENTS.md")`. Free-form arg objects are rejected at the schema layer.</statement>
+      <rationale>Typed args make the call auditable and let the dispatcher reject malformed agent output before it hits the CLI subprocess.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>The method's output has a named consumer and a documented decision it feeds. Outputs nobody uses are removed.</statement>
-      <rationale source="Anti-orphan-artefact practice from kanban / lean ops">Anti-orphan-artefact practice from kanban / lean ops.</rationale>
+      <statement source="faion-cli-architecture">On `403 tier_required`, the dispatcher returns the embedded preview (≤200 chars) + the tier upgrade hint; the agent MUST surface this to the user instead of retrying the same slug.</statement>
+      <rationale>Retries on tier-gated content waste budget and never succeed. The preview is the actionable path.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="self">`faion_get_content` calls are idempotent — the same slug + file pair MUST return identical bytes for a given CLI version. The dispatcher caches by (slug,file,cli_version).</statement>
+      <rationale>Without caching the agent re-fetches the same AGENTS.md every turn, multiplying cost and token budget.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="self">No customer PII flows into the `query` arg of `faion_search`. The dispatcher strips emails, phone numbers, and credit-card-shaped tokens before subprocess invocation.</statement>
+      <rationale>`faion search` may forward queries to the user's own LLM provider for rewrites — PII in the query is a data-handling incident.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="self">Every tool call is logged with: (timestamp, tool_name, args_redacted, latency_ms, status, cached_bool). Logs feed the per-turn budget and post-hoc audits.</statement>
+      <rationale>Without observability the budget rule (r1) is unenforceable and incident reproduction is impossible.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">All rules satisfied: tool-defs match the JSON Schema, system prompt cites budget + 403 path, dispatcher implements cache + PII strip + logging.</statement>
+      <rationale>Aggregate positive conclusion.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">No tool-use loop, no CLI access, or anonymous tier — the integration is impossible until those preconditions are fixed.</statement>
+      <rationale>Aggregate negative conclusion.</rationale>
     </rule>
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Methodology corpus integration: faion-into-our-agent (2 weeks)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: ≥1 named source per rule (URL, ticket, transcript_id)
-Decision: downstream consumer can act without re-deriving reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger → artefact → decision — with auditability at each step.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: 'we should do this thing'
-Artefact: prose paragraph, no schema
-Evidence: 'industry best practice'
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is a failure mode catalogued in content/03-failure-modes.xml. The methodology exists to prevent exactly this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

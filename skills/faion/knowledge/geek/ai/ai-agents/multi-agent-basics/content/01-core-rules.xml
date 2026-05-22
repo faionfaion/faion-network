@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="multi-agent-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for multi-agent-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Multi-Agent Basics Core Rules" version="1.1.0" est_tokens="950" depth="essential">
+  <summary>Seven testable rules for designing a multi-agent spec that survives contact with production.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Role design">
+    <rule id="r1-non-overlap" testable="true" depth="essential">
+      <statement>Every agent role MUST have a single focused responsibility. If a role description contains the word "and", split it into two agents.</statement>
+      <rationale source="anthropic-building-effective-agents">Overlapping roles produce duplicated outputs, conflicting decisions, and wasted tokens; the orchestrator cannot tell which agent's answer is canonical.</rationale>
+    </rule>
+    <rule id="r2-named-decision-authority" testable="true" depth="essential">
+      <statement>Exactly one decision-making authority MUST be named for every conflict class — orchestrator, judge, majority vote, or human approver. Default = orchestrator.</statement>
+      <rationale source="multi-agent-production-experience">Without a named tie-breaker, conflicting agent outputs deadlock the synthesis step or get resolved by accident-of-order.</rationale>
+    </rule>
+  </section>
+
+  <section title="Communication">
+    <rule id="r3-structured-json" testable="true" depth="essential">
+      <statement>Every inter-agent message MUST be structured JSON conforming to a versioned schema (carry `schema_version` per `schema-version-pinning`). Free-form text passes between agents are forbidden.</statement>
+      <rationale source="schema-version-pinning-methodology">Free-form text introduces parsing fragility; versioned JSON makes drift a typed branch rather than a silent corruption.</rationale>
+    </rule>
+    <rule id="r4-full-context-handoff" testable="true" depth="essential">
+      <statement>Each handoff message MUST carry the full context the next agent needs — not just the delta. Agents have separate message histories; they cannot see each other's prior turns.</statement>
+      <rationale source="multi-agent-context-loss-failure-mode">Delta-only handoffs cause silent context loss; the downstream agent fills the gap with hallucinated assumptions.</rationale>
+    </rule>
+    <rule id="r5-no-bidirectional-deps" testable="true" depth="essential">
+      <statement>The agent dependency graph MUST be a DAG. If A waits on B AND B waits on A, the run deadlocks. The orchestrator MUST refuse to start a run whose plan contains a cycle.</statement>
+      <rationale source="multi-agent-production-experience">Cycles surface as hangs in production; cycle detection is cheap at plan-time and free of false positives.</rationale>
+    </rule>
+  </section>
+
+  <section title="Budget &amp; termination">
+    <rule id="r6-per-agent-budget" testable="true" depth="essential">
+      <statement>Every agent MUST have an explicit token budget AND wall-clock timeout. The orchestrator MUST emit an alert at 80% of either budget and hard-stop at 100%.</statement>
+      <rationale source="multi-agent-cost-blowups">Without per-agent caps, one stuck agent (loop, slow tool) drains the entire run budget; per-agent caps localize the failure.</rationale>
+    </rule>
+    <rule id="r7-explicit-termination" testable="true" depth="essential">
+      <statement>The spec MUST declare an explicit termination condition: max turns, termination phrase, output-shape check, or DoD predicate. A multi-agent run with no termination is a bug.</statement>
+      <rationale source="autogen-conversational-loops">Open-ended runs converge to infinite loops or token-budget kill; explicit termination is what differentiates a pipeline from a chat.</rationale>
     </rule>
   </section>
 </text>

@@ -4,77 +4,94 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "678b6d1139e5dbcf"
-summary: Faion Cli As Agent Skill delivers a concrete, testable methodology that turns the recurring task of 'Methodology corpus integration: faion-into-our-agent (2 weeks)' into an auditable artefact, addressing the gap: Most relevant gap to faion's own GTM: a methodology showing geek-ti
-tags: [ai, geek, method, methodology]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a tool-definition + system-prompt scaffold that wires `faion search` and `faion get-content` into a custom agent as a reasoning tool, with bounded budgets and tier-aware fallback.
+content_id: "faion-cli-agent-3c4d"
+complexity: medium
+produces: code
+est_tokens: 3400
+tags: [faion-cli, agent, tool-use, integration, ai-agents]
 ---
-# Faion Cli As Agent Skill
+# Faion CLI as Agent Skill
 
 ## Summary
 
-**One-sentence:** Faion Cli As Agent Skill delivers a concrete, testable methodology that turns the recurring task of 'Methodology corpus integration: faion-into-our-agent (2 weeks)' into an auditable artefact, addressing the gap: Most relevant gap to faion's own GTM: a methodology showing geek-tier devs how to wire `faion search` + `faion get-content` into their own agent as a reasoning tool. Today the integration is implicit in CLI docs only.
+**One-sentence:** Produces a tool-definition + system-prompt scaffold that wires `faion search` and `faion get-content` into a custom agent as a reasoning tool, with bounded budgets and tier-aware fallback.
 
-**One-paragraph:** Most relevant gap to faion's own GTM: a methodology showing geek-tier devs how to wire `faion search` + `faion get-content` into their own agent as a reasoning tool. Today the integration is implicit in CLI docs only. Faion Cli As Agent Skill closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Methodology corpus integration: faion-into-our-agent (2 weeks)' (p7-llm-agent-developer, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Faion ships a CLI; most teams want to call it from their own agent (Claude SDK, OpenAI Assistants, LangGraph). This methodology produces the two artefacts they need: a JSON tool definition (`faion_search`, `faion_get_content`) with bounded args + cost ceilings, and a system-prompt skeleton that teaches the agent when to call which tool, how to interpret the response, and what to do on 403 tier_required. Default budget: ≤3 tool calls per user turn, ≤2k tokens per content fetch.
+
+**Ефективно для:** p7-llm-agent-developer wiring Faion into a domain agent, ml-engineer integrating methodology lookups into a multi-step planner, AI engineers shipping `faion`-aware copilots, vendors building integrations.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Methodology corpus integration: faion-into-our-agent (2 weeks)' (role: p7-llm-agent-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Building or modifying an agent that should consult methodology corpora at reasoning time.
+- The agent runtime supports JSON tool-use (function calling).
+- `faion-cli` is installed on the agent host OR available via subprocess/HTTP.
+- A tier (free/solo/pro/geek) is assigned to the agent's CLI credentials.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Agent has no tool-use loop (single-shot completion) — methodology can't fire.
+- Faion CLI not in scope (licensing, isolation) — embed the corpus directly instead.
+- Tier is unset/anonymous — every call will 401; resolve auth first.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Agent runtime + tool schema | JSON Schema or provider spec (OpenAI/Anthropic/LangGraph) | host project |
+| Faion CLI version + login token | `faion --version`, `~/.config/faion/token.json` | local install |
+| Per-turn budget | int tool-calls + int content-tokens | host product spec |
+| Tier capability matrix | from `tier-manifest.json` | faion-network repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `[[gateway-adapter-template]]` | Same shape: tool-defn + retry + tokenizer pinning. |
+| `geek/ai/llm-integration/AGENTS.md` | Tool-use vocabulary. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: budget cap, structured args, 403→preview path, idempotent calls, no PII, observability | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for `tool-defs.json` + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: unbounded fan-out, missing tier handling, content paste-into-prompt, log leakage | ~600 |
+| `content/04-procedure.xml` | recommended | 6 steps: pick provider format → declare tools → write system prompt → wire 403 → meter → smoke-test | ~700 |
+| `content/06-decision-tree.xml` | essential | Tool-call decision branches | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `faion_cli_as_agent_skill_template_fill` | haiku | Template fill, no judgment |
-| `faion_cli_as_agent_skill_evidence_check` | sonnet | Bounded comparison + judgment |
-| `faion_cli_as_agent_skill_synthesis` | opus | Cross-input synthesis + final write-up |
+| Generate JSON tool-defs | haiku | Schema fill. |
+| Write system-prompt skeleton | sonnet | Bounded wording, examples. |
+| Trace-replay tool-use loop check | sonnet | Pattern-match against rules. |
+| Multi-provider port (Anthropic↔OpenAI) | opus | Cross-format synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/tool-defs.json` | OpenAI/Anthropic-compatible tool definitions for `faion_search` + `faion_get_content`. |
+| `templates/system-prompt.txt` | System-prompt skeleton with placeholders. |
+| `templates/dispatcher.py` | Subprocess dispatcher wrapping the CLI with budget + 403 fallback. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-faion-cli-as-agent-skill.py` | Validate tool-defs + system prompt against the contract. | Before agent ships. |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/ai/`
+- `[[gateway-adapter-template]]` — adapter shape for any LLM/RAG endpoint
+- `[[hallucination-attribution-checklist]]` — what to log when the agent hallucinates while using `faion_get_content`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters preconditions, then routes: tool-use loop yes/no → tier set yes/no → declare tools and emit system prompt or skip.

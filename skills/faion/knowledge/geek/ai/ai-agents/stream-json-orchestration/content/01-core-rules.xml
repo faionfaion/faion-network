@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="stream-json-orchestration Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for stream-json-orchestration. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="stream-json-orchestration Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Seven testable rules for safely wrapping a coding-agent CLI as a subprocess and consuming its stream-json output.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Invocation flags (defence in depth)">
+    <rule id="r1-stream-json-mandate" testable="true" depth="essential">
+      <statement>Invoke the CLI with `--output-format stream-json --include-partial-messages` (Claude Code) or the documented equivalent. Bare invocation that emits final text only is forbidden in this orchestration pattern.</statement>
+      <rationale source="https://docs.anthropic.com/en/docs/claude-code/headless">Without stream-json the orchestrator cannot apply mid-run reactions; budget cap, safety veto, and conditional hand-off are all impossible against a sealed final-output blob.</rationale>
+    </rule>
+    <rule id="r2-allowed-tools-and-turns" testable="true" depth="essential">
+      <statement>Pass `--allowedTools "Tool1,Tool2(arg-pattern)" --max-turns N` on every invocation. Never call the CLI without an explicit allowlist and a hard turn cap.</statement>
+      <rationale source="Claude Code 2026 headless guide">The allowlist removes any tool not enumerated; `--max-turns` caps iteration count so a stuck loop cannot drain the budget. Both are silent failure modes if omitted.</rationale>
+      <reference path="templates/stream_handler.py">Reference orchestrator wiring `--allowedTools` and `--max-turns` as required constructor arguments.</reference>
+    </rule>
+    <rule id="r3-closed-stdin" testable="true" depth="essential">
+      <statement>Set the subprocess `stdin=DEVNULL`. Never leave stdin open to the orchestrator's TTY.</statement>
+      <rationale source="Claude Code headless safety pattern">An open stdin lets the model — or anyone with TTY access — inject follow-up prompts mid-run. Closed stdin is the only safe default for non-interactive orchestration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Reading and parsing">
+    <rule id="r4-line-buffered" testable="true" depth="essential">
+      <statement>Read stdout line by line with `bufsize=1` (Python) or `readline.createInterface` (Node). Do not call `proc.communicate()` or `result.stdout` accumulators; those defeat streaming.</statement>
+      <rationale source="https://docs.python.org/3/library/subprocess.html">`communicate()` blocks until the process exits, which converts streaming into batch and re-introduces the very latency the methodology exists to eliminate.</rationale>
+    </rule>
+    <rule id="r5-json-decode-guard" testable="true" depth="essential">
+      <statement>Parse every line with a JSON-decode try/except; on `JSONDecodeError` log and continue. Never crash the orchestrator on a malformed line. Capture stderr to a separate file or sink — never silently merge stdout and stderr.</statement>
+      <rationale source="Production agent traces">CLIs occasionally emit warnings to stdout (deprecation, debug). The orchestrator must remain robust to malformed lines, but separately log them so misconfiguration is debuggable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Mid-run control loop">
+    <rule id="r6-budget-veto" testable="true" depth="essential">
+      <statement>Maintain a rolling `total_cost_usd` from `total_cost_usd` fields in events. If the cap is exceeded, call `proc.kill()` and raise `BudgetExceeded` with the cumulative cost. Inspect every assistant `tool_use` event against the safety-veto rule set and kill on a denied call.</statement>
+      <rationale source="Internal: faion-net orchestrator post-mortem 2026-Q1 showed 12% of spend was unbounded runs.">Mid-run reaction is the entire reason for stream-json; not enforcing budget/veto turns the pattern into a more expensive batch.</rationale>
+    </rule>
+    <rule id="r7-result-and-replay" testable="true" depth="essential">
+      <statement>Always handle the final `result` event with `subtype: success|error_max_turns|error_during_execution`; never assume an agent ran forever. Append every event to a JSONL replay log at `runs/&lt;session_id&gt;.jsonl` for post-hoc debug and OTel export.</statement>
+      <rationale source="Claude Code stream-json schema">The `result` event is the canonical "done" marker; without explicit handling the orchestrator may leak file descriptors and lose the cost/duration summary. Replay logs are non-negotiable for incident response.</rationale>
     </rule>
   </section>
 </text>

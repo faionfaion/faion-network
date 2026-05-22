@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-quality-queries Worked Example" version="1.1.0" est_tokens="400" depth="optional">
+  <summary>One end-to-end worked example: order-list endpoint with 1001 queries reduced to 3 via a selector + assertNumQueries lock.</summary>
+
+  <section title="Before">
+    <example type="bad" title="N+1 in views.py — 1 + N queries for N orders">
+      <code lang="python"><![CDATA[
+# apps/orders/views.py
+def order_list(request):
+    orders = Order.objects.all()
+    rows = []
+    for order in orders:
+        rows.append({
+            "id": order.id,
+            "user": order.user.email,                # 1 query each
+            "city": order.shipping_address.city,     # 1 query each
+            "items": [i.product.name for i in order.items.all()],  # M+1 each
+        })
+    return JsonResponse({"orders": rows})
+]]></code>
+      <note>For 500 orders this issues ~2001 queries. p95 latency &gt; 4s.</note>
+    </example>
+  </section>
+
+  <section title="After">
+    <example type="good" title="Selector + assertNumQueries lock">
+      <code lang="python"><![CDATA[
+# apps/orders/selectors.py
+from django.db.models import Prefetch, QuerySet
+
+def get_order_list() -> QuerySet:
+    return (
+        Order.objects
+        .select_related("user", "shipping_address")
+        .prefetch_related(
+            Prefetch("items", queryset=Item.objects.select_related("product")),
+        )
+        .order_by("-created_at")
+    )
+
+# apps/orders/views.py
+def order_list(request):
+    orders = get_order_list()
+    rows = [
+        {
+            "id": o.id,
+            "user": o.user.email,
+            "city": o.shipping_address.city,
+            "items": [i.product.name for i in o.items.all()],
+        }
+        for o in orders
+    ]
+    return JsonResponse({"orders": rows})
+
+# tests/test_orders.py
+def test_order_list_query_count(client, django_assert_num_queries, order_factory):
+    [order_factory() for _ in range(20)]
+    with django_assert_num_queries(3):
+        resp = client.get("/api/orders/")
+    assert resp.status_code == 200
+]]></code>
+      <note>3 queries: 1 orders + select_related JOIN, 1 items prefetch, 1 products prefetch. Regression-locked. p95 latency drops to ≈80 ms.</note>
+    </example>
+  </section>
+</text>

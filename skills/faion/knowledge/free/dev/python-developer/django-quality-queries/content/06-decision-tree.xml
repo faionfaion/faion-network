@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-quality-queries Decision Tree" version="1.1.0" est_tokens="300">
+  <decision-tree>
+    <root-question id="q1">Does the queryset cross relationships (any `.x.y` access where `x` is a related manager or descriptor) during iteration?</root-question>
+    <branch when="q1 == no">
+      <question id="q2">Is the queryset filtered or ordered on an unindexed column on a &gt;10k-row table?</question>
+      <branch when="q2 == no">
+        <conclusion ref="r5-assertnumqueries">Skip optimisation. Still add an assertNumQueries lock if endpoint is hot — protects against future N+1 introduction.</conclusion>
+      </branch>
+      <branch when="q2 == yes">
+        <conclusion ref="r4-indexes">Add `models.Index` for the filter/order columns. Verify with EXPLAIN ANALYZE.</conclusion>
+      </branch>
+    </branch>
+    <branch when="q1 == yes">
+      <question id="q3">Is every traversed relation a ForeignKey / OneToOneField (single-valued)?</question>
+      <branch when="q3 == yes">
+        <conclusion ref="r1-select-related">Apply `select_related(...)` in the selector function. Lock count with `assertNumQueries`.</conclusion>
+      </branch>
+      <branch when="q3 == no">
+        <question id="q4">Does the related queryset need filtering, annotation, or its own select_related?</question>
+        <branch when="q4 == no">
+          <conclusion ref="r2-prefetch-related">Apply `prefetch_related("relation")` in the selector. Lock count.</conclusion>
+        </branch>
+        <branch when="q4 == yes">
+          <conclusion ref="r2-prefetch-related">Apply `prefetch_related(Prefetch("relation", queryset=..., to_attr="cached_x"))`. Iterate the to_attr list (not the manager).</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="order_list view → q1=yes → q3=no (items is reverse FK) → q4=yes (need select_related on product) → r2-prefetch-related with Prefetch"/>
+  </decision-tree>
+</text>

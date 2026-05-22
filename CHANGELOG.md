@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 refactor: harvest +17 files (batch 0).
 - F-066 phase D: validate-domain-index.py + f066-validate-all.sh (corpus-wide runner).
 - F-066 refactor: harvest +2 files (batch 0).
 - F-066 phase D: extend validate-methodology-v2.py with B1 keys (complexity, produces, est_tokens, tags) for status=active.

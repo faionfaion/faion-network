@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-quality-queries Procedure" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>Six-step procedure to inventory N+1 queries, apply selector-layer fixes, add indexes, and lock counts with regression tests.</summary>
+
+  <section title="Steps">
+    <step n="1" name="inventory-hot-endpoints">
+      <input>access log / observability dashboard, top 20 endpoints by req/min</input>
+      <action>List endpoints sorted by traffic × p95-latency product. Mark every list endpoint (collection-returning) as a candidate for audit.</action>
+      <output>ordered list of endpoints to profile</output>
+      <decision-gate>If the top list endpoint serves &lt; 10 req/min and p95 &lt; 200 ms, deprioritise — diminishing returns.</decision-gate>
+    </step>
+
+    <step n="2" name="profile">
+      <input>endpoint URL + sample payload</input>
+      <action>Reproduce request in dev with Debug Toolbar active OR enable nplusone middleware with `NPLUSONE_RAISE=True` in test settings and run the endpoint test.</action>
+      <output>SQL query log + duplicate count + grouped-by-template view</output>
+      <decision-gate>If query count is `&lt;= target (list ≤5, detail ≤10)` AND no duplicates — skip endpoint.</decision-gate>
+    </step>
+
+    <step n="3" name="fix-in-selector">
+      <input>existing queryset call site (views.py / admin.py / tasks.py)</input>
+      <action>Move queryset construction into `selectors.py`. Apply select_related (FK / OneToOne) and prefetch_related (M2M / reverse FK / GFK). Use Prefetch(queryset=...) when relation needs filtering or its own select_related.</action>
+      <output>updated `selectors.py`; views become thin (one call to selector)</output>
+      <decision-gate>Run Debug Toolbar / nplusone again — count must drop to target.</decision-gate>
+    </step>
+
+    <step n="4" name="indexes">
+      <input>list of WHERE / ORDER BY clauses observed in step 2</input>
+      <action>Add `models.Index(...)` entries for hot single-column and composite filter+sort patterns. Generate `manage.py makemigrations`. Run `EXPLAIN ANALYZE` on staging to confirm index usage.</action>
+      <output>migration adding indexes; EXPLAIN output saved to report</output>
+      <decision-gate>If EXPLAIN still shows Seq Scan, query shape mismatches the index — adjust column order.</decision-gate>
+    </step>
+
+    <step n="5" name="lock-with-tests">
+      <input>endpoint URL + dataset seed</input>
+      <action>Add a pytest using `django_assert_num_queries(N)` (or `assertNumQueries`) around the endpoint call. N is the post-fix count plus 0-1 tolerance for auth lookups.</action>
+      <output>regression test in `tests/` that fails on reintroduction</output>
+      <decision-gate>Test must fail when the optimisation is deliberately removed (sanity check).</decision-gate>
+    </step>
+
+    <step n="6" name="emit-report">
+      <input>findings from steps 1-5</input>
+      <action>Render `templates/audit-report.md` with per-finding rule_id + before/after counts. Run `scripts/validate-django-quality-queries.py` against the report.</action>
+      <output>committed report under `.aidocs/<feature>/queries-audit.md`</output>
+      <decision-gate>Validator must exit 0.</decision-gate>
+    </step>
+  </section>
+</text>

@@ -1,22 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="react-hooks Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="React Hooks Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the hook-correctness spec — captures ESLint config, React version, audit findings.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Hook-correctness spec schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/react-hooks-spec.json",
+  "type": "object",
+  "required": ["react_version", "eslint_rules", "audit", "version", "last_reviewed"],
+  "properties": {
+    "react_version":     {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "strict_mode":       {"type": "boolean", "default": true},
+    "compiler_enabled":  {"type": "boolean", "default": false},
+    "eslint_rules": {
+      "type": "object",
+      "required": ["rules-of-hooks", "exhaustive-deps"],
+      "properties": {
+        "rules-of-hooks":  {"const": "error"},
+        "exhaustive-deps": {"const": "error"}
+      }
+    },
+    "audit": {
+      "type": "object",
+      "required": ["files_scanned", "violations"],
+      "properties": {
+        "files_scanned": {"type": "integer", "minimum": 0},
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "line", "rule"],
+            "properties": {
+              "file":  {"type": "string"},
+              "line":  {"type": "integer", "minimum": 1},
+              "rule":  {"enum": ["rules-of-hooks", "exhaustive-deps", "cleanup-missing", "sync-via-effect", "memo-bloat"]}
+            }
+          }
+        }
+      }
+    },
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "react_version": "19.0.0",
+  "strict_mode": true,
+  "compiler_enabled": true,
+  "eslint_rules": {"rules-of-hooks": "error", "exhaustive-deps": "error"},
+  "audit": {
+    "files_scanned": 142,
+    "violations": [
+      {"file": "src/UserCard.tsx", "line": 23, "rule": "exhaustive-deps"},
+      {"file": "src/Timer.tsx",    "line": 17, "rule": "cleanup-missing"}
+    ]
+  },
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "react_version": "16",
+  "eslint_rules": {"rules-of-hooks": "warn", "exhaustive-deps": "off"},
+  "audit": {"files_scanned": -1, "violations": "many"}
+}
+]]></code>
+    <note>react_version not semver; rules-of-hooks must be "error"; exhaustive-deps must be "error"; files_scanned non-negative; violations must be array.</note>
+  </example>
+
+  <reference path="templates/eslint-react-hooks.config.js">ESLint config block</reference>
+  <reference path="scripts/validate-react-hooks.py">Schema validator</reference>
 </text>
