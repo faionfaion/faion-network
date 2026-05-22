@@ -1,4 +1,9 @@
-"""Anthropic-format parallel tool executor with ThreadPoolExecutor and timeout.
+"""
+purpose: Anthropic-format parallel tool executor with ThreadPoolExecutor and per-tool timeout.
+consumes: response.content (list of tool_use blocks) + TOOL_REGISTRY mapping name → callable
+produces: list of tool_result blocks ready to append as the next user message
+depends-on: content/01-core-rules.xml r4
+token-budget-impact: zero — runtime side
 
 Usage:
     tool_results = run_tools_parallel(response.content, TOOL_REGISTRY)

@@ -1,72 +1,26 @@
-"""ToolRouter: register tools, build definitions, execute with agentic loop.
-
-Usage:
-    router = ToolRouter(client)
-    router.register("get_weather", "Get weather. Call when user asks about weather.", params, fn)
-    result = router.execute("What's the weather in Tokyo?")
 """
-import json
-from typing import Callable
-import anthropic
+purpose: Two-stage tool router to surface ≤20 tools per LLM call.
+consumes: full tool registry + LLM call for category selection
+produces: visible tool subset for a given query
+depends-on: content/01-core-rules.xml r1
+token-budget-impact: one extra LLM call per request (category selection)
+"""
+from __future__ import annotations
 
-client = anthropic.Anthropic()
+from typing import Any
 
 
-class ToolRouter:
-    """Register tools and execute queries with an agentic loop."""
+def select_category(query: str, categories: list[str], llm_call: Any) -> str:
+    """LLM-routed: pick the single best category for the query."""
+    prompt = f"Categories: {categories}\nQuery: {query}\nReply with one category name exactly."
+    return llm_call(prompt).strip()
 
-    def __init__(self, max_iterations: int = 10):
-        self.max_iterations = max_iterations
-        self._tools: list[dict] = []
-        self._impls: dict[str, Callable] = {}
 
-    def register(self, name: str, description: str, parameters: dict, fn: Callable):
-        """Register a tool. Description must answer 'when to call this'."""
-        self._tools.append({
-            "name": name,
-            "description": description,
-            "input_schema": parameters,
-        })
-        self._impls[name] = fn
+def visible_tools(registry: list[dict], category: str) -> list[dict]:
+    return [t for t in registry if t.get("category") == category][:20]
 
-    def execute(self, query: str, model: str = "claude-sonnet-4-20250514") -> dict:
-        """Execute query using registered tools. Returns {response, iterations}.
 
-        Args:
-            query: User's question or task.
-            model: Claude model ID to use.
-
-        Returns:
-            dict with keys: response (str), iterations (int), tool_calls (list).
-        """
-        messages = [{"role": "user", "content": query}]
-        tool_history = []
-
-        for i in range(self.max_iterations):
-            resp = client.messages.create(
-                model=model,
-                max_tokens=4096,
-                tools=self._tools,
-                messages=messages,
-            )
-            if resp.stop_reason == "end_turn":
-                return {"response": resp.content[0].text, "iterations": i + 1,
-                        "tool_calls": tool_history}
-            # Handle tool_use
-            messages.append({"role": "assistant", "content": resp.content})
-            tool_results = []
-            for block in resp.content:
-                if block.type == "tool_use":
-                    try:
-                        result = self._impls[block.name](**block.input)
-                    except Exception as e:
-                        result = {"error": str(e), "code": "TOOL_ERROR"}
-                    tool_history.append({"tool": block.name, "result": result})
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(result)[:8000],
-                    })
-            messages.append({"role": "user", "content": tool_results})
-
-        raise RuntimeError(f"max_iterations={self.max_iterations} reached")
+def route(query: str, registry: list[dict], llm_call: Any) -> list[dict]:
+    categories = sorted({t["category"] for t in registry if t.get("category")})
+    cat = select_category(query, categories, llm_call)
+    return visible_tools(registry, cat)
