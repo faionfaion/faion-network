@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Video Gen Service — Procedure" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six steps: persistent queue → workers → ffmpeg → quota + cost cap → idempotency → ship + monitor.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="persistent-queue">
+      <input>Redis / SQS</input>
+      <action>Configure Redis Streams or SQS as job queue. Add dead-letter queue for permanent failures. Configure consumer groups.</action>
+      <output>queue running with persistence</output>
+      <decision-gate>If queue.kind in-memory — fix (r1-persistent-queue).</decision-gate>
+    </step>
+
+    <step n="2" name="workers">
+      <input>worker container image</input>
+      <action>Deploy N workers per provider. Each worker speaks to async-api client. Configure concurrency per provider (Runway 5, Luma 3).</action>
+      <output>workers consume queue</output>
+    </step>
+
+    <step n="3" name="ffmpeg-post-process">
+      <input>ffmpeg installed on worker image</input>
+      <action>Declare PostProcessing block in job spec: concat, overlay, transcode, watermark. Workers apply after artefact download.</action>
+      <output>declarative post-process</output>
+      <decision-gate>If ffmpeg invoked inline in HTTP handler — fix (fm-03).</decision-gate>
+    </step>
+
+    <step n="4" name="quota-and-cost-cap">
+      <input>tenant_quotas + global cost cap</input>
+      <action>Pre-submit check: tenant.this_month + this_job ≤ tenant.quota AND service.this_month + this_job ≤ cap × 0.95. Else reject.</action>
+      <output>cost-controlled submit</output>
+      <decision-gate>If cap check after submit — fix (r4-cost-cap-pre-submit).</decision-gate>
+    </step>
+
+    <step n="5" name="idempotency">
+      <input>idempotency window config</input>
+      <action>On submit, look up Idempotency-Key in store; if present within window, return existing job_id without billing.</action>
+      <output>idempotent submit</output>
+    </step>
+
+    <step n="6" name="ship-and-monitor">
+      <input>service deployed + dashboards</input>
+      <action>Roll out at 10% → 50% → 100%. Monitor: queue depth, worker latency, ffmpeg duration, cost / day, per-tenant share, 429/402 rates.</action>
+      <output>production service live</output>
+      <decision-gate>If queue depth grows monotonically — scale workers OR rate-limit submit; queue is saturated.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

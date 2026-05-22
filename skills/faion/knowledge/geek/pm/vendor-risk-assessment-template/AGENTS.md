@@ -4,77 +4,91 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "268b9b9fd721d391"
-summary: "Vendor Risk Assessment Template: produces a versioned, owner-signed artefact that closes the gap 'p6-product-dev-team/SOC2 / GDPR audit prep (annual)'."
-tags: [vendor-risk-assessment-template, pm, geek]
+complexity: medium
+produces: spec
+est_tokens: 3000
+summary: Produces a SOC2 / GDPR-aligned vendor risk assessment (subprocessors, DPA, data-residency, encryption-at-rest, retention) so annual audit prep stops being a Q4 fire-drill.
+tags: [pm, geek, vendor-risk, soc2, gdpr, dpa, audit-prep]
 ---
 # Vendor Risk Assessment Template
 
 ## Summary
 
-**One-sentence:** Vendor Risk Assessment Template: produces a versioned, owner-signed artefact that closes the gap 'p6-product-dev-team/SOC2 / GDPR audit prep (annual)'.
+**One-sentence:** Produces a SOC2 / GDPR-aligned vendor risk assessment artefact (subprocessors, DPA reference, data-residency, encryption-at-rest, retention, breach-notification SLA) so annual audit prep stops being a Q4 fire-drill.
 
-**One-paragraph:** Addresses the gap surfaced by 'p6-product-dev-team/SOC2 / GDPR audit prep (annual)': Procurement-management is generic; SaaS teams need a SOC2-aligned vendor-risk template covering subprocessors, DPA, data-residency questions. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a vendor risk assessment template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Procurement-management literature is generic; SaaS teams need a SOC2-aligned vendor-risk template covering subprocessors, DPA, data-residency, encryption-at-rest, retention, breach-notification SLA, and a status flag (active / pending-review / deprecated). This methodology pins that artefact: single-instance per vendor, every input typed and source-cited, named human owner, semver + last_reviewed (90-day staleness window), and each section grounded in the specific compliance question it answers. The output lives in the audit folder and feeds directly into the auditor's evidence package.
+
+**Ефективно для:** EM / compliance lead, який не хоче перетворювати щорічний SOC2-аудит на Q4 fire-drill.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p6-product-dev-team/SOC2 / GDPR audit prep (annual)' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- A vendor is being onboarded OR an annual SOC2 / GDPR review is due.
+- The vendor handles customer data OR system credentials (otherwise lighter procurement suffices).
+- Operator has the DPA / subprocessor list / data-flow diagram before starting.
+- A named human owner exists for the assessment.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working vendor risk assessment template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- The team already maintains a current vendor-risk assessment for this vendor — replace, do not duplicate.
+- Vendor processes no customer or credential data (e.g. dev-only feature flag tool with no PII).
+- Compliance context overrides this template (e.g. HIPAA-only); defer to legal.
 
 ## Prerequisites
 
-- recent context for the 'p6-product-dev-team/SOC2 / GDPR audit prep (annual)' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Vendor DPA | PDF / URL | vendor's legal page |
+| Subprocessor list | URL or CSV | vendor's compliance page |
+| Data-flow diagram | image / mermaid | this product's compliance folder |
+| Named owner | role + person | compliance team roster |
+| Audit evidence root | dir path | `compliance/<year>/<vendor>/` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/pm` | parent domain group — provides operating context for Vendor Risk Assessment Template |
+| `pro/pm/project-manager` | Operating context for who runs the assessment. |
+| `geek/pm/vendor-eval-framework` | Sibling rubric for pre-purchase selection; this one is post-purchase risk. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: bound-scope, typed-input, named-owner, versioned, grounded-in-rationale | ~900 |
 | `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
 | `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Vendor-handles-data gate + DPA-present branch | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `extract-from-dpa` | haiku | Field extraction from structured PDF. |
+| `synthesize-risk-rating` | sonnet | Per-axis judgment from extracted fields + data-flow. |
+| `review_for_compliance` | opus | Cross-vendor synthesis when stakes are high (multiple high-risk vendors). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/vendor-risk-assessment-template.json` | JSON schema for the Vendor Risk Assessment Template output contract |
-| `templates/vendor-risk-assessment-template.md` | Markdown skeleton with the required fields |
+| `templates/vendor-risk-assessment-template.json` | JSON schema for the vendor risk assessment output contract. |
+| `templates/vendor-risk-assessment-template.md` | Markdown skeleton with the required fields. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-vendor-risk-assessment-template.py` | Enforce Vendor Risk Assessment Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-vendor-risk-assessment-template.py` | Enforce vendor-risk output contract (DPA present, subprocessor list non-empty, owner is person, semver + last_reviewed). | Before assessment is filed to compliance folder. |
 
 ## Related
 
-- parent skill: `geek/pm/`
-- upstream playbook: `p6-product-dev-team/SOC2 / GDPR audit prep (annual)`
-- geek/pm/p6-product-dev-team
+- [[vendor-eval-framework]] — sibling pre-purchase selection methodology.
+- [[team-charter-working-agreement]] — peer versioned-artefact methodology sharing the same envelope.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether the vendor handles customer data or credentials. If no → skip and document. If yes → check DPA + subprocessor list available. If missing → block and request from vendor. Otherwise → emit the assessment using the rule set.

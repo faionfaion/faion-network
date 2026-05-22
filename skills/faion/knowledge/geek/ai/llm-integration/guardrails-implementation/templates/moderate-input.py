@@ -1,4 +1,10 @@
 """
+purpose: Minimal fast input moderation — regex injection check + OpenAI Moderation API.
+consumes: user_text + optional OpenAI client
+produces: (is_safe: bool, reasons: list[str])
+depends-on: content/01-core-rules.xml r2
+token-budget-impact: ~100ms moderation API hit; zero token cost on the calling LLM
+
 Minimal fast input moderation: rule-based injection check + OpenAI Moderation API.
 
 Usage:

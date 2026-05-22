@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Video Gen Service — Worked Example" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Worked example: 30s reel pipeline — 6×5s Runway clips + ffmpeg concat + watermark.</summary>
+
+  <example title="service-config.yaml for reel pipeline">
+    <code lang="yaml"><![CDATA[
+queue:
+  kind: redis-streams
+  connection: redis://queue.internal:6379
+  consumer_group: video-workers
+workers:
+  count: 8
+  concurrency: 5
+
+providers:
+  - {name: runway, model: gen-3-alpha, weight: 0.6, max_concurrent: 5}
+  - {name: luma, model: dream-machine, weight: 0.4, max_concurrent: 3}
+
+ffmpeg:
+  enabled: true
+  operations: [concat, overlay-watermark, transcode-h264-720p]
+
+tenant_quotas:
+  default_monthly_jobs: 100
+  default_monthly_usd: 50
+  vip_overrides:
+    "tenant-x": {monthly_jobs: 1000, monthly_usd: 500}
+
+cost_cap:
+  global_monthly_usd: 2500
+  reject_at_pct: 95
+  alert_at_pct: 80
+
+idempotency:
+  window_hours: 24
+  store: redis
+]]></code>
+    <note>Persistent queue (r1), per-tenant quota with VIP override (r2), declarative ffmpeg ops (r3), cost cap at 95% (r4), 24h idempotency (r5).</note>
+  </example>
+</text>
