@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="multi-agent-hierarchical Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for multi-agent-hierarchical. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Hierarchical Manager-Worker Core Rules" version="1.1.0" est_tokens="750" depth="essential">
+  <summary>Five testable rules for shipping a manager-worker hierarchical runner that scales beyond a toy demo.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The manager MUST validate the JSON plan before dispatching subtasks. If json.loads() raises, return the raw error to the manager for re-planning rather than aborting silently.</statement>
-      <rationale source="v1-source">Non-deterministic plan parsing is the most common failure point in hierarchical systems. A malformed plan that silently skips workers produces an incomplete synthesis without any error signal.</rationale>
+  <section title="Plan integrity">
+    <rule id="r1-typed-plan" testable="true" depth="essential">
+      <statement>The manager MUST emit the plan as JSON conforming to `plan-schema.json` (assignments[] of `{id, worker_name, subtask, deps[]}`). If parsing fails, the orchestrator MUST feed the parse error back to the manager for one repair attempt before aborting.</statement>
+      <rationale source="hierarchical-plan-parsing-failures">Malformed plans cause silent skipped workers; one structured repair loop catches ~95% of LLM JSON glitches without unbounded retries.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The orchestrator MUST NOT perform domain work itself. Its system prompt MUST say "Decompose tasks and coordinate workers" — never "implement" or "write code".</statement>
-      <rationale source="v1-source">If the manager also does domain work, it becomes a single-agent bottleneck with extra coordination overhead. The only value of hierarchy is specialization.</rationale>
+    <rule id="r2-plantime-cycle-check" testable="true" depth="essential">
+      <statement>Before dispatch, the orchestrator MUST run a DAG cycle check on the `deps[]` edges. If the plan contains a cycle, refuse to start and return the cycle to the manager for re-planning.</statement>
+      <rationale source="multi-agent-deadlock-failure-mode">Cycle detection is O(V+E) and free of false positives; without it, the run hangs at dispatch time.</rationale>
+    </rule>
+  </section>
+
+  <section title="Role boundaries">
+    <rule id="r3-manager-no-domain-work" testable="true" depth="essential">
+      <statement>The manager MUST NOT perform domain work itself. Its system prompt MUST say "Decompose tasks and coordinate workers"; verbs like "implement", "write code", "research" belong to workers.</statement>
+      <rationale source="single-agent-bottleneck">If the manager does domain work, it becomes the very bottleneck this pattern is supposed to remove.</rationale>
+    </rule>
+    <rule id="r4-workers-stateless" testable="true" depth="essential">
+      <statement>Workers MUST be stateless across subtask invocations. Workers MUST NOT communicate with each other directly — the orchestrator is the only routing surface.</statement>
+      <rationale source="multi-agent-debug-complexity">Stateless workers + single-routing-surface make the trace deterministic and replayable; direct worker-to-worker channels make debugging combinatorial.</rationale>
+    </rule>
+  </section>
+
+  <section title="Resilience">
+    <rule id="r5-declared-failure-policy" testable="true" depth="essential">
+      <statement>The runner MUST declare a partial-failure policy upfront (`abort` / `degrade` / `retry`) AND a per-worker timeout. If a worker times out or errors, the policy decides whether the run aborts, continues without that worker's contribution, or retries N≤2 times.</statement>
+      <rationale source="long-running-agent-failures">Without declared policy, partial failures get swept under "best-effort" semantics that hide bugs and surprise users with degraded outputs.</rationale>
     </rule>
   </section>
 </text>

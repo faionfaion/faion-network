@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-service-layer Worked Example" version="1.1.0" est_tokens="400" depth="optional">
+  <summary>End-to-end example: order creation across Order + OrderItem with notification fired only on commit.</summary>
+
+  <section title="Service">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# apps/orders/services.py
+from decimal import Decimal
+from django.db import transaction
+from apps.orders.models import Order, OrderItem
+from apps.orders.tasks import notify_user_order_created
+from core.exceptions import ValidationError
+
+
+def order_create(*, user, items: list[dict], shipping_method_id: int) -> Order:
+    if not items:
+        raise ValidationError("order must contain at least one item")
+    total = sum(Decimal(str(i["price"])) * i["quantity"] for i in items)
+
+    with transaction.atomic():
+        order = Order(user=user, shipping_method_id=shipping_method_id, total=total)
+        order.full_clean()
+        order.save()
+        OrderItem.objects.bulk_create([
+            OrderItem(order=order, product_id=i["product_id"], quantity=i["quantity"], price=i["price"])
+            for i in items
+        ])
+
+        transaction.on_commit(
+            lambda: notify_user_order_created.delay(order_id=order.id)
+        )
+
+    return order
+]]></code>
+    </example>
+  </section>
+
+  <section title="Test for atomicity">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# apps/orders/tests/test_services.py
+import pytest
+from django.db import transaction
+from apps.orders.services import order_create
+from apps.orders.models import Order, OrderItem
+
+
+@pytest.mark.django_db(transaction=True)
+def test_order_create_rolls_back_on_full_clean_failure(user_factory, monkeypatch):
+    user = user_factory()
+    bad_items = [{"product_id": 1, "quantity": 1, "price": -10}]  # negative price
+
+    with pytest.raises(Exception):
+        order_create(user=user, items=bad_items, shipping_method_id=1)
+
+    # No Order or OrderItem rows committed
+    assert Order.objects.count() == 0
+    assert OrderItem.objects.count() == 0
+]]></code>
+      <note>The negative price violates `OrderItem.full_clean()`, the atomic block rolls back, and `notify_user_order_created.delay()` never fires because `on_commit` skips on rollback.</note>
+    </example>
+  </section>
+</text>

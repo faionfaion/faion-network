@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-service-layer Decision Tree" version="1.1.0" est_tokens="300">
+  <decision-tree>
+    <root-question id="q1">Does the operation write to the database (save/update/delete/bulk_*) or trigger a side effect (email, Celery, webhook)?</root-question>
+    <branch when="q1 == no">
+      <conclusion ref="r1-kwarg-only">Read operation: use [[django-selectors]]. HTTP-only glue: keep in the view. Stop here.</conclusion>
+    </branch>
+    <branch when="q1 == yes">
+      <question id="q2">Are multiple models written OR side effects triggered as part of the same business action?</question>
+      <branch when="q2 == no">
+        <question id="q3">Does the model define `clean()` or composite constraints?</question>
+        <branch when="q3 == no">
+          <conclusion ref="r1-kwarg-only">Inline `Model.objects.create(...)` is acceptable. Promote to service only when a second caller appears.</conclusion>
+        </branch>
+        <branch when="q3 == yes">
+          <conclusion ref="r3-full-clean">Extract into a service so `full_clean()` is called before `save()`. Even a single-model write needs the validation contract.</conclusion>
+        </branch>
+      </branch>
+      <branch when="q2 == yes">
+        <conclusion ref="r2-atomic-boundary">Extract into a service. Apply ALL five rules: kwarg-only, atomic boundary, full_clean, domain exceptions, on_commit side-effects.</conclusion>
+      </branch>
+    </branch>
+    <example trace="POST /orders/ creates Order + N OrderItems + sends notification → q1=yes (write) → q2=yes (multi-model + side effect) → r2-atomic-boundary (full service)"/>
+  </decision-tree>
+</text>
