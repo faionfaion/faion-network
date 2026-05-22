@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Video Async API — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes lifecycle status to action.</summary>
+
+  <decision-tree>
+    <root-question id="q-status">Current job status from poll?</root-question>
+    <branch when="status == 'pending' or status == 'running'">
+      <question id="q-timeout">Total wait elapsed?</question>
+      <branch when="elapsed_s &gt;= total_wait_cap_seconds">
+        <conclusion ref="r3-total-wait-cap" verdict="MARK timeout; trigger fallback (r5-provider-fallback)"/>
+      </branch>
+      <branch when="elapsed_s &lt; total_wait_cap_seconds">
+        <conclusion ref="r2-exp-backoff-polling" verdict="SLEEP backoff[attempt] + jitter; poll again"/>
+      </branch>
+    </branch>
+    <branch when="status == 'succeeded'">
+      <conclusion ref="r4-download-before-expiry" verdict="DOWNLOAD artefact to bucket; update VideoJob.artefact_url to S3 URI"/>
+    </branch>
+    <branch when="status == 'failed-transient'">
+      <conclusion ref="r1-idempotency-key" verdict="RETRY with same idempotency key (no double-bill)"/>
+    </branch>
+    <branch when="status == 'failed-permanent'">
+      <conclusion ref="r5-provider-fallback" verdict="FALLBACK to secondary provider with SAME idempotency key"/>
+    </branch>
+  </decision-tree>
+</text>

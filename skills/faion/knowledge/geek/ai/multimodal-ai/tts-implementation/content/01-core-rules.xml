@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tts-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tts-implementation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="TTS Implementation — Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every production TTSService must enforce: cache identity, eviction, chunk isolation, semantic split, async-safe streaming, clone consent.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-provider-in-cache-key" testable="true" depth="essential">
+      <statement>TTSService cache key MUST include `provider`. The canonical form is `sha256(text + "|" + voice + "|" + str(speed) + "|" + provider).hexdigest()`. Provider is identity, not configuration.</statement>
+      <rationale source="Cross-provider audio comparison: OpenAI nova vs Google en-US-Neural2-F vs ElevenLabs Rachel produce non-interchangeable output">Same text + same semantic voice on a different provider produces audibly different audio. Without provider in the key, a pipeline that switches providers serves stale cached audio under the new provider's name.</rationale>
+    </rule>
+
+    <rule id="r2-cache-eviction" testable="true" depth="essential">
+      <statement>Implement cache eviction by both max_age_days (default 30) and max_size_mb (default 500). Run eviction on a schedule (cron, before each synthesis batch) — never rely on disk to fill before alerting.</statement>
+      <rationale source="Production disk-fill incidents on long-running media pipelines">TTS audio caches accumulate gigabytes silently. A 6-month-old pipeline with no eviction fills the host disk and breaks the service with ENOSPC mid-batch.</rationale>
+    </rule>
+
+    <rule id="r3-chunk-tempdir-isolation" testable="true" depth="essential">
+      <statement>LongTextTTS MUST use `tempfile.mkdtemp()` for chunk paths. Never use predictable paths like `/tmp/chunk_{i}.mp3`. Cleanup with `shutil.rmtree(tmpdir, ignore_errors=True)` after assembly.</statement>
+      <rationale source="Concurrent batch synthesis failure traces (multiple agents on same host)">Two LongTextTTS instances writing to `/tmp/chunk_0.mp3` simultaneously corrupt each other's outputs. mkdtemp() makes paths non-overlapping by construction.</rationale>
+    </rule>
+
+    <rule id="r4-semantic-split" testable="true" depth="essential">
+      <statement>Split long text on semantic boundaries (paragraphs, headings) before sentence-level splitting. Reject inputs with no sentence-ending punctuation (`.!?`) by chunk_size — they will produce one oversized chunk that exceeds the API limit.</statement>
+      <rationale source="LongTextTTS regex `(?&lt;=[.!?])\s+` failures on code-block / bulleted / data-dump payloads">Code blocks and bulleted lists have no sentence punctuation. The naive regex returns the whole input as one chunk, then the API rejects it at 4096+ chars and the entire long-form synthesis fails.</rationale>
+    </rule>
+
+    <rule id="r5-async-safe-stream" testable="true" depth="essential">
+      <statement>stream_tts() MUST be an async generator yielding bytes. Sync callers MUST bridge via `asyncio.run(collect_stream(...))`. Never call `response.stream_to_file()` directly inside an async coroutine without `asyncio.to_thread()`.</statement>
+      <rationale source="Event-loop block warnings under load (FastAPI + LiveKit)">stream_to_file is sync I/O that blocks asyncio's event loop for the full streaming window. Other voice turns stall mid-conversation until the file write completes.</rationale>
+    </rule>
+
+    <rule id="r6-clone-consent-gate" testable="true" depth="essential">
+      <statement>ElevenLabs clone_voice() MUST be preceded by a consent record lookup. The record contains `{speaker_id, signed_at, scope, sample_paths[]}`. Without a valid record matching the requested scope, the call is rejected with `status="error", error="missing consent"`.</statement>
+      <rationale source="ElevenLabs ToS Section 4.3 (Voice Cloning); legal exposure on unauthorized voice clones">Cloning a person's voice without consent violates ElevenLabs ToS and in many jurisdictions is unauthorized commercial use of likeness. Hard-coding the gate makes the policy enforceable in code review.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
