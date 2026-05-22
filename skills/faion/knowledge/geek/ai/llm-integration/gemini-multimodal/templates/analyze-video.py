@@ -1,4 +1,10 @@
 """
+purpose: Upload a video to Gemini Files API and query it with ACTIVE polling.
+consumes: video file path + Gemini client
+produces: text response from the model
+depends-on: content/01-core-rules.xml r1, r2
+token-budget-impact: per-call; video size dominates context tokens
+
 analyze_video — upload a video to Gemini and query it with a polling guard.
 
 Usage:

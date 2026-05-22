@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="agentic-rag-tool-using Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Agentic RAG Tool-Using — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON shape every tool-using RAG agent emits: final answer + full call trace + budget counters. Used by validate-agentic-rag-tool-using.py for the pre-commit gate.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://agentic-rag-tool-using/output.schema.json",
+  "type": "object",
+  "required": ["answer", "trace", "calls_used", "max_calls", "synthesis_model", "routing_model"],
+  "properties": {
+    "answer": {"type": "string", "minLength": 1},
+    "trace": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["iteration", "tool", "query", "result_summary", "latency_ms"],
+        "properties": {
+          "iteration": {"type": "integer", "minimum": 1},
+          "tool": {"type": "string", "enum": ["vector_search", "keyword_search", "sql_query", "web_search", "generate_answer"]},
+          "query": {"type": "string", "minLength": 1},
+          "result_summary": {"type": "string", "maxLength": 200},
+          "latency_ms": {"type": "integer", "minimum": 0},
+          "cached": {"type": "boolean"}
+        }
+      }
+    },
+    "calls_used": {"type": "integer", "minimum": 1},
+    "max_calls": {"type": "integer", "minimum": 1, "maximum": 10},
+    "synthesis_model": {"type": "string"},
+    "routing_model": {"type": "string"},
+    "web_search_allowlist_violations": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Result summaries longer than 200 chars (full document text in the trace).</description>
+      <reason>Inflates selector prompt size on next iteration and can exceed context window.</reason>
+    </antipattern>
+    <antipattern>
+      <description>calls_used &gt; max_calls.</description>
+      <reason>Loop cap violation — agent ran past its budget.</reason>
+    </antipattern>
+    <antipattern>
+      <description>web_search_allowlist_violations array non-empty.</description>
+      <reason>Wrapper bypassed the allow-list — security regression.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "answer": "Q3 revenue was $4.2M (up 18% YoY); CEO attributed the jump to enterprise contracts closed in late September.",
+  "trace": [
+    {"iteration": 1, "tool": "sql_query", "query": "SELECT SUM(amount) FROM revenue WHERE quarter='Q3'", "result_summary": "$4.2M total", "latency_ms": 42, "cached": false},
+    {"iteration": 2, "tool": "vector_search", "query": "Q3 earnings call CEO commentary", "result_summary": "chunk: 'enterprise contracts closed late Sept drove the lift'", "latency_ms": 187, "cached": false},
+    {"iteration": 3, "tool": "generate_answer", "query": "synthesise", "result_summary": "final answer composed", "latency_ms": 1304, "cached": false}
+  ],
+  "calls_used": 3,
+  "max_calls": 3,
+  "synthesis_model": "claude-3-5-sonnet",
+  "routing_model": "claude-3-haiku",
+  "web_search_allowlist_violations": []
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "answer": "...",
+  "trace": [
+    {"iteration": 1, "tool": "web_search", "query": "Q3 revenue", "result_summary": "<full 8000-char page dump>", "latency_ms": 980}
+  ],
+  "calls_used": 7,
+  "max_calls": 3,
+  "web_search_allowlist_violations": ["http://random-blog.example/q3-leak"]
+}
+]]></code>
+      <note>Invalid: result_summary exceeds 200 chars; calls_used &gt; max_calls; allow-list violation present.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>answer is non-empty.</item>
+      <item>trace has at least 1 entry, each summary ≤200 chars.</item>
+      <item>calls_used ≤ max_calls.</item>
+      <item>web_search_allowlist_violations is empty.</item>
+      <item>routing_model is a cheap model; synthesis_model is a heavier one.</item>
     </list>
   </section>
 </text>

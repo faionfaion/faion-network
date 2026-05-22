@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="graph-rag-retrieval Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for graph-rag-retrieval. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="graph-rag-retrieval Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every application of graph-rag-retrieval enforces: classify each query, route by type, start hybrid, cap neighbor expansion, and fall back safely.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Classify every query before retrieval using a fast LLM call. Use the four canonical types: GLOBAL (main themes, overall trends), ENTITY (specific entity details), RELATIONSHIP (connections between entities), LOCAL (single-chunk-answerable facts). Fall back to LOCAL on classification failure.</statement>
-      <rationale source="v1-source">Without classification, a system must either run all retrieval paths (3-5x latency) or pick one strategy that degrades accuracy for the wrong query types. Classification adds one cheap LLM call but routes the query to the strategy where it performs best.</rationale>
+    <rule id="r1-classify-every-query" testable="true" depth="essential">
+      <statement>Classify every query before retrieval using one fast LLM call (haiku/gpt-4o-mini, temperature=0) into the four canonical types: GLOBAL, ENTITY, RELATIONSHIP, LOCAL. On classification failure, fall back to LOCAL.</statement>
+      <rationale source="v1-source + Microsoft GraphRAG paper (arXiv 2404.16130)">Without classification, either all retrieval paths run (3-5x latency) or one strategy degrades accuracy for wrong-type queries. A single cheap call routes each query to its best-fit strategy.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>For global queries, always use pre-computed hierarchical summaries, not live graph traversal. For relationship queries, wrap every nx.shortest_path call in try/except NetworkXNoPath — disconnected subgraphs are common. Cap relationship query path depth to 3 hops.</statement>
-      <rationale source="v1-source">Live graph traversal at query time is too slow for graphs with more than 50k nodes. nx.shortest_path raises NetworkXNoPath on disconnected subgraphs; uncaught, this crashes the retrieval step for valid relationship queries where the entities happen to be in separate components.</rationale>
+    <rule id="r2-global-uses-summaries" testable="true" depth="essential">
+      <statement>For GLOBAL queries, always read the pre-computed hierarchical/community summary — never trigger live graph traversal at query time.</statement>
+      <rationale source="v1-source">Full-graph traversal for global answers takes seconds-to-tens-of-seconds on graphs &gt;50k nodes. Pre-computed summaries serve them in milliseconds; that is the entire point of offline summarisation.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Start with hybrid retrieval (vector + graph expansion) before committing to pure graph-only retrieval. Limit graph neighbor expansion to 3 neighbors per entity to prevent context explosion. Deduplicate by chunk ID before returning the final candidate set.</statement>
-      <rationale source="v1-source">Pure graph retrieval without a vector anchor can return structurally connected but semantically irrelevant chunks. The hybrid approach inherits the precision of embedding similarity and the recall of graph traversal. Unbounded neighbor expansion causes context windows to fill with low-relevance entity chunks.</rationale>
+    <rule id="r3-relationship-bounded-paths" testable="true" depth="essential">
+      <statement>For RELATIONSHIP queries, wrap every shortest-path call in try/except for NetworkXNoPath and NodeNotFound, and cap hop depth at 3.</statement>
+      <rationale source="v1-source">Disconnected subgraphs are common; an uncaught NetworkXNoPath crashes retrieval for valid relationship queries. Unbounded depth turns a dense graph into exponential path enumeration.</rationale>
+    </rule>
+    <rule id="r4-hybrid-first" testable="true" depth="essential">
+      <statement>Start with hybrid retrieval (vector candidates → graph neighbor expansion → dedupe by chunk-id) before committing to pure graph-only retrieval. Limit neighbor expansion to ≤3 neighbors per entity.</statement>
+      <rationale source="v1-source">Pure graph retrieval without a vector anchor surfaces structurally connected but semantically irrelevant chunks. Unbounded expansion fills the context window with low-relevance entity chunks.</rationale>
+    </rule>
+    <rule id="r5-safe-fallback-local" testable="true" depth="essential">
+      <statement>When ENTITY/RELATIONSHIP paths fail (entity not in graph, no extractable entities, no path), fall back to LOCAL vector search with k=5 before returning empty context. Never return an empty answer when fallback is available.</statement>
+      <rationale source="v1-source">A failed graph lookup is not the same as no relevant context — vector search frequently has the answer the graph route missed. Always preserve the fallback path for retrieval continuity.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>If no knowledge graph exists or all queries are local/chunk-answerable, skip graph-rag-retrieval and use plain vector + reranking instead.</statement>
+      <rationale source="phase-d">Routing overhead and graph-traversal cost are unjustified when the graph is missing or unused.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,4 +1,10 @@
 """
+purpose: Context caching for Gemini — create, reuse, expire caches for large documents.
+consumes: large doc content + Gemini client + TTL
+produces: cache id used in subsequent generate calls
+depends-on: content/01-core-rules.xml r4
+token-budget-impact: cuts per-call input cost ~75% on repeated docs
+
 Context caching for Gemini — create, use, and manage caches for large documents.
 
 Requires >=32K tokens in cached content. Cached tokens cost ~75% less than full-price input.
