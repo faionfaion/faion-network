@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="reranking Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for reranking as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Reranking — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns when adding a reranker to a RAG pipeline.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Skipping the reranker on Advanced+ tier — top-20 raw chunks dumped into synthesis context, precision tanks.</description>
+      <detector>tier ≥ "advanced" in rag-pipeline.yaml AND reranker block absent OR provider == "none"</detector>
+      <repair>Add Cohere Rerank or BGE Reranker. Retrieve top-20, rerank to top-5. Verify p95 latency budget still met.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Oversize top-N — top_n_input set to 5000 hoping for better recall. Cohere truncates at 1000; queries lose docs silently.</description>
+      <detector>provider == "cohere" AND top_n_input &gt; 1000; OR top_n_input &gt; provider cap</detector>
+      <repair>Pin top_n_input ≤ provider cap. Use multi-stage rerank (rerank in batches, fuse) only if &gt;1000 candidates truly needed; usually they aren't.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Adopting reranker without an eval — assume Cohere will improve quality. Cost incurred, latency added, no measurable lift.</description>
+      <detector>reranker shipped without eval_evidence; OR sample_size &lt; 50; OR precision_lift &lt; 0.10</detector>
+      <repair>Build 50-100 labelled eval set; measure precision@K with and without reranker. Adopt only if lift ≥ 10%.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>Hard-coded provider — managed reranker outage takes down RAG. No fallback path.</description>
+      <detector>fallback.strategy == "hard-fail" OR missing; production logs show RAG 5xx during reranker provider incident</detector>
+      <repair>Implement fallback: (a) local BGE-reranker on standby OR (b) return first-stage top-K with degraded flag. Test fallback with synthetic 5xx pre-prod.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>No latency budget — reranker latency drifts; p95 doubles month-over-month without anyone noticing.</description>
+      <detector>latency_budget_ms missing OR no Prometheus rule on reranker p95</detector>
+      <repair>Pin latency_budget_ms in reranker.yaml. Wire alert when p95 &gt; budget × 1.2. Reduce top_n or switch provider on breach.</repair>
+    </failure-mode>
+
   </section>
 </text>

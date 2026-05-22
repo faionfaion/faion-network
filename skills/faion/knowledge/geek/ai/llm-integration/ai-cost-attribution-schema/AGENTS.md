@@ -4,76 +4,95 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for ai cost attribution schema that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a JSON Schema + middleware spec that tags every LLM call with tenant, feature, route, model, prompt-cache-hit so cost reports are sliceable per dimension.
 content_id: "9e83778f2c9a8314"
-tags: [ai, template]
+complexity: medium
+produces: spec
+est_tokens: 3300
+tags: [cost, attribution, finops, observability, llm-integration]
 ---
 # AI Cost Attribution Schema
 
 ## Summary
 
-**One-sentence:** Reusable template for ai cost attribution schema that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Produces a JSON Schema + middleware spec that tags every LLM call with tenant, feature, route, model, prompt-cache-hit so cost reports are sliceable per dimension.
 
-**One-paragraph:** Reusable template for ai cost attribution schema that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. Telemetry schema for attributing tokens to feature, endpoint, tenant, and prompt version. Foundation for any cost optimization sweep.
+**One-paragraph:** A raw vendor invoice is a single number ("$8,431 this month"). Without an attribution schema the team cannot answer "which feature caused the increase?", "which tenant cost us money?", "did the prompt-cache rollout pay off?". This methodology defines the mandatory call-side metadata (tenant_id, feature, route, model, prompt_cache_hit, input_tokens, output_tokens, latency_ms, request_id), the middleware that stamps it on every request, and a daily aggregator producing a sliceable table. The schema is shared between the app, the FinOps team, and the cost dashboard.
+
+**Ефективно для:** multi-tenant SaaS, internal AI tools shared across teams, agents with parallel tool calls, model-routing pipelines that need ROI evidence.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by ai cost attribution schema (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Monthly LLM bill exceeds the threshold where slicing matters (≥ $1k/mo typical).
+- Application has ≥2 features or tenants that should be attributable.
+- A telemetry pipeline (logs, OTel, ClickHouse, etc.) can ingest structured records.
+- A FinOps or engineering owner consumes the resulting report.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Single-feature single-tenant prototype — attribution overhead exceeds insight.
+- LLM bill below $100/mo — slicing doesn't unlock budget decisions.
+- No telemetry pipeline yet — fix that first; this methodology assumes ingestion exists.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Input artifact | Format | Source |
+|---|---|---|
+| List of features calling LLMs | YAML | engineering wiki |
+| Tenant model (multi/single) | doc | architecture |
+| Telemetry ingest endpoint | URL + creds | observability stack |
+| Vendor pricing per model | table | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/llm-integration/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+|---|---|
+| `[[latency-vs-quality-decision-grid]]` | Routing config consumes the cost column. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 testable rules: 8 required tags, middleware-stamped, no-blank-tenant, cost computed at write, daily aggregator, dashboard | ~700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for per-call record + aggregated daily table | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: optional tags, tenant-as-string, cost-at-read-time, sampled-not-full, no-aggregator | ~600 |
+| `content/04-procedure.xml` | medium | 6-step procedure: list features → define schema → wire middleware → ingest → aggregate → dashboard | ~800 |
+| `content/06-decision-tree.xml` | essential | Root: "monthly bill > $1k AND ≥2 attribution dimensions matter?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+|---|---|---|
+| Inventory feature list | sonnet | Mechanical extraction from code. |
+| Author middleware sketch | opus | Cross-language reasoning. |
+| Aggregate SQL drafted | haiku | Pure SQL template. |
+| Dashboard layout | sonnet | UX-light. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/attribution.schema.json` | JSON Schema for per-call attribution record. |
+| `templates/middleware.py` | Python middleware reference (FastAPI/Django shape). |
+| `templates/middleware.ts` | TypeScript middleware reference (Express/Next shape). |
+| `templates/daily-aggregator.sql` | SQL aggregator producing the daily attribution table. |
+| `templates/_smoke-test.json` | Single valid attribution record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-ai-cost-attribution-schema.py` | Validates a JSONL of attribution records against the schema and asserts no records have blank/generic tenant or feature. | Pre-commit on test fixtures; CI on dashboard data sources. |
 
 ## Related
 
 - parent skill: `geek/ai/llm-integration/`
-- peer methodologies: see siblings under `geek/ai/llm-integration/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[latency-vs-quality-decision-grid]]` — consumes the per-call cost
+- `[[llm-drift-daily-triage]]` — references cost deltas
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether attribution is worth the wiring: skip when bill or feature count is tiny; route to baseline-instrumentation-first when telemetry pipe is missing.
