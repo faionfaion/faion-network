@@ -2,7 +2,7 @@
 slug: vendor-margin-defense-checklist
 tier: pro
 group: pm
-domain: project-manager
+domain: pm
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

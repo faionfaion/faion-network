@@ -2,7 +2,7 @@
 slug: six-core-principles
 tier: pro
 group: pm
-domain: pm-agile
+domain: pm
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
