@@ -4,11 +4,14 @@ tier: geek
 group: ml-engineer
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "361eaa08ebeef0eb"
 summary: Shadow-deploy protocol specific to LLM routers and tuned-model cascades — mirror traffic to candidate router, compute scoring delta vs production router, schema-parity check, cost guardrail, and gated promotion.
+complexity: deep
+produces: report
+est_tokens: 4400
 tags: [llm-routing, shadow-deploy, model-cascade, gateway, promotion-gate]
 ---
 

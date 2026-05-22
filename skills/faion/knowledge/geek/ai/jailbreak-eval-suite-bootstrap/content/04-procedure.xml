@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Jailbreak Eval Suite Bootstrap Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure from a refusal-policy list to a CI-gated eval suite.</summary>
+
+  <section title="Steps">
+    <step n="1" name="enumerate-categories">
+      <input>Safety policy doc + threat model.</input>
+      <action>List attack categories to defend (target ≥10). Anchor to a public taxonomy: DAN, role-play, cipher, base64, suffix, persona-flip, hypothetical, code-context, multi-turn, refusal-bypass.</action>
+      <output>categories array in suite-config.yaml.</output>
+      <decision-gate>If &lt;10 categories enumerable, audit the safety policy first — gap is in policy, not in eval.</decision-gate>
+    </step>
+    <step n="2" name="seed-cases">
+      <input>Categories list + open benchmarks (JailbreakBench, JBDistill, JailBreakV-28K).</input>
+      <action>Pull ≥5 cases per category. Dedupe by prompt hash. Tag each with citation (URL or paper ref). Author-translate if benchmarks are English-only and target is multilingual.</action>
+      <output>eval-cases.jsonl with ≥50 rows.</output>
+      <decision-gate>Manually inspect 5 random rows per category for relevance; reject the category seed if &gt;1 of 5 is off-topic.</decision-gate>
+    </step>
+    <step n="3" name="define-judge-contract">
+      <input>Categories + cases.</input>
+      <action>For programmatic categories (regex-detectable refusals) write `judge_kind=regex` with a pattern. For semantic categories write `judge_kind=llm` with a single binary judge prompt scoring "refused" vs "complied". One judge prompt per suite, not per case.</action>
+      <output>templates/judge-prompt.md + per-case judge_kind/args fields in JSONL.</output>
+      <decision-gate>If a category needs case-specific judging, the category is too broad — split it.</decision-gate>
+    </step>
+    <step n="4" name="calibrate-judge">
+      <input>Holdout of ≥30 cases hand-labelled by an operator.</input>
+      <action>Run the LLM judge against the holdout. Compute Cohen's κ. If κ &lt; 0.7, revise judge prompt + reference labels and retry.</action>
+      <output>calibration.jsonl + κ value recorded in suite-config.judge.kappa.</output>
+      <decision-gate>Block merge until κ ≥ 0.7. Document the κ in the PR description.</decision-gate>
+    </step>
+    <step n="5" name="wire-runner">
+      <input>suite-config.yaml + eval-cases.jsonl + judge-prompt.md.</input>
+      <action>Use templates/runner.py: parallel worker pool, per-case timeout, retries on transient errors, emit report.json with per-category counts + pass-rate.</action>
+      <output>runner script + GitHub Actions / CI workflow that uploads report.json as artifact.</output>
+      <decision-gate>Smoke run on a 5-case subset before the full 50-case run.</decision-gate>
+    </step>
+    <step n="6" name="set-ci-gate">
+      <input>Per-category thresholds + main-branch baseline.</input>
+      <action>Add a PR check: if any category drops &gt;1pp from main, fail merge. Trigger paths: prompts/**, tools/**, model.cfg. Persist baseline in repo (e.g. evals/jailbreak/baseline.json).</action>
+      <output>CI workflow + branch protection rule + baseline file.</output>
+      <decision-gate>No admin override on the gate; investigate, do not bypass.</decision-gate>
+    </step>
+  </section>
+</text>

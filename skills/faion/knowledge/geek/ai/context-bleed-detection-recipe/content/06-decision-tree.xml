@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Context Bleed Detection Recipe Decision Tree" version="1.1.0" est_tokens="300">
+  <summary>Three-question classifier: preconditions to canary-hit to distance threshold. Routes to bleed_type + scoped kill_switch.</summary>
+
+  <decision-tree>
+    <root-question id="q-preconditions">Are ALL preconditions satisfied? (session logs available AND snapshot fresh under 1h AND tenant-session frozen mapping present)</root-question>
+
+    <branch when="q-preconditions == true">
+      <question id="q-canary">Did probe_signal.canary_hit fire (foreign canary appeared in another session)?</question>
+
+      <branch when="q-canary == true">
+        <conclusion ref="r1-canary-per-session">Classify as cross-tenant bleed. Emit incident with kill_switch.scope=worker-pool. Page on-call.</conclusion>
+      </branch>
+
+      <branch when="q-canary == false">
+        <question id="q-distance">Is min pairwise embedding distance &lt; threshold (default 0.15) between adjacent-minute sessions?</question>
+
+        <branch when="q-distance == true">
+          <conclusion ref="r3-distance-threshold">Classify as prior-turn carry-over. Emit incident with kill_switch.scope=prompt-cache-key.</conclusion>
+        </branch>
+
+        <branch when="q-distance == false">
+          <conclusion ref="r5-no-blast-radius-fix">Classify as clean. No kill_switch fired. Record no-action incident for audit trail.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="q-preconditions == false">
+      <conclusion ref="r2-snapshot-before-probe">Skip this run. Surface missing precondition (stale snapshot, missing mapping). Defer.</conclusion>
+    </branch>
+  </decision-tree>
+
+  <example trace="cross-tenant-canary-fired"><![CDATA[
+inputs: {snapshot_age=10min, canary_hit=true, distance=0.08}
+q-preconditions -> true
+q-canary -> true
+=> conclusion r1-canary-per-session: cross-tenant bleed, scoped kill_switch on worker-pool.
+]]></example>
+</text>
