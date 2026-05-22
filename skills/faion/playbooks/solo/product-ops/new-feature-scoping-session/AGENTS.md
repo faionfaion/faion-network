@@ -3,7 +3,7 @@ slug: new-feature-scoping-session
 tier: solo
 group: product-ops
 persona: P1
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 0.1.0
 status: draft

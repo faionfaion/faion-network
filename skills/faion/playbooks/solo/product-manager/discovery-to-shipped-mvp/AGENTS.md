@@ -3,7 +3,7 @@ slug: discovery-to-shipped-mvp
 tier: solo
 group: product-manager
 persona: role-pm
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

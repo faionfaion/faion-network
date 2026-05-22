@@ -3,7 +3,7 @@ slug: weekly-positioning-post
 tier: solo
 group: content-marketing
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: multi-product-portfolio-rotation
 tier: solo
 group: product-planning
 persona: P2
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 0.1.0
 status: draft

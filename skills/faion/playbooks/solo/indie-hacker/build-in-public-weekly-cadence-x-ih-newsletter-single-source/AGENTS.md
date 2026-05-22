@@ -3,7 +3,7 @@ slug: build-in-public-weekly-cadence-x-ih-newsletter-single-source
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 1.0.0
 status: draft

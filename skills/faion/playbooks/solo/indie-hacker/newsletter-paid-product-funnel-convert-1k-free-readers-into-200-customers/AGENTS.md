@@ -3,7 +3,7 @@ slug: newsletter-paid-product-funnel-convert-1k-free-readers-into-200-customers
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

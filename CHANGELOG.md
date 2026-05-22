@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - F-065 phase 4: playbook goal classification chunk 2 (91 dirs).
 - F-065 phase 4: playbook goal classification chunk 3 (91 dirs).
 - F-065 phase 4: playbook goal classification chunk 4 (91 dirs).
+- F-065 phase 4: playbook goal classification chunk 5 (91 dirs + 47 gap-fill).
 - F-065 phase 2: L2 INDEX.xml for sdd/ai-agents/ux/sdlc-ai (400 methodologies).
 - F-065 phase 2: L2 INDEX.xml for research/ai-core/product/architecture (303 methodologies).
 - F-065 phase 3: playbook YAML→XML batch 5 (55 dirs).

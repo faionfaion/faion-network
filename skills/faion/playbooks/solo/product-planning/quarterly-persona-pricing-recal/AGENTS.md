@@ -3,7 +3,7 @@ slug: quarterly-persona-pricing-recal
 tier: solo
 group: product-planning
 persona: P1
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 0.1.0
 status: draft

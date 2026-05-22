@@ -3,7 +3,7 @@ slug: solo-idea-to-validated-mvp
 tier: solo
 group: product-planning
 persona: P1
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 0.1.0
 status: draft

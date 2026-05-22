@@ -3,7 +3,7 @@ slug: outreach-batch-backlinks-influencers-community-90-min-weekly
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

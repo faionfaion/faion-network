@@ -3,7 +3,7 @@ slug: daily-15-min-content-social-pulse-check
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

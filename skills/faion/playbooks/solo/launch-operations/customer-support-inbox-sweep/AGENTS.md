@@ -3,7 +3,7 @@ slug: customer-support-inbox-sweep
 tier: solo
 group: launch-operations
 persona: P1
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

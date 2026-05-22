@@ -3,7 +3,7 @@ slug: distribution-first-idea-validation-audience-before-product
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

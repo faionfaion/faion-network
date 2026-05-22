@@ -3,7 +3,7 @@ slug: sunset-rebuild-from-a-failed-launch
 tier: solo
 group: indie-hacker
 persona: P2
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

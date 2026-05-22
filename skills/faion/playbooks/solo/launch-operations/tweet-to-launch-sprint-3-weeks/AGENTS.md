@@ -3,7 +3,7 @@ slug: tweet-to-launch-sprint-3-weeks
 tier: solo
 group: launch-operations
 persona: P2
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft

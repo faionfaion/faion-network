@@ -3,7 +3,7 @@ slug: pre-launch-beta-program
 tier: solo
 group: launch-operations
 persona: P1
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 0.1.0
 status: draft
