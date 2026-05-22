@@ -1,3 +1,8 @@
+# purpose: text normalization + sentence-boundary chunking for TTS pipelines
+# consumes: long text input (article, transcript, doc)
+# produces: code (drop-in module yielding TTS-sized chunks)
+# depends-on: stdlib only
+# token-budget-impact: ~80 tokens if loaded into LLM context
 """Text normalization and sentence-boundary chunking for TTS pipelines."""
 import re
 from typing import Generator

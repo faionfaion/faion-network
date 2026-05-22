@@ -1,3 +1,8 @@
+# purpose: TTS call with content-hash cache layer (Redis / local)
+# consumes: text + voice + model
+# produces: code (drop-in cached TTS module)
+# depends-on: openai or elevenlabs SDK; redis (optional)
+# token-budget-impact: ~200 tokens if loaded into LLM context
 """TTS with content-hash caching to avoid redundant API calls."""
 import hashlib
 import os
