@@ -3,72 +3,92 @@ slug: previous-response-id-reasoning-reuse
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When chaining turns of an OpenAI reasoning model (o3, o4-mini, gpt-5) on the Responses API, pass previous_response_id=<prior.
-content_id: "fa50821543b6ae75"
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 23f97afa2a89b56d
+summary: Produces an agent-continuity spec wiring OpenAI Responses API `previous_response_id` to preserve reasoning items across turns instead of reconstructing Chat-Completions message arrays.
+complexity: medium
+produces: spec
+est_tokens: 4000
 tags: [reasoning, responses-api, agent-continuity, cache-optimization, multi-turn]
 ---
-# previous_response_id — Reasoning-Item Reuse on the Responses API
+# previous_response_id Reasoning Reuse
 
 ## Summary
 
-**One-sentence:** When chaining turns of an OpenAI reasoning model (o3, o4-mini, gpt-5) on the Responses API, pass previous_response_id=<prior.
+**One-sentence:** Produces an agent-continuity spec wiring OpenAI Responses API `previous_response_id` to preserve reasoning items across turns instead of reconstructing Chat-Completions message arrays.
 
-**One-paragraph:** When chaining turns of an OpenAI reasoning model (o3, o4-mini, gpt-5) on the Responses API, pass previous_response_id=<prior.id> instead of reconstructing a Chat-Completions–style message array. The Responses API keeps reasoning items adjacent to their function calls server-side, keyed by id; supplying the id reattaches them on the next turn. This preserves the model's mid-loop "thinking", lifts cache-hit rate, and cuts both latency and tokens. Under ZDR (store=false), use the encrypted-content variant instead — previous_response_id is silently ignored.
+**One-paragraph:** Multi-turn agents that rebuild a Chat-Completions message array per turn lose reasoning items and pay cache eviction costs. Responses API's `previous_response_id` carries reasoning + tool-result state server-side. This methodology emits a deterministic spec: when to use previous_response_id, retention TTL, fallback to message-array, observability hookup.
+
+**Ефективно для:** team running OpenAI Responses API agents whose costs balloon on long conversations.
 
 ## Applies If (ALL must hold)
 
-- Multi-turn agent loops on o3, o4-mini, or gpt-5 where the model calls tools and you feed results back.
-- Conversational reasoning agents where consecutive user turns continue the same task.
-- Long planning loops where mid-trajectory thoughts inform later decisions.
-- Anywhere you previously paid for "re-thinking" by reconstructing message arrays manually.
+- Using OpenAI Responses API (not Chat Completions).
+- Multi-turn agent (>= 3 turns).
+- Reasoning models (o1, o3, etc.) where reasoning tokens are expensive.
+- Stateless server doesn't preclude session continuity.
 
 ## Skip If (ANY kills it)
 
-- Non-reasoning models (gpt-4.1, gpt-4.1-mini) — there are no reasoning items to reuse.
-- ZDR / store=false deployments — the id is silently ignored; use include=["reasoning.encrypted_content"] and round-trip the blob (see encrypted-reasoning pattern).
-- First turn of a session — there is no prior id yet; pass the user message normally.
-- Cross-session continuation — reasoning items expire; do not assume yesterday's id still resolves.
+- Using Chat Completions API exclusively.
+- Single-turn endpoint.
+- Cannot rely on OpenAI server-side state retention.
+- Hard requirement to log full message history client-side.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `api-flavor` | "responses" / "chat" | infra |
+| `turn_count_distribution` | histogram | analytics |
+| `retention_ttl_hours` | integer | OpenAI policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[prompt-cache-prefix-order]] | Complementary cache strategy. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 rules: use previous_response_id, store id per conversation, fallback path on 404, retention TTL, log id per turn. | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec. | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: dropping id, mixing chat + responses, no fallback, leaking ids cross-user. | ~700 |
+| `content/04-procedure.xml` | recommended | 4-step procedure. | ~600 |
+| `content/05-examples.xml` | recommended | One canonical multi-turn worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Picks previous_response_id vs message-array. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_api_flavor` | haiku | Mechanical. |
+| `audit_continuity_path` | opus | Subtle id leakage between users. |
+| `emit_spec` | sonnet | Mechanical. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/agent-loop.py` | Responses API loop using previous_response_id. |
+| `templates/_smoke-test.yaml` | Minimum spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-previous-response-id-reasoning-reuse.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[prompt-cache-prefix-order]]
+- [[reasoning-first-architectures]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on api_flavor (chat → fallback; responses → continue), then on multi_turn (yes → previous_response_id; no → single-call). Each leaf cites a rule id.
