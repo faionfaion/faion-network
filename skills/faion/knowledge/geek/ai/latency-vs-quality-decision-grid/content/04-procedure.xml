@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Latency vs Quality Decision Grid Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure from call-site inventory to a live, monitored decision grid.</summary>
+
+  <section title="Steps">
+    <step n="1" name="inventory-call-sites">
+      <input>Code search + ops dashboard.</input>
+      <action>Enumerate every LLM call site: route, current model, current tactic, UX surface, owner. Deduplicate identical sites.</action>
+      <output>call-sites.yaml.</output>
+      <decision-gate>If &lt;3 distinct sites → skip-this-methodology.</decision-gate>
+    </step>
+    <step n="2" name="measure-baseline">
+      <input>Last 7 days of telemetry + current eval scores.</input>
+      <action>Record p50, p95 latency, quality score, cost-per-call per site.</action>
+      <output>baseline.csv merged into grid.json.</output>
+      <decision-gate>Any column missing → fix instrumentation before continuing.</decision-gate>
+    </step>
+    <step n="3" name="propose-grid">
+      <input>Baseline + UX guidelines + candidate-model cost table.</input>
+      <action>For each site, propose (latency_p50_ms, latency_p95_ms, quality_floor, model, tactic). Justify each row in ≤2 sentences. Note expected delta vs baseline.</action>
+      <output>grid.json (proposed).</output>
+      <decision-gate>If any row's proposed quality_floor &lt; current baseline → require sign-off from site owner.</decision-gate>
+    </step>
+    <step n="4" name="abx-rollout">
+      <input>grid.json (proposed) + feature-flag infra.</input>
+      <action>Wire each model swap behind a flag; run AB test (e.g. 10% traffic) for ≥48h; record observed latency + quality + cost deltas.</action>
+      <output>rollout-report.md per site.</output>
+      <decision-gate>If observed regression &gt;5% on either axis, abort and revert (rule r4).</decision-gate>
+    </step>
+    <step n="5" name="wire-routing">
+      <input>Approved grid.</input>
+      <action>Emit routing config consumed by the runtime (e.g. router.yaml). Pin grid.json + last_reviewed timestamp.</action>
+      <output>routing config + grid.json (active).</output>
+      <decision-gate>Validator script must pass before merge.</decision-gate>
+    </step>
+    <step n="6" name="monitor">
+      <input>Live telemetry.</input>
+      <action>Dashboard shows per-site p50/p95/quality/cost. Alert on 15-min SLO breach. Quarterly review re-runs the procedure.</action>
+      <output>dashboard URL + alert rules + quarterly cadence on calendar.</output>
+      <decision-gate>If alert fires for the same site twice in a quarter, re-run procedure from step 2 for that site.</decision-gate>
+    </step>
+  </section>
+</text>
