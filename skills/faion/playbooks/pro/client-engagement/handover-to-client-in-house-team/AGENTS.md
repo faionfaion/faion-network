@@ -3,7 +3,7 @@ slug: handover-to-client-in-house-team
 tier: pro
 group: client-engagement
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

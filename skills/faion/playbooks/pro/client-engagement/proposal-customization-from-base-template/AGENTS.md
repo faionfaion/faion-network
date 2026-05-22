@@ -3,7 +3,7 @@ slug: proposal-customization-from-base-template
 tier: pro
 group: client-engagement
 persona: P5
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 0.1.0
 status: draft

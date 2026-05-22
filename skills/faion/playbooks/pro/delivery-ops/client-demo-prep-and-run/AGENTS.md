@@ -3,7 +3,7 @@ slug: client-demo-prep-and-run
 tier: pro
 group: delivery-ops
 persona: P4
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 0.1.0
 status: draft

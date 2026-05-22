@@ -3,7 +3,7 @@ slug: jira-ticket-scoping-session
 tier: pro
 group: business-analysis
 persona: P4
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 0.1.0
 status: draft

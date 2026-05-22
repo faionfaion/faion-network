@@ -3,7 +3,7 @@ slug: adr-write-up-client-architecture
 tier: pro
 group: business-analysis
 persona: P4
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 0.1.0
 status: draft

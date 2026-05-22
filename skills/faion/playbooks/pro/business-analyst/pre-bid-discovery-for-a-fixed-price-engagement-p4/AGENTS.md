@@ -3,7 +3,7 @@ slug: pre-bid-discovery-for-a-fixed-price-engagement-p4
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 1.0.0
 status: draft

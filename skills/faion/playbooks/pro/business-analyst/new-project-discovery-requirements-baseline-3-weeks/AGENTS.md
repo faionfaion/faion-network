@@ -3,7 +3,7 @@ slug: new-project-discovery-requirements-baseline-3-weeks
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

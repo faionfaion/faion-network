@@ -3,7 +3,7 @@ slug: ai-assisted-requirements-discovery-on-a-new-outsource-engagement
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

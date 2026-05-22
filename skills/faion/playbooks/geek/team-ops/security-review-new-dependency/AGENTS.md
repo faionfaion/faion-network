@@ -3,7 +3,7 @@ slug: security-review-new-dependency
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 0.1.0
 status: draft

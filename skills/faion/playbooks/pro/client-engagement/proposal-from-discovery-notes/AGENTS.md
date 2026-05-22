@@ -3,7 +3,7 @@ slug: proposal-from-discovery-notes
 tier: pro
 group: client-engagement
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 0.1.0
 status: draft

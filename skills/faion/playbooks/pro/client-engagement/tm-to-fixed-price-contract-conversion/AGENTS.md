@@ -3,7 +3,7 @@ slug: tm-to-fixed-price-contract-conversion
 tier: pro
 group: client-engagement
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

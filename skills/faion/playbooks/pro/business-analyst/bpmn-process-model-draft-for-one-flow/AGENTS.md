@@ -3,7 +3,7 @@ slug: bpmn-process-model-draft-for-one-flow
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

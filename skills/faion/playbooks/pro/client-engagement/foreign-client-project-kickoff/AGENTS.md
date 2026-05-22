@@ -3,7 +3,7 @@ slug: foreign-client-project-kickoff
 tier: pro
 group: client-engagement
 persona: P4
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: engagement-handover-transition-out
 tier: pro
 group: client-engagement
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: medium
 version: 0.1.0
 status: draft

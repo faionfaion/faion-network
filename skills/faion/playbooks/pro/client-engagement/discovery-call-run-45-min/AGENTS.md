@@ -3,7 +3,7 @@ slug: discovery-call-run-45-min
 tier: pro
 group: client-engagement
 persona: P5
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 0.1.0
 status: draft

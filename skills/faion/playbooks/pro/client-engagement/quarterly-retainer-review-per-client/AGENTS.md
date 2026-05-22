@@ -3,7 +3,7 @@ slug: quarterly-retainer-review-per-client
 tier: pro
 group: client-engagement
 persona: P5
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 0.1.0
 status: draft

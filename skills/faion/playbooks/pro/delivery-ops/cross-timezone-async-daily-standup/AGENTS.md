@@ -3,7 +3,7 @@ slug: cross-timezone-async-daily-standup
 tier: pro
 group: delivery-ops
 persona: P4
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

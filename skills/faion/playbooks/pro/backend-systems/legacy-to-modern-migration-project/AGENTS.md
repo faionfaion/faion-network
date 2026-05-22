@@ -3,7 +3,7 @@ slug: legacy-to-modern-migration-project
 tier: pro
 group: backend-systems
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

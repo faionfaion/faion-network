@@ -3,7 +3,7 @@ slug: monthly-invoice-contractor-pay-batch
 tier: pro
 group: delivery-ops
 persona: P5
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

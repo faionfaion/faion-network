@@ -3,7 +3,7 @@ slug: glossary-domain-term-weekly-maintenance
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

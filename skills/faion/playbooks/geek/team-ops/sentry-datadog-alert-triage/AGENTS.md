@@ -3,7 +3,7 @@ slug: sentry-datadog-alert-triage
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: fix-incident
 complexity: medium
 version: 0.1.0
 status: draft

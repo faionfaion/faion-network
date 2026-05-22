@@ -3,7 +3,7 @@ slug: pre-handover-documentation-pack
 tier: pro
 group: delivery-ops
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

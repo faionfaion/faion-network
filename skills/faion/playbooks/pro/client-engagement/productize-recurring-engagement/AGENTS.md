@@ -3,7 +3,7 @@ slug: productize-recurring-engagement
 tier: pro
 group: client-engagement
 persona: P3
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 0.1.0
 status: draft

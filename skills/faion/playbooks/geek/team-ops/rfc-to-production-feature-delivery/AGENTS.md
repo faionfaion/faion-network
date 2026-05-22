@@ -3,7 +3,7 @@ slug: rfc-to-production-feature-delivery
 tier: geek
 group: team-ops
 persona: P6
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 0.1.0
 status: draft

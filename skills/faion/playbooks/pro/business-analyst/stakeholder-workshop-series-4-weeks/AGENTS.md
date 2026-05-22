@@ -3,7 +3,7 @@ slug: stakeholder-workshop-series-4-weeks
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 1.0.0
 status: draft

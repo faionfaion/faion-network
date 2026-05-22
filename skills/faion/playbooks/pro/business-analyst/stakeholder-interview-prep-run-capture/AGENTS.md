@@ -3,7 +3,7 @@ slug: stakeholder-interview-prep-run-capture
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: discover-validate
 complexity: light
 version: 1.0.0
 status: draft

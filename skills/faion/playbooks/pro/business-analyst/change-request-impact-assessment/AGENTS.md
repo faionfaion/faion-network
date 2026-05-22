@@ -3,7 +3,7 @@ slug: change-request-impact-assessment
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

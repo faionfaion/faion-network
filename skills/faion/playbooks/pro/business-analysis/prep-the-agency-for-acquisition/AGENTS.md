@@ -3,7 +3,7 @@ slug: prep-the-agency-for-acquisition
 tier: pro
 group: business-analysis
 persona: P5
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

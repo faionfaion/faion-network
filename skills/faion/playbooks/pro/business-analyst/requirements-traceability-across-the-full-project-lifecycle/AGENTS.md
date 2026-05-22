@@ -3,7 +3,7 @@ slug: requirements-traceability-across-the-full-project-lifecycle
 tier: pro
 group: business-analyst
 persona: role-ba
-goal: TBD
+goal: operate-ritual
 complexity: deep
 version: 1.0.0
 status: draft

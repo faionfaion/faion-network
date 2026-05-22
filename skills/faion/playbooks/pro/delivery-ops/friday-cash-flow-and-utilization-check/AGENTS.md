@@ -3,7 +3,7 @@ slug: friday-cash-flow-and-utilization-check
 tier: pro
 group: delivery-ops
 persona: P5
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: audit-grade-code-review-compliance
 tier: pro
 group: delivery-ops
 persona: P4
-goal: TBD
+goal: audit-comply
 complexity: medium
 version: 0.1.0
 status: draft

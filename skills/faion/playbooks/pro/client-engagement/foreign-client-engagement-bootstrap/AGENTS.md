@@ -3,7 +3,7 @@ slug: foreign-client-engagement-bootstrap
 tier: pro
 group: client-engagement
 persona: P4
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft
