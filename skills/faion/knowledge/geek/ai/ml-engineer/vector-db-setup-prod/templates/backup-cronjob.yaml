@@ -1,0 +1,30 @@
+# purpose: K8s CronJob — daily Qdrant snapshot to S3
+# consumes: Qdrant service + S3 bucket creds via secret
+# produces: config (snapshot.tar to S3 retention 30d via bucket lifecycle)
+# depends-on: K8s + aws-cli image OR equivalent
+# token-budget-impact: 0
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: qdrant-snapshot
+  namespace: vector-db
+spec:
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: snapshot
+              image: amazon/aws-cli:2.17.0
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  curl -fsS -X POST http://qdrant.vector-db.svc.cluster.local:6333/collections/support-kb/snapshots
+                  curl -fsS http://qdrant.vector-db.svc.cluster.local:6333/collections/support-kb/snapshots -o snap.tar
+                  aws s3 cp snap.tar s3://prod-backups/qdrant-snapshots/$(date +%F).tar
+              envFrom:
+                - secretRef: {name: aws-creds}
