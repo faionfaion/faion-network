@@ -2,7 +2,7 @@
 slug: growth-social-media-strategy
 tier: solo
 group: marketing
-domain: smm-manager
+domain: marketing
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

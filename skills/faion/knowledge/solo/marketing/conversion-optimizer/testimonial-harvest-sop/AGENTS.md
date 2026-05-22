@@ -2,7 +2,7 @@
 slug: testimonial-harvest-sop
 tier: solo
 group: marketing
-domain: conversion-optimizer
+domain: marketing
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
