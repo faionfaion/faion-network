@@ -1,11 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="e2e-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for e2e-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="E2E Testing Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>8 testable rules every Playwright/Cypress E2E suite MUST enforce. Hard rules — operator input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-test-pyramid" testable="true" depth="essential">
+      <statement>Follow the 70/20/10 pyramid: 70% unit, 20% integration, ≤10% E2E. Each E2E test MUST cover a complete user journey, not a single component.</statement>
+      <rationale source="martinfowler.com/articles/practical-test-pyramid.html">E2E tests are 10–100× more expensive to maintain than unit tests. Reserve them for journeys where unit + integration coverage cannot prove the contract.</rationale>
     </rule>
+
+    <rule id="r2-pom" testable="true" depth="essential">
+      <statement>Every page or major feature section MUST have a Page Object class. Page Objects expose actions and assertions through methods, NOT raw selectors.</statement>
+      <rationale source="playwright.dev/docs/pom">POM isolates selector churn from test logic. When the markup changes, one Page Object updates, not 40 test files.</rationale>
+    </rule>
+
+    <rule id="r3-role-selectors" testable="true" depth="essential">
+      <statement>Prefer role-based selectors (getByRole, getByLabel, getByPlaceholder). data-testid only when semantic selectors are not feasible. NEVER use CSS class selectors or XPath.</statement>
+      <rationale source="playwright.dev/docs/locators">Role selectors survive refactors and double as accessibility checks. CSS classes change with styling refactors and silently break the suite.</rationale>
+    </rule>
+
+    <rule id="r4-storagestate" testable="true" depth="essential">
+      <statement>NEVER log in through the UI for every test. Run one global auth setup, save storageState to a file, and reuse it across all projects.</statement>
+      <rationale source="playwright.dev/docs/auth">UI login per test multiplies wall time by N and creates a shared rate-limit bottleneck on the auth endpoint. storageState makes auth a one-time cost.</rationale>
+    </rule>
+
+    <rule id="r5-route-mocking" testable="true" depth="essential">
+      <statement>Mock external APIs with page.route() to isolate E2E tests from third-party services. Mock ONLY external boundaries — your own API is exercised with real calls.</statement>
+      <rationale source="playwright.dev/docs/network">External services produce nondeterministic failures (rate limits, outages, 502s). Mocking them at the network boundary keeps the suite green when only your code changed.</rationale>
+    </rule>
+
+    <rule id="r6-no-fixed-sleep" testable="true" depth="essential">
+      <statement>NEVER use page.waitForTimeout(N) / fixed sleep. Use expect().toBeVisible(), page.waitForURL(), or page.waitForResponse() instead.</statement>
+      <rationale source="playwright.dev/docs/best-practices">Fixed sleeps are flake amplifiers: too short on a slow CI runner → false fail; too long → wasted CI minutes. Auto-waiting locators are deterministic.</rationale>
+    </rule>
+
+    <rule id="r7-data-factories" testable="true" depth="essential">
+      <statement>Use factory functions with faker to generate test data. NEVER hardcode user emails or IDs. Each test MUST set up its own state — no inter-test dependencies.</statement>
+      <rationale source="playwright.dev/docs/test-isolation">Hardcoded data collides under parallel sharding. Shared state turns shard failures into mystery flakes that don't reproduce locally.</rationale>
+    </rule>
+
+    <rule id="r8-sharded-ci" testable="true" depth="essential">
+      <statement>Shard suites larger than 50 tests across CI machines (--shard=N/total) and merge blob reports with `npx playwright merge-reports`. Keep total wall time ≤10 min.</statement>
+      <rationale source="playwright.dev/docs/test-sharding">A 30-minute suite blocks PRs. 4-way sharding brings the same suite to 8 minutes for the cost of 4 CI minutes — strictly better.</rationale>
+    </rule>
+
+  <rule id="r-greenfield" testable="true" depth="essential">
+      <statement>For greenfield projects, the emitted config MUST select Playwright. Cypress remains supported only when migrating an existing Cypress suite.</statement>
+      <rationale source="2026 ecosystem snapshot">Playwright dominates new-project adoption: parallelism, network interception, multi-browser, and tracing are all first-class.</rationale>
+    </rule>
+
+    <rule id="r-component-screenshot" testable="true" depth="essential">
+      <statement>When `visual_regression_needed == true`, use toHaveScreenshot() on component-scoped locators only, with masked dynamic regions. NEVER full-page screenshots.</statement>
+      <rationale source="playwright.dev/docs/test-snapshots">Full-page snapshots break on every avatar/timestamp/ad. Component snapshots stay stable for months.</rationale>
+    </rule>
+
+    <rule id="r-single-runner" testable="true" depth="essential">
+      <statement>When `ci_machine_budget &lt; 4`, the emitted workflow runs on a single runner with retries: 2 and trace: 'on-first-retry'.</statement>
+      <rationale source="playwright.dev/docs/ci">Sharding below 4 machines saves under a minute and adds blob-merge complexity. Single runner is the right default.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

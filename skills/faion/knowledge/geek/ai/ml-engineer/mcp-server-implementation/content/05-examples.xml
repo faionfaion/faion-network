@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="MCP Server Implementation — TypeScript and Python — Worked Example" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>One end-to-end worked example showing the artefact shape this methodology produces.</summary>
+
+  <section title="Worked example">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "weather-server",
+  version: "1.0.0",
+});
+
+// Tool
+server.tool(
+  "get_weather",
+  "Get current weather for a location",
+  {
+    location: z.string().describe("City name or zip code"),
+    units: z.enum(["celsius", "fahrenheit"]).default("celsius"),
+  },
+  async ({ location, units }) => {
+    const weather = await fetchWeather(location, units);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Temperature: ${weather.temp}${units === "celsius" ? "C" : "F"}\nConditions: ${weather.conditions}`,
+        },
+      ],
+    };
+  }
+);
+
+// Resource (static)
+server.resource(
+  "config",
+  "file:///app/config.json",
+  { mimeType: "application/json" },
+  async (uri) => {
+    const content = await fs.readFile("/app/config.json", "utf-8");
+    return {
+      contents: [{ uri: uri.href, mimeType: "application/json", text: content }],
+    };
+  }
+);
+
+// Resource (dynamic template)
+server.resourceTemplate(
+  "project-file",
+  "file:///{path}",
+  { mimeType: "text/plain" },
+  async (uri, { path }) => {
+    const content = await fs.readFile(path, "utf-8");
+    return {
+      contents: [{ uri: uri.href, mimeType: "text/plain", text: content }],
+    };
+  }
+);
+
+// Prompt
+server.prompt(
+  "code_review",
+  "Analyze code quality and suggest improvements",
+  {
+    code: z.string().describe("The code to review"),
+    language: z.string().optional().describe("Programming language"),
+  },
+  async ({ code, language }) => {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please review this ${language || "code"}:\n\n\`\`\`${language || ""}\n${code}\n\`\`\``,
+          },
+        },
+      ],
+    };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+]]></code>
+      <note>Zod schema fields map directly to the JSON Schema inputSchema. Use .describe() on every field — the LLM reads field descriptions to populate arguments correctly.</note>
+    </example>
+  </section>
+</text>

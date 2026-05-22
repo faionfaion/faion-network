@@ -4,20 +4,25 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Multi-agent systems coordinate multiple AI agents to solve tasks that exceed a single agent's context, parallelism, or role boundaries.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Specifies a production multi-agent system: agent roster, message contract, shared state, error-recovery, observability, and termination conditions.
 content_id: "e22a48ce3324f96a"
-tags: [agents, orchestration, langgraph, workflows, parallel-execution]
+complexity: deep
+produces: spec
+est_tokens: 4300
+tags: [multi-agent, systems, orchestration, ai-agents, production]
 ---
 # Multi-Agent Systems
 
 ## Summary
 
-**One-sentence:** Multi-agent systems coordinate multiple AI agents to solve tasks that exceed a single agent's context, parallelism, or role boundaries.
+**One-sentence:** Specifies a production multi-agent system: agent roster, message contract, shared state, error-recovery, observability, and termination conditions.
 
-**One-paragraph:** Multi-agent systems coordinate multiple AI agents to solve tasks that exceed a single agent's context, parallelism, or role boundaries. Use the Claude Agent SDK's subagent primitive: parent spawns children with typed contracts, waits for structured results, routes to the next stage. Keep orchestrators stateless (routing only); push state to a shared file or queue.
+**One-paragraph:** Specifies a production multi-agent system: agent roster, message contract, shared state, error-recovery, observability, and termination conditions. The methodology assumes the inputs in Prerequisites and produces a `spec` artefact validated by `scripts/validate-multi-agent-systems.py`. Five testable rules in `content/01-core-rules.xml` gate the work; failure modes in `content/03-failure-modes.xml` cover the most common ways the application goes wrong. The decision tree in `content/06-decision-tree.xml` routes the agent from the input shape to the right rule, so the methodology is safe to skip when preconditions do not hold.
+
+**Ефективно для:** AI engineers building production multi-agent systems with explicit orchestration, retry policies, and tracing.
 
 ## Applies If (ALL must hold)
 
@@ -33,44 +38,59 @@ tags: [agents, orchestration, langgraph, workflows, parallel-execution]
 - Low latency required — multi-agent adds orchestration overhead (2-5x latency)
 - Budget is tight — multiple agents multiply token spend
 - Team lacks observability tooling — debugging multi-agent failures is hard without traces
-- Task has tight coupling between steps where parallelization creates conflicts
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Task brief | markdown | upstream agent or human |
+| Constraints | yaml | project config |
+| Acceptance criteria | list | spec / ticket |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[multi-agent-design-patterns]]` | Adjacent context the agent normally already has when this methodology fires. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
+| `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-requirements` | sonnet | Structured interview-style extraction. |
+| `synthesize-spec` | opus | Cross-section trade-off synthesis. |
+| `lint-output` | haiku | Schema validation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/spec.md.tmpl` | Markdown spec skeleton with the required sections + placeholders. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-multi-agent-systems.py` | Validate an output artefact against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
+- [[multi-agent-design-patterns]]
+- [[agents-production-deployment]]
 - parent skill: `geek/ai/ml-engineer/`
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `multi-agent-systems` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.
