@@ -4,73 +4,98 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Convert text to natural-sounding audio using TTS APIs.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "61f771d3a2960b3c"
+summary: Picks a TTS provider (OpenAI tts-1, ElevenLabs, Google Cloud, Azure, Deepgram Aura, local Coqui) and ships a cache-by-text-hash service with voice-cloning consent gate and streaming fallback.
+complexity: medium
+produces: code
+est_tokens: 3400
 tags: [text-to-speech, audio-synthesis, voice-cloning, streaming-audio, voice-pipeline]
 ---
+
 # Text-to-Speech
 
 ## Summary
 
-**One-sentence:** Convert text to natural-sounding audio using TTS APIs.
+**One-sentence:** Ship TTS by picking provider (latency / voice quality / cost), caching audio by text-hash, gating voice cloning behind explicit consent, and wiring a fallback for outage resilience.
 
-**One-paragraph:** Convert text to natural-sounding audio using TTS APIs. ElevenLabs is the quality and latency leader (75ms Flash v2.5, voice cloning); Google/Azure are the cost leaders for high-volume production; OpenAI TTS integrates natively in OpenAI stacks. Always normalize abbreviations before synthesis and cache by content hash to avoid redundant API calls.
+**One-paragraph:** TTS provider choice spans 5× cost and 10× latency: OpenAI tts-1 ($15/M chars, ≈800ms first byte), ElevenLabs Turbo v2 ($0.18/1k chars, ≈400ms with streaming), Google Cloud (Chirp 3, $16/M, ≈600ms), Azure ($16/M, neural voices), Deepgram Aura ($0.135/1k, ≈200ms), local Coqui XTTS (free, GPU-bound). Cache audio output by text-hash because identical strings recur 40-70% in real traffic. Voice cloning requires consent record per voice. Streaming TTS to the user reduces perceived latency by ≈70%. Output: a `tts-config.yaml` declaring provider + voice + cache + fallback + consent.
+
+**Ефективно для:**
+
+- Voice agents та IVR — latency ≤500ms критичний; Deepgram Aura або ElevenLabs Turbo дають real-time.
+- Audiobook / podcast generation — quality &gt; latency; ElevenLabs multilingual або Google Chirp 3 з 25+ голосами.
+- Notifications / accessibility — кешуй; одна й та сама фраза перевикористовується 100×.
+- Brand voice — voice cloning з консент-логом + ElevenLabs Voice Lab.
 
 ## Applies If (ALL must hold)
 
-- Automated podcast/audiobook generation from text content pipelines
-- Voice narration for video generation workflows
-- Accessibility layer for web or app content
-- IVR or conversational voice bot responses requiring low-latency audio
-- Agent workflows that produce audio reports or briefings
+- Need to convert text → spoken audio in product flow
+- Latency budget defined per use case (real-time vs batch)
+- Voice quality requirements articulated (neural vs basic)
 
 ## Skip If (ANY kills it)
 
-- One-off manual narration where a human voice actor produces higher perceived quality
-- Real-time <75ms latency required and ElevenLabs Flash is not in budget
-- Languages with less than 5% coverage in target voice model
-- High-volume pipelines where ElevenLabs cost per character exceeds budget ceiling (use Google/Azure)
-- Voice consistency across sessions is critical but cloning samples are unavailable
+- Use case is dual-purpose (display text + read aloud); start with display text and add TTS later
+- All target languages out of provider support
+- Voice cloning required but no consent process exists — legal / ethics block
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `use-case-constraints.yaml` | YAML | latency, voice quality, cost cap |
+| `voice-catalog.yaml` | YAML | provider voice IDs + language coverage |
+| `consent-record.yaml` | YAML | per-voice consent metadata (cloning use) |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `speech-to-text` | Sibling in voice-agent stack |
+| `cost-optimization` | Provider rate comparison |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: latency-bucket pick, voice consent, cache-by-hash, streaming for real-time, mandatory fallback | 1100 |
+| `content/02-output-contract.xml` | essential | tts-config.yaml schema | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: no cache, cloning without consent, real-time on tts-1, hard-coded provider, missing language fallback | 900 |
+| `content/04-procedure.xml` | essential | 5 steps: scope → bench → pick → cache+fallback → ship | 700 |
+| `content/05-examples.xml` | essential | Worked example: voice agent with ElevenLabs Turbo + OpenAI fallback + Redis cache | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by latency + voice quality + cloning need | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `voice_quality_blind_test` | n/a (human) | Subjective |
+| `provider_compare_drafting` | sonnet | Trade-offs |
+| `tts_config_lint` | haiku | Schema check |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tts-cached.py` | TTS call with text-hash cache layer |
+| `templates/chunk-text.py` | Long-text → sentence chunks for streamed TTS |
+| `templates/tts-config.schema.yaml` | Schema for tts-config |
+| `templates/_smoke-test.yaml` | Minimum-viable tts-config |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-text-to-speech.py` | Lint tts-config | Pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[speech-to-text]] — paired in voice agents
+- external: [OpenAI TTS](https://platform.openai.com/docs/guides/text-to-speech) · [ElevenLabs](https://elevenlabs.io/) · [Deepgram Aura](https://deepgram.com/product/voice-ai)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes by (a) latency budget, (b) voice-cloning need, (c) on-prem requirement → {Aura, ElevenLabs Turbo, OpenAI tts-1, Google Chirp, Coqui local}.
