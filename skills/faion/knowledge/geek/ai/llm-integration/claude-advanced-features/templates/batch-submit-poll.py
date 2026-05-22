@@ -1,45 +1,51 @@
-"""Batch API submit + poll loop.
+# purpose: Batch API submit + poll + errored-resubmit loop.
+# consumes: list[{id, prompt}] (id == DB primary key).
+# produces: list[{id, text}] or list[{id, error}]; errored items are re-emitted for resubmission.
+# depends-on: rules r5 + r6 in content/01-core-rules.xml.
+# token-budget-impact: 50% discount on input + output for batched calls (24h SLA).
+"""Batch API submit + poll + errored-resubmit loop."""
+from __future__ import annotations
 
-Usage:
-    batch_id = submit_batch([{"id": "req-1", "prompt": "Hello"}])
-    results = poll_and_collect(batch_id)
-    # results: [{"id": "req-1", "text": "..."}, {"id": "req-2", "error": "..."}]
-"""
 import time
+
 import anthropic
 
 client = anthropic.Anthropic()
 
+MODEL_ID = "claude-sonnet-4-20250514"
+POLL_INTERVAL_SECONDS = 60  # rule r5: ≥60s polling cadence.
+
 
 def submit_batch(prompts: list[dict]) -> str:
-    """Submit list of {id, prompt} dicts to Batch API. Returns batch_id."""
+    """Submit a batch. `prompts` items must each have `id` (db pk) and `prompt`."""
+    if not prompts:
+        raise ValueError("Empty batch refused.")
     reqs = [
         {
             "custom_id": p["id"],
             "params": {
-                "model": "claude-sonnet-4-20250514",
+                "model": MODEL_ID,
                 "max_tokens": 1024,
                 "messages": [{"role": "user", "content": p["prompt"]}],
             },
         }
         for p in prompts
     ]
-    return client.beta.messages.batches.create(requests=reqs).id
+    return client.messages.batches.create(requests=reqs).id
 
 
-def poll_and_collect(batch_id: str, poll_interval: int = 60) -> list[dict]:
-    """Poll until batch ends. Returns list of {id, text} or {id, error}."""
+def poll_and_collect(batch_id: str, poll_interval: int = POLL_INTERVAL_SECONDS) -> list[dict]:
+    """Poll until `processing_status == "ended"`; errored items returned for resubmit (rule r6)."""
+    if poll_interval < 60:
+        raise ValueError("Poll interval below 60 violates rule r5.")
     while True:
-        batch = client.beta.messages.batches.retrieve(batch_id)
+        batch = client.messages.batches.retrieve(batch_id)
         if batch.processing_status == "ended":
-            results = []
-            for r in client.beta.messages.batches.results(batch_id):
+            out: list[dict] = []
+            for r in client.messages.batches.results(batch_id):
                 if r.result.type == "succeeded":
-                    results.append({
-                        "id": r.custom_id,
-                        "text": r.result.message.content[0].text,
-                    })
+                    out.append({"id": r.custom_id, "text": r.result.message.content[0].text})
                 else:
-                    results.append({"id": r.custom_id, "error": str(r.result.error)})
-            return results
+                    out.append({"id": r.custom_id, "error": str(r.result.error), "resubmit": True})
+            return out
         time.sleep(poll_interval)

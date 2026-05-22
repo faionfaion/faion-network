@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Claude API Integration Procedure" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>6-step procedure that maps from a request (model selected, prompt drafted) to a production-ready integration record + code.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="confirm-model-and-shape">
+      <input>Model id from decision-framework; expected request rate; whether agentic tools are involved; whether output is structured.</input>
+      <action>Classify the integration shape into one of {sync, streaming, tool-loop, batch}. If no human waits and ≥100 requests, choose batch. If tools or multi-turn agent, choose tool-loop. If streaming UX is required, choose streaming. Else sync.</action>
+      <output>shape ∈ {sync, streaming, tool-loop, batch}; model_id; max_tokens by tier.</output>
+    </step>
+
+    <step n="2" name="assemble-system-and-tools">
+      <input>System prompt text; tool registry; output schema (if structured).</input>
+      <action>Order content longest-stable-prefix first: (a) system instructions, (b) tool schemas, (c) static retrieved corpus, (d) dynamic user turn LAST. If structured output needed, declare a single output_tool whose input_schema is the target shape.</action>
+      <output>System+content array in cacheable order; tool list (≤10); optional forced output_tool.</output>
+      <decision-gate>If system+tools block is &lt;1024 tokens (Sonnet/Opus) or &lt;2048 (Haiku), DO NOT attach cache_control — it will silently no-op.</decision-gate>
+    </step>
+
+    <step n="3" name="attach-cache-markers">
+      <input>System+content array from step 2.</input>
+      <action>Attach cache_control={"type":"ephemeral"} to the last block of the stable prefix. For 1-hour TTL (cache write 2× base) only when request gap is consistently &gt;5 min and burst rate justifies the surcharge.</action>
+      <output>Cached prefix marked; ttl=300 (default) or 3600 (override).</output>
+    </step>
+
+    <step n="4" name="wrap-loop-and-retry">
+      <input>shape from step 1; tool list; secrets handle.</input>
+      <action>For shape=tool-loop: wrap messages.create in for-range(MAX_TURNS=10) and validate every tool input against its input_schema. For all shapes: wrap the call in retry-with-jitter (max_attempts=5). Load ANTHROPIC_API_KEY from secrets manager.</action>
+      <output>Production-ready code with MAX_TURNS, schema validation, retry, and secrets discipline.</output>
+      <decision-gate>If shape=batch: skip MAX_TURNS (no loop), emit batches.create + polling code instead.</decision-gate>
+    </step>
+
+    <step n="5" name="instrument-telemetry">
+      <input>Working integration from step 4.</input>
+      <action>Capture per-call: response.usage.input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens, thinking_tokens. Tag with model, shape, tool_use_count. Push to observability stack.</action>
+      <output>Live cache hit rate, cost per call, and turn-count distribution dashboards.</output>
+    </step>
+
+    <step n="6" name="emit-integration-record">
+      <input>Code + telemetry config.</input>
+      <action>Produce the JSON integration-record per content/02-output-contract.xml. Run scripts/validate-claude-api.py against it. Commit the record alongside the code so audit / cost-tracker tooling can read configured posture.</action>
+      <output>Validated cai-* record file; pre-commit gate passes.</output>
+    </step>
+
+  </section>
+
+  <reference path="templates/prompt-caching-agent.py">Cached tool-use loop skeleton.</reference>
+  <reference path="templates/tool-use-loop.py">Forced-structured-output tool-use skeleton.</reference>
+  <reference path="scripts/validate-claude-api.py">Integration-record validator.</reference>
+
+</text>

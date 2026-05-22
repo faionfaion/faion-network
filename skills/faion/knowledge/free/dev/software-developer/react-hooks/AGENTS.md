@@ -3,74 +3,99 @@ slug: react-hooks
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: A methodology for writing correct React functional components using hooks: call hooks unconditionally at the top level, list exhaustive dependencies, return cleanup from every effect, and prefer derivation over synced state.
+summary: Produces a hook-correctness spec (unconditional top-level calls, exhaustive deps, effect cleanup, derivation-over-sync) plus an ESLint config gating regressions on PRs.
 content_id: "d0967e30d75aa9b4"
-tags: [react, hooks, javascript, typescript, functional-components]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [react, hooks, javascript, typescript, eslint, functional-components]
 ---
 # React Hooks Best Practices
 
 ## Summary
 
-**One-sentence:** A methodology for writing correct React functional components using hooks: call hooks unconditionally at the top level, list exhaustive dependencies, return cleanup from every effect, and prefer derivation over synced state.
+**One-sentence:** Configures a React-hooks correctness spec — unconditional top-level calls, exhaustive `useEffect` deps, mandatory cleanup, derivation over state-sync — and an ESLint `react-hooks` plugin gate.
 
-**One-paragraph:** A methodology for writing correct React functional components using hooks: call hooks unconditionally at the top level, list exhaustive dependencies, return cleanup from every effect, and prefer derivation over synced state. Memoize (useCallback/useMemo) only when passing to a memoized child or as a hook dependency—measure first.
+**One-paragraph:** The two biggest sources of React bugs in 2026 are hooks called conditionally (early-return on loading state before `useState`) and effects with stale-closure dependency lists. React 19 compiler reduces but does not eliminate either. This methodology mandates `eslint-plugin-react-hooks` with `exhaustive-deps` set to `error` (never `warn`), forbids hooks inside `if`/`for`/`switch`, requires every `useEffect` that subscribes to return a cleanup function, prefers derivation (compute in render) over `useState + useEffect` synchronization, and pulls memoization out of "default" status — `useMemo`/`useCallback` only when (a) passed to a `React.memo`'d child or (b) listed as a hook dependency. Output is a `.eslintrc` snippet plus a hook-correctness JSON spec.
+
+**Ефективно для:**
+
+- Команди мігрують з React 16-class на React 18/19 functional + hooks.
+- Аудит продуктивності: зайві re-render через unstable callbacks + неконтрольовану мемоізацію.
+- AI-loop генерації UI компонентів: lint catches early-return + dependency-array drift, які агент часто пропускає.
+- Refactoring legacy: видалити `useState + useEffect` синхронізацію → derivation.
 
 ## Applies If (ALL must hold)
 
-- New functional components needing state, effects, refs, or context.
-- Refactoring class components to hooks.
-- Extracting repeated logic into a custom hook (useFoo).
-- Performance audit: unnecessary re-renders, stale closures, memo bloat.
-- Migrating from lifecycle-shim patterns to React 18+ idioms.
+- React ≥16.8 (hooks introduced) — preferably 18+ for concurrent rendering correctness.
+- Project uses functional components + hooks (not class lifecycle).
+- ESLint is wired into PR CI or pre-commit.
 
 ## Skip If (ANY kills it)
 
-- React Server Components (RSC) — hooks are client-only; add 'use client' boundary or use Server Actions.
-- Pre-React 16.8 codebases — upgrade React first.
-- Heavy cross-page state (optimistic updates, conflict resolution) — use Zustand / Redux Toolkit / TanStack Query.
-- Pure presentational components with no state — memoizing without measuring is premature.
-- Form submits in Next.js App Router — use 'use server' actions instead.
+- React Server Components — hooks are client-only; needs `'use client'` boundary first.
+- Pre-React 16.8 codebases — upgrade React before adopting.
+- Heavy cross-page state (optimistic updates, conflict resolution) — use Zustand / Redux Toolkit / TanStack Query, hooks alone are insufficient.
+- Pure presentational components with no state — memoization without measurement is premature.
+- Form submits in Next.js App Router — use `'use server'` actions instead of client-side hooks.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `package.json` | JSON | repo root (verify React ≥16.8) |
+| ESLint config | `.eslintrc.cjs` / `eslint.config.js` | repo root |
+| Component file(s) | `.tsx` / `.jsx` | `src/` |
+| React version pin | semver | `package.json dependencies.react` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | Foundational for any React project. Pairs with [[react-patterns]] for design choices. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: unconditional-call, exhaustive-deps-error, cleanup-mandatory, derive-not-sync, memo-with-measurement, custom-hook-prefix | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for hook-correctness spec + ESLint config block | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: conditional-hook-call, stale-closure-effect, sync-state-via-effect, memo-everywhere | 700 |
+| `content/04-procedure.xml` | essential | 5-step audit + fix procedure for an existing React project | 800 |
+| `content/05-examples.xml` | optional | One worked example: refactor a buggy data-fetch component | 800 |
+| `content/06-decision-tree.xml` | essential | Routing: state-or-derive → memo decision → effect vs event handler | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `lint_detect` | haiku | ESLint output → JSON parse; deterministic. |
+| `classify_state_vs_derive` | sonnet | Needs to read render body + decide if value is derivable. |
+| `rewrite_effect` | sonnet | Per-component cleanup + dep array fix. |
+| `architectural_split` | opus | Decide custom-hook extraction vs component split — cross-file. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/eslint-react-hooks.config.js` | ESLint config block enabling `react-hooks/exhaustive-deps` as error |
+| `templates/use-fetch.example.tsx` | Reference custom hook with cleanup + abort signal |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-react-hooks.py` | Validate hook-correctness spec JSON against schema | After spec generation |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[react-patterns]] — design patterns (composition, context boundaries) built on top of correct hooks.
+- [[typescript-strict-mode]] — TS-strict catches a different class of hook bugs (typed deps).
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Tree branches on: does state need to live across renders? → yes → `useState`; no → derive. Then: is value passed to memo'd child or used as hook dep? → yes → `useMemo`/`useCallback`; no → leave unmemoized. Then: does the side-effect subscribe to anything? → yes → return cleanup. All leaves reference rules from `01-core-rules.xml`.

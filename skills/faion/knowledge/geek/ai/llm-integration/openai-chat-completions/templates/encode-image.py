@@ -1,10 +1,9 @@
 """
-Base64 image encoding helper for OpenAI vision requests.
-
-Usage:
-    data_url = encode_image_as_data_url("screenshot.png")
-    # Use in message content:
-    # {"type": "image_url", "image_url": {"url": data_url}}
+purpose: Base64 image-to-data-URL encoder for OpenAI vision message content.
+consumes: filesystem path to PNG/JPEG/GIF/WebP image.
+produces: data URL string ready for {"type": "image_url", "image_url": {"url": ...}}.
+depends-on: stdlib only (base64, pathlib).
+token-budget-impact: image tokens are 85 (low) or up to 1105 (high); set `detail` accordingly.
 """
 import base64
 from pathlib import Path

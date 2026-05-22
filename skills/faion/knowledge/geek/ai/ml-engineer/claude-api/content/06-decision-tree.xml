@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Claude API Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from a fresh integration request to one of four concrete code shapes. Branches name observable inputs; leaves cite rule ids from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-offline">Is the workload OFFLINE (no human waiting on any single response, and ≥100 requests in the queue)?</root-question>
+
+    <branch when="offline == true">
+      <conclusion ref="batch-never-for-interactive" verdict="batch-job"/>
+    </branch>
+
+    <branch when="offline == false">
+      <question id="q-tools">Does the request require tools / multi-turn agentic loop?</question>
+
+      <branch when="tools_required == true">
+        <question id="q-cacheable">Is the system+tools prefix ≥1024 tokens AND repeated across requests?</question>
+
+        <branch when="cacheable == true">
+          <question id="q-thinking">Is task in {math, multi-step-code-debug, contract-analysis, multi-step-planning, research-synthesis} AND expected output ≥200 tokens?</question>
+          <branch when="thinking_payoff == true">
+            <conclusion ref="extended-thinking-payoff-gate" verdict="opus-extended-thinking-with-cache-and-tools"/>
+          </branch>
+          <branch when="thinking_payoff == false">
+            <conclusion ref="cache-longest-stable-prefix" verdict="cached-streaming-agent"/>
+          </branch>
+        </branch>
+
+        <branch when="cacheable == false">
+          <conclusion ref="enforce-max-turns" verdict="streaming-agent-no-cache"/>
+        </branch>
+      </branch>
+
+      <branch when="tools_required == false">
+        <question id="q-cacheable-2">Is the system+context prefix ≥1024 tokens AND repeated?</question>
+        <branch when="cacheable == true">
+          <conclusion ref="cache-longest-stable-prefix" verdict="cached-sync-or-streaming"/>
+        </branch>
+        <branch when="cacheable == false">
+          <conclusion ref="explicit-max-tokens" verdict="plain-sync-or-streaming"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="rag-summariser">
+    offline=false → tools_required=true (search + cite tool) → cacheable=true (3200-token system+corpus) → thinking_payoff=false (200-word summaries, no deep reasoning) → cached-streaming-agent referencing cache-longest-stable-prefix.
+  </example>
+
+  <example trace="nightly-document-tagger">
+    offline=true (12k docs, no UI) → batch-job referencing batch-never-for-interactive (it forbids the reverse — Batch IS the right answer here).
+  </example>
+
+</text>
