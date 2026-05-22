@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tool-description-as-prompt Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tool-description-as-prompt. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Tool Description as Prompt Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules for tool descriptions treated as zero-shot teaching prompts. Each rule lifts tool-selection accuracy without a model change.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="structured-description-required" testable="true" depth="essential">
+      <statement>Every tool description MUST contain five named parts: (1) one-sentence "use this when", (2) one-sentence "do NOT use this when", (3) input contract (paths, units, formats), (4) output contract (shape, limits, sort order), (5) side effects (MUTATING / idempotent / dry-run available).</statement>
+      <rationale source="Anthropic engineering — SWE-bench tool-writing notes; Anthropic tool-use docs">Anthropic reported state-of-the-art on SWE-bench achieved through description rewrites, not a model change. The structured form gives the model a deterministic checklist for selection and argument-fill.</rationale>
     </rule>
+
+    <rule id="under-200-tokens" testable="true" depth="essential">
+      <statement>Each description MUST stay under 200 tokens. Marketing prose ("powerful", "AI-driven", "enterprise-grade"), implementation details ("uses Bedrock under the hood"), and re-statements of the JSON schema are forbidden.</statement>
+      <rationale source="Anthropic tool-use docs; internal context-cost audits">Longer descriptions lose the model's attention and consume the prompt budget across every turn without adding discrimination signal.</rationale>
+    </rule>
+
+    <rule id="anti-trigger-required-on-overlap" testable="true" depth="essential">
+      <statement>When two tools have overlapping use cases, each description MUST point to the other by name in its "do NOT use this when" line (mutual anti-triggers).</statement>
+      <rationale source="Internal — read_file vs grep_repo postmortem; faion-cli generate_implementation vs refactor_code">Mutual anti-triggers collapse mis-selection between near-synonyms to near-zero in production traces.</rationale>
+    </rule>
+
+    <rule id="mutating-marker-required" testable="true" depth="essential">
+      <statement>Side-effect / destructive tools MUST start the description with the all-caps token `MUTATING:` (or `IRREVERSIBLE:` for non-recoverable ops) and state the safe sequencing partner (e.g. "pair with dry_run_query first").</statement>
+      <rationale source="Internal — delete_branch / apply_patch incident reports">The marker is a deterministic signal for safety hooks AND for the model itself; idempotent vs mutating must not be inferred from the verb alone.</rationale>
+    </rule>
+
+    <rule id="latency-and-pagination-caps" testable="true" depth="essential">
+      <statement>Tools with latency &gt; 5s MUST declare `LATENCY:` band and explicit "do NOT poll" instruction (e.g. emit via webhook). Paginated tools MUST declare per-page count + max-page cap and the narrow-query alternative.</statement>
+      <rationale source="Internal — batch_train_model polling loop; search_docs enumeration loops">Without caps, agents spin or brute-force-paginate; explicit caps redirect to better queries.</rationale>
+    </rule>
+
+    <rule id="description-matches-schema" testable="true" depth="essential">
+      <statement>The description MUST be consistent with the JSON input_schema. Mentioned arguments must exist in the schema; schema arguments not load-bearing for the agent's decision must not be re-described (avoid duplication).</statement>
+      <rationale source="Anthropic tool-use docs">Drift between description and schema is the most common cause of argument-fill errors in long-running agents.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
