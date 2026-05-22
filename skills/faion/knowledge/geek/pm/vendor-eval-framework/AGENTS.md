@@ -4,68 +4,94 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Scoring matrix + trial protocol + rollback gate for in-house team buying $50-500/mo SaaS (Datadog vs Grafana, Linear vs Jira, Vercel vs Netlify).
-content_id: "7f5ab29b42322748"
-tags: [vendor-eval-framework, pm, geek]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: "16368a4f4013ac73"
+complexity: medium
+produces: rubric
+est_tokens: 3000
+summary: Produces a 4-6 axis scoring rubric + 30-day trial protocol + rollback gate for in-house teams buying $50-500/mo SaaS (Datadog vs Grafana, Linear vs Jira, Vercel vs Netlify), so vendor selection stops being vibes-led.
+tags: [pm, geek, vendor, saas, scoring, trial, rollback]
 ---
-
 # Vendor Evaluation Framework
 
 ## Summary
 
-**One-sentence:** Scoring matrix + trial protocol + rollback gate for in-house team buying $50-500/mo SaaS (Datadog vs Grafana, Linear vs Jira, Vercel vs Netlify).
+**One-sentence:** A 4-6 axis scoring rubric + 30-day trial protocol + explicit rollback gate for in-house teams buying $50-500/mo SaaS, replacing vibes-led vendor selection with a reviewable artefact.
 
-**One-paragraph:** build-vs-buy exists at solo tier. For in-house team buying $50-500/mo SaaS, there is no scoring matrix, trial protocol, rollback gate. Output: rubric + trial plan + rollback policy.
+**One-paragraph:** `build-vs-buy` exists at solo tier but assumes a single buyer. For an in-house team comparing Datadog vs Grafana, Linear vs Jira, or Vercel vs Netlify in the $50-500/mo band, there is no scoring matrix, no trial protocol, and no rollback gate. This methodology pins all three: 4-6 axis rubric (must include price + lock-in + ops-load + integration + DX + support), a minimum 30-day trial with at least one real workload migrated, multi-stakeholder scoring (eng + ops + finance), and an explicit rollback gate (criteria + responsible-owner) before the contract is signed. Annual revisit is built in to catch tool decay.
+
+**Ефективно для:** tech lead, який втомився, що SaaS-вибір команди — це "хто крикнув голосніше на standup".
 
 ## Applies If (ALL must hold)
 
-- team buying or replacing a SaaS vendor
-- spend $50-500/month
-- ≥2 plausible candidates
+- Team is buying or replacing a SaaS vendor in the $50-500/mo band.
+- There are ≥2 plausible candidates (single-vendor markets skip the rubric).
+- A trial sandbox is technically feasible (not blocked by data residency or contract).
+- A named decision-owner exists who can sign or veto.
+- The team has at least 3 weeks of runway before the decision deadline.
 
 ## Skip If (ANY kills it)
 
-- trivial purchase under $50/month (over-engineered)
-- enterprise procurement with formal RFP (different process)
-- vendor mandated by parent company
+- Trivial purchase under $50/month — over-engineered, just decide.
+- Enterprise procurement with formal RFP — different process, defer to legal/procurement.
+- Vendor mandated by parent company or regulator — selection is not the team's call.
+- Single-vendor market — no comparison possible.
 
 ## Prerequisites
 
-- list of 2-5 candidate vendors
-- scoring rubric (4-6 axes)
-- trial sandbox capability
+| Input artifact | Format | Source |
+|---|---|---|
+| List of 2-5 candidate vendors | CSV / YAML | team backlog or eng-ops channel |
+| Scoring rubric (4-6 axes) | YAML | this methodology's `templates/` |
+| Trial sandbox capability | infra | dev/staging env |
+| Named decision-owner | role + person | team roster |
+| Annual budget for the category | $ figure | finance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/pm-agile` | parent skill — provides operating context for this methodology |
-| `solo/dev/library-evaluation-rubric` | peer methodology — produces inputs or consumes outputs |
-| `pro/product/vendor-evaluation-scorecard` | peer methodology — produces inputs or consumes outputs |
+| `pro/pm/pm-agile` | Parent skill — provides operating context for this methodology. |
+| `geek/product/vendor-evaluation-scorecard` | Peer geek-tier methodology with overlapping rubric; this one adds trial + rollback gate. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
+| `content/01-core-rules.xml` | essential | 5 rules: 4-6 axes, 30-day trial min, explicit rollback gate, multi-stakeholder scoring, annual revisit | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Trial-feasible gate + multi-stakeholder branch | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_rubric` | haiku | Template fill from category + axes list. |
+| `score_trials` | sonnet | Per-axis judgment from trial evidence; cites scenarios. |
+| `synthesize_decision` | opus | Cross-stakeholder synthesis; surfaces conflicts. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rubric.yaml` | 4-6 axis scoring rubric scaffold. |
+| `templates/trial-protocol.md` | 30-day trial plan with workload migration checklist. |
+| `templates/rollback-gate.yaml` | Rollback criteria + responsible-owner block. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-vendor-eval-framework.py` | Validate rubric + trial result + rollback gate output (axis count, stakeholder count, rollback criteria present). | Before vendor contract is signed. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
-- peer methodology: `solo/dev/library-evaluation-rubric`
-- peer methodology: `pro/product/vendor-evaluation-scorecard`
-- peer methodology: `solo/dev/decision-tree-build-vs-buy`
-- external: https://www.gartner.com/en/insights/sourcing-procurement; https://www.softwareadvice.com/buyers-guides
+- [[vendor-risk-assessment-template]] — sibling versioned-artefact methodology, runs in parallel for higher-risk vendors.
+- [[vendor-evaluation-scorecard]] — product-tier peer; this geek-tier version adds trial + rollback.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks whether ≥2 candidates exist and a trial sandbox is feasible. If only one candidate → skip and document. If trial is blocked → escalate to procurement. If multi-stakeholder scoring is impossible (no finance representative) → defer until alignment is possible. Otherwise → emit the rubric.

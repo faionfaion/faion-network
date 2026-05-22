@@ -1,0 +1,51 @@
+# purpose: backend-agnostic HybridSearchService with parallel legs + RRF fusion
+# consumes: dense_client, sparse_client, query string, top_k
+# produces: list of {id, score, dense_rank, sparse_rank}
+# depends-on: content/01-core-rules.xml (r4, r6), content/04-procedure.xml
+# token-budget-impact: zero at runtime; service code only
+
+import asyncio
+from typing import List, Dict, Protocol
+
+
+class LegClient(Protocol):
+    async def search(self, query: str, k: int) -> List[Dict]:
+        ...
+
+
+class HybridSearchService:
+    def __init__(self, dense: LegClient, sparse: LegClient, k_final: int = 10, rrf_k: int = 60):
+        self.dense = dense
+        self.sparse = sparse
+        self.k_final = k_final
+        self.rrf_k = rrf_k
+
+    async def search(self, query: str) -> Dict:
+        k_leg = self.k_final * 3
+        dense_task = asyncio.create_task(self.dense.search(query, k_leg))
+        sparse_task = asyncio.create_task(self.sparse.search(query, k_leg))
+        dense_res, sparse_res = await asyncio.gather(dense_task, sparse_task)
+        ranks = self._collect_ranks(dense_res, sparse_res)
+        fused = self._rrf(ranks)
+        results = sorted(fused.values(), key=lambda r: -r["score"])[: self.k_final]
+        return {"query": query, "backend": "custom", "fusion": "rrf", "results": results}
+
+    def _collect_ranks(self, dense, sparse):
+        ranks = {}
+        for i, d in enumerate(dense, start=1):
+            ranks.setdefault(d["id"], {"id": d["id"], "dense_rank": None, "sparse_rank": None})
+            ranks[d["id"]]["dense_rank"] = i
+        for i, s in enumerate(sparse, start=1):
+            ranks.setdefault(s["id"], {"id": s["id"], "dense_rank": None, "sparse_rank": None})
+            ranks[s["id"]]["sparse_rank"] = i
+        return ranks
+
+    def _rrf(self, ranks):
+        for r in ranks.values():
+            score = 0.0
+            if r["dense_rank"] is not None:
+                score += 1.0 / (self.rrf_k + r["dense_rank"])
+            if r["sparse_rank"] is not None:
+                score += 1.0 / (self.rrf_k + r["sparse_rank"])
+            r["score"] = score
+        return ranks

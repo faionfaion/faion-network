@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="chunking-code-ast Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Chunking Code AST — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for one code chunk: id, text, type, name, docstring, start_line, end_line, language, source.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-code-ast/chunk.schema.json",
+  "type": "object",
+  "required": ["id", "text", "type", "language", "source", "start_line", "end_line", "strategy", "version"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+    "text": {"type": "string", "minLength": 1},
+    "type": {"type": "string", "enum": ["function", "async_function", "class", "method", "arrow_function", "code_block"]},
+    "name": {"type": "string"},
+    "docstring": {"type": "string"},
+    "start_line": {"type": "integer", "minimum": 1},
+    "end_line": {"type": "integer", "minimum": 1},
+    "language": {"type": "string", "enum": ["python", "javascript", "typescript", "generic"]},
+    "source": {"type": "string", "minLength": 1},
+    "strategy": {"type": "string", "enum": ["ast", "tree-sitter", "regex", "generic"]},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "fallback": {"type": "boolean"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>id — md5(source + start_line + strategy_version).</item>
+      <item>type ∈ {function, async_function, class, method, arrow_function, code_block}.</item>
+      <item>language ∈ {python, javascript, typescript, generic}.</item>
+      <item>start_line ≤ end_line.</item>
+      <item>strategy ∈ {ast, tree-sitter, regex, generic}.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Strategy is `regex` for TypeScript with decorators.</description>
+      <reason>Regex path mis-handles decorators and generics; tree-sitter or ast required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>fallback==true but no warning was logged.</description>
+      <reason>Violates r4-fallback-warning; caller cannot detect missing metadata.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Overlapping chunks not deduplicated.</description>
+      <reason>Inflates index, skews k-NN; violates r3-dedup-overlapping.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "id": "1f2e3d4c5b6a7980f1e2d3c4b5a69708",
+  "text": "def list_users(request):\n    return JsonResponse({'users': []})",
+  "type": "function",
+  "name": "list_users",
+  "docstring": "",
+  "start_line": 12,
+  "end_line": 14,
+  "language": "python",
+  "source": "app/views.py",
+  "strategy": "ast",
+  "version": "1.0.0",
+  "fallback": false
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "text": "function foo()",
+  "type": "snippet",
+  "language": "ts",
+  "strategy": "regex"
+}
+]]></code>
+      <note>Invalid: missing id/source/start_line/end_line/version; type not in enum; language not in enum.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>id is md5 hex.</item>
+      <item>type ∈ allowed enum.</item>
+      <item>start_line ≤ end_line.</item>
+      <item>If fallback==true, a warning is present in the run log.</item>
     </list>
   </section>
 </text>

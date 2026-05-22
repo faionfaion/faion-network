@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="TTS Implementation — Procedure" version="1.1.0" est_tokens="900" depth="deep">
+  <summary>8-step procedure for production long-form TTS: probe cache → measure → semantic split → parallel synth → assemble → measure total → log → evict.</summary>
+
+  <section title="Steps">
+    <step n="1" name="probe-full-cache">
+      <input>full text, voice, speed, model, provider</input>
+      <action>Compute cache_key = sha256 of full payload. If `{cache_dir}/{cache_key}/assembled.mp3` exists, return cached=true with the existing chunks index.</action>
+      <output>cache_key; cached path when hit.</output>
+      <decision-gate>cache hit → skip to step 7 with cached=true.</decision-gate>
+    </step>
+
+    <step n="2" name="measure-and-route">
+      <input>text length, provider, presence of SSML, voice mode (library / clone)</input>
+      <action>If len(text) &lt;= 4000 → delegate to tts-basics single-call path. If clone requested → consent gate before any provider call. If SSML present → force provider in {google, azure}.</action>
+      <output>routed provider; clone gate decision.</output>
+    </step>
+
+    <step n="3" name="semantic-split">
+      <input>long text (&gt; 4000 chars)</input>
+      <action>Split on `\n\n` paragraph boundaries; for paragraphs &gt; 3500 chars, split on sentence regex `(?&lt;=[.!?])\s+`; for runaway code blocks, hard-split at 3500-char marks at whitespace. Each chunk &lt;= 3950 chars.</action>
+      <output>List[str] chunks, each &lt;= 3950 chars.</output>
+    </step>
+
+    <step n="4" name="dispatch-parallel-synth">
+      <input>chunks list, voice, speed, model, provider, tempdir from mkdtemp()</input>
+      <action>For each chunk: compute per-chunk cache_key = sha256(chunk + voice + speed + provider); probe per-chunk cache; on miss, call provider SDK. Dispatch in parallel via asyncio.gather() with concurrency cap = tier RPM / 60 + 1.</action>
+      <output>List[dict] with per-chunk {index, path, duration_s, char_count, cached}.</output>
+    </step>
+
+    <step n="5" name="assemble">
+      <input>List[dict] chunks ordered by index</input>
+      <action>Use pydub.AudioSegment.from_file per chunk; concatenate with `AudioSegment.silent(duration=300)` (300ms gap) between chunks. Export to `{cache_dir}/{cache_key}/assembled.mp3`.</action>
+      <output>assembled audio file path.</output>
+    </step>
+
+    <step n="6" name="measure-total">
+      <input>assembled file path, chunks</input>
+      <action>Compute `total_duration = AudioSegment.from_file(assembled).duration_seconds`. Assert `abs(total_duration - sum(c.duration_s for c in chunks)) &lt; 1.0`. If 0.0, return error.</action>
+      <output>total_duration_s; rejects 0.0 as error.</output>
+    </step>
+
+    <step n="7" name="log-and-cleanup">
+      <input>cache_key, chunks, total_duration, tempdir</input>
+      <action>Emit pipeline metrics: provider, voice, total_char_count, total_duration_s, cache_hit_count / len(chunks). `shutil.rmtree(tempdir, ignore_errors=True)`. Persist chunks index JSON next to assembled.mp3 for partial replay.</action>
+      <output>metrics emitted; tempdir cleaned.</output>
+    </step>
+
+    <step n="8" name="evict">
+      <input>cache_dir, max_age_days, max_size_mb</input>
+      <action>Walk cache_dir, sort entries by mtime, delete entries older than max_age_days, then delete LRU until total size &lt;= max_size_mb. Record files_removed and bytes_freed for the output eviction object.</action>
+      <output>eviction summary attached to result.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>
