@@ -84,20 +84,23 @@ tags: [eval, feedback-loop, llm-ops, regression-test, ml-engineer]
 
 | File | Purpose |
 |------|---------|
-| `templates/eval-candidate.json` | EvalCandidate schema |
-| `templates/admitted-row.json` | Eval suite row schema |
-| `templates/stop-bleed-alert.json` | Pagerduty-compatible alert |
+| `templates/eval-candidate.schema.json` | EvalCandidate JSON schema |
+| `templates/admitted-row.schema.json` | Eval-suite row schema |
+| `templates/stop-bleed-alert.json` | PagerDuty-compatible alert payload |
+| `templates/_smoke-test.json` | Minimum-viable EvalCandidate that validates clean |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/ingest-pipeline.py` | Hourly: ingest, scrub, judge, queue admits | Cron hourly |
-| `scripts/admit-weekly.py` | Apply weekly cap, raise eval-suite PR | Cron Fri 09:00 |
-| `scripts/stop-bleed-detector.py` | Cluster-detect 3+ same failures, page on-call | Cron 15min |
+| `scripts/validate-thumbs-down-to-eval-pipeline.py` | Lint EvalCandidate against schema, enforce PII-clean flag + weekly cap | Pre-commit + nightly batch |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- peer methodologies: `regression-eval-set`, `hallucination-incident-triage`, `customer-ai-feedback-triage`
-- external: [Anthropic — Building Evals](https://docs.anthropic.com/claude/docs/evaluating-prompts) · [OpenAI Evals](https://github.com/openai/evals) · [Lilian Weng — LLM-powered Autonomous Agents](https://lilianweng.github.io/) · [Hamel Husain — Your AI product needs evals](https://hamel.dev/blog/posts/evals/)
+- [[rag-feature-acceptance-contract]] — eval set referenced by the contract
+- [[retrieval-drift-alerting-recipe]] — drift signal complements this signal-from-users feedback loop
+- external: [Anthropic — Building Evals](https://docs.anthropic.com/claude/docs/evaluating-prompts) · [OpenAI Evals](https://github.com/openai/evals) · [Hamel Husain — Your AI product needs evals](https://hamel.dev/blog/posts/evals/)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes a feedback row by: cluster-size (>3 → stop-the-bleed), PII-clean flag, judge-vote (≥2/3 admit), and weekly-cap remaining.
