@@ -1,22 +1,139 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="agentic-ai-product-development Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Agentic AI Product Development — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid agentic-AI product spec: goal state, enumerated autonomous actions, escalation triggers, primary metrics, and a behavioural-regression hook.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Required fields (JSON Schema)">
+    <schema lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["product", "owner", "version", "goal_state", "autonomous_actions", "escalation", "metrics", "behavioural_regression"],
+  "properties": {
+    "product": {"type": "string"},
+    "owner": {"type": "string", "pattern": "^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "goal_state": {
+      "type": "object",
+      "required": ["predicate", "evidence_source"],
+      "properties": {
+        "predicate": {"type": "string", "minLength": 10},
+        "evidence_source": {"type": "string"}
+      }
+    },
+    "autonomous_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["action", "trigger"],
+        "properties": {
+          "action": {"type": "string"},
+          "trigger": {"type": "string"}
+        }
+      }
+    },
+    "escalation": {
+      "type": "object",
+      "required": ["triggers", "human_role", "written_before_happy_path"],
+      "properties": {
+        "triggers": {"type": "array", "minItems": 1},
+        "human_role": {"type": "string"},
+        "written_before_happy_path": {"const": true}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["goal_achievement_rate_target", "autonomy_ratio_target", "cost_per_task_target"],
+      "properties": {
+        "goal_achievement_rate_target": {"type": "number", "minimum": 0, "maximum": 1},
+        "autonomy_ratio_target": {"type": "number", "minimum": 0, "maximum": 1},
+        "cost_per_task_target": {"type": "number", "minimum": 0}
+      }
+    },
+    "behavioural_regression": {
+      "type": "object",
+      "required": ["test_set_path", "trigger_on_model_bump"],
+      "properties": {
+        "test_set_path": {"type": "string"},
+        "trigger_on_model_bump": {"const": true}
+      }
+    }
+  }
+}
+    ]]></schema>
+  </section>
+
+  <section title="Examples">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "product": "support-agent-v1",
+  "owner": "ai-pm:alice",
+  "version": "1.0.0",
+  "goal_state": {
+    "predicate": "ticket.status == 'resolved' AND csat >= 4",
+    "evidence_source": "tickets_table + csat_survey"
+  },
+  "autonomous_actions": [
+    {"action": "respond-with-FAQ", "trigger": "intent == 'faq' AND confidence > 0.8"},
+    {"action": "issue-refund", "trigger": "intent == 'refund' AND amount <= 50"}
+  ],
+  "escalation": {
+    "triggers": ["confidence < 0.7", "retry_count > 2", "refund > 100"],
+    "human_role": "support-lead",
+    "written_before_happy_path": true
+  },
+  "metrics": {
+    "goal_achievement_rate_target": 0.75,
+    "autonomy_ratio_target": 0.6,
+    "cost_per_task_target": 0.40
+  },
+  "behavioural_regression": {
+    "test_set_path": "tests/behavioural/v1.jsonl",
+    "trigger_on_model_bump": true
+  }
+}
+      ]]></code>
+    </example>
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "product": "support-agent",
+  "goal_state": {"predicate": "solves the ticket"},
+  "autonomous_actions": [{"action": "handle complex cases"}],
+  "metrics": {"click_through_rate": 0.1}
+}
+      ]]></code>
+      <note>Goal not machine-verifiable; action lacks trigger; metric uses click-through instead of agentic unit metric.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Natural-language goal_state ("solves the ticket", "feels good")</description>
+      <reason>Not machine-verifiable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>autonomous_actions item without trigger</description>
+      <reason>Unauditable behaviour.</reason>
+    </antipattern>
+    <antipattern>
+      <description>metrics using click-through-rate or cost-per-user as primary</description>
+      <reason>Wrong scaling axis for agentic systems.</reason>
+    </antipattern>
+    <antipattern>
+      <description>escalation.written_before_happy_path == false</description>
+      <reason>Happy-path-first specs fail to productionize.</reason>
+    </antipattern>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>goal_state.predicate is a concrete expression (operators, fields, values).</item>
+      <item>Every autonomous_action has a trigger.</item>
+      <item>escalation.written_before_happy_path is true.</item>
+      <item>metrics include all three agentic unit metrics.</item>
+      <item>behavioural_regression.trigger_on_model_bump is true.</item>
     </list>
   </section>
 </text>

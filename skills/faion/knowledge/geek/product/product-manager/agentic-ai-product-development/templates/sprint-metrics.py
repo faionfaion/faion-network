@@ -1,3 +1,8 @@
+# purpose: Sprint-level agentic product metrics tracker.
+# consumes: SprintAgentMetrics dataclass (total / autonomous / escalated / failed).
+# produces: dict with autonomy_ratio, goal_achievement_rate, failure_rate, escalation_rate.
+# depends-on: dataclasses (stdlib).
+# token-budget-impact: zero — code only.
 """Sprint-level agentic product metrics tracker.
 
 Input: task counts per sprint period.

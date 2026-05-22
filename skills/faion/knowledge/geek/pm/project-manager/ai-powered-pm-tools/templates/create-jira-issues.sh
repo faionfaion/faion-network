@@ -1,4 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# purpose: Shell helper that bulk-creates Jira issues from a CSV; consumed by the tool-selection rollout step.
+# consumes: methodology inputs listed in AGENTS.md `## Prerequisites`
+# produces: input for the artefact matching content/02-output-contract.xml
+# depends-on: templates/header.yaml for frontmatter contract; AGENTS.md for body sections
+# token-budget-impact: <300 tokens; CLI output piped to scripts/validate-<slug>.py
+
 # Create Jira issues from a JSON work breakdown structure
 # Requires: JIRA_URL, JIRA_TOKEN, JIRA_PROJECT_KEY env vars
 # Input: JSON file path as first argument (or stdin)

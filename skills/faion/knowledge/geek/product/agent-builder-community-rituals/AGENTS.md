@@ -4,67 +4,92 @@ tier: geek
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Codifies the weekly/biweekly/monthly rituals (office hours, eval-sharing, prompt-swap) that turn isolated LLM-agent developers into a learning community.
-content_id: "5f8d0d67ea5426e0"
-tags: [agent-builder-community-rituals, product, geek]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: "54446d0efbf0bf4c"
+complexity: medium
+produces: spec
+est_tokens: 3000
+summary: Produces a calendar of weekly / biweekly / monthly rituals (office hours, eval-sharing, prompt-swap) plus per-ritual artefact templates and a 90-day retention metric, so isolated agent-builders become a learning community instead of a dying meetup.
+tags: [product, geek, community, rituals, agent-builders, retention, office-hours]
 ---
-
 # Agent-Builder Community Rituals
 
 ## Summary
 
-**One-sentence:** Codifies the weekly/biweekly/monthly rituals (office hours, eval-sharing, prompt-swap) that turn isolated LLM-agent developers into a learning community.
+**One-sentence:** A calendar of weekly / biweekly / monthly rituals (office hours, eval-sharing, prompt-swap) plus per-ritual artefact templates and a 90-day retention metric, so isolated LLM-agent developers turn into a learning community instead of yet another dying meetup.
 
-**One-paragraph:** LLM agent developers (P7) cite 'no shared corpus / community of fellow agent builders' as a top pain. Mechanism: a calendar of named rituals each with cadence, format, exit-criteria; an artefact per ritual; a small public log so newcomers can observe. Output: ritual calendar + three artefact templates + 90-day retention metric.
+**One-paragraph:** LLM agent developers cite "no shared corpus / community of fellow agent builders" as a top pain. Optional events drift to zero attendance in 8-12 weeks; pure-discussion meetups do not compound. This methodology pins a calendar of named rituals each with cadence (weekly / biweekly / monthly slot in UTC), format (office hours / eval-sharing / prompt-swap), exit-criteria, rotating host (every 4-6 sessions), a versioned artefact per session (eval row added, prompt diff committed, runbook updated), and a public chronological log updated within 48h. Below 30% 90-day retention triggers ritual-design review.
+
+**Ефективно для:** organiser, який запускає community агент-білдерів і не хоче, щоб група вмерла за 8 тижнів від "як справи, нічого нового".
 
 ## Applies If (ALL must hold)
 
-- ≥5 builders willing to commit 2-4h/month
-- shared infra (Discord/Slack + doc store + calendar)
-- ≥1 organizer with authority to enforce cadence
+- ≥5 builders willing to commit 2-4h/month.
+- Shared infra exists (Discord / Slack + docs store + calendar).
+- ≥1 organiser with authority to enforce the cadence.
+- Builders share at least one technical interest (eval, prompt, infra, RAG).
+- Code-of-conduct is published and enforced.
 
 ## Skip If (ANY kills it)
 
-- <5 builders — group too small; do 1:1 mentorship
-- no shared infra and no budget for it — rituals collapse
-- purely social meetup with no artefact intent — use meetup playbook
+- <5 builders — group too small; do 1:1 mentorship instead.
+- No shared infra and no budget for it — rituals collapse.
+- Purely social meetup with no artefact intent — use a meetup playbook, not this.
 
 ## Prerequisites
 
-- list of founding members with calendars synced
-- Discord/Slack + docs root (Notion/Outline/GitHub)
-- explicit code of conduct
+| Input artifact | Format | Source |
+|---|---|---|
+| List of founding members | CSV / YAML | organiser |
+| Discord / Slack workspace | URL | organiser-owned infra |
+| Docs root | Notion / Outline / GitHub | organiser-owned infra |
+| Code of conduct | markdown | community charter |
+| Calendar | iCal / Google Cal | organiser-owned infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/product/product-manager` | parent skill — provides operating context for this methodology |
-| `geek/ai/llm-evaluation` | peer methodology — produces inputs or consumes outputs |
-| `geek/sdlc-ai/team-async-rituals` | peer methodology — produces inputs or consumes outputs |
+| `pro/product/product-manager` | Parent skill — provides operating context for this methodology. |
+| `geek/ai-core/llm-evaluation` | Peer methodology — feeds eval-sharing ritual. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
+| `content/01-core-rules.xml` | essential | 5 rules: cadence-not-vibes, artefact-per-ritual, public log, rotating host, 90-day retention metric | ~900 |
+| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Group-size gate + retention-trend branch | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_calendar` | haiku | Template fill from cadence + UTC slot list. |
+| `design_ritual_format` | sonnet | Per-ritual judgment: exit criteria, artefact type, host rotation. |
+| `retention_review` | opus | Cross-session synthesis when retention drops below 30%. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/ritual-calendar.yaml` | Cadence + slot + ritual-id matrix. |
+| `templates/ritual-artefact.md` | Per-session log skeleton (date, host, attendees, artefact link, retention update). |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-agent-builder-community-rituals.py` | Validate calendar + per-session log against rule set (cadence, host rotation, artefact link, 90-day retention). | Weekly after each ritual. |
 
 ## Related
 
-- parent skill: `pro/product/product-manager/`
-- peer methodology: `geek/ai/llm-evaluation`
-- peer methodology: `geek/sdlc-ai/team-async-rituals`
-- external: https://github.com/anthropics/anthropic-cookbook (community cookbook pattern)
+- [[ai-product-success-metrics-catalog]] — peer geek-product methodology consuming the retention metric.
+- [[segment-aware-design-system]] — sibling methodology for product-experience rituals.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` first checks builder count + organiser availability. If <5 builders → skip and do 1:1. If 90-day retention drops below 30% → block calendar continuation and run a ritual-design review. Otherwise → emit the calendar.
