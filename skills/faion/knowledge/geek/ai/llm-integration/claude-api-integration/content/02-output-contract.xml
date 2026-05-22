@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="claude-api-integration Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Claude API Integration Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON-schema output contract for the produced `ClaudeService` config: which surfaces are wired, default model, retry, stop_reason discipline, caching status.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "claude-api-integration-output",
+  "required": [
+    "surfaces_wired",
+    "default_model",
+    "stop_reason_centralised",
+    "retry_installed",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "surfaces_wired": {"description": "Subset of {completion_sync, completion_async, streaming, tool_use, vision, extended_thinking, prompt_caching, batch_api}."},
+    "default_model": {"description": "Full-date pinned model id."},
+    "stop_reason_centralised": {"description": "Boolean — service layer validates stop_reason; subagents do not."},
+    "retry_installed": {"description": "Boolean — tenacity decorator covering 429+5xx+529 is active."},
+    "prompt_caching": {"description": "Object: cached_prefix_tokens (>=1024), hit_ratio_target."},
+    "extended_thinking": {"description": "Object: budget_tokens, max_tokens (>= budget + 4096); temperature absent."},
+    "forbidden_seen": {"description": "Forbidden patterns matched; must be empty."}
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="surfaces_wired" format="array&lt;string&gt;" required="true">Subset of allowed surface names.</field>
+      <field name="default_model" format="string" required="true">Pinned full-date model id.</field>
+      <field name="stop_reason_centralised" format="boolean" required="true">Service validates stop_reason centrally.</field>
+      <field name="retry_installed" format="boolean" required="true">Tenacity decorator covering 429+5xx+529.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched; must be empty.</field>
+      <field name="prompt_caching" format="object" required="false">Cache configuration if prompt_caching is in surfaces_wired.</field>
+      <field name="extended_thinking" format="object" required="false">Thinking configuration if extended_thinking is in surfaces_wired.</field>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">Model id without full-date suffix.</pattern>
+      <pattern id="f2">`stop_reason_centralised == false`.</pattern>
+      <pattern id="f3">`retry_installed == false`.</pattern>
+      <pattern id="f4">`prompt_caching.cached_prefix_tokens` &lt; 1024.</pattern>
+      <pattern id="f5">`extended_thinking.temperature` field present.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort `surfaces_wired` alphabetically.</transformation>
+      <transformation>Normalise model id to lowercase.</transformation>
     </allowed-transformations>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "surfaces_wired": ["completion_sync", "prompt_caching", "streaming", "tool_use"],
+  "default_model": "claude-sonnet-4-20250514",
+  "stop_reason_centralised": true,
+  "retry_installed": true,
+  "prompt_caching": {"cached_prefix_tokens": 3200, "hit_ratio_target": 0.75},
+  "forbidden_seen": []
+}]]></code>
+    <note>All forbidden patterns absent; cache prefix above floor.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "surfaces_wired": ["completion_sync"],
+  "default_model": "claude-sonnet-4",
+  "stop_reason_centralised": false,
+  "retry_installed": false,
+  "forbidden_seen": ["f1", "f2", "f3"]
+}]]></code>
+    <note>Alias model, no centralisation, no retry — schema rejects.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>`scripts/validate-claude-api-integration.py` exits 0.</item>
     </list>
   </section>
 </text>

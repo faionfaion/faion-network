@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Collaborative Group Build Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from validated spec to a running CollaborativeGroup with budget guard.</summary>
+
+  <section title="Procedure">
+    <code lang="text"><![CDATA[
+STEP 1 — Configure
+  input:  multi-agent spec with pattern=collaborative
+  action: instantiate CollaborativeGroup(contributors, synthesizer, max_iterations, token_budget, workspace_writer)
+  output: instance ready to run
+  gate:   validator (scripts/validate-multi-agent-collaborative.py) green
+
+STEP 2 — Initial brainstorm
+  action: for each contributor, send task prompt; capture {agent, iteration=0, content, ts} to workspace
+  output: workspace populated with one entry per contributor
+  gate:   used_tokens recorded; abort if used ≥ 0.9 × token_budget
+
+STEP 3 — Iterate (rounds 1..max_iterations)
+  action: per round, per contributor: build prompt = task + own latest + others' latest (capped ~3k tok); send;
+          append result to workspace; recompute used_tokens; break loop if ≥ 0.9 × token_budget
+  output: workspace[1..N×iterations] entries
+  gate:   max_iterations not exceeded AND token budget not breached
+
+STEP 4 — Synthesize
+  action: single call to synthesizer with ALL latest contributions (per agent) simultaneously
+  output: synthesized final_result
+  gate:   synthesizer.name not in contributors[*].name
+
+STEP 5 — Emit trace
+  action: write trace.json with {config, workspace, final_result, used_tokens, aborted_early: bool}
+  output: replayable trace for debugging
+  gate:   trace.aborted_early consistent with budget guard
+]]></code>
+  </section>
+
+  <reference path="templates/collaborative_group.py">runnable Python scaffold</reference>
+  <reference path="templates/iteration-prompt.txt">per-round prompt template</reference>
+  <reference path="scripts/validate-multi-agent-collaborative.py">final-gate validator</reference>
+</text>

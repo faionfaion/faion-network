@@ -1,3 +1,8 @@
+# purpose: reference Pydantic 2 invoice model with strict-mode-compatible schema
+# consumes: Pydantic >= 2.5
+# produces: model_json_schema() that passes OpenAI strict-mode compiler
+# depends-on: pydantic >= 2.5; assert_strict_schema runs in CI
+# token-budget-impact: ~450 tokens to render in agent context
 """Pydantic template for OpenAI/Azure strict-mode structured outputs.
 
 Key rules wired in:

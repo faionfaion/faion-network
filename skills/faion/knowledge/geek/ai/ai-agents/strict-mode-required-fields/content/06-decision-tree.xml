@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="strict-mode-required-fields Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-root">How should this field be encoded under strict mode?</root-question>
+    <branch when="field.is_truly_always_present == true">
+      <conclusion ref="r1-required-equals-properties">Keep as `field: T` (no default, in `required`).</conclusion>
+    </branch>
+    <branch when="field.is_sometimes_absent == true and field.semantic == 'scalar'">
+      <conclusion ref="r3-nullable-not-optional">Encode as `field: T | None = None`. Stays in `required`, type becomes nullable.</conclusion>
+    </branch>
+    <branch when="field.is_sometimes_absent == true and field.semantic == 'list-or-collection'">
+      <conclusion ref="r3-nullable-not-optional">Encode as `field: list[T] = Field(default_factory=list)`. Empty list is the natural absence-sentinel for collections; keep in `required`.</conclusion>
+    </branch>
+    <branch when="field.is_metadata_bag == true and dropping_strict_mode_acceptable == true">
+      <conclusion ref="fm-05-metadata-bag-in-strict">Drop strict mode for this call; document the decision in the model docstring.</conclusion>
+    </branch>
+    <branch when="field.is_metadata_bag == true and dropping_strict_mode_acceptable == false">
+      <conclusion ref="fm-05-metadata-bag-in-strict">Split into typed sub-object with closed keys + a separate `audit_blob: str` field carrying JSON-encoded freeform metadata.</conclusion>
+    </branch>
+    <branch when="field.is_money_or_critical_numeric == true and field.may_be_absent_in_input == true">
+      <conclusion ref="fm-02-nullable-money">Do NOT make it nullable. Pair the non-nullable field with `refusal: str | None` so the model has an explicit refusal channel.</conclusion>
+    </branch>
+    <branch when="field.uses_empty_string_or_negative_sentinel == true">
+      <conclusion ref="fm-01-empty-string-sentinel">Replace the sentinel with `T | None = None`. Update downstream consumers to handle the explicit None.</conclusion>
+    </branch>
+    <branch when="model.config_extra_forbid_missing == true">
+      <conclusion ref="r4-config-extra-forbid">Add `model_config = ConfigDict(extra="forbid")` to this model and every nested model in its tree.</conclusion>
+    </branch>
+    <example trace="invoice-notes-field">
+      <p>Field `Invoice.notes` is sometimes absent and is a scalar string. Match → `r3-nullable-not-optional`. Rewrite as `notes: str | None = None`. Run `assert_strict_schema(Invoice)` in CI to lock the encoding.</p>
+    </example>
+  </decision-tree>
+</text>

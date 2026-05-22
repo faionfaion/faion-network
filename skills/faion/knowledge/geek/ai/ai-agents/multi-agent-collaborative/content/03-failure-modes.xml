@@ -1,17 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="multi-agent-collaborative Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for multi-agent-collaborative as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Collaborative Pattern Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that recur in collaborative multi-agent runs, with detector + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the same agent instance as both a contributor and the synthesis coordinator.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The synthesis coordinator must be independent of all contributors to avoid anchoring bias. If one contributor is also the synthesizer, its own contribution disproportionately shapes the final output.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Communication overhead: agents spend more tokens on coordination messages than on actual work when iteration prompts are too long.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each iteration prompt grows linearly as other_ideas accumulates contributions. Cap the context passed per iteration to the most recent contribution per agent, not the full history, to prevent prompt inflation.</repair>
-    </failure-mode>
+  <section title="Bias">
+    <antipattern>
+      <description>Synthesizer is also a contributor — final output is biased toward that contributor's own ideas.</description>
+      <reason>Detect: validator finds synthesizer.name ∈ contributors[*].name. Fix: hire a dedicated synthesizer agent on a different model family (e.g., opus or GPT-class while contributors are sonnet).</reason>
+    </antipattern>
+    <antipattern>
+      <description>All contributors on the same model family produce correlated outputs; iteration converges to one answer instead of preserving diversity.</description>
+      <reason>Detect: pairwise cosine similarity of iteration-2 outputs &gt; 0.85. Fix: mix model families (Claude + GPT + Gemini), or inject role-specific contrarian seeds into system prompts ("you privately disagree with the consensus; surface objections").</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cost">
+    <antipattern>
+      <description>No budget guard — N agents × M iterations silently drains tokens; the run completes but at 5× the planned cost.</description>
+      <reason>Detect: post-run audit shows total_tokens &gt; spec.budget.total_tokens. Fix: add token counter after each iteration; abort the loop and proceed to synthesis when used ≥ 0.9 × budget.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Prompt inflation — iteration prompt accumulates full contribution history; iteration N pays for N copies of every prior output.</description>
+      <reason>Detect: per-iteration input tokens grow roughly linearly with iteration index. Fix: per iteration, pass only the latest entry per agent, capped at ~3000 tokens total context per round.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Concurrency">
+    <antipattern>
+      <description>Race condition on workspace — async-running contributors write to the workspace concurrently; one entry overwrites another.</description>
+      <reason>Detect: workspace entries with duplicate `(agent, iteration)` keys or non-monotonic `ts`. Fix: serialize writes via a single-writer queue or use an append-only log (e.g., SQLite WAL, NDJSON file) with a lock.</reason>
+    </antipattern>
   </section>
 </text>

@@ -1,22 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="decision-framework Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ML/AI Decision Record Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the decision record. Captures approach + model + rationale per axis + quarterly review clause.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-decision-record.json",
+  "type": "object",
+  "required": ["artefact_id", "feature", "approach", "model_tier", "model_id", "specialization_class",
+               "data_inventory", "volume_estimate", "rationale", "quarterly_review_due", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^dr-[a-z0-9-]{6,}$"},
+    "feature":     {"type": "string"},
+    "approach":    {"enum": ["prompt", "rag", "fine-tune", "hybrid-rag-ft"]},
+    "model_tier":  {"enum": ["nano", "mini", "standard", "frontier"]},
+    "model_id":    {"type": "string"},
+    "specialization_class": {"enum": ["none", "behavioral", "factual"]},
+    "data_inventory": {
+      "type": "object",
+      "required": ["private", "change_frequency", "citations_required", "corpus_size"],
+      "properties": {
+        "private":            {"type": "boolean"},
+        "change_frequency":   {"enum": ["never", "monthly", "weekly", "daily", "hourly"]},
+        "citations_required": {"type": "boolean"},
+        "corpus_size":        {"type": "integer", "minimum": 0}
+      }
+    },
+    "volume_estimate": {
+      "type": "object",
+      "required": ["requests_per_month"],
+      "properties": {
+        "requests_per_month": {"type": "integer", "minimum": 0},
+        "irreversible_error": {"type": "boolean"}
+      }
+    },
+    "rationale": {
+      "type": "object",
+      "required": ["approach_reason", "model_reason"],
+      "properties": {
+        "approach_reason": {"type": "string", "minLength": 30},
+        "model_reason":    {"type": "string", "minLength": 30},
+        "ft_roi_calc":     {"type": "string"}
+      }
+    },
+    "quarterly_review_due": {"type": "string", "format": "date"},
+    "version":              {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":        {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "dr-support-bot",
+  "feature": "support-bot-tier1",
+  "approach": "rag",
+  "model_tier": "standard",
+  "model_id": "claude-sonnet-4-6",
+  "specialization_class": "factual",
+  "data_inventory": {"private": true, "change_frequency": "weekly", "citations_required": true, "corpus_size": 4200},
+  "volume_estimate": {"requests_per_month": 90000, "irreversible_error": false},
+  "rationale": {
+    "approach_reason": "Corpus is private, changes weekly, citations are a hard product requirement; FT cannot serve facts that move.",
+    "model_reason": "Standard generation quality required; no irreversible-error class; Sonnet hits SLO at half Opus cost."
+  },
+  "quarterly_review_due": "2026-08-20",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "feature": "f",
+  "approach": "fine-tune",
+  "model_tier": "frontier",
+  "specialization_class": "factual",
+  "data_inventory": {"private": true, "change_frequency": "daily", "citations_required": true, "corpus_size": 10000},
+  "volume_estimate": {"requests_per_month": 5000},
+  "rationale": {"approach_reason": "want quality", "model_reason": "best model"},
+  "quarterly_review_due": "yesterday"
+}
+]]></code>
+    <note>artefact_id fails pattern; approach=fine-tune with specialization_class=factual violates no-fine-tune-for-factual; volume 5k/mo &lt;&lt; 1M threshold for FT; rationale strings &lt;30 chars; quarterly_review_due not ISO; version + last_reviewed missing.</note>
+  </example>
+
+  <reference path="scripts/validate-decision-framework.py">Validator that enforces this contract.</reference>
+
 </text>

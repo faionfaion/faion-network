@@ -1,12 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="claude-api-integration Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for claude-api-integration as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Claude API Integration Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed when wiring the full Claude integration. Each entry has a symptom (`description`), root cause (`reason`), and corrective fix (`note`).</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Multi-turn pipeline 400s on the second turn whenever a tool was used.</description>
+      <reason>Caller appended only the assistant TEXT (or a summary), omitting `tool_use` blocks from `response.content`.</reason>
+      <note>Fix: append the full `response.content` list as the assistant turn; tool_use blocks must survive.</note>
+    </antipattern>
+    <antipattern>
+      <description>Streamed tool call arrives with broken JSON; `JSONDecodeError` during `content_block_delta`.</description>
+      <reason>Caller is parsing `input_json_delta` events inline instead of accumulating until `content_block_stop`.</reason>
+      <note>Fix: buffer all `input_json_delta.partial_json` strings; parse once after `content_block_stop` for that block.</note>
+    </antipattern>
+    <antipattern>
+      <description>Cost-tracking dashboard reports zero cache hits despite a multi-call assistant; `cache_read_input_tokens=0` everywhere.</description>
+      <reason>A dynamic value (timestamp, request id, JSON-serialised object with shifting key order) lives ahead of the cached block.</reason>
+      <note>Fix: move dynamic content into the user turn or strictly AFTER the cached block; lock JSON serialiser order; smoke-test hit ratio on first 10 calls.</note>
+    </antipattern>
+    <antipattern>
+      <description>Extended Thinking call randomly 400s with "temperature not allowed with thinking".</description>
+      <reason>`ClaudeConfig` default carried `temperature=0.2`; when thinking is enabled, the value leaks into the call.</reason>
+      <note>Fix: drop `temperature` from `kwargs` when `thinking.type=="enabled"` in the service wrapper; cover with a unit test.</note>
+    </antipattern>
+    <antipattern>
+      <description>Batch API job sits at `processing_status=ended` but downstream pipeline reports "no results".</description>
+      <reason>Caller treated `result.type="errored"` items as final failures and never resubmitted them; ack count never matched submission count.</reason>
+      <note>Fix: collect errored items into a re-submit queue; complete only when succeeded + resubmitted-succeeded equals original count.</note>
+    </antipattern>
   </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
