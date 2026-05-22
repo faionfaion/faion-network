@@ -3,72 +3,98 @@ slug: test-fixtures
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Covers fixture creation patterns (Factory Boy, Builder, Object Mother), pytest fixture scopes and composition, database isolation strategies (transactional rollback, Django test DB, SQLAlchemy), cleanup with yield, and conftest organization.
-content_id: "e78df984790eaa80"
-tags: [fixtures, testing, factory-boy, pytest, database-testing]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+content_id: 7b0555b7cf160574
+summary: Produces a fixture-design config (Factory Boy + scope choices + rollback strategy + xdist isolation) for pytest/pytest-django suites.
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [fixtures, factory-boy, pytest, pytest-django, sqlalchemy, xdist]
 ---
 # Test Fixtures
 
 ## Summary
 
-**One-sentence:** Covers fixture creation patterns (Factory Boy, Builder, Object Mother), pytest fixture scopes and composition, database isolation strategies (transactional rollback, Django test DB, SQLAlchemy), cleanup with yield, and conftest organization.
+**One-sentence:** Produces a fixture-design config (Factory Boy + scope choices + rollback strategy + xdist isolation) for pytest/pytest-django suites.
 
-**One-paragraph:** Covers fixture creation patterns (Factory Boy, Builder, Object Mother), pytest fixture scopes and composition, database isolation strategies (transactional rollback, Django test DB, SQLAlchemy), cleanup with yield, and conftest organization. Applies to Python-centric projects but principles transfer to other languages.
+**One-paragraph:** Poor fixture design causes the most persistent test-suite problems: Mystery Guest (data appearing from nowhere), God Fixture (one fixture creates everything), scope mismatches, and Sequence collisions under xdist. This methodology emits a fixture-design config that pins the Factory/Builder/Object-Mother choice per model, scope per fixture, transactional rollback wiring, and a worker-id-aware DB setup for parallel runs.
+
+**Ефективно для:** Python backend whose pytest suite has 3+ "magic" autouse fixtures, where new contributors can't tell which fixture creates which row.
 
 ## Applies If (ALL must hold)
 
-- Designing pytest fixtures for a new project or refactoring existing ones
-- Setting up Factory Boy for Django/SQLAlchemy model factories
-- Implementing transactional rollback isolation for database tests
-- Debugging scope mismatch or fixture teardown ordering issues
-- Identifying Mystery Guest / God Fixture anti-patterns in a test suite
+- Designing pytest fixtures for a new project or refactoring existing ones.
+- Setting up Factory Boy for Django/SQLAlchemy model factories.
+- Implementing transactional rollback isolation for database tests.
+- Debugging scope-mismatch or fixture-teardown ordering issues.
+- Identifying Mystery Guest / God Fixture anti-patterns in a suite.
 
 ## Skip If (ANY kills it)
 
-- pytest-specific test patterns (parametrize, markers) — use testing-pytest
-- E2E test data setup — use e2e-testing
-- JavaScript test fixtures — use testing-javascript
+- pytest-specific test patterns (parametrize, markers) → testing-pytest.
+- E2E test data setup → e2e-testing.
+- JavaScript test fixtures → testing-javascript.
+- Decision is about mocking, not fixtures → mocking-strategies.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `model-inventory.yaml` | list of {model, reuse_count, has_unique_fields, has_subobjects} | operator |
+| `framework` | django / sqlalchemy / sqlmodel | repo |
+| `xdist_workers` | integer | CI config |
+| `conftest_path` | path | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[testing-pytest]] | scope semantics and yield-fixture mechanics. |
+| [[integration-testing]] | DB rollback discipline aligns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 7 testable rules: scope must match state, yield not addfinalizer, no Mystery Guest, no God Fixture, factory uniqueness, xdist worker DB, autouse documented. | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the fixture-design config artefact. | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: Mystery Guest, God Fixture, wide-scope+stateful, Sequence collisions, undocumented autouse. | ~800 |
+| `content/04-procedure.xml` | recommended | 5-step procedure: inventory models → pick pattern (Factory/Builder/Mother) → assign scope → wire rollback → emit conftest. | ~700 |
+| `content/05-examples.xml` | recommended | Django Factory Boy + sqlalchemy rollback + xdist worker_id end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Picks Factory vs Builder vs Object Mother; function vs module vs session scope; UUID vs Sequence. | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `parse_model_inventory` | haiku | Mechanical YAML→typed list. |
+| `pick_pattern_per_model` | sonnet | Tradeoff between Factory simplicity and Builder/Mother semantic clarity. |
+| `audit_existing_fixtures` | opus | Detecting Mystery Guest / God Fixture in existing conftest. |
+| `emit_conftest` | sonnet | Mechanical emission. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/factory-boy-factory.py` | Factory Boy base factory with traits and sub-factories. |
+| `templates/conftest-transactional.py` | Transactional rollback fixture for pytest-django. |
+| `templates/_smoke-test.yaml` | Minimum model inventory. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-test-fixtures.py` | Validates emitted config against the schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `free/dev/testing-developer/`
+- [[testing-pytest]]
+- [[integration-testing]]
+- [[mocking-strategies]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on `has_subobjects` (yes → SubFactory; no → continue), then on `has_many_optional_fields` (yes → Builder; no → continue), then on `domain_scenarios_named` (yes → Object Mother; no → plain Factory). Scope branches on `is_stateful` and `xdist_workers`. Each leaf cites a rule id.
