@@ -2,7 +2,7 @@
 slug: vercel-deployment-discipline
 tier: solo
 group: infra
-domain: server-craft
+domain: backend
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
