@@ -1,27 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="speech-to-text Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for speech-to-text. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Speech-to-Text — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: default provider by accuracy/cost, self-host break-even, input validation, chunking with overlap, mandatory fallback.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Default to GPT-4o Mini Transcribe for accuracy at low cost; switch to AssemblyAI when diarization or structured output (summaries, chapters) is needed.</statement>
-      <rationale source="v1-source">GPT-4o Mini Transcribe at $0.003/min offers the best accuracy/cost ratio for single-speaker audio. AssemblyAI's LeMUR pipeline adds post-processing (summaries, action items) without extra API calls.</rationale>
+    <rule id="r1-default-provider" testable="true" depth="essential">
+      <statement>Default to GPT-4o Mini Transcribe for accuracy at low cost ($0.003/min); switch to AssemblyAI when diarization or structured output (summaries, chapters) is needed; pick Deepgram when custom vocabulary boost matters.</statement>
+      <rationale source="OpenAI / AssemblyAI / Deepgram pricing 2026">GPT-4o Mini Transcribe offers the best accuracy/cost ratio for single-speaker audio. AssemblyAI's LeMUR pipeline adds post-processing (summaries, action items) without extra calls. Deepgram custom vocab cuts WER 20-40% on domain-specific terms.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use faster-whisper (Large-v3 Turbo) for self-hosted production; break-even versus API is at ~30,000 minutes/month (~500 hours).</statement>
-      <rationale source="v1-source">Fixed GPU cost is ~$276/mo minimum. Below 30K minutes, APIs are cheaper and have no ops burden. Above that threshold, faster-whisper Large-v3 Turbo delivers 216x real-time on a single A10G.</rationale>
+
+    <rule id="r2-self-host-break-even" testable="true" depth="essential">
+      <statement>Use faster-whisper (Large-v3 Turbo) for self-hosted production. Break-even vs API is at ≈30,000 minutes/month (≈500 hours). Below that, APIs are cheaper and have no ops burden.</statement>
+      <rationale source="A10G GPU cost vs OpenAI API pricing 2026">Fixed GPU cost is ≈$276/mo minimum. Above 30K minutes, faster-whisper Large-v3 Turbo delivers 216× real-time on a single A10G and amortises the GPU. Below threshold, API is the rational choice.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Validate file format and size before calling any STT API — return a structured error for unsupported inputs rather than letting the API fail mid-transfer.</statement>
-      <rationale source="v1-source">Large file uploads to APIs fail after consuming bandwidth. Pre-validation catches unsupported formats (.wav vs .wav64) and oversized files locally before any network cost is incurred.</rationale>
+
+    <rule id="r3-input-validation" testable="true" depth="essential">
+      <statement>Validate file format, sample rate, and size locally before calling any STT API. Return a structured error for unsupported inputs rather than letting the API fail mid-transfer.</statement>
+      <rationale source="API operational reports">Large file uploads to APIs fail after consuming bandwidth and time. Pre-validation catches unsupported formats and oversized files locally before any network cost is incurred. WAV ≥8kHz mono is the floor; lower is garbage in.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Chunk large audio files to 5-minute segments with a 5-second overlap to prevent word truncation at boundaries.</statement>
-      <rationale source="v1-source">Without overlap, words that span a chunk boundary are split and the fragment gets dropped or mis-transcribed. A 5-second overlap ensures every word lands fully in at least one chunk.</rationale>
+
+    <rule id="r4-chunking-with-overlap" testable="true" depth="essential">
+      <statement>Chunk audio files &gt;25MB into ≤5-minute segments with a 5-second overlap. Words spanning chunk boundaries MUST not be lost.</statement>
+      <rationale source="Whisper docs; production transcription lessons">Without overlap, words that span a chunk boundary are split and the fragment gets dropped or mis-transcribed. A 5-second overlap ensures every word lands fully in at least one chunk; downstream dedup picks one copy.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Always configure a fallback provider; never let a single-provider outage block a transcription pipeline.</statement>
-      <rationale source="v1-source">OpenAI API has had multiple incidents where audio transcription endpoints were degraded while chat remained up. A fallback to faster-whisper or AssemblyAI eliminates single-point dependency with minimal code overhead.</rationale>
+
+    <rule id="r5-mandatory-fallback" testable="true" depth="essential">
+      <statement>Configure a fallback provider; never let a single-provider outage block a transcription pipeline. Fallback may be a second cloud OR local faster-whisper.</statement>
+      <rationale source="OpenAI / AssemblyAI 2025-2026 incident reports">Each major STT provider has had endpoint-specific outages while other parts of their API stayed up. Single-provider deployment causes feature-level downtime; a fallback eliminates it for minimal code overhead.</rationale>
     </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

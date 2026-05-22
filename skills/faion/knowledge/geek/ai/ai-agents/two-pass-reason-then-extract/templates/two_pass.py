@@ -1,3 +1,8 @@
+# purpose: two-pass cascade reference (Opus extended thinking → Haiku strict-SO extraction)
+# consumes: question/input string + Pydantic schema
+# produces: structured extraction conforming to content/02-output-contract.xml
+# depends-on: 01-core-rules.xml (two-pass-required, strong-model-free-text, extractor-deterministic, transcript-bounded)
+# token-budget-impact: pass-1 16K reasoning + pass-2 ~500 extraction tokens
 """Two-pass reasoning + extraction.
 
 Pass 1: strong model reasons freely (extended thinking enabled).
