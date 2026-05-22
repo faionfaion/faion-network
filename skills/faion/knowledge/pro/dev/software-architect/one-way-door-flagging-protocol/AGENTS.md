@@ -2,7 +2,7 @@
 slug: one-way-door-flagging-protocol
 tier: pro
 group: dev
-domain: software-architect
+domain: architecture
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

@@ -2,7 +2,7 @@
 slug: domain-driven-design
 tier: pro
 group: dev
-domain: code-quality
+domain: dev
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
