@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="max-turns-circuit-breaker Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for max-turns-circuit-breaker as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="max-turns-circuit-breaker Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for max-turns-circuit-breaker with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Raising max_turns to 100+ to "stop hitting the cap".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hides the underlying loop bug (bad tool, missing termination signal) and multiplies wasted spend. Fix the loop, do not extend the leash.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Catching MaxTurnsExceeded and silently returning empty string.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>User sees a blank reply, ops loses the trace. Always emit either a recovery summary or a typed error with the partial trajectory id.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Agent loops 50 turns and bills $5</symptom>
+      <root-cause>No max_turns set; framework default unlimited.</root-cause>
+      <fix>Set max_turns per agent_kind; refuse to boot without it.</fix>
+      <detector>Inject an infinite-loop tool; verify cap fires.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>MaxTurnsExceeded bubbles as 500 to the user</symptom>
+      <root-cause>No except clause; framework re-raises.</root-cause>
+      <fix>Catch the exception; render a structured fallback to user; log partial trajectory.</fix>
+      <detector>Force the exception; verify graceful response.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Recovery uses GPT-4 too</symptom>
+      <root-cause>Recovery model defaulted to the same expensive model as the agent.</root-cause>
+      <fix>Force recovery_model to haiku-class; cap recovery at 1 LLM call.</fix>
+      <detector>Track $/recovery; should be ≤$0.01.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Cap too high; user waits 90s for a failure</symptom>
+      <root-cause>max_turns=50 even for a retrieval agent.</root-cause>
+      <fix>Pin caps to ranges (5-10 retrieval, 15-20 coding); CI lints against &gt;20.</fix>
+      <detector>Per-failure latency; should be ≤ cap × per-turn-latency.</detector>
+    </antipattern>
   </section>
 </text>

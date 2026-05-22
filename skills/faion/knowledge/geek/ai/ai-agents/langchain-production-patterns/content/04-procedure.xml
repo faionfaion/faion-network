@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="langchain-production-patterns Hardening Procedure" version="2.0.0" est_tokens="900" depth="recommended">
+  <summary>Seven steps from a reliability profile to a validated hardening plan + patch.</summary>
+  <procedure>
+    <step n="1" name="parse-profile">
+      <input>reliability-profile.yaml</input>
+      <action>Load YAML; coerce types; reject if target_uptime, latency_budget_ms, providers, dep_policy missing.</action>
+      <output>typed profile</output>
+      <decision-gate>profile.valid==false → abort.</decision-gate>
+    </step>
+    <step n="2" name="decide-fallbacks">
+      <input>profile.providers, profile.target_uptime</input>
+      <action>If providers&gt;=2 and target_uptime&gt;=0.99 → list every non-primary as fallback in priority order; else empty.</action>
+      <output>fallbacks[]</output>
+    </step>
+    <step n="3" name="decide-retry">
+      <input>profile.latency_budget_ms</input>
+      <action>latency&lt;500ms → max_attempts=2 linear; 500-2000ms → max_attempts=3 exponential; &gt;2000ms → max_attempts=5 exponential.</action>
+      <output>retry block</output>
+    </step>
+    <step n="4" name="decide-configurable">
+      <input>chain entrypoint</input>
+      <action>Expose model + temperature as configurable_fields so runtime can swap without redeploy.</action>
+      <output>configurable_fields[]</output>
+    </step>
+    <step n="5" name="decide-pinning">
+      <input>profile.dep_policy</input>
+      <action>locked → exact-hash via uv/pip-tools; floating → minor-upper-bound + Dependabot.</action>
+      <output>pinning_mode</output>
+    </step>
+    <step n="6" name="emit-patch">
+      <input>all decisions</input>
+      <action>Render templates/chain-hardening-patch.py with the chosen wrappers in order.</action>
+      <output>patch.snippet</output>
+    </step>
+    <step n="7" name="validate">
+      <input>full record</input>
+      <action>scripts/validate-langchain-production-patterns.py</action>
+      <output>0/1</output>
+      <decision-gate>Non-zero → fix.</decision-gate>
+    </step>
+  </procedure>
+</text>

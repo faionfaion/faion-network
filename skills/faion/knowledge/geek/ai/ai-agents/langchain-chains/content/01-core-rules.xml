@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="langchain-chains Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for langchain-chains. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="langchain-chains Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules for LCEL chain patterns.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-structured-output" testable="true">
+      <statement>Use `with_structured_output(PydanticModel)` over `JsonOutputParser` for any chain whose downstream depends on specific fields.</statement>
+      <rationale source="langchain-structured-output-docs">Function calling enforces the schema at API level; JsonOutputParser drifts on smaller models.</rationale>
+    </rule>
+
+    <rule id="r2-module-level-chains" testable="true">
+      <statement>Chains MUST be defined at module level, NOT inside request handlers; chain compilation must happen once at import.</statement>
+      <rationale source="performance-discipline">Recreating chains per request wastes CPU and prevents reuse.</rationale>
+    </rule>
+
+    <rule id="r3-scoped-fallback-exceptions" testable="true">
+      <statement>Every `with_fallbacks()` call MUST set `exceptions_to_handle` explicitly to the retryable error classes; the default catches everything and masks config bugs.</statement>
+      <rationale source="fallback-masking-incidents">Without explicit scoping, auth failures and 4xx errors silently retry to backup providers, hiding the bug.</rationale>
+    </rule>
+
+    <rule id="r4-async-for-parallel" testable="true">
+      <statement>For true parallel fan-out over a list, use `asyncio.gather` over `chain.ainvoke` per element; `RunnableParallel` with a dict of chains executes synchronously in CPython.</statement>
+      <rationale source="cpython-sync-misconception">`RunnableParallel` is parallel-shape but not concurrent runtime without explicit async.</rationale>
+    </rule>
+
+    <rule id="r5-retry-on-external" testable="true">
+      <statement>Every chain that calls an external API MUST use `chain.with_retry(stop_after_attempt=3, wait_exponential_jitter=True)`.</statement>
+      <rationale source="resilience-discipline">Transient errors are common; explicit retry is required.</rationale>
+    </rule>
+
+    <rule id="r6-router-default-fallback" testable="true">
+      <statement>RouterBranch MUST have a meaningful default chain as the last argument; conditions are checked sequentially and unmatched inputs MUST NOT silently fail.</statement>
+      <rationale source="router-discipline">Default fallback prevents silent bugs when none of the conditions match.</rationale>
     </rule>
   </section>
 </text>

@@ -1,23 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="handoff-id-payload Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for handoff-id-payload. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="handoff-id-payload Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for typed handoffs and a shared store.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The handoff payload from agent A to agent B MUST be a structured object with at minimum: task_id (string, key into the shared store), target_agent (string, role name), decision_metadata (object, the small set of facts B needs to plan its first action). It MUST NOT contain the raw user input, the conversation history, or A's reasoning.</statement>
-      <rationale source="v1-source">If B needs the input, it loads from the store using task_id. Forwarding the conversation forces every agent to read the cumulative trace, which scales O(n²) in chain length.</rationale>
+    <rule id="r1-payload-shape" testable="true">
+      <statement>Handoff payloads MUST be `{task_id: str, target_agent: str, decision_metadata: object}`; they MUST NOT contain raw user input, conversation history, or prior agent's reasoning.</statement>
+      <rationale source="openai-agents-sdk">Forwarding the conversation scales O(n²) in chain length. Carrying only an ID keeps every hop fixed-cost regardless of pipeline depth.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Supervisor agents that route between workers MUST return a SupervisorDecision object (target_agent, reason, decision_metadata) as structured output — NOT a free-form message naming the next worker.</statement>
-      <rationale source="v1-source">Free-form routing is fragile (model picks a worker name that doesn't exist, the orchestrator has to re-prompt). Structured output makes routing a typed dispatch.</rationale>
+
+    <rule id="r2-store-first-action" testable="true">
+      <statement>The receiving agent's FIRST action MUST be `store.get(task_id)` to load task state; the payload's `decision_metadata` is for routing decisions only, not for reconstructing inputs.</statement>
+      <rationale source="single-source-of-truth">If metadata and store disagree, the store wins. Duplicating state across both creates drift.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>The receiving agent MUST load task state from the shared store on first action — not from the handoff payload. The payload's decision_metadata is for routing decisions only, not for reconstructing inputs.</statement>
-      <rationale source="v1-source">Single source of truth. If the metadata and the store disagree, the store wins; otherwise duplication causes drift between what the agent thinks the task is and what it actually is.</rationale>
+
+    <rule id="r3-supervisor-structured-output" testable="true">
+      <statement>Supervisor routing decisions MUST be emitted as a `SupervisorDecision{target_agent, reason, decision_metadata}` structured object; free-form messages naming the next worker are forbidden.</statement>
+      <rationale source="structured-routing-discipline">Free-form routing is fragile (model picks a worker name that does not exist); structured output makes routing a typed dispatch.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>The store MUST expose at least three operations: get(task_id) → state, append_event(task_id, event), set_status(task_id, status). State updates MUST be append-only events, never overwrites of prior fields, so a downstream agent or a re-run can replay history.</statement>
-      <rationale source="v1-source">Append-only state lets a failed handoff be retried without losing the prior agent's output; overwrite stores destroy evidence on retry.</rationale>
+
+    <rule id="r4-append-only-events" testable="true">
+      <statement>State updates MUST be append-only events; overwriting prior fields is forbidden so a downstream agent or re-run can replay history.</statement>
+      <rationale source="audit-replay-requirement">Append-only logs let failed handoffs be retried without losing prior work; overwrites destroy evidence on retry.</rationale>
+    </rule>
+
+    <rule id="r5-three-store-ops" testable="true">
+      <statement>The store MUST expose at minimum: `get(task_id) -> state`, `append_event(task_id, event)`, `set_status(task_id, status)`; no other ops are required and additional ops should be added sparingly.</statement>
+      <rationale source="minimum-store-surface">Three primitives cover the common cases; adding bespoke ops bloats the agent integration and ties the store to specific use cases.</rationale>
     </rule>
   </section>
 </text>

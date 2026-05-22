@@ -1,27 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mcp-transport-stdio-vs-http Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mcp-transport-stdio-vs-http as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="mcp-transport-stdio-vs-http Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for mcp-transport-stdio-vs-http with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running stdio in production multi-user deployment ("we will spawn one stdio process per request").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Process-per-request defeats connection reuse, breaks OAuth flows, and saturates fork()/spawn() under load. Use HTTP.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Greenfield server that supports SSE "for compatibility" without naming a single client that needs it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SSE is transitional. Without a named legacy client and a sunset date, you are paying maintenance tax on dead code.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Server uses stdio but is wrapped by a TCP-to-stdio bridge to "make it remote".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The bridge becomes a single-point bottleneck with no auth, no resumability, and no per-tenant isolation. Use Streamable HTTP natively instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Streamable HTTP server keeps session state in a Python dict (in-process).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Two replicas behind an LB cannot see each other's sessions; the next request hits the wrong replica and the agent loses context mid-loop.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Tried to ship stdio over a TCP socket</symptom>
+      <root-cause>Architectural confusion: stdio means subprocess, not network.</root-cause>
+      <fix>If clients are remote, transport must be streamable-http.</fix>
+      <detector>Try connecting from a remote client; should fail loudly.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Built on SSE in 2026</symptom>
+      <root-cause>Followed an old tutorial.</root-cause>
+      <fix>SSE deprecated post-2026-03-26; use Streamable HTTP. Keep SSE only for back-compat clients.</fix>
+      <detector>Check the spec date in your codebase.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>HTTP server has no auth</symptom>
+      <root-cause>Auth bolted on later, then 'temporarily' disabled.</root-cause>
+      <fix>Refuse to start without OAuth 2.1; CI gate.</fix>
+      <detector>Hit /mcp without a token; should 401.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Resumable streams disabled to 'simplify'</symptom>
+      <root-cause>Default off in some SDK versions.</root-cause>
+      <fix>Force resumable=true; long-running tool runs need it.</fix>
+      <detector>Kill the network mid-tool-call; verify resume.</detector>
+    </antipattern>
   </section>
 </text>

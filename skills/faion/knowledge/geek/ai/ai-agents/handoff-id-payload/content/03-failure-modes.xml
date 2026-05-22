@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="handoff-id-payload Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for handoff-id-payload as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Passing the entire prior conversation as the handoff because "the next agent might need it".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>It almost always doesn't; when it does, fetching by task_id costs the same and is reversible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using the handoff payload as the only source of task state, with no shared store at all.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Re-runs and audit trails become impossible; the system has no memory between agents besides what was passed in the last hop.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-conversation-forwarding">
+      <description>Passing the prior conversation as part of the handoff "in case the next agent needs it".</description>
+      <reason>Almost never needed; when it is, fetching by task_id costs the same and is reversible. Pre-emptive forwarding scales O(n²).</reason>
+    </antipattern>
+    <p>Symptom: each downstream agent's context grows with chain length. Root cause: defensive payload. Fix: trim payload to `{task_id, target_agent, decision_metadata}`; let agents fetch on demand.</p>
+
+    <antipattern id="fm-02-payload-as-state">
+      <description>Using the handoff payload as the only source of task state with no shared store.</description>
+      <reason>Re-runs and audit trails become impossible; the system has no memory between agents besides what was passed in the last hop.</reason>
+    </antipattern>
+    <p>Symptom: failed handoff cannot be retried; debugging the chain is impossible. Root cause: missing store. Fix: stand up a shared store keyed by task_id; have agents read on first action and append events on completion.</p>
+
+    <antipattern id="fm-03-free-form-routing">
+      <description>Supervisor returns a free-form message naming the next worker ("next: writer").</description>
+      <reason>Model picks worker names that do not exist; orchestrator needs to re-prompt or fall back; routing becomes fragile.</reason>
+    </antipattern>
+    <p>Symptom: routing failures spike when supervisor model changes. Root cause: parsing free text. Fix: force `SupervisorDecision` structured output with `target_agent` as a Literal enum.</p>
+
+    <antipattern id="fm-04-overwrite-state">
+      <description>Worker overwrites task state on completion (`store.put(task_id, output)`).</description>
+      <reason>Prior input is lost; retries on downstream failure cannot recover; audit trail is destroyed.</reason>
+    </antipattern>
+    <p>Symptom: failed downstream stage cannot be replayed because the upstream output is gone. Root cause: overwrite semantics. Fix: switch to `append_event(task_id, event)`; the latest state is computed by replaying events.</p>
   </section>
 </text>

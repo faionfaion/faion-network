@@ -1,22 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="langchain-production-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="langchain-production-patterns Output Contract" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>Hardening-plan decision-record. Tells the patch generator which wrappers to apply and how.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
+  <output-contract produces="decision-record">
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["slug", "version", "decision", "drivers", "patch", "audit"],
+  "properties": {
+    "slug": {"const": "langchain-production-patterns"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "decision": {
+      "type": "object",
+      "required": ["fallbacks", "retry", "configurable_fields", "pinning_mode"],
+      "properties": {
+        "fallbacks": {"type": "array", "items": {"type": "string", "minLength": 2}},
+        "retry": {
+          "type": "object",
+          "required": ["max_attempts", "backoff"],
+          "properties": {
+            "max_attempts": {"type": "integer", "minimum": 1, "maximum": 5},
+            "backoff": {"enum": ["none", "linear", "exponential"]}
+          }
+        },
+        "configurable_fields": {"type": "array", "items": {"type": "string"}},
+        "pinning_mode": {"enum": ["exact-hash", "exact", "minor-upper-bound", "floating"]}
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "required": ["target_uptime", "latency_budget_ms", "providers", "dep_policy"],
+      "properties": {
+        "target_uptime": {"type": "number", "minimum": 0.9, "maximum": 1.0},
+        "latency_budget_ms": {"type": "integer", "minimum": 0},
+        "providers": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "dep_policy": {"enum": ["locked", "floating"]}
+      }
+    },
+    "patch": {
+      "type": "object",
+      "required": ["snippet"],
+      "properties": {"snippet": {"type": "string", "minLength": 40}}
+    },
+    "audit": {
+      "type": "object",
+      "required": ["rule_refs"],
+      "properties": {"rule_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^r[0-9]+$"}}}
+    }
+  }
+}
+]]></schema>
+    <example valid="true" title="99.9% uptime, 2 providers"><![CDATA[
+{
+  "slug": "langchain-production-patterns",
+  "version": "2.0.0",
+  "decision": {
+    "fallbacks": ["anthropic-claude-sonnet", "openai-gpt-4o"],
+    "retry": {"max_attempts": 3, "backoff": "exponential"},
+    "configurable_fields": ["model", "temperature"],
+    "pinning_mode": "exact-hash"
+  },
+  "drivers": {"target_uptime": 0.999, "latency_budget_ms": 1500, "providers": ["anthropic", "openai"], "dep_policy": "locked"},
+  "patch": {"snippet": "chain = primary.with_fallbacks([backup]).with_retry(stop_after_attempt=3, wait_exponential_jitter=True)"},
+  "audit": {"rule_refs": ["r1", "r4", "r7"]}
+}
+]]></example>
+    <example valid="false" title="Retry attempts too high + empty audit"><![CDATA[
+{
+  "slug": "langchain-production-patterns",
+  "version": "2.0.0",
+  "decision": {"fallbacks": [], "retry": {"max_attempts": 50, "backoff": "none"}, "configurable_fields": [], "pinning_mode": "floating"},
+  "drivers": {"target_uptime": 0.999, "latency_budget_ms": 1500, "providers": ["anthropic"], "dep_policy": "locked"},
+  "patch": {"snippet": "noop"},
+  "audit": {"rule_refs": []}
+}
+]]></example>
+    <example-violations>
+      <violation>retry.max_attempts=50 exceeds upper bound 5 (would cause retry storm).</violation>
+      <violation>patch.snippet too short.</violation>
+      <violation>audit.rule_refs empty.</violation>
+      <violation>target_uptime=0.999 with single provider + zero fallbacks is unachievable.</violation>
+    </example-violations>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>If target_uptime ≥0.99 and providers ≥2, fallbacks must include ≥1 alternate.</item>
+      <item>retry.max_attempts ≤5; backoff=exponential when max_attempts ≥3.</item>
+      <item>pinning_mode is exact-hash or exact when dep_policy=locked.</item>
+      <item>patch.snippet contains either with_fallbacks or with_retry call.</item>
+      <item>audit.rule_refs cites ≥1 rule.</item>
     </list>
   </section>
 </text>

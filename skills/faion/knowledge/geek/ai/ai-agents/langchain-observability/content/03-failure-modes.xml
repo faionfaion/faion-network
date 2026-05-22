@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-observability Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-observability as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-observability Failure Modes" version="2.0.0" est_tokens="600" depth="essential">
+  <summary>Four high-impact observability failures: silent untraced runs, PII export, swallowed callback exceptions, sampling that hides the bug.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Adding LangSmith tracing only after a production incident occurs to "see what happened".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tracing captures execution at invocation time. Past runs without tracing cannot be reconstructed. Enable it from day one.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running AgentExecutor with verbose=True in a production service behind an API.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>verbose=True prints internal reasoning steps to stdout, leaking intermediate agent state into application logs. Use callbacks for structured, filterable event capture instead.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>An incident report says "agent returned garbage at 03:00 UTC" and no trace exists.</symptom>
+      <root-cause>LANGCHAIN_TRACING_V2 was off in the prod env, or LANGCHAIN_API_KEY was missing — silently disabling LangSmith.</root-cause>
+      <fix>Assert LANGCHAIN_TRACING_V2==true at app startup; refuse to boot in production without it.</fix>
+      <detector>Hit /healthz; verify it logs "tracing=enabled"; if missing, fail the deploy.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="critical">
+      <symptom>Customer SSN appears in a LangSmith trace, exposed to anyone with project access.</symptom>
+      <root-cause>redact_payloads was false and pii_posture was not declared.</root-cause>
+      <fix>Always set a redaction callback in front of the LangSmith handler; never trust upstream sanitisation alone.</fix>
+      <detector>Run a canary string ("SSN-CANARY-1234") through the chain; grep the trace UI for it.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Custom callback throws but the chain keeps going and you never know.</symptom>
+      <root-cause>BaseCallbackHandler swallows exceptions by default to avoid breaking chains.</root-cause>
+      <fix>Override on_chain_error to push to a dead-letter queue; or wrap callback in try/except + structured log.</fix>
+      <detector>Inject a raise in the callback; verify alerts fire.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Sample rate of 0.05 means 95% of failed runs have no trace.</symptom>
+      <root-cause>Sampling was applied uniformly instead of head-based-on-error.</root-cause>
+      <fix>Either sample at 1.0 in production for the first 30 days, or use tail-based sampling that keeps every run with status=error.</fix>
+      <detector>Compare error count in logs vs traced error count in LangSmith; ratio should be ≥0.95.</detector>
+    </antipattern>
   </section>
 </text>

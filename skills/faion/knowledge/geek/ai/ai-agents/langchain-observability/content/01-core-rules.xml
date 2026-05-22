@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="langchain-observability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for langchain-observability. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="langchain-observability Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules for instrumenting LangChain chains with LangSmith, structured callbacks, redaction, sampling, and streaming.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Enable LangSmith tracing from day one of production. Retrofitting tracing after an incident captures none of the data needed to debug it.</statement>
+      <rationale source="prod-experience">Intermediate steps, token usage, and tool calls are only captured during the live run. Without tracing the only debug surface is application logs, which miss the LLM step entirely.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Assert LANGCHAIN_TRACING_V2=true at app boot in production; refuse to start the service if missing.</statement>
+      <rationale source="prod-experience">A silent off-switch on tracing has historically led to long outages where 'we have no idea what happened'. Treat it as required infrastructure.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>When pii_posture is internal or no-export, attach a redaction callback BEFORE the LangSmith handler.</statement>
+      <rationale source="security-review">Trust no upstream sanitization; the call site is the only place you can guarantee redaction. SSNs and email addresses must never reach the trace UI.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Override on_chain_error in any custom CallbackHandler with raise_error=True or a dead-letter push. Default behavior swallows exceptions.</statement>
+      <rationale source="langchain-docs">BaseCallbackHandler swallows callback exceptions by design to protect chains; this hides bugs in observability code itself.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>For production sampling, either trace at 1.0 for the first 30 days, or use tail-based sampling that keeps every run with status=error.</statement>
+      <rationale source="ops-experience">Uniform low-rate sampling misses the rare failures you most need to see. Either trace everything early, or sample by outcome.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Enable streaming when latency_target_ms ≤ 500. The UX cliff falls fast below 500ms perceived latency.</statement>
+      <rationale source="ux-research">Streaming first-token latency dominates user perception; below 500ms users perceive instant response.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Set LANGCHAIN_PROJECT per deployment environment (dev/staging/prod); never share a single project across envs.</statement>
+      <rationale source="ops-experience">Shared projects mix noisy dev traffic with prod, hiding real incidents.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>For pii_posture=no-export, fall back to opentelemetry to a local collector; never use the hosted LangSmith endpoint.</statement>
+      <rationale source="security-review">Regulated workloads cannot leak payloads to a third-party SaaS, even for debugging.</rationale>
     </rule>
   </section>
 </text>

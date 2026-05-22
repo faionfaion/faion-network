@@ -4,73 +4,91 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Core LangChain concepts, installation, chain patterns, prompt engineering, and output parsing for building sequential AI pipelines.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Composes LCEL pipelines (prompt | model | parser) with `with_structured_output()` for reliable parsing, pinned package versions, LangSmith tracing, and built-in retry/fallback chains, providing the building blocks every LangChain-based agent depends on.
 content_id: "d5c20c0283cf1103"
+complexity: medium
+produces: code
+est_tokens: 4500
 tags: [langchain, chains, prompts, lcel, llm]
 ---
 # LangChain Basics
 
 ## Summary
 
-**One-sentence:** Core LangChain concepts, installation, chain patterns, prompt engineering, and output parsing for building sequential AI pipelines.
+**One-sentence:** Composes LCEL pipelines (prompt | model | parser) with `with_structured_output()` for reliable parsing, pinned package versions, LangSmith tracing, and built-in retry/fallback chains, providing the building blocks every LangChain-based agent depends on.
 
-**One-paragraph:** Core LangChain concepts, installation, chain patterns, prompt engineering, and output parsing for building sequential AI pipelines.
+**One-paragraph:** Core LangChain concepts, installation, chain patterns, prompt engineering, output parsing, and streaming for sequential AI pipelines. LCEL (the pipe operator `|`) declaratively composes components. `with_structured_output()` is the reliable parser; `JsonOutputParser` is unreliable with smaller models. Pin every package version; turn on LangSmith in development; use `chain.with_retry()` for transient errors; use `with_fallbacks()` for resilience.
+
+**Ефективно для:** простих послідовних LLM-пайплайнів, prompt engineering, structured extraction — там, де LangGraph надмірний, а пряма Anthropic-SDK не дає observability "з коробки".
 
 ## Applies If (ALL must hold)
 
-- Building sequential LLM pipelines where output of one step feeds the next
-- You need rapid structured output with Pydantic validation via `with_structured_output()`
-- The task is prompt engineering and chain composition, not stateful agent loops
-- Streaming output to a user interface is required — LCEL chains support `.stream()` natively
-- Team wants LangSmith observability out of the box with minimal configuration
+- Building sequential LLM pipelines (output of one step feeds the next).
+- Need `with_structured_output()` for reliable Pydantic-validated parsing.
+- Task is prompt engineering + chain composition, not stateful agent loops.
+- Streaming output to UI matters OR LangSmith observability is required.
 
 ## Skip If (ANY kills it)
 
-- You need stateful multi-step agents with conditional branching — use LangGraph instead
-- Pure document retrieval/RAG is the primary concern — LlamaIndex handles indexing better
-- The pipeline has no LLM calls — plain Python functions with no framework overhead are simpler
-- You need agentic memory, tool loops, or human-in-the-loop — all require LangGraph
-- Latency is critical and you want to minimize abstraction layers; direct Anthropic SDK calls are faster
+- Need stateful multi-step agents with branching — use LangGraph.
+- Pure RAG with indexing as primary concern — LlamaIndex handles it better.
+- No LLM calls — plain Python is simpler.
+- Latency critical and abstraction overhead matters — call Anthropic SDK directly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| API keys | env vars | Provider config |
+| LangSmith key (optional but recommended) | env var | LangSmith account |
+| Pinned package versions | `requirements.txt` | Application config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `field-descriptions-as-prompts` | `with_structured_output()` schemas need precise descriptions. |
+| `gateway-fallback-chain` | `with_fallbacks()` is the LangChain-native version of the gateway pattern. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Six rules: prefer structured_output, pin versions, LangSmith in dev, retry on external calls, stream for UX, module-level chains | ~1100 |
+| `content/02-output-contract.xml` | essential | Structured extraction schema example + chain config envelope | ~900 |
+| `content/03-failure-modes.xml` | essential | JsonOutputParser unreliability, version drift, sync RunnableParallel, MemoryCache | ~800 |
+| `content/06-decision-tree.xml` | essential | LangChain (LCEL) vs LangGraph vs raw SDK | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Wire a sequential chain | haiku | Mechanical composition |
+| Design structured extraction schema | sonnet | Field design + descriptions |
+| Pick LangChain vs LangGraph for new feature | opus | Architectural tradeoff |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/structured-extraction.py` | Inline chain using `with_structured_output()` for extraction |
+| `templates/_smoke-test.json` | Minimum valid extraction output for self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-langchain-basics.py` | Validates an extraction output against the schema | Pre-commit on chain changes |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[langchain-chains]]
+- [[langchain-agents-architectures]]
+- [[field-descriptions-as-prompts]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question is whether the workflow needs stateful branching. Branches route to LangGraph (stateful), LangChain LCEL (sequential), or raw vendor SDK (latency-critical).

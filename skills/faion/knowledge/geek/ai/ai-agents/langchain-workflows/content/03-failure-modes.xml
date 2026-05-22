@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-workflows Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-workflows as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-workflows Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for langchain-workflows with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Checkpoint deserialise fails after schema bump</symptom>
+      <root-cause>WorkflowState dict was deeply nested; nested dict added a field, old checkpoints can't load.</root-cause>
+      <fix>Keep state flat; bump a schema_version field and write a migration; validate on load.</fix>
+      <detector>Reload an old checkpoint after refactor; if KeyError, you've broken the contract.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Human approval bypassed because someone added a 'pre-flight' node before the interrupt</symptom>
+      <root-cause>interrupt_before was set on stale node name; refactor moved the destructive node.</root-cause>
+      <fix>Tag destructive nodes with a decorator; CI greps for @destructive and asserts each is in interrupt_before.</fix>
+      <detector>Lint pass: every @destructive must be in compile(interrupt_before=[...]).</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>`messages` accumulator hits 50MB and checkpointing slows to a crawl</symptom>
+      <root-cause>No compaction step on `Annotated[List[str], operator.add]`.</root-cause>
+      <fix>Insert compaction node every N turns: summarise and reset.</fix>
+      <detector>Track checkpoint size metric; alert at 5MB.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Workflow can't resume after pod restart</symptom>
+      <root-cause>MemorySaver was used in production.</root-cause>
+      <fix>Use SqliteSaver for single-instance or PostgresSaver for multi-instance; never MemorySaver outside tests.</fix>
+      <detector>Kill the process mid-workflow; verify resume from new pod.</detector>
+    </antipattern>
   </section>
 </text>

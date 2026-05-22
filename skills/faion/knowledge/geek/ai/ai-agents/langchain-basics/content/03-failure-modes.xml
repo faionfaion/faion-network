@@ -1,12 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-basics Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-json-parser-unreliable">
+      <description>Using `JsonOutputParser(pydantic_object=...)` for downstream code that depends on specific fields.</description>
+      <reason>Parser fails silently on malformed JSON from smaller models; downstream consumers see partial dicts.</reason>
+    </antipattern>
+    <p>Symptom: KeyError or missing-field errors downstream; sporadic on small-model paths. Root cause: prompt-based parsing. Fix: switch to `model.with_structured_output(Model)` for function-calling-backed parsing.</p>
+
+    <antipattern id="fm-02-version-drift">
+      <description>Unpinned `langchain` / `langchain-core` in `requirements.txt`.</description>
+      <reason>Minor version bumps change interfaces; production breaks unpredictably across redeploys.</reason>
+    </antipattern>
+    <p>Symptom: redeploy fails with AttributeError on imports that worked yesterday. Root cause: unpinned. Fix: pin to exact versions; bump explicitly via PR with changelog review.</p>
+
+    <antipattern id="fm-03-runnable-parallel-sync">
+      <description>Using `RunnableParallel` for parallel "fan-out" expecting concurrency.</description>
+      <reason>Parallel dict keys execute synchronously in CPython; no actual concurrency without async.</reason>
+    </antipattern>
+    <p>Symptom: total time = sum of branches, not max. Root cause: misconception. Fix: use `asyncio.gather()` over `chain.ainvoke` per element; document the sync RunnableParallel as parallel-shape-only.</p>
+
+    <antipattern id="fm-04-memory-cache-process-local">
+      <description>Using `InMemoryCache` for LLM responses in a multi-worker deployment.</description>
+      <reason>Cache is process-local; cache hit rate stays low because each worker rebuilds its own.</reason>
+    </antipattern>
+    <p>Symptom: cache hit rate near zero despite repetitive queries. Root cause: in-process cache. Fix: use `RedisCache` or equivalent shared cache; or accept low hit rate as a known property.</p>
   </section>
 </text>

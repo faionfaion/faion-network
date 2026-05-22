@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="gateway-fallback-chain Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Choose between hosted gateway, self-hosted proxy, and direct SDK with app-level fallback.</summary>
+
+  <decision-tree>
+    <root-question id="q-vendor-feature">Does the workload depend on a vendor-specific feature (prompt caching, Batch API, fine-tuned model)?</root-question>
+
+    <branch when="vendor_feature_dep == true">
+      <conclusion ref="r4-vendor-feature-direct">Call the vendor SDK directly; implement the fallback chain in application code.</conclusion>
+    </branch>
+
+    <branch when="vendor_feature_dep == false">
+      <question id="q-compliance">Is the workload subject to data-residency or strict compliance (EU healthcare, defense, EUR/UK BSA)?</question>
+
+      <branch when="compliance_strict == true">
+        <conclusion ref="r3-compliance-carveout">Self-host LiteLLM/Kong AI Gateway inside the compliance boundary, OR call vendor SDK direct with app-level fallback.</conclusion>
+      </branch>
+
+      <branch when="compliance_strict == false">
+        <question id="q-availability-need">Is the workload production with an availability SLA above the single-vendor floor?</question>
+
+        <branch when="availability_above_floor == true">
+          <conclusion ref="r1-cross-provider-fallback">Use a hosted gateway (OpenRouter, Portkey) with a cross-provider chain of >=2 providers.</conclusion>
+        </branch>
+
+        <branch when="availability_above_floor == false">
+          <conclusion ref="r1-cross-provider-fallback">Direct SDK is fine; gateway adds latency for no payoff in low-SLA environments.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="vendor_feature_dep=false, compliance_strict=false, availability_above_floor=true">
+    q-vendor-feature → branch(false) → q-compliance → branch(false) → q-availability-need → branch(true) → conclusion(r1-cross-provider-fallback).
+  </example>
+</text>

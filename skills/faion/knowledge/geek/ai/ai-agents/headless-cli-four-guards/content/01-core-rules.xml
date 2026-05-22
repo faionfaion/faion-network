@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="headless-cli-four-guards Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for headless-cli-four-guards. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="headless-cli-four-guards Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for headless agent-CLI invocations.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-all-four-required" testable="true">
+      <statement>Every non-interactive invocation of claude/codex/aider/opencode MUST set ALL FOUR guards: (a) print/headless flag, (b) explicit `--allowedTools`, (c) `--max-turns`, (d) `&lt; /dev/null` stdin redirect.</statement>
+      <rationale source="production-incident-log">Each missing guard maps to a documented failure mode (TUI hang, permission stall, runaway loop, stdin garbage). The four-guard rule is the empirical minimum.</rationale>
+    </rule>
+
+    <rule id="r2-no-dangerously-skip" testable="true">
+      <statement>Production invocations MUST NOT use `--dangerously-skip-permissions`; the allowlist must be explicit even if it requires enumerating tools.</statement>
+      <rationale source="security-discipline">Skipping permissions removes guard #2. The agent can run arbitrary destructive tools — bash, git push, network calls — with no upper bound.</rationale>
+    </rule>
+
+    <rule id="r3-cap-tied-to-workflow" testable="true">
+      <statement>`--max-turns` MUST be a value tied to a real workflow length (typically 15-30 for a coding task); values above 100 are forbidden in production scripts.</statement>
+      <rationale source="cost-trap-discipline">Open caps drain budget within minutes when the agent enters a tool-call loop. A meaningful cap also acts as an alarm.</rationale>
+    </rule>
+
+    <rule id="r4-per-cli-mapping" testable="true">
+      <statement>Each CLI has its own flag mapping that MUST be applied: Claude Code (`-p`, `--allowedTools`, `--max-turns`, `&lt; /dev/null`); Codex (`codex exec`, `--sandbox`, `timeout` wrap, `&lt; /dev/null`); Aider (`--yes`, `--auto-test off`, `--max-chat-history-tokens`, `&lt; /dev/null`); opencode (headless flag, tool config, run-time cap, `&lt; /dev/null`).</statement>
+      <rationale source="per-cli-documentation">Each CLI uses different flag names; mapping must be explicit so the lint can verify each invocation.</rationale>
+    </rule>
+
+    <rule id="r5-lint-in-ci" testable="true">
+      <statement>CI MUST run `scripts/validate-headless-cli-four-guards.py` on every shell script that invokes an agent CLI; absence of any guard MUST fail the build.</statement>
+      <rationale source="defense-in-depth">Code review alone misses the missing-guard case. Lint enforces the rule mechanically.</rationale>
     </rule>
   </section>
 </text>

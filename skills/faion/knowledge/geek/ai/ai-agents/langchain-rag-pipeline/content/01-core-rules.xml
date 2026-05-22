@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="langchain-rag-pipeline Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for langchain-rag-pipeline. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="langchain-rag-pipeline Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>Rules for building LangChain RAG pipelines: loaders, splitters, embeddings, retrievers, and the LCEL prompt shape.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Use RecursiveCharacterTextSplitter with chunk_overlap ≈ 10% of chunk_size. Zero overlap splits relevant passages across chunks.</statement>
+      <rationale source="rag-evals">Boundary-cut sentences cause recall@k drops on queries whose answer straddles the chunk boundary.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Hash document bodies for embedding-cache lookup; skip re-embedding when content_hash matches. Never key by file path alone.</statement>
+      <rationale source="cost-experience">Re-indexing the same corpus under new paths doubled embedding cost in one prod incident; content_hash dedup is mandatory.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>In the prompt template, put retrieved context FIRST, then the question, then explicit instruction to use only the context above.</statement>
+      <rationale source="prompt-engineering">Models attend to recent tokens; context-first + instruction-after produces fewer answers that ignore the retrieval.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Default retriever_k = 4-6. Higher k floods the prompt; add a cross-encoder reranker if you must overfetch.</statement>
+      <rationale source="rag-evals">Accuracy plateaus near k=5 for most corpora; bigger k adds tokens without lift.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Bind the LCEL chain as parallel retrieval + passthrough then prompt then llm then parser. Never serialize retrieval before passthrough.</statement>
+      <rationale source="langchain-docs">RunnableParallel composition is the only shape that retrieves and forwards the question concurrently.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Pick the embedding model from the same provider as the LLM where possible (e.g., OpenAI text-embedding-3 with GPT-4). Cross-provider drift is a real source of retrieval misses.</statement>
+      <rationale source="empirical">Same-provider embeddings tend to align better with the model's internal representations.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>For corpora over 1M tokens, pick a hosted vectorstore (Pinecone, Weaviate, pgvector) over an in-memory Chroma. In-memory dies on restart and won't share across replicas.</statement>
+      <rationale source="ops-experience">In-memory stores cannot survive horizontal scaling; production needs durability and shared state.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Hold out 20% of any labeled question set as a sealed eval used only in CI; never read it during dev.</statement>
+      <rationale source="evaluation">Leakage of the eval set into prompts inflates scores; sealing is the only defense.</rationale>
     </rule>
   </section>
 </text>

@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llamaindex-ingestion-pipeline Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llamaindex-ingestion-pipeline as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="llamaindex-ingestion-pipeline Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for llamaindex-ingestion-pipeline with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using chunk_size=256 without increasing chunk_overlap proportionally.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>At 256 tokens, chunk_overlap=20 (default) covers only ~8% of the chunk — boundary context is nearly absent. At small chunk sizes, set overlap to at least 25% of chunk size.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Every deploy re-embeds the whole corpus</symptom>
+      <root-cause>Docstore not configured; no doc-hash dedup.</root-cause>
+      <fix>Use IngestionPipeline(docstore=SimpleDocumentStore()) and persist alongside vector store.</fix>
+      <detector>Re-run ingestion on unchanged corpus; cost should be near zero.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>SemanticSplitter produces 10k tiny nodes from a structured doc</symptom>
+      <root-cause>Wrong splitter for the doc shape (semantic on a list).</root-cause>
+      <fix>Use SentenceSplitter for structured/repetitive content; reserve SemanticSplitter for narrative.</fix>
+      <detector>Compare node counts; flag outliers.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>TitleExtractor runs slowly because it calls an LLM per doc</symptom>
+      <root-cause>No batching configured.</root-cause>
+      <fix>Set num_workers in IngestionPipeline; batch metadata extraction.</fix>
+      <detector>Profile per-doc time; should drop ~Nx with workers.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Vector store inflates by 10× after refactor</symptom>
+      <root-cause>Docstore IDs changed; same doc re-embedded under new id.</root-cause>
+      <fix>Hash content body, not path; preserve doc_id across refactors.</fix>
+      <detector>Index size before/after refactor; should be ~equal.</detector>
+    </antipattern>
   </section>
 </text>

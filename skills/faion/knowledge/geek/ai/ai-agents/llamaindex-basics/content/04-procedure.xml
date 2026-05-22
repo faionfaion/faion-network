@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="llamaindex-basics Procedure" version="2.0.0" est_tokens="800" depth="recommended">
+  <summary>Deterministic procedure converting a profile into a validated decision-record + emitted artifacts.</summary>
+
+  <procedure>
+    <step n="1" name="parse-profile">
+      <input>profile YAML from templates/</input>
+      <action>Load YAML; coerce types; reject if any required driver missing (doc_count, avg_doc_chars, query_pattern, persistence_target).</action>
+      <output>typed profile</output>
+      <decision-gate>profile.valid==false → abort with structured error.</decision-gate>
+    </step>
+    <step n="2" name="walk-decision-tree">
+      <input>typed profile</input>
+      <action>Apply 06-decision-tree.xml against drivers; collect the winning rule id at each branch.</action>
+      <output>decision object + audit.rule_refs[]</output>
+    </step>
+    <step n="3" name="enumerate-rejected">
+      <input>winning decision</input>
+      <action>For each plausible alternative, write a one-sentence reason citing the disqualifying driver.</action>
+      <output>rejected[] entries</output>
+    </step>
+    <step n="4" name="render-templates">
+      <input>decision + drivers</input>
+      <action>Render the working template (code/config) under templates/ with concrete substitutions.</action>
+      <output>artefact file(s)</output>
+    </step>
+    <step n="5" name="cross-check-failure-modes">
+      <input>decision + drivers</input>
+      <action>Run each failure-mode detector from 03-failure-modes.xml; abort if any flags.</action>
+      <output>detector report</output>
+      <decision-gate>Any failure-mode flagged → revisit decision.</decision-gate>
+    </step>
+    <step n="6" name="validate-and-emit">
+      <input>full record</input>
+      <action>Run scripts/validate-llamaindex-basics.py against 02-output-contract schema; emit JSON only on exit 0.</action>
+      <output>final decision-record.json</output>
+      <decision-gate>Validator non-zero → fix and re-run.</decision-gate>
+    </step>
+  </procedure>
+</text>

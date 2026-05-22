@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="idempotent-write-tools Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for idempotent-write-tools. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="idempotent-write-tools Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules for idempotent writes and preview/apply pairs.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-key-on-every-write" testable="true">
+      <statement>Every tool whose `execute` mutates external state MUST accept a required `idempotency_key: str` parameter, persist `key -> result` for &gt;= 24h, and short-circuit on key hit.</statement>
+      <rationale source="stripe-idempotency-docs">Long agent loops retry on transient failures; without a key the retry cannot be distinguished from a fresh call, and the side effect runs twice. Stripe, AWS, and Square ship the same contract for the same reason.</rationale>
+    </rule>
+
+    <rule id="r2-no-key-on-reads" testable="true">
+      <statement>Pure read tools (`get_*`, `search_*`, `list_*`) MUST NOT take an `idempotency_key` parameter; reads are safe to repeat.</statement>
+      <rationale source="schema-discipline">Bloating the schema with unused parameters confuses the model and costs tokens. Reads are already idempotent by nature.</rationale>
+    </rule>
+
+    <rule id="r3-key-from-agent" testable="true">
+      <statement>The idempotency_key MUST be supplied by the agent (or upstream orchestrator) and MUST NOT be generated inside the tool execute function.</statement>
+      <rationale source="key-stability">Generating the key inside the tool defeats dedup — every retry gets a fresh key. The key must be stable across the lifetime of the logical operation.</rationale>
+    </rule>
+
+    <rule id="r4-preview-apply-for-destructive" testable="true">
+      <statement>Operations that delete data, charge money, deploy infrastructure, or send irreversible communications MUST be exposed as `*_preview` (no side effect) + `*_apply` (idempotent, requires preview_hash) pair; the single-call form is forbidden in the catalog.</statement>
+      <rationale source="claude-code-bash-allowlist">Splits the model's plan step from the commit step. Agent, guard agent, or human can inspect the preview before commit; the hash makes apply TOCTOU-safe.</rationale>
+    </rule>
+
+    <rule id="r5-preview-pure" testable="true">
+      <statement>`*_preview` MUST be a pure function (no side effects whatsoever); it may call upstream dry-run APIs but MUST NOT mutate caches, counters, or any observable state.</statement>
+      <rationale source="speculative-safety">If preview has any side effect, agents cannot run it speculatively, and the safety property collapses.</rationale>
     </rule>
   </section>
 </text>

@@ -1,3 +1,8 @@
+# purpose: reference loop with hard cap, delta exit, structured critic
+# consumes: prompt + generator function + critic function
+# produces: final output + loop trace
+# depends-on: templates/critic_schema.py
+# token-budget-impact: cheap path 1 generator + 1 critic call; deep path up to 3 of each
 """Reference generator-critic loop with three exit conditions.
 
 Exit priority:

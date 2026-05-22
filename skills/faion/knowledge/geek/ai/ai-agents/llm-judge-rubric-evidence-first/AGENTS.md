@@ -3,72 +3,94 @@ slug: llm-judge-rubric-evidence-first
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When you cannot use exact-match or unit-test checks (open-ended outputs: summaries, code review, plans, agent transcripts), use another LLM as a judge — but only with a structured rubric, JSON output, evidence cited BEFORE the score, per-criterion scoring, and explicit mitigation of position/verbosity/self-preference/authority bias.
-content_id: "d20f29345fd86535"
-tags: [evaluation, llm-judge, rubric, bias-mitigation, evals]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Builds an LLM-as-judge rubric (JSON output, evidence cited before scores, per-criterion, bias mitigations) and emits a judge-spec + sample rubric.
+content_id: b80dcb671ac8c105
+complexity: deep
+produces: spec
+est_tokens: 4000
+tags: [evaluation, llm-judge, rubric, evidence-first, bias-mitigation]
 ---
-# LLM-as-Judge — Rubric, Evidence-First, Bias-Mitigated
+# Llm Judge Rubric Evidence First
 
 ## Summary
 
-**One-sentence:** When you cannot use exact-match or unit-test checks (open-ended outputs: summaries, code review, plans, agent transcripts), use another LLM as a judge — but only with a structured rubric, JSON output, evidence cited BEFORE the score, per-criterion scoring, and explicit mitigation of position/verbosity/self-preference/authority bias.
+**One-sentence:** Builds an LLM-as-judge rubric (JSON output, evidence cited before scores, per-criterion, bias mitigations) and emits a judge-spec + sample rubric.
 
-**One-paragraph:** When you cannot use exact-match or unit-test checks (open-ended outputs: summaries, code review, plans, agent transcripts), use another LLM as a judge — but only with a structured rubric, JSON output, evidence cited BEFORE the score, per-criterion scoring, and explicit mitigation of position/verbosity/self-preference/authority bias. "Rate 1-10" prompts are not evals; they are noise generators.
+**One-paragraph:** Rating prompts ('rate 1-10') are noise. A real LLM judge demands a structured rubric, JSON output, evidence cited BEFORE the score, per-criterion scoring, and explicit bias mitigation (position, verbosity, self-preference, authority). This methodology converts an eval task profile into a deterministic judge-spec.
+
+**Ефективно для:** solopreneur evaluating open-ended outputs (summaries, code reviews, agent transcripts) who refuses to ship hope.
 
 ## Applies If (ALL must hold)
 
-- Evaluating open-ended agent outputs where exact-match is impossible (summaries, plans, multi-turn dialogue).
-- Grading code review comments, refactor plans, or other reasoning artifacts.
-- Pairwise comparison of two agent variants on the same task set.
-- Building a regression suite for prompt or model changes that touch generation quality.
+- Output is open-ended (summary, code review, plan, transcript).
+- Exact-match / unit tests don't apply.
+- ≥1 stronger judge model available than the system under test.
+- Eval cost is bounded.
+- Labeled examples exist OR can be co-authored with the judge.
 
 ## Skip If (ANY kills it)
 
-- Output is verifiable deterministically (compiles, passes tests, matches schema) — judges add cost and noise; use the deterministic check first.
-- Single-LLM stack on borderline cases — self-preference bias is unfixable; bring in a second model family for cross-judging.
-- Privacy-sensitive outputs you cannot send to a third-party judge — keep evals local or skip.
-- Throwaway prototypes — overhead of rubric design is not justified before the agent is real.
+- Output is structured and exact-matchable.
+- Judge model is weaker than SUT.
+- Compliance forbids LLM-generated scores.
+- Sample size <5 — write manual reviews.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `eval-task-profile.yaml` | criteria, judge_model, sample_count, bias_targets | author |
+| `SUT output sample` | JSONL or md | from system |
+| `Optional ground-truth` | if available | labeling |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+none
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for rubric structure, evidence-first, per-criterion, JSON, bias mitigations. | ~1000 |
+| `content/02-output-contract.xml` | essential | judge-spec + rubric schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | 1-10 prompt, no JSON, position bias, verbosity bias, self-preference. | ~700 |
+| `content/04-procedure.xml` | recommended | 6-step build procedure. | ~800 |
+| `content/05-examples.xml` | recommended | Worked example: code-review judge. | ~700 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/eval-task-profile.yaml` | Input. |
+| `templates/judge-spec.md` | Output. |
+| `templates/rubric.json` | Sample 3-criterion rubric. |
+| `templates/judge_prompt.xml` | Anthropic-style judge prompt with bias mitigations. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-llm-judge-rubric-evidence-first.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[llamaindex-agents-eval]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on criteria_count (1 → single-criterion focused; 2-5 → per-criterion structured; >5 → split into multiple judges), then on bias_targets (position → swap order; verbosity → length-penalty; self-preference → judge != SUT model). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

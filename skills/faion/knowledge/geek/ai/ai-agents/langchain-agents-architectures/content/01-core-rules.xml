@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="langchain-agents-architectures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for langchain-agents-architectures. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="langchain-agents-architectures Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules covering iteration caps, error handling, plan validation, output truncation, structured supervisors, and tracing.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-max-iterations" testable="true">
+      <statement>Every ReAct agent built via `create_react_agent` MUST set `max_iterations` to a value tied to a real workflow length; defaults can be unbounded in some LangChain versions.</statement>
+      <rationale source="langchain-prebuilt-docs">Open iteration caps drain budget when an agent enters a tool-call loop.</rationale>
+    </rule>
+
+    <rule id="r2-handle-tool-error" testable="true">
+      <statement>Every tool that can fail MUST be decorated with `@tool(handle_tool_error=True)`; never let a tool exception abort a multi-step run.</statement>
+      <rationale source="error-propagation-incidents">Unhandled tool errors propagate and stop the agent; catching them lets the agent retry with different inputs.</rationale>
+    </rule>
+
+    <rule id="r3-validate-plan" testable="true">
+      <statement>Plan-and-Execute agents MUST validate the plan JSON schema before dispatching any execution steps AND add a re-plan gate after each step that checks whether the remaining plan is still valid.</statement>
+      <rationale source="plan-staleness-incidents">A failed step 2 leaves steps 3-N invalid; static plans don't account for intermediate results.</rationale>
+    </rule>
+
+    <rule id="r4-truncate-outputs" testable="true">
+      <statement>Tool outputs MUST be truncated to ~2K characters before appending to LangGraph state; verbose outputs (search dumps, full files) MUST be offloaded per `filesystem-as-working-memory`.</statement>
+      <rationale source="context-bloat-incidents">A 20-step ReAct run with verbose tool outputs can consume 50K+ tokens of state.</rationale>
+    </rule>
+
+    <rule id="r5-structured-supervisor" testable="true">
+      <statement>Supervisor agents that route between specialists MUST use `model.with_structured_output(Route)` (Pydantic) — NEVER parse a free-text "next agent" string.</statement>
+      <rationale source="structured-routing-discipline">Free-form routing names workers that do not exist; structured output makes routing a typed dispatch.</rationale>
+    </rule>
+
+    <rule id="r6-langsmith-mandatory" testable="true">
+      <statement>Production agents MUST emit LangSmith traces with a `session_id` tag for cost attribution and debugging; traces MAY be disabled only in offline batch jobs.</statement>
+      <rationale source="observability-required">Without per-step traces, debugging tool-use failures or plan staleness is impossible.</rationale>
     </rule>
   </section>
 </text>

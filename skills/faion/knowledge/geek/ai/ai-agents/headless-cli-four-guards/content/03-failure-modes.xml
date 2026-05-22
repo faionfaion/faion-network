@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="headless-cli-four-guards Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for headless-cli-four-guards as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="headless-cli-four-guards Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Four failure modes, each one mapping to a missing guard.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using --dangerously-skip-permissions to "make it just work" in CI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Removes guard #2 (allowlist). The agent can run arbitrary tools — including destructive bash, git push, network calls. Use a narrow allowlist instead, even if you have to enumerate it explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Setting --max-turns 999 "to be safe."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defeats guard #3. The cap exists to bound cost; pick a value tied to a real workflow length (e.g. 15-30 for a single coding task) and fail loudly if hit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Running the headless command inside a function that pipes JSON into stdin "just in case the agent reads it."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The CLI does not consume stdin in -p mode; piping unexpected content can change the harness's behaviour and is not part of the supported contract.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-no-headless-flag">
+      <description>No `-p` / `codex exec` / headless flag set.</description>
+      <reason>CLI tries to start the TUI; emits terminal control sequences; the job hangs until job-level timeout.</reason>
+    </antipattern>
+    <p>Symptom: cron job hangs the full timeout window. Root cause: missing headless flag. Fix: add the CLI's headless flag; rely on lint to catch regressions.</p>
+
+    <antipattern id="fm-02-no-allowlist-or-dangerously-skip">
+      <description>No `--allowedTools` OR `--dangerously-skip-permissions` used to bypass.</description>
+      <reason>Without allowlist, the agent stalls on the first permission prompt. With `--dangerously-skip-permissions` the agent runs arbitrary destructive tools.</reason>
+    </antipattern>
+    <p>Symptom: cron stalls OR cron pushes random commits. Root cause: guard #2 broken. Fix: narrow allowlist; never use `--dangerously-skip-permissions` in production.</p>
+
+    <antipattern id="fm-03-open-turn-cap">
+      <description>`--max-turns 999` or missing.</description>
+      <reason>Loop bugs drain budget within minutes. The cap exists to bound cost and to act as a tripwire when the loop logic regresses.</reason>
+    </antipattern>
+    <p>Symptom: daily budget spent in a single cron run. Root cause: missing or absurd cap. Fix: cap at the realistic workflow length (15-30); fail loud if hit.</p>
+
+    <antipattern id="fm-04-open-stdin">
+      <description>No `&lt; /dev/null` on stdin (or worse, piped JSON in).</description>
+      <reason>Agent's stdin inherits whatever the parent shell forwards (closed pipe, garbage, or interactive TTY); behaviour is non-deterministic. Piping JSON "just in case" violates the supported contract.</reason>
+    </antipattern>
+    <p>Symptom: non-deterministic behaviour across reruns. Root cause: open stdin. Fix: always `&lt; /dev/null`; never pipe content into a `-p` invocation.</p>
   </section>
 </text>

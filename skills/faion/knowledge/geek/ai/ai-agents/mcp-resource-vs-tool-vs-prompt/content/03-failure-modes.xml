@@ -1,27 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mcp-resource-vs-tool-vs-prompt Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mcp-resource-vs-tool-vs-prompt as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="mcp-resource-vs-tool-vs-prompt Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for mcp-resource-vs-tool-vs-prompt with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Tool that always returns the same content (e.g., get_doc_index() returning a 50KB docs manifest). The tool is used like a Resource — the model "reads" it — but consumes a tool slot and bloats every turn the model decides to invoke it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This tool should be a Resource at a URI like docs://_index. Now the model only loads it when explicitly relevant, and it doesn't pollute the tool list on every turn.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Resource that mutates state when accessed (e.g., GET runbook://incident-foo starts the incident playbook in the background). Resources are supposed to be read-only; side effects make replay and audit impossible.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Convert to a Tool like start_runbook(name). Tools are designed for side effects; the model can reason about when to invoke them and what the consequences are.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Tool meant to be invoked by the user (e.g., a Tool called `initialize_project` that the team expects the user to run at startup). The Tool never gets called because the model doesn't know to invoke it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Create a Prompt like /initialize-project. Prompts are the user-facing interface; the user sees them in the slash menu and invokes them. The Prompt can internally call the Tool if needed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Over-broad Tool with a mode argument (e.g., exec(mode="read"|"write"|"delete", target, ...). The model confuses the modes 25% of the time — it might write when it meant to read.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Split into N named tools: read_file(path), write_file(path, content), delete_file(path). Clear names let the model reason about the operation.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>LLM calls 'docs.read' as a Tool every turn</symptom>
+      <root-cause>Doc surface exposed as a Tool — LLM pays attention to it.</root-cause>
+      <fix>Re-classify as Resource; LLM only reads when context requests.</fix>
+      <detector>Token usage drops; selection accuracy on other tools improves.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Slash command implemented as a Resource</symptom>
+      <root-cause>/refresh-cache was a Resource — no side-effect path.</root-cause>
+      <fix>Reclassify as Tool or Prompt+Tool combo.</fix>
+      <detector>Run /refresh-cache; should actually refresh.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Prompt template that mutates server state</symptom>
+      <root-cause>Slash command Prompt also writes a log.</root-cause>
+      <fix>Prompts must be pure; route side-effects through a Tool.</fix>
+      <detector>Audit Prompt handlers; no writes.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Agent picks Resource when it should call Tool</symptom>
+      <root-cause>Both were named similarly.</root-cause>
+      <fix>Name Resources as nouns, Tools as verbs; mention in description.</fix>
+      <detector>Eval selection on a labeled set.</detector>
+    </antipattern>
   </section>
 </text>

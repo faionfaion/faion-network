@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="langchain-observability Instrumentation Procedure" version="2.0.0" est_tokens="800" depth="recommended">
+  <summary>Five steps from runtime-profile.yaml to a validated tracing-config + env snippet.</summary>
+  <procedure>
+    <step n="1" name="parse-runtime-profile">
+      <input>runtime-profile.yaml</input>
+      <action>Load YAML; coerce types; reject if pii_posture or latency_target_ms missing.</action>
+      <output>typed profile</output>
+      <decision-gate>profile.valid==false → abort.</decision-gate>
+    </step>
+    <step n="2" name="select-backend">
+      <input>profile.pii_posture</input>
+      <action>no-export → opentelemetry local; else → langsmith.</action>
+      <output>tracing_backend</output>
+    </step>
+    <step n="3" name="select-streaming-and-sampling">
+      <input>profile.latency_target_ms, profile.cost_cap_per_turn_usd</input>
+      <action>latency≤500 → streaming=true. cost≤$0.01 → sample_rate=0.1 with tail-based-error keep; else sample_rate=1.0.</action>
+      <output>streaming, sample_rate</output>
+    </step>
+    <step n="4" name="emit-env-and-callback">
+      <input>tracing_backend, redact_payloads</input>
+      <action>Render templates/tracing-config.env + templates/structured-callback.py; force redact_payloads=true when pii_posture≠public.</action>
+      <output>env snippet + callback file</output>
+    </step>
+    <step n="5" name="validate">
+      <input>full decision-record</input>
+      <action>Run scripts/validate-langchain-observability.py.</action>
+      <output>0/1 exit code</output>
+      <decision-gate>Non-zero → fix and re-emit.</decision-gate>
+    </step>
+  </procedure>
+</text>

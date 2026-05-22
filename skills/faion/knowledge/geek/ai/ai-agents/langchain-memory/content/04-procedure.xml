@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="langchain-memory Selection &amp; Wiring Procedure" version="2.0.0" est_tokens="900" depth="recommended">
+  <summary>Six deterministic steps converting a conversation-profile.yaml into a validated decision-record + wiring snippet.</summary>
+
+  <procedure>
+    <step n="1" name="parse-profile">
+      <input>conversation-profile.yaml (expected_turns, recall_pattern, entity_focus, ttl_seconds, store_backend)</input>
+      <action>Load YAML; reject if any required field is missing; coerce ints; normalise recall_pattern to {recency,semantic,mixed}.</action>
+      <output>typed profile dict</output>
+      <decision-gate>If profile invalid → abort with structured error; do not guess defaults.</decision-gate>
+    </step>
+
+    <step n="2" name="select-memory-type">
+      <input>profile dict</input>
+      <action>Walk content/06-decision-tree.xml: branch on expected_turns first, then recall_pattern, then entity_focus.</action>
+      <output>memory_type ∈ {buffer, summary, vector, entity} + winning rule id</output>
+      <decision-gate>If expected_turns &lt; 10 AND recall_pattern=recency → buffer (rule r1).</decision-gate>
+    </step>
+
+    <step n="3" name="enumerate-rejected">
+      <input>memory_type + profile</input>
+      <action>For each of the three losing alternatives, write a one-sentence reason citing the driver that disqualified it.</action>
+      <output>rejected[] with ≥1 entry per non-winning option</output>
+    </step>
+
+    <step n="4" name="select-store-backend">
+      <input>profile.store_backend + memory_type</input>
+      <action>Map memory_type → compatible backends: buffer/summary → redis|postgres, vector → chroma|pinecone, entity → postgres. If store_backend=in-memory and target≠dev → upgrade to redis.</action>
+      <output>store_backend</output>
+      <decision-gate>Never emit in-memory for production.</decision-gate>
+    </step>
+
+    <step n="5" name="emit-wiring">
+      <input>memory_type + store_backend + session_id_strategy</input>
+      <action>Render templates/wiring-snippet.py with the chosen backend class; set ttl_seconds; force session_id_strategy to uuid unless caller explicitly passed hashed-user-id.</action>
+      <output>wiring.snippet string + input_messages_key/history_messages_key</output>
+    </step>
+
+    <step n="6" name="emit-record-and-validate">
+      <input>everything from steps 2-5</input>
+      <action>Assemble decision-record JSON; run scripts/validate-langchain-memory.py against 02-output-contract.xml schema.</action>
+      <output>final decision-record.json; exit 0 only on validator pass</output>
+      <decision-gate>If validator fails → fix and re-emit, do not commit.</decision-gate>
+    </step>
+  </procedure>
+</text>

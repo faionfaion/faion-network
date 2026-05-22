@@ -4,73 +4,90 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: LCEL chain patterns, prompt templates, output parsers, error handling, and streaming for composing LLM pipelines with LangChain.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Composes LCEL chains using the four canonical patterns — Sequential, Router (RunnableBranch), MapReduce (asyncio.gather over ainvoke), and Fallback (with_fallbacks) — with explicit exception scoping, module-level definition, and pinned versions for production reliability.
 content_id: "2b23fdf17b17437e"
+complexity: medium
+produces: code
+est_tokens: 4500
 tags: [langchain, chains, lcel, prompts, parsing]
 ---
 # LangChain Chains: Patterns and Composition
 
 ## Summary
 
-**One-sentence:** LCEL chain patterns, prompt templates, output parsers, error handling, and streaming for composing LLM pipelines with LangChain.
+**One-sentence:** Composes LCEL chains using the four canonical patterns — Sequential, Router (RunnableBranch), MapReduce (asyncio.gather over ainvoke), and Fallback (with_fallbacks) — with explicit exception scoping, module-level definition, and pinned versions for production reliability.
 
-**One-paragraph:** LCEL chain patterns, prompt templates, output parsers, error handling, and streaming for composing LLM pipelines with LangChain.
+**One-paragraph:** LCEL chain patterns, prompt templates, output parsers, error handling, and streaming for composing LLM pipelines with LangChain. Four patterns: Sequential (`prompt | model | parser`), Router (`RunnableBranch` with sequential conditions), MapReduce (real async fan-out via `asyncio.gather`), Fallback (`with_fallbacks` scoped to specific exception classes). Chains live at module level; `with_structured_output()` is preferred over `JsonOutputParser`; exception classes on fallbacks must be explicit to avoid masking config bugs.
+
+**Ефективно для:** дискретних LLM-кроків у лінійному пайплайні, маршрутизації введення до спеціалізованих обробників, batch-обробки незалежних задач, стійких пайплайнів з gracefull degradation.
 
 ## Applies If (ALL must hold)
 
-- Composing discrete LLM steps in a linear pipeline where each step transforms and passes output to the next
-- Routing user input to specialized handlers without maintaining state between requests
-- Parallel execution of independent sub-tasks in a single LLM call batch
-- Building resilient pipelines where a primary model may fail and a fallback must take over transparently
-- Prompt engineering iteration — LCEL chain composition makes it easy to swap templates, models, or parsers without restructuring code
+- Composing discrete LLM steps in a linear or routed pipeline.
+- No need for stateful loops or branching (else use LangGraph).
+- Output parsing is straightforward (else use `with_structured_output`).
 
 ## Skip If (ANY kills it)
 
-- The pipeline needs to loop, retry with modified state, or maintain context between steps — use LangGraph
-- You need tool use (web search, database queries) inside the pipeline — LangGraph agent with tools is the right primitive
-- The "chain" would consist of a single prompt + model call — use the model directly without LCEL overhead
-- Output parsing is complex with multiple fallback formats — `with_structured_output()` with function calling is more reliable than chaining parsers
-- The team needs visual workflow debugging — LangGraph's graph structure is far easier to inspect than nested LCEL chains
+- Need state, retries with modified state, or context between steps — use LangGraph.
+- Single prompt + model call — use the model directly.
+- Output parsing requires multiple fallback formats — function-calling structured output is more reliable.
+- Visual workflow debugging is required — LangGraph is easier to inspect.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Prompt templates | `ChatPromptTemplate` | Application code |
+| Model instance | `ChatAnthropic` or equivalent | Application code |
+| Parser | `StrOutputParser` or `with_structured_output(Model)` | Application code |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `langchain-basics` | Sets the foundation rules; this methodology extends them with pattern detail. |
+| `gateway-fallback-chain` | `with_fallbacks` is the LangChain-native version of the gateway pattern. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Six rules: structured_output, module-level chains, scoped fallback exceptions, asyncio for parallel, retry-aware, no inline JsonOutputParser | ~1100 |
+| `content/02-output-contract.xml` | essential | Sequential, Router, MapReduce, Fallback chain shapes | ~1100 |
+| `content/03-failure-modes.xml` | essential | RunnableParallel sync misuse, with_fallbacks masking, JsonOutputParser drift | ~800 |
+| `content/06-decision-tree.xml` | essential | Pick the right LCEL pattern | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Compose a sequential chain | haiku | Mechanical composition |
+| Design a router | sonnet | Condition ordering needs judgement |
+| Build a MapReduce pipeline | sonnet | Async + reduce-step design |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/router-chain.py` | Router chain using RunnableBranch with explicit fallback default |
+| `templates/_smoke-test.json` | Minimum valid chain config envelope |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-langchain-chains.py` | Validates a chain config envelope and confirms exceptions_to_handle is set | Pre-commit on chain changes |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[langchain-basics]]
+- [[langchain-agents-architectures]]
+- [[gateway-fallback-chain]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question is whether the pipeline branches by input. Branches route to Sequential, Router, MapReduce, or Fallback chain patterns.

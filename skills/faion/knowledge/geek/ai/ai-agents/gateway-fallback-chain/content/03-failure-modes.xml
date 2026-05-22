@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gateway-fallback-chain Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gateway-fallback-chain as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="gateway-fallback-chain Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Fallback chain with the same model from three different routers (e.g., direct, OpenRouter, AWS Bedrock).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Same model means same content-policy refusal and same outage class; you pay three integrations for one logical fallback.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Routing every call through the gateway "for consistency" while paying for prompt-caching workloads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Loses the cache discount on the workloads that benefit from it the most; the gateway saving is dwarfed by the cache loss.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-same-vendor-chain">
+      <description>Fallback chain of same-vendor models or same model via three different routers.</description>
+      <reason>Vendor outage takes the whole chain down. Same model also shares content-policy refusal classes.</reason>
+    </antipattern>
+    <p>Symptom: chain failure during a vendor incident. Root cause: insufficient diversity. Fix: ensure at least 2 distinct providers; validate via the validator script.</p>
+
+    <antipattern id="fm-02-fallback-on-4xx">
+      <description>Gateway retries the chain on 400/401/422 client errors.</description>
+      <reason>The error is the same on every provider; silent retry masks the bug and inflates cost.</reason>
+    </antipattern>
+    <p>Symptom: every call to a misconfigured endpoint runs all fallback providers before failing. Root cause: blanket retry policy. Fix: configure the gateway / app code to surface 4xx without retry; keep 5xx/429/timeout in the retry set.</p>
+
+    <antipattern id="fm-03-cache-loss">
+      <description>Routing prompt-caching workloads through a hosted gateway.</description>
+      <reason>Most gateways do not pass cache-control headers correctly; the 90% cache discount evaporates and the gateway "saving" is dwarfed by the cache loss.</reason>
+    </antipattern>
+    <p>Symptom: prompt-caching cost increases after gateway adoption. Root cause: cache headers stripped. Fix: call vendor SDK directly for cached workloads; keep gateway for non-cached paths.</p>
+
+    <antipattern id="fm-04-compliance-leak">
+      <description>Routing EU-resident user data through a hosted gateway in the US.</description>
+      <reason>Adds a third-party data processor outside the residency boundary; GDPR / SCC obligations escape audit scope.</reason>
+    </antipattern>
+    <p>Symptom: DPO objection during compliance review. Root cause: gateway provider in wrong jurisdiction. Fix: self-host LiteLLM proxy inside the EU boundary, OR call vendor SDK directly with app-level fallback.</p>
   </section>
 </text>

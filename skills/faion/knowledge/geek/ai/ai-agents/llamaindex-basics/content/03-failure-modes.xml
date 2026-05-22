@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llamaindex-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llamaindex-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="llamaindex-basics Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for llamaindex-basics with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Re-ingesting the same directory repeatedly via SimpleDirectoryReader without incremental sync or dedup logic, creating duplicate nodes in the index.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SimpleDirectoryReader has no incremental mtime tracking; re-running ingestion appends new nodes without deduplicating modified files. Either (a) clear the index and re-ingest, (b) implement a version hash check before re-indexing, or (c) use LlamaCloud for managed incremental updates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Building a large in-memory VectorStoreIndex and expecting it to stay resident across server restarts without explicit persistence.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>In-memory indices are garbage-collected on restart. Always persist to a vector store (local SQLite + embeddings or remote Qdrant) and reload on startup.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Never inspecting `response.source_nodes` to verify retrieval quality, blindly trusting node scores.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Vector similarity scores are relative, not absolute. A node with score 0.9 might still be off-topic if the query is ambiguous. Always inspect source nodes and verify that the synthesizer received good context.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Index loses all data after restart</symptom>
+      <root-cause>Defaulted to in-memory VectorStoreIndex; never persisted.</root-cause>
+      <fix>Pass StorageContext.from_defaults(persist_dir=...) and call storage_context.persist().</fix>
+      <detector>Restart; verify count matches pre-restart.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Embed cost is 5× expected</symptom>
+      <root-cause>Default chunk_size=1024 split documents far smaller than needed; over-embedded.</root-cause>
+      <fix>Tune node_parser.chunk_size to document shape; coarser for narrative, finer for technical.</fix>
+      <detector>Plot tokens-embedded vs doc-bytes; ratio should be &lt;2.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Query results miss obvious answers</symptom>
+      <root-cause>No metadata extractor; can't filter or rerank by source.</root-cause>
+      <fix>Add TitleExtractor + SummaryExtractor in the ingestion pipeline so retrieval has handles.</fix>
+      <detector>Query for a known fact; if missed, add metadata.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Initial build takes 4 hours and OOM-kills</symptom>
+      <root-cause>Loaded all docs into memory before chunking.</root-cause>
+      <fix>Use IngestionPipeline with batching; persist incrementally.</fix>
+      <detector>Run with /usr/bin/time -v; if peak RSS exceeds limits, switch to pipeline.</detector>
+    </antipattern>
   </section>
 </text>

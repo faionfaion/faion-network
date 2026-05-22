@@ -3,72 +3,97 @@ slug: map-reduce-send-fanout
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use dynamic fan-out (Send(node, payload) in LangGraph, ParallelAgent in ADK, asyncio.
-content_id: "5297a6c211347021"
-tags: [parallelization, langgraph, fan-out, concurrency, map-reduce]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Designs a map-reduce fan-out (Send / ParallelAgent / asyncio.gather) with concurrency cap, idempotency, and atomic super-step semantics, emitting a fanout-spec.
+content_id: addca468dec3b2e3
+complexity: deep
+produces: spec
+est_tokens: 4000
+tags: [map-reduce, fan-out, langgraph, parallelism, idempotency]
 ---
-# Map-Reduce Fan-Out with Bounded Concurrency and Idempotent Branches
+# Map Reduce Send Fanout
 
 ## Summary
 
-**One-sentence:** Use dynamic fan-out (Send(node, payload) in LangGraph, ParallelAgent in ADK, asyncio.
+**One-sentence:** Designs a map-reduce fan-out (Send / ParallelAgent / asyncio.gather) with concurrency cap, idempotency, and atomic super-step semantics, emitting a fanout-spec.
 
-**One-paragraph:** Use dynamic fan-out (Send(node, payload) in LangGraph, ParallelAgent in ADK, asyncio.gather in plain Python) to map a per-item LLM call across a list, then reduce with an annotated reducer (Annotated[list, operator.add] or a custom merge). Cap concurrency at ≤20 to avoid rate-limit cliffs, and design every branch to be idempotent + retryable because any single branch failure fails the entire super-step atomically. Never use map-reduce fan-out for branches that mutate shared external state — use a queue + workers instead.
+**One-paragraph:** Dynamic fan-out over a list lets you map per-item LLM work, but rate-limit cliffs hit fast and a single branch failure fails the whole super-step atomically — so non-idempotent work double-applies on retry. This methodology turns a fan-out profile (item count, per-item work, mutates_shared_state) into a deterministic fanout-spec: framework, concurrency cap, reducer, idempotency guarantee.
+
+**Ефективно для:** solopreneur parallelising LLM work over a list (e.g. summarise 100 docs) without nuking the budget.
 
 ## Applies If (ALL must hold)
 
-- Per-document scoring or classification across N documents.
-- Multi-source RAG fan-out (vector search + web search + memory lookup, then merge).
-- Multi-candidate generation (sample N drafts, pick best with a reducer / vote).
-- Batch tool calls over a list (enrich N rows, classify N emails) where each item is independent.
+- Same work applied to a list of items.
+- Per-item work is LLM/HTTP-bound, not CPU.
+- Items are independent — no shared mutable state.
+- ≥1 fan-out primitive available (Send, ParallelAgent, asyncio.gather).
+- Result merge is well-defined (concat, sum, dict-merge).
 
 ## Skip If (ANY kills it)
 
-- Fixed-N parallel where N is known at graph-compile time — use static fan-out edges; Send is for runtime-variable N.
-- Branches that mutate shared external state (write to the same DB row, append to one file) — use a queue + workers, not Send. Atomic-fail of the super-step double-applies on retry.
-- N > 20 with a single provider — split into batches, otherwise rate-limit kills the run; or move to provider Batch API.
-- Strong consistency requirements across branches (every branch must see the same prior state) — use sequential.
+- Single item — no fan-out needed.
+- Items share mutable state — use a queue + workers, not fan-out.
+- Per-item work is non-idempotent (e.g., billing) — fan-out retries double-charge.
+- Item count <3 — overhead exceeds benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `fanout-profile.yaml` | item_count, per_item_work_kind, mutates_shared_state, idempotent, framework | author |
+| `Per-item function` | Python async or sync | code |
+| `Reducer` | function or annotated type | code |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[max-turns-circuit-breaker]] | Pair with turn cap. |
+| [[manifest-then-fetch]] | Per-item outputs may be large. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for concurrency cap (≤20), idempotency, atomic super-step, reducer choice. | ~1000 |
+| `content/02-output-contract.xml` | essential | fanout-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | No cap, non-idempotent branch, hidden shared state, partial-success swallowed. | ~700 |
+| `content/04-procedure.xml` | recommended | 6-step design procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/fanout-profile.yaml` | Input. |
+| `templates/fanout-spec.md` | Output. |
+| `templates/fanout.py` | Working Send / gather wrapper. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-map-reduce-send-fanout.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[langchain-workflows]]
+- [[max-turns-circuit-breaker]]
+- [[manifest-then-fetch]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on mutates_shared_state (true → reject fan-out, recommend queue+workers), then on idempotent (false → reject or wrap in idempotency-key store), then on framework (langgraph → Send; adk → ParallelAgent; plain → asyncio.gather + Semaphore). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

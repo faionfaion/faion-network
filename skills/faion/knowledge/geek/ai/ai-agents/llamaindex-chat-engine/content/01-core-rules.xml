@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="llamaindex-chat-engine Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for llamaindex-chat-engine. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="llamaindex-chat-engine Core Rules" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>Rules for selecting LlamaIndex chat-engine mode, bounding memory, and wiring streaming.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Default to chat_mode='condense_plus_context' for document-grounded multi-turn Q&amp;A. It rewrites the follow-up question with conversation context before retrieval.</statement>
+      <rationale source="llamaindex-docs">condense_plus_context handles 'tell me more about that' follow-ups without needing tool use.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Use chat_mode='react' only when tool calls are required. ReAct adds 2-3 extra LLM calls per turn vs condense_plus_context.</statement>
+      <rationale source="cost-experience">ReAct mode is expensive; reserve it for genuine multi-tool reasoning.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Bound conversation memory with ChatMemoryBuffer where token_limit is roughly half the context window. For an 8k context model, set token_limit=3900.</statement>
+      <rationale source="llamaindex-docs">Half the context window leaves room for retrieved chunks and the current question.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Instantiate a per-session ChatMemoryBuffer; never share a global instance across users.</statement>
+      <rationale source="security-review">A shared buffer leaks history across users — same failure pattern as [[langchain-memory]] rule r13.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Enable streaming for chat UI; use chat_engine.stream_chat() not .chat().</statement>
+      <rationale source="ux-research">Perceived latency drops with first-token streaming; the difference for a chatbot is qualitative.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>If a post-processor formats the answer after generation, choose either stream-and-no-postprocess OR no-stream-and-postprocess. Never both.</statement>
+      <rationale source="bug-history">Streaming + post-process produces UI flicker where the half-streamed answer jumps to the formatted final.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Pin the context_prompt template explicitly; never rely on LlamaIndex defaults for production. The defaults shift between minor releases.</statement>
+      <rationale source="dep-experience">Default prompt changes have silently regressed user-facing answers across upgrades.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Verify session_id is a server-generated UUID, never client-supplied. Same rule as conversation memory across frameworks.</statement>
+      <rationale source="security-review">Predictable session IDs let an attacker fetch another user's chat history.</rationale>
     </rule>
   </section>
 </text>

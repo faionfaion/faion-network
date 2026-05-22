@@ -4,71 +4,91 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Do not hard-code a single model in production agent code.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Routes every production LLM call through a gateway with an ordered cross-provider fallback chain so vendor outages, rate limits, and content-policy refusals downgrade to a working alternative transparently, lifting availability above the single-vendor floor.
 content_id: "ae99efe631d31b73"
+complexity: medium
+produces: code
+est_tokens: 4000
 tags: [agents, routing, availability, gateways, openrouter]
 ---
 # Cost-Aware Gateway with Fallback Chain (OpenRouter Pattern)
 
 ## Summary
 
-**One-sentence:** Do not hard-code a single model in production agent code.
+**One-sentence:** Routes every production LLM call through a gateway with an ordered cross-provider fallback chain so vendor outages, rate limits, and content-policy refusals downgrade to a working alternative transparently, lifting availability above the single-vendor floor.
 
 **One-paragraph:** Do not hard-code a single model in production agent code. Send each call to a gateway (OpenRouter, LiteLLM proxy, Portkey, Kong AI Gateway) that exposes a primary model plus an ordered fallback chain; on provider 5xx, 429, or timeout the gateway transparently retries the next model in the list. Bill only the successful run. The result: better availability than any single vendor, no code change to swap models, and a single integration surface for prompt-caching, retries, observability, and budget caps.
 
+**Ефективно для:** виробничих агентів з SLA, де 30-хвилинний downtime одного провайдера не повинен бути 30-хвилинним downtime продукту.
+
 ## Applies If (ALL must hold)
 
-- Production agents with an availability SLA above the single-vendor floor.
-- Teams running A/B experiments across providers (Anthropic vs OpenAI vs Gemini) without code changes.
-- Workloads that hit rate limits on a single provider during peak hours.
-- Multi-region deployments where the cheapest provider differs per region.
+- Production agent with availability SLA above the single-vendor floor.
+- Team running A/B experiments across providers without code changes.
+- Workloads hit rate limits on a single provider during peak hours.
+- Multi-region deployment where the cheapest provider differs by region.
 
 ## Skip If (ANY kills it)
 
-- Strict data-residency or compliance regimes (EU healthcare, defense) where the gateway is a third-party processor — go direct, with a controlled fallback inside the same boundary.
-- Pipelines that depend on raw vendor SDK features the gateway does not expose (Anthropic prompt caching, OpenAI Batch API, fine-tuned models).
-- Local development and experimentation — the gateway adds latency and operational surface for no production benefit.
+- Strict data-residency or compliance regime (EU healthcare, defense) where the gateway is a third-party processor.
+- Pipeline depends on vendor SDK features the gateway does not expose (Anthropic prompt caching, OpenAI Batch API, fine-tuned models).
+- Local development — gateway adds latency for no benefit.
 - Edge / on-device inference — gateway round-trip dominates total latency.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Gateway endpoint | URL + API key | Provider config |
+| Primary model + fallback chain | List of provider/model strings from different families | Engineering config |
+| Telemetry exporter | OTel collector or equivalent | Observability stack |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `idempotent-write-tools` | Gateway-side retries must be idempotent across tool effects. |
+| `confidence-thresholded-cascade` | Cascade and gateway-fallback compose: cascade chooses model class, gateway absorbs vendor outages. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Five testable rules: cross-provider only, 4xx surface, no-fallback for vendor-feature workloads, compliance carve-out, telemetry attrs | ~1000 |
+| `content/02-output-contract.xml` | essential | Call request body schema with `models[]` list; OTel attribute set | ~900 |
+| `content/03-failure-modes.xml` | essential | Same-vendor chain, 4xx-masking fallback, cache-loss in caching workloads | ~800 |
+| `content/06-decision-tree.xml` | essential | Gateway vs direct based on availability SLA, compliance, vendor-features | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Author the fallback chain config | sonnet | Engineering judgement on provider mix |
+| Audit existing calls for hardcoded models | haiku | Mechanical grep + pattern |
+| Tune chain based on outage post-mortem | opus | Long-tail tradeoff analysis |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/openrouter_call.py` | OpenRouter chat-completions call with primary + explicit fallback chain |
+| `templates/_smoke-test.json` | Minimum valid call request body |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gateway-fallback-chain.py` | Validates a call config: cross-provider chain, 4xx surfaced, telemetry attrs | Pre-commit on any change to the gateway client |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[idempotent-write-tools]]
+- [[confidence-thresholded-cascade]]
+- [[handoff-id-payload]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The root question asks whether the workload has compliance constraints or vendor-feature dependencies. Branches route to direct SDK with app-level fallback, hosted gateway with cross-provider chain, or self-hosted LiteLLM proxy inside the compliance boundary. Each leaf maps to a rule in `01-core-rules.xml`.

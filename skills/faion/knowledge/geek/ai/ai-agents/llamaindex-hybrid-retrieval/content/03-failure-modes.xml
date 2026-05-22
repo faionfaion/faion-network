@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llamaindex-hybrid-retrieval Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llamaindex-hybrid-retrieval as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="llamaindex-hybrid-retrieval Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for llamaindex-hybrid-retrieval with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Setting num_queries=4 because "more queries means better recall".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>4 LLM calls fire per user query. On a corpus with reasonable coverage, queries 3 and 4 repeat near-synonyms already covered by query 2. Cost quadruples with marginal recall gain.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using QueryFusionRetriever without use_async=True in an async agent loop.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without async, each query variant fires synchronously, blocking the event loop. At num_queries=2 this adds two sequential round-trips to the LLM before retrieval even starts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Changing chunking strategy post-ingestion and expecting AutoMergingRetriever to work.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Parent-child node relationships are baked in at ingestion. Changing chunk_sizes requires a full re-index; there is no migration path.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Rerank runs on 3 candidates and gives no signal</symptom>
+      <root-cause>Pre-rerank pool too small — fusion_top_k=3 then rerank_top_n=3 is a no-op.</root-cause>
+      <fix>Set fusion_top_k=20-30, rerank_top_n=5; rerank needs a real candidate set.</fix>
+      <detector>Compare accuracy at fusion_top_k=5 vs 20; lift confirms.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Latency jumps from 400ms to 2.5s after rerank wired in</symptom>
+      <root-cause>Cross-encoder ran on CPU.</root-cause>
+      <fix>Either host on GPU, or pick a small distilled cross-encoder (e.g., ms-marco-MiniLM-L-6-v2).</fix>
+      <detector>Profile each stage; rerank should be &lt;300ms.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>SimilarityPostprocessor drops every result on a niche query</symptom>
+      <root-cause>Cutoff threshold set on a general benchmark; doesn't transfer.</root-cause>
+      <fix>Calibrate threshold on your eval set per-query-class; don't reuse external numbers.</fix>
+      <detector>Plot threshold vs recall@5 per class; pick at the elbow.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>QueryFusionRetriever opens too many concurrent LLM calls</symptom>
+      <root-cause>Default concurrency unbounded.</root-cause>
+      <fix>Set num_workers=4 or wire an asyncio.Semaphore; mirror [[map-reduce-send-fanout]] rules.</fix>
+      <detector>Watch concurrent LLM count; should respect cap.</detector>
+    </antipattern>
   </section>
 </text>

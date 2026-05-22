@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="llamaindex-hybrid-retrieval Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for llamaindex-hybrid-retrieval. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="llamaindex-hybrid-retrieval Core Rules" version="2.0.0" est_tokens="950" depth="essential">
+  <summary>Rules for LlamaIndex hybrid retrieval: QueryFusionRetriever, cross-encoder reranking, AutoMergingRetriever, similarity thresholding.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Use QueryFusionRetriever(mode='reciprocal_rerank') to combine ≥2 retrievers (vector + BM25). Set num_queries=1-4 based on rerank budget.</statement>
+      <rationale source="llamaindex-docs">RRF is more stable than weighted sum; num_queries beyond 4 burns LLM calls for diminishing returns.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Pre-rerank pool size (fusion_top_k) must be at least 4x the post-rerank size (rerank_top_n). A rerank over 3 candidates is a no-op.</statement>
+      <rationale source="rerank-research">Rerank needs a real candidate set to discriminate; tiny pools defeat the purpose.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Apply SimilarityPostprocessor BEFORE the cross-encoder rerank to pre-filter low-relevance candidates. Run rerank on the survivors only.</statement>
+      <rationale source="cost-experience">Pre-filtering cuts rerank cost 3-5x without recall loss when threshold is calibrated.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Calibrate similarity_cutoff threshold on your own eval set per-query-class. Never reuse a threshold from a different corpus or benchmark.</statement>
+      <rationale source="evaluation">Thresholds do not transfer; cross-corpus reuse silently drops recall on niche queries.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Cap QueryFusionRetriever concurrency with num_workers=4-8 or wrap in asyncio.Semaphore(8). Default is unbounded.</statement>
+      <rationale source="prod-experience">Unbounded fusion opens N times k concurrent LLM calls — straight into rate-limit cliffs.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>For hierarchical corpora, wire AutoMergingRetriever to promote a parent node when ≥half its children match.</statement>
+      <rationale source="llamaindex-docs">AutoMerging is designed for tree-structured corpora; using it on flat corpora adds latency without lift.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Choose a distilled cross-encoder (e.g., ms-marco-MiniLM-L-6-v2) for latency-sensitive deployments; reserve full BERT-class rerankers for offline pipelines.</statement>
+      <rationale source="latency-research">Distilled rerankers run sub-100ms on CPU; full BERT crosses 500ms.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Always A/B hybrid vs vector-only on a labeled eval set before shipping. Hybrid adds latency and complexity; the lift must be measurable.</statement>
+      <rationale source="evaluation">Without an eval set you cannot justify hybrid's added latency cost.</rationale>
     </rule>
   </section>
 </text>

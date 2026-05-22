@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="langchain-agents-architectures Worked Examples" version="1.0.0" est_tokens="900" depth="recommended">
+  <summary>Three worked examples — ReAct, Plan-and-Execute, LATS — with code shape and observed behaviour.</summary>
+
+  <section title="ReAct (research agent)">
+    <example type="good">
+      <code lang="python"><![CDATA[
+agent = create_react_agent(
+    ChatAnthropic(model="claude-sonnet-4-7"),
+    tools=[search, calculator],
+    max_iterations=15,
+)
+out = agent.invoke({"messages": [("human", "What is 25 * 4 and who invented calculus?")]})
+      ]]></code>
+      <p>Behaviour: 4 iterations — 1 calc, 1 search, 1 reflection, 1 final answer. Total ~1500 tokens. Trace appears in LangSmith with session_id.</p>
+    </example>
+  </section>
+
+  <section title="Plan-and-Execute (multi-step research)">
+    <example type="good" title="StateGraph with planner / executor / synthesizer">
+      <p>Planner produces 4-step plan as JSON; executor runs each step with tools; synthesizer combines results. Re-plan gate fires after step 2 when search returned empty — planner adjusts steps 3-4 to use alternative queries. Total: 6 LLM calls, ~5K tokens, p99 ~12s.</p>
+    </example>
+  </section>
+
+  <section title="LATS (uncertain solution path)">
+    <example type="good" title="Tree search for novel problem">
+      <p>2 branches × 3 depth. Score with Haiku, expand with Sonnet. 8 LLM calls total; best score 0.87 found at depth 2; backtracked once when initial branch scored below 0.5.</p>
+    </example>
+  </section>
+
+  <section title="When ReAct fails">
+    <example type="bad" title="Unbounded ReAct on undocumented tool">
+      <p>Agent calls a tool whose docstring lacks "Do NOT use for" hints; tool is misapplied; agent enters retry loop. Without `max_iterations`, the loop runs 50+ iterations before user kills it. Fix: tighten docstring; set max_iterations=15.</p>
+    </example>
+  </section>
+</text>

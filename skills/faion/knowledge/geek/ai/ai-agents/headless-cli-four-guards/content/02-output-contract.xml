@@ -1,22 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="headless-cli-four-guards Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="headless-cli-four-guards Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>The canonical four-guard invocation and a lint-report schema.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Canonical Claude Code invocation">
+    <code lang="bash"><![CDATA[
+claude -p "$TASK" \
+  --allowedTools "Read,Edit,Bash(pytest:*)" \
+  --max-turns 20 \
+  < /dev/null
+    ]]></code>
+  </section>
+
+  <section title="Canonical Codex invocation">
+    <code lang="bash"><![CDATA[
+timeout 600 codex exec "$TASK" \
+  --sandbox workspace-write \
+  < /dev/null
+    ]]></code>
+  </section>
+
+  <section title="Lint-report schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "headless-cli-four-guards/lint-report",
+  "type": "object",
+  "required": ["script_path", "guards_present", "missing_guards"],
+  "additionalProperties": false,
+  "properties": {
+    "script_path":    {"type": "string"},
+    "guards_present": {"type": "array", "items": {"enum": ["print", "allowlist", "max_turns", "stdin_closed"]}},
+    "missing_guards": {"type": "array", "items": {"enum": ["print", "allowlist", "max_turns", "stdin_closed"]}}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (lint pass)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "script_path": "scripts/cron-pool.sh",
+  "guards_present": ["print", "allowlist", "max_turns", "stdin_closed"],
+  "missing_guards": []
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Bad example (missing stdin redirect)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "script_path": "scripts/cron-pool.sh",
+  "guards_present": ["print", "allowlist", "max_turns"],
+  "missing_guards": ["stdin_closed"]
+}
+      ]]></code>
+      <note>Validator fails the build; one guard missing is enough to reject.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All four guards present in the invocation line.</item>
+      <item>No `--dangerously-skip-permissions` anywhere.</item>
+      <item>`--max-turns` value is a meaningful workflow length.</item>
     </list>
   </section>
 </text>

@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="langchain-observability Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="langchain-observability Output Contract" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Tracing-config decision-record schema. Drives env vars and callback wiring.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
+  <output-contract produces="decision-record">
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["slug", "version", "decision", "drivers", "env", "audit"],
+  "properties": {
+    "slug": {"const": "langchain-observability"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "decision": {
+      "type": "object",
+      "required": ["tracing_backend", "streaming", "redact_payloads", "sample_rate"],
+      "properties": {
+        "tracing_backend": {"enum": ["langsmith", "opentelemetry", "none"]},
+        "streaming": {"type": "boolean"},
+        "redact_payloads": {"type": "boolean"},
+        "sample_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "required": ["latency_target_ms", "cost_cap_per_turn_usd", "pii_posture"],
+      "properties": {
+        "latency_target_ms": {"type": "integer", "minimum": 0},
+        "cost_cap_per_turn_usd": {"type": "number", "minimum": 0},
+        "pii_posture": {"enum": ["public", "internal", "no-export"]}
+      }
+    },
+    "env": {
+      "type": "object",
+      "required": ["LANGCHAIN_TRACING_V2", "LANGCHAIN_PROJECT"],
+      "additionalProperties": {"type": "string"}
+    },
+    "audit": {
+      "type": "object",
+      "required": ["rule_refs"],
+      "properties": {"rule_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^r[0-9]+$"}}}
+    }
+  }
+}
+]]></schema>
+    <example valid="true" title="Internal app, $0.02/turn budget, 800ms p95"><![CDATA[
+{
+  "slug": "langchain-observability",
+  "version": "2.0.0",
+  "decision": {"tracing_backend": "langsmith", "streaming": true, "redact_payloads": false, "sample_rate": 1.0},
+  "drivers": {"latency_target_ms": 800, "cost_cap_per_turn_usd": 0.02, "pii_posture": "internal"},
+  "env": {"LANGCHAIN_TRACING_V2": "true", "LANGCHAIN_PROJECT": "prod-bot", "LANGCHAIN_ENDPOINT": "https://api.smith.langchain.com"},
+  "audit": {"rule_refs": ["r1", "r3"]}
+}
+]]></example>
+    <example valid="false" title="PII no-export but tracing_backend=langsmith"><![CDATA[
+{
+  "slug": "langchain-observability",
+  "version": "2.0.0",
+  "decision": {"tracing_backend": "langsmith", "streaming": false, "redact_payloads": false, "sample_rate": 1.0},
+  "drivers": {"latency_target_ms": 800, "cost_cap_per_turn_usd": 0.02, "pii_posture": "no-export"},
+  "env": {"LANGCHAIN_TRACING_V2": "true", "LANGCHAIN_PROJECT": "prod-bot"},
+  "audit": {"rule_refs": []}
+}
+]]></example>
+    <example-violations>
+      <violation>pii_posture=no-export forbids tracing_backend=langsmith.</violation>
+      <violation>audit.rule_refs empty.</violation>
+      <violation>redact_payloads=false with sensitive posture is auto-fail.</violation>
+    </example-violations>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>If pii_posture=no-export, tracing_backend must be opentelemetry or none.</item>
+      <item>If latency_target_ms ≤500, streaming=true.</item>
+      <item>sample_rate is between 0 and 1.</item>
+      <item>LANGCHAIN_TRACING_V2 set when backend=langsmith.</item>
+      <item>audit.rule_refs cites ≥1 rule.</item>
     </list>
   </section>
 </text>

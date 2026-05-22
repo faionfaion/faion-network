@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="manifest-then-fetch Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for manifest-then-fetch as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="manifest-then-fetch Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for manifest-then-fetch with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Returning the manifest AND the full body "in case the agent needs it".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defeats the whole protocol — the body is in context the moment it returns, regardless of what the agent does next.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Letting the preview grow to several KB "to be safe".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Equivalent to inlining the body: the protocol's whole point is keeping the LLM-facing payload tiny.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Manifest preview leaked the full body</symptom>
+      <root-cause>preview_strategy was 'head-N' with N too large.</root-cause>
+      <fix>Cap preview at 200 tokens; if more needed, use structured summary.</fix>
+      <detector>Sample 10 manifests; assert size_tokens reported ≤ preview_strategy cap.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Body store grows unbounded</symptom>
+      <root-cause>No TTL on stored payloads.</root-cause>
+      <fix>Set retention_ttl_seconds ≤24h; reaper job removes expired.</fix>
+      <detector>Storage growth over 1wk should plateau.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Agent loses access mid-conversation</symptom>
+      <root-cause>execution_id expired between preview and fetch.</root-cause>
+      <fix>Set TTL ≥ max turn-latency × max_turns; document the contract.</fix>
+      <detector>Force a slow turn; verify fetch still works.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Agent fetches every manifest immediately, defeating the purpose</symptom>
+      <root-cause>Prompt encourages 'always fetch full result'.</root-cause>
+      <fix>Prompt says 'fetch only if size_tokens > N AND you need the body'; show 2 examples.</fix>
+      <detector>Track fetch rate; should be &lt;30%.</detector>
+    </antipattern>
   </section>
 </text>

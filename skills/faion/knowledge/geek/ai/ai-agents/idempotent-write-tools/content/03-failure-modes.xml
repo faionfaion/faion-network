@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="idempotent-write-tools Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for idempotent-write-tools as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="idempotent-write-tools Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Generating the idempotency key INSIDE the tool (key = uuid4() at the top of execute).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The key must be the same across retries. If the tool generates it, every retry gets a fresh key and the dedup never fires.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding idempotency_key to read tools "for consistency".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bloats the schema, confuses the model, costs tokens — reads are already safe to repeat.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>*_preview that internally calls the upstream "dry-run" but still mutates a cache or counter.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If preview has any observable side effect, agents cannot safely run it speculatively, and the safety property collapses.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-key-generated-inside-tool">
+      <description>Generating the idempotency_key inside the tool execute function (`key = uuid4()`).</description>
+      <reason>Every retry gets a fresh key; dedup never fires. The point of the key is stability across retries.</reason>
+    </antipattern>
+    <p>Symptom: duplicate side effects on transient retries. Root cause: in-tool key generation. Fix: require key as parameter from the agent; tool execute uses the supplied key, never generates one.</p>
+
+    <antipattern id="fm-02-key-on-reads">
+      <description>Adding `idempotency_key` to read tools "for consistency".</description>
+      <reason>Bloats schema; the model has to fabricate values; tokens wasted for no benefit.</reason>
+    </antipattern>
+    <p>Symptom: read tool schemas include a key parameter that's always populated with junk. Root cause: misapplied rule. Fix: remove the parameter from read schemas; document the asymmetry.</p>
+
+    <antipattern id="fm-03-side-effecty-preview">
+      <description>`*_preview` internally calls upstream dry-run but still mutates a cache or counter.</description>
+      <reason>Any side effect on preview defeats the safety property; agents can no longer run preview speculatively.</reason>
+    </antipattern>
+    <p>Symptom: preview emits OTel events; counter values drift; cache state changes. Root cause: not actually pure. Fix: audit every preview path; remove cache writes and counters; if upstream dry-run mutates, gate behind an explicit no-op flag.</p>
+
+    <antipattern id="fm-04-no-preview-for-destructive">
+      <description>Catalog exposes a single-call destructive operation (`delete_user(id)`, `deploy(service)`) without a preview/apply pair.</description>
+      <reason>Agent has no chance to inspect; retry on timeout double-executes. Human review is impossible.</reason>
+    </antipattern>
+    <p>Symptom: production incident where retry caused double-deploy or double-charge. Root cause: missing preview/apply split. Fix: remove single-call form from catalog; expose `*_preview` and `*_apply` only; require `preview_hash` on apply.</p>
   </section>
 </text>

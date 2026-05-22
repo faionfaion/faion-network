@@ -3,72 +3,95 @@ slug: llamaindex-sql-query
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: NLSQLTableQueryEngine translates natural language questions into SQL via an LLM, executes against a SQLAlchemy-connected database, and returns the answer with the generated SQL for inspection.
-content_id: "074dcd7a49dcf51e"
-tags: [llamaindex, nl-to-sql, structured-data, sql, rag]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Wires LlamaIndex NLSQLTableQueryEngine with table retrieval, read-only DB, and safety constraints and emits a nlsql-spec.
+content_id: 2a36bf155a6370fa
+complexity: deep
+produces: spec
+est_tokens: 4000
+tags: [llamaindex, nl-sql, structured-data, table-retrieval]
 ---
-# LlamaIndex NL-to-SQL with NLSQLTableQueryEngine
+# Llamaindex Sql Query
 
 ## Summary
 
-**One-sentence:** NLSQLTableQueryEngine translates natural language questions into SQL via an LLM, executes against a SQLAlchemy-connected database, and returns the answer with the generated SQL for inspection.
+**One-sentence:** Wires LlamaIndex NLSQLTableQueryEngine with table retrieval, read-only DB, and safety constraints and emits a nlsql-spec.
 
-**One-paragraph:** NLSQLTableQueryEngine translates natural language questions into SQL via an LLM, executes against a SQLAlchemy-connected database, and returns the answer with the generated SQL for inspection. Restrict include_tables to only relevant tables. Always use a read-only database connection. For large schemas, use ObjectIndex-based table schema retrieval to narrow the LLM's schema context before SQL generation.
+**One-paragraph:** NLSQLTableQueryEngine translates natural language into SQL via an LLM. Without table retrieval the LLM sees the whole schema and burns tokens; without read-only connection it can drop tables. This methodology converts a DB profile into a deterministic nlsql-spec: connection mode, table-retrieval strategy, allowed-tables list, SQL safety hooks.
+
+**Ефективно для:** solopreneur exposing a SQL DB to users via natural-language queries.
 
 ## Applies If (ALL must hold)
 
-- Business users need to query a relational database without writing SQL — NLSQLTableQueryEngine is the standard LlamaIndex pattern.
-- Agent needs to combine document RAG with structured data queries in one pipeline — route SQL queries to NLSQLTableQueryEngine and document queries to VectorStoreIndex.
-- Schema is known upfront and changes infrequently — the LLM needs stable table descriptions for reliable SQL generation.
-- Debugging or auditing agent SQL — the engine returns the generated SQL in response.metadata["sql_query"] for logging.
+- Have a SQLAlchemy-compatible DB.
+- ≥1 user-facing natural-language query surface.
+- DB has ≥5 tables (else hardcode).
+- Read-only connection available.
+- LLM tokens are bounded.
 
 ## Skip If (ANY kills it)
 
-- Database schema is large (50+ tables) or changes frequently — dedicated text-to-SQL services (Vanna, SQLAI) handle schema evolution better.
-- Write operations are required — NLSQLTableQueryEngine does not prevent destructive SQL; never use with a read-write connection for agent-driven queries.
-- Query patterns are known and fixed — parameterized SQL queries are cheaper and safer than LLM-generated SQL for static workloads.
-- The database is large and complex/dynamic — dedicated text-to-SQL services handle schema evolution better than a general-purpose LLM.
+- Single table, fixed SQL — handcraft.
+- Write workload — NL→SQL is read-only by design.
+- Need joins across systems — use a federated layer.
+- Compliance forbids LLM seeing schema.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `db-profile.yaml` | table_count, read_only_dsn, include_tables, schema_size_chars | author |
+| `Read-only DB user` | infra | DB admin |
+| `LLM creds` | secret | config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[llamaindex-basics]] | Index + query engine foundations. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for include_tables, read-only, schema retrieval, SQL safety. | ~1000 |
+| `content/02-output-contract.xml` | essential | nlsql-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Read-write conn used, full-schema dump, SQL injection via prompt, hallucinated columns. | ~700 |
+| `content/04-procedure.xml` | recommended | 6-step wiring procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/db-profile.yaml` | Input. |
+| `templates/nlsql-spec.md` | Output. |
+| `templates/nl_sql.py` | Working NLSQLTableQueryEngine. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-llamaindex-sql-query.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[llamaindex-basics]]
+- [[llamaindex-indexes-queries]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on read_only_required (true → enforce read-only DSN), then on table_count (>20 → ObjectIndex; <=20 → include_tables list), then on max-returned-rows cap. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

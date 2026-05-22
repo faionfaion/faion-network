@@ -1,22 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="idempotent-write-tools Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="idempotent-write-tools Output Contract" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Tool input schemas for write tools, preview tools, and apply tools.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Write-tool input schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "idempotent-write-tools/write",
+  "type": "object",
+  "required": ["idempotency_key"],
+  "additionalProperties": true,
+  "properties": {
+    "idempotency_key": {"type": "string", "pattern": "^[A-Za-z0-9._-]{8,128}$"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Preview-tool input/output schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "idempotent-write-tools/preview",
+  "type": "object",
+  "required": ["preview_hash"],
+  "additionalProperties": true,
+  "properties": {
+    "preview_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "diff":          {"type": "string"},
+    "estimated_cost_usd": {"type": "number"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Apply-tool input schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "idempotent-write-tools/apply",
+  "type": "object",
+  "required": ["preview_hash", "idempotency_key"],
+  "additionalProperties": false,
+  "properties": {
+    "preview_hash":     {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "idempotency_key":  {"type": "string", "pattern": "^[A-Za-z0-9._-]{8,128}$"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (apply call)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "preview_hash": "sha256:abc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1",
+  "idempotency_key": "deploy-2026-04-25-001"
+}
+      ]]></code>
+      <note>Hash binds the apply to a specific reviewed preview; key makes the apply replay-safe.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (write without key)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"amount_cents": 1999}
+      ]]></code>
+      <note>No idempotency_key; retry will double-charge. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every write tool input schema has a required `idempotency_key`.</item>
+      <item>Destructive ops have a preview+apply pair; the single-call form is absent from the catalog.</item>
+      <item>Apply input has both `preview_hash` and `idempotency_key`.</item>
     </list>
   </section>
 </text>

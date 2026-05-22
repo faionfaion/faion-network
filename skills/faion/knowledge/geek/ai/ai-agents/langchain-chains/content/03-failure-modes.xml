@@ -1,12 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-chains Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-chains as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-chains Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-runnable-parallel-sync">
+      <description>Using `RunnableParallel` for batch processing expecting concurrency.</description>
+      <reason>Parallel dict keys execute synchronously in CPython; total time = sum of branches.</reason>
+    </antipattern>
+    <p>Symptom: batch latency = sum, not max. Root cause: misconception. Fix: switch to `asyncio.gather` over `ainvoke` per element.</p>
+
+    <antipattern id="fm-02-fallback-masks-config-bugs">
+      <description>`with_fallbacks()` called without `exceptions_to_handle`; catches every exception including auth and 4xx.</description>
+      <reason>Auth and validation errors silently route to backup providers; the bug is invisible in logs.</reason>
+    </antipattern>
+    <p>Symptom: every call goes through fallback path; primary "looks" broken when it's a config bug. Root cause: unscoped exception handling. Fix: set `exceptions_to_handle=(RateLimitError, APITimeoutError, ...)`; let other exceptions propagate.</p>
+
+    <antipattern id="fm-03-json-parser-streaming-partial">
+      <description>Piping `JsonOutputParser` into a streaming chain and consuming partial dicts.</description>
+      <reason>`JsonOutputParser` returns partial JSON during streaming; downstream code that expects complete dicts crashes.</reason>
+    </antipattern>
+    <p>Symptom: KeyError on partial chunks. Root cause: streaming + JsonOutputParser. Fix: switch to `with_structured_output` (does not stream partial), OR wait for the full message before parsing.</p>
+
+    <antipattern id="fm-04-router-no-default">
+      <description>`RunnableBranch` without a default chain; unmatched inputs raise an error.</description>
+      <reason>Production traffic includes inputs not covered by the conditions; pipeline crashes instead of degrading.</reason>
+    </antipattern>
+    <p>Symptom: production NoMatch errors. Root cause: missing default. Fix: add a `general_chain` as the last argument to `RunnableBranch`; never let routing fall off the end.</p>
   </section>
 </text>

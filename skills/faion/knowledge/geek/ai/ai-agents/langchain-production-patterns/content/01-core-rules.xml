@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="langchain-production-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for langchain-production-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="langchain-production-patterns Core Rules" version="2.0.0" est_tokens="1100" depth="essential">
+  <summary>Hardening rules for production LangChain chains: fallbacks, retries, configurable fields, batch, dependency pinning, observability pairing.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Wire .with_fallbacks([backup]) when ≥2 providers are available AND target_uptime ≥ 0.99.</statement>
+      <rationale source="prod-experience">Single-provider outages of 30-60min are routine; a non-fallback chain trips your SLA on the first one.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Cap retry.max_attempts at 5 with exponential backoff + jitter. Linear backoff or no cap turns a transient blip into a retry storm.</statement>
+      <rationale source="ops-experience">Unbounded retries multiply load on the failing service, often making the outage worse and burning your budget.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Expose model + temperature via .configurable_fields so you can A/B and swap models at runtime without redeploy.</statement>
+      <rationale source="dev-velocity">Hot-swap saves you a deploy cycle when one model regresses.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Pin LangChain (and embedding model versions) to exact-hash via uv/pip-tools when dep_policy=locked. Minor releases have changed defaults in LangChain.</statement>
+      <rationale source="prod-experience">Silent dep upgrades produced subtly different outputs the day after CI ran; only hash-pinning guarantees reproducibility.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Use chain.batch with return_exceptions=True; correlate results by input index, never by output order.</statement>
+      <rationale source="bug-history">Partial failures reorder outputs; downstream consumers assuming order silently see swapped results.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Alert when fallback hit-rate exceeds 5% over a 1-hour window. Silent successful fallback masks a dead primary.</statement>
+      <rationale source="ops-experience">Fallbacks are safety nets, not free uptime; you need to know when they fire.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Pair every with_retry with an outer circuit breaker. Retries × tools = turn explosion otherwise (see [[max-turns-circuit-breaker]]).</statement>
+      <rationale source="agent-design">Tool-using agents amplify retry cost: each retry can spawn N more tool calls.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Require LangSmith tracing for every chain with fallbacks. Untraced fallbacks make root-cause analysis impossible.</statement>
+      <rationale source="prod-experience">Without traces you cannot tell whether the primary or backup served the request, let alone why.</rationale>
     </rule>
   </section>
 </text>

@@ -3,71 +3,96 @@ slug: llamaindex-ingestion-pipeline
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: LlamaIndex IngestionPipeline chains document loaders, metadata extractors, and node parsers into a single reusable pipeline.
-content_id: "d8528dadb1b8a6b5"
-tags: [llamaindex, ingestion, chunking, vector-store, rag]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Designs a LlamaIndex IngestionPipeline (loaders + metadata extractors + node parsers + vector store persistence) and emits an ingestion-spec.
+content_id: e578143ce2b61de2
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [llamaindex, ingestion, metadata-extractor, vector-store]
 ---
-# LlamaIndex Ingestion Pipeline
+# Llamaindex Ingestion Pipeline
 
 ## Summary
 
-**One-sentence:** LlamaIndex IngestionPipeline chains document loaders, metadata extractors, and node parsers into a single reusable pipeline.
+**One-sentence:** Designs a LlamaIndex IngestionPipeline (loaders + metadata extractors + node parsers + vector store persistence) and emits an ingestion-spec.
 
-**One-paragraph:** LlamaIndex IngestionPipeline chains document loaders, metadata extractors, and node parsers into a single reusable pipeline. Connect to a persistent vector store (Chroma or Pinecone) via StorageContext to avoid re-embedding on restart. Tune chunking strategy — SentenceSplitter for speed, SemanticSplitterNodeParser for coherence — based on query patterns.
+**One-paragraph:** Ad-hoc ingestion scripts re-embed on every restart and skip metadata. IngestionPipeline solves this by chaining loaders, metadata extractors (TitleExtractor, SummaryExtractor), node parsers, and a persistent vector store. This methodology converts a corpus profile into a deterministic ingestion-spec.
+
+**Ефективно для:** solopreneur whose ingestion is a notebook one-liner and now needs to scale to thousands of docs without re-embedding.
 
 ## Applies If (ALL must hold)
 
-- Building a production RAG system that must survive restarts without re-embedding the corpus.
-- Corpus requires metadata enrichment (auto-extracted titles, summaries, keywords) for filtered retrieval.
-- Multiple document types from different sources — IngestionPipeline unifies loading, parsing, and embedding in one call.
-- Long documents where chunk boundary choice materially affects answer quality — compare SentenceSplitter vs SemanticSplitter.
+- Using LlamaIndex.
+- Corpus updates ≥1× per week.
+- Embedding cost matters (≥$10/build).
+- ≥1 persistent vector store available.
+- Documents need metadata (title/summary/source) for retrieval filtering.
 
 ## Skip If (ANY kills it)
 
-- Prototype with fewer than 100 documents — VectorStoreIndex.from_documents() inline is simpler and sufficient.
-- Fully dynamic data with real-time updates — LlamaIndex indexes are append-friendly but not designed for continuous stream ingestion; use a dedicated streaming pipeline.
-- Cost is the hard constraint on a small corpus — metadata extractors (TitleExtractor, SummaryExtractor) fire LLM calls per document; disable them if the corpus is large and metadata is not needed.
+- One-off prototype with <100 docs.
+- Corpus never changes.
+- Custom non-LlamaIndex pipeline.
+- Metadata isn't useful for retrieval (rare).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `corpus-profile.yaml` | doc_count, update_frequency, embedding_budget_usd, metadata_needs | author |
+| `Vector store endpoint` | Chroma/Pinecone URL | infra |
+| `LLM + embedder creds` | secret | config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[llamaindex-basics]] | Index foundations. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for IngestionPipeline composition, splitter choice, vector-store persistence. | ~1000 |
+| `content/02-output-contract.xml` | essential | ingestion-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Re-embed on restart, missing dedup, splitter mismatch. | ~700 |
+| `content/04-procedure.xml` | recommended | 6-step pipeline procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/corpus-profile.yaml` | Input. |
+| `templates/ingestion-spec.md` | Output. |
+| `templates/pipeline.py` | Working IngestionPipeline. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-llamaindex-ingestion-pipeline.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[llamaindex-basics]]
+- [[llamaindex-indexes-queries]]
+- [[llamaindex-production-gotchas]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on update_frequency (high → docstore dedup required), then on embedding_budget (low → SentenceSplitter; high → SemanticSplitterNodeParser), then on metadata needs. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

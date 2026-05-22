@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-production-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-production-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-production-patterns Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Four hardening antipatterns that turn safety nets into bugs: silent dep upgrades, retry storms, fallback masking, batch order break.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using RunnableParallel in a synchronous invoke() call expecting true parallel execution of multiple LLM branches.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sync RunnableParallel runs branches sequentially. For actual parallelism use ainvoke() or astream() with async branches.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using hub.pull() in a production chain that may run in air-gapped or restricted network environments.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>hub.pull() fetches prompts from LangSmith Hub at runtime. If the Hub is down or the prompt is deleted, the chain fails with an unclear error. Inline prompts or locally committed templates are safer for production.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Importing from langchain-community without pinning the optional backend dependencies (pypdf, chromadb, etc.).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Community loaders depend on optional libraries not installed by default. Missing deps fail silently or raise confusing ImportError at invocation time, not at import time.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Chain returns subtly different outputs the day after `pip install -U` runs in CI.</symptom>
+      <root-cause>requirements.txt has floating versions; LangChain bumped minor; default parser changed.</root-cause>
+      <fix>Switch to exact-hash pinning (`pip-tools` / `uv lock`); restore via CI from lockfile, never `pip install -U` outside an explicit upgrade PR.</fix>
+      <detector>Diff lockfile across commits; any LangChain version bump without a corresponding PR description is a flag.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="critical">
+      <symptom>One provider's 5xx tornado triggers 50 retries per request × 1000 RPS = $$$ + DoS yourself.</symptom>
+      <root-cause>Retry wrapped around the whole chain without exponential backoff, jitter, or max-attempt cap.</root-cause>
+      <fix>retry.max_attempts ≤5 with exponential backoff + jitter; circuit-breaker layer above that.</fix>
+      <detector>Spike retry count metric to confirm cap holds; load-test with a forced 5xx.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="high">
+      <symptom>Fallback works so well you do not realise the primary is dead for a week.</symptom>
+      <root-cause>with_fallbacks succeeds silently; no alert wired on fallback hit rate.</root-cause>
+      <fix>Emit a metric on fallback path; alert when fallback rate &gt;5% over 1h.</fix>
+      <detector>Force-fail primary in staging; verify alert fires.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Batch outputs come back in wrong order after a retry.</symptom>
+      <root-cause>chain.batch reorders on partial failure; reorder bug bites only with retries.</root-cause>
+      <fix>Pass `return_exceptions=True` and explicitly correlate results by input index, never by order.</fix>
+      <detector>Inject a forced fail on item 3 of a 10-batch; verify correlation, not order.</detector>
+    </antipattern>
   </section>
 </text>

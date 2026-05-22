@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="idempotent-write-tools Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Per-tool routing: read, write+key, or preview+apply pair.</summary>
+
+  <decision-tree>
+    <root-question id="q-mutates">Does the tool mutate external state (write to DB, call POST, send email, charge card, modify file)?</root-question>
+
+    <branch when="mutates == false">
+      <conclusion ref="r2-no-key-on-reads">Pure read tool; do NOT add idempotency_key.</conclusion>
+    </branch>
+
+    <branch when="mutates == true">
+      <question id="q-destructive">Is the side effect destructive or expensive (delete data, charge money, deploy infra, send irreversible email)?</question>
+
+      <branch when="destructive == false">
+        <conclusion ref="r1-key-on-every-write">Add required `idempotency_key` to the input schema; persist key → result for 24h; short-circuit on hit.</conclusion>
+      </branch>
+
+      <branch when="destructive == true">
+        <question id="q-preview-pure">Can a pure (no side effect) preview be implemented?</question>
+
+        <branch when="pure_preview_possible == true">
+          <conclusion ref="r4-preview-apply-for-destructive">Split into `*_preview` (pure) and `*_apply` (requires preview_hash + idempotency_key). Remove the single-call form from the catalog.</conclusion>
+        </branch>
+
+        <branch when="pure_preview_possible == false">
+          <conclusion ref="r5-preview-pure">Halt; refuse to ship the tool until a pure preview path exists or escalate for explicit human-gate approval per call.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="mutates=true, destructive=true (stripe refund)">
+    q-mutates → branch(true) → q-destructive → branch(true) → q-preview-pure → branch(true) → conclusion(r4-preview-apply-for-destructive).
+  </example>
+</text>

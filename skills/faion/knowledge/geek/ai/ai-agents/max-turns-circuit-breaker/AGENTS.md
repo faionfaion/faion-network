@@ -3,71 +3,97 @@ slug: max-turns-circuit-breaker
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Set an explicit max_turns on every production agent run (5-10 for retrieval, 15-20 for coding agents) and CATCH the resulting MaxTurnsExceeded exception.
-content_id: "7a38dbac4a8f6ed2"
-tags: [agent-patterns, resilience, error-handling, production-deployment, cost-control]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Sets a max_turns on every agent run, catches MaxTurnsExceeded as a structured fallback, and emits a circuit-breaker-spec.
+content_id: 7f985b465ba7cb64
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [agent, circuit-breaker, max-turns, recovery]
 ---
-# Max-Turns as Circuit Breaker, Not Error
+# Max Turns Circuit Breaker
 
 ## Summary
 
-**One-sentence:** Set an explicit max_turns on every production agent run (5-10 for retrieval, 15-20 for coding agents) and CATCH the resulting MaxTurnsExceeded exception.
+**One-sentence:** Sets a max_turns on every agent run, catches MaxTurnsExceeded as a structured fallback, and emits a circuit-breaker-spec.
 
-**One-paragraph:** Set an explicit max_turns on every production agent run (5-10 for retrieval, 15-20 for coding agents) and CATCH the resulting MaxTurnsExceeded exception. On catch, hand the partial trajectory to a cheap recovery model that summarizes what was tried and asks the user to clarify, instead of bubbling a 500. Hard turn caps are the only deterministic stop for tool-calling loops that fail by silently consuming budget.
+**One-paragraph:** Tool-calling agents fail by silently consuming budget — no exception, just N more turns. The only deterministic stop is a hard max_turns cap, paired with a structured catch that hands the partial trajectory to a cheap recovery model. This methodology turns an agent profile into a circuit-breaker-spec.
+
+**Ефективно для:** solopreneur whose agent occasionally loops for 50 turns and burns $5 per failure.
 
 ## Applies If (ALL must hold)
 
-- Every Runner.run / agent-loop invocation that calls tools.
-- Retrieval agents (cap 5-10 turns) and code-editing agents (cap 15-20).
-- Production deployments where budget is finite and silent loops drain credit.
-- Multi-tenant SaaS where one stuck loop can starve others of rate-limit headroom.
+- Agent calls ≥1 tool that returns text (not terminal).
+- Failure mode 'silent loop' is observed or plausible.
+- Recovery story exists (cheap model summarises trajectory).
+- Budget per turn is bounded.
+- Caller (web UI / API) can render a fallback message.
 
 ## Skip If (ANY kills it)
 
-- Long-running async coding agents in sandboxes designed for hundreds of turns — use checkpoint + human approval instead, not a single max-turns.
-- Chat completions with no tool use — the model already terminates on first non-tool reply.
-- Workflows where the cap is an unrecoverable error (DB transaction half-applied) — solve with idempotency, not a turn cap.
+- Single LLM call — no loop possible.
+- Strict deterministic chain — no tools, no looping.
+- No fallback path — better to crash than swallow.
+- Notebook scratch — manual cancellation OK.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `agent-profile.yaml` | agent_kind (react|coding|retrieval), per_turn_cost_usd, recovery_model, latency_budget_ms | author |
+| `Agent entrypoint` | module symbol | code |
+| `Cheap recovery model handle` | e.g. haiku | config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[langchain-production-patterns]] | Pairs with retries and fallbacks. |
+| [[manifest-then-fetch]] | Long tool outputs are a turn-multiplier. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for max_turns range (5-10 retrieval, 15-20 coding), catch + recovery, no-500-bubble. | ~1000 |
+| `content/02-output-contract.xml` | essential | circuit-breaker-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | No cap, cap too high, no catch, recovery uses same expensive model. | ~700 |
+| `content/04-procedure.xml` | recommended | 5-step wiring procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/agent-profile.yaml` | Input. |
+| `templates/circuit-breaker-spec.md` | Output. |
+| `templates/breaker.py` | Working max_turns + catch. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-max-turns-circuit-breaker.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[langchain-production-patterns]]
+- [[manifest-then-fetch]]
+- [[llamaindex-production-gotchas]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on agent_kind (retrieval → 5-10; coding → 15-20; planning → 10-15), then on per-turn-cost (high → smaller cap), recovery is always haiku-class. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

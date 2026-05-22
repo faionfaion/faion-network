@@ -1,27 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mcp-gateway-composition Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mcp-gateway-composition as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="mcp-gateway-composition Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for mcp-gateway-composition with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mixing virtual-server curation with per-client visibility in one config block (filter rules apply to a tool that has been renamed by curation).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deny rules become ambiguous — the renamed tool may match neither the original nor the new name, silently leaking access.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Federation gateway that re-exposes downstream tools without re-namespacing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Two team gateways both named search collide at the org level. Agent picks at random.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding a gateway in front of 2 servers "for future-proofing".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Below the threshold the gateway is pure latency and one more thing that can break. Add it when the threshold is crossed, not preemptively.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Treating the gateway as a security boundary while letting agents bypass it via direct MCP connections.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If clients can dial servers directly, the gateway's deny rules are decorative. Enforce gateway-only access at the network layer.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>After gateway, tool list is still 40 entries</symptom>
+      <root-cause>Gateway exposed everything by default.</root-cause>
+      <fix>Curate exposed_tools at the gateway; reject any exposure &gt;25.</fix>
+      <detector>Count tools the agent sees; CI test ≤25.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Two servers expose 'search' — collisions at the gateway</symptom>
+      <root-cause>No namespace prefix.</root-cause>
+      <fix>Apply namespace_prefix=server-name; document at the agent prompt.</fix>
+      <detector>Check tool names; all prefixed.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Federation graph has a cycle</symptom>
+      <root-cause>Gateway-of-gateways loop accidentally created.</root-cause>
+      <fix>Define a DAG; gateway config refuses to start with a cycle.</fix>
+      <detector>Start with a cycle; verify the startup error.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Per-client visibility filter dropped after refactor</symptom>
+      <root-cause>Role-tag was hardcoded in one place.</root-cause>
+      <fix>Centralise role-tag resolution; test the deny path.</fix>
+      <detector>Try a forbidden tool as a low-role client; should 403.</detector>
+    </antipattern>
   </section>
 </text>

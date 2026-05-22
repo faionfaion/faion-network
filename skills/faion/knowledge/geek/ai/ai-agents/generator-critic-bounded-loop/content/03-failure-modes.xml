@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="generator-critic-bounded-loop Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for generator-critic-bounded-loop as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="generator-critic-bounded-loop Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Letting the generator and critic share the same model and temperature.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Shared prior — generator and critic make the same mistakes, critic rubber-stamps bad output. Either swap models, swap temperatures, or use a rubric prompt that forces a different reasoning path.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Critic returns only a numeric score; loop decides should_continue from a fixed threshold.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The critic has more context than the threshold rule. Force the critic to emit should_continue explicitly so domain logic stays in the prompt, not in caller code.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-unbounded-loop">
+      <description>`while not critic(output).is_perfect():` — no cap, no plateau detection.</description>
+      <reason>Perfect-is-enemy-of-good drives unbounded spend; one critic regression can drain the budget.</reason>
+    </antipattern>
+    <p>Symptom: loop runs 10+ iterations in production. Root cause: missing cap. Fix: enforce hard cap of 3 with absolute maximum 5; add plateau detector.</p>
+
+    <antipattern id="fm-02-shared-prior">
+      <description>Generator and critic share same model + same temperature.</description>
+      <reason>The critic rubber-stamps the generator's mistakes because they share the prior. Loop adds cost without quality.</reason>
+    </antipattern>
+    <p>Symptom: critic score climbs across iterations but eval-set quality flat. Root cause: shared prior. Fix: swap critic model, swap temperature, or rewrite the rubric to force a different reasoning path.</p>
+
+    <antipattern id="fm-03-threshold-derived-continue">
+      <description>Critic returns only a numeric score; loop decides `should_continue` from a fixed threshold.</description>
+      <reason>The critic has more context than the threshold rule; threshold-based logic leaks into caller code and is hard to tune.</reason>
+    </antipattern>
+    <p>Symptom: caller code has score thresholds duplicated across multiple loop sites. Root cause: critic schema missing `should_continue`. Fix: force the critic to emit `should_continue: bool` explicitly; remove threshold logic from caller code.</p>
+
+    <antipattern id="fm-04-critic-on-tool-truth">
+      <description>Tool-calling agent uses both a critic AND a tool result as truth sources.</description>
+      <reason>Two truths means the loop has no clear stop condition; critic may veto a correct answer because it disagrees with the tool, or vice versa.</reason>
+    </antipattern>
+    <p>Symptom: loop oscillates between approve and reject. Root cause: dual truth. Fix: pick one. If the tool is authoritative, drop the critic; if the critic must judge, the critic should incorporate tool output into its reasoning, not compete with it.</p>
   </section>
 </text>

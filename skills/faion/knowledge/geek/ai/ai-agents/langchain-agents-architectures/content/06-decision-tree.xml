@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="langchain-agents-architectures Decision Tree" version="1.0.0" est_tokens="700">
+  <summary>Pick ReAct vs Plan-and-Execute vs LATS.</summary>
+
+  <decision-tree>
+    <root-question id="q-solution-known">Is the solution path known and linear (deterministic steps)?</root-question>
+
+    <branch when="solution_known == true">
+      <conclusion ref="r1-max-iterations">Skip the agent framework; use a plain LCEL chain or Python function.</conclusion>
+    </branch>
+
+    <branch when="solution_known == false">
+      <question id="q-multi-step">Does the task require 3+ tool calls with intermediate dependencies?</question>
+
+      <branch when="multi_step == false">
+        <conclusion ref="r1-max-iterations">Use ReAct with `create_react_agent`, `max_iterations=15`, and `handle_tool_error=True` on every tool.</conclusion>
+      </branch>
+
+      <branch when="multi_step == true">
+        <question id="q-uncertain-path">Is the solution path highly uncertain (multiple plausible approaches; backtracking valuable)?</question>
+
+        <branch when="uncertain_path == true">
+          <conclusion ref="r3-validate-plan">Use LATS with 2 branches × 3 depth, Haiku scoring, Sonnet expansion. Cap LLM calls at 10 per problem.</conclusion>
+        </branch>
+
+        <branch when="uncertain_path == false">
+          <conclusion ref="r3-validate-plan">Use Plan-and-Execute with StateGraph (planner / executor / synthesizer). Add re-plan gate after each executor step.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="solution_known=false, multi_step=true, uncertain_path=false">
+    q-solution-known → branch(no) → q-multi-step → branch(yes) → q-uncertain-path → branch(no) → conclusion(r3-validate-plan, Plan-and-Execute).
+  </example>
+</text>

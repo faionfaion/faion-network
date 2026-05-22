@@ -1,22 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="langchain-memory Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="langchain-memory Output Contract" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Decision-record schema for selecting and wiring a LangChain memory backend. Every emitted record must validate against the JSON schema below; both a valid and invalid example are included.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
+  <output-contract produces="decision-record">
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["slug", "version", "decision", "drivers", "rejected", "wiring", "audit"],
+  "properties": {
+    "slug": {"const": "langchain-memory"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "decision": {
+      "type": "object",
+      "required": ["memory_type", "store_backend", "session_id_strategy", "ttl_seconds"],
+      "properties": {
+        "memory_type": {"enum": ["buffer", "summary", "vector", "entity"]},
+        "store_backend": {"enum": ["in-memory", "redis", "postgres", "chroma", "pinecone"]},
+        "session_id_strategy": {"enum": ["uuid", "hashed-user-id", "thread-id"]},
+        "ttl_seconds": {"type": "integer", "minimum": 60}
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "required": ["expected_turns", "recall_pattern", "entity_focus"],
+      "properties": {
+        "expected_turns": {"type": "integer", "minimum": 1},
+        "recall_pattern": {"enum": ["recency", "semantic", "mixed"]},
+        "entity_focus": {"type": "boolean"}
+      }
+    },
+    "rejected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["memory_type", "reason"],
+        "properties": {
+          "memory_type": {"enum": ["buffer", "summary", "vector", "entity"]},
+          "reason": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "wiring": {
+      "type": "object",
+      "required": ["snippet", "history_messages_key", "input_messages_key"],
+      "properties": {
+        "snippet": {"type": "string", "minLength": 40},
+        "history_messages_key": {"type": "string"},
+        "input_messages_key": {"type": "string"}
+      }
+    },
+    "audit": {
+      "type": "object",
+      "required": ["rule_refs"],
+      "properties": {
+        "rule_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^r[0-9]+$"}}
+      }
+    }
+  }
+}
+]]></schema>
+
+    <example valid="true" title="6-turn customer-support assistant"><![CDATA[
+{
+  "slug": "langchain-memory",
+  "version": "2.0.0",
+  "decision": {
+    "memory_type": "buffer",
+    "store_backend": "redis",
+    "session_id_strategy": "uuid",
+    "ttl_seconds": 3600
+  },
+  "drivers": {"expected_turns": 6, "recall_pattern": "recency", "entity_focus": false},
+  "rejected": [
+    {"memory_type": "summary", "reason": "Under 10 turns; summary cost > buffer cost."},
+    {"memory_type": "vector", "reason": "No semantic recall pattern; cross-session leakage risk without filter."}
+  ],
+  "wiring": {
+    "snippet": "RunnableWithMessageHistory(chain, get_session_history, input_messages_key='input', history_messages_key='history')",
+    "history_messages_key": "history",
+    "input_messages_key": "input"
+  },
+  "audit": {"rule_refs": ["r1", "r13", "r14"]}
+}
+]]></example>
+
+    <example valid="false" title="Static session id + in-memory store"><![CDATA[
+{
+  "slug": "langchain-memory",
+  "version": "2.0.0",
+  "decision": {
+    "memory_type": "buffer",
+    "store_backend": "in-memory",
+    "session_id_strategy": "hashed-user-id",
+    "ttl_seconds": 0
+  },
+  "drivers": {"expected_turns": 60, "recall_pattern": "semantic", "entity_focus": false},
+  "rejected": [],
+  "wiring": {"snippet": "x", "history_messages_key": "history", "input_messages_key": "input"},
+  "audit": {"rule_refs": []}
+}
+]]></example>
+    <example-violations>
+      <violation>ttl_seconds=0 — rule r14 requires positive TTL.</violation>
+      <violation>store_backend=in-memory but expected_turns=60 — in-memory dies on restart.</violation>
+      <violation>memory_type=buffer with semantic recall_pattern — rule r5 demands vector.</violation>
+      <violation>rejected array empty — output-contract requires ≥1 alternative analysed.</violation>
+      <violation>audit.rule_refs empty — every decision must cite at least one rule.</violation>
+    </example-violations>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>JSON validates against the schema above.</item>
+      <item>memory_type matches the decision tree leaf for the given drivers.</item>
+      <item>store_backend is durable (not in-memory) for any production target.</item>
+      <item>session_id_strategy is uuid or hashed (never raw user email/id).</item>
+      <item>ttl_seconds ≥ 60 (rule r14).</item>
+      <item>rejected[] contains ≥1 entry with a real reason.</item>
+      <item>audit.rule_refs cites ≥1 rule from 01-core-rules.xml.</item>
     </list>
   </section>
 </text>

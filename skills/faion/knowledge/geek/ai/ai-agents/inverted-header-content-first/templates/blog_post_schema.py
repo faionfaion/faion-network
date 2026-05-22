@@ -1,3 +1,8 @@
+# purpose: Pydantic BlogPost schema with body-first ordering
+# consumes: article generation prompt
+# produces: validated BlogPost instance with body before metadata fields
+# depends-on: pydantic v2
+# token-budget-impact: ~200 tokens of schema serialisation
 """Body-before-metadata schema for one-call article generation.
 
 Field order is generation order in autoregressive SO. Body is declared

@@ -1,42 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-agents-architectures Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-agents-architectures as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-agents-architectures Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five failure modes covering tool hallucination, plan staleness, LATS cost, context bloat, and schema rigidity.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>ReAct tool hallucination: model calls tools not in the schema or calls them with invalid argument types</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use `handle_tool_error=True` and Pydantic-validated inputs. `tool_choice="auto"` does not guarantee valid calls. The model may still invent tool names or pass wrong types. Always validate and set a meaningful error response.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Plan-and-Execute plan staleness: the upfront plan does not account for intermediate tool results</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A failed step 2 leaves steps 3-N invalid. The plan is static but execution is dynamic. Add a re-plan gate after each step that checks whether the remaining plan is still valid. If a step fails or returns unexpected results, trigger a re-planning phase to adjust the remaining steps.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>LATS cost: tree search with 3 candidates × 5 evaluation rounds = 15+ LLM calls per problem</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cost scales poorly with search depth. Each candidate must be generated and scored; deeper trees explode in cost. Use Haiku for scoring and Sonnet for expansion to reduce cost by 70%. In production, limit LATS to 2 branches with 3 depth maximum.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Tool error propagation: a single tool failure raises an exception that aborts the agent run</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unless `handle_tool_error=True` is set, the run fails and the entire agent workflow stops. Always set this flag. Also provide a meaningful error message so the agent understands what went wrong and can retry with different inputs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Context window growth: long ReAct runs fill the context window</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A 20-step ReAct run with verbose tool outputs can consume 50K+ tokens. LangChain does not auto-truncate by default. Truncate tool outputs to 2K characters maximum before appending to state. Better: extract only the relevant excerpt from the tool output and discard the rest.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>LATS scoring reliability: LLM-based scoring of candidate thoughts has low inter-rater reliability</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The "best path" selected may not be objectively best. Use scoring as a heuristic, not ground truth.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>LangGraph schema rigidity: changing `PlanExecuteState` mid-project requires migrating checkpointed state</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Plan the schema carefully upfront. Schema changes are difficult mid-project.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-tool-hallucination">
+      <description>ReAct model calls tools not in the schema OR with invalid argument types.</description>
+      <reason>`tool_choice="auto"` does not guarantee valid calls. Without `handle_tool_error=True` and Pydantic-validated inputs, the run aborts on the first invalid call.</reason>
+    </antipattern>
+    <p>Symptom: run fails with KeyError on tool name or TypeError on args. Root cause: missing validation. Fix: add Pydantic `args_schema` to every tool; set `handle_tool_error=True`; return a meaningful error string so the agent can retry.</p>
+
+    <antipattern id="fm-02-plan-staleness">
+      <description>Plan-and-Execute static plan does not account for intermediate results; failed step 2 leaves steps 3-N invalid.</description>
+      <reason>Plan is static but execution is dynamic. Without a re-plan gate, the run continues on a broken foundation.</reason>
+    </antipattern>
+    <p>Symptom: downstream steps fail with errors that reference the failed step's expected output. Root cause: no re-plan gate. Fix: add a conditional edge after each executor node that checks whether the remaining plan is still valid; trigger re-planning if not.</p>
+
+    <antipattern id="fm-03-lats-cost-explosion">
+      <description>LATS configured with 3 candidates × 5 evaluation rounds = 15+ LLM calls per problem.</description>
+      <reason>Cost scales poorly with search depth. Deeper trees explode in cost; in production this becomes the dominant agent expense.</reason>
+    </antipattern>
+    <p>Symptom: LATS branches' LLM bill exceeds the rest of the agent stack. Root cause: deep search by default. Fix: limit to 2 branches × 3 depth = 6 paths; score with Haiku, expand with Sonnet (~70% cost reduction).</p>
+
+    <antipattern id="fm-04-context-bloat">
+      <description>Long ReAct runs accumulate verbose tool outputs in state until the context window fills.</description>
+      <reason>LangChain does not auto-truncate; a 20-step run with verbose outputs can consume 50K+ tokens.</reason>
+    </antipattern>
+    <p>Symptom: agent stops mid-run with context-window error. Root cause: no truncation. Fix: truncate tool outputs to ~2K characters before appending to state; offload anything larger per `filesystem-as-working-memory`.</p>
+
+    <antipattern id="fm-05-state-schema-rigidity">
+      <description>Changing `PlanExecuteState` mid-project requires migrating every checkpointed state.</description>
+      <reason>LangGraph TypedDict schemas serialize into the checkpointer; schema changes break in-flight runs.</reason>
+    </antipattern>
+    <p>Symptom: deploy of new schema breaks all running agents. Root cause: backward-incompatible schema change. Fix: version state schemas (`v1`, `v2`); migrator function reads old, writes new; deprecate old version after grace period.</p>
   </section>
 </text>

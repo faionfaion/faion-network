@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="langchain-chains Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="langchain-chains Output Contract" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Chain config envelope schema and four canonical pattern shapes.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Chain config envelope">
+    <code lang="json"><![CDATA[
+{
+  "$id": "langchain-chains/config",
+  "type": "object",
+  "required": ["pattern", "module_level", "exceptions_to_handle"],
+  "additionalProperties": false,
+  "properties": {
+    "pattern": {"enum": ["sequential", "router", "map_reduce", "fallback"]},
+    "module_level": {"type": "boolean"},
+    "exceptions_to_handle": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "description": "Class names of retryable exceptions; required when pattern=fallback."
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Sequential">
+    <code lang="python"><![CDATA[
+chain = prompt | model | parser
+result = chain.invoke({"input": "..."})
+    ]]></code>
+  </section>
+
+  <section title="Router (RunnableBranch)">
+    <code lang="python"><![CDATA[
+branch = RunnableBranch(
+    (lambda x: route(x) == "math", math_chain),
+    (lambda x: route(x) == "code", code_chain),
+    general_chain,  # default fallback
+)
+    ]]></code>
+  </section>
+
+  <section title="MapReduce via asyncio.gather">
+    <code lang="python"><![CDATA[
+async def map_reduce(docs: list[str]) -> str:
+    tasks = [summarize_chain.ainvoke({"document": d}) for d in docs]
+    summaries = await asyncio.gather(*tasks)
+    return await combine_chain.ainvoke({"summaries": "\n\n".join(summaries)})
+    ]]></code>
+  </section>
+
+  <section title="Fallback (scoped exceptions)">
+    <code lang="python"><![CDATA[
+from openai import RateLimitError, APITimeoutError
+
+robust = primary.with_fallbacks(
+    [fallback_a, fallback_b],
+    exceptions_to_handle=(RateLimitError, APITimeoutError),
+)
+    ]]></code>
+  </section>
+
+  <section title="Good example (config)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{"pattern": "fallback", "module_level": true, "exceptions_to_handle": ["openai.RateLimitError", "openai.APITimeoutError"]}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Bad example (catch-all fallback)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"pattern": "fallback", "module_level": false, "exceptions_to_handle": []}
+      ]]></code>
+      <note>Empty exception list defaults to catching everything; chain not at module level. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Chain defined at module level.</item>
+      <item>`with_fallbacks()` has non-empty `exceptions_to_handle`.</item>
+      <item>Router has a default fallback.</item>
+      <item>MapReduce uses `asyncio.gather` over `ainvoke`, not synchronous `RunnableParallel`.</item>
     </list>
   </section>
 </text>

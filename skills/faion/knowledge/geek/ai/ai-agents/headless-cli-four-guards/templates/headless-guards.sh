@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: reusable wrapper that applies the four guards for any agent CLI
+# consumes: $1 = cli name, $2 = task string, $3 = allowlist (optional)
+# produces: stdout from the agent run
+# depends-on: claude/codex/aider/opencode binary on PATH
+# token-budget-impact: zero on the wrapper; agent run bills as normal
 # headless-guards.sh — apply the four guards for Claude Code, Codex, Aider, opencode.
 #
 # Usage:

@@ -1,3 +1,8 @@
+# purpose: Reference Python implementation of a write tool with replay semantics
+# consumes: idempotency_key + tool-specific input
+# produces: Refund-like result; second call with same key returns stored result
+# depends-on: pydantic v2; key_store (Redis/DB in production)
+# token-budget-impact: schema serialisation ~150 tokens; replays cost 0 LLM tokens
 """Reference idempotent write tool.
 
 Contract:

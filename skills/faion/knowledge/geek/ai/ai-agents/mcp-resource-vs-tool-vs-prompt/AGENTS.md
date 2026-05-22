@@ -3,70 +3,95 @@ slug: mcp-resource-vs-tool-vs-prompt
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Model Context Protocol (MCP) servers expose three types of capabilities: Tools (actions the model invokes), Resources (content the model reads), and Prompts (templates the user invokes as slash commands).
-content_id: "a45933c854249515"
-tags: [mcp, model-context-protocol, server-design, architecture]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Classifies every MCP capability as Tool/Resource/Prompt via the three-question test and emits a primitive-classification spec.
+content_id: 9d137d31f013349d
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [mcp, tools, resources, prompts, primitive-classification]
 ---
-# MCP — Resource vs Tool vs Prompt: The Three-Question Test
+# Mcp Resource Vs Tool Vs Prompt
 
 ## Summary
 
-**One-sentence:** Model Context Protocol (MCP) servers expose three types of capabilities: Tools (actions the model invokes), Resources (content the model reads), and Prompts (templates the user invokes as slash commands).
+**One-sentence:** Classifies every MCP capability as Tool/Resource/Prompt via the three-question test and emits a primitive-classification spec.
 
-**One-paragraph:** Model Context Protocol (MCP) servers expose three types of capabilities: Tools (actions the model invokes), Resources (content the model reads), and Prompts (templates the user invokes as slash commands). The most common MCP design mistake is misclassification — exposing a Resource as a Tool, or a Tool as a Prompt. Use the three-question test to classify every capability correctly, ensuring the model can reason about side effects and the user gets the right interface.
+**One-paragraph:** The #1 MCP design bug is exposing a Resource as a Tool (LLM calls it unnecessarily and burns tokens) or a Tool as a Prompt (user can't side-effect properly). This methodology runs every capability through the three-question test (Does it side-effect? Is the user calling it directly? Does the model need to reason about its result?) and emits a classification table.
+
+**Ефективно для:** solopreneur building an MCP server who wants the LLM to actually pick the right capability.
 
 ## Applies If (ALL must hold)
 
-- Designing any MCP server, no matter the domain (docs, code, infra, issues).
-- Auditing an existing MCP server and finding tools that always return the same content or resources with side effects.
-- Deciding whether to expose a capability as a Tool, Resource, or Prompt.
-- Building servers that must work across multiple runtimes (Claude Code, OpenAI, Vercel, LangChain).
+- Building or refactoring an MCP server.
+- Server exposes ≥1 capability that's currently a Tool (the default).
+- Selection-accuracy or token cost matters.
+- User-facing slash commands exist (or could).
+- Read-only content (docs, configs) is part of the surface.
 
 ## Skip If (ANY kills it)
 
-- Using an existing third-party MCP server — this is design guidance for server authors.
-- Writing a single-shot script that doesn't expose an MCP interface.
+- Server has exactly 1 obvious tool — no classification needed.
+- Pure write surface — only Tools make sense.
+- Pure data dump — only Resources.
+- MCP server is throwaway scaffold.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `capability-inventory.yaml` | capabilities (name, intent, side_effect, user_facing, llm_reasons_on_result) | author |
+| `Existing MCP server (or scaffold)` | code | repo |
+| `Slash-command surface design` | if any | docs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[mcp-transport-stdio-vs-http]] | Different transports gate which primitives are practical. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for the three-question test, when to choose each primitive. | ~1000 |
+| `content/02-output-contract.xml` | essential | primitive-classification spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Resource as Tool, Tool as Prompt, Prompt with side-effect. | ~700 |
+| `content/04-procedure.xml` | recommended | 5-step classification procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/capability-inventory.yaml` | Input. |
+| `templates/classification-spec.md` | Output. |
+| `templates/server.py` | Working MCP server scaffold with all 3 primitives. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-mcp-resource-vs-tool-vs-prompt.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[mcp-gateway-composition]]
+- [[mcp-transport-stdio-vs-http]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on side_effect (true → Tool), then on user_facing+!side_effect (true → Prompt; false → Resource). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

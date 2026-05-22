@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llamaindex-sql-query Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llamaindex-sql-query as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="llamaindex-sql-query Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for llamaindex-sql-query with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Agent drops a customer table during dev</symptom>
+      <root-cause>Used read-write DSN by accident.</root-cause>
+      <fix>Enforce read-only at the DSN; CI lint refuses write-capable users.</fix>
+      <detector>Try a DROP via NL query; should fail with permission denied, not via 'agent refused'.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Cost blows up on first query against a 200-table DB</symptom>
+      <root-cause>Full schema dumped into prompt.</root-cause>
+      <fix>Use ObjectIndex over SQLTableSchema; retrieve top-3 relevant tables per query.</fix>
+      <detector>Token count per query; should drop 5-10x.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Generated SQL has a fabricated column</symptom>
+      <root-cause>LLM hallucinated under pressure; no validation.</root-cause>
+      <fix>Run SQLDatabase.get_table_columns and validate generated SQL columns against schema; reject if mismatch.</fix>
+      <detector>Run a known-bad query; verify rejection.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Query returns 10M rows and OOMs</symptom>
+      <root-cause>No row limit injected.</root-cause>
+      <fix>Force LIMIT clause; cap max_returned_rows in synth.</fix>
+      <detector>Stress test with broad query; verify LIMIT presence.</detector>
+    </antipattern>
   </section>
 </text>

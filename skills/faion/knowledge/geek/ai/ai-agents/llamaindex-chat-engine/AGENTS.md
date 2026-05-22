@@ -3,71 +3,95 @@ slug: llamaindex-chat-engine
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: LlamaIndex chat engines wrap a VectorStoreIndex with conversation memory and follow-up question handling.
-content_id: "b40b522ab5bdefdf"
-tags: [llamaindex, chat, memory, streaming, rag]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Selects a LlamaIndex chat-engine mode (condense_plus_context, context, react) and bounded memory + streaming and emits a chat-engine-spec.
+content_id: f957861705bed17b
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [llamaindex, chat-engine, memory, streaming]
 ---
-# LlamaIndex Chat Engine and Streaming
+# Llamaindex Chat Engine
 
 ## Summary
 
-**One-sentence:** LlamaIndex chat engines wrap a VectorStoreIndex with conversation memory and follow-up question handling.
+**One-sentence:** Selects a LlamaIndex chat-engine mode (condense_plus_context, context, react) and bounded memory + streaming and emits a chat-engine-spec.
 
-**One-paragraph:** LlamaIndex chat engines wrap a VectorStoreIndex with conversation memory and follow-up question handling. Choose chat mode based on follow-up complexity: condense_plus_context for standard Q&A with history, react for tool-using agents. Bound memory with ChatMemoryBuffer(token_limit=3900) to prevent context overflow. Use streaming for responsive UX in production.
+**One-paragraph:** LlamaIndex chat engines wrap a VectorStoreIndex with conversation memory. Choosing the wrong mode (react when condense+context would do) wastes tokens; unbounded memory blows the context window. This methodology turns a chat profile (follow-up complexity, doc corpus, latency) into a deterministic chat-engine-spec.
+
+**Ефективно для:** solopreneur building a doc-Q&A chatbot on LlamaIndex who needs follow-up questions to work.
 
 ## Applies If (ALL must hold)
 
-- Document Q&A with follow-up questions — users refer to previous answers ("what did you say about X?").
-- Customer support bots grounded in a knowledge base — context mode injects relevant documents into each turn.
-- Long-running research sessions where conversation history helps the agent track what has been covered.
-- Production UX requiring streaming — users see words appear as the model generates, not a long wait.
+- Using LlamaIndex as the framework.
+- Bot needs follow-up question handling (multi-turn).
+- Index already exists or will be built next.
+- Latency budget allows ≥1 LLM call per turn.
+- You can pin token_limit on the memory buffer.
 
 ## Skip If (ANY kills it)
 
-- Single-turn Q&A with no follow-up — a query engine is simpler and cheaper (no history overhead).
-- High-throughput batch querying — chat engines maintain per-session state; use query engines with async batching instead.
-- The primary task is tool orchestration with complex state — LangGraph or a custom ReAct loop has better control primitives.
+- Single-turn Q&A — use plain query_engine.
+- Tool-using agent — use ReActAgent + [[llamaindex-agents-eval]].
+- LangChain-based — use [[langchain-memory]].
+- Chat needs SQL — use [[llamaindex-sql-query]] then wrap.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `chat-profile.yaml` | follow_up_complexity, latency_target_ms, streaming_required, token_limit | author |
+| `VectorStoreIndex` | existing or to-build | ingestion |
+| `LLM client` | instantiated | creds |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[llamaindex-basics]] | Index foundations. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for chat modes, ChatMemoryBuffer, streaming. | ~1000 |
+| `content/02-output-contract.xml` | essential | chat-engine-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Unbounded buffer, wrong mode for follow-ups, streaming UX broken. | ~700 |
+| `content/04-procedure.xml` | recommended | 5-step selection procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/chat-profile.yaml` | Input. |
+| `templates/chat-engine-spec.md` | Output. |
+| `templates/chat.py` | Working chat-engine wiring. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-llamaindex-chat-engine.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[llamaindex-basics]]
+- [[langchain-memory]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on tool_use (true → react; false → condense_plus_context default), then on follow_up_complexity (high → condense_plus_context; trivial → context). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

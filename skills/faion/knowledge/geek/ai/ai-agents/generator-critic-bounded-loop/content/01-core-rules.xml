@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="generator-critic-bounded-loop Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for generator-critic-bounded-loop. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="generator-critic-bounded-loop Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for bounded reflection loops.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Generator-Critic loops must exit on the first true condition: (1) critic returns should_continue=False, (2) score delta vs the prior iteration is below epsilon for 2 consecutive iterations, (3) iteration count reaches the hard cap (default 3, never above 5).</statement>
-      <rationale source="v1-source">Empirical reflection studies (LangChain Reflection Agents) show iteration 2 captures most of the lift, iteration 3 adds the long tail, and iterations 4+ contribute below the noise floor. Three independent stop conditions cover correctness (critic veto), efficiency (plateau), and safety (cap).</rationale>
+    <rule id="r1-three-exit-conditions" testable="true">
+      <statement>The loop MUST exit on the first true of three conditions: (1) critic returns `should_continue=False`, (2) score delta &lt; epsilon for two consecutive iterations, (3) iteration count reaches the hard cap (default 3).</statement>
+      <rationale source="langchain-reflection-agents">Iteration 2 captures most of the lift, iteration 3 adds the long tail, iterations 4+ are below the noise floor. Three independent stop conditions cover correctness, efficiency, and safety.</rationale>
+    </rule>
+
+    <rule id="r2-no-shared-prior" testable="true">
+      <statement>The generator and critic MUST NOT share the same model AND the same temperature; either swap models, swap temperatures, or use a rubric prompt that forces a different reasoning path.</statement>
+      <rationale source="reflection-shared-prior">Shared priors make the critic rubber-stamp the generator's mistakes; the loop adds cost without quality.</rationale>
+    </rule>
+
+    <rule id="r3-structured-should-continue" testable="true">
+      <statement>The critic MUST emit a structured `should_continue: bool` field; the loop MUST NOT derive continuation from a numeric score threshold.</statement>
+      <rationale source="critic-context-window">The critic has more context than a threshold rule; forcing it to emit `should_continue` explicitly keeps domain logic in the prompt instead of caller code.</rationale>
+    </rule>
+
+    <rule id="r4-hard-cap-3" testable="true">
+      <statement>The hard cap MUST be 3 iterations by default, with an absolute maximum of 5; values above 5 are forbidden.</statement>
+      <rationale source="cost-trap-incidents">Unbounded reflection is the most common production cost trap; the cap defends budget when the critic logic regresses.</rationale>
+    </rule>
+
+    <rule id="r5-cheap-rubric-critic" testable="true">
+      <statement>For rubric criticism (style, format, completeness), the critic MUST run on a cheap model (Haiku tier); for correctness criticism, the critic MUST run on the same tier as the generator.</statement>
+      <rationale source="critic-model-sizing">Rubric scoring is constrained classification; correctness checking needs the capacity that produced the answer.</rationale>
     </rule>
   </section>
 </text>

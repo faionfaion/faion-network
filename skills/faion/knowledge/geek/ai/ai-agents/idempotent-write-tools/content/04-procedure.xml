@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="idempotent-write-tools Procedure" version="1.0.0" est_tokens="900" depth="recommended">
+  <summary>Five-step procedure: audit, classify, key-wire, split destructive, verify.</summary>
+
+  <section title="Steps">
+    <step n="1" name="audit-tool-catalog">
+      <input>Tool registry; agent code.</input>
+      <action>Enumerate every tool; tag as read, write, or destructive.</action>
+      <output>Tool inventory CSV.</output>
+    </step>
+
+    <step n="2" name="classify-destructive">
+      <input>Tool inventory.</input>
+      <action>Mark each tool as `destructive` if its effect is unrecoverable (delete data, charge money, send email, deploy infra).</action>
+      <output>Inventory annotated with destructive flag.</output>
+    </step>
+
+    <step n="3" name="wire-idempotency-keys">
+      <input>Inventory.</input>
+      <action>For every write tool, add `idempotency_key: str` to the input schema; wire the key store; short-circuit on cache hit.</action>
+      <output>Updated tool implementations.</output>
+    </step>
+
+    <step n="4" name="split-destructive">
+      <input>Destructive tools.</input>
+      <action>Split each into `*_preview` (pure) and `*_apply` (idempotent, requires preview_hash). Remove the single-call form from the catalog.</action>
+      <output>Pair of tools per destructive operation; registry updated.</output>
+      <decision-gate>If a preview cannot be made pure (mandatory side effect upstream), surface a hard error and refuse to ship — do not silently lie about purity.</decision-gate>
+    </step>
+
+    <step n="5" name="verify">
+      <input>Updated tool catalog.</input>
+      <action>Run `scripts/validate-idempotent-write-tools.py` against sample tool-call bodies; integrate into pre-commit and CI.</action>
+      <output>Green validator on every commit.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="llamaindex-sql-query Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for llamaindex-sql-query. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="llamaindex-sql-query Core Rules" version="2.0.0" est_tokens="950" depth="essential">
+  <summary>Rules for NL-to-SQL via LlamaIndex NLSQLTableQueryEngine: connection mode, table retrieval, schema constraints, SQL safety.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Always connect with a read-only DB user. NL-to-SQL must never have permission to DROP, DELETE, UPDATE, or INSERT.</statement>
+      <rationale source="security-review">An LLM-generated DROP TABLE is one prompt away; the DB user is the only enforceable boundary.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>For DBs with more than 20 tables, build an ObjectIndex of SQLTableSchema and retrieve top-3 relevant table schemas per query. Never dump the full schema into the prompt.</statement>
+      <rationale source="cost-experience">Schema dumping on a 200-table DB consumed 8k tokens per query before the answer started.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>For DBs with at most 20 tables, use the include_tables allowlist explicitly. Implicit selection over-includes.</statement>
+      <rationale source="prompt-engineering">Allowlist forces the engine to surface only the schemas relevant to the workload.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Inject a LIMIT clause into every generated SELECT (default LIMIT 100 unless caller overrides).</statement>
+      <rationale source="ops-experience">SELECT * with no LIMIT returned 10M rows in one incident, OOMing the worker.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Validate generated SQL columns against the actual table schema before execution; reject if any column does not exist.</statement>
+      <rationale source="hallucination-mitigation">LLMs fabricate columns when uncertain; pre-flight validation catches it before the DB does.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Return both the generated SQL and the answer to the caller. Hide-the-SQL surfaces are not auditable.</statement>
+      <rationale source="audit">Showing the SQL is the user's only way to verify the model answered the right question.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Set a query timeout (5-15s) at the DB connection level. Unbounded queries from LLM-generated joins can run for hours.</statement>
+      <rationale source="ops-experience">LLM-generated cross-joins on large tables can run to billions of rows; timeout is the only safe cap.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Forbid the engine from accessing tables containing PII unless pii_posture explicitly allows it.</statement>
+      <rationale source="security-review">NL-to-SQL surfaces data through paraphrase; pseudonymisation in the prompt is not enough.</rationale>
     </rule>
   </section>
 </text>

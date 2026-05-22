@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="map-reduce-send-fanout Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for map-reduce-send-fanout as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="map-reduce-send-fanout Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for map-reduce-send-fanout with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Forgetting the reducer annotation on the aggregation field.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Parallel branches each overwrite the field, last write wins, all but one branch's result is lost. The Annotated[list, operator.add] (or a custom merge) is mandatory.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using Send for branches that mutate shared external state (S3 manifest, DB row, append-only file).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Super-step atomic failure means partial side effects survive a retry. Use a queue + workers (SQS, Inngest, Temporal) for write fan-out, never Send.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Rate-limit cliff: 60 concurrent calls → all fail</symptom>
+      <root-cause>Concurrency uncapped (asyncio.gather of 60 coroutines).</root-cause>
+      <fix>Wrap with asyncio.Semaphore(8-20); same pattern for Send().</fix>
+      <detector>Provoke with 100-item list; observe in-flight count peaks.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Super-step fails atomically; non-idempotent branches double-billed on retry</symptom>
+      <root-cause>Branch had a write side-effect; not idempotent.</root-cause>
+      <fix>Tag branches as @idempotent; if not, route to a queue+workers instead.</fix>
+      <detector>Inject a forced fail mid-fan-out; audit ledger for double writes.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Reducer drops items silently</symptom>
+      <root-cause>Default reducer overwrites instead of accumulating.</root-cause>
+      <fix>Use Annotated[list, operator.add] or explicit merge; never plain dict update.</fix>
+      <detector>Run with 10 items; result length must equal 10.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Hidden shared state: every branch writes to the same logger handler</symptom>
+      <root-cause>Logger handler is module-global; concurrent writes interleave.</root-cause>
+      <fix>Use per-branch structured logger with item_id; flush at branch end.</fix>
+      <detector>Stress-test 50 items; assert per-item log lines are atomic.</detector>
+    </antipattern>
   </section>
 </text>

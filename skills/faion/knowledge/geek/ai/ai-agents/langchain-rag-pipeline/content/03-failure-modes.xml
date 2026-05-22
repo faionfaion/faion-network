@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-rag-pipeline Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-rag-pipeline as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-rag-pipeline Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for langchain-rag-pipeline with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Building a RAG chain that passes the raw retriever output (a list of Documents) directly into the prompt template without a format_docs step.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The prompt template receives a list object, not a string, causing malformed context and degraded generation quality.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Answers cite the wrong document</symptom>
+      <root-cause>Chunk overlap is zero and the boundary fell mid-sentence; relevant passage split across chunks neither of which alone matches the query.</root-cause>
+      <fix>Use RecursiveCharacterTextSplitter with chunk_overlap≈10% of chunk_size.</fix>
+      <detector>Hold out a labeled question set; track recall@5 after re-chunking.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Embedding cost explodes after a re-index</symptom>
+      <root-cause>Embedded the same docs twice because content_id was based on path, not content_hash.</root-cause>
+      <fix>Hash document bodies, store doc_hash in vectorstore metadata, skip re-embedding when hash matches.</fix>
+      <detector>Compare token count consumed by embed step run-over-run; should drop to near zero after no-op re-index.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Retrieval pulls relevant chunks, but the LLM ignores them</symptom>
+      <root-cause>Prompt template puts retrieved context after the question; model focuses on the question.</root-cause>
+      <fix>Put context FIRST, then question, with explicit instruction 'Use only the context above'.</fix>
+      <detector>Insert a sentinel fact in the context; verify the model uses it.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>k=20 floods the prompt; model gets confused</symptom>
+      <root-cause>Default k was kept; no reranker applied.</root-cause>
+      <fix>Set retriever_k to 4-6; add a cross-encoder reranker if you must overfetch.</fix>
+      <detector>Plot answer accuracy vs k; pick the smallest k at the accuracy plateau.</detector>
+    </antipattern>
   </section>
 </text>

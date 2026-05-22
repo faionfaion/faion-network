@@ -1,3 +1,8 @@
+# purpose: OpenRouter chat-completions call with primary + explicit cross-provider fallback chain
+# consumes: messages list + primary model + fallback tuple
+# produces: GatewayResult(text, used_model, fallback_count)
+# depends-on: openai SDK; OPENROUTER_API_KEY env var
+# token-budget-impact: per-call overhead negligible (~10 tokens of routing metadata)
 """OpenRouter chat-completions call with primary model + fallback chain.
 
 Input  → list of messages, primary model id, ordered fallback ids.

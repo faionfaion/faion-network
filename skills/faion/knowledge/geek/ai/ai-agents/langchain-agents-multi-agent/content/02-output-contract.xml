@@ -1,22 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="langchain-agents-multi-agent Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="langchain-agents-multi-agent Output Contract" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Route, DebateState, and HierarchicalState schemas.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Route (supervisor decision)">
+    <code lang="python"><![CDATA[
+from typing import Literal
+from pydantic import BaseModel
+
+class Route(BaseModel):
+    agent: Literal["researcher", "coder", "writer"]
+    reason: str
+    ]]></code>
+  </section>
+
+  <section title="DebateState">
+    <code lang="json"><![CDATA[
+{
+  "$id": "langchain-agents-multi-agent/debate-state",
+  "type": "object",
+  "required": ["topic", "positions", "round", "consensus"],
+  "additionalProperties": false,
+  "properties": {
+    "topic":     {"type": "string"},
+    "positions": {"type": "array", "items": {"type": "object"}},
+    "round":     {"type": "integer", "minimum": 0, "maximum": 5},
+    "consensus": {"type": ["string", "null"]}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="HierarchicalState">
+    <code lang="json"><![CDATA[
+{
+  "$id": "langchain-agents-multi-agent/hierarchical-state",
+  "type": "object",
+  "required": ["task", "team", "subtasks", "results", "final_output"],
+  "additionalProperties": false,
+  "properties": {
+    "task":         {"type": "string"},
+    "team":         {"type": "string"},
+    "subtasks":     {"type": "array", "items": {"type": "string"}},
+    "results":      {"type": "array", "items": {"type": "string"}},
+    "final_output": {"type": "string"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (Route)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{"agent": "researcher", "reason": "Task asks for fact gathering on a public dataset."}
+      ]]></code>
+      <note>Agent value is from the Literal enum; reason explains the choice.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (free-text routing)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+"researcher please handle this"
+      ]]></code>
+      <note>String instead of Route object; orchestrator must parse. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Supervisor emits a Route object, not a string.</item>
+      <item>Debate state has round in [0,5] and explicit consensus field.</item>
+      <item>Hierarchical state has all five required fields.</item>
     </list>
   </section>
 </text>

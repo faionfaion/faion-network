@@ -1,22 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="gateway-fallback-chain Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="gateway-fallback-chain Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Call request body schema (primary + fallback chain) and OTel span attribute set.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Call request body schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "gateway-fallback-chain/call",
+  "type": "object",
+  "required": ["model", "messages", "models"],
+  "additionalProperties": true,
+  "properties": {
+    "model":    {"type": "string", "minLength": 1},
+    "messages": {"type": "array", "minItems": 1},
+    "models": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Ordered fallback chain; the first entry is the primary. Must include >=2 providers.",
+      "items": {"type": "string", "pattern": "^[a-z0-9-]+/[a-z0-9.\\-]+$"}
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="OTel span attribute set">
+    <list>
+      <item>`gen_ai.system`: provider name of the call that actually succeeded.</item>
+      <item>`gen_ai.request.model`: primary model requested.</item>
+      <item>`gen_ai.response.model`: model that produced the response.</item>
+      <item>`gen_ai.usage.fallback_count`: how many providers were tried before success.</item>
+      <item>`gen_ai.usage.cost_usd`: billed cost for the successful call.</item>
+    </list>
+  </section>
+
+  <section title="Good example (cross-provider chain)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "model": "anthropic/claude-opus-4-7",
+  "messages": [{"role": "user", "content": "hello"}],
+  "models": ["anthropic/claude-opus-4-7", "openai/gpt-5", "google/gemini-2.5-pro"]
+}
+      ]]></code>
+      <note>Three distinct providers; outage of any one routes traffic to the next.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (same-vendor chain)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "model": "anthropic/claude-opus-4-7",
+  "messages": [{"role": "user", "content": "hi"}],
+  "models": ["anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4-7", "anthropic/claude-haiku-4-5"]
+}
+      ]]></code>
+      <note>All three are Anthropic; vendor outage takes the whole chain down. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`models` has at least 2 entries from distinct providers.</item>
+      <item>4xx errors are propagated to the caller; gateway does NOT silently retry on 400/401/422.</item>
+      <item>OTel attributes capture `fallback_count` and `cost_usd`.</item>
     </list>
   </section>
 </text>

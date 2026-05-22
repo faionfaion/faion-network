@@ -1,22 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="langchain-agents-architectures Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="langchain-agents-architectures Output Contract" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Tool docstring contract, agent invocation result schema, and supervisor Route schema.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Tool docstring contract">
+    <p>Tool docstring is the agent-facing prompt. It MUST contain three labelled sections in order: "Use for:", "Do NOT use for:", "Returns:".</p>
+    <code lang="python"><![CDATA[
+@tool
+def web_search(query: str) -> str:
+    """Search the web.
+
+    Use for: facts, recent events, company info, pricing.
+    Do NOT use for: math, code execution, structured data.
+    Returns: plain-text top-5 results, truncated to ~2k chars.
+    """
+    ...
+    ]]></code>
+  </section>
+
+  <section title="Agent invocation result schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "langchain-agents-architectures/agent-result",
+  "type": "object",
+  "required": ["final_answer", "iterations", "session_id"],
+  "additionalProperties": true,
+  "properties": {
+    "final_answer": {"type": "string"},
+    "iterations":   {"type": "integer", "minimum": 0},
+    "session_id":   {"type": "string", "minLength": 1}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Supervisor Route schema">
+    <code lang="python"><![CDATA[
+from typing import Literal
+from pydantic import BaseModel
+
+class Route(BaseModel):
+    agent: Literal["researcher", "coder", "writer"]
+    reason: str
+    ]]></code>
+  </section>
+
+  <section title="Good example (agent result)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{"final_answer": "42", "iterations": 4, "session_id": "ses_2026_05_22_001"}
+      ]]></code>
+      <note>Tracks iteration count + session_id for trace attribution.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (missing session_id)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"final_answer": "42", "iterations": 4}
+      ]]></code>
+      <note>No session_id; LangSmith traces cannot be cross-referenced. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every tool docstring has Use/Do NOT use/Returns sections.</item>
+      <item>Agent result includes `iterations` and `session_id`.</item>
+      <item>Supervisor uses `Route` Pydantic model, not free text.</item>
     </list>
   </section>
 </text>

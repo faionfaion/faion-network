@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="llamaindex-production-gotchas Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for llamaindex-production-gotchas. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="llamaindex-production-gotchas Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>Rules patching known LlamaIndex production failure modes: async blocking, retriever concurrency, ReAct error handling, eval cost, observability.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement>Inside async endpoints, always call .aquery() not .query(). The sync .query() blocks the event loop and causes head-of-line blocking.</statement>
+      <rationale source="llamaindex-issue-tracker">FastAPI workers hanging in production traced to .query() inside async def; .aquery() resolves it.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Wrap SubQuestionQueryEngine.query() in asyncio.to_thread when calling from an async context; or call .aquery_engine. Sub-question fan-out is unbounded by default.</statement>
+      <rationale source="llamaindex-docs">SubQuestion engine internally fans out; bound concurrency or move to a thread pool.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>QueryFusionRetriever must be capped at num_workers=4-8. Default is unbounded and trips rate-limit cliffs.</statement>
+      <rationale source="prod-experience">Unbounded fusion opens 30+ concurrent LLM calls on the first multi-query request.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Wrap every ReActAgent tool with try/except that returns a structured error string. ReActAgent does not auto-recover from tool exceptions.</statement>
+      <rationale source="llamaindex-issue-tracker">A failing tool currently propagates as an unhandled exception, killing the agent loop.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Sample eval sets proportionally to budget (10-50 per metric per build); never run full faithfulness+relevancy+correctness on the entire set every CI run.</statement>
+      <rationale source="cost-experience">A single full eval run on 1k samples can cost over $80 on GPT-4-class judges.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement>Wire LlamaIndex Callbacks (TokenCountingHandler + custom observability) at app boot. Untraced LlamaIndex runs are blind.</statement>
+      <rationale source="ops-experience">Without callbacks you cannot answer 'why did this query cost $0.30?' after the fact.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement>Use response.print_response_stream() only when streaming is configured at the query_engine level. Mixing modes corrupts output.</statement>
+      <rationale source="llamaindex-docs">Streaming must be opted-in at engine construction; partial streaming corrupts the response buffer.</rationale>
+    </rule>
+    <rule id="r8" testable="true" depth="essential">
+      <statement>Cache embeddings at the IngestionPipeline boundary (cache=IngestionCache(...)); never embed inline in a query path.</statement>
+      <rationale source="performance">Inline embedding on every query adds 200-500ms; cache it once at ingestion.</rationale>
     </rule>
   </section>
 </text>

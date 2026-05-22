@@ -1,12 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="langchain-memory Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for langchain-memory as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="langchain-memory Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Five high-impact failure modes for LangChain memory in production. Each one has a concrete detector (something you can check programmatically) and a fix that maps back to a rule in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="critical">
+      <symptom>User A asks "what's my name?" and gets User B's name back.</symptom>
+      <root-cause>session_id is a shared/static string, or derived from a predictable user attribute (email) that an attacker can replay. RunnableWithMessageHistory stores all messages under that key and the lookup leaks across users.</root-cause>
+      <fix>Generate session_id as a server-side UUID, store it in the user's signed cookie/JWT, never accept it from the client unverified. References rule r13.</fix>
+      <detector>Scan logs for &gt;1 distinct user-id per session_id within 1h window — any hit is a leak.</detector>
+    </antipattern>
+
+    <antipattern id="fm-02" severity="high">
+      <symptom>App works in dev, loses all conversations after each deploy.</symptom>
+      <root-cause>get_session_history returns InMemoryChatMessageHistory backed by a process-local dict. Restart wipes the dict.</root-cause>
+      <fix>Swap to RedisChatMessageHistory or a Postgres-backed implementation; gate the in-memory variant behind ENV != production. References rule r1 (durability implication).</fix>
+      <detector>Restart the service mid-conversation; verify history survives. If not, you're in-memory.</detector>
+    </antipattern>
+
+    <antipattern id="fm-03" severity="high">
+      <symptom>Token cost per turn grows linearly until you blow past the model context window around turn 200.</symptom>
+      <root-cause>Buffer memory was kept past its sweet spot. No summarisation, no compaction, no swap to vector.</root-cause>
+      <fix>At expected_turns &gt;10, swap to summary memory; at &gt;50 or when recall is semantic, swap to vector memory. References rule r5 and r15.</fix>
+      <detector>Log token count per turn; plot it. Linear growth past turn 20 = misconfigured.</detector>
+    </antipattern>
+
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Auditor asks "what did the user say in turn 12?" and you cannot retrieve it.</symptom>
+      <root-cause>Summary memory summarised away the original text. Summary is lossy and irreversible.</root-cause>
+      <fix>Pair summary memory with an append-only raw-history log (separate Postgres table or S3) for audit. Summary serves the prompt; raw log serves compliance. References rule r2.</fix>
+      <detector>Try to retrieve a specific past turn by index; if you only have the summary, you've lost it.</detector>
+    </antipattern>
+
+    <antipattern id="fm-05" severity="medium">
+      <symptom>Vector memory returns turns from another user's session.</symptom>
+      <root-cause>Shared vectorstore collection without session_id metadata filter. similarity_search ranks by semantic distance only and ignores tenant boundaries.</root-cause>
+      <fix>Add session_id (or user_id) to vectorstore metadata on every write; pass filter={"session_id": sid} on every read. References rule r3.</fix>
+      <detector>Insert a sentinel string in session A; query for it from session B; if returned, you have a leak.</detector>
+    </antipattern>
   </section>
 </text>

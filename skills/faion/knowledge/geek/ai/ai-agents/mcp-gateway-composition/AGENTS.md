@@ -3,73 +3,96 @@ slug: mcp-gateway-composition
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When an agent connects to more than 5 MCP servers, put a gateway in front and compose them via one of three patterns: virtual server (gateway exposes a curated subset of upstream tools as one logical server), federation (gateways consume gateways in a tree), or per-client visibility (gateway filters the tool list by user/role).
-content_id: "013755a50114a6c6"
-tags: [mcp, tool-composition, gateway-patterns, multi-server, scaling]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Designs an MCP gateway composition (virtual-server / federation / per-client visibility) for an agent connected to ≥5 MCP servers and emits a gateway-spec.
+content_id: ecc14224ec02fff6
+complexity: deep
+produces: spec
+est_tokens: 4000
+tags: [mcp, gateway, federation, virtual-server, tool-selection]
 ---
-# MCP Gateway Composition — Five-Server Threshold
+# Mcp Gateway Composition
 
 ## Summary
 
-**One-sentence:** When an agent connects to more than 5 MCP servers, put a gateway in front and compose them via one of three patterns: virtual server (gateway exposes a curated subset of upstream tools as one logical server), federation (gateways consume gateways in a tree), or per-client visibility (gateway filters the tool list by user/role).
+**One-sentence:** Designs an MCP gateway composition (virtual-server / federation / per-client visibility) for an agent connected to ≥5 MCP servers and emits a gateway-spec.
 
-**One-paragraph:** When an agent connects to more than 5 MCP servers, put a gateway in front and compose them via one of three patterns: virtual server (gateway exposes a curated subset of upstream tools as one logical server), federation (gateways consume gateways in a tree), or per-client visibility (gateway filters the tool list by user/role). The gateway centralizes auth, rate limiting, audit, namespace collision resolution, and tool-list trimming — without it, each client re-implements all five concerns and the agent's tool catalog explodes past the ~25-tool selection-accuracy cliff.
+**One-paragraph:** When an agent connects to >5 MCP servers the tool catalog explodes past the ~25-tool selection-accuracy cliff. A gateway in front composes them via virtual-server (curated subset), federation (gateway-of-gateways), or per-client visibility (filtered by user/role). This methodology turns a server inventory into a deterministic gateway-spec covering auth, rate limiting, audit, and namespace collisions.
+
+**Ефективно для:** solopreneur whose agent is connected to 8 MCP servers and is starting to mis-call tools.
 
 ## Applies If (ALL must hold)
 
-- Agent connects to >5 MCP servers (or ≥3 from different vendors).
-- Multi-tenant deployment where different users/roles need different tool subsets.
-- Cross-team setup where namespace collisions are likely (github.search vs linear.search).
-- Compliance requirement to centralize audit / rate limit / OAuth across tools.
-- Tool catalog already breaks the ~25-tool selection-accuracy threshold — gateway can lazy-load toolkits.
+- Agent connects to ≥5 MCP servers.
+- Tool count across servers ≥25.
+- ≥1 cross-server concern (auth, namespace collision, rate limiting).
+- Gateway runtime available (Node/Python/Go).
+- Per-server tool list is enumerable.
 
 ## Skip If (ANY kills it)
 
-- Solo dev or single agent with 1–3 servers — gateway is overhead, not value.
-- Single-vendor stack where all MCP servers ship from one team and namespaces are pre-coordinated.
-- Hard latency budget where every hop matters and the tool surface is small.
-- Prototype phase — get the agent working flat first, add the gateway when pain appears.
+- ≤3 MCP servers — direct connect is fine.
+- Stdio-only single-user — no gateway needed.
+- Tools < 25 total — no selection cliff.
+- No shared auth concern — direct connect is OK.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `server-inventory.yaml` | servers (name, transport, tools_count, auth_scheme), agent_clients (list, role-tags), shared_concerns | author |
+| `Gateway runtime` | Node/Python/Go | infra |
+| `Per-server tool lists` | JSON | MCP introspect |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[mcp-transport-stdio-vs-http]] | Gateways are HTTP-only. |
+| [[mcp-resource-vs-tool-vs-prompt]] | Tool selection cliff is about the Tool primitive. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for composition patterns, auth centralisation, namespace collision, tool-list trim. | ~1000 |
+| `content/02-output-contract.xml` | essential | gateway-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Tool list still >25 after gateway, namespace collision, gateway-of-gateways loop, auth bypass. | ~700 |
+| `content/04-procedure.xml` | recommended | 6-step design procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/server-inventory.yaml` | Input. |
+| `templates/gateway-spec.md` | Output. |
+| `templates/gateway_config.json` | Working virtual-server + federation config. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-mcp-gateway-composition.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[mcp-resource-vs-tool-vs-prompt]]
+- [[mcp-transport-stdio-vs-http]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on agent_clients_count (1 → virtual-server; many roles → per-client visibility), then on servers_count (>10 → federation), then on shared_concerns (auth → centralise; rate-limit → enforce at gateway). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

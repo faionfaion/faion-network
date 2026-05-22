@@ -3,71 +3,95 @@ slug: mcp-transport-stdio-vs-http
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Pick MCP transport from a closed three-option list keyed to deployment shape: stdio for local single-user subprocess servers (Claude Desktop, Claude Code, Cursor, IDE plugins), Streamable HTTP (single endpoint, OAuth 2.
-content_id: "e32177a1a91624a0"
-tags: [mcp, transport, deployment, architecture, scaling]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Picks MCP transport (stdio for local subprocess, Streamable HTTP for remote/multi-tenant) and emits a transport-spec.
+content_id: 15ec05cb9a04dde0
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [mcp, transport, stdio, streamable-http, oauth]
 ---
-# MCP Transport — stdio Local, Streamable HTTP Remote, SSE Dead
+# Mcp Transport Stdio Vs Http
 
 ## Summary
 
-**One-sentence:** Pick MCP transport from a closed three-option list keyed to deployment shape: stdio for local single-user subprocess servers (Claude Desktop, Claude Code, Cursor, IDE plugins), Streamable HTTP (single endpoint, OAuth 2.
+**One-sentence:** Picks MCP transport (stdio for local subprocess, Streamable HTTP for remote/multi-tenant) and emits a transport-spec.
 
-**One-paragraph:** Pick MCP transport from a closed three-option list keyed to deployment shape: stdio for local single-user subprocess servers (Claude Desktop, Claude Code, Cursor, IDE plugins), Streamable HTTP (single endpoint, OAuth 2.1, resumable streams) for remote/multi-tenant/hosted, and treat SSE as deprecated — only support it for back-compat with pre-2026-03-26 clients. The choice is not a preference, it is dictated by whether the server runs as a subprocess of the client or behind a load balancer.
+**One-paragraph:** MCP transport choice is not preference — it's dictated by deployment shape. stdio for single-user subprocess servers; Streamable HTTP (with OAuth 2.1 and resumable streams) for remote / multi-tenant / hosted. SSE is deprecated. This methodology turns a deployment profile into a deterministic transport-spec.
+
+**Ефективно для:** solopreneur publishing an MCP server who needs the right transport at launch.
 
 ## Applies If (ALL must hold)
 
-- Designing a new MCP server and choosing how clients will reach it.
-- Migrating an existing SSE server to the post-2026-03-26 spec.
-- Reviewing an MCP integration PR — flag any new SSE code as tech debt on day one.
-- Sizing a deployment: stdio implies "1 process per agent session"; HTTP implies a fleet behind an LB.
+- Building or shipping an MCP server.
+- Deployment shape known (laptop subprocess vs hosted multi-tenant).
+- ≥1 client target known (Claude Desktop, Claude Code, Cursor, IDE, web).
+- Auth requirements known (none, OAuth 2.1, API key).
+- Network constraints known (NAT'd, firewalled, public).
 
 ## Skip If (ANY kills it)
 
-- Non-MCP tool integrations (plain HTTP APIs, gRPC) — this rule is MCP-specific.
-- Pure prototype where the server runs once on the author's laptop and never ships — pick whatever is fastest to type.
-- Clients that explicitly require SSE for back-compat and you control both sides — keep SSE only behind a feature flag with a sunset date.
+- Server architecture mandates a specific transport already.
+- Not building an MCP server — different methodology.
+- Internal-only on a fixed VPN — pick HTTP unconditionally.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `deployment-profile.yaml` | client_targets, multi_tenant, auth_required, network_constraints | author |
+| `MCP SDK` | py/ts | code |
+| `Auth provider (if HTTP)` | Auth0/Cognito/etc | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[mcp-resource-vs-tool-vs-prompt]] | Primitive classification depends on transport feasibility. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for stdio vs streamable HTTP, deprecation of SSE, OAuth 2.1 mandate. | ~1000 |
+| `content/02-output-contract.xml` | essential | transport-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Stdio over network, SSE for new builds, HTTP without OAuth, resumable disabled. | ~700 |
+| `content/04-procedure.xml` | recommended | 5-step selection procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/deployment-profile.yaml` | Input. |
+| `templates/transport-spec.md` | Output. |
+| `templates/server_http.py` | Working Streamable HTTP scaffold. |
+| `templates/server_stdio.py` | Working stdio scaffold. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-mcp-transport-stdio-vs-http.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[mcp-gateway-composition]]
+- [[mcp-resource-vs-tool-vs-prompt]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on multi_tenant (true → streamable-http; false → stdio), then on auth_required (true with http → OAuth 2.1 mandatory), then on resumable_streams (always true for streamable-http). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

@@ -1,22 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="handoff-id-payload Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="handoff-id-payload Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the handoff payload and SupervisorDecision.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Handoff payload schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "handoff-id-payload/handoff",
+  "type": "object",
+  "required": ["task_id", "target_agent", "decision_metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id":      {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"},
+    "target_agent": {"type": "string", "minLength": 1},
+    "decision_metadata": {"type": "object"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="SupervisorDecision schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "handoff-id-payload/supervisor-decision",
+  "type": "object",
+  "required": ["target_agent", "reason"],
+  "additionalProperties": false,
+  "properties": {
+    "target_agent":     {"type": "string"},
+    "reason":           {"type": "string", "minLength": 4, "maxLength": 300},
+    "decision_metadata": {"type": "object"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (handoff)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "task_id": "t_8821",
+  "target_agent": "neromedia_writer",
+  "decision_metadata": {"category": "AI", "lang": "uk", "source_count": 3}
+}
+      ]]></code>
+      <note>53 bytes; the writer pulls the 3 source articles from `/srv/nero/queue/t_8821.json` on receipt.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (conversation forwarding)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "to": "neromedia_writer",
+  "history": [
+    {"role": "user", "content": "<6KB original article + classifier's full chain-of-thought>"}
+  ]
+}
+      ]]></code>
+      <note>No task_id; classifier reasoning leaks into every downstream agent. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Payload has `task_id`, `target_agent`, `decision_metadata` only.</item>
+      <item>No conversation history, no raw input, no prior agent's reasoning.</item>
+      <item>Supervisor emissions are structured SupervisorDecision objects.</item>
     </list>
   </section>
 </text>

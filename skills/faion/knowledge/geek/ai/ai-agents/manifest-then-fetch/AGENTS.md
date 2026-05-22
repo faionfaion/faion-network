@@ -3,71 +3,96 @@ slug: manifest-then-fetch
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A tool-result protocol where every tool returns a small manifest first (execution_id, preview, size_tokens) and the full payload is stored externally.
-content_id: "3e6c69a2cee7b855"
-tags: [tool-calling, context-management, agent-protocol, lazy-loading, manifest]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Implements the manifest-then-fetch tool protocol (small manifest preview + on-demand fetch) for an agent's tool surface and emits a protocol-spec.
+content_id: 3a2b3dca89641401
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [tool-protocol, context-budget, manifest-fetch, agent-design]
 ---
-# Manifest-Then-Fetch — Two-Phase Tool Result
+# Manifest Then Fetch
 
 ## Summary
 
-**One-sentence:** A tool-result protocol where every tool returns a small manifest first (execution_id, preview, size_tokens) and the full payload is stored externally.
+**One-sentence:** Implements the manifest-then-fetch tool protocol (small manifest preview + on-demand fetch) for an agent's tool surface and emits a protocol-spec.
 
-**One-paragraph:** A tool-result protocol where every tool returns a small manifest first (execution_id, preview, size_tokens) and the full payload is stored externally. The agent inspects only the preview; it must explicitly call get_full_result(execution_id) to load the body. Default behaviour is preview-only — large payloads never enter the LLM context unless the agent decides they are needed.
+**One-paragraph:** Tools that return raw payloads blow up the context window the moment they hit a large result. The manifest-then-fetch protocol returns only a small manifest (execution_id, preview, size_tokens) and stores the body externally. The agent fetches the body via get_full_result(execution_id) only when needed. This methodology converts a tool inventory into a deterministic protocol-spec: which tools wrap, manifest size, retention TTL, fetch policy.
+
+**Ефективно для:** solopreneur whose agent context blows past 50K tokens after one search call.
 
 ## Applies If (ALL must hold)
 
-- Tools with high payload variance — web_fetch, sql_query, log_search, read_file on unknown sizes.
-- Agents that loop ≥30 turns and accumulate tool history.
-- Pipelines where most calls only need a count, header, or first match.
-- Multi-tenant agent platforms where some tools occasionally return megabyte responses.
+- Agent calls ≥1 tool that returns >2KB output.
+- Object/blob store available (S3, local fs, Redis) for body parking.
+- Tools surface returns text payloads (not binaries).
+- Latency budget allows an extra fetch step when needed.
+- Agent can be taught to call get_full_result conditionally.
 
 ## Skip If (ANY kills it)
 
-- Tools where every result is small (<1k tokens) — the manifest dance is pure overhead.
-- Single-shot stateless tool calls in a one-turn agent — no later step exists to fetch the body.
-- Streaming tools where the agent must act on each chunk live — manifests delay action.
+- All tool outputs are <500 bytes (manifests add overhead).
+- Single-turn tool calls — context blowup not a concern.
+- Cannot host body store.
+- Tool outputs are sensitive and must not be retained beyond the turn.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `tool-inventory.yaml` | tools (list with avg_output_bytes, sensitivity), store_backend, manifest_size_target_tokens | author |
+| `Body store endpoint` | S3 / Redis / fs | infra |
+| `Agent loop ability to call follow-up tool` | yes/no | agent framework |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[max-turns-circuit-breaker]] | Manifest-then-fetch adds turns; cap them. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Rules for manifest shape, preview size, fetch policy, retention TTL. | ~1000 |
+| `content/02-output-contract.xml` | essential | protocol-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Manifest leak (full body in preview), unbounded retention, stale execution_id, fetch before preview. | ~700 |
+| `content/04-procedure.xml` | recommended | 5-step wiring procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/tool-inventory.yaml` | Input. |
+| `templates/protocol-spec.md` | Output. |
+| `templates/manifest_then_fetch.py` | Working tool wrapper. |
+| `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-manifest-then-fetch.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[max-turns-circuit-breaker]]
+- [[mcp-resource-vs-tool-vs-prompt]]
+- [[map-reduce-send-fanout]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on avg_bytes (<500 → skip; >=500 → wrap), then on sensitivity (high → short TTL + per-call store; low → shared store with longer TTL), then on preview strategy (head-N | summary | structured). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.

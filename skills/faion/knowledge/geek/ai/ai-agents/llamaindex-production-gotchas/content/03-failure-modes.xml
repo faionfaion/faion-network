@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llamaindex-production-gotchas Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llamaindex-production-gotchas as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="llamaindex-production-gotchas Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for llamaindex-production-gotchas with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling SubQuestionQueryEngine.query() in a FastAPI async endpoint without asyncio.run_in_executor.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Blocks the event loop. All other concurrent requests queue behind this one call. Under load, p99 latency spikes to seconds even for fast queries.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Tool function raises an unhandled exception on failure.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ReActAgent catches the exception but the agent sees a generic error with no context. It typically retries the same call with the same parameters, hitting max_iterations and returning an unhelpful response.</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>FastAPI worker hangs intermittently</symptom>
+      <root-cause>Used .query() inside an async endpoint; blocks loop.</root-cause>
+      <fix>Use .aquery() everywhere; run heavy CPU in a threadpool.</fix>
+      <detector>Spawn 50 concurrent requests; verify no head-of-line blocking.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>QueryFusionRetriever opens 30 concurrent LLM calls and trips rate limits</symptom>
+      <root-cause>Default unbounded concurrency.</root-cause>
+      <fix>Set num_workers=4-8; or wrap with asyncio.Semaphore(8).</fix>
+      <detector>Monitor concurrent count; alert at 12.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>ReActAgent silently returns 'I cannot continue' when one tool fails</symptom>
+      <root-cause>No try/except wrap on tools.</root-cause>
+      <fix>Wrap each tool to return structured error string; agent reasoning handles.</fix>
+      <detector>Inject a failing tool; verify graceful continuation.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Eval cost jumps to $80 per CI run</symptom>
+      <root-cause>Faithfulness + relevancy + correctness on full sample set.</root-cause>
+      <fix>Sample 10-50 per metric; rotate; rate-limit by build budget.</fix>
+      <detector>$/build metric; alert at 2× baseline.</detector>
+    </antipattern>
   </section>
 </text>

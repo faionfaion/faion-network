@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="llamaindex-agents-eval Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for llamaindex-agents-eval as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="llamaindex-agents-eval Failure Modes" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>4 high-impact failure modes for llamaindex-agents-eval with detectors and fixes that map back to rules in 01-core-rules.xml.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+    <antipattern id="fm-01" severity="high">
+      <symptom>Agent eval scores 95% but real users complain</symptom>
+      <root-cause>Eval set leaked into training/prompt during dev.</root-cause>
+      <fix>Hold out 20% of labeled set as a 'sealed' eval used only in CI; never read it during dev.</fix>
+      <detector>Hash the sealed set; alert if any developer accessed the file.</detector>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>ReActAgent hangs on transient tool errors</symptom>
+      <root-cause>ReActAgent does not auto-recover from tool exceptions by default.</root-cause>
+      <fix>Wrap every tool with try/except returning a structured error string; let the agent's reasoning loop decide whether to retry.</fix>
+      <detector>Force-fail one tool; verify agent surfaces a graceful response within max_turns.</detector>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Eval cost spirals to $200/build</symptom>
+      <root-cause>Faithfulness + relevancy + correctness all running on full sample set with GPT-4-class judge.</root-cause>
+      <fix>Run sample_count proportional to eval_budget_usd; cap at the smallest count that gives stable variance.</fix>
+      <detector>Track $/build; alert at 2× baseline.</detector>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Streaming breaks chunked tool output</symptom>
+      <root-cause>Streaming was enabled on an agent that returns large tool-call results in chunks; downstream parser expects full output.</root-cause>
+      <fix>Disable streaming for agents whose tool outputs must be parsed whole; use streaming only for the final answer.</fix>
+      <detector>Diff streaming-on vs streaming-off outputs; if parser fails, streaming is wrong choice.</detector>
+    </antipattern>
   </section>
 </text>

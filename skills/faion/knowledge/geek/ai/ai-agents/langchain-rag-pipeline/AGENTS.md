@@ -3,72 +3,97 @@ slug: langchain-rag-pipeline
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A LangChain RAG pipeline loads documents via loaders, splits them with RecursiveCharacterTextSplitter, embeds them into a vectorstore (Chroma or Pinecone), then wraps the retriever in an LCEL chain: context retriever branch runs in parallel with the question passthrough, feeds into a prompt, then an LLM, then a parser.
-content_id: "7c46f9889b6f59eb"
-tags: [langchain, rag, vectorstore, retrieval, lcel]
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Designs a LangChain RAG pipeline (loader + splitter + embedder + retriever + LCEL prompt) and emits a pipeline-spec decision-record.
+content_id: 94a38f1fe7fe63f2
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [langchain, rag, lcel, retrieval, embeddings]
 ---
-# LangChain RAG Pipeline
+# Langchain Rag Pipeline
 
 ## Summary
 
-**One-sentence:** A LangChain RAG pipeline loads documents via loaders, splits them with RecursiveCharacterTextSplitter, embeds them into a vectorstore (Chroma or Pinecone), then wraps the retriever in an LCEL chain: context retriever branch runs in parallel with the question passthrough, feeds into a prompt, then an LLM, then a parser.
+**One-sentence:** Designs a LangChain RAG pipeline (loader + splitter + embedder + retriever + LCEL prompt) and emits a pipeline-spec decision-record.
 
-**One-paragraph:** A LangChain RAG pipeline loads documents via loaders, splits them with RecursiveCharacterTextSplitter, embeds them into a vectorstore (Chroma or Pinecone), then wraps the retriever in an LCEL chain: context retriever branch runs in parallel with the question passthrough, feeds into a prompt, then an LLM, then a parser.
+**One-paragraph:** RAG pipelines die from chunk size mismatch, wrong embedding model, or naive retrieval. This methodology turns a corpus profile (doc count, avg doc length, query pattern, latency budget) into a deterministic LangChain RAG pipeline spec: loader choice, splitter + chunk size, embedding model, vectorstore, retriever k, and the LCEL prompt shape.
+
+**Ефективно для:** solopreneur building a doc-Q&A bot who needs the cheapest retrieval that still gives correct answers.
 
 ## Applies If (ALL must hold)
 
-- Building LLM applications that must answer questions from a private document corpus.
-- Rapid prototyping of RAG pipelines where provider flexibility (OpenAI, Anthropic) is required without rewriting the retrieval chain.
-- Projects that need composable, swappable retrieval components (prompt templates, parsers, retrievers).
-- Implementing RAG pipelines where documents must be loaded, split, embedded, and retrieved.
+- Corpus is bounded and indexable (≤100M tokens) — beyond that needs sharding methodology.
+- Doc-Q&A or summarisation task — not pure chat.
+- ≥1 vectorstore available (Chroma local, Pinecone, Weaviate, pgvector).
+- You control chunk size and prompt template.
+- Embeddings cost fits in your budget (or you can use a free model).
 
 ## Skip If (ANY kills it)
 
-- Simple single-call LLM tasks — LCEL pipe syntax adds complexity with no benefit over a direct API call.
-- When you control the model exclusively (Claude-only) — the Anthropic SDK directly is simpler and cheaper.
-- When avoiding dependency bloat: langchain + langchain-openai + langchain-community adds ~200 transitive dependencies.
-- Projects with strict latency SLAs where LCEL's serialization overhead matters.
+- Corpus changes faster than indexer can keep up (use streaming retrieval instead).
+- Pure factual Q&A over structured data — use NL→SQL (see [[llamaindex-sql-query]]).
+- Documents are mostly tables/images — needs multimodal pipeline.
+- Latency budget <200ms — RAG can't hit that with most embedding models.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `corpus-profile.yaml` | YAML: doc_count, avg_doc_chars, query_pattern, embedding_budget_usd, latency_budget_ms | author writes |
+| `Document loader source` | directory path / URL list / S3 prefix | raw corpus |
+| `Vectorstore endpoint` | URL or local path | infra config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[langchain-basics]] | LCEL knowledge. |
+| [[rag-engineer-basics]] | Domain context on retrieval evals. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | Migrated rules for loaders, splitters, embedding, retrieval, prompt shape. | ~1000 |
+| `content/02-output-contract.xml` | essential | pipeline-spec schema + examples. | ~800 |
+| `content/03-failure-modes.xml` | essential | Chunk-size mismatch, embedding-corpus drift, retrieval-prompt mismatch, k-too-high. | ~700 |
+| `content/04-procedure.xml` | recommended | 6-step build procedure. | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Profile parsing | haiku | Mechanical. |
+| Decision drafting | sonnet | Tradeoffs require sound reasoning. |
+| Code/config emission | sonnet | Mechanical but must compile. |
+| Failure-mode cross-check | opus | Catches subtle gaps. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/corpus-profile.yaml` | Input contract. |
+| `templates/pipeline-spec.md` | Output skeleton. |
+| `templates/rag-chain.py` | Working LCEL pipeline. |
+| `templates/_smoke-test.yaml` | Minimum viable profile. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-langchain-rag-pipeline.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[llamaindex-ingestion-pipeline]]
+- [[llamaindex-hybrid-retrieval]]
+- [[langchain-observability]]
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Branches on query_pattern (factual → low-k; broad → high-k+rerank), then on corpus size (small → in-mem, large → Pinecone/pgvector), then on latency budget. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
