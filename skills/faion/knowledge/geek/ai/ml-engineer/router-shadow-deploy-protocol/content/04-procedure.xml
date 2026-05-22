@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Router Shadow Deploy — Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six-step procedure: wire traffic mirror → calibrate judge → run ≥7-day shadow window → aggregate report → gradual rollout → cut-over with rollback ready.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="wire-traffic-mirror">
+      <input>Production gateway config, candidate router container, traffic-mirror sidecar OR gateway feature</input>
+      <action>Configure 100% traffic mirror from production router to candidate. Verify the candidate's response NEVER reaches the user (return-to-user path stays on production). Log per-request: prod_response, candidate_response, prod_cost_cents, candidate_cost_cents, prod_schema_hash, candidate_schema_hash.</action>
+      <output>Mirror live; shadow-log table receiving rows</output>
+      <decision-gate>If any 0.1% of candidate responses leak to users — STOP; rollback the mirror config (r1-zero-user-impact).</decision-gate>
+    </step>
+
+    <step n="2" name="calibrate-judge">
+      <input>50 SME-labelled examples</input>
+      <action>Run both prod and candidate against labelled set, compute LLM-judge scores. Pin judge model + prompt version in `shadow-report.yaml`. Require ≥0.85 agreement between judge and SME before trusting the shadow signal.</action>
+      <output>Calibrated judge config + agreement number</output>
+      <decision-gate>If judge agreement &lt;0.85 — fix prompt or pick another judge; shadow with uncalibrated judge is noise.</decision-gate>
+    </step>
+
+    <step n="3" name="run-shadow-window">
+      <input>Mirror live + calibrated judge</input>
+      <action>Run ≥7 calendar days of shadow. Daily: compute scoring-delta (candidate vs prod judge mean), cost-delta (candidate cost / prod cost), schema-parity (% identical schema hashes).</action>
+      <output>Daily rows in shadow-report.yaml</output>
+      <decision-gate>If schema-parity drops &lt;100% — STOP shadow; schema sneak-change is a fix-before-promote item (r4-schema-parity-100).</decision-gate>
+    </step>
+
+    <step n="4" name="aggregate-shadow-report">
+      <input>≥7 days of daily metrics</input>
+      <action>Compute window aggregates: median scoring-delta + 95% CI, mean cost-delta, min-schema-parity across days. Cite acceptance-contract thresholds.</action>
+      <output>`shadow-report.yaml` ready for promotion meeting</output>
+      <decision-gate>If sustained window &lt;7 days — extend; short windows give noisy means (r5-sustained-window-min).</decision-gate>
+    </step>
+
+    <step n="5" name="gradual-rollout">
+      <input>Go decision from promotion meeting</input>
+      <action>Route 1% real traffic to candidate; monitor user-visible metrics for 24h. If clean: 10%, 50%, 100% over 5 days. At each step verify online metrics from acceptance contract stay in band.</action>
+      <output>Candidate at 100% with rollback flag still wired</output>
+      <decision-gate>If any user-visible metric breaches at any step — pause rollout; rollback to last good percentage; investigate.</decision-gate>
+    </step>
+
+    <step n="6" name="cut-over">
+      <input>Candidate at 100% for ≥7 days clean</input>
+      <action>Decommission old router code path. Archive shadow-report.yaml in audit log. Keep the rollback runbook reachable for 30 days.</action>
+      <output>Cut-over complete; rollback artefacts retained</output>
+      <decision-gate>If post-cut-over regression suspected — execute rollback within 15min using `templates/rollback-runbook.md`.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
