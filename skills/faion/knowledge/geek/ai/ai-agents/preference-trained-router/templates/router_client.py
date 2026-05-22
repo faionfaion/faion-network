@@ -1,3 +1,8 @@
+# purpose: RouteLLM-style router client emitted by preference-trained-router
+# consumes: trained classifier + weak/strong model handles + uncertainty_band
+# produces: route() that picks model with uncertainty fallback
+# depends-on: r4-uncertainty-fallback
+# token-budget-impact: ~250 tokens
 """Minimal RouteLLM wrapper.
 
 Input  → user prompt

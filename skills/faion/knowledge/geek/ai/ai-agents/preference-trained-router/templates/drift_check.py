@@ -1,3 +1,8 @@
+# purpose: drift monitor for the preference-trained-router methodology
+# consumes: current window route distribution + reference window
+# produces: KL divergence + structured alert on threshold breach
+# depends-on: r5-drift-monitor
+# token-budget-impact: ~200 tokens
 """Daily drift check for a preference-trained router.
 
 Compares the current-window routing distribution to a stable reference

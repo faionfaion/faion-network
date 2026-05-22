@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Claude Tool Use Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step procedure to build a production Claude tool-use loop.</summary>
+
+  <section title="Steps">
+    <step n="1" name="design-tool-schemas">
+      <input>Use-case + list of functions Claude should call.</input>
+      <action>For each tool, write name + ≥30-char description + input_schema (≤2 levels deep). Validate against templates/tool-definition.json shape.</action>
+      <output>tools.json with N tool definitions.</output>
+      <decision-gate>If N &gt; 20, introduce a meta-tool selector (Claude picks a category, runtime narrows the set).</decision-gate>
+    </step>
+    <step n="2" name="write-executor">
+      <input>tools.json + application code.</input>
+      <action>Implement `execute(name, input) -> str`. Catch exceptions; return error message as string (not is_error=True unless terminal).</action>
+      <output>execute() function.</output>
+      <decision-gate>Unit-test each tool with sample inputs before wiring into the loop.</decision-gate>
+    </step>
+    <step n="3" name="write-agent-loop">
+      <input>execute() + tools.json + system prompt.</input>
+      <action>Implement loop per templates/agent-loop.py: send messages, check stop_reason, dispatch parallel tool_use blocks via ThreadPoolExecutor, append results.</action>
+      <output>agent-loop.py adapted.</output>
+      <decision-gate>Trace 1-tool, 2-tool parallel, error-recovery cases manually.</decision-gate>
+    </step>
+    <step n="4" name="set-max-turns">
+      <input>Loop draft.</input>
+      <action>Cap iterations at 10-20 (typical default 15). Log a warning on cap-hit and return a partial-result message.</action>
+      <output>MAX_TURNS constant + log line.</output>
+      <decision-gate>Test by feeding a deliberately-looping tool; verify the cap fires.</decision-gate>
+    </step>
+    <step n="5" name="handle-errors">
+      <input>execute() + tool taxonomy.</input>
+      <action>Return tool errors as content for recoverable errors (timeout, not-found); use `is_error=True` only when the error must terminate (auth fail, schema violation).</action>
+      <output>error-handling table per tool.</output>
+      <decision-gate>Sample 5 error cases; verify Claude recovers on at least 4.</decision-gate>
+    </step>
+    <step n="6" name="add-forced-tool-extraction">
+      <input>Use case requiring typed JSON output.</input>
+      <action>Define an extraction tool (description = "Return the structured result"); call with `tool_choice={"type":"tool","name":"extract"}`; read `tool_use.input` for the typed JSON.</action>
+      <output>forced-tool-extract.py wired.</output>
+      <decision-gate>Validate the returned JSON against the application schema before consuming.</decision-gate>
+    </step>
+  </section>
+</text>
