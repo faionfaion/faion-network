@@ -81,6 +81,10 @@ tags: [claude-code, documentation, project-setup, ai-assisted-dev, dev, geek]
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
 | `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
+| `templates/claude-md-minimal.md` | Minimal CLAUDE.md skeleton for single-language repos. |
+| `templates/claude-md-standard.md` | Standard CLAUDE.md skeleton for product repos. |
+| `templates/claude-md-monorepo.md` | Monorepo CLAUDE.md skeleton — root brief + per-app addenda. |
+| `templates/extract-commands.sh` | Shell helper dumping repo commands into CLAUDE.md-ready format. |
 
 ## Scripts
 

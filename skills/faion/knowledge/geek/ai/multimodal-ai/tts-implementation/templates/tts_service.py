@@ -1,6 +1,9 @@
-"""
-Production TTSService with SHA-256 caching, provider routing, and cache eviction.
-"""
+# purpose: Production TTSService — sha256 cache (provider in key), eviction, multi-provider routing.
+# consumes: TTSConfig (provider, voice, speed, cache_dir, max_text_length), text payload.
+# produces: dict per 02-output-contract: status, path, duration_s, cache_key, cached, chunks.
+# depends-on: openai SDK; LongTextTTS template; pydub; tempfile (for chunk isolation).
+# token-budget-impact: zero LLM tokens; provider calls are non-LLM TTS.
+"""Production TTSService with SHA-256 caching, provider routing, eviction."""
 from __future__ import annotations
 
 import hashlib

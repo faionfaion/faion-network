@@ -81,6 +81,8 @@ tags: [llm, architecture, file-size, code-quality, ai-assisted, dev, geek]
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
 | `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
+| `templates/claude-md-project.md` | CLAUDE.md skeleton tuned for LLM-friendly architecture rules. |
+| `templates/llm-arch-audit.sh` | Shell audit: file size, directory depth, naming-clarity rules. |
 
 ## Scripts
 

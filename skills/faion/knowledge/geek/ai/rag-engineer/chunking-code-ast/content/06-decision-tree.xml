@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Chunking Code AST — Decision Tree" version="1.0.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-language">What is the file language?</root-question>
+    <branch when="language == 'python'">
+      <question id="q-py-parse">Does ast.parse succeed?</question>
+      <branch when="ast_parse_status == 'ok'">
+        <conclusion ref="r2-ast-primary-python">Use Python AST path. Walk FunctionDef/AsyncFunctionDef/ClassDef. Apply r3-dedup-overlapping. Emit metadata-rich chunks.</conclusion>
+      </branch>
+      <branch when="ast_parse_status == 'syntax_error'">
+        <conclusion ref="r4-fallback-warning">Fallback to generic line splitter. Log warning {file, language, reason} and mark chunks `fallback=true`.</conclusion>
+      </branch>
+    </branch>
+    <branch when="language == 'javascript' OR language == 'typescript'">
+      <question id="q-treesitter-available">Is tree-sitter for that language installed?</question>
+      <branch when="treesitter_available == true">
+        <conclusion ref="r1-language-dispatch">Use tree-sitter. Walk function_declaration / class_declaration / arrow_function. Apply r3-dedup-overlapping.</conclusion>
+      </branch>
+      <branch when="treesitter_available == false">
+        <conclusion ref="r5-version-on-strategy-change">Block production rollout. Install tree-sitter; regex fallback is unsafe for any TS with decorators/generics.</conclusion>
+      </branch>
+    </branch>
+    <branch when="language not in ['python','javascript','typescript']">
+      <conclusion ref="r4-fallback-warning">Use generic line splitter. Log warning. Treat chunks as best-effort.</conclusion>
+    </branch>
+    <example trace="python-views-py">
+      <p>app/views.py with valid syntax → AST path → 3 method chunks after dedup → indexed under strategy=ast version=1.0.0.</p>
+    </example>
+  </decision-tree>
+</text>
