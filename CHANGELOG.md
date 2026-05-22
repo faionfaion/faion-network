@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 phase C autofixer: fix-methodology-phase-d.py applied to all active dirs (xml escape, content_id, stub rules, template headers).
 - F-066 refactor: harvest +41 files (batch 0).
 - F-066 refactor: harvest +14 files (batch 0).
 - F-066 refactor: harvest +16 files (batch 0).

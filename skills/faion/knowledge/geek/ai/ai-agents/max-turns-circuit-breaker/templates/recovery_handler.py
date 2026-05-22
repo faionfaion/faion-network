@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """Recovery handler for MaxTurnsExceeded.
 
 Pattern: cap the main agent's max_turns aggressively; on overflow, hand the

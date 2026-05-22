@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a pair-programming session protocol (chosen mode, role rotation cadence, Strong-Style rules when AI is navigator, Pomodoro pacing, silent-retro session.md) so two-person work compounds rather than splits.
-content_id: "pair-programming-fb16"
+content_id: "320bd3547e385721"
 complexity: light
 produces: checklist
 est_tokens: 2700

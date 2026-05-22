@@ -1,22 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rust-ownership Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Rust Ownership Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for per-function ownership decision records.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Decision-record schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/rust-ownership-decision.json",
+  "type": "object",
+  "required": ["function", "answers", "signature", "version", "last_reviewed"],
+  "properties": {
+    "function": {"type": "string", "description": "module path + fn name"},
+    "answers": {
+      "type": "object",
+      "required": ["keeps_value", "modifies_value", "shares_across_threads"],
+      "properties": {
+        "keeps_value":           {"type": "boolean"},
+        "modifies_value":        {"type": "boolean"},
+        "shares_across_threads": {"type": "boolean"}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["param_kind"],
+      "properties": {
+        "param_kind": {"enum": ["owned", "shared-ref", "mutable-ref", "rc", "arc", "arc-mutex"]},
+        "lifetime":   {"type": "string", "pattern": "^('[a-z_]+|elided)$"}
+      }
+    },
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "function": "src::store::Store::load",
+  "answers": {"keeps_value": false, "modifies_value": false, "shares_across_threads": false},
+  "signature": {"param_kind": "shared-ref", "lifetime": "elided"},
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "function": "load",
+  "answers": {"keeps_value": "yes"},
+  "signature": {"param_kind": "rc-refcell-deep"}
+}
+]]></code>
+    <note>answers.keeps_value must be boolean; param_kind must be in enum; missing modifies_value, shares_across_threads, version, last_reviewed.</note>
+  </example>
+
+  <reference path="templates/ownership-audit-comment.tmpl.rs">Comment template above signatures</reference>
+  <reference path="scripts/validate-rust-ownership.py">Validator</reference>
 </text>

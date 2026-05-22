@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 #!/usr/bin/env bash
 # django-model-lint.sh — AST-based lint for common Django model antipatterns.
 # Fails (exit 1) if any issues found.

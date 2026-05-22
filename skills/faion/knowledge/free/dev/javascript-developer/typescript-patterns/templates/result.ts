@@ -1,3 +1,9 @@
+// purpose: TBD-template-header
+// consumes: input from methodology
+// produces: output artefact
+// depends-on: 01-core-rules.xml
+// token-budget-impact: small
+
 // Discriminated union Result type
 export type Result<T, E = Error> =
   | { success: true; data: T }

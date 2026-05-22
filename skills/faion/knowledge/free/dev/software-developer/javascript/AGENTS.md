@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a TypeScript-strict JS/TS project (tsconfig strict + noUncheckedIndexedAccess + exactOptional, named exports, pnpm, ESLint 9 flat, Prettier, Vitest, MSW, controller/service/repository for Node) ready for CI.
-content_id: "javascript-fb09"
+content_id: "879cec1a8080b507"
 complexity: medium
 produces: code
 est_tokens: 4200

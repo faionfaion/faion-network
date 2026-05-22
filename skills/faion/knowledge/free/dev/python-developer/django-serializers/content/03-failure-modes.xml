@@ -1,12 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-serializers Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-serializers as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-serializers Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five concrete antipatterns mapped to rules in `01-core-rules.xml`. Each has a symptom that can be detected in production logs or static analysis.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-shared-serializer-leaks" severity="high">
+      <description>Single `ModelSerializer` with `fields = "__all__"` reused for both create and detail endpoints.</description>
+      <symptom>Pen test report flags password hash, `is_staff`, `last_login` in JSON responses; new model fields appear in responses without code changes.</symptom>
+      <root-cause>Convenience: one serializer to write. `__all__` includes every field forever, including those added later.</root-cause>
+      <fix>Split into `EntityCreateRequest` / `EntityResponse`. Both inherit from `serializers.Serializer`. List exposed fields explicitly.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-validate-db-call" severity="high">
+      <description>`validate_email`, `validate()`, or `to_internal_value()` querying the database or calling a service.</description>
+      <symptom>Inconsistent state when the wrapping service transaction rolls back; uniqueness violation arriving as 500 instead of 400; duplicate side-effects on retry.</symptom>
+      <root-cause>"Validation feels like the right place" — but business invariants belong inside the service transaction so rollback cleans up.</root-cause>
+      <fix>Move the uniqueness check into the service. Validation stays shape-only. Catch `IntegrityError` in the service and re-raise as `ValidationError`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-exclude-as-security" severity="high">
+      <description>`exclude = ["password", "secret"]` used as the security boundary on an output serializer.</description>
+      <symptom>A new sensitive field (`reset_token`, `mfa_secret`) is added to the model; nobody updates exclude; field leaks on next deploy.</symptom>
+      <root-cause>Excludelist is fail-open. Authors must remember to update it; review usually misses.</root-cause>
+      <fix>Replace with an explicit allowlist on a `Serializer` (not ModelSerializer). Add a unit test asserting the field set equals the expected names.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-implicit-defaults" severity="medium">
+      <description>Input fields declared without `required` / `allow_blank` / `allow_null` / `default`.</description>
+      <symptom>Empty strings silently accepted as valid names; clients sending `null` produce inconsistent behaviour; DRF major-version upgrade changes API behaviour.</symptom>
+      <root-cause>Trusting DRF defaults that are not memorised and change across versions.</root-cause>
+      <fix>Declare every option explicitly. Run `ruff` with a custom rule (or grep) to flag fields lacking `required=`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-nested-triggers-query" severity="medium">
+      <description>Nested serializer uses `PrimaryKeyRelatedField(queryset=Model.objects.all())` or `RelatedSerializer(many=True)` over an unprefetched manager.</description>
+      <symptom>N+1 reappears during render; selector-level N+1 test passes but endpoint test (with full serialisation) does not.</symptom>
+      <root-cause>Author treats DRF render layer as free. Each related access on an unprefetched manager re-queries.</root-cause>
+      <fix>Ensure the parent queryset comes from a selector that includes the necessary `select_related` / `prefetch_related`. Use `serializers.PrimaryKeyRelatedField(read_only=True)` for ids; for nested objects iterate already-prefetched data via the explicit Output serializer.</fix>
+    </antipattern>
   </section>
 </text>

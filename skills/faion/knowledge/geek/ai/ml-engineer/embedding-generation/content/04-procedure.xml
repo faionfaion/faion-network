@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Embedding Generation Procedure" version="1.1.0" est_tokens="600" depth="reference">
+  <summary>5-step procedure from corpus + model id to a validated producer config and working code.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="scope-and-confirm-schema">
+      <input>Chosen model id + dim (from embeddings-model-selection); target store kind + collection.</input>
+      <action>Assert collection.schema_dimension == model_dim. If a new collection is needed, create it BEFORE writing producer code; never alter an in-use schema.</action>
+      <output>Confirmed collection handle + schema_dimension.</output>
+    </step>
+
+    <step n="2" name="design-cache-keys">
+      <input>Chunker config + model_id + dim.</input>
+      <action>Cache key = sha256(normalized_text) + ":" + model_id + ":" + dim. Choose backend (redis for shared workers, sqlite for single-host, memory for ephemeral).</action>
+      <output>Cache layer config (key_scheme, backend).</output>
+    </step>
+
+    <step n="3" name="batch-async-with-rate-budget">
+      <input>Provider limit (e.g. OpenAI batch 2048 inputs); requests/min budget.</input>
+      <action>Set batch.size to the provider limit (or below). Set concurrency by total_rpm / (60 * per_request_seconds). Use asyncio.Semaphore to bound parallel batches.</action>
+      <output>batch.mode + size + concurrency in config.</output>
+    </step>
+
+    <step n="4" name="normalize-when-cosine">
+      <input>Downstream similarity choice (cosine / dot / euclidean).</input>
+      <action>If cosine → L2-normalize vectors immediately after the provider call; set normalize=true. If dot or euclidean → leave as-is, set normalize=false.</action>
+      <output>normalize flag + post-process step.</output>
+    </step>
+
+    <step n="5" name="persist-and-validate-config">
+      <input>Completed producer config.</input>
+      <action>Emit JSON per content/02-output-contract.xml. Run scripts/validate-embedding-generation.py against it. Commit to repo alongside producer code.</action>
+      <output>Validated emp-* config artefact.</output>
+    </step>
+
+  </section>
+
+  <reference path="templates/producer.py">Async batched producer with content-hash cache.</reference>
+  <reference path="scripts/validate-embedding-generation.py">Producer-config validator.</reference>
+
+</text>

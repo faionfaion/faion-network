@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-serializers Procedure" version="1.1.0" est_tokens="400" depth="medium">
+  <summary>Five-step procedure to design Input + Output serializers around an existing or new DRF endpoint.</summary>
+
+  <section title="Steps">
+    <step n="1" name="identify-endpoint">
+      <input>URL + verb + business operation it performs</input>
+      <action>Decide whether the endpoint accepts data (POST/PUT/PATCH), returns data (GET), or both. Identify the Model under change.</action>
+      <output>endpoint contract sketch</output>
+      <decision-gate>If purely internal helper (no HTTP boundary), skip this methodology.</decision-gate>
+    </step>
+
+    <step n="2" name="design-input">
+      <input>fields the client legitimately controls</input>
+      <action>Create `EntityCreateRequest(serializers.Serializer)` and/or `EntityUpdateRequest`. List each field with explicit `required`, `allow_blank`, `allow_null`, `default`, `write_only`. Add `validate_<field>` ONLY for shape/format (regex, range).</action>
+      <output>Input serializer class(es) in `apps/<app>/serializers.py`</output>
+      <decision-gate>No DB queries, no service calls inside validate(); ruff/AST validator passes.</decision-gate>
+    </step>
+
+    <step n="3" name="design-output">
+      <input>fields safe to expose on the model</input>
+      <action>Create `EntityResponse(serializers.Serializer)` listing exposed fields explicitly. Use `read_only=True` on every field. For nested data, declare `<Related>Response(many=True, read_only=True)` and ensure the parent QuerySet is provided by a selector with the right prefetches.</action>
+      <output>Output serializer class(es)</output>
+      <decision-gate>Field list does NOT include sensitive names (`password`, `secret`, `token`, `is_staff`, `mfa_*`).</decision-gate>
+    </step>
+
+    <step n="4" name="wire-view">
+      <input>endpoint view + service / selector</input>
+      <action>In the view: `serializer = EntityCreateRequest(data=request.data); serializer.is_valid(raise_exception=True); entity = services.entity_create(**serializer.validated_data); return Response(EntityResponse(entity).data, status=201)`. List views fetch via selector and wrap with `EntityListResponse(qs, many=True)`.</action>
+      <output>view returning the right shape with consistent 400/201 handling</output>
+      <decision-gate>Service is the only place that mutates DB.</decision-gate>
+    </step>
+
+    <step n="5" name="test">
+      <input>endpoint + factories</input>
+      <action>Add pytest covering: (a) malformed input → 400 with field-level errors, (b) happy path → 201 + Output shape matches schema, (c) PII fields absent from response body (`"password" not in resp.json()`).</action>
+      <output>regression test guarding both shape and PII boundary</output>
+      <decision-gate>All three tests pass; deliberately add a sensitive field to Output → PII test fails.</decision-gate>
+    </step>
+  </section>
+</text>

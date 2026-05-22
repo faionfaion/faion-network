@@ -1,12 +1,9 @@
 """
-build_system — compose a system prompt from role, constraints, and output format.
-
-Usage:
-    system = build_system(
-        role="a JSON extraction agent",
-        constraints=["Return only valid JSON", "Never add prose"],
-        output_format='{"field1": "string", "field2": ["list"]}'
-    )
+purpose: Compose a system prompt from role + constraints list + output_format spec.
+consumes: role string, constraints list[str], output_format string.
+produces: assembled system string ready for PromptTemplate.system.
+depends-on: stdlib only.
+token-budget-impact: target ≤2K tokens per system prompt; trim constraints if longer.
 """
 
 

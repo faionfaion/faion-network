@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a mob-programming session checklist (Driver/Navigator strong-style, 5-10 min rotation, written Done definition, parking lot, retrospective) so the whole team learns one task at one machine without knowledge silos.
-content_id: "mob-programming-fb13"
+content_id: "aaaac3d98c397e53"
 complexity: light
 produces: checklist
 est_tokens: 2700

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a keyword-to-slug dispatch decision (one sibling methodology + its resolved path) by matching the task verb+noun against the named keyword table in this file's content.
-content_id: "methodologies-fb11"
+content_id: "a7ff26270f86b502"
 complexity: light
 produces: report
 est_tokens: 2700

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Embedding Generation Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Branches on corpus size, re-run frequency, and similarity choice. Leaves emit producer-config shape and cite rule ids.</summary>
+
+  <decision-tree>
+    <root-question id="q-size">Is the corpus ≥1000 chunks?</root-question>
+
+    <branch when="corpus_size &gt;= 1000">
+      <question id="q-rerun">Are re-runs common (≥weekly re-index)?</question>
+      <branch when="reruns == true">
+        <question id="q-cosine-1">Does downstream use cosine similarity?</question>
+        <branch when="cosine == true">
+          <conclusion ref="l2-normalize-for-cosine" verdict="cached-async-batched-normalized"/>
+        </branch>
+        <branch when="cosine == false">
+          <conclusion ref="content-hash-cache" verdict="cached-async-batched-raw"/>
+        </branch>
+      </branch>
+      <branch when="reruns == false">
+        <conclusion ref="async-batching" verdict="noncached-async-batched"/>
+      </branch>
+    </branch>
+
+    <branch when="corpus_size &lt; 1000">
+      <question id="q-cosine-2">Does downstream use cosine similarity?</question>
+      <branch when="cosine == true">
+        <conclusion ref="l2-normalize-for-cosine" verdict="cached-sync-normalized"/>
+      </branch>
+      <branch when="cosine == false">
+        <conclusion ref="content-hash-cache" verdict="cached-sync-raw"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="rag-news">
+    corpus_size=120000 → reruns=true (daily news refresh) → cosine=true → cached-async-batched-normalized referencing l2-normalize-for-cosine.
+  </example>
+
+</text>

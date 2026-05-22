@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a reproducible pnpm setup — packageManager pin via corepack, committed pnpm-lock.yaml, no shamefully-hoist, .pnpmfile.cjs for phantom deps, workspace:* protocol, CI --frozen-lockfile gate.
-content_id: "pnpm-fb17"
+content_id: "a00e7bb5e5f9160f"
 complexity: light
 produces: config
 est_tokens: 2900

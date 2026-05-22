@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 Claude prompt caching with cache_control header.
 The static system prompt prefix must be >=2048 tokens to activate caching.

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces integration tests that run against real DB/queue/cache via Testcontainers (pinned images), use transaction-rollback per test, run in seconds, and split unit/integration into separate suites.
-content_id: "integration-testing-fb08"
+content_id: "5dcd59ab61d8b173"
 complexity: medium
 produces: code
 est_tokens: 4000

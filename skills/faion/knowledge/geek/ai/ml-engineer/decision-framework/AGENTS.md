@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces a decision record naming the AI approach (prompt / RAG / fine-tune / hybrid) and the model tier for a given task, with progressive-enhancement justification and a quarterly re-evaluation clause.
-content_id: "df-001ai-2345decision"
+content_id: "458f56de1eef797e"
 complexity: deep
 produces: decision-record
 est_tokens: 4000

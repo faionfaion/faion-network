@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces thin Go HTTP handlers (Gin/Echo/net-http) with explicit Recovery>Logger>RequestID>Auth middleware order, ShouldBindJSON request structs, c.Request.Context() propagation, and a graceful-shutdown wrapper.
-content_id: "go-http-handlers-fb07"
+content_id: "f153f4f0a4100705"
 complexity: medium
 produces: code
 est_tokens: 4100

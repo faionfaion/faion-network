@@ -1,22 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="structured-output-mode-picker Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="structured-output-mode-picker Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the decision-record produced when picking a constrained-decoding mode.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema format="json-schema">
+<![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OutputModeDecisionRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stage", "consumer", "chosen_mode", "alternatives_considered", "rationale", "provider", "eval_delta"],
+  "properties": {
+    "stage": {"type": "string", "minLength": 1},
+    "consumer": {"type": "string", "enum": ["extraction", "action", "dsl", "legacy"]},
+    "chosen_mode": {"type": "string", "enum": ["json-mode", "so-strict", "tool-call", "grammar"]},
+    "alternatives_considered": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "enum": ["json-mode", "so-strict", "tool-call", "grammar"]}
+    },
+    "rationale": {"type": "string", "minLength": 24},
+    "provider": {"type": "string", "enum": ["openai", "anthropic", "azure", "gemini", "vllm", "ollama"]},
+    "eval_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "winning_accuracy", "runner_up_accuracy"],
+      "properties": {
+        "rows": {"type": "integer", "minimum": 10},
+        "winning_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "runner_up_accuracy": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "follow_up_issue": {"type": ["string", "null"]}
+  }
+}
+]]>
+  </schema>
+
+  <example valid="true">
+<![CDATA[
+{
+  "stage": "invoice-extraction",
+  "consumer": "extraction",
+  "chosen_mode": "so-strict",
+  "alternatives_considered": ["tool-call", "json-mode"],
+  "rationale": "Output is typed Invoice; SO strict gives schema compliance; tool-call adds routing we do not need; json-mode failed 14% of eval rows.",
+  "provider": "openai",
+  "eval_delta": {"rows": 30, "winning_accuracy": 0.97, "runner_up_accuracy": 0.86},
+  "follow_up_issue": null
+}
+]]>
+  </example>
+
+  <example valid="false">
+<![CDATA[
+{
+  "stage": "x",
+  "consumer": "extraction",
+  "chosen_mode": "so-strict",
+  "alternatives_considered": [],
+  "rationale": "short",
+  "provider": "openai",
+  "eval_delta": {"rows": 5, "winning_accuracy": 1.5, "runner_up_accuracy": 0.5}
+}
+]]>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`alternatives_considered` non-empty and excludes `chosen_mode`.</item>
+      <item>`rationale` ≥ 24 chars and names the consumer + the rejection reasons.</item>
+      <item>`eval_delta.rows ≥ 10`; smaller is below signal threshold.</item>
+      <item>If `chosen_mode == "json-mode"`, `follow_up_issue` must be a non-null tracking link.</item>
     </list>
   </section>
 </text>

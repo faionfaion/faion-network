@@ -1,22 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="embedding-generation Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Embedding Generation Producer Config Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the embedding-producer config artefact. Locks in model id, dimension, normalization, batch, cache, and retry shape.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/embedding-producer.json",
+  "type": "object",
+  "required": ["artefact_id", "model_id", "dimension", "normalize", "batch", "cache", "retry", "store", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^emp-[a-z0-9-]{6,}$"},
+    "model_id":    {"type": "string", "minLength": 3},
+    "provider":    {"enum": ["openai", "voyage", "cohere", "mistral", "local-sentence-transformers"]},
+    "dimension":   {"type": "integer", "minimum": 64, "maximum": 8192},
+    "normalize":   {"type": "boolean"},
+    "batch": {
+      "type": "object",
+      "required": ["mode", "size"],
+      "properties": {
+        "mode": {"enum": ["sync", "async-parallel", "batch-api"]},
+        "size": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "concurrency": {"type": "integer", "minimum": 1, "maximum": 64}
+      }
+    },
+    "cache": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "backend": {"enum": ["redis", "sqlite", "memory", "none"]},
+        "key_scheme": {"enum": ["sha256-text-model-dim"]}
+      }
+    },
+    "retry": {
+      "type": "object",
+      "required": ["enabled", "max_attempts", "strategy"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+        "strategy": {"enum": ["exponential-jitter", "linear", "none"]}
+      }
+    },
+    "store": {
+      "type": "object",
+      "required": ["kind", "collection", "schema_dimension"],
+      "properties": {
+        "kind": {"enum": ["qdrant", "pgvector", "pinecone", "weaviate", "chroma"]},
+        "collection": {"type": "string"},
+        "schema_dimension": {"type": "integer", "minimum": 64, "maximum": 8192}
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "emp-news-rewrite",
+  "model_id": "text-embedding-3-small",
+  "provider": "openai",
+  "dimension": 1536,
+  "normalize": true,
+  "batch": {"mode": "async-parallel", "size": 1024, "concurrency": 4},
+  "cache": {"enabled": true, "backend": "redis", "key_scheme": "sha256-text-model-dim"},
+  "retry": {"enabled": true, "max_attempts": 5, "strategy": "exponential-jitter"},
+  "store": {"kind": "qdrant", "collection": "news-chunks", "schema_dimension": 1536},
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "model_id": "?",
+  "dimension": 1024,
+  "normalize": false,
+  "batch": {"mode": "sync", "size": 0},
+  "cache": {"enabled": true, "backend": "redis", "key_scheme": "sequential-id"},
+  "retry": {"enabled": false, "max_attempts": 1, "strategy": "none"},
+  "store": {"kind": "qdrant", "collection": "x", "schema_dimension": 512}
+}
+]]></code>
+    <note>artefact_id fails pattern; dimension mismatch (1024 vs schema 512); batch size 0 invalid; cache key_scheme not in enum; retry disabled with no exponential; missing version + last_reviewed.</note>
+  </example>
+
+  <reference path="scripts/validate-embedding-generation.py">Validator enforces this contract.</reference>
+
 </text>

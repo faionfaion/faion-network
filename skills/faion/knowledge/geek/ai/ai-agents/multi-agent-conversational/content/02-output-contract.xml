@@ -1,22 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="multi-agent-conversational Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Conversational Agents Output Contract" version="1.1.0" est_tokens="650" depth="essential">
+  <summary>JSON Schema for ConversationalAgents config + turn entry shape.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/conversational-agents.v1.json",
+  "title": "ConversationalAgentsConfig",
+  "type": "object",
+  "required": ["agents", "termination_phrase", "max_turns", "window_size", "token_budget"],
+  "properties": {
+    "agents": {
+      "type": "array", "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["name", "model", "system_prompt"],
+        "properties": {
+          "name": {"type": "string"},
+          "model": {"type": "string"},
+          "system_prompt": {"type": "string", "minLength": 32}
+        }
+      }
+    },
+    "termination_phrase": {"type": "string", "minLength": 3},
+    "max_turns": {"type": "integer", "minimum": 2, "maximum": 30},
+    "window_size": {"type": "integer", "minimum": 1, "maximum": 8},
+    "token_budget": {"type": "integer", "minimum": 5000}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+agents:
+  - {name: proposer, model: sonnet, system_prompt: "You propose solutions for the user's debugging task. End every reply with TASK COMPLETE when you are confident."}
+  - {name: critic, model: opus, system_prompt: "You critique the proposer's solutions; surface counterexamples. Never end with TASK COMPLETE."}
+termination_phrase: "TASK COMPLETE"
+max_turns: 12
+window_size: 3
+token_budget: 20000
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example (fails contract)">
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+agents:
+  - {name: a, model: sonnet, system_prompt: "respond"}
+  - {name: b, model: sonnet, system_prompt: "respond"}
+termination_phrase: ""
+max_turns: 200
+window_size: 99
+]]></code>
+      <note>Identical system_prompts (rule r5), empty termination_phrase (rule r1), max_turns &gt; 30 (rule r2), window_size &gt; 8 (rule r3), no token_budget (rule r4).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>≥2 agents with distinct names AND distinct system_prompts.</item>
+      <item>`termination_phrase` non-empty, ≥3 chars.</item>
+      <item>`max_turns` in [2, 30].</item>
+      <item>`window_size` in [1, 8].</item>
+      <item>`token_budget` ≥ 5000.</item>
     </list>
   </section>
 </text>

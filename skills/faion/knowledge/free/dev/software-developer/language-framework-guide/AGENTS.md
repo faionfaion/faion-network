@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a stack-selection report — one primary recommendation + two alternatives + ADR stub — mapped from project type, team profile, and runtime constraints to the canonical language/framework pair.
-content_id: "language-framework-fb10"
+content_id: "dbbfc8d00bed04e4"
 complexity: light
 produces: report
 est_tokens: 3000

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a reproducible Poetry setup — poetry.lock committed, --sync install in CI, dep groups (main/dev/test/docs), tight Python constraint, builder-stage Docker, snok install action + .venv cache.
-content_id: "python-poetry-fb20"
+content_id: "29e568def229e20c"
 complexity: light
 produces: config
 est_tokens: 3000

@@ -1,3 +1,9 @@
+// purpose: TBD-template-header
+// consumes: input from methodology
+// produces: output artefact
+// depends-on: 01-core-rules.xml
+// token-budget-impact: small
+
 /**
  * MSW v2 setup — works for both test (Node) and browser (dev/storybook) environments.
  *

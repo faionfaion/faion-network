@@ -1,17 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="multi-agent-conversational Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for multi-agent-conversational as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Conversational Pattern Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that recur in conversational multi-agent runs, paired with detector + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Echo chambers: agents trained on similar data converge on the same (possibly wrong) answer even after many turns of apparent disagreement.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Conversational diversity is only real if agents have genuinely different system prompts that frame the problem differently. Identical or near-identical system prompts produce cosmetic disagreement that resolves to the same prior. Assign clearly opposing roles (proponent vs opponent, critic vs advocate) to force genuine divergence.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Passing full conversation history to every turn prompt.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Turn N sees N-1 prior messages, causing quadratic token growth. A 10-turn conversation with 200-token turns averages 1000 tokens of context per call instead of 600 with a 3-turn window — cost nearly doubles for no quality gain.</repair>
-    </failure-mode>
+  <section title="Termination">
+    <antipattern>
+      <description>Missing or weak termination_phrase — the loop only ever exits via max_turns.</description>
+      <reason>Detect: trace shows all runs end with `turn == max_turns` and no termination phrase fired. Fix: declare a concrete phrase ("TASK COMPLETE", "FINAL ANSWER:"); instruct one designated agent to emit it when the conversation goal is met.</reason>
+    </antipattern>
+    <antipattern>
+      <description>max_turns set absurdly high (&gt; 30) "just to be safe" — runs that should have early-exited burn tokens until the cap.</description>
+      <reason>Detect: validator flags `max_turns &gt; 30`. Fix: cap at 30; if you legitimately need more turns, you have a `sequential` pipeline mis-labelled as conversational.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Context &amp; cost">
+    <antipattern>
+      <description>Full conversation history passed to every turn prompt — token cost grows quadratically.</description>
+      <reason>Detect: per-turn input tokens grow roughly linearly with turn index. Fix: pass only the last `window_size` (default 3) entries; previous content is lost — that is the intended trade.</reason>
+    </antipattern>
+    <antipattern>
+      <description>No per-turn budget audit — the run hits max_turns at any cost; budget is "monitored" only post-hoc.</description>
+      <reason>Detect: post-run total_tokens far exceeds spec.budget. Fix: maintain `used_tokens` counter; abort the loop and emit `aborted_early=true` when `used_tokens ≥ 0.9 × budget`.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Identity">
+    <antipattern>
+      <description>Two agents with identical system_prompts — conversation degenerates to monologue or empty agreement.</description>
+      <reason>Detect: turns from different agents have &gt;0.9 pairwise cosine similarity. Fix: assign clearly opposing or complementary roles (proposer/critic, designer/security-reviewer), put the opposition into the system prompt itself.</reason>
+    </antipattern>
   </section>
 </text>

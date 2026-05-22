@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a Go HTTP backend scaffold with cmd/ + internal/ layout, consumer-side interfaces, context-first I/O signatures, typed AppError mapped to HTTP via one middleware, and a context-aware worker pool.
-content_id: "go-backend-fb02"
+content_id: "f3c43363bde0ba3d"
 complexity: medium
 produces: code
 est_tokens: 4300

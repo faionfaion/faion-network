@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a Python 3.11+ project applying the full stack — Poetry deps, Django services pattern, FastAPI Depends/Pydantic v2, pytest fixtures, mypy --strict, ruff, asyncio.gather/TaskGroup — with one canonical scaffold per framework.
-content_id: "python-fb18"
+content_id: "340b5011d8539b9a"
 complexity: deep
 produces: code
 est_tokens: 5500

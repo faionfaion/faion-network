@@ -1,3 +1,9 @@
+// purpose: TBD-template-header
+// consumes: input from methodology
+// produces: output artefact
+// depends-on: 01-core-rules.xml
+// token-budget-impact: small
+
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';

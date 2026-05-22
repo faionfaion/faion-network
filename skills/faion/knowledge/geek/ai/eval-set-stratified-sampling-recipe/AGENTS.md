@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces a stratified sampling recipe (per-cohort × per-tool × per-intent quotas) for daily LLM eval-set drift checks so the slice is representative without paying full-eval cost.
-content_id: "eval-set-strat-1a2b"
+content_id: "8fc752ad8a8fdb24"
 complexity: medium
 produces: spec
 est_tokens: 3400

@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 Thin APIView: validate → service → return pattern.
 Use for action verbs (activate, archive, retry) or multi-model aggregates.

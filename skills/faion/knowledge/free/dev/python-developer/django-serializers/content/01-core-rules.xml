@@ -1,23 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-serializers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-serializers. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-serializers Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Five testable rules for DRF serializer design. Each is checkable by AST inspection or a code-review checklist.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Define separate Input serializers (named EntityCreateRequest, EntityUpdateRequest) and Output serializers (named EntityResponse, EntityListResponse). Never use ModelSerializer as a shared input-output serializer. Input serializers inherit from serializers.Serializer, not ModelSerializer.</statement>
-      <rationale source="v1-source">Shared serializers accidentally expose sensitive fields (password, is_staff, created_at) in responses because ModelSerializer's fields = '__all__' includes everything. Input serializers that inherit from ModelSerializer also accept fields they shouldn't (id, created_at). Explicit serializers make the API surface auditable and stable against model changes.</rationale>
+    <rule id="r1-input-output-split" testable="true" depth="essential">
+      <statement>Every endpoint that both accepts data and returns data MUST have separate Input (`EntityCreateRequest`, `EntityUpdateRequest`) and Output (`EntityResponse`, `EntityListResponse`) serializers. Both MUST inherit from `serializers.Serializer`. Forbid `ModelSerializer` with `fields = "__all__"`. Forbid one serializer used for both directions.</statement>
+      <rationale source="DRF docs https://www.django-rest-framework.org/api-guide/serializers/ + Vinta best-practices https://www.vintasoftware.com/blog/how-i-test-my-drf-serializers">A single shared serializer paired with `__all__` leaks every new model field into the response automatically. Splitting the directions makes the API surface auditable and stable against model changes.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Serializers MUST NOT contain business logic. validate_*() and validate() methods may only check input shape and format — not query the database, not enforce business rules, not create or modify model instances.</statement>
-      <rationale source="v1-source">Business logic in validate() is untestable without constructing a full serializer and bypasses the service layer. Any database access in validate() runs outside the service transaction, leading to inconsistent state if the service transaction rolls back.</rationale>
+
+    <rule id="r2-no-business-logic" testable="true" depth="essential">
+      <statement>`validate_*()` and `validate()` methods MUST do shape/format checks only — no ORM queries, no service calls, no model creation/mutation. Cross-field business rules (uniqueness, ownership, side-effects) belong in `services.py`.</statement>
+      <rationale source="HackSoft Django styleguide + DRF docs">Database access in validate() runs outside the service transaction; a service rollback leaves orphan state. Business logic in validate() bypasses the unit-testable service layer and conflates the validation step with the action step.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Output serializers inherit from serializers.Serializer and declare all fields explicitly. Fields that must not be exposed (password, secret tokens, internal flags) MUST be absent from the output serializer. Never use exclude = [...] in ModelSerializer as protection — it is too easy to miss new fields.</statement>
-      <rationale source="v1-source">Explicit field lists ensure new model fields are not accidentally exposed. exclude = ['password'] fails silently when a new sensitive field is added — the developer must remember to add it to the exclude list. An explicit include list is safe by default.</rationale>
+
+    <rule id="r3-explicit-fields" testable="true" depth="essential">
+      <statement>Output serializers MUST list every exposed field explicitly. Forbid `fields = "__all__"`, forbid `exclude = [...]` as the security mechanism. Sensitive fields (password, secret, token, api_key, is_staff, internal_*) MUST be absent from the output serializer's field list.</statement>
+      <rationale source="OWASP API Security Cheat Sheet">An explicit allowlist is safe-by-default when a model gains a new field; an excludelist requires every author to remember the rule. Empirically, secrets leak via missed exclude entries in every codebase audited.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Set required, allow_blank, allow_null, and default explicitly on every field of Input serializers. Do not rely on DRF defaults — they are not obvious and change between DRF versions.</statement>
-      <rationale source="v1-source">Explicit field options make the API contract visible in code. When a field is optional with a default, set required=False, default=value. When blank strings are allowed, set allow_blank=True. Implicit DRF defaults can silently accept or reject fields in unexpected ways.</rationale>
+
+    <rule id="r4-explicit-field-options" testable="true" depth="essential">
+      <statement>Every Input serializer field MUST set `required`, `allow_blank`, `allow_null`, and (when applicable) `default` explicitly. Use `write_only=True` for password / secret fields on Input. Use `read_only=True` for derived fields on Output. Do not rely on implicit DRF defaults.</statement>
+      <rationale source="DRF field options docs https://www.django-rest-framework.org/api-guide/fields/#core-arguments">DRF defaults change between major versions and depend on field type. Explicit options make the API contract visible in source and stable across upgrades.</rationale>
+    </rule>
+
+    <rule id="r5-nested-from-selector" testable="true" depth="essential">
+      <statement>Nested serializers MUST consume pre-fetched data provided by a selector (via `select_related` / `prefetch_related`). Forbid `source="...all"` or `PrimaryKeyRelatedField(queryset=...)` patterns that trigger ad-hoc queries during render. Use `is_valid(raise_exception=True)` in views and pass `serializer.validated_data` to the service.</statement>
+      <rationale source="DRF + Django Selectors pattern">A nested serializer that triggers its own query reintroduces N+1 inside the response phase, invisible to selector-level N+1 tests. `raise_exception=True` standardises 400 responses across endpoints.</rationale>
     </rule>
   </section>
 </text>

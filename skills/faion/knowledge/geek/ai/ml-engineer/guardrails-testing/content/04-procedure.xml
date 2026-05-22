@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Guardrails Testing Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step harness build + run.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="payload-lib">
+      <input>Threat model + OWASP LLM Top 10 + prior incident logs</input>
+      <action>Build `tests/payloads/v1.jsonl` with ≥100 entries spanning jailbreak / injection / role-play / encoded / multi-turn categories.</action>
+      <output>Versioned payload library.</output>
+    </step>
+
+    <step n="2" name="security-suite">
+      <input>Payload library + system under test</input>
+      <action>Write `tests/security/test_payloads.py` that iterates the payload library and asserts each is blocked. Mock LLM.</action>
+      <output>Security pytest suite.</output>
+      <decision-gate>Any "leaked" payload with severity=critical fails the suite immediately.</decision-gate>
+    </step>
+
+    <step n="3" name="accuracy-suite">
+      <input>Legitimate-input corpus (e.g., 500 real-user queries scrubbed of PII)</input>
+      <action>Write `tests/accuracy/test_legitimate.py`; assert pass-rate. Compute false_positive_rate; fail if &gt; fp_budget.</action>
+      <output>Accuracy pytest suite.</output>
+    </step>
+
+    <step n="4" name="perf-suite">
+      <input>Realistic input distribution</input>
+      <action>Use `pytest-benchmark` to record p50 / p99 latency and throughput. Compare against stored `bench.json` baseline.</action>
+      <output>Perf pytest suite + bench.json.</output>
+    </step>
+
+    <step n="5" name="red-team">
+      <input>External adversarial team OR `--live` marker against staging</input>
+      <action>Run a 30-min adversarial session with novel payloads not in v1.jsonl. Record successful bypasses into `tests/payloads/v_next.jsonl`.</action>
+      <output>Red-team findings file.</output>
+    </step>
+
+    <step n="6" name="report">
+      <input>All three suites + red-team findings</input>
+      <action>Emit `guardrail-test-report.json` per schema; set verdict = pass iff security.leaked=0 AND accuracy.false_positive_rate ≤ fp_budget AND perf.p99 ≤ baseline_p99 * 1.2.</action>
+      <output>Test report.</output>
+    </step>
+
+  </section>
+</text>

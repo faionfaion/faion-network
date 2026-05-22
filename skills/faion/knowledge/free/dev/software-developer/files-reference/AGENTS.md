@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a verified routing decision (one or two methodology slugs + resolved absolute paths) for a free-text software-developer task by reading the per-language section of the catalog and gating each candidate through a Glob lookup.
-content_id: "catalog-routing-fr01"
+content_id: "50300ffd5cca02cc"
 complexity: light
 produces: report
 est_tokens: 2800

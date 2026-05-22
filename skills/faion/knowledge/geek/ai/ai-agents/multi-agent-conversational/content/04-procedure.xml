@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Conversational Build Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step build from validated config to a running conversational runner with dual termination + budget audit.</summary>
+
+  <section title="Procedure">
+    <code lang="text"><![CDATA[
+STEP 1 — Configure
+  input:  ConversationalAgents config (agents, termination_phrase, max_turns, window_size, token_budget)
+  action: validate via scripts/validate-multi-agent-conversational.py
+  output: instance ready to run
+  gate:   validator exits 0
+
+STEP 2 — Start
+  input:  initial user message
+  action: append {speaker:"user", content, ts} to conversation log
+  output: conversation primed
+  gate:   token_budget > 0
+
+STEP 3 — Turn loop
+  action: for turn in 1..max_turns:
+            pick speaker (round-robin); build prompt = system_prompt + window(last N) + last_message;
+            call LLM; append {speaker, content, tokens_used, ts} to log;
+            used += tokens_used;
+            IF termination_phrase in content OR used >= 0.9*token_budget: break
+  output: full conversation log
+  gate:   loop exits via phrase OR budget OR max_turns (not silent runaway)
+
+STEP 4 — Emit trace
+  action: write trace.json {config, log, used_tokens, exit_reason: phrase|budget|max_turns}
+  output: replayable trace
+  gate:   exit_reason set
+
+STEP 5 — Final extraction
+  action: if exit_reason==phrase: extract the JSON / answer block from the last turn; else: return best-of-window
+  output: structured final_result
+  gate:   final_result not null
+]]></code>
+  </section>
+
+  <reference path="templates/conversational_agents.py">runnable scaffold</reference>
+  <reference path="scripts/validate-multi-agent-conversational.py">final-gate validator</reference>
+</text>

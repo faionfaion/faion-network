@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Conversational vs Other Patterns" version="1.0.0" est_tokens="300">
+  <decision-tree>
+    <root-question id="q-decomposable">Is the task decomposable into a known DAG of steps upfront?</root-question>
+    <branch when="decomposable == true">
+      <conclusion ref="r1-dual-termination">Skip conversational. Use `sequential` (linear chain) or `hierarchical` (manager + workers) for known DAGs — cheaper, easier to audit.</conclusion>
+    </branch>
+    <branch when="decomposable == false">
+      <question id="q-audit">Does production audit require structured per-step decision logs?</question>
+      <branch when="needs_structured_audit == true">
+        <conclusion ref="r3-sliding-window">Skip conversational. Use `hierarchical` so each step has a typed assignment + result row; conversational turns are prose and harder to query.</conclusion>
+      </branch>
+      <branch when="needs_structured_audit == false">
+        <question id="q-stakes">Adversarial verification needed (proposer vs critic) OR open-ended exploration?</question>
+        <branch when="needs_adversarial == true OR open_ended == true">
+          <conclusion ref="r5-distinct-identities">Pick `conversational`. ≥2 agents with distinct opposing system prompts; termination_phrase (e.g. "TASK COMPLETE") + max_turns ≤ 30 + window_size = 3.</conclusion>
+        </branch>
+        <branch when="needs_adversarial == false AND open_ended == false">
+          <conclusion ref="r1-dual-termination">Skip conversational. The shape does not justify free-form turns; pick `hierarchical` for a single manager + worker flow.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="debug-session">
+      <p>"Interactive: debug why pytest fixture leaks DB connections": unknowable plan, prose-audit fine, proposer/critic helps → q-decomposable=no → q-audit=no → q-stakes=adversarial → conclusion `conversational`.</p>
+    </example>
+  </decision-tree>
+</text>

@@ -1,22 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="structured-output-mode-picker Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for structured-output-mode-picker as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="structured-output-mode-picker Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that result from picking the wrong constrained-decoding mode.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using response_format={"type": "json_object"} for extraction that downstream code expects to be schema-conformant.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>json_object guarantees only that json.loads() succeeds — field names, types, enums, required-ness are all free. Pydantic parse fails on roughly every malformed batch and the failure is intermittent, not signal-rich.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Modeling agent actions as a discriminated union under SO and dispatching on the discriminator field in user code.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tool calls already give you the dispatch affordance natively (function name + typed args + provider-side validation + multi-tool selection). Doing it via SO discriminator forces a custom router that re-implements what the tool API already does and forfeits parallel tool calls.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Forcing SQL, regex, GBNF, or other non-JSON output through a tool call argument as a single string field.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The model still has to generate the DSL inside an unconstrained string — no grammar mask applies inside string values. Use a real grammar (Outlines/XGrammar/GBNF) on a model that supports it; XGrammar reports 100x throughput vs string-inside-JSON workarounds.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-json-mode-typed-extraction" severity="high">
+      <symptom>Pydantic parse fails on roughly every malformed batch (~5-15% of rows); failure is intermittent and lacks a deterministic signature.</symptom>
+      <root-cause>Pipeline uses `response_format={"type": "json_object"}` for extraction that downstream code parses into typed models. json-mode guarantees only valid JSON, not schema compliance.</root-cause>
+      <fix>Switch to SO strict (`response_format={"type": "json_schema", "strict": true, "schema": ...}`). See [[strict-mode-required-fields]] for the schema invariants.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-so-discriminated-union" severity="medium">
+      <symptom>SO strict schema is a discriminated union of action shapes; user code dispatches on the discriminator field; parallel tool calls are impossible.</symptom>
+      <root-cause>Author modeled agent actions as data instead of using tool-call mode's native function-name dispatch.</root-cause>
+      <fix>Migrate to tool-call: each action becomes a tool with its own `input_schema`; the provider returns the chosen function name in the response. Supports parallel calls; no custom router needed.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-dsl-inside-tool-string" severity="high">
+      <symptom>SQL / regex / custom-DSL is generated inside a tool-call argument as a single unconstrained string. Output is syntactically broken ≥10% of the time.</symptom>
+      <root-cause>Author wrapped a DSL workload in tool-call mode because grammar mode was unfamiliar.</root-cause>
+      <fix>Use grammar mode (XGrammar / Outlines / GBNF) on a model that supports it. XGrammar reports 100x throughput vs string-inside-JSON workarounds.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-grammar-for-extraction" severity="medium">
+      <symptom>Outlines / XGrammar configured with a JSON-Schema grammar for typed extraction; throughput is fine but Pydantic parse still fails on edge cases (`additionalProperties` not enforced).</symptom>
+      <root-cause>Grammar mode was chosen for a JSON consumer; strict SO would have been cleaner.</root-cause>
+      <fix>Stay on grammar mode only if the provider lacks strict SO; otherwise switch to provider-native SO strict (smaller surface, deterministic). Migrate when strict SO becomes available.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-mode-mismatch-across-providers" severity="medium">
+      <symptom>Service uses SO strict on OpenAI and falls back to tool-call on Anthropic for the same logical task. Output shapes drift between providers.</symptom>
+      <root-cause>Author let each provider drive the mode pick instead of fixing the consumer-driven choice up front.</root-cause>
+      <fix>Pick the mode by consumer first, then map to each provider's nearest equivalent. Document the mapping in the decision-record; track providers that lag for migration.</fix>
+    </antipattern>
   </section>
 </text>

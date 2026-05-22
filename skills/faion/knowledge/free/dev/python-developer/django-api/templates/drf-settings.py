@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 Complete REST_FRAMEWORK + SIMPLE_JWT + SPECTACULAR_SETTINGS config block.
 Copy into settings.py (or settings/base.py).

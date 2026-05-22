@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a production FastAPI app — @asynccontextmanager lifespan, Pydantic v2 Base/Create/Update/Response schemas, Annotated dependency aliases, async service functions, async SQLAlchemy 2 with flush+refresh, and Depends-based auth.
-content_id: "python-fastapi-fb19"
+content_id: "4d9d16a50e38f204"
 complexity: medium
 produces: code
 est_tokens: 4400

@@ -1,12 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedding-generation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedding-generation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Embedding Generation Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns that the producer-config validator and a runtime upsert assertion detect.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="dimension-drift" severity="critical">
+      <symptom>Upsert raises VectorDimensionMismatch (or silently corrupts in some stores); search returns zero hits where matches existed yesterday.</symptom>
+      <root-cause source="Qdrant / Pinecone / pgvector docs 2026">Model id was changed (e.g. text-embedding-3-small → text-embedding-3-large) without rotating the collection.</root-cause>
+      <fix>Producer asserts model_dim == store.schema_dimension before upsert. Switching model requires a new collection name; never reuse an existing one across dimensions.</fix>
+    </antipattern>
+
+    <antipattern id="non-deterministic-chunking" severity="high">
+      <symptom>Re-index of the same corpus produces a different number of chunks; cache hit rate drops to near zero on every re-run.</symptom>
+      <root-cause source="LangChain / LlamaIndex chunking guidance 2026">Chunker uses random or wall-clock seed; or text normalization (whitespace, case) differs between runs.</root-cause>
+      <fix>Pin chunker config and normalize text deterministically (canonical whitespace, NFC unicode). Hash the chunker config into the cache key namespace.</fix>
+    </antipattern>
+
+    <antipattern id="unnormalized-cosine" severity="high">
+      <symptom>Top-K results are dominated by long documents (or short documents) rather than by semantic match; quality metrics (Recall@K) collapse vs the validation set.</symptom>
+      <root-cause source="vector-DB cosine vs dot-product docs 2026">Cosine similarity treats unnormalized vectors as dot-product, which is biased by vector magnitude (i.e. token count).</root-cause>
+      <fix>L2-normalize at the producer; mark normalize=true in config. If the collection mixes normalized and unnormalized, regenerate.</fix>
+    </antipattern>
+
+    <antipattern id="cache-by-raw-text-only" severity="medium">
+      <symptom>Cache hit rate looks high but search quality regresses after a model swap; cached vectors of the wrong dimension or wrong model are returned.</symptom>
+      <root-cause source="industry RAG cache patterns 2026">Cache key is sha256(text) only; model_id and dimension are missing from the key namespace.</root-cause>
+      <fix>Key scheme MUST be sha256(text) + ":" + model_id + ":" + dim. Bump cache namespace when any of those changes.</fix>
+    </antipattern>
+
   </section>
+
 </text>

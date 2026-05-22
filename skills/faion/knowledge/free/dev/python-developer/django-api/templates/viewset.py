@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 ModelViewSet with action-specific serializers, get_queryset, and @action.
 Pattern: thin viewset — validate in serializer, delegate logic to service.

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a production Node.js HTTP service (Express or Fastify) with helmet/cors/rate-limit middleware, schema-validated routes (Zod or TypeBox), centralized error handler, and SIGTERM/SIGINT graceful shutdown.
-content_id: "nodejs-fb15"
+content_id: "98e4f4321c71df5c"
 complexity: medium
 produces: code
 est_tokens: 4000

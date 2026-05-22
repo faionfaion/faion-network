@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 Complexity-based model router for Claude (Haiku → Sonnet → Opus).
 Classifier uses Haiku for minimum overhead.

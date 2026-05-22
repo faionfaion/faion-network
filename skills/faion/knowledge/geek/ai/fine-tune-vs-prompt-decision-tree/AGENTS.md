@@ -4,68 +4,95 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Opinionated decision tree on WHEN finetune beats prompt+RAG+routing on cost-quality-latency-maintenance axes — engineers over-finetune without it.
-content_id: "c862a545a1351565"
-tags: [fine-tune-vs-prompt-decision-tree, ai, geek]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an opinionated decision-record on WHEN fine-tune beats prompt + RAG + routing on the four axes (quality, cost, latency, maintenance), with revisit triggers, so engineers stop over-fine-tuning.
+content_id: "b51b3e874ed21458"
+complexity: light
+produces: decision-record
+est_tokens: 3000
+tags: [fine-tune, decision-tree, prompt, rag, routing]
 ---
-
 # Fine-tune vs Prompt+RAG Decision Tree
 
 ## Summary
 
-**One-sentence:** Opinionated decision tree on WHEN finetune beats prompt+RAG+routing on cost-quality-latency-maintenance axes — engineers over-finetune without it.
+**One-sentence:** Produces an opinionated decision-record on WHEN fine-tune beats prompt + RAG + routing on the four axes (quality, cost, latency, maintenance), with revisit triggers, so engineers stop over-fine-tuning.
 
-**One-paragraph:** Faion has fine-tuning-openai-* and lora-qlora HOW. Missing: an opinionated decision tree on WHEN finetune beats prompt+RAG+routing. Engineers over-finetune. Output: decision tree + decision record + revisit triggers.
+**One-paragraph:** Faion ships fine-tuning-openai-* (HOW) and lora-qlora (HOW). What is missing is the opinionated WHEN: a tree that, given quality gap, cost target, latency target, and ops budget, returns one of {prompt-improve, RAG, route, fine-tune, hybrid}. This methodology produces a one-page artefact with the four axis scores, the tree's decision, and the named revisit triggers (volume jumps 3x, new model ships at -50% price, eval drift). Sister to `[[finetune-cost-vs-prompt-decision]]` (numbers-first); this one is the decision graph.
+
+**Ефективно для:** RFC review of any "let's fine-tune X" proposal, ml-engineer triage, CTO checkpoint before training spend, FinOps challenges, post-mortem after a fine-tune flop.
 
 ## Applies If (ALL must hold)
 
-- team considering fine-tuning a model
-- ≥1 production workflow with eval set
-- either cost, quality, or latency is below target
+- Production workload has a measurable eval (score in [0,1]).
+- Cost, quality, OR latency is below the product's target.
+- A list of alternatives tried (better prompt, RAG, routing, distillation) exists OR will be filled.
+- Owner is a named human, not a team alias.
 
 ## Skip If (ANY kills it)
 
-- research / exploration with no production constraint
-- compliance requirement forcing on-prem fine-tune (decision pre-made)
-- no eval set — build eval first
+- No eval set — build evals first.
+- Compliance forces on-prem FT — decision is pre-made, document it instead.
+- Research/exploration with no production users — methodology does not pay back.
 
 ## Prerequisites
 
-- eval set ≥100 cases (smaller is too noisy for fine-tune ROI)
-- current cost, quality, latency baseline
-- list of alternatives tried (better prompting, RAG, routing, distillation)
+| Input artifact | Format | Source |
+|---|---|---|
+| Eval baseline | score in [0,1] | eval harness |
+| Cost baseline | $/k tokens × volume | provider invoice |
+| Latency target + current | ms | observability |
+| Alternatives tried | list with eval lift each | engineering log |
+| Maintenance burden estimate | qualitative + 1-3 score | eng manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/fine-tuning-openai-supervised` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/lora-qlora` | peer methodology — produces inputs or consumes outputs |
+| `[[finetune-cost-vs-prompt-decision]]` | Numbers-first sibling. |
+| `[[fine-tune-vs-prompt-economic-model]]` | Spreadsheet template. |
+| `[[finetune-kickoff-checklist]]` | Downstream if FT is chosen. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: 4 axes scored, alternatives enumerated, ≥2-of-4 axes need FT, revisit triggers, owner | ~700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the decision record + examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: 1-axis decision, skipped RAG, no revisit triggers, anchoring on FT | ~600 |
+| `content/05-examples.xml` | recommended | Worked decision: routing beats FT for a chat-classifier | ~600 |
+| `content/06-decision-tree.xml` | essential | The actual decision graph | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| Score the 4 axes | sonnet | Light judgment. |
+| Enumerate alternatives | sonnet | Bounded knowledge. |
+| Pick the path | opus | High-stakes synthesis. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/decision-record.schema.json` | JSON Schema for the artefact. |
+| `templates/decision-record.md` | Markdown writeup skeleton. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-fine-tune-vs-prompt-decision-tree.py` | Validate the artefact against schema + rules. | Pre-commit in the RFC log. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/fine-tuning-openai-supervised`
-- peer methodology: `geek/ai/lora-qlora`
-- peer methodology: `geek/ai/llm-cascade-routing`
-- external: https://platform.openai.com/docs/guides/fine-tuning; https://arxiv.org/abs/2106.09685 (LoRA); https://www.anthropic.com/news/prompt-caching
+- parent skill: `geek/ai/`
+- `[[finetune-cost-vs-prompt-decision]]` — numbers sister
+- `[[finetune-kickoff-checklist]]` — next step if FT is chosen
+- `[[fine-tune-vs-prompt-economic-model]]` — spreadsheet model
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` runs four axis checks: if 0 axes failing → no change; if quality alone → prompt-improve; if cost + latency → routing/distillation; if all four → fine-tune.

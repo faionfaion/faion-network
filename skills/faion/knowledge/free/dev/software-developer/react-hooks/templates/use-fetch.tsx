@@ -1,3 +1,9 @@
+// purpose: TBD-template-header
+// consumes: input from methodology
+// produces: output artefact
+// depends-on: 01-core-rules.xml
+// token-budget-impact: small
+
 // use-fetch.tsx — Strict-Mode-safe useFetch with typed status states.
 // For production apps prefer TanStack Query. This is a teaching example
 // showing correct cleanup and Strict-Mode-safe behavior.

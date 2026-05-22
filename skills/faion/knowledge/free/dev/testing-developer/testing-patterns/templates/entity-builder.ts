@@ -1,3 +1,9 @@
+// purpose: TBD-template-header
+// consumes: input from methodology
+// produces: output artefact
+// depends-on: 01-core-rules.xml
+// token-budget-impact: small
+
 import { v4 as uuidv4 } from 'uuid';
 
 interface Entity {

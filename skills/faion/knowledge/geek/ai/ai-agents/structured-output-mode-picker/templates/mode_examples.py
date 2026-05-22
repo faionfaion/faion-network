@@ -1,3 +1,8 @@
+# purpose: four minimal side-by-side calls — one per constrained-decoding mode
+# consumes: openai-python >= 1.50, anthropic >= 0.40, outlines >= 0.1, pydantic >= 2.5
+# produces: per-mode response objects; primary purpose is reading/comparison
+# depends-on: real provider keys to run; otherwise read-only reference
+# token-budget-impact: ~350 tokens to render in agent context
 """Four constrained-decoding modes side by side.
 
 One minimal call per mode so you can compare guarantees and pick by use

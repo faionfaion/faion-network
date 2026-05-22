@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="structured-output-mode-picker Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure for picking the mode and producing a decision-record.</summary>
+
+  <step n="1" name="classify-consumer">
+    <input>One paragraph describing the stage's purpose.</input>
+    <action>Tag the consumer: `extraction` (typed parse), `action` (dispatch to function), `dsl` (SQL/regex/custom CFG), or `legacy` (free-form JSON downstream).</action>
+    <output>Single enum value used in `decision-record.md`.</output>
+  </step>
+
+  <step n="2" name="enumerate-available-modes">
+    <input>Provider list (`provider-modes.yml`).</input>
+    <action>List which of the four modes is supported per provider; flag any provider that lacks strict SO so the fallback policy applies.</action>
+    <output>Matrix `(provider, mode) → supported?`.</output>
+  </step>
+
+  <step n="3" name="shortlist-and-eval">
+    <input>≥2 candidate modes from steps 1 + 2; eval set with ≥10 rows.</input>
+    <action>Run the eval against each candidate. Record per-mode accuracy + cost + latency.</action>
+    <output>Sorted list of candidates by `winning_accuracy`.</output>
+    <decision-gate>If the top two are within 1 absolute point, prefer the simpler mode (mode mismatch is a maintenance cost).</decision-gate>
+  </step>
+
+  <step n="4" name="write-decision-record">
+    <input>Top candidate + alternatives + eval delta.</input>
+    <action>Author `decision-record.md` per the `templates/decision-record.md` skeleton. Include `stage`, `consumer`, `chosen_mode`, `alternatives_considered`, `rationale` (≥24 chars), `eval_delta`.</action>
+    <output>Markdown + JSON record matching `02-output-contract.xml`.</output>
+  </step>
+
+  <step n="5" name="validate-and-merge">
+    <input>Decision-record JSON.</input>
+    <action>Run `scripts/validate-structured-output-mode-picker.py record.json`. On PASS, open the migration PR linking the record; on FAIL, surface violations and fix.</action>
+    <output>Validated record committed to `decisions/<stage>/output-mode.json`.</output>
+    <decision-gate>If `chosen_mode == "json-mode"`, the record MUST link a tracking issue to migrate when strict SO is available.</decision-gate>
+  </step>
+</text>

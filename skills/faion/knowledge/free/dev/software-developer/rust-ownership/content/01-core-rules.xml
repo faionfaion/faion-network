@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-ownership Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-ownership. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Rust Ownership Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules for signature design — questions to answer, defaults to prefer, escape hatches to avoid.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="answer-3-questions" testable="true" depth="essential">
+      <statement>Before writing any function body, document the answers to three questions in a comment above the signature: (1) does this function need to keep the value after returning? (2) does it modify the value? (3) does it need to share the value across threads or with another scope? Skipping the audit is forbidden.</statement>
+      <rationale source="Rust Book ch.4; klabnik — Rust for Rustaceans">Most borrow-checker pain stems from a wrong signature. Body-first design produces `.clone()` propagation. Signature-first design picks the right shape immediately.</rationale>
     </rule>
+
+    <rule id="prefer-borrow" testable="true" depth="essential">
+      <statement>Default to `&T` for read-only parameters. `String` → `&str`, `Vec&lt;T&gt;` → `&[T]`, `PathBuf` → `&Path`. Only take ownership when the function actually consumes the value (stores it in a struct, returns it, drops it).</statement>
+      <rationale source="Rust Book ch.4 — References">`&str`/`&[T]`/`&Path` accept more callers (string literals, vec slices) at zero cost. Taking `String` forces every caller to `.to_string()` or `.clone()`.</rationale>
+    </rule>
+
+    <rule id="mut-only-if-needed" testable="true" depth="essential">
+      <statement>Use `&mut T` only when the function modifies the value. If only one branch needs mutation, restructure: take `&T` and `match` to a path that returns an owned modification.</statement>
+      <rationale source="Rust Book ch.4 — Mutable References">`&mut T` blocks all other access for its lifetime. Adding it speculatively forces callers to release other borrows even when no mutation happens.</rationale>
+    </rule>
+
+    <rule id="no-rc-refcell-default" testable="true" depth="essential">
+      <statement>`Rc&lt;RefCell&lt;T&gt;&gt;` is an escape hatch, not a default. Reach for it only when the data structure is genuinely a graph with cycles. For tree-shaped data use `Box&lt;T&gt;` + parent pointer-by-id. For state machines use enum + ownership move.</statement>
+      <rationale source="Rust Book ch.15; The Rust Reference Counter">`Rc&lt;RefCell&gt;` defers borrow checks to runtime and produces panics or silent aliasing bugs. The borrow checker is not the enemy — fight it by redesigning the data, not by hiding it.</rationale>
+    </rule>
+
+    <rule id="arc-only-for-thread-share" testable="true" depth="essential">
+      <statement>`Arc&lt;T&gt;` only when the value crosses a thread boundary (spawned thread, async task, `tokio::spawn`). Single-threaded shared ownership uses `Rc&lt;T&gt;` (cheaper). Synchronous code with no `Send` requirement does not need `Arc`.</statement>
+      <rationale source="std::sync::Arc docs">`Arc` uses atomic refcount ops; `Rc` uses non-atomic. Wrapping single-threaded data in `Arc` pays the atomic cost on every clone for no safety benefit.</rationale>
+    </rule>
+
+    <rule id="lifetime-elision-or-explicit" testable="true" depth="essential">
+      <statement>If lifetime elision rules (Rust Reference ch.10) apply, omit lifetimes. If they don't, write the explicit lifetime AND a comment naming what outlives what. Never just add `'static` to silence the compiler.</statement>
+      <rationale source="Rust Book ch.10 — Lifetime Elision">`'static` is rarely what you mean. The compiler suggests it as the safest fallback; accepting silently forces all callers to also pin `'static`, propagating the wrong constraint.</rationale>
+    </rule>
+
   </section>
 </text>

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces a tool-definition + system-prompt scaffold that wires `faion search` and `faion get-content` into a custom agent as a reasoning tool, with bounded budgets and tier-aware fallback.
-content_id: "faion-cli-agent-3c4d"
+content_id: "678b6d1139e5dbcf"
 complexity: medium
 produces: code
 est_tokens: 3400

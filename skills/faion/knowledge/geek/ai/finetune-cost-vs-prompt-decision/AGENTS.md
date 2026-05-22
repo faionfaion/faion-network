@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces a one-page decision record (problem type, data volume, eval lift bar, $/inference target) that blocks bad fine-tune calls and routes the team to prompt + RAG + routing when the math says so.
-content_id: "ft-cost-prompt-5a6b"
+content_id: "be97c2c97934c4c8"
 complexity: light
 produces: decision-record
 est_tokens: 3000

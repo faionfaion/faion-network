@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="embedding-generation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for embedding-generation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Embedding Generation Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every embedding producer must satisfy. Each rule is enforced by validate-embedding-generation.py.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="deterministic-producer" testable="true" depth="essential">
+      <statement>Producer MUST return byte-identical vectors for byte-identical inputs (same model id, same dimension, same preprocessing). No randomness is permitted in pre- or post-processing.</statement>
+      <rationale source="OpenAI / Voyage / Cohere embeddings docs 2026">Index re-runs must produce stable IDs; non-deterministic preprocessing causes duplicate vectors and breaks dedup.</rationale>
     </rule>
+
+    <rule id="content-hash-cache" testable="true" depth="essential">
+      <statement>Cache key is sha256(normalized_text) + ":" + model_id + ":" + dim. Cache value is the vector. Cache is byte-content addressed; never use a sequential ID or filename.</statement>
+      <rationale source="industry RAG patterns 2026">Re-runs over the same corpus must hit the cache; key by ID lets renamed/moved content waste an API call.</rationale>
+    </rule>
+
+    <rule id="async-batching" testable="true" depth="essential">
+      <statement>For corpora ≥1000 chunks, producer uses async parallel batches sized to the provider limit (e.g. OpenAI 2048 inputs, Voyage 128). Concurrent batches respect provider rate limits via a semaphore.</statement>
+      <rationale source="OpenAI / Voyage / Cohere API docs 2026 batch limits">Sequential 1-by-1 calls take 10-100× wall-clock and waste connection setup; over-parallel calls trip 429.</rationale>
+    </rule>
+
+    <rule id="l2-normalize-for-cosine" testable="true" depth="essential">
+      <statement>If the downstream consumer uses cosine similarity, producer L2-normalizes vectors before persisting. Once normalized, persistence flag normalize=true MUST be set in the producer config.</statement>
+      <rationale source="vector-DB docs (Qdrant, pgvector, Pinecone) 2026">Normalized vectors make cosine = dot product, simplifying indexes and eliminating runtime sqrt; mixing normalized and unnormalized vectors in one collection produces silently wrong rankings.</rationale>
+    </rule>
+
+    <rule id="dimension-locked-schema" testable="true" depth="essential">
+      <statement>Vector store schema declares dimension EXACTLY; producer config asserts model_dim == schema_dim before any upsert. Switching model+dim requires a new collection, not an in-place override.</statement>
+      <rationale source="Qdrant / Pinecone / pgvector docs 2026">Dimension mismatch is silent corruption in some stores and a hard error in others; either way the search is broken.</rationale>
+    </rule>
+
+    <rule id="exponential-backoff-retry" testable="true" depth="essential">
+      <statement>Every embedding API call is wrapped in retry-with-jitter (max_attempts=5, wait = min(2**attempt + jitter, 60)). Retry on 429, 5xx, and connection errors. Other 4xx fail fast.</statement>
+      <rationale source="OpenAI / Anthropic SDK retry guidance 2026">Long batch runs trip rate limits intermittently; crash-on-first-429 wastes minutes of partial work.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

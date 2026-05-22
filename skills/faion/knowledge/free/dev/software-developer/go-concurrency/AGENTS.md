@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces race-free Go concurrency code (worker pool, rate limiter, semaphore, RWMutex cache, errgroup fan-out) where every goroutine has an explicit exit and `go test -race -count=10` passes.
-content_id: "go-concurrency-fb05"
+content_id: "5a2df46fd2085f66"
 complexity: medium
 produces: code
 est_tokens: 4200

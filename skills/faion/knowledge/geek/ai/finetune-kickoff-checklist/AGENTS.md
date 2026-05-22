@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces a kickoff-gate checklist (eval baseline, data quality bar, hold-out slice, eval-during-training cadence, rollback plan) that fine-tune jobs MUST pass before training spend is approved.
-content_id: "ft-kickoff-7c8d"
+content_id: "f130d44f22eb9c20"
 complexity: light
 produces: checklist
 est_tokens: 2900

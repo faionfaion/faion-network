@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces an LLM cost-optimization plan (model-router config, cache policy, batch-routing rules, token-budget guardrails) that cuts per-stage LLM spend 60-90% without touching task quality.
-content_id: "cost-opt-001234abcd5678"
+content_id: "f6c49aa53c68c9bf"
 complexity: deep
 produces: config
 est_tokens: 4200

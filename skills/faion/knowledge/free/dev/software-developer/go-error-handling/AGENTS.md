@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a Go error-handling pipeline (typed AppError, fmt.Errorf %w wrapping, repository boundary mapping, middleware translation, golangci-lint errorlint/wrapcheck) that yields consistent HTTP responses across the service.
-content_id: "go-error-handling-fb06"
+content_id: "e5fd377af7509efc"
 complexity: medium
 produces: code
 est_tokens: 4200

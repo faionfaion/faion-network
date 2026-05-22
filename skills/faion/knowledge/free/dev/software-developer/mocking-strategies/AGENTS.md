@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-net]
 summary: Produces a test-double decision (dummy/stub/spy/mock/fake) and patch-target choice that validates the required behavior without over-specifying interaction, using AsyncMock for async and patching where the name is looked up.
-content_id: "mocking-strategies-fb14"
+content_id: "66da443901e8c430"
 complexity: light
 produces: decision-record
 est_tokens: 3000
