@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="deploy-day-staging-to-prod" goal="TBD" complexity="medium">
+  <intent>Feature lives on staging → safe push to prod with rollback ready and post-deploy verified.</intent>
+  <scope>Solo founder pushes to prod safely: CI green, smoke pass on staging, feature-flagged where risky, deploy script run, post-deploy health verified, rollback path proven. Exit artifact is healthy prod + verified rollback path.</scope>
+  <success-criteria>
+    <criterion>CI green on PR + main</criterion>
+    <criterion>Staging smoke test passed</criterion>
+    <criterion>Feature behind flag if risky</criterion>
+    <criterion>Deploy executed via script (not manual)</criterion>
+    <criterion>Post-deploy health checks pass within 5 minutes</criterion>
+    <criterion>Rollback path tested in staging</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Pre-flight">
+      <intent>CI green + staging smoke + flag plan confirmed.</intent>
+      <tasks>
+        <task>Verify CI green on main</task>
+        <task>Run staging smoke test</task>
+        <task>Confirm feature flag plan</task>
+      </tasks>
+      <methodologies>
+        <ref slug="e2e-testing" />
+        <ref slug="cd-basics" />
+        <ref slug="cd-pipelines" />
+        <ref slug="quality-gates-confidence" />
+      </methodologies>
+      <outputs>
+        <output>Pre-flight checklist complete</output>
+      </outputs>
+      <decision-gate>Advance when all 3 checks pass. Refuse to deploy with red CI or untested staging.</decision-gate>
+    </stage>
+    <stage n="2" name="Deploy">
+      <intent>Run deploy script. Never manual.</intent>
+      <tasks>
+        <task>Execute deploy script</task>
+        <task>Watch deploy logs</task>
+        <task>Verify deploy version on prod</task>
+      </tasks>
+      <methodologies>
+        <ref slug="feature-flags-rollout-targeting" />
+        <ref slug="feature-flags" />
+        <ref slug="deploy-scripts" />
+        <ref slug="release-planning" />
+      </methodologies>
+      <outputs>
+        <output>Deploy log</output>
+        <output>Prod version confirmed</output>
+      </outputs>
+      <decision-gate>Advance when prod runs new version. Stay if deploy errors.</decision-gate>
+    </stage>
+    <stage n="3" name="Verify">
+      <intent>Health checks + key flows + flag rollout.</intent>
+      <tasks>
+        <task>Run health checks</task>
+        <task>Walk through 3 critical user flows</task>
+        <task>Roll flag 5% → 25% → 50% → 100%</task>
+      </tasks>
+      <methodologies>
+        <ref slug="health-checks-autoheal" />
+        <ref slug="monitoring-logging" />
+        <ref slug="logging-patterns" />
+      </methodologies>
+      <outputs>
+        <output>Health-check pass log</output>
+        <output>Flag rollout log</output>
+      </outputs>
+      <decision-gate>Advance when health green + flows work. Hot-rollback flag if any flow breaks.</decision-gate>
+    </stage>
+    <stage n="4" name="Rollback drill">
+      <intent>Prove the rollback path works (test in staging post-deploy).</intent>
+      <tasks>
+        <task>Trigger rollback in staging</task>
+        <task>Verify rollback completes &lt;5min</task>
+        <task>Document rollback command</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Rollback runbook entry</output>
+      </outputs>
+      <decision-gate>Required output: rollback proven in staging this deploy. Without it, next incident is fatal.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="solo-deploy-checklist" expected-tier="solo" />
+    <gap slug="one-person-rollback-runbook" expected-tier="solo" />
+  </gaps>
+  <extra key="context" value="[solo]" />
+  <extra key="non_goals" value="[Multi-region deployments — single-region only here, Blue-green orchestration — flag-based rollouts only]" />
+  <extra key="prerequisites" value="[CI pipeline configured (cd-basics complete), Staging environment live, Monitoring + logging configured]" />
+  <extra key="common_pitfalls" value="[Deploying without flag because 'it's a small change' — small changes break prod most often, Skipping rollback drill — first time you need it is the worst time to discover it doesn't work]" />
+  <extra key="quality_checklist" value="['Can I roll this back in under 5 minutes if I''m on a phone at 3am?', 'Did I actually walk the critical flows, or just check that the homepage loads?']" />
+  <extra key="related_playbooks" value="[daily-sdd-spec-code-review, solo-prod-incident-response]" />
+  <extra key="token_budget_estimate" value="10000" />
+  <extra key="cli_invocations" value="{human: faion get-content deploy-day-staging-to-prod --format md, agent: faion get-content deploy-day-staging-to-prod --format context, json: faion get-content deploy-day-staging-to-prod --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P1 solo SaaS builder persona}]" />
+</playbook>
