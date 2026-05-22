@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-fastapi Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-fastapi. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Python FastAPI — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every python-fastapi application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-thin-routes" testable="true" depth="essential">
+      <statement>Routes validate (Pydantic), call exactly one service function, and return a response model. No ORM queries, no business logic, no manual JSON serialisation in routes.</statement>
+      <rationale source="faion-network">Thin routes make services unit-testable without HTTP and keep transport concerns isolated.</rationale>
+    </rule>
+    <rule id="r2-pydantic-v2-in-out" testable="true" depth="essential">
+      <statement>Use Pydantic v2 BaseModel for every request body and response. Never accept or return a bare dict.</statement>
+      <rationale source="faion-network">Pydantic v2 validates input, generates OpenAPI schema, and gives typed access; dict in/out hides field drift.</rationale>
+    </rule>
+    <rule id="r3-session-per-task" testable="true" depth="essential">
+      <statement>Acquire one AsyncSession per asyncio task via Depends. Never share an AsyncSession across asyncio.gather or TaskGroup siblings.</statement>
+      <rationale source="faion-network">SQLAlchemy sessions are not safe for concurrent use; sharing causes session state corruption and obscure errors.</rationale>
+    </rule>
+    <rule id="r4-backgroundtasks-short-only" testable="true" depth="essential">
+      <statement>Use FastAPI BackgroundTasks only for work that completes in &lt;100ms. Route anything longer to Celery / Arq / Taskiq.</statement>
+      <rationale source="faion-network">BackgroundTasks run in the same process and can block the response under load; long work needs durable queuing.</rationale>
+    </rule>
+    <rule id="r5-depends-injection" testable="true" depth="essential">
+      <statement>Inject every external dependency (DB session, settings, current user) via Depends. Do not import or instantiate at module top level.</statement>
+      <rationale source="faion-network">Depends gives per-request lifecycle, testability via dependency overrides, and clean teardown.</rationale>
+    </rule>
+    <rule id="r6-openapi-snapshot" testable="true" depth="essential">
+      <statement>Snapshot openapi.json into the repo and diff it on every PR.</statement>
+      <rationale source="faion-network">Schema changes are API breaks; explicit diffs catch accidental renames or type narrowing.</rationale>
     </rule>
   </section>
 </text>

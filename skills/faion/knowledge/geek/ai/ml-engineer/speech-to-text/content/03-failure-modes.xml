@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="speech-to-text Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for speech-to-text as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Speech-to-Text — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns when integrating STT into production.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Real-time captioning routed to OpenAI Whisper batch API — observed latency 3-5s breaks UX; users perceive system hung.</description>
+      <detector>mode == "streaming" AND provider == "openai-whisper"</detector>
+      <repair>Switch to ElevenLabs Scribe (150ms) or Deepgram Nova-2 (200ms) for real-time. Whisper stays for offline batch.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Domain-specific vocabulary mistranscribed — medical terms, product codes, names rendered as English-word lookalikes.</description>
+      <detector>WER on labelled clip &gt;15% AND domain has known custom terms AND custom_vocab empty</detector>
+      <repair>Provide custom_vocab list to Deepgram or AssemblyAI; expect 20-40% WER reduction on domain terms.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>No WER eval before adoption — provider picked from blog post; production accuracy is 25% worse than expected.</description>
+      <detector>No reference WER measurement on a 30-min representative clip per language</detector>
+      <repair>Run paired bench across 3 providers on 30-min hold-out clip. Pick by measured WER + cost + latency. Document.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Hard-coded single provider — OpenAI transcribe degraded during peak hours; product loses voice features until they recover.</description>
+      <detector>fallback missing OR fallback.provider == primary</detector>
+      <repair>Wire fallback to a different provider OR local faster-whisper. Trigger on consecutive 5xx OR timeout &gt; 10s. Test in staging.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Diarization required by product but missing from output — speakers blurred into one transcript line; downstream summarisation conflates them.</description>
+      <detector>diarization == false AND product spec demands speaker labels</detector>
+      <repair>Switch to a diarization-capable provider (AssemblyAI, Deepgram, Whisper + pyannote pipeline). Update Transcript JSON to include speakers[].</repair>
+    </failure-mode>
+
   </section>
 </text>

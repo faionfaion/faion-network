@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-pytest-async Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-pytest-async. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="pytest Async Testing — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules every python-pytest-async application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Set asyncio_mode = "auto" in pyproject.toml [tool.pytest.ini_options] for projects where most tests are async. Do not mix asyncio_mode="auto" with explicit @pytest.mark.asyncio markers — the redundant markers are harmless but add noise. For projects with a small minority of async tests, use strict mode and mark only those tests.</statement>
-      <rationale source="v1-source">Flipping asyncio_mode breaks marker expectations silently — strict mode ignores unmarked async tests (the test body never runs, the test passes). auto mode is the right default for FastAPI projects; strict is appropriate for Django projects where most tests are sync.</rationale>
+    <rule id="r1-asyncio-mode-auto" testable="true" depth="essential">
+      <statement>Set asyncio_mode = 'auto' in pyproject [tool.pytest.ini_options] for projects where most tests are async. Use 'strict' only when most tests are sync.</statement>
+      <rationale source="faion-network">Wrong mode silently skips test bodies (the test passes without running); explicit per-test markers are easy to forget.</rationale>
+    </rule>
+    <rule id="r2-pytest-asyncio-fixture" testable="true" depth="essential">
+      <statement>Use @pytest_asyncio.fixture (not @pytest.fixture) for async fixtures. Yield from them like sync fixtures.</statement>
+      <rationale source="faion-network">@pytest.fixture on async def returns a coroutine object that is truthy; pytest treats it as a value, not an awaitable, and the test fails in obscure ways.</rationale>
+    </rule>
+    <rule id="r3-asyncmock-for-async" testable="true" depth="essential">
+      <statement>Mock async callables with AsyncMock (unittest.mock.AsyncMock or mocker.AsyncMock). Never with MagicMock.</statement>
+      <rationale source="faion-network">MagicMock returns a sync value when awaited (RuntimeError: was not awaited); AsyncMock returns a coroutine.</rationale>
+    </rule>
+    <rule id="r4-asgitransport-for-fastapi" testable="true" depth="essential">
+      <statement>Test FastAPI apps via httpx.AsyncClient(transport=ASGITransport(app=app), base_url='http://test'). Do not boot the server with uvicorn for tests.</statement>
+      <rationale source="faion-network">ASGITransport routes requests directly to the app object — no socket, no port collision, no startup cost.</rationale>
+    </rule>
+    <rule id="r5-no-sync-orm-in-async-test" testable="true" depth="essential">
+      <statement>Never call sync Django ORM directly in an async test. Wrap in asgiref.sync.sync_to_async or write a sync test.</statement>
+      <rationale source="faion-network">Sync ORM blocks the event loop; the test looks like a hang and Pytest eventually times out.</rationale>
     </rule>
   </section>
 </text>

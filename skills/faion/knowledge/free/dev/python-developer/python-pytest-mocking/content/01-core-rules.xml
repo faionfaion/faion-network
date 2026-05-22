@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-pytest-mocking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-pytest-mocking. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="pytest Mocking — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules every python-pytest-mocking application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always patch the name where it is USED (imported into), not where it is DEFINED. If module_a imports helper_function from module_b and you want to intercept the call in module_a, patch "module_a.helper_function", not "module_b.helper_function".</statement>
-      <rationale source="v1-source">When Python executes "from module_b import helper_function", it binds the name helper_function in module_a's namespace. Patching module_b.helper_function replaces the original but module_a.helper_function still points to the old binding. Patching where it is used replaces the binding that the code under test actually calls.</rationale>
+    <rule id="r1-mocker-over-unittest-mock" testable="true" depth="essential">
+      <statement>Use the mocker fixture from pytest-mock. Do not call unittest.mock.patch directly in tests.</statement>
+      <rationale source="faion-network">mocker auto-cleans patches after every test; manual patch.start/stop or with-blocks are boilerplate and error-prone.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use mocker.patch.object(cls, "method", autospec=True) or mocker.create_autospec(RealClass) when mocking non-trivial collaborators. Never use a plain mocker.Mock() for objects whose interface you do not own or that evolve frequently.</statement>
-      <rationale source="v1-source">A plain Mock accepts any call signature. If the real method's signature changes, the mock silently accepts the old call and the test keeps passing while production code breaks. autospec catches the mismatch at test time.</rationale>
+    <rule id="r2-patch-use-site" testable="true" depth="essential">
+      <statement>Patch where the function is used, not where it is defined: mocker.patch('apps.orders.services.send_mail') when orders.services does 'from emails.utils import send_mail'.</statement>
+      <rationale source="faion-network">Python binds names at import; patching the definition has no effect on the consumer.</rationale>
+    </rule>
+    <rule id="r3-autospec-for-signature" testable="true" depth="essential">
+      <statement>Use autospec=True (or create_autospec) so mocks match the real signature. Reject calls with wrong args at test time.</statement>
+      <rationale source="faion-network">Without autospec, a mock accepts any args — silent signature drift between code and test.</rationale>
+    </rule>
+    <rule id="r4-asyncmock-for-async" testable="true" depth="essential">
+      <statement>Mock async callables with AsyncMock. Never with MagicMock.</statement>
+      <rationale source="faion-network">MagicMock returns a sync value when awaited (warning: coroutine was never awaited); AsyncMock returns a coroutine.</rationale>
+    </rule>
+    <rule id="r5-spy-when-behaviour-matters" testable="true" depth="essential">
+      <statement>Use mocker.spy(obj, 'method') when you want the real implementation to run but also record calls.</statement>
+      <rationale source="faion-network">Spy gives observability without changing behaviour — ideal for verifying that production code actually called the dependency.</rationale>
+    </rule>
+    <rule id="r6-never-mock-orm" testable="true" depth="essential">
+      <statement>Do not patch Model.objects.* in service tests. Use a real DB fixture with savepoint rollback.</statement>
+      <rationale source="faion-network">Mocking the ORM tests the mock, not the code; passes even when querysets are broken.</rationale>
     </rule>
   </section>
 </text>

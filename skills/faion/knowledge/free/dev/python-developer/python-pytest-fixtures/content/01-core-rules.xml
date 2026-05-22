@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-pytest-fixtures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-pytest-fixtures. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="pytest Fixtures — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Testable rules every python-pytest-fixtures application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use the smallest fixture scope that keeps test execution time acceptable. Prefer function scope unless a measured performance cost demands widening. A function-scope fixture that takes 50 ms is acceptable; one that takes 3 seconds per test is a candidate for module or session scope.</statement>
-      <rationale source="v1-source">Wider scopes share state between tests. If any test mutates shared state and another test relies on a clean state, a random execution order (pytest-randomly) will expose this as a flake. Function scope is the safe default.</rationale>
+    <rule id="r1-narrowest-scope" testable="true" depth="essential">
+      <statement>Pick the narrowest scope that meets the need: function (default) &gt; class &gt; module &gt; session. Widening scope is a perf optimisation, not a default.</statement>
+      <rationale source="faion-network">Wider scopes share state across tests and create order-dependency; narrow scopes are the safe default.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>A wider-scope fixture MUST NOT depend on a narrower-scope fixture. A session-scoped fixture cannot take a function-scoped fixture as a parameter — pytest raises a ScopeMismatch error at collection time.</statement>
-      <rationale source="v1-source">A session fixture lives longer than a function fixture; requesting the shorter-lived resource in the longer-lived context is a lifecycle contract violation.</rationale>
+    <rule id="r2-yield-for-teardown" testable="true" depth="essential">
+      <statement>Use yield for fixtures with cleanup. Code after yield runs even when the test fails.</statement>
+      <rationale source="faion-network">Return-style fixtures cannot clean up; yield gives setUp/tearDown semantics in a single function.</rationale>
+    </rule>
+    <rule id="r3-factory-fixture-for-params" testable="true" depth="essential">
+      <statement>When tests need different variants of the same object, use a factory fixture (returns a callable), not multiple fixtures.</statement>
+      <rationale source="faion-network">Factory fixture parametrises creation; avoids combinatorial fixture explosion.</rationale>
+    </rule>
+    <rule id="r4-autouse-rarely" testable="true" depth="essential">
+      <statement>Use autouse=True only for fixtures that should affect every test transparently (e.g., reset_app_state). Never on heavy fixtures.</statement>
+      <rationale source="faion-network">Autouse on a heavy fixture multiplies its cost across the whole suite; explicit injection is preferable.</rationale>
+    </rule>
+    <rule id="r5-compose-by-dependency" testable="true" depth="essential">
+      <statement>Fixtures depend on other fixtures by declaring them as parameters. The fixture graph is the test's setup recipe.</statement>
+      <rationale source="faion-network">Composition keeps each fixture single-purpose; pytest resolves the graph automatically.</rationale>
+    </rule>
+    <rule id="r6-no-mutable-shared-state" testable="true" depth="essential">
+      <statement>Never store mutable state at module scope inside a fixture without explicit reset/teardown.</statement>
+      <rationale source="faion-network">Mutable shared state causes order-dependent test failures and intermittent CI flakes.</rationale>
     </rule>
   </section>
 </text>

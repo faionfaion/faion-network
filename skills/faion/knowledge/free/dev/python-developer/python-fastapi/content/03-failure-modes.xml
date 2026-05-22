@@ -1,37 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-fastapi Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-fastapi as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Python FastAPI — Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed when python-fastapi is mis-applied, each with symptom, root cause, and concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Defining def route(...) instead of async def in a FastAPI router.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sync route handlers block the event loop for the entire duration of the handler, preventing concurrent request processing.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Calling sync ORM code (session.query(...)) inside async def routes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sync ORM calls block the event loop thread. Use SQLAlchemy 2 async API (await db.execute(select(...))).</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using Pydantic v1 idioms: class Config, @validator, .dict(), orm_mode=True.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>v1 idioms compile and run in v2 with wrong semantics — validators may not fire, orm_mode is renamed. Pin pydantic&gt;=2 and ban v1 patterns explicitly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using FastAPI BackgroundTasks for jobs longer than ~100ms (email delivery, report generation, video processing).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>BackgroundTasks runs after the response in the same event loop. Long tasks delay the loop and exhaust worker capacity for new requests. Use Celery/Arq/Taskiq.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Omitting response_model on route decorators.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without response_model, FastAPI serializes all model fields including server-only fields (hashed_password, internal IDs). Also breaks OpenAPI documentation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Setting expire_on_commit=False globally then using the same session in a long-lived background worker.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>expire_on_commit=False is correct for request-scoped sessions (prevents lazy-loading after commit). In long-lived workers it serves stale data without warning.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>One AsyncSession passed to multiple coroutines in asyncio.gather.</description>
+      <reason>Root cause: Concurrent use corrupts session state; rare race conditions in prod. Fix: One session per coroutine — get a new one inside each task via Depends.</reason>
+    </antipattern>
+    <antipattern>
+      <description>ORM queries + business logic + serialisation all inside the route function.</description>
+      <reason>Root cause: Untestable without HTTP; logic duplicated across endpoints. Fix: Move to service function; route stays thin.</reason>
+    </antipattern>
+    <antipattern>
+      <description>BackgroundTasks running 30-second email batch.</description>
+      <reason>Root cause: Worker process exhausts under load; response latency spikes. Fix: Move to Celery/Arq/Taskiq; return 202 Accepted.</reason>
+    </antipattern>
+    <antipattern>
+      <description>openapi.json never snapshotted.</description>
+      <reason>Root cause: Field renames ship to production without anyone noticing. Fix: Snapshot the schema; fail CI on diff without bump.</reason>
+    </antipattern>
   </section>
 </text>

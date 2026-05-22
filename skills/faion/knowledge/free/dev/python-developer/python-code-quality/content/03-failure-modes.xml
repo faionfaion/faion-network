@@ -1,67 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-code-quality Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-code-quality as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Python Code Quality — Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed when python-code-quality is mis-applied, each with symptom, root cause, and concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Modifying existing code for new requirements instead of extending via composition or strategy patterns.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When PaymentProcessor needs to support a new payment method (Stripe), adding a new elif in process_payment violates Open/Closed. Every new method requires editing the existing class.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Ruff auto-fix can be lossy. ruff check --fix --unsafe-fixes on B008 (mutable default arg) or UP rewrites can change runtime behavior.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always run tests after unsafe fixes to verify behavior is preserved.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>mypy + Django dynamic patterns. ORM objects.filter(**kwargs), ForeignKey reverse accessors, request.user typing are weak without django-stubs/mypy-django-plugin. Strict-mode breaks badly without them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Install django-stubs and mypy-django-plugin before enabling strict mode on Django projects.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>pyright vs mypy disagreement. Same code, different verdicts on Optional narrowing, generics, and TypedDict partials.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pick one for CI; using both creates noise. Pyright is faster for IDE integration; mypy is more configurable for legacy code.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description># type: ignore rot. Once an agent adds a few, the count compounds. Audits are needed to drive the count down.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Run mypy --warn-unused-ignores in CI to audit accumulation. Require justification comments for each ignore.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>bandit false positives on assert in tests, subprocess with constructed args, MD5 for non-crypto hashing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Suppress per-line with # nosec B### and a justification — not bulk-disable.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>pre-commit tool version drift. Tool versions in .pre-commit-config.yaml and pyproject.toml must match; otherwise contributors and CI report different errors.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pin versions explicitly in both files. Use pre-commit autoupdate to keep them in sync, but review diffs before committing updates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Coverage gaming. pytest-cov % is local optimum; agents add tests that touch lines without asserting behavior.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Combine with mutation testing (mutmut) for real signal. Branch coverage (not line coverage) is harder to game.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>SOLID/clean-code "smells" are fuzzy; LLMs over-refactor. Treating structural advice as mechanical fixes is risky.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use SOLID principles as guidance, not law. Not every scenario fits a textbook pattern. Human judgment is required.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Agents adding tests that pass but don't validate behavior (test smell: assertion-free tests).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require explicit assertions per test. Use pytest-check or similar to catch tests with no assertions. Code review must validate test quality, not just coverage %.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Subclass that violates the Liskov Substitution Principle: accepts different inputs or produces incompatible outputs compared to its parent.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When code treats a subclass as its parent type, LSP violations cause runtime surprises. A subclass must accept the same inputs and produce compatible outputs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Large interface that requires implementers to provide methods they don't need, forcing stub implementations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Large ABCs violate Interface Segregation. A class implementing TimerListener but only caring about on_tick() is forced to stub on_error() and on_cancel().</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Both ruff and black configured in pyproject.</description>
+      <reason>Root cause: Conflicting opinions; one formats, the other reformats on next run. Fix: Remove black; let Ruff format.</reason>
+    </antipattern>
+    <antipattern>
+      <description>git commit --no-verify when hooks fail.</description>
+      <reason>Root cause: Defeats the entire gate; pushes broken code. Fix: Fix the root cause; never --no-verify.</reason>
+    </antipattern>
+    <antipattern>
+      <description>mypy ignore-missing-imports = true globally.</description>
+      <reason>Root cause: Mutes the warning everywhere — including code you wrote. Fix: Override per-module: [[tool.mypy.overrides]] module='legacy.*'.</reason>
+    </antipattern>
+    <antipattern>
+      <description>pytest --cov without --cov-fail-under.</description>
+      <reason>Root cause: Coverage drifts down with every PR; no gate. Fix: Set --cov-fail-under=80 (or project floor).</reason>
+    </antipattern>
+    <antipattern>
+      <description>No bandit / no ruff S rules in CI.</description>
+      <reason>Root cause: Hardcoded secrets, weak hashes ship to prod. Fix: Enable ruff S rules or run bandit in pre-commit.</reason>
+    </antipattern>
   </section>
 </text>

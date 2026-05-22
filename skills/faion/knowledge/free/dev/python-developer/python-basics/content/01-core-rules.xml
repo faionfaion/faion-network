@@ -1,115 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Python Basics — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every python-basics application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use built-in generic syntax for type hints: list[int], dict[str, int], set[str], tuple[int, ...] — never from typing import List, Dict, Set, Tuple.</statement>
-      <rationale source="v1-source">Built-in generics (PEP 585, Python 3.9+) are the current standard. The typing module aliases were deprecated in 3.9 and should trigger ruff UP006/UP035 warnings. Removing them reduces import noise.</rationale>
+    <rule id="r1-builtin-generics" testable="true" depth="essential">
+      <statement>Use built-in generic syntax (list[int], dict[str, int], tuple[str, ...]). Do not import typing.List / Dict / Tuple.</statement>
+      <rationale source="faion-network">Built-in generics are available since 3.9 and idiomatic since 3.12; typing.List et al. are deprecated aliases that add an import for no benefit.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use X | Y union syntax instead of Union[X, Y] and X | None instead of Optional[X] — requires Python 3.10+ or from __future__ import annotations.</statement>
-      <rationale source="v1-source">PEP 604 pipe union reads as "or" and is shorter. Optional[X] obscures intent; X | None is explicit about nullability. ruff UP007 auto-upgrades on --fix.</rationale>
+    <rule id="r2-pipe-union" testable="true" depth="essential">
+      <statement>Use X | None instead of Optional[X]; X | Y instead of Union[X, Y].</statement>
+      <rationale source="faion-network">PEP 604 syntax (3.10+) is shorter, requires no typing import, and is the canonical 3.12+ idiom.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use tuple for fixed-arity heterogeneous sequences and dict keys; use list for variable-length homogeneous sequences.</statement>
-      <rationale source="v1-source">Tuple immutability makes it hashable (usable as dict key) and communicates fixed structure. Lists communicate mutability and variable length. Mixing the two semantics confuses readers.</rationale>
+    <rule id="r3-eafp" testable="true" depth="essential">
+      <statement>Use try/except (EAFP) for exceptional control flow rather than hasattr/in checks before access (LBYL).</statement>
+      <rationale source="faion-network">EAFP is Pythonic, faster on the happy path, and avoids TOCTOU races on dynamic attributes.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use set for membership tests and deduplication; use frozenset when the set must be hashable or passed to functions as a contract.</statement>
-      <rationale source="v1-source">set lookup is O(1) vs O(n) for list. frozenset is the immutable counterpart, suitable as dict key or function argument when mutation must be prevented.</rationale>
+    <rule id="r4-no-mutable-defaults" testable="true" depth="essential">
+      <statement>Never use mutable default arguments (def f(x=[])). Use None and create the container inside the function.</statement>
+      <rationale source="faion-network">Default values are evaluated once at function definition; mutations persist across calls and cause invisible cross-test bleed-through.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Prefer collections.defaultdict over dict.setdefault() for grouped accumulation; prefer collections.Counter over manual frequency counting.</statement>
-      <rationale source="v1-source">defaultdict eliminates the "check-then-insert" pattern in loop bodies. Counter is purpose-built for frequency tallies and exposes .most_common() without sorting manually.</rationale>
+    <rule id="r5-pathlib-over-ospath" testable="true" depth="essential">
+      <statement>Use pathlib.Path for file and directory paths. Do not concatenate strings with os.path.join in new code.</statement>
+      <rationale source="faion-network">Path is OS-aware, composable with /, and the canonical 3.12+ idiom.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use list/dict/set comprehensions for single-expression transforms; use a for-loop when the body contains side effects, early returns, or complex logic.</statement>
-      <rationale source="v1-source">Comprehensions signal "transform a collection" — the intent is clear at a glance. Comprehensions with if/else branches, nested calls, or appended side effects become harder to read than a for-loop with a comment.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use generator expressions ((x for x in ...)) instead of list comprehensions when the result is consumed once (passed to sum(), any(), max(), etc.).</statement>
-      <rationale source="v1-source">Generator expressions are lazy — they avoid materializing an intermediate list in memory. sum(x*x for x in data) is both shorter and more memory-efficient than sum([x*x for x in data]).</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use match/case (Python 3.10+) for dispatch on structure, not just value equality. Use case _: exhaustive fallthrough instead of a final bare else.</statement>
-      <rationale source="v1-source">Pattern matching deconstructs data (sequences, mappings, classes) directly in the case clause. case _: is the structural equivalent of else: but scales to multiple pattern arms without nested if/elif chains.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Annotate all public function signatures with type hints including the return type. Use -&gt; None for procedures that have no return value.</statement>
-      <rationale source="v1-source">Without return-type annotations, mypy skips the function body in its inferred-return analysis. Explicit annotations make the contract clear and improve LLM code generation accuracy.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Never use mutable objects as default argument values. Use None as the default and initialize inside the body.</statement>
-      <rationale source="v1-source">Default argument values are evaluated once at function definition time, not per call. A mutable default like def f(items=[]) shares the same list across all calls — a classic Python footgun.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Use keyword-only arguments (def f(*, name: str)) for clarity when a function has more than two positional parameters or when argument names carry intent.</statement>
-      <rationale source="v1-source">Keyword-only arguments prevent positional ordering mistakes at call sites. They also make function signatures self-documenting and resistant to refactoring breaks when argument order changes.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Always apply @functools.wraps(func) in decorator wrappers to preserve the wrapped function's __name__, __doc__, and signature.</statement>
-      <rationale source="v1-source">Without functools.wraps, introspection tools (help(), Sphinx, FastAPI's OpenAPI) see the wrapper's metadata instead of the original function's. This breaks auto-generated docs and tracebacks.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Use @dataclass for data containers with typed fields instead of bare __init__ methods or named tuples with many fields.</statement>
-      <rationale source="v1-source">Dataclasses auto-generate __init__, __repr__, and __eq__ from field declarations. @dataclass(frozen=True) produces an immutable, hashable value object without manual __hash__.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Use field(default_factory=list) for mutable defaults in dataclasses — never assign [] or {} directly as a field default.</statement>
-      <rationale source="v1-source">Dataclass field defaults are shared the same way function argument defaults are. The default_factory creates a fresh instance per object. A bare [] default raises ValueError at class definition time in modern Python.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Use Protocol for structural duck-typing contracts between modules instead of ABC inheritance. Add @runtime_checkable only when isinstance() checks at runtime are actually needed.</statement>
-      <rationale source="v1-source">Protocol satisfies the Open/Closed principle: a class satisfies a Protocol without importing it. ABC requires explicit inheritance, creating import coupling. @runtime_checkable adds per-call overhead — omit it for hot paths.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Prefer EAFP (Easier to Ask Forgiveness than Permission) over LBYL (Look Before You Leap) for operations where the failure path is genuinely exceptional.</statement>
-      <rationale source="v1-source">EAFP eliminates race conditions in the LBYL check-then-act window. In a concurrent system, a "key in dict" check before "dict[key]" can fail between the two steps. EAFP also avoids double-lookup in hash tables.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Keep try blocks as narrow as possible — wrap only the exact operation that can raise the expected exception, not the surrounding logic.</statement>
-      <rationale source="v1-source">A wide try block silently catches unexpected exceptions from unrelated code. If process(data) raises ValueError for a different reason than int(data["value"]), the except clause hides the bug.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Never use bare except: or except Exception: without re-raising or logging the exception with its full traceback.</statement>
-      <rationale source="v1-source">Bare except swallows SystemExit, KeyboardInterrupt, and GeneratorExit. Bare except Exception swallows programming errors that should crash loudly. Silent swallowing produces impossible-to-debug state.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Define a base exception class per module or app (e.g., class OrderError(Exception): ...), then subclass for each specific error. Never raise bare Exception from library or service code.</statement>
-      <rationale source="v1-source">A base exception per domain allows callers to catch all domain errors with one clause while still distinguishing specific cases. Bare Exception cannot be caught selectively without catching everything.</rationale>
-    </rule>
-    <rule id="r20" testable="true" depth="essential">
-      <statement>Use dict.get(key, default) when a missing key is a normal expected case with a simple default. Use try/except KeyError when missing means an error condition that needs explicit handling.</statement>
-      <rationale source="v1-source">dict.get() is idiomatic for optional lookup with defaults. try/except KeyError signals that absence is unexpected and requires different behavior — not just a fallback value. Mixing them leads to inconsistent error semantics.</rationale>
-    </rule>
-    <rule id="r21" testable="true" depth="essential">
-      <statement>Use uv as the single tool for Python version management, virtual environments, and package installation. Do not use pip, venv, or pyenv alongside uv in new projects.</statement>
-      <rationale source="v1-source">uv is 10-100x faster than pip (warm cache), manages Python versions itself (uv python install), and uses a global cache to avoid redundant downloads. One tool eliminates the pip/pip-tools/pyenv/virtualenv coordination complexity.</rationale>
-    </rule>
-    <rule id="r22" testable="true" depth="essential">
-      <statement>Pin the Python version per project with a .python-version file (uv python pin 3.12). Keep it in sync with requires-python in pyproject.toml.</statement>
-      <rationale source="v1-source">Without a pinned version, uv sync picks the highest available Python. Team members on different minor versions encounter subtle behavior differences (stdlib additions, syntax changes). .python-version + requires-python provide two layers of enforcement.</rationale>
-    </rule>
-    <rule id="r23" testable="true" depth="essential">
-      <statement>Consolidate all project config in pyproject.toml: project metadata, build system (hatchling), ruff, mypy, and pytest settings. Do not use setup.cfg, setup.py, .flake8, or mypy.ini.</statement>
-      <rationale source="v1-source">Multiple config files fragment project setup. pyproject.toml is the PEP 517/518 standard and all major tools (ruff, mypy, pytest, hatchling, uv) support it. Consolidation reduces cognitive overhead when onboarding.</rationale>
-    </rule>
-    <rule id="r24" testable="true" depth="essential">
-      <statement>Use ruff for both linting and formatting (ruff check + ruff format). Enable rule groups: E (errors), F (pyflakes), I (isort), B (bugbear), UP (pyupgrade), C4 (comprehensions), T20 (no-print).</statement>
-      <rationale source="v1-source">Ruff replaces Flake8 + Black + isort + pyupgrade in a single binary that runs in milliseconds. Rule group UP auto-upgrades deprecated typing syntax to modern equivalents. T20 blocks accidental print() in production code.</rationale>
-    </rule>
-    <rule id="r25" testable="true" depth="essential">
-      <statement>Run ruff check . --fix before committing to auto-fix all safe-fixable violations. Set ruff format . in pre-commit hooks to enforce consistent formatting.</statement>
-      <rationale source="v1-source">Auto-fix eliminates manual correction of mechanical style issues. Pre-commit hooks make formatting non-negotiable — no "I forgot" in code review. CI runs ruff check without --fix to catch unfixable violations.</rationale>
-    </rule>
-    <rule id="r26" testable="true" depth="essential">
-      <statement>Run mypy with strict = true in CI. For new projects, start strict from day one. For legacy codebases, enable strict incrementally per module using [[tool.mypy.overrides]].</statement>
-      <rationale source="v1-source">Strict mode enables disallow_untyped_defs, warn_return_any, and no_implicit_optional — the most impactful flags. Adding strict to an existing codebase all at once generates hundreds of errors; per-module overrides let you clean up incrementally.</rationale>
-    </rule>
-    <rule id="r27" testable="true" depth="essential">
-      <statement>Exclude migrations/ and tests/ from strict mode via mypy overrides. Tests use dynamic fixtures; migrations are generated code — both produce false positives under strict.</statement>
-      <rationale source="v1-source">Django migrations use dynamic field references that mypy cannot resolve without django-stubs. Test files use pytest.fixture and conftest patterns that produce untyped-def noise. Excluding them focuses strict mode on production code.</rationale>
+    <rule id="r6-dataclass-for-data" testable="true" depth="essential">
+      <statement>Use @dataclass(frozen=True, slots=True) for plain data containers. Use NamedTuple only when you need positional indexing.</statement>
+      <rationale source="faion-network">Dataclasses give __init__/__repr__/__eq__ for free, frozen=True makes them hashable, slots=True saves memory.</rationale>
     </rule>
   </section>
 </text>

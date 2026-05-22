@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Django Testing with pytest — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every django-testing application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Configure pytest-django via pyproject.toml [tool.pytest.ini_options]. Set DJANGO_SETTINGS_MODULE, addopts with --strict-markers, and testpaths = ["tests"]. Use @pytest.mark.django_db (savepoint rollback) for all model and service tests by default. Use @pytest.mark.django_db(transaction=True) only for code that calls on_commit or uses raw transactions.</statement>
-      <rationale source="v1-source">Centralizing pytest config in pyproject.toml eliminates pytest.ini / setup.cfg duplication. The default django_db marker wraps each test in a savepoint and rolls back after — zero DB state leaks, fast execution. transaction=True commits real transactions but requires full truncation after each test, making it 5-10x slower. It is only needed for post_save signals or Celery tasks that check committed state.</rationale>
+    <rule id="r1-pyproject-pytest-config" testable="true" depth="essential">
+      <statement>Configure pytest-django via pyproject.toml [tool.pytest.ini_options] with DJANGO_SETTINGS_MODULE, addopts including --strict-markers, and testpaths.</statement>
+      <rationale source="faion-network">pyproject-as-single-source-of-truth: eliminates pytest.ini/setup.cfg duplication and keeps lint+test config co-located.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Put shared fixtures in tests/conftest.py: api_client, authed_client, staff_client, and factory registrations. Use --reuse-db in local development to skip recreating the test database. Use --create-db to force recreation after schema changes.</statement>
-      <rationale source="v1-source">A thin conftest with only shared infrastructure loads fast and remains readable. --reuse-db skips the migrate step when the schema has not changed, reducing test suite startup from 10-30s to under 1s on large projects. It is safe for all tests using @pytest.mark.django_db (rollback isolation).</rationale>
+    <rule id="r2-savepoint-default" testable="true" depth="essential">
+      <statement>Use @pytest.mark.django_db (savepoint rollback) by default. Use @pytest.mark.django_db(transaction=True) only when code calls on_commit or raw transactions.</statement>
+      <rationale source="faion-network">Savepoints are 5–10x faster than truncate-after-test; reserve transactional mode for code paths that actually depend on commit semantics.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Create exactly one Factory Boy factory per model. Register factories in tests/conftest.py using pytest_factoryboy.register(). This auto-creates model (single instance) and model_factory (the factory class) pytest fixtures. Use SubFactory for relationships, Faker for realistic data, LazyAttribute for derived fields.</statement>
-      <rationale source="v1-source">One factory per model with Trait variants prevents divergence (one factory creates a "valid" user, another creates a different user with different defaults). pytest_factoryboy.register auto-creates two fixtures per factory, eliminating manual fixture definitions. SubFactory and Faker make factories self-maintaining as schemas evolve.</rationale>
+    <rule id="r3-conftest-shared-fixtures" testable="true" depth="essential">
+      <statement>Put shared fixtures in tests/conftest.py: api_client, authed_client, staff_client, and factory registrations. Never instantiate APIClient inside individual test functions.</statement>
+      <rationale source="faion-network">Centralised fixtures give one canonical client construction and let force_authenticate stay decoupled from the auth backend.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use factory.LazyAttribute(lambda o: ...) to derive field values from other fields on the same factory (username from email). Use factory.LazyFunction(lambda: ...) for independent computed values (unique emails, timestamps).</statement>
-      <rationale source="v1-source">LazyAttribute receives the object being constructed, allowing derived values like username = LazyAttribute(lambda o: o.email.split('@')[0]). LazyFunction is for values that don't depend on other fields but must be computed at factory call time.</rationale>
+    <rule id="r4-one-factory-per-model" testable="true" depth="essential">
+      <statement>Create exactly one Factory Boy factory per model, registered via pytest_factoryboy.register. Use SubFactory for relationships, Faker for realistic data, LazyAttribute for derived fields, LazyFunction for independent computed values.</statement>
+      <rationale source="faion-network">Single factory prevents divergent defaults; pytest_factoryboy auto-creates instance and factory fixtures, eliminating manual fixture boilerplate.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use DRF's APIClient for all REST endpoint tests. Create api_client, authed_client, and staff_client fixtures in conftest.py. Never instantiate APIClient() inside individual test functions. Use client.force_authenticate(user=user) in tests — not credentials(HTTP_AUTHORIZATION='Token...'). force_authenticate bypasses token validation and tests the view logic, not the token verification.</statement>
-      <rationale source="v1-source">Centralizing APIClient creation in fixtures ensures consistent configuration across the test suite. force_authenticate is faster and decouples view tests from the auth backend implementation — changing from JWT to OAuth2 does not break view tests. Token verification is tested once in dedicated auth tests.</rationale>
+    <rule id="r5-apiclient-force-authenticate" testable="true" depth="essential">
+      <statement>Use DRF's APIClient with client.force_authenticate(user=user) for authed tests. Do not use credentials(HTTP_AUTHORIZATION=...) in view tests.</statement>
+      <rationale source="faion-network">force_authenticate bypasses token validation and tests the view logic only — switching auth backends does not break view tests.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Assert status code first, then assert on response.data fields individually. Never assert only on response.status_code == 200 — verify the response shape is correct. Always use format='json' in requests, never rely on browsable API HTML.</statement>
-      <rationale source="v1-source">A 200 with an empty body or missing fields is a bug. Asserting on response.data['field'] catches serializer field omissions and field name renames. format='json' enforces API contract instead of HTML rendering.</rationale>
+    <rule id="r6-status-and-body-asserts" testable="true" depth="essential">
+      <statement>Assert status code first, then assert specific response.data fields. Always use format='json'. Never rely solely on status_code == 200.</statement>
+      <rationale source="faion-network">A 200 with missing fields is a bug; asserting individual fields catches serializer drift and field renames.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use @pytest.mark.parametrize to test permission matrices: which roles/states produce which HTTP status codes. One parametrized test is better than N separate tests with identical structure.</statement>
-      <rationale source="v1-source">Permission logic is combinatorial — a ViewSet with 4 HTTP methods and 3 user roles requires 12 test cases. Parametrization makes the matrix explicit and readable. Adding a new role only requires a new tuple in the parametrize list, not a new test function.</rationale>
+    <rule id="r7-parametrize-permission-matrix" testable="true" depth="essential">
+      <statement>Use @pytest.mark.parametrize to express permission matrices: (client_fixture, expected_status). One parametrized test replaces N nearly-identical tests.</statement>
+      <rationale source="faion-network">Combinatorial permission logic (roles × methods) is explicit and maintainable as a parametrize table; adding a role is one tuple, not a new function.</rationale>
     </rule>
   </section>
 </text>

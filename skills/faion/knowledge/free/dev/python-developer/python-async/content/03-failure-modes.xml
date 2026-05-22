@@ -1,107 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-async Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-async as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Python Async Patterns — Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Antipatterns observed when python-async is mis-applied, each with symptom, root cause, and concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling blocking I/O or CPU-bound operations directly inside async def: requests.get(), time.sleep(), open(), sync database drivers, heavy computation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The asyncio event loop is single-threaded. A blocking call inside async def prevents all other coroutines from executing until it returns. Under load, one blocking call can stall the entire server for the duration of the call. Use httpx.AsyncClient, asyncio.sleep, aiofiles, async DB drivers, or run_in_executor for sync code.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Creating tasks with asyncio.create_task() without storing the reference or awaiting them, allowing them to be garbage-collected before completion.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Python's garbage collector can collect a task object if no reference exists, silently cancelling the task before it finishes. The task disappears without an error or log — a hard-to-debug data loss scenario.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Catching asyncio.CancelledError (or bare Exception) in except blocks without re-raising it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CancelledError is how asyncio implements task cancellation (e.g., from TaskGroup on failure, timeout context exit, or explicit task.cancel()). Swallowing it breaks the cancellation chain — parent tasks block forever waiting for a subtask that believes it completed normally.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Calling asyncio.timeout(None) believing it disables the timeout. It does disable the timeout, but it also silences the fact that no deadline is set, hiding missing timeout configurations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A timeout(None) context manager is a no-op — no deadline, no cancellation. Code paths that reach external services without a deadline hang indefinitely on network partition or slow responses. Make every external call have an explicit numeric timeout.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Forgetting await — coroutine never runs, returns a &lt;coroutine object&gt; that warns at GC time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Ruff ASYNC230/pyflakes catches some cases, but missing await on non-obvious calls (callbacks, return values) slip through. Always validate async function calls are awaited.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using requests inside async def — silently blocks the loop.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Ruff ASYNC210 flags it, but grep for requests.get in async functions to catch false negatives.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>time.sleep in async — same issue; use asyncio.sleep.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Ruff ASYNC251 detects it; always replace time.sleep with asyncio.sleep in async context.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Running blocking DB queries (Django sync ORM) in async def — works but blocks the event loop.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Either use sync_to_async wrapper (Django) or migrate to async ORM (django-async, tortoise-orm, sqlalchemy async).</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>asyncio.create_task(...) without storing the task — task may be GC'd mid-execution.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always retain the reference. TaskGroup does this for you automatically; prefer TaskGroup when possible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Fire-and-forget tasks in module scope — asyncio.create_task requires a running loop; hits "no running event loop" at import time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defer task creation to coroutines or use a background task manager (e.g., celery, arq).</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>asyncio.gather swallows the first exception unless return_exceptions=True — other tasks keep running but are then ignored.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>TaskGroup cancels siblings instead, making all-or-nothing semantics explicit. Use TaskGroup over gather in 3.11+.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>async for on a non-async iterator — TypeError.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use async for only on async generators / async iterables. If wrapping sync code, convert to async generator first.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>async with on a sync context manager — AttributeError: __aenter__.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mostly handled by libs, but custom CMs need both __aenter__/__aexit__. Use sync context managers with sync code blocks only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-14" severity="medium">
-      <description>Mixing trio and asyncio code — only via anyio.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pure asyncio code in trio runtime crashes at first await. If you must use both, wrap via anyio.</repair>
-    </failure-mode>
-    <failure-mode id="fm-15" severity="medium">
-      <description>event_loop = asyncio.get_event_loop() is deprecated for top-level use.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use asyncio.run() or asyncio.get_running_loop() (must be inside a coroutine).</repair>
-    </failure-mode>
-    <failure-mode id="fm-16" severity="medium">
-      <description>pytest-asyncio mode mismatch — strict (default) requires @pytest.mark.asyncio; auto runs all async def tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents flipping modes break test collection. Standardize on one mode per project and lock it in pyproject.toml.</repair>
-    </failure-mode>
-    <failure-mode id="fm-17" severity="medium">
-      <description>asyncio.timeout(None) disables the timeout — agents pass None thinking it means "no override" and then wonder why hangs persist.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always pass an explicit timeout value (seconds). Omit the context manager entirely if no deadline is needed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-18" severity="medium">
-      <description>run_in_executor with default executor exhausts under load — default ThreadPoolExecutor(max_workers=32) fills up with blocked threads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bind a custom ThreadPoolExecutor(max_workers=...) for heavy sync-bridge use; or refactor to async-only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-19" severity="medium">
-      <description>WebSockets in FastAPI require websocket_disconnect handling; agents leak connections by not catching WebSocketDisconnect.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always wrap WebSocket handlers in try/except WebSocketDisconnect and clean up resources on disconnect.</repair>
-    </failure-mode>
-    <failure-mode id="fm-20" severity="medium">
-      <description>Sync wrappers around async code (asyncio.run inside library function) break when called from an existing loop.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use anyio.from_thread.run or expose async-only. Never nest asyncio.run inside a coroutine.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern>
+      <description>time.sleep / requests.get / sync DB inside async def.</description>
+      <reason>Root cause: Loop stalls; every concurrent coroutine freezes until the call returns. Fix: Replace with asyncio.sleep, httpx.AsyncClient, asyncpg/aiosqlite.</reason>
+    </antipattern>
+    <antipattern>
+      <description>task = asyncio.create_task(coro()) result thrown away or task = ... discarded.</description>
+      <reason>Root cause: GC may collect the task before completion → RuntimeError 'Task was destroyed but it is pending'. Fix: Store the task in a list/set or use TaskGroup.</reason>
+    </antipattern>
+    <antipattern>
+      <description>asyncio.gather(*tasks) without return_exceptions on a critical fan-out.</description>
+      <reason>Root cause: First failure leaves siblings running as orphans, leaking connections. Fix: Use TaskGroup; or gather with return_exceptions=True and explicit per-result handling.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Django ORM call inside async def without sync_to_async wrapper.</description>
+      <reason>Root cause: Blocks the loop indefinitely; tests look like hangs. Fix: Wrap with asgiref.sync.sync_to_async or use Django's async ORM API.</reason>
+    </antipattern>
   </section>
 </text>

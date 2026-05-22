@@ -1,39 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-async Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-async. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Python Async Patterns — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every python-async application must obey.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use asyncio.TaskGroup (Python 3.11+) for fan-out where all subtasks must succeed or none. Use asyncio.gather() only when you need ordered results or return_exceptions=True behavior.</statement>
-      <rationale source="v1-source">TaskGroup provides structured concurrency: if any subtask raises, all siblings are cancelled automatically before the exception propagates. gather() leaves failed siblings running as orphan tasks unless return_exceptions=True is set, which then requires manual error inspection per result.</rationale>
+    <rule id="r1-taskgroup-over-gather" testable="true" depth="essential">
+      <statement>Use asyncio.TaskGroup for fan-out where all subtasks must succeed or none. Use gather only when you need ordered partial-failure semantics with return_exceptions=True.</statement>
+      <rationale source="faion-network">TaskGroup cancels siblings on first failure; gather leaves orphans unless return_exceptions is set — and that requires manual error inspection per result.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use asyncio.Semaphore to cap the number of concurrent I/O operations when processing a large list. Always acquire the semaphore inside the task coroutine, not outside it.</statement>
-      <rationale source="v1-source">Without a concurrency cap, creating 10,000 tasks to fetch 10,000 URLs overwhelms the target server and the local connection pool. Acquiring the semaphore inside the task allows all tasks to be created (cheap) while limiting concurrent execution.</rationale>
+    <rule id="r2-semaphore-inside-task" testable="true" depth="essential">
+      <statement>Use asyncio.Semaphore to cap concurrent I/O. Acquire the semaphore inside the task coroutine, not outside it.</statement>
+      <rationale source="faion-network">Inside-acquire lets all tasks be created cheaply while limiting concurrent execution; outside-acquire serialises task creation and defeats the purpose.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use asyncio.timeout(seconds) (Python 3.11+) to add per-call deadlines. Never use asyncio.wait_for() for new code — it is the 3.10 predecessor that asyncio.timeout() supersedes.</statement>
-      <rationale source="v1-source">asyncio.timeout() is a context manager that can be extended or rescheduled within the block. It raises TimeoutError (not asyncio.TimeoutError) on expiry, which integrates with standard exception handling. wait_for() wraps a single coroutine and cannot be extended.</rationale>
+    <rule id="r3-asyncio-timeout" testable="true" depth="essential">
+      <statement>Use asyncio.timeout(seconds) (3.11+) for per-call deadlines. Do not use asyncio.wait_for for new code.</statement>
+      <rationale source="faion-network">asyncio.timeout is a context manager that can be extended or rescheduled; it raises TimeoutError that integrates with standard exception handling.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use async generators (async def with yield) for streaming large datasets — avoid accumulating all items in memory with await asyncio.gather(...) on unbounded inputs.</statement>
-      <rationale source="v1-source">Async generators produce items lazily, allowing the consumer to process each item as it arrives without buffering the full result set. For paginated APIs or database cursor results, this reduces peak memory from O(n) to O(page_size).</rationale>
+    <rule id="r4-no-blocking-calls" testable="true" depth="essential">
+      <statement>Never call time.sleep, sync requests, or sync DB drivers inside async def. Use asyncio.sleep, httpx.AsyncClient, asyncpg/aiosqlite respectively.</statement>
+      <rationale source="faion-network">A single blocking call stalls the entire event loop and freezes every other coroutine until it returns.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Wrap blocking sync library calls with loop.run_in_executor(None, func, *args) when async alternatives are not available. Never call blocking I/O directly inside async def.</statement>
-      <rationale source="v1-source">A blocking call inside async def (e.g., requests.get(), time.sleep(), sync DB driver) stalls the entire event loop. run_in_executor offloads the call to a thread pool, allowing other coroutines to run while it completes.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use httpx for new async HTTP client code. Use aiohttp only when HTTP/2 server-side, WebSocket server capabilities, or maximum-throughput scraping scenarios are needed.</statement>
-      <rationale source="v1-source">httpx provides sync + async in one library, HTTP/2 client support, full type annotations, and a requests-compatible API. aiohttp is async-only but offers higher throughput in extreme concurrency scenarios (10,000+ simultaneous connections) and WebSocket server support. Most applications need httpx.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Create httpx.AsyncClient once per application (not per request). Pass it via dependency injection or module-level singleton. Never instantiate a new client inside a hot path.</statement>
-      <rationale source="v1-source">Creating a new AsyncClient per request discards the connection pool and TCP connection reuse. Each new client creates a fresh pool, turning every HTTP call into a full TCP handshake + TLS negotiation — 3-10x slower than reusing an established connection.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use respx to mock httpx calls in tests. Never mock httpx.AsyncClient.get directly — respx intercepts at the transport layer and validates that routes are actually called.</statement>
-      <rationale source="v1-source">Mocking client.get directly bypasses httpx's request-building logic (URL construction, headers, timeouts). respx intercepts at the ASGI transport layer, meaning the full httpx request-building pipeline runs — only the network call is mocked. This catches URL/header bugs that direct patching hides.</rationale>
+    <rule id="r5-store-task-references" testable="true" depth="essential">
+      <statement>Always store the return value of asyncio.create_task in a variable or collection. Garbage-collected tasks raise 'Task was destroyed but it is pending'.</statement>
+      <rationale source="faion-network">The event loop holds only a weak reference; without a strong ref the task can be collected mid-flight.</rationale>
     </rule>
   </section>
 </text>
