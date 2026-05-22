@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the rag methodology. Sources: Lewis et al. — Retrieval-Augmented Generation (arXiv:2005.11401); Anthropic — contextual retrieval (2024 engineering blog); LlamaIndex / LangChain RAG documentation.</summary>
 
   <section title="Rule set">
-    <rule id="r1-recursive-chunking-256" testable="true" depth="essential">
-      <statement>Use recursive chunking with 256-512 token chunks and 10-20% overlap as the default; switch to semantic or structure-aware chunking for Markdown/HTML/code.</statement>
-      <rationale source="Lewis et al. — Retrieval-Augmented Generation (arXiv:2005.11401)">Chunk size trades off context preservation vs retrieval precision. 256-512 tokens balances semantic completeness with specificity. Overlap prevents context loss at boundaries.</rationale>
+    <rule id="r1-chunk-with-overlap" testable="true" depth="essential">
+      <statement>Chunk documents with explicit chunk-size + chunk-overlap params (e.g. 512 tokens, 50 token overlap); never rely on default chunkers.</statement>
+      <rationale source="Lewis et al. — Retrieval-Augmented Generation (arXiv:2005.11401)">Chunking is the dominant retrieval-quality knob; defaults are tuned for generic corpora and underperform on domain-specific data.</rationale>
     </rule>
 
-    <rule id="r2-hybrid-search-bm25" testable="true" depth="essential">
-      <statement>Use hybrid search (BM25 + vector) for production RAG over technical documentation; pure vector search misses exact entity names and domain acronyms.</statement>
-      <rationale source="Anthropic — contextual retrieval (2024 engineering blog)">Vector search handles semantic similarity but fails on exact matches for rare terms. Hybrid consistently outperforms pure vector on technical corpora.</rationale>
+    <rule id="r2-hybrid-search-over-dense-only" testable="true" depth="essential">
+      <statement>Use hybrid search (dense + sparse / BM25) for any production RAG; pure dense underperforms on rare-term and exact-match queries.</statement>
+      <rationale source="Anthropic — contextual retrieval (2024 engineering blog)">BM25 catches the rare-token queries that embeddings miss; hybrid is the production default in 2026.</rationale>
     </rule>
 
-    <rule id="r3-always-rerank-retrieve" testable="true" depth="essential">
-      <statement>Always rerank: retrieve broad (top-20) then rerank to top-5 using a cross-encoder. This pattern outperforms top-5 direct retrieval by 15-20% precision.</statement>
-      <rationale source="LlamaIndex / LangChain RAG documentation">ANN search retrieves by approximate distance; cross-encoder reranking uses full attention to compute precise relevance. The two-stage approach maximizes both recall and precision.</rationale>
+    <rule id="r3-rerank-before-llm" testable="true" depth="essential">
+      <statement>Apply a cross-encoder reranker to top-K (≥ 20) retrieved chunks before feeding to the LLM; never feed raw vector-DB output.</statement>
+      <rationale source="LlamaIndex / LangChain RAG documentation">Reranking lifts retrieval Precision@5 by 10–30 percentage points; the cost is small relative to the LLM call that follows.</rationale>
     </rule>
 
-    <rule id="r4-cache-embeddings-store" testable="true" depth="essential">
-      <statement>Cache embeddings: store content hashes and skip re-embedding unchanged chunks on re-ingestion.</statement>
-      <rationale source="Pinecone — RAG best practices">Re-embedding unchanged documents on every ingestion is the dominant cost for incrementally updated corpora. Content hashing reduces embedding cost to delta-only.</rationale>
+    <rule id="r4-contextual-chunk-headers" testable="true" depth="essential">
+      <statement>Prepend a 1-sentence context header to every chunk (`This chunk discusses X within document Y`) via the Anthropic contextual-retrieval pattern.</statement>
+      <rationale source="Pinecone — RAG best practices">Header-augmented chunks improve retrieval recall 30–50% on multi-document corpora at marginal cost.</rationale>
     </rule>
 
-    <rule id="r5-production-retrieval-targets" testable="true" depth="essential">
-      <statement>Production retrieval targets: Recall@10 greater than 0.8, MRR greater than 0.7, NDCG greater than 0.7. If Recall@10 is below 0.8, fix retrieval before tuning generation.</statement>
-      <rationale source="Lewis et al. — Retrieval-Augmented Generation (arXiv:2005.11401)">Retrieval is a prerequisite for generation. If the relevant chunk is not in the top-k, no amount of prompt engineering can produce a correct answer. Retrieval failures are invisible in generation-only metrics.</rationale>
+    <rule id="r5-evaluate-retrieval-and-generation-separately" testable="true" depth="essential">
+      <statement>Score retrieval (hit-rate, MRR) and generation (faithfulness, answer-relevance) independently; never report only an end-to-end score.</statement>
+      <rationale source="Lewis et al. — Retrieval-Augmented Generation (arXiv:2005.11401)">A high end-to-end score can hide bad retrieval that is masked by a generous LLM; separation localises the bug.</rationale>
     </rule>
   </section>
 

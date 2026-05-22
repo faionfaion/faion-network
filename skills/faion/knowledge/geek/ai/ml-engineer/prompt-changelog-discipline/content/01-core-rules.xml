@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the prompt-changelog-discipline methodology. Sources: Anthropic prompt-engineering iteration chapter; Microsoft LMOps team writeups on prompt versioning; Vellum / Pezzo / Helicone prompt-management docs.</summary>
 
   <section title="Rule set">
-    <rule id="r1-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r1).</statement>
-      <rationale source="Anthropic prompt-engineering iteration chapter">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r1-one-prompt-one-file" testable="true" depth="essential">
+      <statement>Each prompt lives in its own file (or its own keyed YAML entry); prompts MUST NOT be inlined into source as string literals.</statement>
+      <rationale source="Anthropic prompt-engineering iteration chapter">Inline prompts cannot be hashed or diffed cleanly; externalising is the prerequisite for any changelog discipline.</rationale>
     </rule>
 
-    <rule id="r2-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r2).</statement>
-      <rationale source="Microsoft LMOps team writeups on prompt versioning">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r2-hash-on-every-commit" testable="true" depth="essential">
+      <statement>Pre-commit hook computes a stable content hash (SHA-256 truncated to 16 chars, whitespace-normalised) for every changed prompt and writes it into the changelog.</statement>
+      <rationale source="Microsoft LMOps team writeups on prompt versioning">A stable hash lets observability platforms tag each LLM call with the exact prompt version, making regression triage minutes not days.</rationale>
     </rule>
 
-    <rule id="r3-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r3).</statement>
-      <rationale source="Vellum / Pezzo / Helicone prompt-management docs">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r3-intent-and-eval-delta" testable="true" depth="essential">
+      <statement>Every changelog entry has a one-sentence `intent` and an `eval_delta` field populated by the CI eval runner; entries missing either are blocked at review.</statement>
+      <rationale source="Vellum / Pezzo / Helicone prompt-management docs">Intent without eval is wishful thinking; eval without intent loses the why; the CI source prevents hand-typed score fudging.</rationale>
     </rule>
 
-    <rule id="r4-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r4).</statement>
-      <rationale source="Promptfoo eval framework">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r4-rollback-hash-recorded" testable="true" depth="essential">
+      <statement>Every entry records the immediately-previous prompt hash in `rollback_hash`, regardless of confidence.</statement>
+      <rationale source="Promptfoo eval framework">A regression at 3 AM is not the time to figure out the previous prompt; recorded rollback hash turns rollback into a one-liner.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Anthropic prompt-engineering iteration chapter">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-deploy-summary-per-release" testable="true" depth="essential">
+      <statement>Every production deploy ships a `deploy-summary.md` listing every prompt change with hash, eval delta, rollout strategy; deploys without it are blocked at the release gate.</statement>
+      <rationale source="Anthropic prompt-engineering iteration chapter">Without per-deploy summaries you cannot correlate a regression to a specific release.</rationale>
     </rule>
   </section>
 

@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the prompt-engineering-security methodology. Sources: Greshake et al. — Prompt-injection survey (arXiv:2302.12173); OWASP Top 10 for LLM Applications; Anthropic constitutional AI + injection defences.</summary>
 
   <section title="Rule set">
-    <rule id="r1-user-supplied-text" testable="true" depth="essential">
-      <statement>User-supplied text MUST be wrapped in explicit delimiters in every LLM call. For Claude, use XML tags (user_input). For GPT-4, use markdown fenced sections or labeled headers. The system prompt MUST explicitly state that instructions within user_input tags do not override system instructions.</statement>
-      <rationale source="Greshake et al. — Prompt-injection survey (arXiv:2302.12173)">Without delimiters, the model cannot distinguish instructions from data. XML tags signal a semantic boundary that well-trained models respect, reducing (not eliminating) injection success rate.</rationale>
+    <rule id="r1-delimit-untrusted-input" testable="true" depth="essential">
+      <statement>Wrap all user-supplied content in clearly-delimited blocks (XML tags `&lt;user_input&gt;...&lt;/user_input&gt;`); never concatenate untrusted text into instruction prose.</statement>
+      <rationale source="Greshake et al. — Prompt-injection survey (arXiv:2302.12173)">Delimited blocks tell the model what is data vs instruction; concatenation is the canonical injection vector.</rationale>
     </rule>
 
-    <rule id="r2-input-sanitization-1" testable="true" depth="essential">
-      <statement>Input sanitization MUST: (1) truncate inputs exceeding the maximum allowed length, (2) filter known injection pattern strings, (3) log warnings for filtered inputs. Sanitization MUST NOT be the sole defense — it MUST be combined with delimiter isolation.</statement>
-      <rationale source="OWASP Top 10 for LLM Applications">Pattern-based filters catch known injection strings but are bypassable via encoding or paraphrasing. They are valuable as a signal (log warnings) and as friction, not as a complete barrier.</rationale>
+    <rule id="r2-instruction-hierarchy" testable="true" depth="essential">
+      <statement>Use the system → developer → user instruction hierarchy: hard rules in system, soft preferences in developer, content in user; never put hard rules in user-supplied text.</statement>
+      <rationale source="OWASP Top 10 for LLM Applications">Models respect the hierarchy more than the text; sensitive rules survive injection attempts only when they live in the right tier.</rationale>
     </rule>
 
-    <rule id="r3-system-prompts-user" testable="true" depth="essential">
-      <statement>System prompts for user-facing applications MUST include: (1) explicit scope definition, (2) instruction to ignore override attempts from user input, (3) a default fallback response for out-of-scope or suspicious requests. System prompts MUST NOT be revealed to users even if asked.</statement>
-      <rationale source="Anthropic constitutional AI + injection defences">Explicit constraints in the system prompt reduce the model's tendency to comply with injection attempts. Fallback responses prevent the model from freezing or hallucinating when confused by adversarial input.</rationale>
+    <rule id="r3-output-filter-after-llm" testable="true" depth="essential">
+      <statement>Run output through a deterministic filter (regex for secrets, schema check, content classifier) before returning to the user.</statement>
+      <rationale source="Anthropic constitutional AI + injection defences">The LLM cannot be trusted to redact its own output; mechanical post-filters are the only defence in depth.</rationale>
     </rule>
 
-    <rule id="r4-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r4).</statement>
-      <rationale source="OpenAI instruction hierarchy paper (2024)">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r4-never-execute-llm-output" testable="true" depth="essential">
+      <statement>Never `eval`, `exec`, shell-out, or fetch-by-URL on raw LLM output without an allowlist gate.</statement>
+      <rationale source="OpenAI instruction hierarchy paper (2024)">Direct execution of model output is RCE-by-design; allowlist gates and explicit tool schemas are the only correct primitive.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-spec" testable="true" depth="essential">
-      <statement>Validate that the produced `spec` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Greshake et al. — Prompt-injection survey (arXiv:2302.12173)">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-red-team-before-ship" testable="true" depth="essential">
+      <statement>Run a red-team suite (injection probes, jailbreak prompts, exfiltration attempts) before shipping; treat every new prompt as a new attack surface.</statement>
+      <rationale source="Greshake et al. — Prompt-injection survey (arXiv:2302.12173)">Red-team suites catch the bugs prompts engineers do not think about; without them, the first attacker is the customer.</rationale>
     </rule>
   </section>
 

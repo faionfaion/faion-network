@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the prompt-engineering-evaluation methodology. Sources: Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685); Anthropic — evaluating prompts guide; OpenAI Evals framework.</summary>
 
   <section title="Rule set">
-    <rule id="r1-every-production-prompt" testable="true" depth="essential">
-      <statement>Every production prompt MUST have: a defined accuracy or quality baseline, a minimum acceptable threshold, and a regression test set of at least 10 representative inputs. Consistency must be measured across at least 3 independent runs on the same inputs.</statement>
-      <rationale source="Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685)">Without a baseline, teams cannot distinguish improvements from regressions. Without a threshold, prompts are deployed on subjective judgment. Without regression tests, every change risks breaking existing functionality.</rationale>
+    <rule id="r1-frozen-eval-suite" testable="true" depth="essential">
+      <statement>Maintain a frozen evaluation suite per prompt: ≥ 50 inputs with expected behaviour, never edited without bumping suite version.</statement>
+      <rationale source="Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685)">An eval suite that drifts with the prompt cannot measure regression; freezing the suite is what makes scores comparable across iterations.</rationale>
     </rule>
 
-    <rule id="r2-validate-produced-report" testable="true" depth="essential">
-      <statement>Validate that the produced `report` matches the schema in `content/02-output-contract.xml` before handing off (rule r2).</statement>
-      <rationale source="Anthropic — evaluating prompts guide">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r2-deterministic-metrics-first" testable="true" depth="essential">
+      <statement>Run deterministic metrics (exact-match, regex, schema-pass) before LLM-as-judge; the LLM-as-judge tier is for the residual.</statement>
+      <rationale source="Anthropic — evaluating prompts guide">Deterministic metrics are free and reproducible; LLM-as-judge is expensive and variable. Stack them, do not skip the first.</rationale>
     </rule>
 
-    <rule id="r3-validate-produced-report" testable="true" depth="essential">
-      <statement>Validate that the produced `report` matches the schema in `content/02-output-contract.xml` before handing off (rule r3).</statement>
-      <rationale source="OpenAI Evals framework">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r3-llm-judge-with-temperature-zero" testable="true" depth="essential">
+      <statement>When using LLM-as-judge, fix temperature=0 and pin the judge model version; report the judge id+version with every score.</statement>
+      <rationale source="OpenAI Evals framework">LLM-as-judge scores at temperature &gt; 0 are noise; pinned model+temperature is the only way to get reproducible numbers.</rationale>
     </rule>
 
-    <rule id="r4-validate-produced-report" testable="true" depth="essential">
-      <statement>Validate that the produced `report` matches the schema in `content/02-output-contract.xml` before handing off (rule r4).</statement>
-      <rationale source="Promptfoo evaluation framework">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r4-regression-gate-in-ci" testable="true" depth="essential">
+      <statement>Wire eval into CI: prompt PRs that drop any tracked metric &gt; 5% on the frozen suite block merge without an explicit override.</statement>
+      <rationale source="Promptfoo evaluation framework">Without a hard gate, regressions ship in 'minor wording' PRs and are detected weeks later by customer reports.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-report" testable="true" depth="essential">
-      <statement>Validate that the produced `report` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685)">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-multi-judge-when-stakes-rise" testable="true" depth="essential">
+      <statement>For revenue-critical prompts, ensemble 2+ judge models from different families; report inter-judge agreement.</statement>
+      <rationale source="Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685)">Single-judge scores are biased toward outputs that look like the judge's family; multi-judge ensembles correct the family bias.</rationale>
     </rule>
   </section>
 
