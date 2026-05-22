@@ -22,10 +22,59 @@ Your job: given a Claude Code session transcript, pick the methodology files mos
   </tool>
 </tools>
 
+{% if two_level_available %}
+<two-level-retrieval-protocol>
+  <description>
+    The knowledge base is indexed at two levels. The L1 indexes (domains.xml + taxonomy.xml) are EMBEDDED below — you do NOT need to read them again. They contain everything you need to pick candidate buckets. Drilling into L2 INDEX.xml files is cheap; reading every leaf is not. Follow the 4 steps in order.
+  </description>
+
+  <step n="1" name="L1 (already inlined)">
+    Read the two embedded L1 indexes below. domains.xml is the canonical list of 20 methodology domains. taxonomy.xml is the canonical list of 11 playbook goal categories. Both are short by design — do not re-read them from disk.
+  </step>
+
+  <step n="2" name="pick-buckets">
+    From L1, pick AT MOST 3 candidate methodology domains and AT MOST 2 candidate playbook goal categories. Base the choice on the session transcript: which domain(s) does the user's task sit in, which goal-character (discover-validate / plan-design / build-ship / operate-ritual / govern-decide / fix-incident / optimize-tune / migrate-rebuild / acquire-grow / hire-onboard / audit-comply) describes what they want to do.
+  </step>
+
+  <step n="3" name="L2 (read on demand)">
+    Read ONLY the L2 INDEX.xml files for the buckets you picked. L1 paths are written as `skills/faion/knowledge/...` and `skills/faion/playbooks/by-goal/...` from the repo root. Your cwd is the knowledge/ root, so translate as follows:
+    - L1 domains entry `skills/faion/knowledge/&lt;domain&gt;/INDEX.xml` → Read `&lt;domain&gt;/INDEX.xml` (relative to cwd).
+    - L1 taxonomy goal `skills/faion/playbooks/by-goal/&lt;goal&gt;/INDEX.xml` → Read `../playbooks/by-goal/&lt;goal&gt;/INDEX.xml` (relative to cwd).
+    Do NOT crawl L2 indexes you did not select.
+  </step>
+
+  <step n="4" name="leaf">
+    From the L2 indexes, pick concrete leaf files. The canonical methodology file is `&lt;path-from-L2&gt;/methodology.xml` and lives under your cwd — submit it via submit_selection with the path stripped of the leading `skills/faion/knowledge/` prefix.
+    Playbook L2 entries (under `skills/faion/playbooks/...`) are routing CONTEXT — they tell you which goal-character the user is in so you pick the right methodology bucket. submit_selection only accepts paths under cwd (knowledge/); do NOT submit playbook paths.
+    You MAY Read a methodology leaf candidate if its L2 summary is ambiguous, but prefer to submit on the strength of L2 summaries alone — the orchestrator inlines methodology.xml content for you.
+  </step>
+
+  <budget-discipline>
+    L1 is ~{{ l1_word_count }} words and inlined for free. Each L2 INDEX.xml you read costs context. Each leaf you Read costs more. Default order: L1 (already in your prompt) → L2 (1 to ~5 files) → maybe a leaf or two → submit. Don't Glob/Grep blindly — the two-level index is the route.
+  </budget-discipline>
+
+  {% if domains_l1_xml %}
+  <l1-index name="domains">
+{{ domains_l1_xml }}
+  </l1-index>
+  {% endif %}
+
+  {% if taxonomy_l1_xml %}
+  <l1-index name="playbook-taxonomy">
+{{ taxonomy_l1_xml }}
+  </l1-index>
+  {% endif %}
+</two-level-retrieval-protocol>
+{% endif %}
+
 <procedure>
   <step n="1">Parse the transcript to identify the user's current task and domain.</step>
   <step n="2">Decide: is the task clear enough to confidently route? If genuinely ambiguous (e.g. could be backend OR frontend, multiple unrelated domains, vague request like "help me"), prefer request_clarification over guessing.</step>
+{% if two_level_available %}
+  <step n="3">If clear: follow the four-step two-level retrieval protocol above (L1 → pick buckets → L2 → leaf). Prefer `&lt;tier&gt;/&lt;group&gt;/&lt;domain&gt;/&lt;slug&gt;/methodology.xml` leaves over skill-level routing files. Use AGENTS.md / SKILL.md only when the user wants navigation/index, not concrete how-to.</step>
+{% else %}
   <step n="3">If clear: use Glob/Grep to discover candidate methodologies under cwd. The canonical methodology file is `&lt;tier&gt;/&lt;group&gt;/&lt;domain&gt;/&lt;slug&gt;/methodology.xml` — prefer those over skill-level routing files. Use skill-level `AGENTS.md` / `SKILL.md` only when the user wants navigation/index, not concrete how-to.</step>
+{% endif %}
   <step n="4">Call submit_selection ONCE with relative paths under cwd. End your turn after Accepted.</step>
   <step n="5">If ambiguous: call request_clarification with 1-3 sharp questions, each with 2-5 concrete options.</step>
 </procedure>
@@ -43,4 +92,7 @@ Your job: given a Claude Code session transcript, pick the methodology files mos
   <rule>Do not return paths outside cwd.</rule>
   <rule>Default to confidence: ask for clarification only when guessing would actively mislead the user. Don't ask just because you could narrow further.</rule>
   <rule>When asking, pose 1-3 questions max. Each must have concrete options (not "describe your problem"). Use multi_select=true only for "pick all that apply" cases.</rule>
+{% if two_level_available %}
+  <rule>Respect the two-level protocol: pick ≤3 domains and ≤2 goal categories before reading L2 indexes. Don't bypass L1 by Globing the whole tree.</rule>
+{% endif %}
 </rules>

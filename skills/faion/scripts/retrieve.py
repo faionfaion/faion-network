@@ -76,11 +76,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = SCRIPT_DIR / "templates"
 SKILL_ROOT = SCRIPT_DIR.parent
 KNOWLEDGE_ROOT = SKILL_ROOT / "knowledge"
+PLAYBOOKS_ROOT = SKILL_ROOT / "playbooks"
+DOMAINS_L1_PATH = KNOWLEDGE_ROOT / "domains.xml"
+TAXONOMY_L1_PATH = PLAYBOOKS_ROOT / "taxonomy.xml"
 
 WORD_BUDGET = int(os.environ.get("FAION_WORD_BUDGET", "5000"))
 MAX_TRANSCRIPT_PAIRS = int(os.environ.get("FAION_TRANSCRIPT_PAIRS", "40"))
 MAX_AGENT_TURNS = int(os.environ.get("FAION_MAX_TURNS", "20"))
 MODEL = os.environ.get("FAION_MODEL", "claude-sonnet-4-6")
+L1_EMBED_WORD_CAP = int(os.environ.get("FAION_L1_WORD_CAP", "1500"))
 
 _jinja = Environment(
     loader=FileSystemLoader(str(TEMPLATES_DIR)),
@@ -93,6 +97,81 @@ _jinja = Environment(
 
 def render(template_name: str, **ctx: Any) -> str:
     return _jinja.get_template(template_name).render(**ctx)
+
+
+# ---- Two-level lookup: L1 index loaders ----
+
+def _truncate_scope_first_sentence(xml_text: str) -> str:
+    """Trim every <scope>...</scope> body to its first sentence.
+
+    Used when the L1 embed exceeds the word cap. Conservative — keeps the
+    <scope> tag intact, only shortens its inner text up to the first '.'.
+    """
+    import re
+
+    def _trim(match: "re.Match[str]") -> str:
+        body = match.group(1).strip()
+        # Take up to and including the first period, then re-wrap.
+        dot = body.find(".")
+        first = body[: dot + 1].strip() if dot >= 0 else body
+        return f"<scope>{first}</scope>"
+
+    return re.sub(r"<scope>(.*?)</scope>", _trim, xml_text, flags=re.DOTALL)
+
+
+def _load_l1_file(path: Path) -> str | None:
+    """Defensive read of an L1 XML index. Returns None if missing or unparseable."""
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        return None
+    # Sanity check: must contain at least one tag root, otherwise treat as missing.
+    if "<" not in text:
+        return None
+    return text.strip()
+
+
+def read_domains_l1() -> str | None:
+    """Return parsed L1 domains.xml as text snippet for the system prompt.
+
+    Backward-compat: returns None if the file is missing — retriever then
+    falls back to the old single-pass behavior (no L1 embed, agent uses
+    Glob/Grep from scratch).
+    """
+    return _load_l1_file(DOMAINS_L1_PATH)
+
+
+def read_taxonomy_l1() -> str | None:
+    """Return parsed L1 playbook taxonomy.xml as text snippet for the system prompt."""
+    return _load_l1_file(TAXONOMY_L1_PATH)
+
+
+def build_l1_embed(domains_xml: str | None, taxonomy_xml: str | None) -> tuple[str | None, str | None, int]:
+    """Combine L1 indexes and enforce the word cap.
+
+    Returns (domains_for_prompt, taxonomy_for_prompt, total_words).
+    If combined word count exceeds L1_EMBED_WORD_CAP, <scope> bodies in
+    domains.xml are truncated to a single sentence (taxonomy already terse).
+    Either return value can be None when the source file is absent.
+    """
+    if domains_xml is None and taxonomy_xml is None:
+        return None, None, 0
+
+    def _wc(s: str | None) -> int:
+        return len(s.split()) if s else 0
+
+    total = _wc(domains_xml) + _wc(taxonomy_xml)
+    if total <= L1_EMBED_WORD_CAP:
+        return domains_xml, taxonomy_xml, total
+
+    # Over cap — truncate domain scopes first (highest savings).
+    trimmed_domains = (
+        _truncate_scope_first_sentence(domains_xml) if domains_xml else None
+    )
+    total = _wc(trimmed_domains) + _wc(taxonomy_xml)
+    return trimmed_domains, taxonomy_xml, total
 
 
 # ---- Session transcript ----
@@ -458,12 +537,25 @@ async def run_retrieval(messages: list[dict[str, str]]) -> tuple[str, Any]:
         tools=[submit_selection, request_clarification],
     )
 
+    domains_l1, taxonomy_l1, l1_words = build_l1_embed(
+        read_domains_l1(), read_taxonomy_l1()
+    )
+    two_level_available = domains_l1 is not None or taxonomy_l1 is not None
+
     system_prompt = render(
         "system_prompt.xml.j2",
         knowledge_root=str(KNOWLEDGE_ROOT),
         word_budget=WORD_BUDGET,
+        two_level_available=two_level_available,
+        domains_l1_xml=domains_l1,
+        taxonomy_l1_xml=taxonomy_l1,
+        l1_word_count=l1_words,
     )
-    user_prompt = render("user_prompt.xml.j2", messages=messages)
+    user_prompt = render(
+        "user_prompt.xml.j2",
+        messages=messages,
+        two_level_available=two_level_available,
+    )
 
     options = ClaudeAgentOptions(
         cwd=str(KNOWLEDGE_ROOT),
