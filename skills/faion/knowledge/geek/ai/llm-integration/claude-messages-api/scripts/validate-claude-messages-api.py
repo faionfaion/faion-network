@@ -43,7 +43,7 @@ def validate(doc: dict) -> list:
     return errs
 
 
-SMOKE = {"stop_reason_centralised": true, "max_tokens_explicit": true, "multimodal_image_first": true, "pdf_preflight_check": true, "metadata_user_id": true, "streaming_delta_aware": true, "model_id": "claude-sonnet-4-20250514", "forbidden_seen": []}
+SMOKE = {'stop_reason_centralised': True, 'max_tokens_explicit': True, 'multimodal_image_first': True, 'pdf_preflight_check': True, 'metadata_user_id': True, 'streaming_delta_aware': True, 'model_id': 'claude-sonnet-4-20250514', 'forbidden_seen': []}
 
 
 def main() -> int:

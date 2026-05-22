@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Hierarchical Build Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure from spec to a green hierarchical run.</summary>
+
+  <section title="Procedure">
+    <code lang="text"><![CDATA[
+STEP 1 — Validate spec
+  input:  MultiAgentSpec with pattern=hierarchical
+  action: scripts/validate-multi-agent-basics.py + scripts/validate-multi-agent-hierarchical.py
+  output: validated spec
+  gate:   validators exit 0
+
+STEP 2 — Manager planning
+  input:  task + worker roster (names + roles only — no prompts)
+  action: call manager LLM with system_prompt + roster + plan-schema.json
+  output: Plan JSON
+  gate:   JSON parses against schema; if not, one repair attempt with parse error
+
+STEP 3 — Cycle check
+  input:  Plan
+  action: build adjacency graph from assignments[].deps[]; DFS / Kahn's algorithm
+  output: ordered_assignments OR cycle list
+  gate:   no cycles; otherwise return cycle to manager for re-planning
+
+STEP 4 — Dispatch
+  input:  ordered_assignments + worker registry
+  action: for each assignment in topological order, call worker LLM with subtask + prior dependency results; apply timeout_s; respect failure_policy
+  output: WorkerResult per assignment
+  gate:   all `ok` OR partial set consistent with failure_policy
+
+STEP 5 — Gather
+  input:  WorkerResult[]
+  action: collect into manager-readable format; flag any `timeout`/`error` per failure_policy
+  output: gathered_results
+  gate:   trace complete
+
+STEP 6 — Synthesize
+  input:  task + gathered_results
+  action: call manager LLM with synthesis system prompt + all results simultaneously (no streaming)
+  output: Synthesis envelope {final_result, used_tokens, trace}
+  gate:   final_result.payload not null OR `partial=true` declared
+]]></code>
+  </section>
+
+  <reference path="templates/hierarchical_runner.py">runnable scaffold</reference>
+  <reference path="templates/plan-schema.json">Plan JSON Schema</reference>
+  <reference path="scripts/validate-multi-agent-hierarchical.py">config + plan validator</reference>
+</text>

@@ -3,70 +3,99 @@ slug: embeddings-evaluation
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: MTEB scores are general benchmarks — always benchmark on your specific data.
-content_id: "f5e373e0824a5c49"
-tags: [embeddings, evaluation, benchmarking, recall, rag]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an embedding evaluation report (Recall@K, MRR, nDCG, A/B comparison + golden set design) that ranks candidate embedding models on the team's own retrieval workload.
+content_id: "emb-eval-0014567890abcdef"
+complexity: medium
+produces: report
+est_tokens: 3500
+tags: [embeddings, evaluation, recall, ndcg, mrr, ab-testing]
 ---
 # Embedding Quality Evaluation and Benchmarking
 
 ## Summary
 
-**One-sentence:** MTEB scores are general benchmarks — always benchmark on your specific data.
+**One-sentence:** Produces a quantitative evaluation report ranking candidate embedding models by Recall@K, MRR@10, nDCG@10 on a team-specific golden set, with A/B confidence intervals and a deployment recommendation.
 
-**One-paragraph:** MTEB scores are general benchmarks — always benchmark on your specific data. Create an evaluation set of 100-500 real query-document pairs, test at least 3-4 candidate models, measure Recall@K and MRR, then run an A/B test in production before full rollout. Without a domain-specific evaluation, model selection is guesswork.
+**One-paragraph:** Public benchmarks (MTEB, BEIR) rank models on generic corpora; team-specific retrieval almost always disagrees with the leaderboard. This methodology ships a workflow for building a domain golden set (50-500 query-passage relevance triples), running candidate models offline, computing Recall@K / MRR@10 / nDCG@10, and (optionally) A/B testing the top two in production with click-through telemetry. Output is a Markdown report with one ranked table per metric + a chosen model + a stale-by date.
+
+**Ефективно для:**
+
+- Вибору embedding-моделі для нового RAG / search проекту — leaderboard sosi, твій корпус вирішує.
+- Перевірки чи варто платити за proprietary (Voyage, Cohere) vs open-source (BGE, E5, Nomic) на твоєму домені.
+- Аудиту production-retrieval-у, де користувачі скаржаться на якість, але метрики не міряні.
+- Quarterly re-evaluation: моделі виходять / здешевшуються; рейтинг треба оновити.
+- Дешевого швидкого MTEB-style sanity-check перед інвестицією в fine-tuning embedder-а.
 
 ## Applies If (ALL must hold)
 
-- Selecting an embedding model for a new project (always).
-- Evaluating whether to switch from one model to another.
-- Diagnosing poor retrieval quality in production.
-- Validating a model update before re-embedding the full corpus.
+- Team can produce ≥50 query-passage relevance triples from real usage logs OR via SME annotation.
+- ≥2 candidate embedding models exist (e.g. text-embedding-3-small vs Voyage-3 vs BGE-M3).
+- Retrieval quality is a measurable success metric (search CTR, RAG citation accuracy, classification F1).
 
 ## Skip If (ANY kills it)
 
-- Prototype with fewer than 50 documents — use any reasonable model and defer evaluation.
-- When you cannot create a query-document evaluation set — fall back to MTEB scores with domain-awareness caveats.
+- Golden set cannot be built (no usage logs, no SME availability) — eval would measure noise, not quality.
+- Latency is the sole constraint and quality is sufficient on the cheapest model — measurement is overhead.
+- Domain is identical to a major public benchmark (e.g. open-domain QA) and MTEB leaderboard suffices.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Golden set (queries + relevant passage ids + grades) | JSONL | Usage logs + SME annotation |
+| Candidate model list (≥2) | YAML | Engineering |
+| Vector store handle | client | Infra |
+| Optional production telemetry | metrics dashboard | Observability |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[embeddings-model-selection]] | Defines candidate set from which this picks. |
+| [[model-evaluation]] | General eval methodology this specializes for embeddings. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: golden-set size ≥50, three metrics minimum, statistical-significance gate, hold-out 20%, quarterly re-eval | 900 |
+| `content/02-output-contract.xml` | essential | Schema for the eval report: per-model metric table, winner, confidence interval, stale-by date | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: tiny golden set, single metric, train-on-test contamination, no significance test | 700 |
+| `content/04-procedure.xml` | reference | 5-step procedure: build set → run candidates → compute metrics → significance → recommend | 600 |
+| `content/05-examples.xml` | reference | One worked eval comparing 3 models on a support-bot golden set | 500 |
+| `content/06-decision-tree.xml` | essential | When to escalate to live A/B vs ship offline-winner | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `annotate_golden_set` | haiku-4-5 | Cheap relevance labeling with SME-in-loop review. |
+| `compute_metrics` | n/a (Python) | Deterministic computation; no LLM call needed. |
+| `draft_eval_report` | sonnet-4-6 | Synthesis with confidence-interval reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/golden-set.jsonl` | Schema for golden-set rows: query_id, passage_id, grade. |
+| `templates/eval-report.md` | Markdown skeleton for the eval report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-embeddings-evaluation.py` | Validate the eval report JSON against the contract. | Pre-commit; before model swap PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[embeddings-model-selection]] — feeds candidates in.
+- [[embedding-generation]] — producer of the candidate embeddings.
+- [[model-evaluation]] — parent eval methodology.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Branches first on whether golden_set_size ≥50 (no → block, build set first). Then asks whether offline winner is statistically separated (CI gap ≥1.5%) — yes → ship the winner; no → escalate to live A/B with click-through measurement. Final branch decides quarterly_review_due date. Leaves cite rule ids in `01-core-rules.xml`.

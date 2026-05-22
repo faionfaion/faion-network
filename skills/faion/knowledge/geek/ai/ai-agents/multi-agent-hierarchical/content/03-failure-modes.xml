@@ -1,17 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="multi-agent-hierarchical Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for multi-agent-hierarchical as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Hierarchical Pattern Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns that recur in hierarchical manager-worker runs, with detector + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Manager system prompt that includes domain tasks: "You are a project manager AND senior developer."</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Blending coordination and domain roles turns the manager into a bottleneck. Workers are never actually used for domain work; the pattern collapses to a single agent with extra prompt tokens.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Plan staleness: manager creates a plan, then slow workers produce results that invalidate earlier assignments already dispatched.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hierarchical systems assume a static task decomposition. If early worker results change the problem shape, the manager must re-plan — not silently skip conflicting assignments. Build a re-plan step triggered by result contradictions.</repair>
-    </failure-mode>
+  <section title="Plan integrity">
+    <antipattern>
+      <description>Plan has a cycle (a1 depends on a2 which depends on a1) and the orchestrator dispatches anyway — run hangs at gather time.</description>
+      <reason>Detect: plan-time DAG check; verifier flags any back-edge in `deps[]`. Fix: refuse the plan; feed cycle nodes back to manager for re-planning with explicit cycle-detection instructions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Manager emits free-form prose instead of JSON; orchestrator silently skips workers it can't parse.</description>
+      <reason>Detect: manager output not parseable as JSON. Fix: one structured repair attempt — feed parse error back to manager with the JSON Schema; if still failing, fall back to `abort` policy.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Role boundaries">
+    <antipattern>
+      <description>Manager system prompt blends coordination + domain work ("You are a project manager AND senior developer").</description>
+      <reason>Detect: validator finds verbs like "implement"/"write code"/"research" in manager.system_prompt. Fix: strip domain verbs; restate as "Decompose tasks and coordinate workers" only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Workers communicate with each other directly (peer messaging) — debug traces become combinatorial and replay impossible.</description>
+      <reason>Detect: trace shows worker→worker message edges. Fix: every message goes through the orchestrator; if workers need each other's output, that becomes an explicit `deps[]` edge in the next plan revision.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Resilience">
+    <antipattern>
+      <description>Partial failure swept under "best-effort" semantics — one worker times out and the synthesis silently proceeds without its contribution.</description>
+      <reason>Detect: trace shows `status==timeout` AND synthesis still emitted without flagging. Fix: declare `failure_policy` (abort/degrade/retry); on `degrade`, surface the missing worker in the synthesis output (`partial=true`).</reason>
+    </antipattern>
   </section>
 </text>
