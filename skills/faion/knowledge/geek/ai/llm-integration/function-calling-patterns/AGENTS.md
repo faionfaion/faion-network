@@ -2,7 +2,7 @@
 slug: function-calling-patterns
 tier: geek
 group: ai
-domain: llm-integration
+domain: ml-engineering
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
