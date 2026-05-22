@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AI Feature Eval Set Design Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+  <root-question id="q-shape">What is the output shape?</root-question>
+
+  <branch when="output_shape == open_ended_text">
+    <question id="q-ground-truth">Is ground truth fully deterministic (single canonical answer)?</question>
+    <branch when="deterministic == true">
+      <conclusion ref="structured-judge-rubric" verdict="rule-based judge (exact / regex / parser); cheaper and noiseless"/>
+    </branch>
+    <branch when="deterministic == false">
+      <conclusion ref="structured-judge-rubric" verdict="LLM-as-judge with Pydantic rubric (evidence + meets_criteria + failure_modes); pin model version"/>
+    </branch>
+  </branch>
+
+  <branch when="output_shape == classification OR output_shape == extraction">
+    <conclusion ref="structured-judge-rubric" verdict="rule-based matcher; LLM-as-judge unnecessary"/>
+  </branch>
+
+  <branch when="output_shape == tool_call_sequence">
+    <conclusion ref="ci-gate-on-regression" verdict="trajectory-eval-otel methodology applies; this eval focuses on the final answer; trajectory is the agent-loop eval"/>
+  </branch>
+</decision-tree>
+
+<example trace="news-summarize">
+  open-ended text → q-ground-truth: not deterministic → LLM-as-judge with rubric; sonnet judge; ci gate at 2pp.
+</example>
+</text>

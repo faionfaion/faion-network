@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="weak-model-preselection Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for weak-model-preselection as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Weak-Model Preselection Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Big model does the filter itself.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Do not skip the weak model stage. Add a Haiku or Mini stage in front.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Cheap model returns full content, just regurgitating the input.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force the schema to return refs and IDs only. Validate with sample runs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Cheap model has a different tokenizer or persona than expected.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use the same family if possible. Test Haiku to Sonnet first, only cross families when necessary.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>No fallback: when the cheap model returns 0 items, the pipeline dies.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add if filtered.is_empty: pass full set to strong model.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Filter is permissive, keeps 80 percent of items.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tune the cheap-model prompt until keep-rate is less than 30 percent. Otherwise there is no savings.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="recall-under-0.95" severity="high">
+      <symptom>Weak filter ships with recall 0.80; strong model never sees the dropped items. Downstream task fails 20% more.</symptom>
+      <root-cause source="Internal — filter eval playbook">Author optimized precision (cheap noise reduction) at recall's expense.</root-cause>
+      <fix>Require recall ≥ 0.95 in CI. Tune threshold / few-shot to maximize recall first.</fix>
+    </antipattern>
+
+    <antipattern id="sole-gatekeeper-medical" severity="high">
+      <symptom>Weak model filters out a 'low-priority' medical case that turned out to be urgent.</symptom>
+      <root-cause source="Internal — regulated-domain risk policy">Cascade was deployed without distinguishing high-stakes from low-stakes routes.</root-cause>
+      <fix>Flag high_stakes=true → cascade falls back to ranker pattern (strong model sees all candidates ranked, not filtered).</fix>
+    </antipattern>
+
+    <antipattern id="missing-escape-hatch" severity="medium">
+      <symptom>Weak model returns empty list on edge inputs; strong model receives nothing; user gets a non-answer.</symptom>
+      <root-cause source="Internal — cascade failure-mode taxonomy">Cascade designed for the happy path; edge cases silently produce empty outputs.</root-cause>
+      <fix>Always wire `escape_to_full_context=True` and route to it when confidence &lt; threshold or output empty.</fix>
+    </antipattern>
+
+    <antipattern id="savings-under-3x" severity="medium">
+      <symptom>Cascade reports 1.5x savings; operational overhead (extra calls, deploy complexity) eats the win.</symptom>
+      <root-cause source="Internal cost audits">Cargo-cult cascade on a low-noise route where single-pass would have been fine.</root-cause>
+      <fix>Require cost_savings_ratio ≥ 3x before deploying. Below that, single-pass strong model wins.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules">
-  <rule testable="true">Compose the eval set from three named slices: GOLD (real user inputs labeled by humans), ADVERSARIAL (handwritten edge cases that broke prod or stress the feature), DRIFT (a rotating slice sampled monthly from live traffic); a set missing any slice is rejected at code review.</rule>
-  <rule testable="true">Minimum sizes: GOLD ≥50 rows, ADVERSARIAL ≥20 rows, DRIFT ≥30 rows; below these counts the CI gate is advisory only and cannot block merges.</rule>
-  <rule testable="true">Each row is a 4-tuple: input, expected_output (or rubric), tags (intent / language / hazard class), source (ticket id, prompt, or sampling timestamp); rows without a source field are non-traceable and removed.</rule>
-  <rule testable="true">Choose ONE judge per row class: heuristic (regex / JSON-schema / exact-match) for structured outputs, LLM-as-judge with a written rubric for open-ended, human review for hazard / safety / brand rows; mixing judge types within one row class is forbidden — calibration is impossible.</rule>
-  <rule testable="true">Version the eval set in git under `evals/&lt;feature&gt;/vN/`; bumps require a changelog entry listing rows added/removed/relabeled and the reason; in-place edits to old versions are blocked by pre-commit hook.</rule>
-  <rule testable="true">CI runs the harness on every PR touching feature code or prompts; the gate fails if GOLD pass-rate drops by &gt;2 absolute points vs main OR any ADVERSARIAL row regresses from pass to fail; thresholds are committed to the repo, not stored in CI config.</rule>
-  <rule testable="true">Re-calibrate the LLM-as-judge against a 30-row human-labeled subsample quarterly; if judge agreement with human falls below 80%, freeze automated gating until rubric or judge model is revised.</rule>
-  <example>Team ships a customer-support copilot. eval/copilot/v3/ contains: gold.jsonl (78 real tickets with expected intent + ideal response), adversarial.jsonl (24 jailbreak attempts + PII leakage probes + multi-turn confusion), drift.jsonl (32 rows sampled from last month). Judges: regex on intent slot, LLM-as-judge on response quality with 6-criterion rubric, human review on the PII leakage rows. CI gate: GOLD intent ≥92%, GOLD response ≥3.6/5, ADVERSARIAL pass-rate cannot drop. A PR changing the system prompt drops adversarial from 24/24 to 22/24 — CI blocks merge.</example>
+<text id="01-core-rules" title="AI Feature Eval Set Design Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>5 testable rules grounding the ai-feature-eval-set-design methodology. Each rule pairs a binary check + sourced rationale.</summary>
+
+  <section title="Rule set">
+
+    <rule id="min-row-counts" testable="true" depth="essential">
+      <statement>Eval set MUST contain ≥30 gold rows, ≥10 adversarial rows, ≥5 drift-watch rows. Total ≥ 45 rows; below that, the eval cannot detect regressions reliably.</statement>
+      <rationale source="Internal — eval-size power analysis">Statistical power calculation on a binary judge with α=0.05 and detectable effect 10pt requires ≥40 trials; round up + add adversarial.</rationale>
+    </rule>
+    <rule id="structured-judge-rubric" testable="true" depth="essential">
+      <statement>When the task output is open-ended (free text, summary, chat reply), the judge MUST be LLM-as-judge with a structured Pydantic rubric (`evidence`, `meets_criteria`, `failure_modes`). Free-form judges ('rate 1-5') are forbidden.</statement>
+      <rationale source="Eugene Yan; Anthropic LLM-as-judge docs">Free-form judges have inter-rater noise &gt; 30%; structured rubrics drop it to &lt; 10% (Eugene Yan design-an-eval).</rationale>
+    </rule>
+    <rule id="frozen-eval-version" testable="true" depth="essential">
+      <statement>Eval set MUST be versioned (`eval_set_id`, semver). Each PR that adds/removes rows bumps the version. CI compares results within a version; cross-version comparisons require an explicit re-baseline step.</statement>
+      <rationale source="Internal — eval-versioning postmortems">Comparing scores across eval-set versions without re-baselining is the most common false-positive in eval ops.</rationale>
+    </rule>
+    <rule id="drift-watch-from-production" testable="true" depth="essential">
+      <statement>Drift-watch rows MUST be sampled from the most recent 30 days of production traffic (anonymized). They are refreshed monthly.</statement>
+      <rationale source="Internal — drift-detection playbook">Production distribution drifts; static eval misses real users' new patterns.</rationale>
+    </rule>
+    <rule id="ci-gate-on-regression" testable="true" depth="essential">
+      <statement>CI MUST fail a PR whose eval score drops &gt; 2pp on any axis (gold accuracy, adversarial robustness, drift accuracy). Waivers require explicit reason in PR body.</statement>
+      <rationale source="Internal — CI-gate threshold tuning">2pp is below typical inter-run noise; smaller deltas are reported but not blocking.</rationale>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

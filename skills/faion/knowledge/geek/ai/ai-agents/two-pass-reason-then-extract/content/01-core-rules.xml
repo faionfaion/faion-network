@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="two-pass-reason-then-extract Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for two-pass-reason-then-extract. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>5 testable rules grounding the two-pass-reason-then-extract methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>When a task requires deep reasoning AND a strict schema, run the strong model in free-text or extended-thinking mode for the reasoning step, then run a cheap extractor model with strict structured output to fill the schema from the strong model's transcript.</statement>
-      <rationale source="v1-source">The grammar mask of strict JSON costs probability mass on schema-conforming tokens that are not the optimal reasoning tokens. The SLOT paper and the BuildMVPFast 2026 guide both report 10–15 percent accuracy loss on math and complex analysis when reasoning is forced through strict SO versus free text. Two-pass restores accuracy because the reasoning step has no schema constraint, and the extraction step is easy enough that a small model meets the spec at fraction of the cost.</rationale>
+
+    <rule id="two-pass-required" testable="true" depth="essential">
+      <statement>Tasks combining deep reasoning + strict schema MUST split into two passes: strong model in free text (or extended thinking), then cheap model with strict structured output over the strong-model transcript.</statement>
+      <rationale source="arXiv:2505.04016; BuildMVPFast 2026">SLOT (arXiv:2505.04016) + BuildMVPFast 2026 report 10-15% accuracy drop on math/analysis under strict SO vs free text. Two-pass restores it at near-zero extraction cost.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use two-pass when (a) the task is reasoning-heavy AND (b) extraction-only accuracy on the cheap model exceeds 95 percent on a held-out sample. If extraction quality is below that threshold, either thicken the schema descriptions or fall back to single-pass on the strong model with an embedded scratchpad.</statement>
-      <rationale source="v1-source">Reasoning improvement on the strong model dominates the bill. The extractor is cheap enough that its only constraint is correctness; if a Haiku-class model meets 95+ percent on extraction-only inputs, the savings from preserving the strong model's accuracy justify the second call.</rationale>
+    <rule id="strong-model-free-text" testable="true" depth="essential">
+      <statement>Pass 1 MUST NOT use `tool_choice` / `response_format=json_schema` / strict grammar constraints. Extended thinking is allowed and encouraged when task difficulty justifies it.</statement>
+      <rationale source="Anthropic extended-thinking docs">The grammar mask costs probability mass on tokens that are not the optimal reasoning tokens; removing it is what recovers accuracy.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>When skip two-pass: latency budget under one second total (two calls cannot fit); schema is simple enough that strict mode accuracy gap is negligible; extractor accuracy on extraction-only is below 95 percent; task volume is so high that the extra call cost dominates.</statement>
-      <rationale source="v1-source">Two-pass trades wall-clock time for accuracy and cost efficiency. Measure end-to-end before optimizing; verify extractor quality on held-out extraction-only samples.</rationale>
+    <rule id="extractor-deterministic" testable="true" depth="essential">
+      <statement>Pass 2 MUST use strict structured output (`response_format=json_schema` / `tool_choice` / Pydantic `parse`). Temperature ≤ 0.2.</statement>
+      <rationale source="Anthropic tool-use docs; OpenAI structured outputs docs">Extraction is mechanical; determinism is the contract the consumer relies on.</rationale>
     </rule>
+    <rule id="transcript-bounded" testable="true" depth="essential">
+      <statement>The strong-model transcript passed to the extractor MUST be capped (e.g. 8K tokens). If reasoning exceeds the cap, summarize first or split the task.</statement>
+      <rationale source="Internal — Q1 2026 cost audits">Long transcripts inflate extractor cost and erode the savings; bounded transcripts keep the 2-pass cost ratio favourable.</rationale>
+    </rule>
+    <rule id="ab-vs-single-pass" testable="true" depth="essential">
+      <statement>Before deploying two-pass, run an A/B vs single-pass on ≥50 representative tasks. Adopt only when accuracy delta ≥ 5% absolute and cost delta ≤ 2x.</statement>
+      <rationale source="Internal — two-pass adoption checklist">Two-pass is an investment; A/B keeps the decision data-driven and prevents cargo-culting on tasks where single-pass is fine.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

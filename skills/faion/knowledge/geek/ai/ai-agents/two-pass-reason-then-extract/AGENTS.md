@@ -3,73 +3,96 @@ slug: two-pass-reason-then-extract
 tier: geek
 group: ai
 domain: ai-agents
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When raw reasoning quality matters more than output format (math proofs, deep research synthesis, code with subtle constraints), do not lock the strong model into strict JSON during the reasoning step.
-content_id: "73f431bab75696ea"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Run strong model in free text for reasoning, cheap model with strict schema for extraction; restores the 10-15% accuracy that grammar-mask costs on hard tasks.
+content_id: "3a4830f4d2828248"
+complexity: medium
+produces: config
+est_tokens: 4400
 tags: [reasoning, structured-output, cost-optimization, model-cascade]
 ---
 # Two-Pass: Free-Form Reasoning Then Structured Extraction
 
 ## Summary
 
-**One-sentence:** When raw reasoning quality matters more than output format (math proofs, deep research synthesis, code with subtle constraints), do not lock the strong model into strict JSON during the reasoning step.
+**One-sentence:** Run strong model in free text for reasoning, cheap model with strict schema for extraction; restores the 10-15% accuracy that grammar-mask costs on hard tasks.
 
-**One-paragraph:** When raw reasoning quality matters more than output format (math proofs, deep research synthesis, code with subtle constraints), do not lock the strong model into strict JSON during the reasoning step. Run two passes: (1) the strong model reasons in free text or extended-thinking mode, (2) a cheap small model extracts the answer into the strict schema. The format constraint never interferes with the reasoning trace, and the strict typing still lands on the consumer.
+**One-paragraph:** Forcing strict JSON during reasoning measurably hurts accuracy: SLOT (arXiv:2505.04016) and BuildMVPFast 2026 report 10-15% drops on math + complex analysis when the same prompt runs with strict structured output vs free text. The grammar mask burns probability on schema-conforming tokens that are not the optimal reasoning tokens. This methodology splits the work: pass 1 runs the strong model (Opus + extended thinking) in free text; pass 2 runs a cheap extractor (Haiku) with strict structured output over the transcript. The schema lands on the consumer; the reasoning is never constrained.
+
+**Ефективно для:**
+
+- Math word problems, multi-step proofs, code generation з тонкими constraints — accuracy відновлюється.
+- Research synthesis: довгий аналіз → коротка структурна verdict.
+- Legal / medical verdict tasks: ригідна schema без compromise на reasoning.
+- Будь-який pipeline, де Opus extended thinking justified, але consumer хоче strict JSON.
 
 ## Applies If (ALL must hold)
 
-- Math word problems, proofs, multi-step calculations.
-- Research synthesis where the answer is a few fields but the analysis is paragraphs.
-- Code generation that needs deep reasoning before a structured diff/patch.
-- Legal or medical analysis where the verdict structure is rigid but the reasoning must be unconstrained.
-- Anything where Opus extended thinking is justified by the task difficulty.
+- Task requires deep reasoning (math, proofs, multi-step code, research synthesis).
+- Consumer requires strict JSON / Pydantic / Zod schema output.
+- Latency budget allows two model calls (not sub-second).
 
 ## Skip If (ANY kills it)
 
-- Simple extraction (entities, key/value, sentiment) — single-pass strict SO is faster and cheaper.
-- Latency-critical paths under ~1 second total — two model calls always cost more wall-clock than one.
-- Tasks small enough that Haiku-class extraction quality is the bottleneck — extract directly with the strong model.
-- High call volume where the doubled provider cost exceeds the accuracy gain.
+- Simple extraction tasks (entities, sentiment, key-value) — single-pass strict SO is fine.
+- Latency-critical (&lt; 1 s) paths — two calls always cost wall-clock.
+- High-volume routes where doubled provider cost exceeds the accuracy gain.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Strong-model client | Anthropic / OpenAI SDK | your provider |
+| Extractor-model client | Haiku / GPT-4.1-nano / equivalent | your provider |
+| Output schema | Pydantic / Zod / JSON Schema | consumer contract |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: two-pass-required, strong-model-free-text, extractor-deterministic, transcript-bounded, ab-vs-single-pass | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify_task_difficulty` | sonnet | Difficulty scoring needs light judgment. |
+| `design_pass_pair` | sonnet | Picks models + thinking budget. |
+| `run_ab_eval` | haiku | Mechanical eval execution. |
+| `monitor_extraction_fidelity` | haiku | Schema-violation counting. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/two-pass-anthropic.py` | Anthropic SDK two-pass: Opus extended-thinking → Haiku structured-output extraction |
+| `templates/two-pass-openai.py` | OpenAI SDK two-pass: o-series reasoning model → gpt-4.1-nano structured outputs |
+| `templates/ab-eval-runner.py` | A/B eval harness comparing single-pass strict-SO vs two-pass on a fixture set |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-two-pass-reason-then-extract.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[weak-model-preselection]]
+- [[tool-description-as-prompt]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

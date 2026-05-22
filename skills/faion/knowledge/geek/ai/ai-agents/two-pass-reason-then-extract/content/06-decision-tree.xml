@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+  <root-question id="q-difficulty">What is the task median difficulty score (1-5)?</root-question>
+
+  <branch when="difficulty &lt;= 2">
+    <conclusion ref="ab-vs-single-pass" verdict="single-pass strict SO is sufficient; do NOT deploy two-pass"/>
+  </branch>
+
+  <branch when="difficulty &gt;= 3">
+    <question id="q-latency">Is the latency budget &lt; 1 second total?</question>
+    <branch when="latency_budget_ms &lt; 1000">
+      <conclusion ref="ab-vs-single-pass" verdict="reject; two calls always exceed sub-second budget — push schema downstream into a separate pipeline"/>
+    </branch>
+    <branch when="latency_budget_ms &gt;= 1000">
+      <question id="q-ab-delta">A/B delta on 50+ tasks: two-pass minus single-pass accuracy?</question>
+      <branch when="delta_pct &gt;= 5">
+        <conclusion ref="two-pass-required" verdict="deploy two-pass: pass-1 strong + thinking, pass-2 Haiku strict SO"/>
+      </branch>
+      <branch when="delta_pct &lt; 5">
+        <conclusion ref="ab-vs-single-pass" verdict="keep single-pass; record the negative result"/>
+      </branch>
+    </branch>
+  </branch>
+</decision-tree>
+
+<example trace="math-proof">
+  difficulty=4 → q-latency: 5s budget → q-ab-delta: 12% delta → two-pass-required. Opus + 16K thinking pass 1, Haiku temperature=0 strict SO pass 2.
+</example>
+</text>

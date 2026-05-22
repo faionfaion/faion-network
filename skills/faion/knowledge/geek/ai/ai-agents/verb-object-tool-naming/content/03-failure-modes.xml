@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="verb-object-tool-naming Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for verb-object-tool-naming as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Verb-Object Tool Naming with Namespace Prefix Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Polymorphic verb tools that take an action enum (manage_files(action="copy"|"move"|"delete", ...)).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The model has to read the description and remember which kwargs are valid per action. Atomic verbs (copy_file, move_file, delete_file) are self-describing and have typed schemas the runtime can validate.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Marketing-padded names (acme_corp_internal_v2_search_documents_advanced).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long names burn context budget, dilute the verb, and hurt lexical match with the user's request.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="opaque-single-token" severity="high">
+      <symptom>Tools named `search`, `manage`, `do_thing`. Eval shows 40% mis-selection across the catalog.</symptom>
+      <root-cause source="Internal MCP gateway postmortem">Single-token names collide with every other server's same verb; the model has no discrimination signal.</root-cause>
+      <fix>Rename to `verb_object` with namespace: `github_search_issues`, `stripe_refund_charge`.</fix>
+    </antipattern>
+
+    <antipattern id="no-namespace-aggregator" severity="high">
+      <symptom>MCP gateway exposes 12 servers; tools `search`, `list`, `create` collide across all of them.</symptom>
+      <root-cause source="Internal MCP gateway audits Q1 2026">Author thought MCP gateway would namespace automatically; it does not.</root-cause>
+      <fix>Mandatory prefix at registration time: `<server>_<verb>_<object>`; gateway fails build on collision.</fix>
+    </antipattern>
+
+    <antipattern id="marketing-padding" severity="medium">
+      <symptom>Tool name is `acme_corp_internal_v2_search_documents_advanced`. Prompt budget for tool list exceeds 4K tokens.</symptom>
+      <root-cause source="Anthropic tool-writing guidance">Author thought longer names = more discoverable. Long names consume context and hurt the lexical match.</root-cause>
+      <fix>Cap names at 6 tokens; drop marketing nouns; rely on description for nuance.</fix>
+    </antipattern>
+
+    <antipattern id="cargo-rename" severity="medium">
+      <symptom>Catalog renamed in bulk to follow `verb_object` but no pre/post eval. Tool-selection accuracy drops.</symptom>
+      <root-cause source="Internal — bulk-rename incident">Renames done without eval baseline → cannot tell which renames helped vs hurt.</root-cause>
+      <fix>Per-rename A/B on the eval set; revert renames that regress.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Weak-Model Preselection Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+  <root-question id="q-stakes">Is this a high-stakes decision (medical / legal / security / compliance)?</root-question>
+
+  <branch when="high_stakes == true">
+    <question id="q-rank">Can the cascade operate as a ranker (strong model still sees all candidates)?</question>
+    <branch when="rank_pattern == true">
+      <conclusion ref="never-sole-gatekeeper-high-stakes" verdict="deploy rank-then-rerank variant; strong model receives top-K ranked candidates, none filtered out"/>
+    </branch>
+    <branch when="rank_pattern == false">
+      <conclusion ref="never-sole-gatekeeper-high-stakes" verdict="reject cascade; route to single-pass strong model"/>
+    </branch>
+  </branch>
+
+  <branch when="high_stakes == false">
+    <question id="q-noise">Is the input noise ratio &gt; 70% AND input length &gt; 5K tokens?</question>
+    <branch when="noise_qualifies == false">
+      <conclusion ref="cost-savings-audit" verdict="skip; cascade overhead exceeds savings"/>
+    </branch>
+    <branch when="noise_qualifies == true">
+      <question id="q-recall">Weak-model recall on filter eval ≥ 0.95?</question>
+      <branch when="recall &gt;= 0.95">
+        <conclusion ref="weak-filter-strong-reasoner" verdict="deploy filter-then-reason with escape hatch and 3x cost-savings ratio target"/>
+      </branch>
+      <branch when="recall &lt; 0.95">
+        <conclusion ref="filter-eval-required" verdict="tune weak model / fall back to rank-then-rerank; do not deploy filter cascade with recall &lt; 0.95"/>
+      </branch>
+    </branch>
+  </branch>
+</decision-tree>
+
+<example trace="rss-pipeline">
+  high_stakes=false → q-noise: 88% noise on RSS dedupe → q-recall: 0.97 with Haiku + 3-shot → weak-filter-strong-reasoner; filter-then-reason variant deployed; cost-savings 9.2x.
+</example>
+</text>
