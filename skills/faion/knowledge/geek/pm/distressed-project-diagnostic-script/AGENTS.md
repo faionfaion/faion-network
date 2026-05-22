@@ -3,78 +3,92 @@ slug: distressed-project-diagnostic-script
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "7402131e5928ca85"
-summary: Distressed Project Diagnostic Script delivers a concrete, testable methodology that turns the recurring task of 'Distressed-project rescue (six-week turnaround)' into an auditable artefact, addressing the gap: Rescue work is high-value but corpus has nothing on the diagnostic its
-tags: [pm, geek, method, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a six-week distressed-project rescue diagnostic — who to interview, what numbers to pull, how to triangulate truth between client and team."
+content_id: "320f1f46d5b53860"
+complexity: deep
+produces: report
+est_tokens: 4400
+tags: [pm, rescue, diagnostic, turnaround, geek]
 ---
 # Distressed Project Diagnostic Script
 
 ## Summary
 
-**One-sentence:** Distressed Project Diagnostic Script delivers a concrete, testable methodology that turns the recurring task of 'Distressed-project rescue (six-week turnaround)' into an auditable artefact, addressing the gap: Rescue work is high-value but corpus has nothing on the diagnostic itself: who to interview, what numbers to pull, how to triangulate truth between client and our team. Lessons-learned methodology covers post-mortems, not live triage.
+**One-sentence:** Produces a six-week distressed-project rescue diagnostic — who to interview, what numbers to pull, how to triangulate truth between client and team.
 
-**One-paragraph:** Rescue work is high-value but corpus has nothing on the diagnostic itself: who to interview, what numbers to pull, how to triangulate truth between client and our team. Lessons-learned methodology covers post-mortems, not live triage. Distressed Project Diagnostic Script closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Distressed-project rescue (six-week turnaround)' (role-project-manager, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Produces a six-week distressed-project rescue diagnostic — who to interview, what numbers to pull, how to triangulate truth between client and team. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** PM-у, який заходить на проєкт у кризі — структурований діагноз з джерелами правди, не з 'інтуїції'.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Distressed-project rescue (six-week turnaround)' (role: role-project-manager) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Project is formally classified as distressed (red status, churn risk, contract-default risk).
+- A six-week (or shorter) turnaround window is contractually agreed.
+- The incoming PM has read access to the project's source-of-truth tools (tracker, code, comms).
+- At least one trusted insider on the existing team agrees to a 60-minute interview.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Project is not yet distressed — this is for live triage, not post-mortems.
+- No interview access — diagnostic without team voice produces wrong root cause.
+- Contract is already terminated — produce a closure record, not a diagnostic.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Tracker access | API/UI | Jira / Linear / GitHub Projects |
+| Comms-channel access | Slack/Teams archive | shared channel + read-only audit |
+| Client-facing comms log | email/ticket export | account-management tooling |
+| 60-minute insider interview slot | calendar invite | existing team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `geek/pm/portfolio-evm-rollup-method` | Cost / schedule signal extraction reuses the same EVM frame. |
+| `geek/pm/incident-comms-templates-internal-external` | Comms templates the rescue plan attaches to. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `distressed_project_diagnostic_script_template_fill` | haiku | Template fill, no judgment |
-| `distressed_project_diagnostic_script_evidence_check` | sonnet | Bounded comparison + judgment |
-| `distressed_project_diagnostic_script_synthesis` | opus | Cross-input synthesis + final write-up |
+| `interview-list-scaffold` | haiku | Role-based scaffold — pure template fill. |
+| `numeric-pulls-extract` | sonnet | Bounded judgement: pick the right query against the tracker. |
+| `rescue-plan-synthesis` | opus | Cross-source synthesis + 6-week plan defensible to sponsor. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | Markdown skeleton of the six-week rescue diagnostic with interview list, numeric pulls, triangulation matrix, and rescue plan. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-distressed-project-diagnostic-script.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/` (see neighbouring methodologies)
-- triggering activity: `role-project-manager/Distressed-project rescue (six-week turnaround)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[portfolio-evm-rollup-method]]
+- [[incident-comms-templates-internal-external]]
+- [[exception-driven-standup-protocol]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether the full diagnostic runs (formal distress + ≥6-week window + interview access) or is blocked/skipped. Run on day 1 of the rescue engagement before any team time is committed.

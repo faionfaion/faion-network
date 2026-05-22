@@ -3,83 +3,92 @@ slug: dependency-graph-reasoning
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4d49f7e0f19d1be7"
-summary: Builds, maintains, and queries a cross-task / cross-team dependency graph for multi-team product PMs — "what is at risk if X slips by 1 week" answered deterministically.
-tags: [program-management, dependency-graph, multi-team, risk-analysis, p6-product, geek-pm]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Maintains a typed cross-team dependency graph + queries so 'what is at risk if X slips by 1 week' is deterministic, not tribal."
+content_id: "66302c5edb5a24d7"
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: [program-management, dependency-graph, multi-team, risk-analysis]
 ---
-# Dependency Graph Reasoning (Geek Tier)
+# Dependency Graph Reasoning
 
 ## Summary
 
-**One-sentence:** Builds and maintains a queryable dependency graph across tasks and teams so a program PM can answer "what is at risk if X slips by 1 week" deterministically rather than by tribal knowledge.
+**One-sentence:** Maintains a typed cross-team dependency graph + queries so 'what is at risk if X slips by 1 week' is deterministic, not tribal.
 
-**One-paragraph:** Value-stream-management methodologies model flow at the high level; PMBOK Critical Path covers single-program scheduling; neither answers the multi-team query: "Team B's API contract is two weeks late — which Team A tasks are now blocked, which Team C deliverables miss the cross-functional milestone, and what is the minimum re-plan?". This methodology pins five things: (1) extract dependencies into a typed graph (FS / SS / FF / SF + cross-team handoff edges), (2) store the graph as code (Mermaid, DOT, JSON, or a tool-backed file), (3) refresh from source-of-truth trackers weekly, (4) define standard queries (blocked-by, at-risk-if, longest-path), (5) update via PR-style change requests so the graph stays calibrated. Output: a queryable graph file + weekly risk report.
+**One-paragraph:** Maintains a typed cross-team dependency graph + queries so 'what is at risk if X slips by 1 week' is deterministic, not tribal. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** Програмному PM — детермінована відповідь на 'що блокується, якщо команда B зриває контракт API на тиждень'.
 
 ## Applies If (ALL must hold)
 
-- Program involves &gt;= 3 teams contributing to a shared outcome.
-- A single program PM (or two) is accountable for cross-team coordination.
-- Slips and blockers happen often enough that tribal-knowledge tracking is failing.
-- A source-of-truth tracker (Jira, Linear, GitHub Projects) exists per team — even if not unified.
+- Program involves >= 3 contributing teams with cross-functional milestones.
+- Slips and blockers happen often enough that informal tracking fails (>=1 surprise blocker per month).
+- A single program PM (or pair) is accountable for cross-team coordination.
+- Source-of-truth trackers (Jira, Linear, GitHub Projects) exist per team.
 
 ## Skip If (ANY kills it)
 
-- Single-team project — value-stream and sprint-planning methodologies are enough.
-- Teams that explicitly run async / no-dependencies — graph would be sparse and noisy.
-- Pre-program phase before teams are even assigned — define them first.
-- Org has a dedicated PMO tool (Smartsheet, Aha!, Asana Portfolios) maintaining a portfolio graph — extend it, don't fork.
+- Single-team project — sprint planning suffices.
+- Teams explicitly run async / no-dependencies — graph would be sparse and noisy.
+- Org has a dedicated PMO tool maintaining a portfolio graph — extend it, do not fork.
 
 ## Prerequisites
 
-- List of teams, leads, and current quarterly objectives.
-- Per-team tracker access (or weekly export).
-- A graph-storage choice (Mermaid + Markdown, DOT + Graphviz, or a tool — pick one and stay).
-- The cross-team milestones / deliverables list.
+| Input artifact | Format | Source |
+|---|---|---|
+| Team + lead roster | Markdown/YAML | delivery-org roster |
+| Per-team tracker export | JSON/CSV | Jira / Linear / GitHub Projects |
+| Cross-team milestone list | Markdown/JSON | program plan |
+| Graph-storage choice | config | team-agreed (Mermaid+Markdown OR DOT+Graphviz OR JSON) |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager/multi-team-coordination` | Coordination ritual / sync cadence assumed. |
-| `geek/pm/project-manager/program-risk-management` | Risk register format consumed by the graph queries. |
+| `geek/pm/project-manager/cross-role-handoff-protocol` | Defines the edge types this graph stores. |
+| `geek/pm/program-dependency-aging-chart-recipe` | Sibling recipe — aging chart consumes the same graph. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: typed edges, graph-as-code, weekly refresh, standard queries, PR-style updates | ~1000 |
-| `content/02-output-contract.xml` | essential | Graph file shape, query output formats, weekly report | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: stale graph, missing edges, fake critical path | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract-dependencies-from-trackers` | sonnet | Per-team ticket parsing; bounded judgment |
-| `compute-blocked-by` | haiku | Pure graph traversal |
-| `at-risk-if-slip-analysis` | opus | Multi-edge what-if scenario reasoning |
+| `extract-dependencies-from-trackers` | sonnet | Per-team ticket parsing; bounded judgment. |
+| `compute-blocked-by` | haiku | Pure graph traversal. |
+| `at-risk-if-slip-analysis` | opus | Multi-edge what-if scenario reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/program-graph.mmd` | Mermaid graph skeleton with team-prefixed node naming |
-| `templates/query-format.md` | Standard query shapes: blocked-by, at-risk-if-slip-N-weeks, longest-path-to-milestone |
-| `templates/weekly-risk-report.md` | Templated weekly output |
+| `templates/skeleton.mmd` | Mermaid skeleton for the program graph with team-prefixed node naming and typed edges. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/graph-validate.py` | Confirm nodes have team prefix, all edges have type, no cycles | After every update |
-| `scripts/query-graph.py` | Run standard queries against the JSON form | Weekly + on demand |
+| `scripts/validate-dependency-graph-reasoning.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
-- peer methodology: `multi-team-coordination`, `program-risk-management`, `value-stream-management`
-- external: [Critical Path Method (PMBOK)](https://www.pmi.org/) · [Theory of Constraints (Goldratt)](https://www.toc-goldratt.com/) · [Graphviz](https://graphviz.org/) · [Mermaid](https://mermaid.js.org/)
+- [[program-dependency-aging-chart-recipe]]
+- [[cross-role-handoff-protocol]]
+- [[okr-cascade-team-to-company]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to build the graph (>=3 teams + recurring blockers + chosen storage) or skip it (overhead exceeds value). Run before the first graph file is committed.

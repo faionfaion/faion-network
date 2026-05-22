@@ -3,77 +3,92 @@ slug: ai-in-project-management
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Framework for applying AI to project risk scoring, schedule variance analysis, resource capacity forecasting, and stakeholder digest generation.
-content_id: "221f19eb9bde100c"
-tags: [ai-pm, project-management, risk-management, automation, agile]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Framework for AI-augmented PM (risk scoring, schedule variance, capacity forecasting, stakeholder digests) anchored to PMBOK 8 AI appendix + DORA 2025 productivity-paradox findings."
+content_id: "1a6c16a78a705add"
+complexity: deep
+produces: spec
+est_tokens: 4000
+tags: [ai-pm, pmbok-8, productivity-paradox, dora, agile]
 ---
-# AI in Project Management
+# Ai In Project Management
 
 ## Summary
 
-**One-sentence:** Framework for applying AI to project risk scoring, schedule variance analysis, resource capacity forecasting, and stakeholder digest generation.
+**One-sentence:** Framework for AI-augmented PM (risk scoring, schedule variance, capacity forecasting, stakeholder digests) anchored to PMBOK 8 AI appendix + DORA 2025 productivity-paradox findings.
 
-**One-paragraph:** Framework for applying AI to project risk scoring, schedule variance analysis, resource capacity forecasting, and stakeholder digest generation. Anchor: PMBOK 8 AI Appendix and DORA 2025 Productivity Paradox — AI boosts individual task velocity but organizational throughput stays flat until bottlenecks in review/deploy are addressed.
+**One-paragraph:** Framework for AI-augmented PM (risk scoring, schedule variance, capacity forecasting, stakeholder digests) anchored to PMBOK 8 AI appendix + DORA 2025 productivity-paradox findings. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** PM-у, який вводить AI в свій робочий процес — щоб гетати productivity-paradox і не зайти у бутилковий шийку review/deploy.
 
 ## Applies If (ALL must hold)
 
-- Risk register needs automated scoring across sprint data (staleness, dependent-task count, owner response rate).
-- Stakeholder reports require synthesis from multiple sources (Jira, GitHub, budget sheets).
-- Schedule variance must run continuously, not just at milestones.
-- Resource allocation decisions need capacity forecasting across 3+ team members.
-- Post-mortems need pattern extraction from historical project data.
-- Project risk register needs automated scoring and trend analysis across sprint data.
+- Team is using PMBOK 8 (or compatible) as the reference frame.
+- AI adoption is being formalised across risk + scheduling + reporting.
+- Baseline delivery throughput metrics exist (DORA four keys or equivalent).
+- Org has a published AI-decision documentation policy.
 
 ## Skip If (ANY kills it)
 
-- Projects with fewer than 3 people: overhead exceeds benefit.
-- Decisions carrying legal/contractual weight: require full human sign-off with audit trail.
-- Teams without baseline PM tooling (Jira/Linear/GitHub): AI has nothing to feed on.
-- Highly political one-off decisions where stakeholder dynamics dominate data signals.
-- Project has fewer than 3 people — overhead exceeds benefit.
-- Decisions carry legal or contractual weight — AI recommendations need full human sign-off with audit trail.
-- Team lacks baseline PM tooling (Jira/Linear/GitHub) — AI has nothing to feed on.
+- Team < 3 people — AI-PM overhead exceeds benefit.
+- No baseline metrics — AI-augmented optimisation cannot demonstrate improvement.
+- Regulated context without established AI decision documentation — comply first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| DORA baseline | dashboard | engineering metrics tool |
+| PMBOK 8 reference | doc | PMI publication |
+| AI-decision documentation policy | doc | compliance / legal |
+| Tracker + Git + budget feeds | API | tooling stack |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/pm/pm-agile/ai-assisted-velocity-anomaly-detection` | Concrete detection pipeline this framework references. |
+| `geek/pm/project-manager/ai-pm-tool-integration-recipes` | Concrete tool-integration recipes. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `framework-mapping` | sonnet | Bounded mapping: PMBOK 8 sections to current rituals. |
+| `decision-log-scaffold` | haiku | Template fill. |
+| `paradox-bottleneck-narrative` | opus | Cross-DORA-metric synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Framework adoption checklist: AI-decision log template + PMBOK 8 mapping table + DORA baseline columns + audit-trail block. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-in-project-management.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/pm-agile/`
+- [[ai-assisted-velocity-anomaly-detection]]
+- [[ai-pm-tool-integration-recipes]]
+- [[ai-powered-pm-tools]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to adopt the framework (baseline + policy + alignment) or block until prerequisites exist. Run at AI-adoption kickoff before any tool is procured.

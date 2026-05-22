@@ -3,78 +3,92 @@ slug: exception-driven-standup-protocol
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "03e4626bad404346"
-summary: Exception Driven Standup Protocol delivers a concrete, testable methodology that turns the recurring task of 'Daily standup with AI pre-brief' into an auditable artefact, addressing the gap: Distributed teams waste the most time on status theater. We have ceremony pages but no op
-tags: [pm, geek, protocol, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Replaces status-theatre standups with an exception-driven protocol — AI pre-brief surfaces blockers, humans only speak when they own one."
+content_id: "035514aa78b29312"
+complexity: medium
+produces: playbook-step
+est_tokens: 3400
+tags: [pm, standup, exception-driven, distributed-teams, ai-prebrief]
 ---
 # Exception Driven Standup Protocol
 
 ## Summary
 
-**One-sentence:** Exception Driven Standup Protocol delivers a concrete, testable methodology that turns the recurring task of 'Daily standup with AI pre-brief' into an auditable artefact, addressing the gap: Distributed teams waste the most time on status theater. We have ceremony pages but no opinionated 'speak only on exceptions' protocol.
+**One-sentence:** Replaces status-theatre standups with an exception-driven protocol — AI pre-brief surfaces blockers, humans only speak when they own one.
 
-**One-paragraph:** Distributed teams waste the most time on status theater. We have ceremony pages but no opinionated 'speak only on exceptions' protocol. Exception Driven Standup Protocol closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Daily standup with AI pre-brief' (p6-product-dev-team, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Replaces status-theatre standups with an exception-driven protocol — AI pre-brief surfaces blockers, humans only speak when they own one. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** Distributed-PM-у — 15-min standup перетворюється на 5-min, бо озвучуються тільки блокери, не статус-театр.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Daily standup with AI pre-brief' (role: p6-product-dev-team) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Team is distributed across >= 2 time zones OR async-first.
+- Daily standup currently consumes >= 75 minutes/week across the team.
+- Tracker is the source of truth (Jira / Linear / GitHub Projects) with status fields kept current.
+- A named PM or scrum-master owns the protocol.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Team < 4 people — direct conversation is cheaper than a protocol.
+- Tracker is stale (>3-day lag) — pre-brief will be wrong; fix tracker hygiene first.
+- Team explicitly prefers ritual standups (cultural preference) — do not force this protocol.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Tracker API key | secret | Jira / Linear / GitHub Projects |
+| Standup channel | Slack/Teams | team comms |
+| Pre-brief schedule | cron | standup time minus 15 min |
+| Named protocol owner | person | PM or scrum-master |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `geek/pm/project-manager/1on1-template-managers` | Companion ritual for personal blockers. |
+| `geek/pm/pm-agile/ai-assisted-velocity-anomaly-detection` | Anomaly signals feed the pre-brief. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `exception_driven_standup_protocol_template_fill` | haiku | Template fill, no judgment |
-| `exception_driven_standup_protocol_evidence_check` | sonnet | Bounded comparison + judgment |
-| `exception_driven_standup_protocol_synthesis` | opus | Cross-input synthesis + final write-up |
+| `tracker-query-prebrief` | haiku | Structured tracker query — template work. |
+| `anomaly-summarisation` | sonnet | Bounded judgement: which signals are exception-worthy. |
+| `escalation-write-up` | opus | Cross-team narrative when blocker spans roles. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | Pre-brief skeleton: blocker list + anomaly highlights + 'speak only if your name is here' section. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-exception-driven-standup-protocol.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/` (see neighbouring methodologies)
-- triggering activity: `p6-product-dev-team/Daily standup with AI pre-brief`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-assisted-velocity-anomaly-detection]]
+- [[1on1-template-managers]]
+- [[ai-pm-tool-integration-recipes]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether the protocol fits (distributed + fresh tracker + >=75 min/wk standup), is blocked (stale tracker), or skipped (co-located / short standups). Run before the first pre-brief is wired up.

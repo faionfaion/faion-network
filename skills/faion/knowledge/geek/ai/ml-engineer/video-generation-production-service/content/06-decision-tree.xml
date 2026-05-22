@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Video Gen Service — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes submit by quota + cost cap + priority + provider weight.</summary>
+
+  <decision-tree>
+    <root-question id="q-idem">Idempotency-Key seen in last window_hours?</root-question>
+    <branch when="idem_hit == true">
+      <conclusion ref="r5-idempotent-by-design" verdict="RETURN existing job_id; no re-queue, no re-bill"/>
+    </branch>
+    <branch when="idem_hit == false">
+      <question id="q-cap">Projected cost (current + this) &gt; cost_cap × reject_at_pct/100?</question>
+      <branch when="over_cap == true">
+        <conclusion ref="r4-cost-cap-pre-submit" verdict="REJECT 402; alert ops"/>
+      </branch>
+      <branch when="over_cap == false">
+        <question id="q-quota">Tenant quota breach?</question>
+        <branch when="tenant_over_quota == true">
+          <conclusion ref="r2-per-tenant-quota" verdict="REJECT 429 to tenant; do not penalise others"/>
+        </branch>
+        <branch when="tenant_over_quota == false">
+          <conclusion ref="r1-persistent-queue" verdict="ENQUEUE with priority + provider preference; worker picks up"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+</text>

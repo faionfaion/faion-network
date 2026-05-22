@@ -3,36 +3,92 @@ slug: okr-cascade-team-to-company
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-summary: Copy-pasteable OKR cascade template for an 8-10 person multi-role product team — alignment review, contribution mapping, dependency declaration, and quarterly review cadence wired in.
-content_id: 11f47d5a40a3286c
+summary: "Produces a one-page-per-team OKR cascade (company KR → team OBJ → team KRs + contribution map + dependencies + alignment sign-off) ready for quarterly review."
+content_id: "38919b34b47c831b"
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: [okr, cascade, product-team, alignment, quarterly]
 ---
-
-# OKR Cascade Team To Company
+# Okr Cascade Team To Company
 
 ## Summary
-A concrete cascade artifact for a product-dev team translating company OKRs into team OKRs and individual contribution maps. Covers alignment review (does the team-level OKR move the company-level KR?), contribution mapping (which role on the team owns which KR), dependency declaration (which other teams must deliver for this OKR to land), and review cadence. Outcome: a one-page cascade per team, machine-readable, that prevents roadmap drift in P6-sized teams.
 
-## Applies If
-- You run quarterly OKRs for a product-dev team of 6-15 people
-- Company-level OKRs exist and are stable for at least one quarter
-- You have at least one cross-team dependency per quarter
-- You can name the team owner (TPM, EM, or PM) accountable for the cascade
+**One-sentence:** Produces a one-page-per-team OKR cascade (company KR → team OBJ → team KRs + contribution map + dependencies + alignment sign-off) ready for quarterly review.
 
-## Skip If
-- The company is <20 people (use a single-level OKR sheet)
-- OKRs are aspirational only and not used for prioritization (cascade adds no value)
-- The team is a service team (use OKR-adjacent KPIs / SLOs instead)
-- You are pre-product or pre-PMF (use north-star-metric-design first)
+**One-paragraph:** Produces a one-page-per-team OKR cascade (company KR → team OBJ → team KRs + contribution map + dependencies + alignment sign-off) ready for quarterly review. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
 
-## Content
-See `content/01-core-rules.xml`.
+**Ефективно для:** PM-у 8-10 особової продуктової команди — щоб OKR не залишався театром, а ставав маршрутом до company KR.
+
+## Applies If (ALL must hold)
+
+- Team has 8-10 people across ≥2 roles (PM + Eng + Design + Data or similar).
+- Company has a published set of OKRs the team can map to.
+- Quarterly cadence is the planning rhythm.
+- Team lead OR PM owns the cascade and presents at leadership alignment review.
+
+## Skip If (ANY kills it)
+
+- Team < 5 people — KR overhead exceeds value; use direct goal-setting.
+- Company has no published OKRs — cascade has nothing to attach to.
+- Org uses a different framework (V2MOM, Hoshin Kanri) — adapt to that framework instead.
+
+## Prerequisites
+
+| Input artifact | Format | Source |
+|---|---|---|
+| Company OKRs | doc/Notion | leadership |
+| Team roster + roles | HR export | HRIS |
+| Baseline metric values | BI tool / dashboard | data team |
+| Cross-team dependency declarations | list | program PMs |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `geek/pm/dependency-graph-reasoning` | Cross-team dependency graph the cascade declares against. |
+| `geek/pm/project-manager/cross-role-handoff-protocol` | Contribution map handoff stages. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-cascade-page` | haiku | Template fill from company OKR list. |
+| `contribution-quantification` | sonnet | Per-KR judgement: 'moves company KR X by Y' band. |
+| `alignment-narrative` | opus | Cross-team synthesis for leadership review. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | One-page cascade skeleton: company KR + team OBJ + 3-5 team KRs (baseline / target / measure) + contribution map + depends-on + alignment sign-off line. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-okr-cascade-team-to-company.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
-- [[kpi-tree-construction]]
-- [[north-star-metric-design]]
-- [[program-dependency-aging-chart-recipe]]
-- [[team-charter-working-agreement]]
+
+- [[dependency-graph-reasoning]]
+- [[cross-role-handoff-protocol]]
+- [[ai-assisted-velocity-anomaly-detection]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to run the cascade (8-10 team + company OKRs + scheduled alignment), block (no company OKRs), or skip (small team). Run before the quarter-start planning week.

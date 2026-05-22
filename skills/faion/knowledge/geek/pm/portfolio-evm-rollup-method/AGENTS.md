@@ -3,82 +3,92 @@ slug: portfolio-evm-rollup-method
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "fef22b1c3e668e94"
-summary: Portfolio EVM Rollup Method — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so annual delivery-process maturity review stops being folklore and starts being a reviewable operating tool.
-tags: [pm, geek, method, portfolio, evm, rollup]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Portfolio-level EVM rollup (PV/EV/AC + SPI/CPI per project, weighted aggregate) ready for executive monthly review — pins method, owner, evidence, outcome."
+content_id: "d7e69e3c0ece6763"
+complexity: deep
+produces: report
+est_tokens: 4100
+tags: [pm, portfolio, evm, rollup, executive-review]
 ---
-# Portfolio EVM Rollup Method
+# Portfolio Evm Rollup Method
 
 ## Summary
 
-**One-sentence:** Portfolio EVM Rollup Method — pinned method for the project manager: fixed shape + named owner + evidence anchors + outcome review, so annual delivery-process maturity review stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Portfolio-level EVM rollup (PV/EV/AC + SPI/CPI per project, weighted aggregate) ready for executive monthly review — pins method, owner, evidence, outcome.
 
-**One-paragraph:** In project / programme management, the project manager runs annual delivery-process maturity review on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Single-project EVM is well covered. Rolling it up to portfolio level (weighting, normalising different contract types, surfacing trends) is missing and is exactly what a delivery director needs for the annual review. `portfolio-evm-rollup-method` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the project manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored method committed to the team's knowledge space.
+**One-paragraph:** Portfolio-level EVM rollup (PV/EV/AC + SPI/CPI per project, weighted aggregate) ready for executive monthly review — pins method, owner, evidence, outcome. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** Director-level PM/portfolio manager-у — щоб щомісячна executive review показувала реальний margin, не вибіркову частину.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-project-manager/Annual delivery-process maturity review`
-- the project manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Portfolio contains ≥3 projects each running ≥6 weeks.
+- Each project tracks its own EVM (PV/EV/AC) at week-grain.
+- An executive monthly review is scheduled.
+- A named portfolio owner exists.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Portfolio < 3 projects — single-project EVM is enough.
+- Projects do not run EVM individually — rollup has nothing to aggregate.
+- Org runs OKRs only (no EVM tradition) — rollup is wrong shape for the audience.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the project manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Per-project EVM ledgers | CSV/JSON | project PMs |
+| Portfolio weighting policy | doc | portfolio owner |
+| Executive review schedule | calendar | leadership office |
+| Outcome-review template | Markdown | portfolio runbook |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `geek/pm/ev-for-fixed-bid-outsource` | Source of the dual-ledger inputs for fixed-bid projects. |
+| `geek/pm/project-manager/ai-earned-value-management` | Sensor-driven AC feed that lowers per-project EVM cost. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `metric-aggregate` | haiku | Pure math rollup. |
+| `variance-extract` | sonnet | Bounded judgement: which variance to flag for execs. |
+| `outcome-narrative` | opus | Cross-project synthesis for leadership. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/skeleton.json` | JSON Schema for the portfolio rollup artefact: per-project metrics + weighted aggregate + outcome-review block. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-portfolio-evm-rollup-method.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[ev-for-fixed-bid-outsource]]
+- [[ai-earned-value-management]]
+- [[delivery-maturity-rubric]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to run the rollup (≥3 projects + per-project EVM + owner + scheduled review), block (no per-project EVM), or skip (single project). Run before the first monthly review slot.

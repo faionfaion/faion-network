@@ -3,78 +3,92 @@ slug: incident-comms-templates-internal-external
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c6e2fff377c763df"
-summary: "Incident Comms Templates Internal External — testable methodology for delivery, scheduling, RACI, throughput. Communications-management is generic. Incidents need ready-to-edit templates for status page, customer email, exec brief, and internal channel; absence costs minutes during outages."
-tags: [pm, geek, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Ships ready-to-edit incident comms templates (status page + customer email + exec brief + internal channel) so outage minute-cost is not template-authoring time."
+content_id: "a1ea8f0787cbf863"
+complexity: light
+produces: spec
+est_tokens: 3200
+tags: [pm, incident-management, comms-templates, outage, status-page]
 ---
 # Incident Comms Templates Internal External
 
 ## Summary
 
-**One-sentence:** Incident Comms Templates Internal External — testable methodology for delivery, scheduling, RACI, throughput. Communications-management is generic. Incidents need ready-to-edit templates for status page, customer email, exec brief, and internal channel; absence costs minutes during outages.
+**One-sentence:** Ships ready-to-edit incident comms templates (status page + customer email + exec brief + internal channel) so outage minute-cost is not template-authoring time.
 
-**One-paragraph:** Incident Comms Templates Internal External closes a known gap in pm practice: Communications-management is generic. Incidents need ready-to-edit templates for status page, customer email, exec brief, and internal channel; absence costs minutes during outages. The methodology is anchored to the recurring activity 'Incident → postmortem → preventive backlog (role: p6-product-dev-team)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Ships ready-to-edit incident comms templates (status page + customer email + exec brief + internal channel) so outage minute-cost is not template-authoring time. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** PM/IM-у під час інциденту — шаблони готові, не треба писати з нуля під тиском.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Incident → postmortem → preventive backlog (role: p6-product-dev-team)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Org runs a service with paying customers OR a published SLA.
+- Incidents happen often enough that ad-hoc comms cost is real (>=1 P1/P2 per quarter).
+- An incident-commander role exists (named, on a rotation).
+- Status-page tool and customer-comms channel are in place.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Pre-launch product with no SLA — defer until customers exist.
+- No on-call rotation — templates without a commander rot.
+- Org has a regulated template (banking, healthcare) — use the regulator's instead.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| Status-page tool access | API/UI | Statuspage / Atlassian Statuspage / equivalent |
+| Customer comms list | CRM export | support tool |
+| Exec brief recipients | list | leadership roster |
+| Severity definitions | doc | incident-management runbook |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `geek/pm/distressed-project-diagnostic-script` | Project-level rescue — incident templates plug into it. |
+| `geek/pm/exception-driven-standup-protocol` | Companion ritual for post-incident standups. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `incident_comms_templates_internal_external_template_fill` | haiku | Template fill, no judgement |
-| `incident_comms_templates_internal_external_evidence_check` | sonnet | Bounded comparison + judgement |
-| `incident_comms_templates_internal_external_synthesis` | opus | Cross-input synthesis + final write-up |
+| `scaffold-template-bundle` | haiku | Boilerplate fill across the four templates. |
+| `severity-audience-mapping` | sonnet | Bounded judgement: which placeholders per severity. |
+| `post-incident-narrative` | opus | Cross-channel synthesis for customer + exec. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | Four-template bundle: status-page update, customer email, exec brief, internal channel — each with severity-aware placeholders. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-incident-comms-templates-internal-external.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/` (see neighbouring methodologies)
-- triggering activity: `Incident → postmortem → preventive backlog (role: p6-product-dev-team)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[distressed-project-diagnostic-script]]
+- [[exception-driven-standup-protocol]]
+- [[delivery-maturity-rubric]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to ship the template bundle (paid service + recurring incidents + commander), block until commander rotation exists, or skip (pre-launch / no incidents). Run before authoring any template.

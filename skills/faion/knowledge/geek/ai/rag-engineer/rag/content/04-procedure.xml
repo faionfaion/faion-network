@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="rag Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step build procedure for production RAG.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="ingest-and-chunk">
+      <input>raw documents</input>
+      <action>Load (unstructured/llama-index), chunk by doc type (r1), attach metadata, deduplicate (cosine&gt;0.97).</action>
+      <output>chunk store</output>
+    </step>
+    <step n="2" name="embed-and-store">
+      <input>chunk store + embedding model</input>
+      <action>Batch-embed; upsert into vector DB; verify count.</action>
+      <output>vector index</output>
+    </step>
+    <step n="3" name="retrieve-hybrid">
+      <input>query + vector index + BM25 index</input>
+      <action>Run hybrid search; top-K=20 by default.</action>
+      <output>20 candidates with metadata</output>
+    </step>
+    <step n="4" name="rerank">
+      <input>20 candidates + query</input>
+      <action>Cross-encoder or Cohere rerank; take top-5.</action>
+      <output>5 reranked chunks</output>
+    </step>
+    <step n="5" name="generate-with-citations">
+      <input>5 chunks + answer prompt template</input>
+      <action>Compose context (highest-score first); call LLM with "answer-only-from-context" prompt; require [Source: filename, page] citations.</action>
+      <output>answer text + raw citations</output>
+    </step>
+    <step n="6" name="validate-and-gate">
+      <input>answer + retrieved chunk metadata</input>
+      <action>Parse citations, intersect with metadata; compute faithfulness; if below 0.8, queue for review.</action>
+      <output>final RAG answer object matching schema</output>
+    </step>
+  </section>
+
+  <reference path="templates/rag-pipeline.py.tmpl">End-to-end pipeline skeleton.</reference>
+</text>

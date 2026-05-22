@@ -3,77 +3,92 @@ slug: ai-assisted-velocity-anomaly-detection
 tier: geek
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Detection protocol for ai assisted velocity anomaly detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships.
-content_id: "9e2e894929e813ae"
-tags: [ai, detection, pm]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Detects velocity anomalies (commit volume, PR latency, ticket cycle time) with explicit thresholds + remediation paths — before the sprint review reveals them."
+content_id: "8c242e747ea28090"
+complexity: medium
+produces: report
+est_tokens: 3500
+tags: [ai, detection, velocity, anomaly, agile-metrics]
 ---
-# AI Assisted Velocity Anomaly Detection
+# Ai Assisted Velocity Anomaly Detection
 
 ## Summary
 
-**One-sentence:** Detection protocol for ai assisted velocity anomaly detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships.
+**One-sentence:** Detects velocity anomalies (commit volume, PR latency, ticket cycle time) with explicit thresholds + remediation paths — before the sprint review reveals them.
 
-**One-paragraph:** Detection protocol for ai assisted velocity anomaly detection — explicit signals, thresholds, and remediation paths so the failure mode is caught before it ships. Geek/pm has 'ai-in-project-management' as an overview but no concrete recipe for hooking an LLM/anomaly model to burndown signals — direct fit for the AI Gantt pain point.
+**One-paragraph:** Detects velocity anomalies (commit volume, PR latency, ticket cycle time) with explicit thresholds + remediation paths — before the sprint review reveals them. The methodology is anchored to a single named consumer (a PM, EM, portfolio owner, or downstream agent) and a fixed-shape artefact that downstream review can sign off without re-deriving reasoning. Inputs are explicit, evidence is anchored, and the artefact carries `version`, `owner`, and `last_reviewed` so it remains a living operating tool rather than folklore. Outputs that fail the contract are rejected at validation time, not at executive review.
+
+**Ефективно для:** PM/EM-у — щоб velocity-зрив був помічений у тиждень-1, не на demo.
 
 ## Applies If (ALL must hold)
 
-- You instrument or audit for the specific failure mode addressed by ai assisted velocity anomaly detection.
-- Signals are observable in code, logs, or artefacts you control.
-- Each detection has a remediation path — detection without repair is theater.
-- False-positive rate budget is set before deploying the detector.
+- Team runs sprints (1-3 weeks) with a tracker as source of truth.
+- Historical velocity baseline exists (≥6 sprints).
+- Commit + PR data is available via API (GitHub / GitLab).
+- Named PM/EM owns the response when an anomaly fires.
 
 ## Skip If (ANY kills it)
 
-- Detectors with no remediation path — alarm fatigue without action is worse than silence.
-- Hypothetical failure modes never observed in production data.
-- Costs of false positive > cost of missed failure (e.g., halting prod on flaky signal).
+- Team < 4 people — sample size too small; manual feel is more accurate.
+- Tracker is stale — anomaly detection on stale data fires false positives.
+- Team uses #NoEstimates — velocity is not the team's primary signal.
 
 ## Prerequisites
 
-- Signal source instrumented (log line, metric, lint rule, scanner).
-- Channel for alerts agreed (Slack, PagerDuty, dashboard).
-- Remediation playbook or runbook ready for each detector firing.
+| Input artifact | Format | Source |
+|---|---|---|
+| Tracker velocity export | API/CSV | Jira / Linear |
+| Git commit + PR feed | API | GitHub / GitLab |
+| Baseline of ≥6 sprints | CSV | tracker history |
+| Threshold-calibration document | Markdown | owner-authored |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/pm-agile/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/pm/pm-agile/ai-assisted-backlog-deduplication` | Sibling AI-assist pipeline pattern. |
+| `geek/pm/exception-driven-standup-protocol` | Anomaly signals feed the pre-brief. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `signal_capture` | haiku | Pattern matcher, no judgment |
-| `severity_assignment` | sonnet | Anchored severity per detector hit |
-| `policy_synthesis` | opus | When detectors accumulate, propose root-cause fix |
+| `metric-pull` | haiku | Pure API pull. |
+| `z-score-compute` | haiku | Closed-form math. |
+| `anomaly-narrative` | sonnet | Bounded synthesis: was it a real anomaly or a known event? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.py` | Python skeleton: pull velocity + PR metrics, compute z-scores against baseline, emit anomaly JSON. |
+| `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-assisted-velocity-anomaly-detection.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
 
-- parent skill: `geek/pm/pm-agile/`
-- peer methodologies: see siblings under `geek/pm/pm-agile/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-assisted-backlog-deduplication]]
+- [[exception-driven-standup-protocol]]
+- [[ai-pm-tool-integration-recipes]]
+
+## Decision tree
+
+The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to run weekly anomaly detection (≥6 baseline + ≥4 team + fresh tracker + owner), block until baseline exists, or skip (small team / stale tracker). Run before the first detection cron is enabled.
