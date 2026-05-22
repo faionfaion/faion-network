@@ -1,57 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Gateway Adapter Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Gateway Adapter Template artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
-  </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
+<text id="02-output-contract" title="Gateway Adapter Template Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a valid Gateway Adapter Template output. Subagent must satisfy this contract before returning to caller.</summary>
+
+  <output-contract>
+    <required>
+      <field name="artefact_id" type="string" required="true">kebab-case, prefix `ga-`</field>
+      <field name="owner" type="string" required="true">single named accountable owner</field>
+      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
+      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
+      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO-8601 date</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty</pattern>
+      <pattern id="f2">rationale that does not reference any input by name</pattern>
+      <pattern id="f3">inputs_used empty AND decision is not 'no-op'</pattern>
+      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f5">version regressed (lower than previous record)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
+      <transformation>Promote 'no decision yet' to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <schema-reference path="templates/gateway-adapter-template.json"/>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "artefact_id": "ga-example-001",
+  "owner": "alex@acme.com",
+  "decision": "concrete choice — see templates/gateway-adapter-template.md for shape",
+  "rationale": "Decision cites input artefact A (URL) and input artefact B (path). The rationale is at least two sentences and identifies which constraints drove the call.",
+  "inputs_used": [{"name": "A", "source": "https://example.com/A"}, {"name": "B", "source": "repo:path/B"}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "decision": "yes",
+  "rationale": "obviously",
+  "inputs_used": [],
+  "version": "v1",
+  "last_reviewed": "soon"
+}
+]]></example>
+  </output-contract>
+
   <section title="Self-check checklist">
     <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Output validates against templates/gateway-adapter-template.json</item>
     </list>
   </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
 </text>

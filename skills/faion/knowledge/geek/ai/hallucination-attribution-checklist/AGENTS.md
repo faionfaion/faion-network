@@ -3,78 +3,95 @@ slug: hallucination-attribution-checklist
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "07e6f15abf061b80"
-summary: "Hallucination Attribution Checklist — testable methodology for LLM-agent design, evals, safety, cost. Reproducing is covered (record-replay-debugging); attributing across retrieval / prompt / model / tool is not codified into a single triage tree."
-tags: [ai, geek, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a hallucination-attribution checklist: per-claim citation, citation-source verification, attribution-type tagging (extrinsic / intrinsic / source-mismatch), owner.
+content_id: "849b4a8cd51bb3dd"
+complexity: light
+produces: checklist
+est_tokens: 4000
+tags: [hallucination, attribution, rag, qa, checklist, ai-core, geek]
 ---
+
 # Hallucination Attribution Checklist
 
 ## Summary
 
-**One-sentence:** Hallucination Attribution Checklist — testable methodology for LLM-agent design, evals, safety, cost. Reproducing is covered (record-replay-debugging); attributing across retrieval / prompt / model / tool is not codified into a single triage tree.
+**One-sentence:** Produces a hallucination-attribution checklist: per-claim citation, citation-source verification, attribution-type tagging (extrinsic / intrinsic / source-mismatch), owner.
 
-**One-paragraph:** Hallucination Attribution Checklist closes a known gap in ai practice: Reproducing is covered (record-replay-debugging); attributing across retrieval / prompt / model / tool is not codified into a single triage tree. The methodology is anchored to the recurring activity 'Hallucination incident triage (role: p7-llm-agent-developer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** RAG features where citations look correct but the cited doc does not actually support the claim; this checklist catches attribution-shaped hallucinations specifically.
+
+**One-paragraph:** This methodology pins the recurring decision around "hallucination attribution checklist" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Maxim AI / Galileo hallucination detection guides 2026.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Hallucination incident triage (role: p7-llm-agent-developer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Task is an instance of the recurring "hallucination attribution checklist" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "hallucination attribution checklist" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "hallucination attribution checklist" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `hallucination_attribution_checklist_template_fill` | haiku | Template fill, no judgement |
-| `hallucination_attribution_checklist_evidence_check` | sonnet | Bounded comparison + judgement |
-| `hallucination_attribution_checklist_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/hallucination-attribution-checklist.json` | JSON schema for the output contract |
+| `templates/hallucination-attribution-checklist.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-hallucination-attribution-checklist.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `Hallucination incident triage (role: p7-llm-agent-developer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

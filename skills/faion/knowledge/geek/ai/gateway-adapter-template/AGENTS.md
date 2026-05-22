@@ -3,78 +3,95 @@ slug: gateway-adapter-template
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "84d952366f69b6bb"
-summary: "Gateway Adapter Template — testable methodology for LLM-agent design, evals, safety, cost. Reference adapter shape (interface, error normalization, retry policy, tokenizer pinning) so adding endpoints stops being bespoke each time."
-tags: [ai, geek, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a gateway-adapter scaffold (Python or TS) that normalises N provider APIs behind one envelope: routing, retries, cost-tagging, telemetry, structured-output enforcement.
+content_id: "5a7f4fcc8654d119"
+complexity: medium
+produces: code
+est_tokens: 4000
+tags: [gateway, adapter, multi-provider, llm-integration, ai-core, geek]
 ---
+
 # Gateway Adapter Template
 
 ## Summary
 
-**One-sentence:** Gateway Adapter Template — testable methodology for LLM-agent design, evals, safety, cost. Reference adapter shape (interface, error normalization, retry policy, tokenizer pinning) so adding endpoints stops being bespoke each time.
+**One-sentence:** Produces a gateway-adapter scaffold (Python or TS) that normalises N provider APIs behind one envelope: routing, retries, cost-tagging, telemetry, structured-output enforcement.
 
-**One-paragraph:** Gateway Adapter Template closes a known gap in ai practice: Reference adapter shape (interface, error normalization, retry policy, tokenizer pinning) so adding endpoints stops being bespoke each time. The methodology is anchored to the recurring activity 'Model-gateway endpoint addition (role: p7-llm-agent-developer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** Teams calling Anthropic / OpenAI / Gemini directly from app code; every model swap requires editing N callsites. The adapter behind a gateway makes provider changes a config edit.
+
+**One-paragraph:** This methodology pins the recurring decision around "gateway adapter template" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Maxim AI — LLM Gateway architecture / MLflow AI Gateway.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Model-gateway endpoint addition (role: p7-llm-agent-developer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Task is an instance of the recurring "gateway adapter template" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "gateway adapter template" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "gateway adapter template" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `gateway_adapter_template_template_fill` | haiku | Template fill, no judgement |
-| `gateway_adapter_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `gateway_adapter_template_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/gateway-adapter-template.json` | JSON schema for the output contract |
+| `templates/gateway-adapter-template.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-gateway-adapter-template.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `Model-gateway endpoint addition (role: p7-llm-agent-developer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

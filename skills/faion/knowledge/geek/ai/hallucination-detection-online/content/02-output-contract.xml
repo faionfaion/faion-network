@@ -1,42 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Runtime Hallucination Detection Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Runtime Hallucination Detection output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Hallucination Detection — Online Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a valid Hallucination Detection — Online output. Subagent must satisfy this contract before returning to caller.</summary>
 
   <output-contract>
     <required>
-      <field name="claim_decomposition" type="object" required="true">{method, library, max_claims_per_response}</field>
-      <field name="attribution_check" type="object" required="true">{threshold, retrieval_source, show_to_user}</field>
-      <field name="self_consistency" type="object" required="true">{n_samples, applies_to_fields, consistency_threshold}</field>
-      <field name="abstention_policy" type="string" required="true">the user-facing abstention message + escalation route</field>
-      <field name="drift_metrics" type="list" required="true">[{metric, threshold, alert_channel}]</field>
-      <field name="owner" type="string" required="true">named ML/AI engineer</field>
+      <field name="artefact_id" type="string" required="true">kebab-case, prefix `hdo-`</field>
+      <field name="owner" type="string" required="true">single named accountable owner</field>
+      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
+      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
+      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO-8601 date</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">claim_decomposition missing AND output &gt; 1 sentence</pattern>
-      <pattern id="f2">attribution_check.threshold not set (open-ended)</pattern>
-      <pattern id="f3">abstention_policy is 'returns null' (silent failure)</pattern>
-      <pattern id="f4">self_consistency not applied to critical fields</pattern>
+      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty</pattern>
+      <pattern id="f2">rationale that does not reference any input by name</pattern>
+      <pattern id="f3">inputs_used empty AND decision is not 'no-op'</pattern>
+      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f5">version regressed (lower than previous record)</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
+      <transformation>Promote 'no decision yet' to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
     </allowed-transformations>
 
-    <schema-reference path="templates/hallucination-detection-online.json"/>
+    <schema>
+      <schema-reference path="templates/hallucination-detection-online.json"/>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "artefact_id": "hdo-example-001",
+  "owner": "alex@acme.com",
+  "decision": "concrete choice — see templates/hallucination-detection-online.md for shape",
+  "rationale": "Decision cites input artefact A (URL) and input artefact B (path). The rationale is at least two sentences and identifies which constraints drove the call.",
+  "inputs_used": [{"name": "A", "source": "https://example.com/A"}, {"name": "B", "source": "repo:path/B"}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "decision": "yes",
+  "rationale": "obviously",
+  "inputs_used": [],
+  "version": "v1",
+  "last_reviewed": "soon"
+}
+]]></example>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>claim_decomposition populated with a typed value</item>
-      <item>attribution_check populated with a typed value</item>
-      <item>self_consistency populated with a typed value</item>
-      <item>abstention_policy populated with a typed value</item>
-      <item>drift_metrics populated with a typed value</item>
-      <item>owner populated with a typed value</item>
+      <item>Every required field populated with a typed value</item>
       <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/hallucination-detection-online.json</item>
     </list>
   </section>
 </text>

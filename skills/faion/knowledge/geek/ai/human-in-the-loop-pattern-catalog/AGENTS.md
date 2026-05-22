@@ -3,78 +3,95 @@ slug: human-in-the-loop-pattern-catalog
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "0cd8e3b7f323c314"
-summary: "Human In The Loop Pattern Catalog — testable methodology for LLM-agent design, evals, safety, cost. Patterns for HITL: pre-action confirm, post-action review, sampled audit, escalation on uncertainty. ml-engineer/agents-safety-guardrails is too abstract."
-tags: [ai, geek, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a catalog mapping risk classes (low / medium / high) to HITL patterns: review-before-publish, approval-card, two-step, override-window, async escalation.
+content_id: "14ed484a34e46f36"
+complexity: medium
+produces: report
+est_tokens: 4000
+tags: [human-in-the-loop, hitl, agents, approval, ai-core, ai-agents, geek]
 ---
-# Human In The Loop Pattern Catalog
+
+# Human-in-the-Loop Pattern Catalog
 
 ## Summary
 
-**One-sentence:** Human In The Loop Pattern Catalog — testable methodology for LLM-agent design, evals, safety, cost. Patterns for HITL: pre-action confirm, post-action review, sampled audit, escalation on uncertainty. ml-engineer/agents-safety-guardrails is too abstract.
+**One-sentence:** Produces a catalog mapping risk classes (low / medium / high) to HITL patterns: review-before-publish, approval-card, two-step, override-window, async escalation.
 
-**One-paragraph:** Human In The Loop Pattern Catalog closes a known gap in ai practice: Patterns for HITL: pre-action confirm, post-action review, sampled audit, escalation on uncertainty. ml-engineer/agents-safety-guardrails is too abstract. The methodology is anchored to the recurring activity 'Agentic AI feature MVP to GA (role: role-ml-engineer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** AI agents shipping consequential actions (payments, deletions, external comms) without a documented HITL pattern per risk class; the catalog forces an explicit choice per workflow.
+
+**One-paragraph:** This methodology pins the recurring decision around "human-in-the-loop pattern catalog" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Permit.io / Temporal HITL cookbook / Truto blog 2026.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Agentic AI feature MVP to GA (role: role-ml-engineer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Task is an instance of the recurring "human-in-the-loop pattern catalog" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "human-in-the-loop pattern catalog" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "human-in-the-loop pattern catalog" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `human_in_the_loop_pattern_catalog_template_fill` | haiku | Template fill, no judgement |
-| `human_in_the_loop_pattern_catalog_evidence_check` | sonnet | Bounded comparison + judgement |
-| `human_in_the_loop_pattern_catalog_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/human-in-the-loop-pattern-catalog.json` | JSON schema for the output contract |
+| `templates/human-in-the-loop-pattern-catalog.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-human-in-the-loop-pattern-catalog.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `Agentic AI feature MVP to GA (role: role-ml-engineer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

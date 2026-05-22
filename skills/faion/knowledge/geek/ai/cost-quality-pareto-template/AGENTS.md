@@ -3,83 +3,95 @@ slug: cost-quality-pareto-template
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "7675f1a22f6d07fa"
-summary: Standard Pareto template for LLM cost vs quality decisions — fixed axes, eval fixtures, plotting helper — so model-choice and config-choice decisions are defensible and reproducible.
-tags: [llm-eval, cost-quality, pareto, model-selection, geek-ai, p7-llm-agent-dev]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Pareto-frontier report (cost-x, quality-y, per-model dots, dominated points, recommended sweet-spot) for an AI feature choosing between models or prompt variants.
+content_id: "f2bfb56f475674d3"
+complexity: medium
+produces: report
+est_tokens: 4000
+tags: [pareto, cost-quality, model-selection, ai-finance, ai-core, geek]
 ---
+
 # Cost-Quality Pareto Template
 
 ## Summary
 
-**One-sentence:** A reusable Pareto-analysis template (fixed axes, fixture set, scoring rubric, plotting helper) for choosing between LLM models and configurations — replaces eyeballed "this seems good enough" with a defensible cost-quality curve.
+**One-sentence:** Produces a Pareto-frontier report (cost-x, quality-y, per-model dots, dominated points, recommended sweet-spot) for an AI feature choosing between models or prompt variants.
 
-**One-paragraph:** P7 LLM-agent developers face a constant decision: opus vs sonnet vs haiku, GPT-4 vs 4o vs mini, prompt-cached vs not, with-tools vs without. Each decision is currently made by vibes ("opus felt better"), which produces three failures: a) the wrong model gets picked because a bad test case dominated the impression, b) decisions cannot be replayed when a new SOTA model arrives, c) "we tested it" claims survive no scrutiny. This methodology pins a template: a fixed fixture set per use-case (held constant across model evals), a scoring rubric (3-5 dimensions with rater agreement), per-call cost and latency capture, and a plotting helper that renders the cost-quality Pareto. Output: a Pareto chart + decision memo per choice, archived for replay.
+**Ефективно для:** Engineering leads holding the model-choice review where 4-6 candidate model/prompt combos exist and the team is debating in slack instead of looking at the same Pareto chart.
+
+**One-paragraph:** This methodology pins the recurring decision around "cost-quality pareto template" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: ParetoBandit / Beyond the Pareto Frontier (Cognaptus 2026).
 
 ## Applies If (ALL must hold)
 
-- The team is choosing between LLM models OR LLM configurations for a production-facing task.
-- Task has a measurable quality dimension (correctness, faithfulness, helpfulness — not "vibes").
-- A fixture set of at least 20 representative inputs is available or can be assembled.
-- Decision will affect &gt; $100/month of LLM spend OR a high-traffic latency-sensitive path.
+- Task is an instance of the recurring "cost-quality pareto template" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- Pre-prototype exploration — vibes are fast and the model choice is reversible.
-- Internal-only tool with one user and trivial spend — analysis overhead exceeds benefit.
-- Task lacks a scorable quality dimension — must define the rubric first.
-- Single-model deployment with no contender — there's no comparison to make.
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- Production task description and example inputs.
-- Scoring rubric draft (correctness criteria, faithfulness criteria, etc.).
-- LLM API access to candidates with cost/token metadata.
-- A spreadsheet or notebook for results.
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "cost-quality pareto template" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/llm-integration/structured-output-patterns` | Output capture and parsing for scoring assumed. |
-| `geek/sdlc-ai/test-property-based-llm-invariants` | Sibling — invariant tests used as part of the rubric. |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: fixture freeze, multi-dim scoring, full-cost capture, replay metadata, Pareto frontier | ~1000 |
-| `content/02-output-contract.xml` | essential | Pareto memo + chart + fixture archive shape | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: cherry-pick fixtures, single-rater, ignoring latency, etc. | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "cost-quality pareto template" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `fixture-assembly` | sonnet | Bounded curation of representative inputs |
-| `score-output` | opus or human | Per the scoring rubric; rater quality matters |
-| `plot-pareto` | haiku | Mechanical: render the chart from results CSV |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/fixtures.json` | Schema for fixture entries with input + expected behavior |
-| `templates/scoring-rubric.md` | Multi-dimension rubric with rater instructions |
-| `templates/pareto-memo.md` | Decision memo skeleton |
+|---|---|
+| `templates/cost-quality-pareto-template.json` | JSON schema for the output contract |
+| `templates/cost-quality-pareto-template.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/run-eval.py` | Iterate fixtures × candidates; capture cost/latency/output | Eval run |
-| `scripts/plot-pareto.py` | Render cost-vs-quality scatter + Pareto frontier | Post-eval |
+|---|---|---|
+| `scripts/validate-cost-quality-pareto-template.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/llm-integration/`
-- peer methodology: `cost-vs-quality-decision-log`, `llm-eval-fundamentals`, `prompt-caching-strategy`
-- external: [Anthropic evals guidance](https://docs.anthropic.com/en/docs/build-with-claude/evaluations) · [OpenAI evals](https://github.com/openai/evals)
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

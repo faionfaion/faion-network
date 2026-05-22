@@ -3,78 +3,95 @@ slug: eval-in-prod-sampling-policy
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "003a949839a5ff93"
-summary: Eval In Prod Sampling Policy delivers a concrete, testable methodology that turns the recurring task of 'Observability + drift detection rollout (3 weeks)' into an auditable artefact, addressing the gap: Sampling N% of prod traffic for judge-eval has cost, privacy, and selection-
-tags: [ai, geek, policy, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a sampling-policy config for production-trace eval: sample rate per route, stratification, judge-call budget, drift detection, alerting.
+content_id: "7b15431499366842"
+complexity: medium
+produces: config
+est_tokens: 4000
+tags: [eval-in-prod, sampling, judge, observability, ai-core, geek]
 ---
-# Eval In Prod Sampling Policy
+
+# Eval-in-Prod Sampling Policy
 
 ## Summary
 
-**One-sentence:** Eval In Prod Sampling Policy delivers a concrete, testable methodology that turns the recurring task of 'Observability + drift detection rollout (3 weeks)' into an auditable artefact, addressing the gap: Sampling N% of prod traffic for judge-eval has cost, privacy, and selection-bias gotchas. Needs an opinionated policy methodology.
+**One-sentence:** Produces a sampling-policy config for production-trace eval: sample rate per route, stratification, judge-call budget, drift detection, alerting.
 
-**One-paragraph:** Sampling N% of prod traffic for judge-eval has cost, privacy, and selection-bias gotchas. Needs an opinionated policy methodology. Eval In Prod Sampling Policy closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Observability + drift detection rollout (3 weeks)' (p7-llm-agent-developer, geek tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**Ефективно для:** Production LLM systems with judge-based eval where blanket sampling burns budget on easy cases and starves hard ones; this config makes sampling stratified and budgeted.
+
+**One-paragraph:** This methodology pins the recurring decision around "eval-in-prod sampling policy" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Vadim — Workflow-First Production Evals 2026.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Observability + drift detection rollout (3 weeks)' (role: p7-llm-agent-developer) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Task is an instance of the recurring "eval-in-prod sampling policy" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "eval-in-prod sampling policy" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "eval-in-prod sampling policy" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `eval_in_prod_sampling_policy_template_fill` | haiku | Template fill, no judgment |
-| `eval_in_prod_sampling_policy_evidence_check` | sonnet | Bounded comparison + judgment |
-| `eval_in_prod_sampling_policy_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/eval-in-prod-sampling-policy.json` | JSON schema for the output contract |
+| `templates/eval-in-prod-sampling-policy.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-eval-in-prod-sampling-policy.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `p7-llm-agent-developer/Observability + drift detection rollout (3 weeks)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

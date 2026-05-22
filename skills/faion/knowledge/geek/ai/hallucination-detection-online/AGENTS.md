@@ -3,69 +3,95 @@ slug: hallucination-detection-online
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Claim decomposition, retrieval-attribution check, self-consistency on critical fields, abstain-on-low-evidence — runtime hallucination detection beyond batch evals.
-content_id: "4319a28cd4c21286"
-tags: [hallucination-detection-online, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an online hallucination-detection config: per-route judge scorer, groundedness threshold, alerting, sample-rate, fallback action.
+content_id: "23aac13c49ba7bfc"
+complexity: medium
+produces: config
+est_tokens: 4000
+tags: [hallucination, online-detection, monitoring, judge, ai-core, geek]
 ---
 
-# Runtime Hallucination Detection
+# Hallucination Detection — Online
 
 ## Summary
 
-**One-sentence:** Claim decomposition, retrieval-attribution check, self-consistency on critical fields, abstain-on-low-evidence — runtime hallucination detection beyond batch evals.
+**One-sentence:** Produces an online hallucination-detection config: per-route judge scorer, groundedness threshold, alerting, sample-rate, fallback action.
 
-**One-paragraph:** faion has cheap-guardrail-tripwire and llm-judge-rubric-evidence-first (batch). Missing: runtime detection pattern. Output: detection pipeline + abstention policy + drift triggers.
+**Ефективно для:** Production RAG/generation features that ship hallucinations live before users complain; this config wires real-time detection with a documented threshold and a scoped containment action.
+
+**One-paragraph:** This methodology pins the recurring decision around "hallucination detection — online" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Datadog LLM Observability hallucination detection / Braintrust 2026.
 
 ## Applies If (ALL must hold)
 
-- production LLM workflow where hallucination = real damage (finance, health, legal, code, factual support)
-- RAG or tool-call available to provide grounding evidence
-- engineering capacity to add a runtime check layer
+- Task is an instance of the recurring "hallucination detection — online" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- purely creative workflow (fiction, brainstorm)
-- hallucination tolerance is high (e.g., 'wrong is funny')
-- no grounding source available — detection without ground truth is guessing
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- RAG corpus or tool-call output as grounding
-- list of 'critical fields' that must not hallucinate
-- ability to add a runtime check stage in the inference pipeline
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "hallucination detection — online" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/cheap-guardrail-tripwire` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/llm-judge-rubric-evidence-first` | peer methodology — produces inputs or consumes outputs |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "hallucination detection — online" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+
+## Templates
+
+| File | Purpose |
+|---|---|
+| `templates/hallucination-detection-online.json` | JSON schema for the output contract |
+| `templates/hallucination-detection-online.md` | Markdown skeleton with required fields |
+
+## Scripts
+
+| File | Purpose | When to call |
+|---|---|---|
+| `scripts/validate-hallucination-detection-online.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/cheap-guardrail-tripwire`
-- peer methodology: `geek/ai/llm-judge-rubric-evidence-first`
-- peer methodology: `geek/ai/rag-engineer`
-- external: https://arxiv.org/abs/2305.18248 (SelfCheckGPT); https://arxiv.org/abs/2310.06770 (factuality of LLMs); https://www.anthropic.com/news/contextual-retrieval
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

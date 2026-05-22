@@ -3,69 +3,95 @@ slug: cost-quality-tradeoff-framework
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Decision-table for the cost vs quality vs latency Pareto-front: when to escalate weak→strong, when to add a second pass, when to add a critic, when reranking pays for itself.
-content_id: "b51291b85b8e314d"
-tags: [cost-quality-tradeoff-framework, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a tradeoff framework spec naming the cost axis ($/task), quality axis (per-feature rubric), tolerance windows, and the SLO that anchors model-routing decisions.
+content_id: "fc4951c07e39db13"
+complexity: deep
+produces: spec
+est_tokens: 4000
+tags: [cost-quality, tradeoff, framework, slo, ai-finance, ai-core, geek]
 ---
 
-# LLM Cost-Quality-Latency Tradeoff Framework
+# Cost-Quality Tradeoff Framework
 
 ## Summary
 
-**One-sentence:** Decision-table for the cost vs quality vs latency Pareto-front: when to escalate weak→strong, when to add a second pass, when to add a critic, when reranking pays for itself.
+**One-sentence:** Produces a tradeoff framework spec naming the cost axis ($/task), quality axis (per-feature rubric), tolerance windows, and the SLO that anchors model-routing decisions.
 
-**One-paragraph:** cost-reduction-strategies + llm-cost-basics cover cost reduction. They do not give a decision framework for the cost vs quality vs latency Pareto. Mechanism: per-task eval + decision-table + drift triggers. Output: tradeoff table + per-task pick with evidence + drift alarm.
+**Ефективно для:** Platform team standardising how every feature in the org makes cost-quality decisions — turning ad-hoc model swaps into a versioned framework with clear SLO bands and named owners.
+
+**One-paragraph:** This methodology pins the recurring decision around "cost-quality tradeoff framework" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Economic Evaluation of LLMs (arxiv 2507.03834).
 
 ## Applies If (ALL must hold)
 
-- ≥1 production LLM workflow with eval set
-- team has authority to swap models or add post-processing
-- cost OR latency OR quality complaint actively constraining the workflow
+- Task is an instance of the recurring "cost-quality tradeoff framework" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- no eval — sizing is guesswork; build eval first
-- experimental research with no cost ceiling
-- single-shot demo / hackathon — over-engineering
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- eval set ≥50 cases with graded outputs
-- ability to measure cost per call + p95 latency
-- model-router or routing layer (LangChain/LlamaIndex/custom)
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "cost-quality tradeoff framework" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/llm-cost-basics` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/cost-reduction-strategies` | peer methodology — produces inputs or consumes outputs |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "cost-quality tradeoff framework" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+
+## Templates
+
+| File | Purpose |
+|---|---|
+| `templates/cost-quality-tradeoff-framework.json` | JSON schema for the output contract |
+| `templates/cost-quality-tradeoff-framework.md` | Markdown skeleton with required fields |
+
+## Scripts
+
+| File | Purpose | When to call |
+|---|---|---|
+| `scripts/validate-cost-quality-tradeoff-framework.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/llm-cost-basics`
-- peer methodology: `geek/ai/cost-reduction-strategies`
-- peer methodology: `geek/ai/llm-cascade-routing`
-- external: https://arxiv.org/abs/2305.05176 (FrugalGPT); https://www.anthropic.com/news/prompt-caching
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

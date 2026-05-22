@@ -3,80 +3,95 @@ slug: cost-vs-quality-decision-log
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "770baf9e0eae1f96"
-summary: A persistent log of LLM cost-vs-quality trades so the same compromises don't get re-considered every quarter — pairs with the Pareto template to record the decision after the analysis.
-tags: [cost-optimization, decision-log, llm-eval, ml-ops, geek-ai]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an immutable decision-record entry for a single cost-vs-quality call (model swap, prompt cut, fallback chain change) with rationale, measured delta, and rollback condition.
+content_id: "bd6bbbecb35693f0"
+complexity: light
+produces: decision-record
+est_tokens: 4000
+tags: [decision-log, cost-quality, audit, ai-finance, ai-core, geek]
 ---
+
 # Cost-vs-Quality Decision Log
 
 ## Summary
 
-**One-sentence:** A persistent append-only log of every cost-vs-quality trade made on LLM-powered features — so the same decisions don't get re-litigated every quarter, and reversals are made with full context.
+**One-sentence:** Produces an immutable decision-record entry for a single cost-vs-quality call (model swap, prompt cut, fallback chain change) with rationale, measured delta, and rollback condition.
 
-**One-paragraph:** ML engineers running production LLM pipelines repeatedly cut cost: dropped opus to sonnet, shortened a system prompt, reduced top-k retrieval, switched from per-call to batched. Each trade is made in a Slack thread, lost to git history's noise, then re-considered six months later from scratch — usually arriving at the same conclusion (or worse, the opposite, undoing the savings). This methodology pins a single log file with one append-only row per decision: what was changed, expected quality impact, observed cost saving, rollback trigger, and review-after date. The log is the institutional memory for the cost knob. Paired with `cost-quality-pareto-template` (which runs the eval), the log records the outcome.
+**Ефективно для:** Teams that change model / prompt for cost reasons but cannot later reconstruct why; this template forces every cost-vs-quality call to land in an auditable log.
+
+**One-paragraph:** This methodology pins the recurring decision around "cost-vs-quality decision log" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Audit-trail discipline (RFC 7807 problem details ethos).
 
 ## Applies If (ALL must hold)
 
-- The team operates LLM features in production with measurable monthly cost.
-- More than one cost knob is in play (model, prompt size, retrieval count, caching, batch size).
-- The team has experienced "we already tried that" cycles (re-considering rejected trades).
-- Weekly or monthly cost review is a standing ritual.
+- Task is an instance of the recurring "cost-vs-quality decision log" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- Single-call, single-config pipeline — there's nothing to log.
-- Pre-prototype where the right answer is rapid iteration without overhead.
-- Architecture decision records (ADRs) already cover this dimension — extend the ADR format instead.
-- Solo developer with full memory of every trade — log is overhead; revisit at team-size 2+.
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- A repo or wiki space where the log lives (markdown file under version control preferred).
-- Monthly cost data per LLM-powered feature.
-- Quality dimensions defined per feature (correctness, faithfulness, etc.).
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "cost-vs-quality decision log" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/cost-quality-pareto-template` | Paired methodology — Pareto produces the decision, this log records it. |
-| `geek/ai/ml-ops/ml-model-monitoring` | Quality monitoring provides the observed-impact data for log entries. |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: append-only, decision tied to feature, rollback trigger, review-after, link to Pareto | ~900 |
-| `content/02-output-contract.xml` | essential | Log entry shape; required fields; status lifecycle | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: re-litigation, missing baseline, retroactive entries | ~700 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "cost-vs-quality decision log" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft-log-entry` | sonnet | Bounded fill from decision context |
-| `quality-impact-summary` | sonnet | Read monitoring data, summarize observed delta |
-| `re-litigation-detector` | sonnet | Scan recent slack/discussions for repeat trades |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
+| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/decision-log.md` | Append-only log skeleton with header + row format |
-| `templates/log-entry.md` | One-entry template with all required fields |
+|---|---|
+| `templates/cost-vs-quality-decision-log.json` | JSON schema for the output contract |
+| `templates/cost-vs-quality-decision-log.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/log-review-overdue.py` | Surface entries past their review-after date | Weekly |
+|---|---|---|
+| `scripts/validate-cost-vs-quality-decision-log.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/ml-ops/`
-- peer methodology: `cost-quality-pareto-template`, `ml-model-monitoring`, `prompt-caching-strategy`
-- external: [Architecture Decision Records (Nygard)](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions) · [FinOps Foundation cost-control patterns](https://www.finops.org/)
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.

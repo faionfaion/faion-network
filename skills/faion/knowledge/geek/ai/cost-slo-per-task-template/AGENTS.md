@@ -3,80 +3,95 @@ slug: cost-slo-per-task-template
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cost Slo Per Task Template: codified ai practice that turns the recurring 'p7-llm-agent-developer/Token-cost daily watch' decision into a repeatable, auditable artefact.
-content_id: "fbaefadf895bc1ef"
-tags: [cost-slo-per-task-template, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a per-task cost-SLO config: dollar ceiling per task, latency budget, quality floor, alerting hooks, and routing fallback chain.
+content_id: "2194949264c25dd8"
+complexity: medium
+produces: config
+est_tokens: 4000
+tags: [cost-slo, per-task, gateway, routing, ai-core, geek]
 ---
-# Cost Slo Per Task Template
+
+# Cost-SLO Per-Task Template
 
 ## Summary
 
-**One-sentence:** Cost Slo Per Task Template: codified ai practice that turns the recurring 'p7-llm-agent-developer/Token-cost daily watch' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a per-task cost-SLO config: dollar ceiling per task, latency budget, quality floor, alerting hooks, and routing fallback chain.
 
-**One-paragraph:** Cost Slo Per Task Template addresses the gap surfaced by 'p7-llm-agent-developer/Token-cost daily watch'. Cost docs (llm-cost-basics, cost-reduction-strategies) treat cost in absolute terms. Agent builders need per-task SLO ($ per successful outcome) framing. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** Production AI features without explicit per-task cost SLOs — the gateway has no signal to throttle expensive tasks or shed load before budget overrun.
+
+**One-paragraph:** This methodology pins the recurring decision around "cost-slo per-task template" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a single accountable owner is named; the decision tree routes preconditions to a run/skip outcome. Source material grounded in: Vadim's blog — Workflow-First Production Evals.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p7-llm-agent-developer/Token-cost daily watch' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Task is an instance of the recurring "cost-slo per-task template" decision OR a closely-adjacent variant.
+- Operator has the artefacts named in Prerequisites available before starting.
+- Output will be consumed by a downstream agent, gate, or named human reviewer.
+- A single accountable owner can be named.
+- Tier == geek or higher.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Team already maintains a working artefact for this gap — replace, do not duplicate.
+- Single-use throwaway task — overhead of the contract is not justified.
+- Regulatory regime mandates a vendor governance platform — defer to vendor flow.
+- Greenfield prototype with no production users yet.
 
 ## Prerequisites
 
-- recent context for the 'p7-llm-agent-developer/Token-cost daily watch' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|---|---|---|
+| Last 30 days of context for the recurring "cost-slo per-task template" task | text / logs | system of record |
+| Write access to the artefact store (repo / wiki / decision log) | repo path | repo admin |
+| Named owner accountable for the output downstream | handle / email | team roster |
+| Baseline conventions (CLAUDE.md / AGENTS.md / CONVENTIONS.md) | md | code repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `geek/ai/llm-integration` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules customised to "cost-slo per-task template" | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~1000 |
+| `content/06-decision-tree.xml` | essential | Run / skip / variant router with conclusion-ref to rules | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
+|---|---|---|
+| `draft_inputs_summary` | haiku | Bounded template fill |
+| `synthesize_artefact` | sonnet | Per-instance judgment with bounded inputs |
 | `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/cost-slo-per-task-template.json` | JSON schema for the Cost Slo Per Task Template output contract |
-| `templates/cost-slo-per-task-template.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/cost-slo-per-task-template.json` | JSON schema for the output contract |
+| `templates/cost-slo-per-task-template.md` | Markdown skeleton with required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-cost-slo-per-task-template.py` | Enforce Cost Slo Per Task Template output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-cost-slo-per-task-template.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- upstream playbook: `p7-llm-agent-developer/Token-cost daily watch`
-- methodology family: `geek/ai/` (gap-p2 batch, F-059-063)
+- [[llm-integration]] — parent skill.
+- [[cost-quality-tradeoff-framework]] — adjacent framework.
+- [[eval-contract-template]] — adjacent eval gate.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? - no = skip; yes (2) variant detected per topic-specific signal? - routes to the appropriate produced variant. Terminal branches reference rules in `content/01-core-rules.xml`.
