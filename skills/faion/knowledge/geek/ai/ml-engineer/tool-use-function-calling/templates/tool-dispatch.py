@@ -1,3 +1,8 @@
+# purpose: validated tool dispatcher (registry + decorator + structured error return)
+# consumes: model-emitted {tool_name, args} JSON
+# produces: code (drop-in dispatcher module + audit log emission)
+# depends-on: pydantic OR jsonschema for validation; audit-sink client
+# token-budget-impact: ~250 tokens if loaded into LLM context
 """
 Validated tool dispatcher with registry decorator and structured error return.
 Drop-in for any provider: OpenAI, Claude, Gemini.

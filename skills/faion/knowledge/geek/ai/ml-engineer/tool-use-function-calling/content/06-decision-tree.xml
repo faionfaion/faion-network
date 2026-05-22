@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Tool Use — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes a model-emitted tool call by safety class to auto-execute / human-gated / refuse.</summary>
+
+  <decision-tree>
+    <root-question id="q-registered">Is the tool name registered in tools.yaml?</root-question>
+    <branch when="registered == false">
+      <conclusion ref="r1-typed-schema" verdict="REFUSE; return error to model with list of available tools (fm-03 fix)"/>
+    </branch>
+    <branch when="registered == true">
+      <question id="q-args">Do model-emitted args validate against the tool's JSON Schema?</question>
+      <branch when="args_valid == false">
+        <conclusion ref="r2-validate-before-execute" verdict="REFUSE; return validation error to model for repair"/>
+      </branch>
+      <branch when="args_valid == true">
+        <question id="q-class">Tool safety class?</question>
+        <branch when="safety_class == 'read-only'">
+          <conclusion ref="r5-audit-every-call" verdict="EXECUTE auto; log AuditEntry"/>
+        </branch>
+        <branch when="safety_class == 'mutating'">
+          <question id="q-rate">Within rate limit?</question>
+          <branch when="rate_ok == false">
+            <conclusion ref="r3-side-effect-class" verdict="REFUSE; rate limit hit; log + return error"/>
+          </branch>
+          <branch when="rate_ok == true">
+            <conclusion ref="r5-audit-every-call" verdict="EXECUTE; log AuditEntry"/>
+          </branch>
+        </branch>
+        <branch when="safety_class == 'destructive'">
+          <conclusion ref="r4-human-gate-irreversible" verdict="HUMAN GATE; pause execution, request approval, then execute on approve"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="send_email + valid args + rate OK → execute">
+    <code lang="text"><![CDATA[
+registered=true → args_valid=true → safety_class=mutating → q-rate → rate_ok=true → r5-audit-every-call verdict: execute + audit
+]]></code>
+  </example>
+</text>

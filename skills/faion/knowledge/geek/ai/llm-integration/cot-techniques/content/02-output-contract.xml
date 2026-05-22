@@ -1,22 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="cot-techniques Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="CoT Techniques Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for cot-config.json (pattern, params, cost guard) + lift-report.json (baseline vs candidate).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="cot-config schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/cot-config",
+  "type": "object",
+  "required": ["pattern", "cost_guard"],
+  "properties": {
+    "pattern": {"enum": ["few-shot-cot", "self-consistency", "least-to-most", "tree-of-thoughts"]},
+    "few_shot_examples": {"type": "array", "items": {"type": "object"}},
+    "self_consistency": {
+      "type": "object",
+      "properties": {
+        "n_samples": {"type": "integer", "minimum": 3, "maximum": 11},
+        "voting_rule": {"enum": ["majority", "median", "llm-judge"]}
+      }
+    },
+    "tot": {
+      "type": "object",
+      "properties": {
+        "branches_per_node": {"type": "integer", "maximum": 4},
+        "max_depth": {"type": "integer", "maximum": 4},
+        "value_fn": {"type": "string"}
+      }
+    },
+    "cost_guard": {
+      "type": "object",
+      "required": ["max_usd_per_call"],
+      "properties": {
+        "max_usd_per_call": {"type": "number", "exclusiveMinimum": 0}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="lift-report schema">
+    <code lang="json"><![CDATA[{
+  "type": "object",
+  "required": ["baseline_accuracy", "candidate_accuracy", "delta_pp", "cost_multiplier", "decision"],
+  "properties": {
+    "baseline_accuracy": {"type": "number"},
+    "candidate_accuracy": {"type": "number"},
+    "delta_pp": {"type": "number"},
+    "cost_multiplier": {"type": "number"},
+    "decision": {"enum": ["keep", "revert"]}
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "pattern": "self-consistency",
+  "self_consistency": {"n_samples": 5, "voting_rule": "majority"},
+  "cost_guard": {"max_usd_per_call": 0.05}
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"pattern": "self-consistency", "self_consistency": {"n_samples": 20}}]]></code>
+      <note>Fails: n_samples &gt;11, missing voting_rule, missing cost_guard.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>pattern field present and in enum.</item>
+      <item>self-consistency requires n_samples + voting_rule.</item>
+      <item>tot requires branches_per_node + max_depth + value_fn.</item>
+      <item>cost_guard.max_usd_per_call &gt; 0.</item>
+      <item>Lift report shows delta_pp ≥ 3 if decision = keep.</item>
     </list>
   </section>
 </text>
