@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="vector-db-setup-prod Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for vector-db-setup-prod as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Vector DB Prod Setup — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five high-impact antipatterns in production vector DB deployment.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Ephemeral volume — pod reschedules; all data gone; full re-ingest required.</description>
+      <detector>storage.class in {emptyDir, hostPath without replication}</detector>
+      <repair>Switch to PVC with durable storage class. Migrate data before destroying old pod.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>No resource limits — pod consumes node memory; neighbours evicted; cascading failures.</description>
+      <detector>resources.cpu_limit missing OR memory_limit_gb missing</detector>
+      <repair>Set requests + limits. Memory limit ≥ 1.5× expected working set.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Single Qdrant replica without snapshot — pod crash means data loss until snapshot restored.</description>
+      <detector>db_kind==qdrant AND backup.schedule_cron missing</detector>
+      <repair>Add backup CronJob (daily). Verify restore in staging.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Untested backup — backups exist; restore never tried; restore fails when needed.</description>
+      <detector>backup.last_restore_drill missing OR older than 120 days</detector>
+      <repair>Schedule quarterly restore drill. Record outcome + duration.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>No rollback — bad deploy goes live; no way back; downtime.</description>
+      <detector>deploy strategy missing rollback step in runbook</detector>
+      <repair>Use blue/green or canary; keep previous version reachable for 24h.</repair>
+    </failure-mode>
+
   </section>
 </text>

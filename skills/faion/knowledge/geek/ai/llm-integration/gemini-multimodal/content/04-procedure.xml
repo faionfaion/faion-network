@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Gemini Multimodal Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure to ship a Gemini multimodal pipeline.</summary>
+
+  <section title="Steps">
+    <step n="1" name="classify-input">
+      <input>Media file or stream.</input>
+      <action>Detect mime + size. Branch: ≤4MB image total → inline; everything else → Files API path.</action>
+      <output>Decision recorded in multimodal-config.json.</output>
+      <decision-gate>If unclear mime, run probe (e.g. ffprobe) before continuing.</decision-gate>
+    </step>
+    <step n="2" name="upload">
+      <input>Files API path branch.</input>
+      <action>Upload via Files API; capture file_id + upload_ts.</action>
+      <output>file_id ready for polling.</output>
+      <decision-gate>On quota error → backoff and retry once.</decision-gate>
+    </step>
+    <step n="3" name="poll-active">
+      <input>file_id + poll_timeout_s.</input>
+      <action>Loop client.files.get(file_id) until state == ACTIVE; FAILED → re-upload; cap iterations.</action>
+      <output>ACTIVE file ready for use.</output>
+      <decision-gate>Abort on cap; alert.</decision-gate>
+    </step>
+    <step n="4" name="cache-if-repeat">
+      <input>Doc identity + reuse count.</input>
+      <action>If reuse ≥3 AND tokens ≥32K, create context cache; reuse cache_id on subsequent calls.</action>
+      <output>cache_id stored; metrics for hit rate.</output>
+      <decision-gate>If cache hit rate &lt;30%, evaluate whether to disable caching here.</decision-gate>
+    </step>
+    <step n="5" name="generate">
+      <input>file_id or cache_id + prompt.</input>
+      <action>Send generate_content with parts referencing the file (or cache). Apply standard safety + finish_reason handling.</action>
+      <output>Model response.</output>
+      <decision-gate>Surface BLOCK_REASON; do not coerce to empty.</decision-gate>
+    </step>
+    <step n="6" name="ttl-and-monitor">
+      <input>Live traffic.</input>
+      <action>Watch upload-age; re-upload near 48h. Dashboard tile shows upload/cache success rates + cost.</action>
+      <output>Re-upload job + dashboard tile.</output>
+      <decision-gate>Alert when re-upload rate &gt; 10%/day (probably misuse pattern).</decision-gate>
+    </step>
+  </section>
+</text>
