@@ -2,7 +2,7 @@
 slug: api-rate-limiting
 tier: solo
 group: dev
-domain: api-developer
+domain: backend
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
