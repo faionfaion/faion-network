@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Text-to-Speech — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five-step procedure: scope use case → bench providers → pick + voice + consent → cache + fallback → ship.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scope-use-case">
+      <input>product spec</input>
+      <action>Pin latency bucket (real-time / near-real / batch), quality bar, voice cloning need, languages, monthly char volume.</action>
+      <output>`use-case-constraints.yaml`</output>
+      <decision-gate>If real-time AND no GPU AND budget excludes Deepgram/ElevenLabs — re-scope; cannot meet constraints.</decision-gate>
+    </step>
+
+    <step n="2" name="bench-providers">
+      <input>30-second sample text per language</input>
+      <action>Measure TTFB, total synthesis time, MOS (subjective quality), cost-per-char for each candidate.</action>
+      <output>`tts-bench.yaml`</output>
+      <decision-gate>If MOS below acceptance bar across all providers — fix text quality first (SSML, punctuation, voice match).</decision-gate>
+    </step>
+
+    <step n="3" name="pick-provider-voice-consent">
+      <input>bench + voice catalog</input>
+      <action>Apply decision tree. Pick voice ID. If cloned voice, attach consent record.</action>
+      <output>`tts-config.yaml` first draft</output>
+      <decision-gate>If clone voice without consent — STOP; legal block (r2-voice-cloning-consent).</decision-gate>
+    </step>
+
+    <step n="4" name="cache-and-fallback">
+      <input>Redis / cache layer + secondary provider</input>
+      <action>Implement SHA256-key cache. Wire fallback on 5xx / timeout. Test fallback path.</action>
+      <output>Cache + fallback in place</output>
+      <decision-gate>If fallback also same provider — fix (r5-fallback-mandatory).</decision-gate>
+    </step>
+
+    <step n="5" name="ship">
+      <input>all previous + dashboards</input>
+      <action>Roll out 10% → 50% → 100%. Monitor cache_hit_rate, fallback_engaged, TTFB p95.</action>
+      <output>Production TTS live</output>
+      <decision-gate>If cache_hit_rate &lt;30% — investigate text variation; consider normalisation before hashing.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

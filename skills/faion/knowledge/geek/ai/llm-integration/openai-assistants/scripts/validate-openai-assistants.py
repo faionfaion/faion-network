@@ -48,7 +48,7 @@ INVALID_FIXTURE = {
     "owner": "team",
     "produced_at": "soon",
     "produces": "vibes",
-    "scope": {"title": "tbd"},
+    "scope": {"title": "x"},
     "approver": "",
     "review": {},
 }

@@ -1,43 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cot-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cot-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="CoT Basics Core Rules" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Five testable rules for basic chain-of-thought prompting.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Append the CoT trigger phrase ("Let's think step by step.") at the end of the user turn, not in the system prompt.</statement>
-      <rationale source="v1-source">Placing the trigger in the system prompt applies CoT to every message, including simple lookups where it adds tokens without benefit. End-of-user-turn placement activates reasoning only for the specific message that needs it.</rationale>
+      <statement source="Kojima-zero-shot-CoT-2022">Reasoning goes inside `<reasoning>...</reasoning>` and the final answer inside `<answer>...</answer>`. Untagged free-text reasoning is unparseable.</statement>
+      <rationale>Without structural tags the runtime cannot reliably separate scratch-work from result; downstream consumers re-parse with brittle regex.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Always request an explicit answer marker in the prompt (e.g., "End with: Answer: &lt;value&gt;") to separate reasoning from the final answer.</statement>
-      <rationale source="v1-source">Without a marker, extracting the final answer from free-form CoT text requires fragile string parsing. An explicit marker makes extraction reliable and model-independent.</rationale>
+      <statement source="parser-discipline">Caller parses `<answer>` content with a single regex and treats anything outside as opaque. Reasoning is logged but never displayed to end-users by default.</statement>
+      <rationale>Reasoning leaks confuse users and expose internal logic; logging keeps the audit trail without UX leak.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Limit few-shot CoT examples to 2–3 high-quality chains. More examples do not always improve accuracy and inflate input tokens.</statement>
-      <rationale source="v1-source">Token cost scales linearly with example count. Beyond 3 examples the marginal accuracy gain diminishes while cost continues to increase.</rationale>
+      <statement source="cost-discipline">Output token budget for CoT calls is at least 2x non-CoT baseline. If hitting max_tokens, CoT was truncated and answer may be missing.</statement>
+      <rationale>CoT produces extra tokens; an undersized budget cuts the answer block.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Never include few-shot examples that contain arithmetic or reasoning errors.</statement>
-      <rationale source="v1-source">Models imitate the style of examples including mistakes. A single incorrect example can propagate the error pattern to all outputs.</rationale>
+      <statement source="reasoning-model-folklore">When the model is a reasoning model (Claude Extended Thinking, o-series), skip prompt-side CoT — CoT happens internally and the explicit prompt adds cost without lift.</statement>
+      <rationale>Internal reasoning already produces the chain; the explicit prompt is redundant and inflates output tokens.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Set temperature ≥ 0.6 when running self-consistency sampling. Temperature=0 collapses all N paths to the same deterministic answer.</statement>
-      <rationale source="v1-source">Self-consistency relies on diversity across N reasoning paths. Without temperature variation, all paths are identical and voting provides no benefit.</rationale>
+      <statement source="eval-folklore">Measure CoT lift against the same task without CoT on a 50-case eval before keeping CoT in production. No measured lift → revert.</statement>
+      <rationale>CoT is often assumed-good but lift varies by task class; measurement keeps prompts honest.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>When self-consistency confidence is below 0.6, route to human review rather than propagating the majority answer.</statement>
-      <rationale source="v1-source">Low confidence means the reasoning paths disagree substantially. A majority answer with confidence 0.4 is only marginally better than a random guess in high-stakes contexts.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire CoT prompt + parser + eval.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Prefer Claude extended thinking (budget_tokens) over manual CoT prompting when accuracy is paramount.</statement>
-      <rationale source="v1-source">Extended thinking uses a private scratchpad, avoids the parsing overhead of extracting answers from free-form text, and does not require few-shot examples.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Decompose a CoT agent system into three roles: reasoner (emits reasoning + answer), judge (checks consistency), extractor (parses final answer reliably).</statement>
-      <rationale source="v1-source">This separation of concerns allows the reasoner to optimize for depth of analysis, the judge to catch errors early, and the extractor to use the explicit answer marker rather than fragile heuristics.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>When testing CoT prompts locally, use the `llm` command-line tool (Simon Willison) for quick iteration against Claude, OpenAI, or local models.</statement>
-      <rationale source="v1-source">The `llm` tool eliminates Python boilerplate for one-off CoT experiments, supports streaming, and caches credentials for multiple providers in one config file.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Single-step task or reasoning model in use → skip; CoT adds cost without lift.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>
