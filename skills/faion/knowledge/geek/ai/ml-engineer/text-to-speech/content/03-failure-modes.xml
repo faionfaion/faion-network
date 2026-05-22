@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="text-to-speech Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for text-to-speech as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Text-to-Speech — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns when integrating TTS.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Cloning voices without explicit written consent from the voice owner.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Voice cloning without consent violates GDPR Article 9 (biometric data), CCPA biometric provisions, and most major platform terms of service. ElevenLabs and other providers require voice owner consent verification. Always obtain and store written consent with timestamp before cloning any voice for production use.</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>No cache layer — every repeat phrase pays full inference cost; bill 3-5× expected.</description>
+      <detector>cache.enabled==false OR no Redis/Memcached layer in front of provider</detector>
+      <repair>Add SHA256(text+voice+model) cache; TTL ≥7d. Expect 40-70% hit rate.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>Voice cloning without consent — legal / ethical violation. EU AI Act flags as high-risk.</description>
+      <detector>voice.clone_consent==false but voice id refers to a cloned voice; OR consent-record file missing</detector>
+      <repair>Block deployment; require signed consent record before voice id is usable.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="medium">
+      <description>Real-time agent on tts-1 — observed TTFB 800ms breaks conversational UX.</description>
+      <detector>use_case in {voice-agent, IVR} AND provider==openai AND model in {tts-1, tts-1-hd}</detector>
+      <repair>Switch to Deepgram Aura (≈200ms) or ElevenLabs Turbo (≈400ms).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Hard-coded single provider — outage takes voice feature down.</description>
+      <detector>fallback.provider missing OR == primary</detector>
+      <repair>Wire fallback to a different provider or local Coqui XTTS.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Long text not chunked — 5000-char input synthesized as one call; provider truncates or returns 500.</description>
+      <detector>input length &gt; provider per-call cap (OpenAI: 4096, ElevenLabs: 5000) AND not chunked</detector>
+      <repair>Chunk by sentence; synthesize each, concatenate. Use `templates/chunk-text.py`.</repair>
+    </failure-mode>
+
   </section>
 </text>
