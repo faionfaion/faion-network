@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="AI Cost Attribution Schema Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure from feature list to a reconciled cost dashboard.</summary>
+
+  <section title="Steps">
+    <step n="1" name="enumerate-features">
+      <input>Code search + product wiki.</input>
+      <action>List every feature that calls an LLM and the route(s) exposing it. Assign a stable feature slug.</action>
+      <output>features.yaml.</output>
+      <decision-gate>If &lt;2 features → skip-this-methodology.</decision-gate>
+    </step>
+    <step n="2" name="define-schema">
+      <input>features.yaml + auth model.</input>
+      <action>Write attribution.schema.json with the 11 required fields. Add tenant_id discovery path (auth context, anonymous fallback).</action>
+      <output>templates/attribution.schema.json checked into repo.</output>
+      <decision-gate>Schema must be the single source-of-truth referenced by middleware + aggregator.</decision-gate>
+    </step>
+    <step n="3" name="wire-middleware">
+      <input>Schema + request context shape.</input>
+      <action>Add middleware that wraps every LLM client call: reads tenant_id + feature + route from context, stamps tags, computes cost via pricing snapshot, emits one record per call.</action>
+      <output>middleware.py and/or middleware.ts under templates/.</output>
+      <decision-gate>Unit test: middleware-wrapped call vs raw call — wrapped must always emit a valid record.</decision-gate>
+    </step>
+    <step n="4" name="ingest">
+      <input>Telemetry endpoint.</input>
+      <action>Ship records via the existing pipeline (Kinesis, Kafka, OTel, direct INSERT, etc.). One destination table.</action>
+      <output>raw_attribution table populated.</output>
+      <decision-gate>Acceptance check: schema validator runs on a 1000-record sample; 100% pass.</decision-gate>
+    </step>
+    <step n="5" name="aggregate">
+      <input>raw_attribution.</input>
+      <action>Daily SQL aggregator (templates/daily-aggregator.sql) writes daily_attribution(date, tenant_id, feature, model, calls, tokens, cost_usd). Schedule via cron / Airflow / dbt.</action>
+      <output>daily_attribution table.</output>
+      <decision-gate>Compare sum(cost_usd) for the previous month to the vendor invoice; reconciliation gap should be &lt;5%.</decision-gate>
+    </step>
+    <step n="6" name="dashboard">
+      <input>daily_attribution table.</input>
+      <action>Build a dashboard with: top tenants by cost, top features by cost, prompt-cache-hit %, model mix, invoice reconciliation card.</action>
+      <output>dashboard URL.</output>
+      <decision-gate>Quarterly review: any "unknown" segment &gt;1% triggers schema audit.</decision-gate>
+    </step>
+  </section>
+</text>
