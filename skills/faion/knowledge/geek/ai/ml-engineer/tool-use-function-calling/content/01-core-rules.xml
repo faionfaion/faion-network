@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tool-use-function-calling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tool-use-function-calling. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Tool Use — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: typed schemas, validate-before-execute, side-effect classification, human gate on irreversible, audit every call.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-typed-schema" testable="true" depth="essential">
+      <statement>Every tool MUST have a JSON Schema for its arguments. Free-form string-only tool definitions are forbidden in production.</statement>
+      <rationale source="OpenAI/Anthropic tool docs; production agent post-mortems">Typed schemas let constrained decoding return well-formed args. Free-form increases hallucination rate of arg shape to 10%+.</rationale>
     </rule>
+
+    <rule id="r2-validate-before-execute" testable="true" depth="essential">
+      <statement>Dispatcher MUST validate model-emitted args against the tool's JSON Schema BEFORE calling the function. Bypassing validation is forbidden.</statement>
+      <rationale source="LLM hallucination patterns; sec post-mortems">LLMs hallucinate plausible-but-wrong args (wrong customer_id, out-of-range date, SQL injection). Validation is the only reliable guard.</rationale>
+    </rule>
+
+    <rule id="r3-side-effect-class" testable="true" depth="essential">
+      <statement>Each tool MUST declare safety_class ∈ {read-only, mutating, destructive}. Dispatcher MUST refuse to execute tools whose class exceeds the agent's permission level.</statement>
+      <rationale source="permission boundary patterns; agent autonomy research">Conflating read/write/delete in one permission grants the agent more power than needed. Explicit class enables least-privilege.</rationale>
+    </rule>
+
+    <rule id="r4-human-gate-irreversible" testable="true" depth="essential">
+      <statement>Tools with safety_class==destructive MUST sit behind a human review or scoped approval gate. Auto-execute of destructive tools is forbidden.</statement>
+      <rationale source="Anthropic responsible scaling; production incident reports">Hallucinated destructive calls (DROP TABLE, mass delete, refund all) blow up faster than humans can roll back. Gate is the bright line.</rationale>
+    </rule>
+
+    <rule id="r5-audit-every-call" testable="true" depth="essential">
+      <statement>Every tool dispatch MUST emit an audit log entry with timestamp, tool_name, args, caller (agent_id / user_id), and execution result. Silent dispatch is forbidden.</statement>
+      <rationale source="SOC2 / GDPR / audit discipline">Without audit, post-incident forensics is impossible. The agent's actions must be reconstructable from logs alone.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
