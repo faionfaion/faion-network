@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Router Shadow Deploy — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Three-gate promotion: scoring delta + cost guardrail + schema parity. ALL green → promote; any red → fix or kill.</summary>
+
+  <decision-tree>
+    <root-question id="q-window">Has the shadow window run ≥7 calendar days with calibrated judge?</root-question>
+    <branch when="window_days &lt; 7 or judge_sme_agreement &lt; 0.85">
+      <conclusion ref="r5-sustained-window-min" verdict="EXTEND window OR re-calibrate judge; do not promote on a short or noisy signal"/>
+    </branch>
+    <branch when="window_days &gt;= 7 and judge_sme_agreement &gt;= 0.85">
+      <question id="q-schema">Schema parity = 100% across all days?</question>
+      <branch when="schema_parity_min &lt; 1.00">
+        <conclusion ref="r4-schema-parity-100" verdict="FIX schema sneak-change FIRST; do not promote with downstream-parser risk"/>
+      </branch>
+      <branch when="schema_parity_min == 1.00">
+        <question id="q-cost">Cost delta ≤ baseline × 1.10?</question>
+        <branch when="cost_delta_mean &gt; 1.10">
+          <conclusion ref="r3-cost-guardrail" verdict="NO-GO; investigate why candidate routes to expensive leg; fix and re-shadow"/>
+        </branch>
+        <branch when="cost_delta_mean &lt;= 1.10">
+          <question id="q-scoring">Scoring delta median within acceptance-contract band?</question>
+          <branch when="scoring_delta_in_band == false">
+            <conclusion ref="r2-scoring-delta-gate" verdict="NO-GO; candidate is quality-regressing; investigate root cause"/>
+          </branch>
+          <branch when="scoring_delta_in_band == true">
+            <conclusion ref="r1-zero-user-impact" verdict="GO — proceed with gradual rollout (1% → 10% → 50% → 100%) with rollback flag wired"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="window=7d + judge OK + schema=1.0 + cost=1.34 → cost gate FAILS">
+    <code lang="text"><![CDATA[
+window_days=7 → judge_agreement=0.89 → schema_parity=1.0 → cost_delta=1.34 → r3-cost-guardrail verdict: NO-GO
+]]></code>
+  </example>
+</text>

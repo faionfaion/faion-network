@@ -1,11 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="integration-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for integration-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Integration Testing Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>7 testable rules every pytest-based integration suite MUST enforce. Hard rules — operator input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-rollback-default" testable="true" depth="essential">
+      <statement>The default isolation strategy MUST be transaction rollback: open a connection, begin a transaction, yield a Session, then rollback unconditionally in teardown. Tests never commit.</statement>
+      <rationale source="sqlalchemy.org/orm/session_transaction">Rollback is one low-level operation; DELETE/TRUNCATE require per-table scans. The rollback path keeps function-scope teardown under 5 ms.</rationale>
     </rule>
+
+    <rule id="r2-container-scoping" testable="true" depth="essential">
+      <statement>Testcontainers Docker containers MUST be session-scoped; database Session fixtures MUST be function-scoped.</statement>
+      <rationale source="testcontainers.com/best-practices">Container start costs 2-5 s. Session scope amortises it across the entire run while function scope keeps per-test isolation cheap.</rationale>
+    </rule>
+
+    <rule id="r3-clear-overrides" testable="true" depth="essential">
+      <statement>Every test that uses `app.dependency_overrides[...]` MUST clear overrides in teardown (`app.dependency_overrides.clear()` or pop the specific key).</statement>
+      <rationale source="fastapi.tiangolo.com/advanced/testing-dependencies">Overrides are stored on the app object and leak between tests. Stale overrides produce mystery flakes where test order changes outcomes.</rationale>
+    </rule>
+
+    <rule id="r4-respx-or-wiremock" testable="true" depth="essential">
+      <statement>External HTTP calls MUST be intercepted: respx for transport-level mocking (Python async/sync), WireMock container when HTTP semantics (redirects, chunked transfer, retries) matter.</statement>
+      <rationale source="respx docs + wiremock.org">Real third-party calls inject network flakiness and side-effects. respx is zero-overhead; WireMock catches connection-pool bugs that mock transports miss.</rationale>
+    </rule>
+
+    <rule id="r5-factory-uniqueness" testable="true" depth="essential">
+      <statement>Tests running under parallel_target &gt;= 2 MUST use UUID-based unique values for unique-constrained columns (email, username, idempotency_key). Factory Sequence is allowed only for serial runs.</statement>
+      <rationale source="pytest-xdist docs">Sequence counters collide across xdist workers. UUIDs decouple workers without requiring cross-process coordination.</rationale>
+    </rule>
+
+    <rule id="r6-no-prod-data" testable="true" depth="essential">
+      <statement>Tests MUST NOT connect to production databases or live external APIs. All secrets-redirect env vars are redirected to test containers or mock URLs in the conftest.</statement>
+      <rationale source="ops convention">CI runs concurrently with production traffic; mutating prod from a test is a sev-1 outage waiting to happen.</rationale>
+    </rule>
+
+    <rule id="r7-no-mock-layer-under-test" testable="true" depth="essential">
+      <statement>An integration test MUST exercise the real connection layer (DB driver, HTTP client). Mocking the SQLAlchemy session or the httpx client demotes the test to a unit test.</statement>
+      <rationale source="martinfowler.com/bliki/IntegrationTest.html">The point of integration testing is the connection: ORM mapping, constraint enforcement, transport semantics. Mocking that out invalidates the test.</rationale>
+    </rule>
+
+    <rule id="r-rollback-strategy" testable="true" depth="essential">
+      <statement>When db_engine_required == true AND commit_time_behavior_under_test == false, the emitted config MUST use rollback isolation.</statement>
+      <rationale source="speed">Rollback is the fastest correct choice when constraint-violation semantics aren't the explicit subject of the test.</rationale>
+    </rule>
+
+    <rule id="r-truncate-strategy" testable="true" depth="essential">
+      <statement>When commit_time_behavior_under_test == true (e.g., unique-constraint flow), the emitted config MUST use truncate + transaction=True markers.</statement>
+      <rationale source="pytest-django docs">Rollback hides commit-time errors; truncate exposes them.</rationale>
+    </rule>
+
+    <rule id="r-respx-pick" testable="true" depth="essential">
+      <statement>When external_http_calls is 'few' or 'simple', the emitted config MUST use respx (no extra container).</statement>
+      <rationale source="respx docs">Transport interception is zero-overhead and reads naturally in test code.</rationale>
+    </rule>
+
+    <rule id="r-wiremock-pick" testable="true" depth="essential">
+      <statement>When external_http_calls == 'many_or_complex', the emitted config MUST use a session-scoped WireMock container.</statement>
+      <rationale source="wiremock.org">A real HTTP server catches connection-pool, retry, and header-parsing bugs that mock transports miss.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
