@@ -66,7 +66,9 @@ def validate(index_xml: Path) -> list[str]:
         except ValueError:
             errs.append(f"count attr not int: {count_attr!r}")
 
-    seen_slugs: set[str] = set()
+    # Same slug allowed across different tiers (e.g. free/code-review + pro/code-review variants);
+    # duplicate only counts when (slug, tier) collide.
+    seen_keys: set[tuple[str, str]] = set()
     slugs_seq: list[str] = []
     for m in methods:
         slug = m.get("slug") or ""
@@ -75,9 +77,10 @@ def validate(index_xml: Path) -> list[str]:
         if not slug:
             errs.append("<methodology> missing slug= attr")
             continue
-        if slug in seen_slugs:
-            errs.append(f"duplicate slug: {slug}")
-        seen_slugs.add(slug)
+        key = (slug, tier)
+        if key in seen_keys:
+            errs.append(f"duplicate (slug, tier): ({slug}, {tier})")
+        seen_keys.add(key)
         slugs_seq.append(slug)
         if tier and tier not in VALID_TIER:
             errs.append(f"{slug}: invalid tier {tier!r}")
@@ -86,8 +89,10 @@ def validate(index_xml: Path) -> list[str]:
         summary = m.find("summary")
         if summary is None or not (summary.text or "").strip():
             errs.append(f"{slug}: missing or empty <summary>")
-        elif len(summary.text) > 200:
-            warns.append(f"{slug}: summary > 200 chars (len={len(summary.text)})")
+        else:
+            txt = summary.text or ""
+            if len(txt) > 200:
+                warns.append(f"{slug}: summary > 200 chars (len={len(txt)})")
         # A2.6/A2.7
         cx = m.get("complexity")
         if cx and cx not in VALID_COMPLEXITY:
