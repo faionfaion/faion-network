@@ -1,37 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="trajectory-eval-otel Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for trajectory-eval-otel as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Trajectory Eval Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns in agent evaluation pipelines. Each pairs symptom + root cause + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Eval equals "% correct" only</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add token, step, and latency axes to detect regressions in efficiency</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Span attributes drift between providers</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Stick to OTel GenAI conventions; map vendor specifics in attributes</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Tracing the LLM call but not the tool result</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tool spans capture the half of the trajectory you actually need to debug</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Storing full prompts in spans</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hash long content; store full content in a side store referenced by hash</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>No replay capability</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each span should carry enough state to re-run the call</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Eval suite that runs ad-hoc</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Make eval a CI step; regress on cost just like on correctness</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="outcome-only-eval" severity="high">
+      <symptom>Eval suite reports "% correct" and nothing else. Cost regressions after model swap go unnoticed until the monthly bill.</symptom>
+      <root-cause source="Internal — Sonnet 4.5→4.6 case; common pattern in startup eval kits">Author treated eval as a unit test and used the simplest pass/fail metric. Multi-axis cost surface was invisible.</root-cause>
+      <fix>Add `trajectory` (steps + loops) and `resources` (tokens + cost + latency) scorers. Gate PRs on all three.</fix>
+    </antipattern>
+
+    <antipattern id="ad-hoc-span-attrs" severity="high">
+      <symptom>Spans carry vendor-specific attribute names (`anthropic_input_tokens`, `oai_completion_cost`). Cross-vendor eval requires custom mapping per backend.</symptom>
+      <root-cause source="OpenTelemetry semconv drift; pre-1.0 GenAI conventions">Provider SDK added its own attribute set before OTel standardized GenAI. Author shipped without checking semconv.</root-cause>
+      <fix>Standardize on `gen_ai.*` GenAI semconv attribute names; map provider-specific extras into `gen_ai.system`-prefixed namespace.</fix>
+    </antipattern>
+
+    <antipattern id="tool-blind-trace" severity="medium">
+      <symptom>Each LLM call is a span, but tool calls are not. Debug session shows the model called something but no info on the tool outcome.</symptom>
+      <root-cause source="Anthropic engineering — tool-use debugging">Author instrumented the SDK boundary but not the application's tool dispatcher.</root-cause>
+      <fix>Wrap every tool dispatcher in `tracer.start_as_current_span("agent.tool.&lt;name&gt;")` with args_hash + outcome + duration_ms.</fix>
+    </antipattern>
+
+    <antipattern id="inline-prompt-storage" severity="medium">
+      <symptom>OTLP payloads exceed 1MB on long agent runs. Backend rate-limits trace ingestion; PII appears in trace UIs.</symptom>
+      <root-cause source="OTLP payload-size guidance; internal trace-store cost audits">Author stored full prompt text in `gen_ai.prompt.0.content` attribute; long-loop traces became multi-megabyte.</root-cause>
+      <fix>Hash prompts (SHA-256) → store hash in span; keep raw text in side store keyed by hash. Apply PII redaction at the hash boundary.</fix>
+    </antipattern>
+
   </section>
 </text>

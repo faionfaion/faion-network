@@ -87,19 +87,23 @@ tags: [llm-routing, shadow-deploy, model-cascade, gateway, promotion-gate]
 
 | File | Purpose |
 |------|---------|
-| `templates/shadow-report.schema.yaml` | Schema for the shadow-report.yaml |
+| `templates/shadow-report.schema.yaml` | Schema for shadow-report.yaml |
 | `templates/promotion-decision.md` | Go/no-go template with sign-off lines |
 | `templates/rollback-runbook.md` | Step-by-step rollback procedure |
+| `templates/_smoke-test.yaml` | Minimum-viable shadow-report.yaml that validates clean |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/shadow-metric-rollup.py` | Nightly: aggregate per-request judge scores, cost, schema parity into shadow-report.yaml | Cron 02:00 UTC |
-| `scripts/promote-gate.py` | Apply the three-rule gate; return go/no-go with reasoning | Before promotion decision meeting |
+| `scripts/validate-router-shadow-deploy-protocol.py` | Lint shadow-report.yaml against schema + 3-gate decision | Before promotion meeting |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- peer methodologies: `rag-feature-acceptance-contract`, `retrieval-drift-alerting-recipe`, `shadow-traffic-rollout-pattern`
-- external: [Spotify — Backstage canary practices](https://backstage.io/) · [Stripe — gradual rollout patterns](https://stripe.com/engineering) · [Anthropic — Evals](https://www.anthropic.com/research)
+- [[rag-feature-acceptance-contract]] — defines the metrics this protocol gates against
+- [[retrieval-drift-alerting-recipe]] — same monitoring stack reused for shadow signal
+- external: [Spotify — Backstage canary](https://backstage.io/) · [Stripe — gradual rollout](https://stripe.com/engineering) · [Anthropic — Evals](https://www.anthropic.com/research)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Three-gate promotion logic: scoring delta within contract + cost ≤ baseline × 1.1 + schema parity = 100% — only ALL-green promotes; any red routes to fix or kill.
