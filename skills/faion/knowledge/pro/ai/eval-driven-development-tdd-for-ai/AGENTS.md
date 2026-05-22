@@ -2,7 +2,7 @@
 slug: eval-driven-development-tdd-for-ai
 tier: pro
 group: ai
-domain: ai
+domain: ai-core
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

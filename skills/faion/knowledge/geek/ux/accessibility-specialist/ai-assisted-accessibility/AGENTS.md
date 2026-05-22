@@ -2,7 +2,7 @@
 slug: ai-assisted-accessibility
 tier: geek
 group: ux
-domain: accessibility-specialist
+domain: ux
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

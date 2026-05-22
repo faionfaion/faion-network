@@ -2,7 +2,7 @@
 slug: llm-hallucination-test-patterns
 tier: pro
 group: ai
-domain: qa-engineer
+domain: dev
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

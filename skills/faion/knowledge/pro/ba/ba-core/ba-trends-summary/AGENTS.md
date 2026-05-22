@@ -2,7 +2,7 @@
 slug: ba-trends-summary
 tier: pro
 group: ba
-domain: ba-core
+domain: ba
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

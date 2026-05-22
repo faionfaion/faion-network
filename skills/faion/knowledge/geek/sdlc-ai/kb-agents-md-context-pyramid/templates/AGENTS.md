@@ -2,7 +2,7 @@
 slug: templates
 tier: geek
 group: sdlc-ai
-domain: kb-agents-md-context-pyramid
+domain: claude-code
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

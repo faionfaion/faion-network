@@ -2,7 +2,7 @@
 slug: blameless-postmortem-facilitation
 tier: geek
 group: sdlc-ai
-domain: sdd-ai
+domain: sdlc-ai
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

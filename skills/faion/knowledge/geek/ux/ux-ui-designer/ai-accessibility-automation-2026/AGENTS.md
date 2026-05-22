@@ -2,7 +2,7 @@
 slug: ai-accessibility-automation-2026
 tier: geek
 group: ux
-domain: ux-ui-designer
+domain: frontend
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
