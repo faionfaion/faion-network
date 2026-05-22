@@ -1,0 +1,36 @@
+{
+  "_header": {
+    "purpose": "Zapier scenario blueprint for the no-backend Stripe webhook fanout",
+    "consumes": "spec.json + STRIPE_WEBHOOK_SECRET (Zapier env)",
+    "produces": "running Zap on import — triggers on checkout.session.completed",
+    "depends-on": "Stripe app connection in Zapier; signing-secret env var",
+    "token-budget-impact": "~200 tokens"
+  },
+  "trigger": {
+    "app": "stripe",
+    "event": "checkout.session.completed",
+    "auth_account": "<stripe-account-handle>"
+  },
+  "steps": [
+    {
+      "step": "code-by-zapier",
+      "name": "verify-signature",
+      "language": "python",
+      "inputs": {"raw_body": "{{trigger.raw_body}}", "sig_header": "{{trigger.headers.Stripe-Signature}}", "secret": "{{env.STRIPE_WEBHOOK_SECRET}}"},
+      "purpose": "HMAC-SHA256 verification per r1/r2 in core-rules"
+    },
+    {
+      "step": "google-sheets",
+      "name": "idempotency-guard",
+      "action": "lookup-row-or-create",
+      "inputs": {"event_id": "{{trigger.id}}", "sheet": "<idempotency_store URL>"},
+      "purpose": "Guards fulfillment against retry duplication per r3"
+    },
+    {
+      "step": "gmail",
+      "name": "fulfill-email",
+      "action": "send-email",
+      "inputs": {"to": "{{trigger.customer_details.email}}", "subject": "Your purchase", "body": "License key: {{license_key}}"}
+    }
+  ]
+}

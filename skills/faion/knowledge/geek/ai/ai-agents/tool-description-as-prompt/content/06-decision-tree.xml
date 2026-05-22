@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Tool Description Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping a tool's audit score + side-effect class to the correct rewrite action. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-score">What is the tool's 5-axis audit score?</root-question>
+
+    <branch when="score == 5">
+      <conclusion ref="structured-description-required" verdict="keep as-is; recheck on next catalog audit"/>
+    </branch>
+
+    <branch when="score &lt; 5 AND score &gt;= 3">
+      <question id="q-mutating">Does the tool have side effects (mutates external state)?</question>
+      <branch when="mutating == true">
+        <conclusion ref="mutating-marker-required" verdict="rewrite with MUTATING: prefix + dry-run pair name"/>
+      </branch>
+      <branch when="mutating == false">
+        <conclusion ref="structured-description-required" verdict="rewrite to fill missing axes; keep under 200 tokens"/>
+      </branch>
+    </branch>
+
+    <branch when="score &lt; 3">
+      <question id="q-overlap">Does another tool in the catalog have description-cosine &gt; 0.8 with this one?</question>
+      <branch when="overlap == true">
+        <conclusion ref="anti-trigger-required-on-overlap" verdict="rewrite BOTH descriptions with mutual anti-triggers + names"/>
+      </branch>
+      <branch when="overlap == false">
+        <conclusion ref="structured-description-required" verdict="full rewrite from signature using the 5-part template"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="search_docs-overlap">
+    score=2 → q-overlap: cosine(search_docs, grep_repo) = 0.86 → anti-trigger-required-on-overlap. Rewrite both, each pointing to the other by name.
+  </example>
+</text>
