@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Test Fixtures Worked Example" version="2.0.0" est_tokens="700" depth="recommended">
+  <summary>End-to-end example: Factory + Object Mother + transactional rollback + xdist worker DB.</summary>
+
+  <example type="good">
+    <note>UUID-based factory under xdist (r5).</note>
+    <code lang="python"><![CDATA[
+import uuid
+import factory
+from factory.django import DjangoModelFactory
+from myapp.models import User
+
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.LazyFunction(lambda: f"u-{uuid.uuid4()}@example.com")
+    name = factory.Faker("name")
+    role = "user"
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>Object Mother on top of Factory (r-mother-pick) — semantic test intent.</note>
+    <code lang="python"><![CDATA[
+class UserMother:
+    @staticmethod
+    def premium_user():
+        return UserFactory(role="premium", subscription_active=True)
+
+    @staticmethod
+    def banned_user():
+        return UserFactory(is_banned=True, ban_reason="policy violation")
+
+
+def test_premium_features_accessible(db):
+    u = UserMother.premium_user()
+    assert u.can_access_premium_features()
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>SQLAlchemy nested-savepoint rollback (r1, r2).</note>
+    <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def engine():
+    return create_engine(TEST_DATABASE_URL)
+
+
+@pytest.fixture
+def db_session(engine):
+    conn = engine.connect()
+    tx = conn.begin()
+    Session = sessionmaker(bind=conn)
+    s = Session()
+    yield s
+    s.close()
+    tx.rollback()
+    conn.close()
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>xdist worker-id-aware DB setup (r6).</note>
+    <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def django_db_setup(worker_id, django_test_environment, django_db_blocker):
+    from django.conf import settings
+    db_name = "test_mydb" if worker_id == "master" else f"test_mydb_{worker_id}"
+    settings.DATABASES["default"]["NAME"] = db_name
+    with django_db_blocker.unblock():
+        from django.test.utils import setup_databases
+        setup_databases(verbosity=0, interactive=False)
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Bad — God Fixture with Sequence under xdist (r4, r5 violations).</note>
+    <code lang="python"><![CDATA[
+@pytest.fixture
+def setup_everything(db):
+    u = User.objects.create(email=f"u{factory.Sequence}@x")  # collides under xdist
+    p = Product.objects.create(...); o = Order.objects.create(user=u, product=p)
+    s = Subscription.objects.create(user=u); ... # 10 more models
+    return {"user": u, "product": p, "order": o, "subscription": s, ...}
+]]></code>
+  </example>
+</text>

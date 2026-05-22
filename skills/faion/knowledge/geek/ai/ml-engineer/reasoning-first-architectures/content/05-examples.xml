@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Reasoning-First Architectures — Worked Example" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Worked example: code-review router escalates only "hard" PRs to Claude Extended Thinking; easy PRs stay on Sonnet.</summary>
+
+  <example title="reasoning-routing.yaml for code-review">
+    <code lang="yaml"><![CDATA[
+version: 1.0.0
+
+classifier:
+  model: claude-haiku
+  prompt_version: cr-classifier-v3
+  confidence_field: difficulty_score
+
+task_types:
+  code_review_simple:
+    route: standard
+    standard_fallback: {model: claude-sonnet-4-5, trigger: always}
+    thinking_budget: 0
+
+  code_review_hard:
+    route: extended-thinking
+    thinking_budget: 8192
+    standard_fallback:
+      model: claude-sonnet-4-5
+      trigger: provider_unhealthy
+
+  architecture_planning:
+    route: o3
+    thinking_budget: 32768
+    standard_fallback: {model: gpt-4o, trigger: budget_cap_hit}
+
+eval_evidence:
+  set_path: evals/cr-routing-2026-05.jsonl
+  sample_size: 78
+  reasoning_lift:
+    code_review_hard: 0.18      # +18% pass rate vs standard
+    architecture_planning: 0.31
+
+budget_cap:
+  monthly_usd: 3500
+  on_cap_hit: fall-through
+
+human_gate:
+  enabled: true
+  actions: [deploy, db-migration, payment]
+  confidence_floor: 0.65        # below p10 of eval distribution → human
+]]></code>
+    <note>Demonstrates: classifier-first (r3), per-bucket budget (r2), eval evidence ≥50 with positive lift (r1), fall-through on cap (r5), human gate on irreversible (r4).</note>
+  </example>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

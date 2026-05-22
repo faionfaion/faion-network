@@ -4,76 +4,95 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Llm Drift Daily Triage: codified ai practice that turns the recurring 'role-ml-engineer/Daily eval-suite run + drift triage' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a daily 15-minute drift triage — yesterday's eval delta, refusal-rate delta, cost delta, top-3 failing prompts, decision-record (continue / mitigate / escalate).
 content_id: "b1d6f3a92e81856a"
-tags: [llm-drift-daily-triage, ai, geek]
+complexity: medium
+produces: report
+est_tokens: 3300
+tags: [drift, monitoring, eval, daily, triage]
 ---
-# Llm Drift Daily Triage
+# LLM Drift Daily Triage
 
 ## Summary
 
-**One-sentence:** Llm Drift Daily Triage: codified ai practice that turns the recurring 'role-ml-engineer/Daily eval-suite run + drift triage' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a daily 15-minute drift triage — yesterday's eval delta, refusal-rate delta, cost delta, top-3 failing prompts, decision-record (continue / mitigate / escalate).
 
-**One-paragraph:** Llm Drift Daily Triage addresses the gap identified by the role-ml-engineer/Daily eval-suite run + drift triage playbook: Corpus has llm-observability and rag-eval-production-monitoring but no opinionated daily-cadence runbook: which dashboards, which control bands, what 'green' means, when to page. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Model providers ship silent updates; prompt edits land daily; tool descriptions creep. Any of these can move a production behaviour by 5-20 percentage points between yesterday and today. Without a daily 15-minute ritual the signal disappears in the noise and the team finds out from a customer email. This methodology pins a daily report (3 metric deltas + 3 failing-prompt traces + 1 decision) into the on-call rotation; under 15 minutes per day if the report template is filled by the runner.
+
+**Ефективно для:** customer-facing AI products, regulated pipelines (finance, health), agents with paid downstream effects, model upgrades pre-rollout.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ml-engineer/Daily eval-suite run + drift triage OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- A production LLM call path has run for ≥7 days (enough history for a delta).
+- A daily eval pulse exists (cron, GitHub Action, etc.) producing per-day scores.
+- An on-call (or single owner) reviews the report.
+- A decision channel exists (Slack, ticket, alert) where the day's decision is recorded.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- No production traffic — drift is hypothetical.
+- No eval set — there is no signal to triage; bootstrap the eval first.
+- Single-shot pipeline, never updated — drift surface is empty.
 
 ## Prerequisites
 
-- recent context for the role-ml-engineer/Daily eval-suite run + drift triage task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Daily eval-run summary | JSON | eval runner artifact |
+| Refusal-rate log | JSONL | application telemetry |
+| Cost-per-call log | JSONL | billing webhook / cost dashboard |
+| On-call rotation | calendar | PagerDuty / OpsGenie |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+|---|---|
+| `[[jailbreak-eval-suite-bootstrap]]` | Suite produces the eval-delta input. |
+| `[[ai-cost-attribution-schema]]` | Cost log uses the attribution schema. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 testable rules: 15-min cap, 3-delta + 3-trace report, named owner, escalation path, weekly trend, no-skip | ~700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for triage-report.json | ~600 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: skipped-day, eyeball-only, no-escalation, single-metric-tunnel, retro-edit | ~600 |
+| `content/04-procedure.xml` | medium | 6-step procedure: pull metrics → compute deltas → load failing traces → decide → log → schedule follow-up | ~800 |
+| `content/06-decision-tree.xml` | essential | Root: "is the absolute eval delta > 2pp OR refusal-rate delta > 3pp OR cost delta > 10%?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+|---|---|---|
+| Pull metrics & compute deltas | haiku | Deterministic numerical. |
+| Summarise top-3 failing traces | sonnet | Bounded summarisation. |
+| Recommend decision | opus | Multi-axis reasoning. |
+| File ticket / page on-call | haiku | Mechanical channel write. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/llm-drift-daily-triage.json` | JSON schema for the Llm Drift Daily Triage output contract |
-| `templates/llm-drift-daily-triage.md` | Markdown skeleton with the required fields |
+|---|---|
+| `templates/triage-report.schema.json` | JSON Schema for the daily report. |
+| `templates/triage-report.md` | Markdown skeleton (3 deltas + 3 traces + decision). |
+| `templates/runner.py` | Reference runner that produces triage-report.json from telemetry sources. |
+| `templates/_smoke-test.json` | Minimum-viable triage report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-llm-drift-daily-triage.py` | Enforce Llm Drift Daily Triage output contract | After subagent returns, before downstream consumer reads |
+|---|---|---|
+| `scripts/validate-llm-drift-daily-triage.py` | Validates triage-report.json schema + asserts owner + decision present. | Pre-commit on report PR; CI before posting to Slack. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
-- upstream playbook: `role-ml-engineer/Daily eval-suite run + drift triage`
+- parent skill: `geek/ai/`
+- `[[ai-cost-attribution-schema]]`
+- `[[jailbreak-eval-suite-bootstrap]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` decides the day's action: small deltas → continue (log only); medium deltas → mitigate (revert last change, page owner); large deltas → escalate (incident + page on-call). Thresholds are configurable per call site.
