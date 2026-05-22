@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Structured Output — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five-step procedure: design schema → pick provider mode → wire parse+repair → eval schema coverage → ship.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="design-schema">
+      <input>downstream consumer code OR API spec</input>
+      <action>Define Pydantic model OR JSON Schema. Flatten any recursion into parent-id arrays. Decide strictness (extra fields forbidden? unknown enum values?).</action>
+      <output>`schema.py` or `schema.json` committed to repo</output>
+      <decision-gate>If recursive type detected — flatten before continuing (r5-no-recursive-schemas).</decision-gate>
+    </step>
+
+    <step n="2" name="pick-provider-mode">
+      <input>provider chosen + schema</input>
+      <action>OpenAI 4o+ → response_format=json_schema. Anthropic → tool-use JSON. Gemini 2+ → schema response. Mistral → function_call. Pin provider version (constrained decoding behaviour can shift).</action>
+      <output>provider mode declared in config</output>
+      <decision-gate>If provider doesn't support structured output AND can't switch — STOP; manual JSON-prompting fails 5-15% (r1-provider-native-first).</decision-gate>
+    </step>
+
+    <step n="3" name="wire-parse-and-repair">
+      <input>provider client + schema + safe-parse template</input>
+      <action>Call provider with schema. Parse result. On parse failure, retry once with schema + error attached. On second failure, log raw + raise.</action>
+      <output>safe-parse wrapper module</output>
+      <decision-gate>If retry count &gt;1 detected — fix; only one repair allowed (r3-repair-once).</decision-gate>
+    </step>
+
+    <step n="4" name="eval-coverage">
+      <input>≥100 sample inputs + expected outputs</input>
+      <action>Run safe-parse on all samples. Compute (a) first-call parse rate, (b) repair-success rate, (c) raw-log rate. Target: first-call ≥95%, total success ≥99%.</action>
+      <output>`coverage-report.yaml`</output>
+      <decision-gate>If total success &lt;95% — refine schema OR switch provider; current setup unreliable.</decision-gate>
+    </step>
+
+    <step n="5" name="ship-with-monitoring">
+      <input>all previous + dashboards</input>
+      <action>Roll out at 10% → 50% → 100%. Monitor: parse_fail rate, repair rate, raw-log volume. Alert if parse_fail &gt; 2% sustained.</action>
+      <output>Production structured-output live</output>
+      <decision-gate>If parse_fail spike — check schema drift (fm-03) or provider regression first.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

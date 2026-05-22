@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="preference-trained-router Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for preference-trained-router. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Preference-Trained Router Core Rules" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every preference-trained router MUST enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-binary-classifier" testable="true" depth="essential">
+      <statement>The router MUST be a binary classifier (weak | strong). Multi-class routing across 3+ models is forbidden.</statement>
+      <rationale source="routellm.ai">Binary keeps calibration tractable; multi-class needs N×more preference data per cell and per-class drift detection.</rationale>
+    </rule>
+    <rule id="r2-preference-labels" testable="true" depth="essential">
+      <statement>Training labels MUST be derived from human or LLM-jury preferences over (weak_response, strong_response) pairs. Single-LLM-judge labels are forbidden.</statement>
+      <rationale source="routellm.ai + LMSYS arena">Single-judge labels inherit the judge's bias; jury (3+ judges, majority vote) corrects it.</rationale>
+    </rule>
+    <rule id="r3-calibrated-threshold" testable="true" depth="essential">
+      <statement>The decision threshold MUST be calibrated on a held-out set so that strong-accuracy on routed-weak prompts is &gt;= target_strong_accuracy - 5%.</statement>
+      <rationale source="calibration literature">Uncalibrated routers route too aggressively to weak; the calibration target bounds the quality regression.</rationale>
+    </rule>
+    <rule id="r4-uncertainty-fallback" testable="true" depth="essential">
+      <statement>When P(strong) - P(weak) &lt; uncertainty_band (default 0.1), the spec MUST fall back to strong model.</statement>
+      <rationale source="calibration literature">Prompts near the decision boundary are exactly where weak-model failures hurt most.</rationale>
+    </rule>
+    <rule id="r5-drift-monitor" testable="true" depth="essential">
+      <statement>The spec MUST schedule drift monitoring (rolling jury-vs-router agreement on a sampled %) and a retrain trigger when agreement drops below drift_threshold.</statement>
+      <rationale source="ML-ops practice">User mix drifts; a static router stays stale and silently degrades cost or quality.</rationale>
+    </rule>
+    <rule id="r-deploy-router" testable="true" depth="essential">
+      <statement>When preference_data_size &gt;= 1000 AND weak_strong_cost_ratio &gt;= 5, the spec MUST deploy the preference router.</statement>
+      <rationale source="routellm.ai">Below 1k labels the router is statistically weak; below 5x cost ratio the savings don't justify the maintenance.</rationale>
+    </rule>
+    <rule id="r-static-rule" testable="true" depth="essential">
+      <statement>When preference_data_size &lt; 1000 OR weak_strong_cost_ratio &lt; 5, the spec MUST fall back to a static rule (always-strong or task-tag-based).</statement>
+      <rationale source="default safety">Static rules are auditable and don't drift; deploy router only when ROI is clear.</rationale>
     </rule>
   </section>
 </text>
