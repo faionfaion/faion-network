@@ -1,8 +1,9 @@
-"""
-Semantic voice routing by content type.
-Use semantic labels (news/assistant/narrator) not provider-specific voice names.
-Provider names are non-portable: "nova" (OpenAI) != "en-US-Neural2-D" (Google).
-"""
+# purpose: Semantic voice routing — content_type label → provider-native voice id.
+# consumes: content_type (news|assistant|narrator|neutral|whisper|formal), provider (openai|google).
+# produces: provider-specific voice string consumable by the provider SDK.
+# depends-on: nothing (pure mapping); update both maps when adding a new content_type.
+# token-budget-impact: zero.
+"""Semantic voice routing: labels stay portable across providers."""
 
 OPENAI_VOICE_MAP: dict[str, str] = {
     "news": "onyx",       # authoritative male

@@ -1,7 +1,9 @@
-"""
-TTS basics: text_to_speech() for OpenAI + SSMLBuilder for Google/Azure.
-SSMLBuilder output is NOT compatible with OpenAI TTS — route SSML to Google/Azure only.
-"""
+# purpose: OpenAI TTS wrapper + SSMLBuilder for Google/Azure routing.
+# consumes: text (str, <=4000 chars), voice id, model, speed, response_format, output_path.
+# produces: saved audio file at output_path; returns the path string.
+# depends-on: openai SDK; do NOT pipe SSMLBuilder output to text_to_speech() — OpenAI reads SSML literally.
+# token-budget-impact: zero LLM tokens (synthesis is non-LLM).
+"""TTS basics: text_to_speech() for OpenAI + SSMLBuilder for Google/Azure."""
 from openai import OpenAI
 from pathlib import Path
 
