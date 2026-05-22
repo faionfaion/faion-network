@@ -1,42 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="claude-tool-use Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for claude-tool-use as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Claude Tool Use Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Seven antipatterns in production Claude tool-use loops with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Tool schemas with more than 3 levels of nesting.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deep nesting increases tool-call errors. Keep input schemas flat (2 levels max) for highest reliability.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agents that append only the assistant message (not `response.content` which includes tool_use blocks) break the conversation history format and get API errors.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tool use blocks must be preserved in message history. Append the full response.content list.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>`response.content` is a list of mixed `TextBlock` and `ToolUseBlock` objects — iterate and type-check, never index blindly.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Content blocks are polymorphic. Always check type before accessing fields.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>An infinite tool loop (Claude keeps calling the same tool) indicates a broken tool implementation that returns the same unhelpful result — implement result caching to detect and break cycles.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Set a max-iterations guard. If the guard is reached, break the loop rather than running forever.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Tool schemas with `additionalProperties: false` can cause Claude to fail on edge cases; allow additional properties unless strict validation is needed.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Overly strict schemas cause tool use failures. Allow flexibility unless you have a specific reason not to.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>MCP servers communicate via stdio by default — spawning them as subprocesses requires the agent to manage their lifecycle (start, health check, shutdown).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>For programmatic use, prefer standard tool use over MCP. MCP is optimized for Claude Desktop.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Extended Thinking + tool use: thinking blocks appear in `response.content` before tool_use blocks; filter them out when building tool_result messages.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tool result messages should only contain tool_result blocks, not thinking blocks. Filter appropriately.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Tool schemas with &gt;2 levels of object nesting.</description>
+      <symptom>Tool-call error rate spikes; arguments returned malformed or null.</symptom>
+      <root-cause>Deep nesting compounds token-prediction errors at each level.</root-cause>
+      <fix>Flatten to ≤2 levels; use IDs that the executor resolves rather than full nested objects.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Appending text-only to message history, dropping tool_use blocks.</description>
+      <symptom>Next-turn API call returns `invalid_request_error: missing tool_use_id`.</symptom>
+      <root-cause>The API requires the assistant turn to retain its tool_use blocks for state reconstruction.</root-cause>
+      <fix>Append `response.content` (full list) every turn; never just the .text accessor.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Indexing `response.content[0]` blindly assuming TextBlock.</description>
+      <symptom>AttributeError on `.text` because index 0 was a ToolUseBlock.</symptom>
+      <root-cause>response.content is polymorphic (TextBlock | ToolUseBlock | ThinkingBlock).</root-cause>
+      <fix>Iterate + type-check (`if b.type == "text"`, `if b.type == "tool_use"`).</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Infinite tool loop — Claude keeps calling the same tool with the same args.</description>
+      <symptom>Quota spend spike; per-task latency unbounded.</symptom>
+      <root-cause>Broken tool always returns same unhelpful response; no iteration cap.</root-cause>
+      <fix>max_turns=15 guard + log + fail-loud. Cache tool results within a turn to detect repeat calls.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>`additionalProperties: false` on tool input_schema.</description>
+      <symptom>Edge-case tool calls fail validation despite reasonable args; cryptic API errors.</symptom>
+      <root-cause>Overly strict schema rejects Claude's harmless extra fields.</root-cause>
+      <fix>Omit `additionalProperties` (defaults to permissive) unless strict mode is necessary.</fix>
+    </antipattern>
+    <antipattern id="ap-06">
+      <description>Using MCP over HTTP / in a server context expecting easy ops.</description>
+      <symptom>Subprocess lifecycle bugs, zombie processes, port collisions.</symptom>
+      <root-cause>MCP is stdio-first and designed for Claude Desktop.</root-cause>
+      <fix>For server/API integrations use standard tool use; reserve MCP for Desktop scenarios.</fix>
+    </antipattern>
+    <antipattern id="ap-07">
+      <description>Thinking blocks included as tool_result content.</description>
+      <symptom>`invalid_request_error: tool_result content must not contain thinking blocks`.</symptom>
+      <root-cause>When Extended Thinking is enabled, response.content includes thinking; harness forwards everything.</root-cause>
+      <fix>Filter tool_result to tool_use_id + textual content only; drop thinking blocks before forming the user message.</fix>
+    </antipattern>
   </section>
 </text>
