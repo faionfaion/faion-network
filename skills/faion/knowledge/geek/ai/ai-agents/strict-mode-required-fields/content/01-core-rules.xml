@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="strict-mode-required-fields Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for strict-mode-required-fields. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="strict-mode-required-fields Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules for producing a Pydantic / JSON-Schema model that passes the OpenAI / Azure / Anthropic strict-mode compiler.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For every object schema submitted with strict: true, set additionalProperties: false, and list every declared property in required. To express "this field may be absent", use a nullable type ({"type": ["string", "null"]} or Pydantic str | None) — never omit the field from required.</statement>
-      <rationale source="v1-source">The strict-mode compiler builds a regular grammar; optional fields would introduce branch non-determinism (skip token vs read token), and unrestricted additional properties would force the grammar to accept arbitrary tokens between every key. The OpenAI error 400: Invalid schema for response_format ... additionalProperties must be false is the compiler refusing the schema.</rationale>
+  <section title="Grammar invariants">
+    <rule id="r1-required-equals-properties" testable="true" depth="essential">
+      <statement>For every object schema submitted under `strict: true`, the `required` array must equal the set of keys in `properties`. No property declared on an object may be absent from `required`.</statement>
+      <rationale source="https://platform.openai.com/docs/guides/structured-outputs">Strict-mode compiles the schema into a regular grammar; an "optional" key creates branch non-determinism (skip token vs read token). The OpenAI error `400 Invalid schema for response_format ... required list does not match properties` is the compiler refusing that branch.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Encode "may be absent" by declaring the field as T | None = None and keeping it in required. Never drop a property from required to mean "optional" under strict mode.</statement>
-      <rationale source="v1-source">Strict-mode compilers translate T | None into {"type": ["T","null"]} and keep the property required, which is the only encoding the FSM accepts.</rationale>
+    <rule id="r2-additional-properties-false" testable="true" depth="essential">
+      <statement>Every object schema must set `additionalProperties: false`. Missing or `additionalProperties: true` is a strict-mode rejection.</statement>
+      <rationale source="https://platform.openai.com/docs/guides/structured-outputs">Without this, the grammar must accept arbitrary key/value tokens at every object boundary, which collapses the determinism guarantee.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Before deploying a strict-mode pipeline, dump Model.model_json_schema() and assert that for every nested object: (a) additionalProperties is false, (b) the required list equals the properties keys.</statement>
-      <rationale source="v1-source">The strict-mode 400 error fires at request time, not build time; an automated assertion catches the regression before traffic hits.</rationale>
+  </section>
+
+  <section title="Pydantic-specific encoding">
+    <rule id="r3-nullable-not-optional" testable="true" depth="essential">
+      <statement>Encode "may be absent" by declaring the field as `T | None = None` and keeping it in `required`. Never drop a property from `required` to mean "optional" under strict mode. Empty-string / sentinel encodings are forbidden.</statement>
+      <rationale source="https://docs.pydantic.dev/latest/concepts/json_schema/">Strict-mode bridges translate `T | None` into `{"type": ["T", "null"]}` and keep the property required, which is the only encoding the FSM accepts. Sentinels (`""`, `-1`) hide absence and degrade data quality silently.</rationale>
+      <reference path="templates/strict_pydantic.py">Reference shape with `notes: str | None = None` encoded as nullable-required.</reference>
+    </rule>
+    <rule id="r4-config-extra-forbid" testable="true" depth="essential">
+      <statement>Set `model_config = ConfigDict(extra="forbid")` on every Pydantic model whose schema is consumed under strict mode. Apply it to nested models as well — strict mode walks the whole tree.</statement>
+      <rationale source="https://docs.pydantic.dev/latest/concepts/config/">`extra="forbid"` is the Pydantic flag that emits `additionalProperties: false` in the JSON Schema. Without it the model defaults to permissive and the schema fails strict-mode submission.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI guard">
+    <rule id="r5-assert-strict-schema" testable="true" depth="essential">
+      <statement>A CI test must call `assert_strict_schema(Model)` (or the equivalent JSON-walker) for every model used in a strict-mode call. The walker asserts on every object node: (a) `additionalProperties is False`, (b) `set(properties.keys()) == set(required)`. CI failure here blocks the merge.</statement>
+      <rationale source="OpenAI 400 error reproduction">The strict-mode 400 fires at request time, not build time. Without a CI assertion, the regression escapes review and production rejects the first traffic that uses the new model.</rationale>
+      <reference path="templates/strict_pydantic.py">Includes the canonical `assert_strict_schema()` walker; copy verbatim into CI tests.</reference>
     </rule>
   </section>
 </text>

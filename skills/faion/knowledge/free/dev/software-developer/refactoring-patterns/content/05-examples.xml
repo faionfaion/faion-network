@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Refactoring Patterns Worked Example" version="1.1.0" est_tokens="700" depth="optional">
+  <summary>Extract Method applied to a 30-line `build_invoice` god function: tax + line totals + discount each extracted.</summary>
+
+  <section title="Before — god function">
+    <code lang="python"><![CDATA[
+def build_invoice(order, customer):
+    subtotal = 0
+    for item in order.items:
+        line = item.price * item.qty
+        if customer.tier == "gold":
+            line *= 0.9
+        elif customer.tier == "silver":
+            line *= 0.95
+        subtotal += line
+    tax = 0
+    if customer.region == "EU":
+        tax = subtotal * 0.20
+    elif customer.region == "US":
+        tax = subtotal * 0.07
+    total = subtotal + tax
+    return {"subtotal": subtotal, "tax": tax, "total": total}
+]]></code>
+  </section>
+
+  <section title="After — three Extract Method steps">
+    <code lang="python"><![CDATA[
+TIER_DISCOUNT = {"gold": 0.10, "silver": 0.05}
+REGION_TAX    = {"EU": 0.20, "US": 0.07}
+
+
+def calculate_line_total(item, customer_tier: str) -> float:
+    base = item.price * item.qty
+    discount = TIER_DISCOUNT.get(customer_tier, 0.0)
+    return base * (1 - discount)
+
+
+def calculate_subtotal(items, customer_tier: str) -> float:
+    return sum(calculate_line_total(item, customer_tier) for item in items)
+
+
+def calculate_tax(subtotal: float, region: str) -> float:
+    return subtotal * REGION_TAX.get(region, 0.0)
+
+
+def build_invoice(order, customer):
+    subtotal = calculate_subtotal(order.items, customer.tier)
+    tax      = calculate_tax(subtotal, customer.region)
+    return {"subtotal": subtotal, "tax": tax, "total": subtotal + tax}
+]]></code>
+    <note>Three Extract Method transforms, each its own commit. Two magic-number Replaces folded into named constants. Test outputs identical at every step. No behaviour change.</note>
+  </section>
+
+  <section title="Trace">
+    <p>Commit 1 (`refactor: extract calculate_line_total`): tests stayed green; 1 file touched. Commit 2 (`refactor: extract calculate_tax`): tests stayed green; 1 file touched. Commit 3 (`refactor: replace tier-discount magic numbers`): tests stayed green; 1 file touched. Total: 3 commits, 1 file, scope-guard passes (3 &lt; 5 each).</p>
+  </section>
+
+  <reference path="templates/refactor-playbook.example.json">Playbook entry for this trace</reference>
+</text>

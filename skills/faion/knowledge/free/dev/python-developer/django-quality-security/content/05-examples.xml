@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-quality-security Worked Example" version="1.1.0" est_tokens="400" depth="optional">
+  <summary>Worked example: HSTS ramp + CSP migration for a freshly-launched Django 5.2 service over 3 weeks.</summary>
+
+  <section title="HSTS + CSP rollout timeline">
+    <example type="good">
+      <code lang="text"><![CDATA[
+Week 0 (initial public launch):
+  SECURE_HSTS_SECONDS = 300
+  SECURE_HSTS_INCLUDE_SUBDOMAINS = False  # subdomain readiness unknown
+  SECURE_HSTS_PRELOAD = False
+  CSP middleware in report-only mode:
+    default-src 'self'
+    script-src 'self' 'nonce-{request.csp_nonce}'
+    img-src 'self' data: https:
+  Cache layer: no-store on HTML responses to keep nonces unique
+
+Week 1 (after 24h clean staging telemetry):
+  SECURE_HSTS_SECONDS = 3600
+  Move CSP to enforce mode after fixing 4 inline-style violations
+  Add CSP report-uri pointing to Sentry to surface ongoing violations
+
+Week 2 (no new browser CSP errors in Sentry):
+  SECURE_HSTS_SECONDS = 31536000
+  SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+  Continue monitoring
+
+Week 4 (HSTS at production value for 2+ weeks):
+  SECURE_HSTS_PRELOAD = True
+  Submit domain to hstspreload.org
+]]></code>
+      <note>Ramp avoids the worst HSTS antipattern: cannot reach the site if HTTPS breaks. Each step exits only after telemetry is clean.</note>
+    </example>
+  </section>
+
+  <section title="check --deploy gate in CI">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/security.yml (excerpt)
+- name: Django check --deploy
+  run: |
+    uv run python manage.py check --deploy \
+      --fail-level WARNING \
+      --settings=config.settings.production
+]]></code>
+      <note>Single command blocks merge on any WARNING / ERROR — the cheapest security gate that exists for Django.</note>
+    </example>
+  </section>
+</text>

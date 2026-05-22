@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="OpenAI Function Calling — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step procedure for one tool-use round-trip or one structured-extraction call.</summary>
+
+  <section title="Steps">
+    <step n="1" name="define-tools-or-model">
+      <input>Pipeline contract — what external action or schema is needed.</input>
+      <action>Author tool JSON Schemas (for tool use) OR a Pydantic model (for extraction). Register tool callables in `tool_registry`.</action>
+      <output>tools list or response_format class, registry populated.</output>
+    </step>
+    <step n="2" name="call-with-gates">
+      <input>messages, model id, tools or response_format.</input>
+      <action>Call `client.chat.completions.create` (tools) or `client.beta.chat.completions.parse` (extraction). Set `tool_choice` per dependency. Pin `parallel_tool_calls` based on coherence policy.</action>
+      <output>Response object.</output>
+      <decision-gate>If model is pre-gpt-4o, skip `parse` — use `json_object` mode + manual validation.</decision-gate>
+    </step>
+    <step n="3" name="branch-by-shape">
+      <input>response.choices[0].message.</input>
+      <action>Branch: refusal → raise; tool_calls populated → step 4; parsed populated → step 6 (no tool loop needed); content only → step 6.</action>
+      <output>Branch decision recorded.</output>
+    </step>
+    <step n="4" name="execute-tool-calls">
+      <input>message.tool_calls list.</input>
+      <action>Run `coherence_check(tool_calls)` if any tool writes external state. For each call, dispatch via `tool_registry[name](**json.loads(arguments))`. Capture result.</action>
+      <output>List of `(tool_call_id, result)` tuples.</output>
+      <decision-gate>If coherence check fails, return to model for clarification instead of executing.</decision-gate>
+    </step>
+    <step n="5" name="append-and-recall">
+      <input>Tool results from step 4.</input>
+      <action>Append assistant message (with tool_calls) THEN every tool result keyed by tool_call_id, IN ORDER. Call the model again.</action>
+      <output>Final assistant content or further tool_calls (loop step 3).</output>
+    </step>
+    <step n="6" name="log-and-return">
+      <input>Final response.</input>
+      <action>Persist a record matching the output contract (kind, refusal, parsed/tool_calls/content, latency_ms, request_id).</action>
+      <output>Validated record written; result returned to caller.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

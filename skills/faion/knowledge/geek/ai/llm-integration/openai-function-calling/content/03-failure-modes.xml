@@ -1,12 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="openai-function-calling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for openai-function-calling as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="OpenAI Function Calling — Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 production failure modes when using tool use or structured outputs. Each carries symptom / root-cause / fix.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling client.beta.chat.completions.parse on gpt-3.5-turbo or older models.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Structured Outputs are only available on gpt-4o and newer. Calling parse on unsupported models raises NotImplementedError at runtime.</repair>
+    <failure-mode id="fm-01" severity="high">
+      <description>Tool result appended before the assistant message that produced the call — API rejects the request with 400.</description>
+      <detector>BadRequestError with "tool message must follow assistant message with tool_calls"; downstream tool result count != preceding assistant tool_call count.</detector>
+      <repair>Always: append assistant message first, then iterate `tool_calls`, append each `role:tool` result keyed by `tool_call_id`. Wrap in a helper to enforce order.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>`message.parsed` accessed without checking `message.refusal`; AttributeError when refusal triggered.</description>
+      <detector>Production traceback `AttributeError: 'NoneType' object has no attribute ...` from a `parsed.X` access.</detector>
+      <repair>Always: `if msg.refusal: raise RefusalError(msg.refusal); person = msg.parsed`. Add a unit test that mocks a refusal response.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-03" severity="high">
+      <description>Parallel tool calls execute contradictory writes (e.g., create + delete on the same record), corrupting state.</description>
+      <detector>Audit log shows opposite-direction writes within the same model turn; downstream consistency check fails.</detector>
+      <repair>Run `coherence_check(tool_calls)` before dispatch: detect (create, delete), (debit, credit), (lock, unlock) on the same id; if found, surface to the model for clarification instead of executing.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-04" severity="medium">
+      <description>`parse` invoked on an old model (gpt-3.5-turbo, gpt-4-turbo); NotImplementedError at runtime.</description>
+      <detector>Stack trace `NotImplementedError: response_format is not supported by this model`.</detector>
+      <repair>Capability-gate on the model id (allowlist gpt-4o, gpt-4o-mini, o1, o3-mini); fall back to `json_object` + manual Pydantic validation for unsupported models.</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-05" severity="medium">
+      <description>Tool dispatched via `eval(function.name)(...)` or dynamic import — arbitrary code execution via a poisoned tool schema.</description>
+      <detector>Code review finds `eval` or `__import__` in dispatch path; security scan flags dynamic call on model output.</detector>
+      <repair>Centralise dispatch in a `tool_registry: dict[str, callable]` initialised at startup. Unknown name → KeyError raised, not silently looked up.</repair>
+    </failure-mode>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Tool arguments returned by the model are DATA. Treat them with the same skepticism as any other user input: validate types with Pydantic, reject out-of-range values, never inject directly into shell or SQL without parameterisation.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Any change to the tool registry (adding a new tool, changing a signature) goes through code review by a named engineer. New tools that touch payment, identity, or external write APIs additionally require a security review.</p>
   </section>
 </text>

@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 refactor: harvest +19 files (batch 0).
 - F-066 refactor: harvest +11 files (batch 0).
 - F-066 phase D: update faion SKILL.md description + routing for v3 layout + 2-level retrieval.
 - F-066 refactor: harvest +17 files (batch 0).

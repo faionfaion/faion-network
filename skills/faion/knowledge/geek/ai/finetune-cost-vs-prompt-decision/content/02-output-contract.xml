@@ -1,42 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Finetune Cost Vs Prompt Decision Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Finetune Cost Vs Prompt Decision deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="artefact_id" format="ulid_or_iso_timestamp" />
-      <field name="trigger" type="string" description="the named activity or event that invoked this methodology" />
-      <field name="inputs" type="list" min="1" schema="{name,source,unit,value_or_link}" />
-      <field name="rules_applied" type="list_of_rule_ids" description="rule ids from content/01-core-rules.xml that the artefact satisfies" />
-      <field name="evidence" type="list" min="1" schema="{rule_id,citation,source_type}" />
-      <field name="output_payload" type="object" description="the methodology-specific structured output (schema in templates/output-schema.json)" />
-      <field name="consumer" type="string" description="named human or downstream agent that will act on this artefact" />
-      <field name="decision_or_next_step" type="string" />
-      <field name="owner" type="string" description="single named human responsible for the artefact" />
-      <field name="last_touched" format="iso_8601" />
-    </required>
-    <forbidden>
-      <pattern id="f1">artefact produced without any evidence entry referencing a rule_id</pattern>
-      <pattern id="f2">consumer field empty or set to 'team' / 'everyone' — orphan artefacts</pattern>
-      <pattern id="f3">inputs without source-of-truth declared (paraphrased, 'from memory')</pattern>
-      <pattern id="f4">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
-      <pattern id="f5">LLM-generated evidence citing 'industry standard' or 'common practice' without a named source</pattern>
-      <pattern id="f6">applies_if guard failed AND artefact still produced (must be a skip with reason)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Trim verbatim citations for length, preserving specifics (numbers, dates, named tools).</transformation>
-      <transformation>Group similar evidence entries when they cite the same source, preserving member count.</transformation>
-      <transformation>Promote an evidence entry to a 'finding' record when it surfaces a remediation requirement.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
+<text id="02-output-contract" title="Fine-tune cost vs prompt decision — output contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the decision record + valid/invalid examples.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ft-cost-prompt-decision",
+  "type": "object",
+  "required": ["workload", "owner", "created_at", "recheck_at", "lift_bar", "baseline", "candidate", "break_even_months", "strong_signals", "recommendation"],
+  "properties": {
+    "workload": {"type": "string", "minLength": 5},
+    "owner": {"type": "string", "minLength": 2, "not": {"enum": ["team", "everyone", "TBD"]}},
+    "created_at": {"type": "string", "format": "date"},
+    "recheck_at": {"type": "string", "format": "date"},
+    "lift_bar": {"type": "number", "minimum": 0.001, "maximum": 0.5},
+    "baseline": {
+      "type": "object",
+      "required": ["score", "cost_per_k_tokens", "daily_volume"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "cost_per_k_tokens": {"type": "number", "minimum": 0},
+        "daily_volume": {"type": "integer", "minimum": 0}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["training_cost", "hosting_cost_per_k_tokens", "training_examples"],
+      "properties": {
+        "training_cost": {"type": "number", "minimum": 0},
+        "hosting_cost_per_k_tokens": {"type": "number", "minimum": 0},
+        "training_examples": {"type": "integer", "minimum": 0}
+      }
+    },
+    "break_even_months": {"type": ["number", "null"]},
+    "strong_signals": {
+      "type": "array",
+      "items": {"enum": ["format-adherence", "latency-critical", "data-volume-5k+", "safety-policy-domain", "cost-amortises-12mo"]},
+      "uniqueItems": true
+    },
+    "recommendation": {"enum": ["fine-tune", "prompt-improve", "rag", "route", "hybrid"]},
+    "narrative": {"type": "string"}
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "workload": "support-classifier",
+  "owner": "alice.chen@example.com",
+  "created_at": "2026-05-22",
+  "recheck_at": "2026-11-22",
+  "lift_bar": 0.05,
+  "baseline": {"score": 0.78, "cost_per_k_tokens": 3.0, "daily_volume": 50000},
+  "candidate": {"training_cost": 800, "hosting_cost_per_k_tokens": 0.5, "training_examples": 6500},
+  "break_even_months": 2.1,
+  "strong_signals": ["data-volume-5k+", "cost-amortises-12mo", "latency-critical"],
+  "recommendation": "fine-tune"
+}]]></code>
+      <note>Three strong signals, break-even 2.1 months ≤ 12, lift_bar pre-committed, owner named, recheck 6 months out.</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "workload": "x",
+  "owner": "team",
+  "created_at": "2026-05-22",
+  "recheck_at": "2030-01-01",
+  "lift_bar": 0.0001,
+  "baseline": {"score": 0.78, "cost_per_k_tokens": 3.0, "daily_volume": 50},
+  "candidate": {"training_cost": 50000, "hosting_cost_per_k_tokens": 5.0, "training_examples": 200},
+  "break_even_months": null,
+  "strong_signals": ["data-volume-5k+"],
+  "recommendation": "fine-tune"
+}]]></code>
+      <note>Five violations: owner == "team" (r4), recheck 3.5y out (r5), lift_bar below minimum, break_even null (r2), only 1 strong signal but recommendation is fine-tune (r3).</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>Every required field is populated with a non-placeholder value.</item>
-      <item>Every rule in rules_applied has ≥1 matching evidence entry.</item>
-      <item>Consumer is a named human or named agent — never 'team'.</item>
-      <item>Inputs each declare unit + source.</item>
-      <item>If applies_if conditions fail, output_payload is empty and a skip reason is recorded instead.</item>
-      <item>Output validates against templates/output-schema.json.</item>
+      <item>owner is a named person/email, not "team".</item>
+      <item>recheck_at within 6 months of created_at.</item>
+      <item>break_even_months computed (not null) when recommendation is "fine-tune".</item>
+      <item>strong_signals.length ≥ 2 when recommendation == "fine-tune".</item>
+      <item>lift_bar ≥ 0.001.</item>
     </list>
   </section>
 </text>

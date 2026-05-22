@@ -1,47 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="refactoring-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for refactoring-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Refactoring Patterns Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns that defeat the two-hat rule or expand refactor scope beyond review tolerance.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Big-bang refactoring — changing everything at once across many files</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long broken period, high merge conflict rate, impossible to bisect failures. Apply the strangler pattern instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Refactoring without tests — no safety net</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without tests you cannot verify behavior is preserved. The risk of introducing bugs equals a rewrite, not a refactor.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mixing refactoring with behavior changes in the same commit</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mixed commits violate the refactoring definition (behavior unchanged) and make bisect useless.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Over-engineering: converting a 4-branch if into a 4-class strategy hierarchy</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Polymorphism adds indirection cost. Apply only when branches &gt; 4 and each branch is non-trivial and will grow independently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Incomplete refactoring — leaving the code in a worse intermediate state</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Half-extracted methods are harder to understand than the original. Commit only when the refactor is complete.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Agent changes types during refactoring (e.g. int to Decimal) claiming it's "cleanup"</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Type changes alter behavior (rounding, comparison, serialization). Forbid type changes inside refactor commits.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Agent renames a symbol but misses string-based references (JSON keys, DB column names, reflection)</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Text rename is incomplete. Require a grep of the full repo for the old name before claiming done.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Agent modifies assertion contents inside tests during a refactor commit</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Changing assertions during refactoring removes the safety net retroactively. Tests must not change except to add characterization tests for uncovered branches.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="refactor-mixed-with-feature" severity="high">
+      <symptom>One PR / commit both restructures and adds new behaviour. Tests change semantically (asserting new outputs). Reviewer cannot tell intent from diff.</symptom>
+      <root-cause source="Beck — TDD; conventional commits">Author wants to "tidy" while implementing and bundles both. The cost is paid by reviewer, who cannot separate refactor from feature, and by bisect which can no longer attribute regressions.</root-cause>
+      <fix>Split into two commits: refactor first (tests pass identically), feature second (tests change). CI gate: `refactor:` commit cannot modify the test files.</fix>
+    </antipattern>
+
+    <antipattern id="ide-rename-without-test" severity="medium">
+      <symptom>IDE-driven rename completes silently; misses string-key references (template literals, dynamic getattr, ORM `select_related('old_name')`).</symptom>
+      <root-cause source="VSCode rename docs">Language-server refactor is AST-scoped — it does not touch strings unless the language has tagged-template support. Dynamic lookups by name string slip through.</root-cause>
+      <fix>After IDE rename, run `git grep '\\bold_name\\b'` and fix matches manually. Add a unit test exercising the renamed dynamic path BEFORE rename.</fix>
+    </antipattern>
+
+    <antipattern id="premature-abstraction" severity="medium">
+      <symptom>Extract Method produces a one-call-site helper named `helper1` / `_internal_x`. Indirection added; clarity reduced; no second call site materialises.</symptom>
+      <root-cause source="Fowler — Refactoring — Rule of Three">Extracting on first occurrence creates speculative abstraction; the second occurrence almost always differs from what was extracted, requiring a re-design.</root-cause>
+      <fix>Rule of Three: do not extract until the third duplicate appears. If a single big function needs splitting for readability — split, but name parts by intent (`validate_payment`, not `helper1`).</fix>
+    </antipattern>
+
+    <antipattern id="scope-creep" severity="high">
+      <symptom>`refactor:` commit touches 30+ files. Reviewer marks "LGTM" without reading; regressions land.</symptom>
+      <root-cause source="Internal — PR review-friction studies Q1 2026">Author rolls multiple refactors into one branch; commit boundary disappears. Reviewer cognitive load exceeds capacity.</root-cause>
+      <fix>Enforce `templates/refactor-scope-guard.sh` as pre-commit hook. Cap at 5 files per refactor commit; chain commits if more touched.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="strict-mode-required-fields Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="strict-mode-required-fields Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the strict-mode audit report produced when running this methodology against a model file.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema format="json-schema">
+<![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StrictModeAuditReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["model_path", "target", "violations", "patches", "ci_assert_present"],
+  "properties": {
+    "model_path": {"type": "string", "minLength": 1},
+    "target": {"type": "string", "enum": ["openai", "anthropic", "azure", "gemini"]},
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_title", "code", "message"],
+        "properties": {
+          "node_title": {"type": "string"},
+          "code": {"type": "string", "enum": ["missing-additional-properties-false", "required-not-equal-properties", "missing-extra-forbid", "optional-not-nullable", "empty-string-sentinel", "metadata-bag-in-strict"]},
+          "message": {"type": "string", "minLength": 8}
+        }
+      }
+    },
+    "patches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "diff_summary"],
+        "properties": {
+          "file": {"type": "string"},
+          "diff_summary": {"type": "string", "minLength": 8}
+        }
+      }
+    },
+    "ci_assert_present": {"type": "boolean"}
+  }
+}
+]]>
+  </schema>
+
+  <example valid="true">
+<![CDATA[
+{
+  "model_path": "myapp/schemas/invoice.py",
+  "target": "openai",
+  "violations": [
+    {"node_title": "Invoice", "code": "missing-extra-forbid", "message": "ConfigDict(extra='forbid') missing on Invoice."},
+    {"node_title": "Invoice.notes", "code": "optional-not-nullable", "message": "notes declared Optional[str] without default None — convert to str | None = None."}
+  ],
+  "patches": [
+    {"file": "myapp/schemas/invoice.py", "diff_summary": "Added extra='forbid' to Invoice and LineItem; notes -> str | None = None."}
+  ],
+  "ci_assert_present": true
+}
+]]>
+  </example>
+
+  <example valid="false">
+<![CDATA[
+{
+  "model_path": "myapp/schemas/invoice.py",
+  "target": "openai",
+  "violations": [{"node_title": "Invoice", "code": "unknown-violation", "message": "x"}],
+  "patches": [],
+  "ci_assert_present": false
+}
+]]>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`target` is one of the closed enum values.</item>
+      <item>Every `code` is in the closed enum; no freeform error codes.</item>
+      <item>If `violations` is empty AND `ci_assert_present == true` → safe to ship.</item>
+      <item>If `violations` is non-empty AND `patches` is empty → audit incomplete.</item>
     </list>
   </section>
 </text>

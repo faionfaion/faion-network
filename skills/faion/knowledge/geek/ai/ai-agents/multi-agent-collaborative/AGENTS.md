@@ -4,71 +4,97 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-net]
-summary: Each agent in the group produces an initial contribution to the task, then iteratively reads and builds on other agents' contributions recorded in a shared workspace.
+summary: Generates the implementation scaffold for a shared-workspace collaborative multi-agent pattern with capped iterations, independent synthesizer, and per-run token budget.
 content_id: "84f26d5d55efb0ce"
+complexity: medium
+produces: code
+est_tokens: 3800
 tags: [multi-agent, collaborative, shared-workspace, iterative-refinement, brainstorm]
 ---
 # Collaborative Agents with Shared Workspace
 
 ## Summary
 
-**One-sentence:** Each agent in the group produces an initial contribution to the task, then iteratively reads and builds on other agents' contributions recorded in a shared workspace.
+**One-sentence:** Generates the implementation scaffold for a shared-workspace collaborative multi-agent pattern with capped iterations, independent synthesizer, and per-run token budget.
 
-**One-paragraph:** Each agent in the group produces an initial contribution to the task, then iteratively reads and builds on other agents' contributions recorded in a shared workspace. After a fixed number of iterations, a coordinator (separate LLM call) synthesizes the best elements from all agent contributions into a final result.
+**One-paragraph:** Each agent in the group produces an initial contribution, then iteratively reads and builds on others' contributions recorded in a shared append-only workspace. After a hard-capped number of iterations a separate coordinator (different agent + ideally different model family) synthesizes the best elements from all contributions in a single call. This methodology ships the `CollaborativeGroup` Python class, the iteration prompt template, and a budget guard so the N×M call pattern cannot silently blow up cost.
+
+**Ефективно для:** солопрейнера на креативних завданнях (strategy, design, narrative), де потрібна різноманітність точок зору, а одна модель збігається на власному prior.
 
 ## Applies If (ALL must hold)
 
-- Creative or strategy work where diverse perspectives from collaborating agents add genuine value — design, narrative, technical architecture decisions.
-- Problems with no single correct answer where multiple angles improve quality — brainstorming, risk identification, content ideation.
-- Quality-critical outputs that benefit from agents critiquing and building on each other's work over multiple rounds.
-- Tasks where the solution space is wide and convergence speed is less important than coverage.
+- Creative or strategy work where genuinely diverse perspectives improve quality.
+- Problem has no single correct answer; coverage matters more than convergence speed.
+- Hard iteration cap and per-run token budget are acceptable (you can afford N×M LLM calls).
+- Quality bar tolerates extra latency (5x-20x a single-agent call).
+- Synthesizer can be an independent agent from the contributors.
 
 ## Skip If (ANY kills it)
 
-- Tight latency budgets: N agents × M iterations = N×M LLM calls; without token budgets, costs spike unexpectedly.
-- Tasks with a single correct answer — agents with similar training data converge on the same (possibly wrong) answer even after multiple iterations (echo chamber risk).
-- Fully deterministic pipelines where sequential execution is simpler and cheaper.
-- Tasks requiring fine-grained shared mutable state — the shared workspace is append-only; write conflicts in async settings cause race conditions.
+- Latency budget < 30 s — collaborative pattern is the slowest of the multi-agent shapes.
+- Task has a single correct answer — agents converge to the same answer (echo chamber) regardless of iteration count.
+- Token budget is rigid (< 20k) — N×M call pattern blows budget faster than any other.
+- Deterministic pipeline preferred — sequential is simpler and cheaper.
+- Need fine-grained shared mutable state — workspace is append-only by design.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Validated multi-agent spec | YAML with `pattern: collaborative` | `multi-agent-basics` |
+| Agent roster + system prompts | list of `{name, role, model, system_prompt}` | spec |
+| Per-run token budget | int | `spec.budget.total_tokens` |
+| Iteration cap | int (default 5) | spec |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/multi-agent-basics` | Upstream spec this implementation consumes. |
+| `geek/ai/ai-agents/schema-version-pinning` | Workspace entries carry `schema_version` for evolvability. |
+| `geek/ai/ai-agents/role-specialized-models` | Synthesizer should be on a different model family than contributors. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: capped iterations, budget guard after each round, independent synthesizer, append-only workspace, structured JSON contributions | ~750 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the `CollaborativeGroup` config + workspace entry shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: synthesizer-is-contributor, prompt inflation, no budget guard, all-same-model echo, race condition on workspace | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: configure → run initial brainstorm → iterate (with budget check) → synthesize → emit trace | ~700 |
+| `content/06-decision-tree.xml` | essential | Pick collaborative vs hierarchical vs debate based on convergence-needed vs coverage-needed | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Per-iteration contribution | sonnet | Reliable structured ideation; cheap enough for N×M calls. |
+| Synthesizer | opus (or different family) | Final synthesis needs strongest reasoning; different family breaks echo. |
+| Budget audit per iteration | haiku | Numeric check; not generative. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/collaborative_group.py` | Reference `CollaborativeGroup` class with shared workspace, iteration loop, budget guard, and independent synthesizer. |
+| `templates/iteration-prompt.txt` | Per-round prompt showing agent its own last contribution + others' latest only (no full history) to prevent prompt inflation. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-multi-agent-collaborative.py` | Validates a collaborative-group config against the contract (iteration cap, budget guard wired, synthesizer != contributor, structured workspace entries). | Pre-merge of any collaborative-pattern PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[multi-agent-basics]] — upstream spec.
+- [[multi-agent-hierarchical]] — alternative when convergence > coverage.
+- [[multi-agent-conversational]] — alternative for open-ended free-turn shape.
+- [[role-specialized-models]] — pick synthesizer model.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` decides whether collaborative is the right pattern. Pick it when the task is open-ended with no single correct answer (creative/strategy/design); pick hierarchical when convergence + auditability matter more than coverage; pick debate when adversarial verification dominates. Run it before instantiating the class to avoid wrong-pattern cost.

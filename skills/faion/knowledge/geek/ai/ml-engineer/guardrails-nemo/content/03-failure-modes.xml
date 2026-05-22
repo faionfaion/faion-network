@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="guardrails-nemo Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for guardrails-nemo as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="NeMo Guardrails Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns specific to NeMo configs.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Configuring NeMo Guardrails without a fallback for the Colang runtime LLM being unavailable.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>NeMo requires a running LLM for the Colang runtime itself, not just for main responses. If the LLM endpoint is unavailable, the entire rails system fails. Design a graceful degradation path (default-block or default-pass) that activates when the runtime LLM is unreachable.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Setting max_reasks to unlimited in NeMo retry-on-fail configuration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Guardrails AI's retry-on-fail mechanism and NeMo's retry behavior can cause agents to loop indefinitely. Set max_reasks=3 and handle the failure case explicitly with a fallback response.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="inline-config-prod" severity="high">
+      <symptom>Production `RailsConfig.from_content(...)` with hard-coded YAML + Colang strings; policy lives in `.py` files alongside business logic.</symptom>
+      <root-cause source="Internal config audits">Test-only shortcut promoted to production without refactor.</root-cause>
+      <fix>Move config to `config/` directory; load via `RailsConfig.from_path("./config")`. Inline form lives only under `tests/`.</fix>
+    </antipattern>
+
+    <antipattern id="missing-canonical-examples" severity="medium">
+      <symptom>Intent collapses — user asks "show my order" but bot does not match "ask about order status" intent because only one variant was provided.</symptom>
+      <root-cause source="NeMo semantic similarity behaviour">Single-example intents have no embedding spread; near-paraphrases fall outside the matching radius.</root-cause>
+      <fix>Each `define user X` block carries ≥3 examples covering paraphrase, command, question forms. Add a smoke test that hits each variant.</fix>
+    </antipattern>
+
+    <antipattern id="sync-action-blocks-loop" severity="high">
+      <symptom>Throughput collapses under load — one synchronous PII action blocks the asyncio loop, all parallel conversations stall behind it.</symptom>
+      <root-cause source="NeMo runtime; async profiler traces">Action declared `def` instead of `async def`; blocking I/O inside the loop.</root-cause>
+      <fix>Convert every `@action()` to `async def`; wrap CPU-bound work in `asyncio.to_thread`. Smoke test with concurrent conversations.</fix>
+    </antipattern>
+
+    <antipattern id="no-fact-check-on-rag" severity="high">
+      <symptom>RAG-backed support bot hallucinates product details that aren't in the KB; users see wrong refund policy.</symptom>
+      <root-cause source="Incident postmortems">Output rails miss `check facts`; bot answers from prior-prompt context without grounding.</root-cause>
+      <fix>Add `check facts` to `rails.output.flows`; ensure `knowledge_base:` block declares the local docs path; register custom `check_facts` action that returns False unless ≥1 supporting document found.</fix>
+    </antipattern>
+
   </section>
 </text>
