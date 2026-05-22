@@ -3,77 +3,97 @@ slug: auto-rollback-policy-design
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Auto Rollback Policy Design: codified AI-system reliability practice that turns the recurring 'role-ml-engineer/Migrate LLM provider / model generation' decision into a repeatable, auditable artefact.
-content_id: "06d46b3e355384b7"
-tags: [auto-rollback-policy-design, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Quality-score-based auto-rollback policy for AI features: thresholds + window + traffic ratio + manual override; replaces ad-hoc on-call decisions with a deterministic config.
+content_id: "31ac9b5bf69766b4"
+complexity: deep
+produces: config
+est_tokens: 4400
+tags: [rollback, model-deploy, ml-ops, quality-gate, ai-reliability]
 ---
 # Auto Rollback Policy Design
 
 ## Summary
 
-**One-sentence:** Auto Rollback Policy Design: codified AI-system reliability practice that turns the recurring 'role-ml-engineer/Migrate LLM provider / model generation' decision into a repeatable, auditable artefact.
+**One-sentence:** Quality-score-based auto-rollback policy for AI features: thresholds + window + traffic ratio + manual override; replaces ad-hoc on-call decisions with a deterministic config.
 
-**One-paragraph:** Auto Rollback Policy Design addresses the gap identified by the role-ml-engineer/Migrate LLM provider / model generation playbook: How to define and implement quality-score-based auto-rollback for AI features. Today this falls to ad-hoc on-call decisions. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Model swaps and prompt updates are deployed under on-call pressure with ad-hoc rollback decisions. This methodology specifies a quality-score-based auto-rollback policy: per-axis thresholds (outcome / trajectory / resources), time window for rolling average, traffic-ratio gate for canary, manual override path, and a post-rollback runbook. Output is a YAML config consumed by the deploy pipeline + alerting wire; CI validates the config against the schema on every PR. Replaces fire-drill rollbacks with measurable, debate-free decisions.
+
+**Ефективно для:**
+
+- Model migration (4.5 → 4.6 / 4.7) — auto-rollback ловить regressions без on-call судження.
+- Prompt swap у production: канарковий ratio + auto-rollback при quality drop &gt; 5pp.
+- RAG chunking changes — quality-score gate видаляє debate з deploy decision.
+- ML-ops команди, які хочуть SLO-style guarantees на AI feature reliability.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ml-engineer/Migrate LLM provider / model generation OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- AI feature has measurable quality score (eval rubric from trajectory-eval-otel or ai-feature-eval-set-design).
+- Deploy pipeline supports canary or traffic-shift rollout.
+- On-call team is the bottleneck during rollouts (ad-hoc rollback decisions take &gt; 30 min).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Quality score is unmeasurable in real-time (no scoring pipeline within 10 min of inference).
+- Single-tenant on-prem deploy where rollback is a manual restart.
+- Experimental / pre-launch features where rollback semantics don't apply yet.
 
 ## Prerequisites
 
-- recent context for the role-ml-engineer/Migrate LLM provider / model generation task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Quality-score pipeline | function: trace → score (0-1) | from trajectory-eval-otel or feature-eval |
+| Deploy pipeline | canary / traffic-shift support | infra |
+| Baseline score | JSON with score per axis | first eval run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+| [[trajectory-eval-otel]] | upstream context required for this methodology |
+| [[ai-feature-eval-set-design]] | upstream context required for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: per-axis-thresholds, rolling-window-required, canary-ratio-and-baseline, manual-override-logged, post-rollback-runbook | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `calibrate-noise-floor` | haiku | Statistical math over baseline window. |
+| `design-canary-ladder` | sonnet | Light judgment on risk vs speed. |
+| `wire-threshold-check` | haiku | Template-based config wiring. |
+| `wire-runbook` | sonnet | Cross-team workflow design. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/auto-rollback-policy-design.json` | JSON schema for the Auto Rollback Policy Design output contract |
-| `templates/auto-rollback-policy-design.md` | Markdown skeleton with the required fields |
+| `templates/rollback-policy.yml` | Full policy YAML template (thresholds + window + canary + override + runbook) |
+| `templates/canary-ladder.yml` | Canary ratio + hold-time YAML |
+| `templates/post-rollback-runbook.md` | 4-step post-rollback runbook |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-auto-rollback-policy-design.py` | Enforce Auto Rollback Policy Design output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-auto-rollback-policy-design.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `role-ml-engineer/Migrate LLM provider / model generation`
+- [[trajectory-eval-otel]]
+- [[ai-feature-eval-set-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

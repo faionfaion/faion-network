@@ -3,78 +3,98 @@ slug: champion-challenger-pattern-rag
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Champion Challenger Pattern Rag: codified AI-system reliability practice that turns the recurring 'p7-llm-agent-developer/RAG chunking strategy bench' decision into a repeatable, auditable artefact.
-content_id: "696fa42851f0346c"
-tags: [champion-challenger-pattern-rag, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Spec for keeping last week's winner running as champion while next week's challenger benches in shadow traffic — without leaking user traffic across arms.
+content_id: "fc696f054bab75d8"
+complexity: deep
+produces: config
+est_tokens: 4400
+tags: [rag, champion-challenger, ab-test, ml-ops, bench]
 ---
-# Champion Challenger Pattern Rag
+# Champion Challenger Pattern for RAG
 
 ## Summary
 
-**One-sentence:** Champion Challenger Pattern Rag: codified AI-system reliability practice that turns the recurring 'p7-llm-agent-developer/RAG chunking strategy bench' decision into a repeatable, auditable artefact.
+**One-sentence:** Spec for keeping last week's winner running as champion while next week's challenger benches in shadow traffic — without leaking user traffic across arms.
 
-**One-paragraph:** Champion Challenger Pattern Rag addresses the gap identified by the p7-llm-agent-developer/RAG chunking strategy bench playbook: How to keep last week's winner running as the champion-challenger for next week's bench without leaking traffic. Pattern is well-known in ML, not codified for agent/RAG specifically. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** RAG benches happen weekly: chunking, embeddings, reranker, prompt — every component has variants. Without a champion-challenger pattern, teams either deploy untested winners (regression risk) or run parallel UI experiments (slow + user-confusion). This methodology codifies a 7-day cycle: current champion serves 100% of user traffic; challenger reads the same queries in shadow mode (no user-visible answer) and produces parallel responses; an LLM-as-judge or eval rubric compares them; the winner becomes next week's champion. Config artefact specifies arms + traffic allocation + judge + promotion criteria + cleanup cadence; validator enforces no traffic leakage.
+
+**Ефективно для:**
+
+- RAG команди, які weekly bench chunking / embeddings / reranker і хочуть data-driven rollout.
+- Системи з high cost-of-error (legal/medical RAG) — shadow eval перед user-facing deploy.
+- Multi-component pipelines (retrieval → rerank → generate) — кожен компонент має champion-challenger арм.
+- Compliance/audit: tracked promotion history = full decision trail.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p7-llm-agent-developer/RAG chunking strategy bench OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- RAG system in production with ≥ 1000 queries/day (statistical power).
+- Traffic mirror / shadow-mode capability (challenger can read traffic without writing to user).
+- Eval rubric or LLM-as-judge exists to score the comparison.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-component pipeline (one prompt only) — A/B is cheaper than champion-challenger.
+- Volume &lt; 1K queries/day — sample size too small for weekly promotion.
+- Greenfield RAG with no champion yet — bootstrap with a static baseline first.
 
 ## Prerequisites
 
-- recent context for the p7-llm-agent-developer/RAG chunking strategy bench task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Production query log | JSONL of (query, retrieval, response) | trace store |
+| Eval rubric or LLM-as-judge | rubric or judge prompt | from ai-feature-eval-set-design |
+| Shadow-mode infra | ability to mirror traffic to challenger without user output | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+| [[ai-feature-eval-set-design]] | upstream context required for this methodology |
+| [[trajectory-eval-otel]] | upstream context required for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: shadow-no-user-leak, weekly-promotion-cycle, promotion-criteria-explicit, rollback-on-promotion-regression, audit-trail-required | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `design-challenger` | sonnet | Picks the variable to change with light judgment. |
+| `wire-shadow-traffic` | haiku | Infra wiring + leak verification. |
+| `run-cycle-and-judge` | haiku | Mechanical scoring loop. |
+| `promote-or-bench-again` | sonnet | Decision evaluation against criteria. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/champion-challenger-pattern-rag.json` | JSON schema for the Champion Challenger Pattern Rag output contract |
-| `templates/champion-challenger-pattern-rag.md` | Markdown skeleton with the required fields |
+| `templates/bench-config.yml` | Full bench config YAML (cycle + arms + judge + promotion criteria) |
+| `templates/shadow-runner.py` | Python shadow-traffic mirror skeleton |
+| `templates/cycle-report.md` | Cycle report Markdown template |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-champion-challenger-pattern-rag.py` | Enforce Champion Challenger Pattern Rag output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-champion-challenger-pattern-rag.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `p7-llm-agent-developer/RAG chunking strategy bench`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[ai-feature-eval-set-design]]
+- [[auto-rollback-policy-design]]
+- [[trajectory-eval-otel]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

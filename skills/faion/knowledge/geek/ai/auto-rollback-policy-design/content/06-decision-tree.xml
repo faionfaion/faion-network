@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Auto Rollback Policy Design Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+      <root-question id="q-measurable">Can quality score be computed in &lt; 10 min of inference?</root-question>
+
+      <branch when="measurable == false">
+        <conclusion ref="rolling-window-required" verdict="skip auto-rollback; rely on manual override + canary ratio for blast-radius control"/>
+      </branch>
+
+      <branch when="measurable == true">
+        <question id="q-risk">Is the feature high-risk (financial, health, legal)?</question>
+        <branch when="high_risk == true">
+          <conclusion ref="canary-ratio-and-baseline" verdict="tight ladder 1% → 5% → 25% → 100% with 12h holds; thresholds 2pp / 5pp / 25%"/>
+        </branch>
+        <branch when="high_risk == false">
+          <conclusion ref="per-axis-thresholds" verdict="standard ladder 5% → 25% → 100% with 6h holds; thresholds 5pp / 10pp / 50%"/>
+        </branch>
+      </branch>
+    </decision-tree>
+
+    <example trace="model-bump">
+      measurable=true → q-risk: low → standard ladder; thresholds 5/10/50; rolling window 200 inferences / 10 min.
+    </example>
+</text>

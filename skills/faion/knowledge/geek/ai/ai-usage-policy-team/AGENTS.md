@@ -3,68 +3,94 @@ slug: ai-usage-policy-team
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: 1-page team-facing policy: what data engineers can paste into Claude/Cursor/Copilot, what cannot, and how to handle the gray zone.
-content_id: "0c943f084e31d36b"
-tags: [ai-usage-policy-team, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: 1-page team-facing policy spec: always-OK list, never-OK list, ask-first list, incident-response path. Owner + quarterly review locked in.
+content_id: "a1c8bee131cecb89"
+complexity: light
+produces: spec
+est_tokens: 4400
+tags: [policy, team, ai-tools, governance, compliance]
 ---
-
 # Team AI Usage Policy
 
 ## Summary
 
-**One-sentence:** 1-page team-facing policy: what data engineers can paste into Claude/Cursor/Copilot, what cannot, and how to handle the gray zone.
+**One-sentence:** 1-page team-facing policy spec: always-OK list, never-OK list, ask-first list, incident-response path. Owner + quarterly review locked in.
 
-**One-paragraph:** Every product team needs this; 99% don't have it. faion has ai-governance-compliance at ML-engineer level — wrong audience. Mechanism: 1-page policy with three lists (always-OK, never-OK, ask-first) + incident-response. Output: versioned policy artefact with named owner + quarterly review.
+**One-paragraph:** Every product team needs a team-facing AI usage policy; 99% don't have one. Existing AI-governance work targets ML-engineers (wrong audience). This methodology produces a 1-page policy artefact with three explicit lists (always-OK, never-OK, ask-first) + a 4-step incident-response runbook + a named owner + quarterly review cadence. Output is a versioned Markdown spec validated by CI on every team change.
+
+**Ефективно для:**
+
+- Команди 3-50 розробників, які копіпастять у Cursor/Copilot/Claude без правил.
+- Компанії, що handlуть customer data, source code, sales/legal docs, PII — швидкий policy за день.
+- Post-incident: hot-fix policy перед audit, з incident-response runbook'ом.
+- Quarterly AI-governance review: версіонована policy = audit trail.
 
 ## Applies If (ALL must hold)
 
-- team size 3-50 with shared codebase
-- devs use any AI tool (Cursor, Copilot, Claude.ai, ChatGPT, agentic CLIs)
-- company handles customer data, source code, sales/legal docs, or PII
+- Team has 3-50 developers using AI tools (Cursor / Copilot / Claude / ChatGPT / CLI agents).
+- Company handles ANY of: customer data, source code, sales/legal docs, PII, regulated data.
+- No existing AI usage policy OR existing policy is &gt; 6 months old.
 
 ## Skip If (ANY kills it)
 
-- solo dev with no customer data — use ai-over-reliance-self-audit
-- company already has detailed AUP + DLP enforcement — augment, don't duplicate
-- team in pre-commercial R&D with no production data
+- Team uses zero AI tooling.
+- Company-wide AI policy already exists and is &lt; 6 months old; refresh that document instead.
+- Solo founder with no team yet.
 
 ## Prerequisites
 
-- list of AI tools in use (vendor + retention policy)
-- list of data classifications (public/internal/confidential/regulated)
-- named policy owner (CTO / Head of Eng / Security lead)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Tool inventory | list of AI tools team uses | team survey |
+| Data inventory | categories of sensitive data team touches | security / data-protection officer |
+| Incident report channel | Slack / form / email | existing IR plan |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/ai-governance-compliance` | peer methodology — produces inputs or consumes outputs |
-| `pro/sec/data-classification` | peer methodology — produces inputs or consumes outputs |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: three-lists-required, named-owner-and-cadence, incident-response-runbook, gray-zone-resolution, policy-is-one-page | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for spec + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `inventory-tools-and-data` | haiku | Mechanical cataloguing. |
+| `draft-three-lists` | sonnet | Light judgment on categorization. |
+| `write-ir-runbook` | sonnet | Maps roles to time SLAs. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/ai-policy.md` | 1-page policy Markdown template (owner, review, three lists, IR runbook) |
+| `templates/ir-runbook.md` | 4-step incident-response runbook template |
+| `templates/review-cadence.yml` | Quarterly review cadence YAML for CI flagging |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-ai-usage-policy-team.py` | Validate the spec artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/ai-governance-compliance`
-- peer methodology: `pro/sec/data-classification`
-- external: https://www.nist.gov/itl/ai-risk-management-framework (NIST AI RMF); https://www.iso.org/standard/81230.html (ISO/IEC 42001)
+- [[ai-trust-disclosure-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

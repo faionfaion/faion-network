@@ -3,77 +3,95 @@ slug: cache-hit-audit-script
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cache Hit Audit Script: codified AI-system reliability practice that turns the recurring 'p7-llm-agent-developer/Token-cost daily watch' decision into a repeatable, auditable artefact.
-content_id: "496d07d93a2080df"
-tags: [cache-hit-audit-script, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Daily-cron audit that parses Anthropic API responses, computes per-prompt cache_read_tokens / total_input_tokens ratio, and emits a Markdown report flagging cache-poison prefixes.
+content_id: "03036ee4b35c17be"
+complexity: medium
+produces: report
+est_tokens: 4400
+tags: [prompt-cache, cost-optimization, anthropic, claude, audit]
 ---
 # Cache Hit Audit Script
 
 ## Summary
 
-**One-sentence:** Cache Hit Audit Script: codified AI-system reliability practice that turns the recurring 'p7-llm-agent-developer/Token-cost daily watch' decision into a repeatable, auditable artefact.
+**One-sentence:** Daily-cron audit that parses Anthropic API responses, computes per-prompt cache_read_tokens / total_input_tokens ratio, and emits a Markdown report flagging cache-poison prefixes.
 
-**One-paragraph:** Cache Hit Audit Script addresses the gap identified by the p7-llm-agent-developer/Token-cost daily watch playbook: Anthropic prompt-cache reuse is fragile; an audit recipe (what prefix is stable, what poisons cache) sits in tribal knowledge today. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Anthropic prompt-cache reuse is fragile: a moved newline, an injected timestamp, or a per-user variable in the system prompt drops the cache hit rate from 92% to 30% with no error message. The recipe for auditing — what prefix is stable, what poisons cache, how to recover the win — sits in tribal knowledge. This methodology codifies the audit into a daily-cron script that parses trace export, computes per-prompt-prefix `cache_read_tokens / total_input_tokens` ratio, clusters prefixes by hash, diffs against the previous run, and emits a Markdown report listing prefixes whose ratio dropped &gt; 20%. Output is consumed by the cost-watch dashboard + alerts when overall ratio dips below 50%.
+
+**Ефективно для:**
+
+- Anthropic API users з prompt-cache enable — щоденний audit вирізняє poisoned prefixes.
+- Cost regressions після оновлення system-prompt: report показує який саме prefix дав cache miss.
+- RAG / agent loops, де cache_read ratio падає при додаванні per-user змінних.
+- Тижневі cost reviews: один Markdown файл = вся cache-economy дашборд.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p7-llm-agent-developer/Token-cost daily watch OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Project uses Anthropic (or OpenAI) prompt-cache feature.
+- Trace store captures `gen_ai.usage.cache_read_tokens` + `gen_ai.usage.input_tokens` per call.
+- Monthly LLM bill is large enough that 20-30% cache regression is material.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Project doesn't use prompt caching.
+- Trace export doesn't capture cache token fields (instrument first via trajectory-eval-otel).
+- Volume too low (&lt; 1000 cached calls / week) — audit overhead exceeds savings.
 
 ## Prerequisites
 
-- recent context for the p7-llm-agent-developer/Token-cost daily watch task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trace export | JSONL with gen_ai.* attributes | OTLP backend (Langfuse / Phoenix / etc.) |
+| Cron / scheduler | GitHub Actions / systemd timer / Airflow | infra |
+| Alert backend | Slack / email / PagerDuty | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+| [[trajectory-eval-otel]] | upstream context required for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-conversion-window | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: audit-daily-cron, prefix-clustering-by-hash, report-flag-threshold, never-paste-secrets-in-system, alert-on-overall-dip | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for report + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `cluster-by-prefix` | haiku | Hash + group by; deterministic. |
+| `compute-deltas` | haiku | Arithmetic over yesterday's table. |
+| `scan-variables` | haiku | Regex scan over system prompts. |
+| `publish-report` | haiku | Markdown template fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cache-hit-audit-script.json` | JSON schema for the Cache Hit Audit Script output contract |
-| `templates/cache-hit-audit-script.md` | Markdown skeleton with the required fields |
+| `templates/cache-audit.py` | Python daily-cron audit script template |
+| `templates/daily-report.md` | Markdown report template (overall + prefixes + alerts) |
+| `templates/alert.yml` | Slack webhook + threshold YAML |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-cache-hit-audit-script.py` | Enforce Cache Hit Audit Script output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-cache-hit-audit-script.py` | Validate the report artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `p7-llm-agent-developer/Token-cost daily watch`
+- [[trajectory-eval-otel]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

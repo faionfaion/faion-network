@@ -1,46 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Team AI Usage Policy Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Team AI Usage Policy output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Team AI Usage Policy Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the spec artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="policy_version" type="string" required="true">semver</field>
-      <field name="always_ok_list" type="list" required="true">explicit examples</field>
-      <field name="never_ok_list" type="list" required="true">explicit examples</field>
-      <field name="ask_first_list" type="list" required="true">explicit examples + who to ask</field>
-      <field name="tool_allowlist" type="list" required="true">[{tool, vendor, retention_behavior, dpa_signed}]</field>
-      <field name="incident_response_url" type="string" required="true">reporting channel link</field>
-      <field name="last_reviewed" type="date" required="true">quarterly cadence</field>
-      <field name="owner" type="string" required="true">named policy owner</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">policy is longer than 1 printed page</pattern>
-      <pattern id="f2">tool_allowlist is empty AND tools are in active use</pattern>
-      <pattern id="f3">incident_response clause includes punitive language</pattern>
-      <pattern id="f4">last_reviewed &gt; 180 days</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ai-usage-policy-team.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>policy_version populated with a typed value</item>
-      <item>always_ok_list populated with a typed value</item>
-      <item>never_ok_list populated with a typed value</item>
-      <item>ask_first_list populated with a typed value</item>
-      <item>tool_allowlist populated with a typed value</item>
-      <item>incident_response_url populated with a typed value</item>
-      <item>last_reviewed populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-usage-policy-team.json",
+  "type": "object",
+  "required": ["policy_id", "version", "owner", "review_date", "lists", "incident_response"],
+  "properties": {
+    "policy_id": {"type": "string"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "owner": {"type": "object", "required": ["name", "role", "slack"], "properties": {"name": {"type": "string"}, "role": {"type": "string"}, "slack": {"type": "string"}}},
+    "review_date": {"type": "string", "format": "date"},
+    "lists": {"type": "object", "required": ["always_ok", "never_ok", "ask_first"], "properties": {"always_ok": {"type": "array", "minItems": 5}, "never_ok": {"type": "array", "minItems": 5}, "ask_first": {"type": "array", "minItems": 3}}},
+    "incident_response": {"type": "object", "required": ["detect", "contain", "notify", "learn"]},
+    "word_count": {"type": "integer", "maximum": 500}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "policy_id": "ai-policy-acme",
+  "version": "1.0.0",
+  "owner": {
+    "name": "L. Vasylenko",
+    "role": "Head of Security",
+    "slack": "#sec-ai-policy"
+  },
+  "review_date": "2026-08-22",
+  "lists": {
+    "always_ok": [
+      "Open-source repos pasted to AI assistant",
+      "Pasting OUR docs that are already public",
+      "Asking for code review on YOUR own code",
+      "Generating boilerplate (tests / migrations / docs)",
+      "Asking conceptual questions"
+    ],
+    "never_ok": [
+      "Pasting customer PII into any AI tool",
+      "Pasting payment / health / minor data",
+      "Sharing prod credentials",
+      "Pasting unredacted security incidents",
+      "Pasting unredacted internal financial data"
+    ],
+    "ask_first": [
+      "Pasting competitor product details",
+      "Pasting unannounced product roadmap items",
+      "Using tools not on the approved list"
+    ]
+  },
+  "incident_response": {
+    "detect": "Self-report or auto-detector triggers IR ticket",
+    "contain": "Rotate any leaked secret in 30 min",
+    "notify": "Security lead in 1h; DPO if PII",
+    "learn": "Postmortem within 5 working days; policy updated"
+  },
+  "word_count": 410
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "policy_id": "x",
+  "version": "1"
+}
+]]></code>
+    <note>Missing owner, review_date, lists, incident_response; version not semver.</note>
+  </example>
+
+  <reference path="scripts/validate-ai-usage-policy-team.py">Validator script</reference>
 </text>

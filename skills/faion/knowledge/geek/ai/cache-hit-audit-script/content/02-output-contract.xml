@@ -1,39 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Cache Hit Audit Script Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Cache Hit Audit Script output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Cache Hit Audit Script Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the report artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/cache-hit-audit-script.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/cache-hit-audit-script.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/cache-hit-audit-script.json",
+  "type": "object",
+  "required": ["report_date", "overall", "prefixes", "alerts"],
+  "properties": {
+    "report_date": {"type": "string", "format": "date"},
+    "overall": {"type": "object", "required": ["cache_read_tokens", "input_tokens", "ratio", "delta_vs_7d"], "properties": {"cache_read_tokens": {"type": "integer", "minimum": 0}, "input_tokens": {"type": "integer", "minimum": 0}, "ratio": {"type": "number", "minimum": 0, "maximum": 1}, "delta_vs_7d": {"type": "number"}}},
+    "prefixes": {"type": "array", "items": {"type": "object", "required": ["prefix_hash", "calls", "ratio", "ratio_delta_pp", "flag"], "properties": {"prefix_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "calls": {"type": "integer", "minimum": 0}, "ratio": {"type": "number"}, "ratio_delta_pp": {"type": "number"}, "flag": {"type": "string"}}}},
+    "alerts": {"type": "array", "items": {"type": "string"}}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "report_date": "2026-05-22",
+  "overall": {
+    "cache_read_tokens": 12500000,
+    "input_tokens": 18000000,
+    "ratio": 0.694,
+    "delta_vs_7d": -0.08
+  },
+  "prefixes": [
+    {
+      "prefix_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "calls": 4200,
+      "ratio": 0.92,
+      "ratio_delta_pp": 0.5,
+      "flag": "ok"
+    },
+    {
+      "prefix_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "calls": 1100,
+      "ratio": 0.31,
+      "ratio_delta_pp": -55.0,
+      "flag": "regression"
+    }
+  ],
+  "alerts": [
+    "prefix b... cache ratio dropped 55pp (probable per-user var in system prompt)"
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "report_date": "2026-05-22"
+}
+]]></code>
+    <note>Missing overall, prefixes, alerts.</note>
+  </example>
+
+  <reference path="scripts/validate-cache-hit-audit-script.py">Validator script</reference>
 </text>

@@ -3,78 +3,95 @@ slug: ai-trust-disclosure-patterns
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Trust Disclosure Patterns: codified AI-system reliability practice that turns the recurring 'role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse' decision into a repeatable, auditable artefact.
-content_id: "77a373a72ddc285b"
-tags: [ai-trust-disclosure-patterns, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Checklist for shipping copilot / chat / inline-AI features without trust collapse: source citation, uncertainty surface, model identity, opt-out, regulatory disclosure.
+content_id: "2fc096e77844ae81"
+complexity: medium
+produces: checklist
+est_tokens: 4400
+tags: [ai-trust, ux, disclosure, compliance, eu-ai-act]
 ---
-# Ai Trust Disclosure Patterns
+# AI Trust Disclosure Patterns
 
 ## Summary
 
-**One-sentence:** Ai Trust Disclosure Patterns: codified AI-system reliability practice that turns the recurring 'role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse' decision into a repeatable, auditable artefact.
+**One-sentence:** Checklist for shipping copilot / chat / inline-AI features without trust collapse: source citation, uncertainty surface, model identity, opt-out, regulatory disclosure.
 
-**One-paragraph:** Ai Trust Disclosure Patterns addresses the gap identified by the role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse playbook: How to surface uncertainty, hallucination risk, source citations, model identity. Regulatory pressure (EU AI Act) is increasing. Zero coverage in corpus. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Shipping AI features (copilot, chat, inline) without explicit trust patterns triggers user backlash and regulatory exposure (EU AI Act Article 50 mandates AI-generated content disclosure from 2026). This methodology codifies five disclosure axes — model identity, uncertainty surface, source citation, opt-out path, error reporting — into a per-feature checklist. Output is a YAML/JSON artefact validated by CI that pre-launch reviewers (legal, design, eng) sign off against.
+
+**Ефективно для:**
+
+- Будь-який consumer-facing AI feature, що шипиться в ЄС після Feb 2026 — Art. 50 mandate.
+- Copilot / inline-suggestion UX: source citation + uncertainty bar усуває trust collapse.
+- B2B chat-боти, які отримують user complaints на 'AI lies to me' — disclosure pattern зменшує churn.
+- Команди, які мають design + legal review перед launch — checklist синхронізує обидві сторони.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Feature is user-facing AI (chat, suggestions, summarization, generation).
+- Users are end-consumers or external (not internal-only ML tooling).
+- Product ships in jurisdictions with AI-disclosure regulation (EU, NY local laws, etc.) OR brand cares about trust.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Internal-only ML pipeline with no UI surface.
+- AI is invisible plumbing (ranking, fraud-detection) with no per-decision user-visible output.
+- Feature is in private alpha with &lt;50 friend-and-family users (apply at beta gate instead).
 
 ## Prerequisites
 
-- recent context for the role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec | Markdown | PM |
+| UX wireframes | Figma / PNG | Design |
+| Jurisdiction map | table of markets + regulations | Legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+| none | This methodology is self-contained; no upstream artefact required. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: model-identity-visible, uncertainty-signal-required, source-citation-on-claim, opt-out-one-click, error-report-path | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for checklist + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `map-axes-to-ui` | sonnet | Visual scan + design judgment. |
+| `draft-confidence-bands` | sonnet | Picks band thresholds from distribution. |
+| `legal-signoff-prep` | haiku | Mechanical doc generation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-trust-disclosure-patterns.json` | JSON schema for the Ai Trust Disclosure Patterns output contract |
-| `templates/ai-trust-disclosure-patterns.md` | Markdown skeleton with the required fields |
+| `templates/disclosure-checklist.yml` | YAML disclosure-checklist artefact template (5 axes + jurisdictions + signoffs) |
+| `templates/confidence-band-spec.md` | Confidence-band-to-UI mapping spec template |
+| `templates/opt-out-ux-pattern.md` | Reference opt-out UX pattern (settings + per-surface toggle) |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-trust-disclosure-patterns.py` | Enforce Ai Trust Disclosure Patterns output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-trust-disclosure-patterns.py` | Validate the checklist artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[ai-usage-policy-team]]
+- [[ai-feature-eval-set-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, eval scores, stakes, noise ratio, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -1,39 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai Trust Disclosure Patterns Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai Trust Disclosure Patterns output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI Trust Disclosure Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the checklist artefact this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ai-trust-disclosure-patterns.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-trust-disclosure-patterns.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-trust-disclosure-patterns.json",
+  "type": "object",
+  "required": ["feature_id", "disclosure_axes", "review_signoffs"],
+  "properties": {
+    "feature_id": {"type": "string"},
+    "disclosure_axes": {"type": "object", "required": ["model_identity_visible", "uncertainty_signal", "source_citation", "opt_out_path", "error_report_path"], "additionalProperties": {"type": "boolean"}},
+    "jurisdictions": {"type": "array", "items": {"type": "string"}},
+    "review_signoffs": {"type": "object", "required": ["legal", "design", "engineering"], "additionalProperties": {"type": "object", "required": ["reviewer", "date"], "properties": {"reviewer": {"type": "string"}, "date": {"type": "string", "format": "date"}}}}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feature_id": "copilot-v2",
+  "disclosure_axes": {
+    "model_identity_visible": true,
+    "uncertainty_signal": true,
+    "source_citation": true,
+    "opt_out_path": true,
+    "error_report_path": true
+  },
+  "jurisdictions": [
+    "EU",
+    "US",
+    "UK"
+  ],
+  "review_signoffs": {
+    "legal": {
+      "reviewer": "j.lopez",
+      "date": "2026-05-20"
+    },
+    "design": {
+      "reviewer": "k.brown",
+      "date": "2026-05-19"
+    },
+    "engineering": {
+      "reviewer": "m.singh",
+      "date": "2026-05-21"
+    }
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feature_id": "copilot-v2",
+  "disclosure_axes": {
+    "model_identity_visible": true
+  }
+}
+]]></code>
+    <note>Missing review_signoffs; disclosure_axes missing 4 of 5 required keys.</note>
+  </example>
+
+  <reference path="scripts/validate-ai-trust-disclosure-patterns.py">Validator script</reference>
 </text>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Cache Hit Audit Script Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the cache-hit-audit-script methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="instrument-cache-tokens">
+      <input>OTel-instrumented LLM clients</input>
+      <action>Confirm every LLM call exports `cache_read_tokens` + `cache_creation_tokens` + `input_tokens` attributes via OTel.</action>
+      <output>Trace export verified</output>
+      <decision-gate>If attributes missing, return to trajectory-eval-otel methodology first.</decision-gate>
+    </step>
+    <step n="2" name="cluster-by-prefix">
+      <input>Trace JSONL + system-prompt hash function</input>
+      <action>Group calls by SHA-256 of the cached portion (system prompt + tool defs). Compute per-cluster ratio.</action>
+      <output>Per-cluster ratio table</output>
+    </step>
+    <step n="3" name="compute-deltas">
+      <input>Today's cluster table + yesterday's cluster table</input>
+      <action>Compute ratio_delta_pp per cluster; flag clusters with delta &amp;lt; -20pp AND calls ≥ 100.</action>
+      <output>Flagged-prefix list</output>
+    </step>
+    <step n="4" name="scan-system-prompt-for-variables">
+      <input>Cached system prompts + regex pattern set</input>
+      <action>Regex check for common cache-poisons: per-user vars, timestamps, session IDs. Flag matches in the report.</action>
+      <output>Variable-injection findings</output>
+    </step>
+    <step n="5" name="publish-report-and-alert">
+      <input>Cluster table + flag list + variable scan + Slack webhook</input>
+      <action>Render Markdown report → repo + Slack notify. Aggregate alert if overall ratio drops &amp;gt; 15pp vs 7d.</action>
+      <output>Daily report live; alerts wired.</output>
+    </step>
+
+  </section>
+</text>

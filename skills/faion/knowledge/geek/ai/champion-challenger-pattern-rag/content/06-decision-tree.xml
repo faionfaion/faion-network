@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Champion Challenger Pattern for RAG Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+      <root-question id="q-prereq">Are all three prereqs satisfied (≥ 1K qps/day, shadow infra, eval rubric)?</root-question>
+
+      <branch when="prereqs == false">
+        <conclusion ref="shadow-no-user-leak" verdict="defer; resolve missing prereq first (volume too low → wait; no shadow infra → build; no rubric → ai-feature-eval-set-design)"/>
+      </branch>
+
+      <branch when="prereqs == true">
+        <question id="q-cycle-result">After 7 days: delta ≥ 3pp AND n ≥ 1000 AND no safety regressions?</question>
+        <branch when="promotion_passes == true">
+          <conclusion ref="rollback-on-promotion-regression" verdict="promote challenger; keep previous champion warm 24h with auto-rollback wired"/>
+        </branch>
+        <branch when="promotion_passes == false">
+          <question id="q-which-failed">Which criterion failed?</question>
+          <branch when="delta_below_3pp">
+            <conclusion ref="promotion-criteria-explicit" verdict="design a stronger challenger (bigger delta); start new cycle"/>
+          </branch>
+          <branch when="n_below_1000">
+            <conclusion ref="promotion-criteria-explicit" verdict="extend cycle 1 more week OR widen shadow ratio if infra allows"/>
+          </branch>
+          <branch when="safety_regression">
+            <conclusion ref="shadow-no-user-leak" verdict="reject challenger; investigate safety failure; bench a different change"/>
+          </branch>
+        </branch>
+      </branch>
+    </decision-tree>
+
+    <example trace="chunking-bench">
+      prereqs=true → q-cycle-result: delta=+4pp, n=1300, safety=0 → promotion_passes; promote challenger; 24h auto-rollback watch.
+    </example>
+</text>

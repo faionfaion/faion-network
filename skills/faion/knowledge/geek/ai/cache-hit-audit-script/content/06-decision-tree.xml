@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Cache Hit Audit Script Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+      <root-question id="q-cache-used">Does the project use Anthropic / OpenAI prompt caching?</root-question>
+
+      <branch when="cache_used == false">
+        <conclusion ref="audit-daily-cron" verdict="skip; methodology applies to projects using cache feature"/>
+      </branch>
+
+      <branch when="cache_used == true">
+        <question id="q-volume">Is monthly cached-call volume ≥ 30K (≥1000/day)?</question>
+        <branch when="volume_low == true">
+          <conclusion ref="audit-daily-cron" verdict="defer; per-call savings too small to justify audit overhead — revisit at 1000/day"/>
+        </branch>
+        <branch when="volume_low == false">
+          <question id="q-attrs">Does the trace store capture cache_read_tokens?</question>
+          <branch when="attrs_present == false">
+            <conclusion ref="audit-daily-cron" verdict="instrument trajectory-eval-otel first; cannot audit without the attributes"/>
+          </branch>
+          <branch when="attrs_present == true">
+            <conclusion ref="prefix-clustering-by-hash" verdict="deploy daily audit; cluster by prefix_hash; alert on 20pp drops"/>
+          </branch>
+        </branch>
+      </branch>
+    </decision-tree>
+
+    <example trace="claude-agent">
+      cache_used=true → q-volume: 4K/day → q-attrs: present → prefix-clustering-by-hash; daily audit wired; 7-day baseline 84% ratio.
+    </example>
+</text>
