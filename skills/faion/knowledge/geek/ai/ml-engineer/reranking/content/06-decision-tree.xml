@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Reranking — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by latency budget + privacy + cost to {Cohere, Voyage, Jina, BGE local, FlashRank}.</summary>
+
+  <decision-tree>
+    <root-question id="q-recall">Is first-stage recall@20 ≥ 80% on the labelled set?</root-question>
+    <branch when="recall_at_20 &lt; 0.80">
+      <conclusion ref="r1-reranker-after-retrieval" verdict="SKIP reranker; fix retrieval first"/>
+    </branch>
+    <branch when="recall_at_20 &gt;= 0.80">
+      <question id="q-privacy">Does the data require on-prem / local inference (privacy, regulation)?</question>
+      <branch when="privacy_required == true">
+        <conclusion ref="r2-top-n-capacity" verdict="provider=BGE local (BGE-reranker-base for speed, BGE-reranker-large for quality)"/>
+      </branch>
+      <branch when="privacy_required == false">
+        <question id="q-latency">Latency budget for reranker step?</question>
+        <branch when="latency_budget_ms &lt; 200">
+          <conclusion ref="r3-latency-budget" verdict="provider=FlashRank (CPU-fast) OR reduce top_n_input to 10"/>
+        </branch>
+        <branch when="latency_budget_ms &gt;= 200">
+          <question id="q-cost">Cost-sensitive workload?</question>
+          <branch when="cost_sensitive == true">
+            <conclusion ref="r4-eval-before-adopt" verdict="provider=Jina OR Voyage (lower per-call than Cohere)"/>
+          </branch>
+          <branch when="cost_sensitive == false">
+            <conclusion ref="r5-fallback-on-outage" verdict="provider=Cohere Rerank multilingual; fallback=BGE local"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="recall=0.85 + no privacy + 350ms budget + cost-OK → Cohere">
+    <code lang="text"><![CDATA[
+recall_at_20=0.85 → q-privacy=false → q-latency=350 → q-cost=false → r5-fallback-on-outage verdict: Cohere Rerank + BGE fallback
+]]></code>
+  </example>
+</text>
