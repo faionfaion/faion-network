@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gemini-api-integration Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gemini-api-integration as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Gemini API Integration Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Five recurring failure modes in Gemini integrations.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling model.generate_content immediately after upload_file without polling for state == "ACTIVE".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The Files API processes uploads asynchronously; the file is not ready until state transitions to ACTIVE. Calling before it is ready raises an error or gives partial/empty results. Always poll before analysis.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>File uploads (video/audio) not waiting for state.name == "PROCESSING" completion before calling model.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Uploads are asynchronous; calling the model before the file transitions to ACTIVE state fails with errors or empty results.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Response blocked by safety filters without checking prompt_feedback.block_reason before accessing response.text.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Accessing .text on a blocked response raises ValueError. Always check block_reason first and log it for audit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Enabling Google Search grounding by default without surfacing cost to users.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Grounding nearly doubles per-query cost; agents that enable it unconditionally blow budgets. Make it explicit and user-controlled.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Mixing google-generativeai SDK (v1) with google-genai SDK (v0.8+) in the same codebase.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both packages define overlapping types and namespaces; import conflicts cause runtime failures. Standardize on one SDK version per project.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Assuming uploaded files via Files API persist beyond 48 hours.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Files expire after 48 hours; agents that cache file handles across sessions fail silently when the file is deleted. Store file names instead and re-upload if needed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Not testing multi-tool function calling responses explicitly; assuming parallel tool execution.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Gemini supports function calling but does not guarantee the same parallel-execution semantics as OpenAI. Test your use case explicitly.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Inline base64 for large media (&gt;10 MB).</description>
+      <symptom>Request size exceeds limit; intermittent 400 errors on long videos.</symptom>
+      <root-cause>Default code path uses inline data; Files API not wired.</root-cause>
+      <fix>Use Files API for &gt;10 MB or any video/audio; track TTL (rule r2).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Missing safety_settings.</description>
+      <symptom>BLOCK_REASON surfaces in production unexpectedly when SDK default changes.</symptom>
+      <root-cause>Implicit default trusted to "do the right thing".</root-cause>
+      <fix>Explicit 4-category settings with chosen thresholds (rule r4).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>BLOCK_REASON swallowed — code returns empty string when finish_reason != STOP.</description>
+      <symptom>Users see empty responses; support cannot diagnose because reason not logged.</symptom>
+      <root-cause>Try/except catches all and returns "".</root-cause>
+      <fix>Surface finish_reason + block_reason in the response handler (rule r6).</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>No retry on 429 — single rate-limit kills the call.</description>
+      <symptom>Spike-driven failures during traffic peaks.</symptom>
+      <root-cause>Naive client without backoff.</root-cause>
+      <fix>Exponential backoff capped 60s, ≤5 attempts (rule r5).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Model mix on the same call site — Pro and Flash alternating.</description>
+      <symptom>Quality and cost both swing day-to-day; eval results inconsistent.</symptom>
+      <root-cause>Routing logic accidentally added without per-site grid.</root-cause>
+      <fix>One model per call site; use the latency-vs-quality grid to lock it in.</fix>
+    </antipattern>
   </section>
 </text>
