@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="tool-description-as-prompt Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for tool-description-as-prompt as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Tool Description Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in tool catalogs that the audit rubric catches. Each pairs symptom + root cause + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Tool name is not verb-object; description is generic</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Description: "Search the docs" — needs when-to-use, when-NOT-to-use, output shape</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Marketing prose instead of technical specification</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Strip marketing language ("Powerful, AI-driven, real-time...") — model doesn't care</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Description longer than 200 tokens</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tighten — long descriptions lose the model's attention</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Description includes implementation details</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cut implementation details ("uses Bedrock under the hood") — model only needs the contract</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Tools with overlapping descriptions cause mis-selection</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Differentiate via the "do NOT use this when ..." line pointing to the other tool</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="marketing-prose" severity="medium">
+      <symptom>Description starts with adjectives ("Our powerful, AI-driven, enterprise-grade ..."). Tokens-per-description &gt; 200 with low discrimination signal.</symptom>
+      <root-cause source="Internal — copying from public marketing pages">Author reused the API marketing blurb because it was already written. Model has no use for any of those words.</root-cause>
+      <fix>Replace with the 5-part structure: "Hybrid search over the docs corpus. Keyword plus semantic. Returns top 10 passages with paths." Strip all adjectives.</fix>
+    </antipattern>
+
+    <antipattern id="overlap-without-anti-trigger" severity="high">
+      <symptom>Two tools have similar verbs (read_file / view_file / open_file). Eval shows 30-50% mis-selection rate between them on identical inputs.</symptom>
+      <root-cause source="Anthropic engineering — SWE-bench analysis">Neither description names the other; model alternates near-randomly when both look plausible.</root-cause>
+      <fix>Add mutual "do NOT use this when — use `&lt;other_tool&gt;` instead" lines that point to the partner by exact name.</fix>
+    </antipattern>
+
+    <antipattern id="silent-mutation" severity="high">
+      <symptom>Destructive tool (`delete_branch`, `drop_table`) described without `MUTATING:` marker. Agent calls it on the current working branch.</symptom>
+      <root-cause source="Internal — delete_branch incident on PR #3014">Verb alone is not a strong-enough signal; safety hooks can't pattern-match on description.</root-cause>
+      <fix>Prefix description with `MUTATING:` (or `IRREVERSIBLE:`); pair with the dry-run / preview tool's name; CI fails a description with destructive verb but no marker.</fix>
+    </antipattern>
+
+    <antipattern id="schema-description-drift" severity="medium">
+      <symptom>Description mentions `page` argument; JSON schema has no `page` field (or vice versa). Agent fills phantom arguments → API rejects request.</symptom>
+      <root-cause source="Anthropic tool-use docs; internal argument-fill audits">Description and schema updated by different commits; CI never cross-checks.</root-cause>
+      <fix>Lint rule: parse description for argument names; require each to appear in `input_schema.properties`. Fail build on drift.</fix>
+    </antipattern>
+
+    <antipattern id="unbounded-pagination" severity="medium">
+      <symptom>Paginated tool description lacks per-page count + max-page cap. Agent calls 30+ pages enumerating a corpus instead of narrowing the query.</symptom>
+      <root-cause source="Internal — search_docs enumeration loop Q4 2025">Author thought enumeration was the agent's choice; without an explicit cap the model defaults to brute-force.</root-cause>
+      <fix>Add "Returns N per page; pass cursor from previous response. Do NOT loop more than M pages — narrow the query if you need more." to the description.</fix>
+    </antipattern>
+
   </section>
 </text>

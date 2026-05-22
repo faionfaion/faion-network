@@ -1,22 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tool-description-as-prompt Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Tool Description Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for an audited tool-catalog rubric. Each tool gets a 0-5 score across the five rule axes; the artefact is consumed by the description-rewrite subagent.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Audit-rubric schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/tool-description-audit.json",
+  "type": "object",
+  "required": ["catalog_version", "audited_at", "tools"],
+  "properties": {
+    "catalog_version": {"type": "string"},
+    "audited_at":      {"type": "string", "format": "date"},
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "tokens", "scores", "verdict"],
+        "properties": {
+          "name":     {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+          "tokens":   {"type": "integer", "minimum": 0, "maximum": 500},
+          "scores": {
+            "type": "object",
+            "required": ["use_when","not_use_when","input_contract","output_contract","side_effects"],
+            "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 1}
+          },
+          "verdict":  {"enum": ["ok", "rewrite", "split"]},
+          "anti_trigger_partner": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "catalog_version": "1.4.2",
+  "audited_at": "2026-05-22",
+  "tools": [
+    {"name": "search_docs", "tokens": 88, "scores": {"use_when": 1, "not_use_when": 1, "input_contract": 1, "output_contract": 1, "side_effects": 1}, "verdict": "ok"},
+    {"name": "manage",      "tokens": 14, "scores": {"use_when": 0, "not_use_when": 0, "input_contract": 0, "output_contract": 0, "side_effects": 0}, "verdict": "rewrite"}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tools": [{"name": "X"}]
+}
+]]></code>
+    <note>Missing catalog_version + audited_at; tool missing tokens / scores / verdict; name uppercase.</note>
+  </example>
+
+  <reference path="templates/anthropic-tool-definition.py">Anthropic SDK structured definition</reference>
+  <reference path="templates/openai-tool-definition.py">OpenAI SDK structured definition</reference>
+  <reference path="scripts/validate-tool-description-as-prompt.py">Validator script</reference>
 </text>
