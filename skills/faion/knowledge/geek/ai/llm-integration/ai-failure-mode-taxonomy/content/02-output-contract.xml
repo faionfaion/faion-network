@@ -1,30 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="AI Failure Mode Taxonomy Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Failure Mode Taxonomy deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="version" format="semver" />
-      <field name="labels" type="list" min="3" schema="{name,definition,detector,remediation,examples}" />
-      <field name="instances_classified" type="list" schema="{instance_id,primary_label,secondary_tags,evidence}" />
-    </required>
-    <forbidden>
-      <pattern id="f1">multi-primary labels</pattern>
-      <pattern id="f2">ad-hoc labels not in the versioned set</pattern>
-      <pattern id="f3">label without remediation lane</pattern>
-      <pattern id="f4">destructive re-tagging (overwrite without history)</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Append new labels only after ≥3 justifying instances.</transformation>
-      <transformation>Re-classify with prior_label preserved.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
+  <summary>JSON Schema for taxonomy.json: exactly 12 modes with detector + severity + linked_methodology.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-failure-mode-taxonomy",
+  "type": "object",
+  "required": ["version", "owner", "modes"],
+  "properties": {
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "owner": {"type": "string", "minLength": 1},
+    "modes": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "definition", "detector", "severity", "linked_methodology"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^fm\\.[a-z0-9-]+(\\.[a-z0-9-]+)+$"},
+          "name": {"type": "string"},
+          "definition": {"type": "string", "minLength": 20},
+          "detector": {"type": "string", "minLength": 10},
+          "severity": {"enum": ["low", "medium", "high", "critical"]},
+          "linked_methodology": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Required 12 modes (canonical seed)">
+    <list>
+      <item>fm.hallucination.fabricated-api</item>
+      <item>fm.hallucination.fabricated-fact</item>
+      <item>fm.refusal.over-refusal</item>
+      <item>fm.refusal.bypass</item>
+      <item>fm.security.indirect-prompt-injection</item>
+      <item>fm.security.exfiltration</item>
+      <item>fm.output.schema-drop</item>
+      <item>fm.output.format-drift</item>
+      <item>fm.latency.spike</item>
+      <item>fm.cost.blowup</item>
+      <item>fm.tool.misuse</item>
+      <item>fm.context.bleed</item>
+    </list>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "version": "1.0.0",
+  "owner": "ml-platform",
+  "modes": [
+    {"id": "fm.hallucination.fabricated-api", "name": "Fabricated API", "definition": "Model emits a library or endpoint that does not exist.", "detector": "import check + regex against allow-list of installed packages.", "severity": "high", "linked_methodology": "jailbreak-eval-suite-bootstrap"},
+    {"id": "fm.security.indirect-prompt-injection", "name": "IPI", "definition": "Instructions in retrieved content hijack the next tool call.", "detector": "canary token in outbound tool payload.", "severity": "critical", "linked_methodology": "indirect-prompt-injection-defense"}
+  ]
+}]]></code>
+      <note>(elided to 2 of 12 for brevity; validator requires all 12 ids).</note>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"version": "1", "owner": "team", "modes": [{"id": "halluc", "severity": "bad"}]}]]></code>
+      <note>Fails: version not semver, owner generic, mode id wrong shape, severity not in enum, &lt;12 modes.</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>Single primary label per instance</item>
-      <item>Every label has remediation</item>
-      <item>Re-classifications append, not overwrite</item>
-      <item>Version stamped</item>
+      <item>modes.length == 12 exactly.</item>
+      <item>id pattern matches `fm.x.y`.</item>
+      <item>severity ∈ {low, medium, high, critical}.</item>
+      <item>linked_methodology is a non-empty slug.</item>
+      <item>owner is a named team or person.</item>
     </list>
   </section>
 </text>

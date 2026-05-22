@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Speech-to-Text — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by latency requirement + privacy + monthly volume to a provider.</summary>
+
+  <decision-tree>
+    <root-question id="q-mode">Real-time / streaming captioning required?</root-question>
+    <branch when="mode == 'streaming'">
+      <question id="q-privacy-stream">Privacy / on-prem required?</question>
+      <branch when="privacy_required == true">
+        <conclusion ref="r2-self-host-break-even" verdict="provider=faster-whisper local (Large-v3 Turbo) on GPU"/>
+      </branch>
+      <branch when="privacy_required == false">
+        <conclusion ref="r1-default-provider" verdict="provider=Deepgram Nova-2 OR ElevenLabs Scribe (≤300ms latency)"/>
+      </branch>
+    </branch>
+    <branch when="mode == 'batch'">
+      <question id="q-volume">Monthly volume &gt;500 hours?</question>
+      <branch when="monthly_volume_hours &gt; 500">
+        <conclusion ref="r2-self-host-break-even" verdict="provider=faster-whisper local; break-even passed"/>
+      </branch>
+      <branch when="monthly_volume_hours &lt;= 500">
+        <question id="q-needs">Diarization OR summary postprocess required?</question>
+        <branch when="diarization == true or summary == true">
+          <conclusion ref="r1-default-provider" verdict="provider=AssemblyAI (LeMUR pipeline)"/>
+        </branch>
+        <branch when="diarization == false and summary == false">
+          <conclusion ref="r1-default-provider" verdict="provider=OpenAI GPT-4o Mini Transcribe (cheapest accurate)"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="streaming + non-private → Deepgram">
+    <code lang="text"><![CDATA[
+mode=streaming → q-privacy-stream → privacy_required=false → r1-default-provider verdict: Deepgram Nova-2
+]]></code>
+  </example>
+</text>
