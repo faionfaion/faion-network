@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Agent Replay Harness Cookbook Procedure" version="1.0.0" est_tokens="1300" depth="deep">
+  <summary>Seven-step procedure from "we have a failing trace" to "the failure replays on demand".</summary>
+
+  <section title="Steps">
+    <step n="1" name="capture-baseline-trace">
+      <input>Live agent run with structured logging enabled.</input>
+      <action>Record every LLM call (prompt + completion + finish_reason + temperature + seed), every tool call (name + args + return + duration), and every clock/random read into a jsonl trace keyed by run_id.</action>
+      <output>traces/{run_id}.jsonl, one event per line.</output>
+    </step>
+
+    <step n="2" name="classify-nondeterminism">
+      <input>The trace from step 1.</input>
+      <action>Label each event as: stubbable_llm, stubbable_tool, infra_clock, infra_random, infra_external (non-stubbable). Compute coverage = stubbable_events / total_events.</action>
+      <output>{event_id, class} table. Plus coverage ratio.</output>
+      <decision-gate>If coverage &lt; 0.9, stop and capture more state before continuing.</decision-gate>
+    </step>
+
+    <step n="3" name="wire-llm-stub">
+      <input>Trace events of class stubbable_llm.</input>
+      <action>Subclass the agent's LLM client. Override the call method to look up the event by prompt-hash + iteration number and return the recorded completion. On miss, raise ReplayMissError with the prompt diff.</action>
+      <output>replay_llm.py + a unit test that replays one recorded turn.</output>
+    </step>
+
+    <step n="4" name="wire-tool-stubs">
+      <input>Trace events of class stubbable_tool; tool registry from prerequisites.</input>
+      <action>For each tool, generate a stub class that overrides execute() to look up by (tool_name, args_hash) and return the recorded value. Wrap in a typed dataclass matching the tool's schema.</action>
+      <output>One stub class per tool + a registry mapping name → stub.</output>
+    </step>
+
+    <step n="5" name="freeze-clock-and-random">
+      <input>Trace events of class infra_clock and infra_random.</input>
+      <action>Inject a frozen clock (e.g. freezegun) and a seeded random (numpy seed) at agent-init time, restored from trace metadata.</action>
+      <output>conftest.py / harness/init.py block setting time + seed.</output>
+    </step>
+
+    <step n="6" name="run-replay-and-assert-equality">
+      <input>The wired harness + the original failing trace.</input>
+      <action>Execute the agent under the harness. Assert that every emitted event matches the recorded event (LLM completion text, tool args). Diff any divergence.</action>
+      <output>Either green (failure reproduces) or a diff report showing the first divergent event.</output>
+      <decision-gate>If diff is non-empty, root-cause it (usually missing state — go back to step 2 with the new event class) before declaring the harness done.</decision-gate>
+    </step>
+
+    <step n="7" name="publish-manifest-and-deviation-log">
+      <input>Green replay from step 6.</input>
+      <action>Emit the harness manifest per content/02-output-contract.xml. Open a deviation-log entry for any tool that needed a non-trivial stub (e.g. partial response, schema mismatch).</action>
+      <output>Validated harness-manifest.json + deviation-log entry committed to the repo.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

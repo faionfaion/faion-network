@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="decimal-as-string-pattern Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for decimal-as-string-pattern as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Four failure modes with observable symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Modeling currency as a JSON number (float) and "rounding to two decimals at the end".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Compounding drift across many line items pushes totals off by one or more cents, which fails reconciliation. The Base-10 digit-encoding paper shows LLMs emit numbers as digit tokens anyway, so a string field is closer to the model's native representation while gaining exact arithmetic on the consumer side.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Reusing one wide pattern (^\S+$) for every string field "just in case".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any string passes — the pattern adds zero decode-time constraint and earns false confidence. If the format is genuinely unknown, omit the pattern; otherwise pin the exact shape.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-float-currency">
+      <description>Modeling currency as a JSON `number` (float) and "rounding to two decimals at the end".</description>
+      <reason>Float storage corrupts the exact value before any business logic runs. Compounding drift across many line items pushes totals off by cents; reconciliation fails downstream.</reason>
+    </antipattern>
+    <p>Symptom: invoice totals off by 1-3 cents on large invoices; finance reconciliation fails. Root cause: `float` field for `unit_price_usd`. Fix: switch to `str` with `^\\d+\\.\\d{2}$` and parse via `Decimal()`; recompute totals via Decimal arithmetic.</p>
+
+    <antipattern id="fm-02-wide-pattern">
+      <description>Reusing one wide pattern (`^\\S+$` or `^.+$`) for every string field "just in case".</description>
+      <reason>Any string passes — the pattern adds zero decode-time constraint and earns false confidence. The schema looks validated; the values drift unchecked.</reason>
+    </antipattern>
+    <p>Symptom: format-compliance metric says 100% but downstream parsers fail. Root cause: lazy pattern. Fix: replace with the strictest pattern that the legitimate distribution can satisfy, or remove the pattern keyword entirely.</p>
+
+    <antipattern id="fm-03-pattern-without-description">
+      <description>Patterned field with empty or default `description`.</description>
+      <reason>JSON-mode fallbacks (mini/nano models without strict mode) cannot see the pattern at sampling time; without a description that names the format and gives an example, the model emits drift the validator then rejects.</reason>
+    </antipattern>
+    <p>Symptom: validator-retry rate &gt;10% on a fallback model. Root cause: missing description anchor. Fix: add `description="<format>. Example: '<value>'."` to every patterned field.</p>
+
+    <antipattern id="fm-04-arithmetic-on-string">
+      <description>Comparing or adding patterned-string values directly (without parsing to Decimal/int).</description>
+      <reason>String comparison gives surprising results (`"19.99" &lt; "200.00"` lexicographically is true, but semantically it depends on the format); arithmetic raises TypeError or silently coerces to float.</reason>
+    </antipattern>
+    <p>Symptom: order-by-price queries return wrong order; total mysteriously becomes a float. Root cause: skipped the parse step. Fix: parse to `Decimal` immediately after Pydantic validation, store the parsed value in the domain model, treat the string as a serialization-only representation.</p>
   </section>
 </text>

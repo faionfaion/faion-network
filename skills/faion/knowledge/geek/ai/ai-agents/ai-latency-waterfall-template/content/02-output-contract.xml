@@ -1,31 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Latency Waterfall Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Latency Waterfall Template deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="AI Latency Waterfall Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a latency waterfall report.</summary>
+
   <output-contract>
     <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
+      <field name="report_id" type="string" required="true"/>
+      <field name="feature" type="string" required="true"/>
+      <field name="window" type="object" required="true">{start, end} ISO-8601</field>
+      <field name="n_samples" type="integer" required="true">≥30</field>
+      <field name="sla_target" type="object" required="true">{percentile, value_ms}</field>
+      <field name="segments" type="list" required="true">list of {name, p50_ms, p95_ms, budget_ms, status}</field>
+      <field name="cache_hit_rate" type="number" required="true">0..1</field>
+      <field name="biggest_over_budget_segment" type="string" required="true"/>
+      <field name="recommendation" type="string" required="true">≥40 chars</field>
+      <field name="owner" type="string" required="true"/>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="produced_at" type="datetime" required="true"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
+      <pattern id="f1">segments is empty OR contains only an end-to-end aggregate row</pattern>
+      <pattern id="f2">n_samples &lt; 30</pattern>
+      <pattern id="f3">any segment row missing p50_ms or p95_ms</pattern>
+      <pattern id="f4">cache_hit_rate missing when feature uses LLM with prompt caching</pattern>
+      <pattern id="f5">recommendation does not name the biggest_over_budget_segment</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
+      <transformation>Round ms values to integers.</transformation>
+      <transformation>Mark a segment "n/a" if it does not apply to this feature (e.g. no tool calls).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
+
+    <schema-reference path="templates/output-schema.json"/>
   </output-contract>
-  <section title="Self-check checklist">
+
+  <section title="Self-check">
     <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
+      <item>≥4 segments present (ttfb, prefill, decode, post-process)</item>
+      <item>n_samples ≥ 30</item>
+      <item>p50 + p95 per segment</item>
+      <item>biggest_over_budget identified</item>
+      <item>recommendation references it</item>
     </list>
   </section>
 </text>

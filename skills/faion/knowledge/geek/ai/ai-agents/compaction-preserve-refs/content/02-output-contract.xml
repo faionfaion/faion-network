@@ -1,22 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="compaction-preserve-refs Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="compaction-preserve-refs Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>YAML schema for the compacted state. Six required keys, no free-text summary, drift-resistant.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (YAML / JSON Schema 2020-12)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compaction-preserve-refs/output",
+  "type": "object",
+  "required": ["goal", "files_touched", "decisions", "errors_open", "refs", "next_action"],
+  "additionalProperties": false,
+  "properties": {
+    "goal":         {"type": "string", "minLength": 4, "maxLength": 200},
+    "files_touched": {"type": "array", "items": {"type": "string", "pattern": "^[^\\s].+"}},
+    "decisions":     {"type": "array", "items": {"type": "string"}},
+    "errors_open":   {"type": "array", "items": {"type": "string"}},
+    "refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "id"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {"enum": ["pr", "issue", "log", "adr", "url", "ticket"]},
+          "id":   {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "next_action":   {"type": "string", "minLength": 4, "maxLength": 200}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (valid)">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+goal: refactor auth module to use refresh-token rotation
+files_touched:
+  - src/auth/login.py:42
+  - src/auth/jwt.py:88-110
+decisions:
+  - chose RS256 over HS256 (ADR-007)
+  - rotation interval = 15 min
+errors_open:
+  - "test_login_invalid_pw fails at AssertionError: expected 401 got 200"
+refs:
+  - {kind: pr,  id: "1842"}
+  - {kind: log, id: ".agent/results/pytest_4882.log"}
+next_action: implement refresh-token rotation in jwt.py
+      ]]></code>
+      <note>Every key fillable from the conversation. Resume by grep on `goal` and reading `files_touched`.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (invalid)">
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+summary: |
+  Worked on auth, made some progress, will continue next session.
+status: in-progress
+      ]]></code>
+      <note>No required keys, no references, no actionable `next_action`. Next session restarts from zero; the validator rejects this file.</note>
+    </example>
+  </section>
+
+  <section title="Allowed transformations before consumption">
+    <list>
+      <item>Sort `files_touched`, `refs`, `decisions` alphabetically for deterministic diff.</item>
+      <item>Deduplicate identical entries within any list.</item>
+    </list>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Top-level keys are exactly the six required keys, no others.</item>
+      <item>Every list element is present and non-empty when the conversation contained matching data.</item>
+      <item>Empty lists are `[]`, never the string "none".</item>
+      <item>Each `refs` entry has both `kind` (from enum) and `id` fields.</item>
     </list>
   </section>
 </text>

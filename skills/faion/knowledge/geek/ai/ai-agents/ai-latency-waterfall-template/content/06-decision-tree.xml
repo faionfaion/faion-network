@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="AI Latency Waterfall Decision Tree" version="1.0.0" est_tokens="600">
+  <decision-tree>
+    <root-question id="q1" text="Is tracing instrumentation present (per-segment spans available)?">
+      <branch when="instrumented == true">
+        <question id="q2" text="Are ≥30 samples available in the observation window?">
+          <branch when="enough_samples == true">
+            <question id="q3" text="Which segment exceeds its budget by the largest margin (over_budget_max)?">
+              <branch when="over_budget_max == prefill_cold">
+                <conclusion ref="r5-cached-vs-cold" outcome="optimise-cache">Optimise prefix caching: stabilise system prompt, add cache_control markers, raise cache_hit_rate target.</conclusion>
+              </branch>
+              <branch when="over_budget_max == decode_tps">
+                <conclusion ref="r4-p50-and-p95" outcome="optimise-decode">Reduce output length OR switch to a faster model in the same family; verify trajectory eval did not regress.</conclusion>
+              </branch>
+              <branch when="over_budget_max startswith tool_">
+                <conclusion ref="r1-segment-not-aggregate" outcome="optimise-tool">Optimise the named tool (parallelise calls, cache results, replace upstream provider).</conclusion>
+              </branch>
+              <branch when="over_budget_max == none">
+                <conclusion ref="r1-segment-not-aggregate" outcome="renegotiate-sla">All segments within budget but end-to-end exceeds SLA → SLA is too aggressive; renegotiate.</conclusion>
+              </branch>
+            </question>
+          </branch>
+          <branch when="enough_samples == false">
+            <conclusion ref="r3-min-30-samples" outcome="gather-samples">Extend observation window; sample older traces. Recommendations on n&lt;30 are unreliable.</conclusion>
+          </branch>
+        </question>
+      </branch>
+      <branch when="instrumented == false">
+        <conclusion ref="r1-segment-not-aggregate" outcome="instrument-first">Instrument tracing first (OTel / LangSmith). No useful waterfall without spans.</conclusion>
+      </branch>
+    </root-question>
+  </decision-tree>
+
+  <example trace="support-agent">
+    <p>instrumented=true → enough_samples=true → over_budget_max=prefill_cold → conclusion: optimise-cache (raise cache_hit_rate from 0.32 toward 0.8).</p>
+  </example>
+</text>

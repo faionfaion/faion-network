@@ -4,71 +4,94 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Wrap the agent's tool-execution runtime so any single tool result whose token count exceeds a fixed threshold N (typically 20,000) is automatically written to disk and substituted with {path, preview, evicted: true} BEFORE the LLM ever observes the body.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Runtime middleware that auto-evicts any tool result over N tokens (default 20k) to disk and substitutes {path, preview, total_tokens, evicted:true} into the agent's message history before the LLM ever sees the oversized payload.
 content_id: "822349028b614046"
+complexity: medium
+produces: config
+est_tokens: 4500
 tags: [context-management, tool-results, token-accounting, middleware, long-horizon-agents]
 ---
 # Auto-Evict Tool Results at Token Threshold
 
 ## Summary
 
-**One-sentence:** Wrap the agent's tool-execution runtime so any single tool result whose token count exceeds a fixed threshold N (typically 20,000) is automatically written to disk and substituted with {path, preview, evicted: true} BEFORE the LLM ever observes the body.
+**One-sentence:** Runtime middleware that auto-evicts any tool result over N tokens (default 20k) to disk and substitutes {path, preview, total_tokens, evicted:true} into the agent's message history before the LLM ever sees the oversized payload.
 
-**One-paragraph:** Wrap the agent's tool-execution runtime so any single tool result whose token count exceeds a fixed threshold N (typically 20,000) is automatically written to disk and substituted with {path, preview, evicted: true} BEFORE the LLM ever observes the body. This is a deterministic middleware policy, not an LLM-discretion choice — the agent literally cannot leak the oversized payload because the runtime never feeds it in. It is the enforced sibling of voluntary filesystem-as-memory: same compression, but applied by code.
+**One-paragraph:** LLMs cannot reliably self-truncate large tool returns; the result is context corruption, blown context windows, and incoherent later turns. This methodology installs the enforced sibling of voluntary "filesystem as memory": a deterministic decorator wraps the agent's tool runtime, checks token count on every return, persists oversized payloads to a scratch directory keyed by tool_call_id, and feeds a typed pointer into the agent. The agent recovers slices via a paired `read_file(path, lines)` tool. Output is one config artifact + middleware reference embedded in the agent harness.
+
+**Ефективно для:** Команд, де агент іноді отримує 200k токенів з одного tool call і потім весь run йде нанівець; middleware вирішує цей клас bugs раз і назавжди — не людська дисципліна, а runtime constraint.
 
 ## Applies If (ALL must hold)
 
-- Any tool that talks to a remote service with high payload variance (web fetch, SQL, API search, log retrieval).
-- Long-running agents (50+ tool calls) where a single overflow corrupts the rest of the loop.
-- Multi-tenant agents where prompt-injection via large tool output is a threat.
-- CI/build/log-tail tools that occasionally emit megabytes of output.
+- Agent calls tools that occasionally return very large payloads (file reads, web scrape, DB query, log search).
+- Long-horizon runs (>5 iterations) where one oversized return blows multiple subsequent turns.
+- Scratch storage (local disk, S3, in-process content store) is available.
+- A paired read-file tool can be added to the agent's toolbelt.
+- Token counter is available for the model in use.
 
 ## Skip If (ANY kills it)
 
-- Streaming/realtime tools where the agent must act on each chunk immediately and never re-reads — eviction adds latency without benefit.
-- Tools whose every result is small (<1k tokens) — the manifest dance is pure overhead.
-- Single-shot stateless agents that exit before context bloat matters.
-- Environments without a writable filesystem (browser sandbox, edge runtime) — use M-PL-02 manifest-then-fetch with a content store instead.
+- Tools have hard size caps in the tool definition (e.g. always returns ≤2k).
+- Short single-turn agents where the result is consumed immediately.
+- Agent has no filesystem-equivalent storage available.
+- No paired read tool can be added (model not allowed to access scratch).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artifact | Format | Source |
+|---|---|---|
+| Tool registry | JSON list of tools | Tool catalogue |
+| Token counter | callable token_count(text) → int | Provider SDK |
+| Scratch storage path | URL / local path | Ops |
+| Threshold N | int (default 20000) | Tech lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/filesystem-as-working-memory/AGENTS.md` | Voluntary sibling pattern. |
+| `geek/ai/ai-agents/file-reference-passing/AGENTS.md` | Pointer-passing convention used by the evict decorator. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 3 rules: middleware, deterministic write, paired read tool | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the eviction config + the evicted pointer shape | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: wire middleware → expose read tool → test → tune N → ship | ~900 |
+| `content/06-decision-tree.xml` | essential | Tree: large payloads possible? → storage available? → read-tool addable? → install/skip | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `instrument_token_counter` | haiku | Mechanical. |
+| `tune_threshold_N` | sonnet | Per-agent tuning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema for the eviction config. |
+| `templates/output.example.json` | Filled example. |
+| `templates/evict-middleware.py` | Python middleware skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-output.py` | Validate eviction config. | After wiring, before ship. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
+- peer: [[filesystem-as-working-memory]] — voluntary sibling.
+- peer: [[file-reference-passing]] — pointer convention.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) can any tool return >N tokens? (2) is scratch storage available? (3) can a paired read-tool be exposed? Leaves point to "install", "raise hard tool caps instead", or "skip — not applicable".

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="file-reference-passing Decision Tree" version="1.0.0" est_tokens="700">
+  <summary>Choose the right ref-passing shape for your pipeline.</summary>
+
+  <decision-tree>
+    <root-question id="q-cross-stage">Does more than ~1K tokens of content currently cross a stage boundary in this pipeline?</root-question>
+
+    <branch when="cross_stage_content &lt; 1k">
+      <conclusion ref="r1-refs-not-content">No refactor needed; current shape is fine.</conclusion>
+    </branch>
+
+    <branch when="cross_stage_content &gt;= 1k">
+      <question id="q-source">What is the source of the content that needs to cross the boundary?</question>
+
+      <branch when="source == flat_corpus_with_manifest">
+        <conclusion ref="r2-constrained-manifest">Scan-then-load: stage 1 returns refs from a manifest enum; stage 2 reads by path.</conclusion>
+      </branch>
+
+      <branch when="source == subagent_investigation">
+        <conclusion ref="r5-subagent-summary-plus-refs">Subagent+refs: subagent returns `{summary, interesting_refs, follow_up_questions}`; parent re-reads on demand.</conclusion>
+      </branch>
+
+      <branch when="source == large_tree_corpus">
+        <conclusion ref="r2-constrained-manifest">Recursive descent: each step picks one child node; refs flow in and out of each level.</conclusion>
+      </branch>
+
+      <branch when="source == remote_mutable">
+        <conclusion ref="r4-snapshot-unstable-refs">Snapshot first, then any of the above patterns over the snapshot store.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="cross_stage_content=80k_tokens, source=flat_corpus_with_manifest">
+    q-cross-stage → branch(&gt;=1k) → q-source → branch(flat_corpus) → conclusion(r2-constrained-manifest).
+  </example>
+</text>

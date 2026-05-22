@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="compaction-preserve-refs Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for compaction-preserve-refs. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="compaction-preserve-refs Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Three testable rules for compaction that keep the agent able to resume work without re-reasoning from scratch.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Compacted output MUST preserve verbatim: absolute or workspace-relative file paths, fully-qualified function/class names, error message strings, URLs, IDs (PR numbers, ticket IDs, execution IDs), explicit decisions ("chose X over Y because Z").</statement>
-      <rationale source="v1-source">These are pointers the agent and its downstream tools dereference. Paraphrasing breaks the dereference (a wrong path is worse than no path).</rationale>
+    <rule id="r1-preserve-verbatim" testable="true">
+      <statement>Compacted output MUST preserve verbatim: absolute or workspace-relative file paths, fully-qualified function/class names, error message strings, URLs, IDs (PR numbers, ticket IDs, execution IDs), and explicit decisions ("chose X over Y because Z").</statement>
+      <rationale source="anthropic-cookbook-2025">These are pointers the agent and its downstream tools dereference. Paraphrasing breaks the dereference, and a wrong path is worse than no path because the agent will act on it.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
+
+    <rule id="r2-drop-reasoning" testable="true">
       <statement>Compacted output MUST drop: intermediate reasoning chains, tool-call argument repetition, verbatim tool output bodies, and conversational filler ("let me think", "ok", "as we discussed").</statement>
-      <rationale source="v1-source">Reasoning is regenerable from inputs; tool output is restorable from disk via path. Keeping them inflates the compacted blob and squeezes the surviving references.</rationale>
+      <rationale source="lethain-2025">Reasoning is regenerable from inputs; tool output is restorable from disk via path. Keeping them inflates the compacted blob and squeezes the surviving references out of the budget.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>The compacted state MUST be valid YAML with these top-level keys: goal, files_touched (list), decisions (list), errors_open (list), refs (list of {kind, id}), next_action (one sentence). NO free-text "summary" field.</statement>
-      <rationale source="v1-source">Fixed keys make the output machine-checkable; missing one key is a hard failure the orchestrator catches before the agent acts on bad state.</rationale>
+
+    <rule id="r3-fixed-schema" testable="true">
+      <statement>The compacted state MUST be valid YAML with these top-level keys: goal, files_touched (list), decisions (list), errors_open (list), refs (list of {kind, id}), next_action (one sentence). NO free-text "summary" field is permitted.</statement>
+      <rationale source="opencode-2025">Fixed keys make the output machine-checkable. A missing key is a hard failure the orchestrator catches before the agent acts on bad state; a free-text summary cannot be checked the same way.</rationale>
+    </rule>
+
+    <rule id="r4-empty-not-prose" testable="true">
+      <statement>When a list has no entries, the compacted state MUST emit an empty list (e.g. `files_touched: []`), never the word "none" or a sentence explaining the absence.</statement>
+      <rationale source="schema-discipline">An empty list is type-correct; "none" is a string that downstream parsers must specially handle, leading to drift between producers and consumers.</rationale>
+    </rule>
+
+    <rule id="r5-no-ad-hoc-keys" testable="true">
+      <statement>The compaction prompt MUST forbid additional top-level keys; the LLM may not add `notes`, `thoughts`, `todo`, or other free-text containers.</statement>
+      <rationale source="schema-drift-incidents">Ad-hoc keys drift between calls — one run produces `errors_open`, the next produces `open_errors` — and downstream tooling silently breaks.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
 </text>

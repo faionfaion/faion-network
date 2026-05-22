@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="filesystem-as-working-memory Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for filesystem-as-working-memory. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="filesystem-as-working-memory Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for FS-as-working-memory: offload thresholds, tool surface, taxonomy, persistence, compaction ordering.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-offload-2k" testable="true">
+      <statement>Any tool whose raw output exceeds ~2000 tokens MUST write the full output to the agent's FS and return only a path plus a short snippet (first ~200 tokens or a structured digest).</statement>
+      <rationale source="langchain-deep-agents">Offload is lossless; the agent can re-read at any precision. Holding raw outputs inline squeezes references out of context.</rationale>
+    </rule>
+
+    <rule id="r2-four-tools" testable="true">
+      <statement>Expose exactly four FS tools to the agent: `write_file(path, content)`, `read_file(path, offset?, limit?)`, `ls(path?)`, `grep(pattern, path?)`; do NOT add separate copy/move/append tools.</statement>
+      <rationale source="bundle-vs-split-tools">Four primitives compose like Unix utilities. Adding move/copy/append bloats the tool list and makes the agent pick wrong tools.</rationale>
+    </rule>
+
+    <rule id="r3-stable-taxonomy" testable="true">
+      <statement>The agent SKILL or system prompt MUST declare a stable top-level taxonomy (e.g. `search/`, `docs/`, `plan/`, `scratch/`); the agent MUST NOT invent ad-hoc top-level folders per call.</statement>
+      <rationale source="navigation-discoverability">A predictable taxonomy makes `ls` a useful navigation aid; ad-hoc paths force the agent to remember names it cannot discover.</rationale>
+    </rule>
+
+    <rule id="r4-atomic-checkpoint" testable="true">
+      <statement>The FS backing store MUST commit atomically with the conversation checkpoint (same store/transaction, or paired with a write-ahead reconciliation step); resume MUST not produce dangling paths.</statement>
+      <rationale source="restart-failure-incidents">When FS and conversation persist independently, restart leaves the agent with paths that 404 or summaries describing files that no longer exist.</rationale>
+    </rule>
+
+    <rule id="r5-compact-last" testable="true">
+      <statement>LLM-based compaction MUST fire only when (a) context utilisation &gt; 85% AND (b) no offloadable blob &gt; 2K tokens remains inline; offload must always be tried first.</statement>
+      <rationale source="lossy-vs-lossless">Offload is lossless and reversible; compaction is lossy and one-way. Reversing the order burns information that could have been kept.</rationale>
     </rule>
   </section>
 </text>

@@ -1,3 +1,8 @@
+# purpose: cheap-model input guardrail wired before expensive main agent
+# consumes: user-supplied input string
+# produces: strict-mode verdict {tripwire_triggered, reason, confidence}
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~1% of main-agent cost per legitimate call; ~100% saved on noise traffic
 """OpenAI Agents SDK input_guardrail with cheap classifier and Pydantic verdict.
 
 Wire this onto any premium-model agent exposed to public traffic. The screener

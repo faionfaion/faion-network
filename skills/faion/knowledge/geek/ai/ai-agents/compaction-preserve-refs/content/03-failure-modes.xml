@@ -1,17 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="compaction-preserve-refs Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for compaction-preserve-refs as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Three failure modes that destroy the resume invariant. Each has a symptom, root cause, and fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
+  <section title="Antipatterns">
+    <antipattern id="fm-01-prose-summary">
       <description>Compacting via "summarize the conversation in 200 words" with no schema.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The model invents the schema each call; references survive only by accident.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
+      <reason>The model invents the schema each call; references survive only by accident, and downstream tooling cannot rely on key names being stable.</reason>
+    </antipattern>
+    <p>Symptom: next session reads the compact and asks the user to restate the task. Root cause: free-form summary prompt. Fix: replace the prompt with the YAML-schema template from `templates/compaction-prompt.txt` and validate the output via `scripts/validate-compaction-preserve-refs.py`.</p>
+
+    <antipattern id="fm-02-adhoc-keys">
       <description>Letting the LLM add ad-hoc keys ("notes", "thoughts", "todo") that drift between calls.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Schema drift means orchestrators can't validate; downstream tooling that expects 'errors_open' breaks when the model writes 'open_errors' instead.</repair>
-    </failure-mode>
+      <reason>Schema drift means orchestrators can't validate; downstream tooling that expects `errors_open` breaks when the model writes `open_errors` or buries the field under `notes`.</reason>
+    </antipattern>
+    <p>Symptom: KeyError in the next stage's loader. Root cause: prompt does not list "additionalProperties: false". Fix: set `additionalProperties: false` in the JSON Schema and re-emit the prompt with the explicit "no other keys" clause.</p>
+
+    <antipattern id="fm-03-paraphrased-paths">
+      <description>Paraphrasing file paths or error messages "for readability" ("login.py around line 40", "the test failed").</description>
+      <reason>The compacted state is a manifest of pointers; paraphrasing breaks the dereference. The next session searches for a path that does not exist or an error string that no longer matches.</reason>
+    </antipattern>
+    <p>Symptom: next session opens the wrong file or claims the bug is fixed when it is not. Root cause: prompt says "summarize" instead of "preserve verbatim". Fix: replace verbs in the prompt with "preserve verbatim" and add the regex-style anchors from `templates/compaction-prompt.txt`.</p>
+
+    <antipattern id="fm-04-tool-output-embedded">
+      <description>Including the full body of a tool output (test log, search response) inside the compacted state.</description>
+      <reason>The point of compaction is to free context. Embedding tool output defeats the purpose and squeezes the surviving references out of the budget.</reason>
+    </antipattern>
+    <p>Symptom: compacted state exceeds the per-message budget on next load. Root cause: prompt did not enforce "drop tool output bodies". Fix: drop the bodies, keep only the `refs` entry pointing at the on-disk log path.</p>
+
+    <antipattern id="fm-05-no-next-action">
+      <description>Emitting `next_action:` as an empty string or a vague sentence ("continue", "keep going").</description>
+      <reason>Resume requires a concrete first imperative. Without it, the next session loses minutes choosing where to start, often picking the wrong subtask.</reason>
+    </antipattern>
+    <p>Symptom: next session asks "what now?". Root cause: prompt allows empty strings. Fix: validator rejects empty `next_action`; prompt requires "one imperative sentence naming a file and verb".</p>
   </section>
 </text>

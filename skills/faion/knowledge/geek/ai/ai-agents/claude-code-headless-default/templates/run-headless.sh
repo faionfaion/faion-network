@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: canonical claude -p headless invocation with four required guards
+# consumes: task prompt, allowed-tools list, max_turns
+# produces: stream-json event stream on stdout, parseable by orchestrator
+# depends-on: content/01-core-rules.xml; content/02-invocation-shape.xml
+# token-budget-impact: governed by --max-turns; per-turn caps via Claude Code defaults
 # run-headless.sh — canonical headless `claude -p` wrapper.
 #
 # Usage:

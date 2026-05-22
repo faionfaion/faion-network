@@ -1,46 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Agent Trajectory Eval Method Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Four testable rules every application of Agent Trajectory Eval Method enforces. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The four rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every field in the Agent Trajectory Eval Method template is either filled, marked N/A with reason, or absent — no placeholder text in the delivered artefact.</statement>
-      <rationale source="Pattern-driven design / Cope, Templating discipline">Placeholder text ('TBD', 'lorem ipsum') ships to clients and erodes trust. Required fields force decision before sign-off.</rationale>
+  <summary>Five testable rules every trajectory-eval run enforces. Hard rules — agent output cannot relax them.</summary>
+
+  <section title="Rules">
+    <rule id="r1-frozen-golden" testable="true" depth="essential">
+      <statement>The golden trajectory set is versioned and frozen for the duration of any comparison. Adding entries mid-run invalidates the comparison.</statement>
+      <rationale source="ML reproducibility / Pineau et al. 2020 Reproducibility Checklist">Mutable eval sets produce non-comparable metrics; the denominator changes silently.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Template fields are named with their consumer in mind — every label maps to who reads it (client, contractor, executive, AI agent).</statement>
-      <rationale source="technical writing standards / Microsoft Manual of Style">Internal-jargon labels create misreads. 'Stage gate' for the client should read 'Approval milestone'.</rationale>
+    <rule id="r2-three-layer-score" testable="true" depth="essential">
+      <statement>Every run reports three layers: system_efficiency {latency_ms, tokens, tool_calls}, session_quality {trajectory_exact_match, trajectory_precision, trajectory_recall}, node_precision {tool_selection_accuracy, param_accuracy}. Skipping any layer is rejected.</statement>
+      <rationale source="Vertex AI trajectory metrics; TRACE arXiv:2602.21230">Single-layer scores hide failure modes — a high pass-rate with awful trajectory metrics is the usual production-incident profile.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Versioning rule: any change to template field set bumps a version stamp on the template, AND each instance carries the template_version it was authored against.</statement>
-      <rationale source="schema versioning practice / SemVer.org">Field-set drift breaks downstream consumers (parsers, automations). Pinning the version restores compatibility.</rationale>
+    <rule id="r3-confidence-intervals" testable="true" depth="essential">
+      <statement>Each layer reports mean AND 95% CI. Naked numbers are rejected.</statement>
+      <rationale source="statistics / Wasserstein &amp; Lazar 2016 ASA Statement">0.82 ± 0.08 on n=30 is a different decision than 0.82 ± 0.01 on n=1000.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Each template ships with at least one fully-worked good example beside it. Empty templates without an exemplar are not deliverable.</statement>
-      <rationale source="documentation usability research / Carroll, Minimalism">Empty templates are interpreted differently by every user. A worked example is the spec.</rationale>
+    <rule id="r4-judge-calibrated" testable="true" depth="essential">
+      <statement>If trajectory_quality is LLM-judged, the judge is recalibrated against ≥20 human-labelled trajectories per quarter. Drift in the judge invalidates downstream metrics.</statement>
+      <rationale source="MT-Bench / Zheng et al. 2023">Judge models change with provider releases; uncalibrated judges measure themselves, not the target.</rationale>
+    </rule>
+    <rule id="r5-cost-capped" testable="true" depth="essential">
+      <statement>Cost per eval run is logged. Runs costing more than 2× the production daily traffic are downsampled or moved to nightly.</statement>
+      <rationale source="FinOps for ML / FinOps Foundation">Unbounded eval cost breaks the cost case and reduces run frequency, defeating the purpose.</rationale>
     </rule>
   </section>
+
   <section title="Canonical examples">
-    <example type="good" title="Templated brief with anchored fields">
-      <code lang="text"><![CDATA[
-Project: <name>
-Client: <legal entity>
-Scope: <one paragraph + bullet list of deliverables>
-Out of scope: <bullet list>
-Milestones: <date + acceptance criterion>
-]]></code>
-      <note>Each field directs the author to a specific decision. Empty fields are visible.</note>
+    <example type="good" title="Versioned trajectory eval report">
+      <code lang="text"><![CDATA[set: golden-trajectory-v3-frozen-2026-05-15 (n=120)
+agent_version: support-agent v3.1.0
+system_efficiency: latency 4.2s ± 0.3 | tokens 8200 ± 600 | tool_calls 3.8 ± 0.5
+session_quality: traj_exact 0.61 ± 0.07 | traj_precision 0.84 ± 0.04 | traj_recall 0.79 ± 0.05
+node_precision: tool_sel 0.92 ± 0.03 | params 0.87 ± 0.04
+cost: $4.20 (limit $20)]]></code>
+      <note>All three layers reported, every number has a CI, cost present.</note>
     </example>
-    <example type="bad" title="Free-form 'use this template' doc with placeholder prose">
-      <code lang="text"><![CDATA[
-Project: TBD
-Client: TBD
-Scope: To be discussed
-]]></code>
-      <note>TBD ships to the client. The template adds zero discipline.</note>
+    <example type="bad" title="Naked output-only score">
+      <code lang="text"><![CDATA[pass-rate: 0.87]]></code>
+      <note>No trajectory layer, no CI, no set version. Trajectory regressions are invisible.</note>
     </example>
   </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

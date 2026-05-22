@@ -1,3 +1,8 @@
+# purpose: Pydantic discriminated union for an agent-action selector
+# consumes: agent input prompt
+# produces: AgentTurn instance with a tagged action branch
+# depends-on: pydantic v2
+# token-budget-impact: schema serialization ~300 tokens
 """Discriminated-union template: agent action selector.
 
 Use as a `text_format` (OpenAI Responses API) or `tools[*].input_schema`

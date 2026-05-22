@@ -1,22 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ai-governance-compliance Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AI Governance and Compliance Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a governance-pack manifest. Compliance officers consume this directly.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="pack_id" type="string" required="true"/>
+      <field name="system_name" type="string" required="true"/>
+      <field name="risk_class" type="enum" required="true">prohibited | high | limited | minimal</field>
+      <field name="model_card_path" type="string" required="true"/>
+      <field name="bias_audit_report_path" type="string" required="true"/>
+      <field name="explainability_artefacts" type="object" required="true">{per_decision, per_feature, per_cohort} paths</field>
+      <field name="human_oversight_design" type="object" required="true">{policy_per_class, sla, reviewers[]}</field>
+      <field name="audit_log_spec" type="object" required="true">{endpoint, retention_years, immutability}</field>
+      <field name="compliance_owner" type="string" required="true"/>
+      <field name="standards_claimed" type="list" required="true">e.g. ["EU AI Act high-risk","SOC2 CC7","ISO 42001"]</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="produced_at" type="datetime" required="true"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">risk_class=high AND any of {model_card_path, bias_audit_report_path, human_oversight_design} missing</pattern>
+      <pattern id="f2">audit_log_spec.retention_years &lt; 7 for risk_class=high</pattern>
+      <pattern id="f3">explainability_artefacts.per_decision missing for any consequential automated decision</pattern>
+      <pattern id="f4">compliance_owner is plural pronoun</pattern>
+      <pattern id="f5">standards_claimed empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Bundle bias_audit_report into model_card if statistical content fits in one document.</transformation>
+      <transformation>Substitute SHAP with rule-trace for rule-based models (no feature-importance gradient available).</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/output-schema.json"/>
   </output-contract>
 
-  <section title="Self-check checklist">
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "pack_id": "gov-cv-screening-v3.2",
+  "system_name": "cv-screening",
+  "risk_class": "high",
+  "model_card_path": "models/cv-screening/MODEL_CARD.md",
+  "bias_audit_report_path": "compliance/bias-audits/cv-screening-2026-05.md",
+  "explainability_artefacts": {
+    "per_decision": "compliance/explain/cv-screening/shap/",
+    "per_feature": "compliance/explain/cv-screening/global.md",
+    "per_cohort": "compliance/explain/cv-screening/cohorts.md"
+  },
+  "human_oversight_design": {
+    "policy_per_class": {"auto_reject": "pre-decision-review", "auto_advance": "sampled-review"},
+    "sla": "24h reversal",
+    "reviewers": ["hr-lead@faion.net","compliance@faion.net"]
+  },
+  "audit_log_spec": {
+    "endpoint": "s3://faion-audit/cv-screening/",
+    "retention_years": 7,
+    "immutability": "object-lock"
+  },
+  "compliance_owner": "compliance@faion.net",
+  "standards_claimed": ["EU AI Act high-risk", "SOC2 CC7", "ISO 42001"],
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T18:00:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Self-check">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All 5 artefacts present for high-risk class</item>
+      <item>retention_years ≥ 7 for high-risk</item>
+      <item>standards_claimed non-empty</item>
+      <item>compliance_owner is named</item>
+      <item>Output validates against templates/output-schema.json</item>
     </list>
   </section>
 </text>

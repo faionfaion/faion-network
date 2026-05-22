@@ -1,11 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="discriminated-union-output Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for discriminated-union-output. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="discriminated-union-output Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Four testable rules for discriminated unions in structured output.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-discriminator-first" testable="true">
+      <statement>The discriminator field MUST be the first field declared in every branch model and MUST be typed as `Literal["<unique-value>"]`.</statement>
+      <rationale source="pydantic-v2-docs">Constrained decoding locks the schema branch only once the discriminator literal is emitted; placing it first means subsequent fields are constrained from the very next token onward.</rationale>
+    </rule>
+
+    <rule id="r2-annotated-discriminator" testable="true">
+      <statement>Combine branches with `Annotated[A | B | C, Field(discriminator="kind")]`; never rely on plain `A | B | C` smart-union mode for production schemas.</statement>
+      <rationale source="pydantic-v2-docs">Plain unions emit `anyOf` without a discriminator keyword. OpenAI strict mode then has to try every branch; with overlapping fields this either fails to compile or accepts cross-branch data.</rationale>
+    </rule>
+
+    <rule id="r3-collapse-if-90pct-overlap" testable="true">
+      <statement>If two branches share more than ~90% of their fields, collapse them into one model with a literal `kind` field plus channel-specific optional fields, NOT into a discriminated union.</statement>
+      <rationale source="schema-cost-analysis">Two near-identical branches double the schema size, double the prompt-cache footprint, and force the model to learn two shapes for one concept. Collapse recovers cache efficiency and reduces routing noise.</rationale>
+    </rule>
+
+    <rule id="r4-open-set-needs-registry" testable="true">
+      <statement>If the set of branches is open (user-defined types, plug-in actions), use a registry pattern with a free-string `kind` and a separate validation pass, NOT a discriminated union.</statement>
+      <rationale source="extensibility-tradeoff">Discriminated unions need a closed enum of branches. An open set defeats the constraint and forces ad-hoc handling for unknown kinds; a registry encodes the openness explicitly.</rationale>
     </rule>
   </section>
 </text>

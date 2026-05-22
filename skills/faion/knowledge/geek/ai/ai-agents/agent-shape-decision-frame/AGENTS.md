@@ -4,53 +4,67 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agent shape decision frame that walks an operator from trigger to closed outcome with named artefacts at each step.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Playbook that frames "what shape of agent do we build" — single-turn, multi-turn, single-agent, multi-agent, hosted vs custom — into a step-by-step decision with named exit criteria, branches, and owner.
 content_id: "430e49f64ab27da0"
-tags: [agent, ai, playbook]
+complexity: medium
+produces: playbook-step
+est_tokens: 4500
+tags: [agent, ai, playbook, decision-frame, architecture]
 ---
 # Agent Shape Decision Frame
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agent shape decision frame that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Playbook that frames "what shape of agent do we build" — single-turn, multi-turn, single-agent, multi-agent, hosted vs custom — into a step-by-step decision with named exit criteria, branches, and owner.
 
-**One-paragraph:** End-to-end playbook for agent shape decision frame that walks an operator from trigger to closed outcome with named artefacts at each step. agents methodology exists at geek tier but lacks a decision frame for picking single-shot vs workflow vs autonomous agent given task risk + tolerance.
+**One-paragraph:** Teams often start building an agent by picking a framework (LangChain, CrewAI, Claude Agent SDK) before deciding what shape the agent should be. This playbook reverses the order: it walks an operator through five framing questions (turn count, agent count, tool surface, deployment surface, evaluation surface), produces a structured decision record naming the chosen shape and the rejected shapes with reasons, and hands that off to architecture for framework selection. Output is one decision record per agent feature.
+
+**Ефективно для:** Команд, які тиждень обговорюють «давайте multi-agent» без чітких критеріїв; playbook за дві години дає документований вибір форми, де кожна гілка має сигнал і відповідального — і його можна показати CTO без переробки.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agent shape decision frame end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- New agent feature is being scoped (no shape committed yet).
+- At least two candidate shapes are plausible (otherwise the decision is trivial).
+- A named architecture owner can sign off on the final shape.
+- Token budget for the feature has at least a rough ceiling.
+- Evaluation strategy is open — not pre-locked by an existing harness.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Shape is already implemented and shipped — use a refactor playbook instead.
+- Feature is so narrow that a single tool call solves it (no agent needed).
+- Team has < 2 weeks of agent experience — pick the smallest shape (single-turn single-agent) without ceremony.
+- Decision has been made by leadership for reasons outside this frame.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artifact | Format | Source |
+|---|---|---|
+| Feature brief | 1-2 page Markdown | Product / sponsor |
+| Token / cost ceiling | $ or tokens / month | Finance |
+| Existing eval surface (if any) | list of evals + golden sets | QA |
+| Named owner | handle | Architecture |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/ai/ai-agents/agent-patterns/AGENTS.md` | Once shape is picked, pattern selection runs next. |
+| `geek/ai/ai-agents/ai-agent-patterns/AGENTS.md` | Overview of pattern landscape. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 4 rules: named steps, explicit branches, deviation log, named owner | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the agent-shape decision record | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (vague branch, missing owner, etc.) | ~900 |
+| `content/04-procedure.xml` | medium | 5 framing questions and the order in which they bind | ~900 |
+| `content/05-examples.xml` | medium | Worked example: shape decision for a customer-support agent | ~900 |
+| `content/06-decision-tree.xml` | essential | Tree from turn-count → agent-count → tool-surface → deployment-surface → eval-surface | ~600 |
 
 ## Task Routing
 
@@ -58,22 +72,28 @@ tags: [agent, ai, playbook]
 |----------|-------|-----------|
 | `input_collection` | haiku | Structured gather from inputs |
 | `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `synthesis_writeup` | sonnet | Final artefact authoring |
+| `executive_review` | opus | Architecture sign-off on multi-agent shapes |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema for the agent-shape decision record. |
+| `templates/shape-record.example.json` | Filled minimal valid example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-output.py` | Validate the decision record against the schema. | After subagent emits record, before architecture review. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- peer: [[agent-patterns]] — pattern selection inside a chosen shape.
+- peer: [[bundle-vs-split-tools]] — single-agent vs multi-agent tool partition.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks five framing questions in order: turn count, agent count, tool surface size, deployment surface (hosted / custom), eval surface availability. Leaves point to one of: single-turn-single-agent, multi-turn-single-agent, multi-agent, hosted-only (use Claude Code headless), or escalate-to-research.

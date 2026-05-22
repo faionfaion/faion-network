@@ -4,69 +4,91 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Treat every `description=` on a schema field as a tiny prompt the model sees right before it generates that field.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Treats every schema `description=` as an inline micro-prompt that names format, units, edge cases, and forbidden patterns, lifting structured-extraction accuracy 60%+ on PARSE-style benchmarks for ~10 tokens per field.
 content_id: "16876fd226cf6321"
+complexity: light
+produces: code
+est_tokens: 3300
 tags: [structured-output, schema-design, llm-reliability, field-descriptions, prompt-engineering]
 ---
 # Field Descriptions as Inline Mini-Prompts
 
 ## Summary
 
-**One-sentence:** Treat every `description=` on a schema field as a tiny prompt the model sees right before it generates that field.
+**One-sentence:** Treats every schema `description=` as an inline micro-prompt that names format, units, edge cases, and forbidden patterns, lifting structured-extraction accuracy 60%+ on PARSE-style benchmarks for ~10 tokens per field.
 
-**One-paragraph:** Treat every `description=` on a schema field as a tiny prompt the model sees right before it generates that field. Be explicit about format, range, units, edge cases, and forbidden patterns. PARSE research (2025) showed that optimizing field descriptions yields 60%+ improvement in extraction accuracy. Making relationships explicit in descriptions improves complex-reasoning accuracy by up to 40%.
+**One-paragraph:** Treat every `description=` on a schema field as a tiny prompt the model sees right before it generates that field. Be explicit about format, range, units, edge cases, and forbidden patterns. PARSE research (2025) showed that optimising field descriptions yields 60%+ improvement in extraction accuracy. Making relationships explicit in descriptions improves complex-reasoning accuracy by up to 40%.
+
+**Ефективно для:** будь-якої схеми structured output, де поля мають неочевидний формат, одиниці виміру, або де модель колись помилялася на крайових випадках.
 
 ## Applies If (ALL must hold)
 
-- Always — descriptions cost ~10 tokens each and pay for themselves
-- Especially for: ambiguous units (USD vs cents, kg vs lb), formats (ISO-8601), exclusions ("ignore retracted papers"), cardinality bounds
-- For fields where you need format compliance > 99%
+- A schema has fields with non-trivial semantics (units, formats, edge cases).
+- Format-compliance metric matters (downstream parsers depend on exact shape).
+- The provider supports schema descriptions (Pydantic, JSON Schema, Anthropic tool input).
+- Eval data exists to measure compliance lift.
 
 ## Skip If (ANY kills it)
 
-- When description duplicates enum members verbatim (the enum already constrains decoding)
-- When schema is so large that descriptions blow the cold-cache budget — strip them only on cache-warm calls
-- When the description would contradict the field name (rename instead)
+- Description would duplicate enum members verbatim (the enum already constrains decoding).
+- Schema is so large that descriptions blow the cold-cache budget; strip only on cache-warm calls.
+- Description would contradict the field name — rename the field instead, do not paper over with a description.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Schema definition | Pydantic BaseModel or JSON Schema | Application code |
+| Failure-mode log | List of past mis-fillings per field | Eval harness |
+| Field inventory | List of fields needing description audit | Schema review |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `embedded-scratchpad-field` | Scratchpad descriptions are the highest-leverage application of this rule. |
+| `enum-constraints-closed-vocabularies` | Enum-valued fields use descriptions to disambiguate when to pick each value. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Five testable rules: always-present, 1-3 sentences, format-units-edge-forbidden, reference-dependencies, no-reasoning-asks | ~900 |
+| `content/02-output-contract.xml` | essential | Pattern catalog of good descriptions per field shape | ~900 |
+| `content/03-failure-modes.xml` | essential | Empty, duplicate, reasoning-asking, contradictory descriptions | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing: when to add, when to omit, when to split into fields | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Generate descriptions for a schema | haiku | Mechanical mapping per the pattern catalog |
+| Audit descriptions for staleness | sonnet | Pattern detection + edge-case reasoning |
+| Design descriptions for novel domain | opus | Edge cases unknown without deeper analysis |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pattern-numeric.py` | Numeric field with units, range, rounding rule |
+| `templates/pattern-constrained-string.py` | Constrained string with format + example |
+| `templates/_smoke-test.json` | Minimum valid extracted record for self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-field-descriptions-as-prompts.py` | Audits a schema dump for missing or weak descriptions | Pre-commit on schema changes |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
+- [[embedded-scratchpad-field]]
+- [[enum-constraints-closed-vocabularies]]
+- [[decimal-as-string-pattern]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The root question asks whether the field has non-trivial semantics. Branches then ask whether format/units are obvious, whether edge cases exist, whether the model has mis-filled before. Each leaf gives the description-shape rule that should be applied.

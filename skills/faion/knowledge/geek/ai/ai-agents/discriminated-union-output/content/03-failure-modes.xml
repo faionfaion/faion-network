@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="discriminated-union-output Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for discriminated-union-output as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="discriminated-union-output Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four failure modes with observable symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Declaring action: SearchAction | FetchAction | FinishAction without Field(discriminator="kind").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pydantic falls back to smart union mode and the JSON schema emits anyOf without a discriminator keyword. OpenAI strict mode then has to try every branch; with overlapping fields this either fails to compile or accepts cross-branch data.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Defining a branch as class SearchAction(BaseModel): query: str; kind: Literal["search"] = "search" — discriminator at the bottom.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Order matters in autoregressive generation. With the literal at the end, the model must commit to query before it has chosen the branch, which defeats the grammar-locking benefit. Always declare the discriminator first.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Modelling EmailMessage vs SmsMessage as a discriminated union when both share recipient, body, sent_at, and only differ by one channel-specific field.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Two near-identical branches double the schema size, double the prompt-cache footprint, and force the model to learn two shapes for one concept. Use a single model with a channel: Literal["email","sms"] discriminator and channel-specific optional fields instead.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-no-discriminator-keyword">
+      <description>Declaring `action: SearchAction | FetchAction | FinishAction` without `Field(discriminator="kind")`.</description>
+      <reason>Pydantic falls back to smart-union mode; the JSON schema emits `anyOf` without a discriminator keyword. OpenAI strict mode then has to try every branch and either fails to compile or accepts cross-branch data.</reason>
+    </antipattern>
+    <p>Symptom: schema compile error in strict mode, or production action objects with fields from multiple branches. Root cause: missing `Annotated[..., Field(discriminator=...)]`. Fix: wrap the union as `Annotated[A | B | C, Field(discriminator="kind")]`.</p>
+
+    <antipattern id="fm-02-discriminator-last">
+      <description>Defining a branch with the discriminator at the bottom (e.g. `query: str` declared before `kind: Literal["search"]`).</description>
+      <reason>Autoregressive generation locks the branch only after the discriminator token. With the literal last, the model must commit to other fields before the branch is chosen, which defeats the grammar-locking benefit and lets the model produce ambiguous prefixes.</reason>
+    </antipattern>
+    <p>Symptom: model occasionally produces `query` for a fetch action, indicating it committed before choosing the branch. Root cause: field order. Fix: move `kind` to be the first field in every branch model.</p>
+
+    <antipattern id="fm-03-overlap-union">
+      <description>Modelling `EmailMessage` vs `SmsMessage` as a discriminated union when both share recipient, body, sent_at and differ by one field.</description>
+      <reason>Two near-identical branches double schema size, double cache footprint, and force the model to learn two shapes for one concept. The discriminator advantage is paid for by complexity that does not exist.</reason>
+    </antipattern>
+    <p>Symptom: schema is twice the size it needs to be; model picks the branch arm at random. Root cause: union used where flatten is appropriate. Fix: collapse into a single model with `channel: Literal["email","sms"]` and channel-specific optional fields.</p>
+
+    <antipattern id="fm-04-open-set-as-union">
+      <description>Using a discriminated union for an open set of types (plug-ins, user-defined kinds).</description>
+      <reason>Discriminated unions require a closed enum of branches. Adding a new kind requires schema changes; runtime additions are impossible. The codebase grows brittle.</reason>
+    </antipattern>
+    <p>Symptom: every new plug-in or kind requires a schema PR and re-deploy. Root cause: closed-world modelling of an open-world problem. Fix: switch to a registry pattern — `kind: str` (free) plus a runtime validator that loads branch schemas from a registry.</p>
   </section>
 </text>

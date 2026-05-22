@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="decimal-as-string-pattern Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for decimal-as-string-pattern. Verify and refine before relying on for production.</summary>
+  <summary>Five testable rules for declaring exact-form fields as pattern-constrained strings.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For currency, exact decimals, big integers (greater than 2^53), and structured identifiers, declare the schema field as a string with a regex pattern that pins the exact surface form, then parse to Decimal/int/datetime on the receiving side.</statement>
-      <rationale source="v1-source">JSON number types do not pin precision, and float deserialization can introduce binary-rounding drift. Regex-constrained strings are masked at decode time on strict-mode or grammar backends — the model literally cannot emit "19.989999" when the pattern demands two decimal places.</rationale>
+    <rule id="r1-string-with-pattern" testable="true">
+      <statement>For currency, exact decimals, big integers (&gt; 2^53), structured identifiers, and strict timestamps, declare the schema field as a string with a regex `pattern` that pins the exact surface form, then parse to Decimal/int/datetime on the receiving side.</statement>
+      <rationale source="arxiv-2410.11781">JSON number types do not pin precision; float deserialization can introduce binary-rounding drift. Regex-constrained strings are masked at decode time on strict-mode and grammar backends, so the model literally cannot emit "19.989999" when the pattern demands two decimal places.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Pick the strictest pattern that the legitimate input distribution can satisfy; pair it with a Field description that names the format and gives one canonical example.</statement>
-      <rationale source="v1-source">Patterns are enforced at decode time on strict mode or constrained backends, but the model still needs the description as a prompt anchor on JSON-mode-only fallbacks. The pattern catches drift; the description teaches the format on the first try.</rationale>
+
+    <rule id="r2-strictest-pattern" testable="true">
+      <statement>Pick the strictest pattern that the legitimate input distribution can satisfy; pair it with a Field `description` that names the format and gives one canonical example.</statement>
+      <rationale source="promptfoo-2025">Patterns enforce at decode time; the description anchors the model in JSON-mode-only fallbacks. The pattern catches drift; the description teaches the format on the first try.</rationale>
+    </rule>
+
+    <rule id="r3-parse-after-validate" testable="true">
+      <statement>Consumer code MUST parse the validated string to the exact native type (Decimal, int, datetime) immediately after Pydantic validation; arithmetic and comparison MUST NOT operate on the raw string.</statement>
+      <rationale source="cents-accurate-billing">Holding the value as a string past the validation boundary defeats the purpose — downstream code will eventually coerce to float and re-introduce drift.</rationale>
+    </rule>
+
+    <rule id="r4-no-wide-patterns" testable="true">
+      <statement>Patterns MUST NOT be wider than necessary; reusing `^\\S+$` or `^.+$` for every string field adds zero decode-time constraint and earns false confidence.</statement>
+      <rationale source="schema-review-findings">Wide patterns pass everything, so the schema looks "validated" but is not. Either pin the format precisely or omit the pattern keyword.</rationale>
+    </rule>
+
+    <rule id="r5-description-format-example" testable="true">
+      <statement>Every patterned field MUST have a `description` containing: (a) the format name, (b) a canonical example, (c) any edge case the model previously mis-handled.</statement>
+      <rationale source="field-descriptions-as-prompts">Patterns enforce; descriptions teach. Together they recover format compliance from ~92% to &gt;99% on a 50-task eval.</rationale>
     </rule>
   </section>
 </text>

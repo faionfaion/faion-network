@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Agent Patterns Procedure" version="1.0.0" est_tokens="1100" depth="medium">
+  <summary>Five-step procedure for producing the agent-patterns decision record. Each step has typed input, action, and typed output.</summary>
+
+  <section title="Steps">
+    <step n="1" name="classify-task-shape">
+      <input>Task brief (≤500 chars); tool inventory JSON.</input>
+      <action>Categorise the task into one of: research/investigation, code-fix, multi-step build, structured-extraction, irreversible-action. Use the haiku-tier classifier with a fixed prompt.</action>
+      <output>{task_class: enum, has_success_signal: bool, subtasks_enumerable: bool, action_reversibility: enum[reversible|partial|irreversible]}</output>
+    </step>
+
+    <step n="2" name="apply-decision-tree">
+      <input>Classification output from step 1.</input>
+      <action>Walk content/06-decision-tree.xml. Branches on has_success_signal first (deterministic check available?), then subtasks_enumerable, then action_reversibility.</action>
+      <output>chosen_pattern ∈ {react, plan-and-execute, reflexion, escalate-to-human}</output>
+      <decision-gate>If chosen_pattern == escalate-to-human, stop and return the record with status="escalated".</decision-gate>
+    </step>
+
+    <step n="3" name="set-caps-and-models">
+      <input>chosen_pattern; operator budget (token/cost ceiling).</input>
+      <action>Pick max_iterations (ReAct), max_steps (Plan-and-Execute), or max_attempts (Reflexion). Default = 10, 8, 3 respectively. Pick actor_model (sonnet for general, haiku for cheap classification, opus for high-stakes). For Reflexion, pick critic_model one tier below actor.</action>
+      <output>{caps:{...}, actor_model, critic_model?}</output>
+    </step>
+
+    <step n="4" name="wire-terminal-signal-and-gate">
+      <input>Task shape, chosen pattern.</input>
+      <action>Identify the terminal_condition: a test command, schema validator, or rule check. Compute human_gate_required by scanning the tool inventory for write/send/post/delete verbs.</action>
+      <output>{terminal_condition: string, human_gate_required: bool}</output>
+      <decision-gate>If chosen_pattern == reflexion AND terminal_condition is not deterministic, downgrade to ReAct + human review.</decision-gate>
+    </step>
+
+    <step n="5" name="emit-decision-record">
+      <input>All previous outputs.</input>
+      <action>Compose the decision record per content/02-output-contract.xml schema. Include rejected_patterns with reasons. Run scripts/validate-agent-patterns.py.</action>
+      <output>Validated JSON decision record at the path supplied by the caller.</output>
+      <decision-gate>If validator exits non-zero, fix and re-emit; never publish an invalid record.</decision-gate>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

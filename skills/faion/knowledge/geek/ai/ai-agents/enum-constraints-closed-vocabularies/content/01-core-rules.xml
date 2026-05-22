@@ -1,11 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="enum-constraints-closed-vocabularies Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for enum-constraints-closed-vocabularies. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="enum-constraints-closed-vocabularies Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Four testable rules for enum constraints on finite-value fields.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-literal-or-enum" testable="true">
+      <statement>Every classification or routing field with a finite value set MUST be declared as `Literal[...]` (Python) or `enum` (JSON Schema), NOT a free-form string with values listed in the description.</statement>
+      <rationale source="ohmeow-2024">Strict-mode constrained decoders mask all non-enum tokens to probability zero, eliminating hallucinated labels. Free-string fields keep the full vocabulary live; smaller models occasionally emit synonyms or novel labels that break downstream switch/case code.</rationale>
+    </rule>
+
+    <rule id="r2-strict-or-grammar-backend" testable="true">
+      <statement>Enum-constrained fields MUST be served under strict mode OR a constrained decoder backend (XGrammar, Outlines, vLLM guided generation); JSON-mode-only fallback paths are advisory and require post-validation.</statement>
+      <rationale source="vllm-structured-outputs">Without sampling-time masking, enums are documentation only. Mini/nano models hallucinate enum values under JSON-mode fallback; the schema is shown but never enforced.</rationale>
+    </rule>
+
+    <rule id="r3-semi-open-via-union" testable="true">
+      <statement>For semi-open sets, model the field as a discriminated union: a `Literal[...]` branch for known values plus a typed "novel" branch carrying the free-text candidate; NEVER use `Literal[...] | str` directly.</statement>
+      <rationale source="extensibility-tradeoff">A discriminated union forces the decoder to commit to "known" or "novel" first, then constrains the rest. Plain `Literal | str` collapses to `str` in strict mode and loses the guarantee.</rationale>
+    </rule>
+
+    <rule id="r4-retry-and-map" testable="true">
+      <statement>When strict mode is not available, the orchestrator MUST validate the parsed enum value after the call and either retry-with-feedback ("you returned X; valid values are A/B/C") OR map to the nearest enum via a deterministic table.</statement>
+      <rationale source="json-mode-fallback-incidents">Production systems on JSON-mode-only fallback must reconcile drift; silent drift means downstream switch/case crashes.</rationale>
     </rule>
   </section>
 </text>

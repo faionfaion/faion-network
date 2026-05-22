@@ -1,3 +1,8 @@
+# purpose: runtime middleware that auto-evicts oversized tool results to scratch storage
+# consumes: tool runtime, tokeniser, scratch path
+# produces: agent sees only typed pointer {path, preview, total_tokens, evicted:true}
+# depends-on: content/01-core-rules.xml; paired read_file(path,lines) tool
+# token-budget-impact: cuts oversized tool returns from N tokens → ~150 tokens (preview + pointer)
 """Minimal eviction middleware for agent tool runtimes.
 
 Usage:

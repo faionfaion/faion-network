@@ -1,22 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="discriminated-union-output Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="discriminated-union-output Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Pydantic and JSON Schema 2020-12 forms of an agent-action discriminated union.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Pydantic form">
+    <code lang="python"><![CDATA[
+from typing import Annotated, Literal
+from pydantic import BaseModel, Field
+
+class SearchAction(BaseModel):
+    kind: Literal["search"] = "search"
+    query: str
+
+class FetchAction(BaseModel):
+    kind: Literal["fetch"] = "fetch"
+    url: str
+
+class FinishAction(BaseModel):
+    kind: Literal["finish"] = "finish"
+    summary: str
+
+class AgentTurn(BaseModel):
+    reasoning: str
+    action: Annotated[
+        SearchAction | FetchAction | FinishAction,
+        Field(discriminator="kind"),
+    ]
+    ]]></code>
+  </section>
+
+  <section title="JSON Schema 2020-12 form">
+    <code lang="json"><![CDATA[
+{
+  "$id": "discriminated-union-output/agent-action",
+  "oneOf": [
+    {"$ref": "#/$defs/SearchAction"},
+    {"$ref": "#/$defs/FetchAction"},
+    {"$ref": "#/$defs/FinishAction"}
+  ],
+  "discriminator": {"propertyName": "kind"},
+  "$defs": {
+    "SearchAction": {
+      "type": "object",
+      "required": ["kind", "query"],
+      "additionalProperties": false,
+      "properties": {
+        "kind":  {"const": "search"},
+        "query": {"type": "string", "minLength": 1}
+      }
+    },
+    "FetchAction": {
+      "type": "object",
+      "required": ["kind", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"const": "fetch"},
+        "url":  {"type": "string", "format": "uri"}
+      }
+    },
+    "FinishAction": {
+      "type": "object",
+      "required": ["kind", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "kind":    {"const": "finish"},
+        "summary": {"type": "string", "minLength": 4}
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (valid SearchAction)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{"kind": "search", "query": "discriminated union pydantic"}
+      ]]></code>
+      <note>Discriminator emitted first; the rest of the object is locked to the search branch.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (cross-branch bleed)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"kind": "search", "query": "foo", "url": "https://example.com"}
+      ]]></code>
+      <note>`url` does not belong to SearchAction; without strict mode this passes silently and the downstream dispatcher hits a confused state.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every branch model declares `kind: Literal["..."]` as its first field.</item>
+      <item>`Annotated[... , Field(discriminator="kind")]` is used, not a plain union.</item>
+      <item>JSON Schema has both `oneOf` and `discriminator.propertyName`.</item>
+      <item>Each branch has `additionalProperties: false`.</item>
     </list>
   </section>
 </text>

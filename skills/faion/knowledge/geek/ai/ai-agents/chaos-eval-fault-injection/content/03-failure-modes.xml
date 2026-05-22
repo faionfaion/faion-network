@@ -1,17 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="chaos-eval-fault-injection Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for chaos-eval-fault-injection as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Chaos-Eval Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Four antipatterns when running chaos-eval.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Injecting only "tool_error" because it is the easiest to simulate.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The most damaging real-world failure is tool_mutate (corrupted data) — agents react to wrong-but-plausible returns with confident wrong answers. Skipping mutate guarantees you never measure that risk.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Grading chaos-eval with the same boolean "success" used for sunny-day eval.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sunny-day eval has no faults, so "fail" only means "incorrect". Under fault injection "fail" lumps together honest escalation, retry timeout, and confident wrongness — three completely different reliability stories.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <description>Inject only "tool_error"; skip corrupted_return. The most damaging real-world failure is wrong-but-plausible data, never measured.</description>
+      <detector>per_fault_class.corrupted_return.n_occurrences = 0 in a run that claims to be chaos-graded.</detector>
+      <repair>Add corrupted_return mutators (truncate, swap fields, inject extra data). This is the fault class that distinguishes confident-wrong from honest-failure.</repair>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <description>Grade chaos-eval with boolean success only; honest escalation counted as failure.</description>
+      <detector>recovery_score not present OR is a binary metric.</detector>
+      <repair>Use 0..3 rubric; report mean and distribution per fault class.</repair>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <description>Random seed; runs not reproducible. Regression looks like noise.</description>
+      <detector>seed field missing.</detector>
+      <repair>Pin seed per run; record alongside agent_version.</repair>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <description>Inject at unrealistic rates (e.g. 50% timeout). Agent collapses; no actionable signal.</description>
+      <detector>Any fault class with rate &gt; 0.2 unless explicitly stress-testing.</detector>
+      <repair>Match production fault rates as observed in last 30 days; tag stress-runs explicitly.</repair>
+    </antipattern>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Corrupted_return mutators may produce text resembling instructions. Eval harness treats all returns as data only.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Review confidently_wrong_count before promotion. Any non-zero count is a sev-2 blocker; cannot promote.</p>
   </section>
 </text>

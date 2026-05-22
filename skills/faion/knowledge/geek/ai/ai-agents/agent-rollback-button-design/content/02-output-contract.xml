@@ -1,31 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Agent Rollback Button Design Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Rollback Button Design deliverable. Subagent must satisfy this before returning.</summary>
+  <summary>Pins the shape of a valid rollback-button spec. Platform engineers consume this directly to implement the button.</summary>
+
   <output-contract>
     <required>
-      <field name="eval_set_id" format="versioned_id" />
-      <field name="n_examples" type="integer" min="20" />
-      <field name="model_id_pinned" format="provider_model_version" />
-      <field name="metric_values" type="object" schema="{mean,ci_low,ci_high}" />
-      <field name="cost_per_run_usd" format="float" />
+      <field name="spec_id" type="string" required="true">stable slug</field>
+      <field name="environment" type="enum" required="true">prod | staging | shadow</field>
+      <field name="bundle_fields" type="list" required="true">non-empty list of field names that revert together</field>
+      <field name="immutable_fields" type="list" required="true">customer-state fields preserved across rollback</field>
+      <field name="eval_gate" type="object" required="true">{golden_set_version, min_pass_rate, ci_width}</field>
+      <field name="button_label" type="string" required="true">single user-facing label, ≤40 chars</field>
+      <field name="audit_log_path" type="string" required="true">URL/path to immutable log</field>
+      <field name="owner" type="string" required="true">named individual or rotating role</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
     </required>
+
     <forbidden>
-      <pattern id="f1">naked metric without n and CI</pattern>
-      <pattern id="f2">eval_set_id not frozen</pattern>
-      <pattern id="f3">judge-LLM uncalibrated within 90 days</pattern>
-      <pattern id="f4">eval cost unmeasured</pattern>
+      <pattern id="f1">bundle_fields and immutable_fields overlap (same field in both)</pattern>
+      <pattern id="f2">immutable_fields empty when environment != shadow</pattern>
+      <pattern id="f3">eval_gate.min_pass_rate not numeric or out of [0,1]</pattern>
+      <pattern id="f4">multiple rollback buttons defined for the same environment</pattern>
+      <pattern id="f5">owner is plural pronoun (we / team / us)</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>Downsample for cost only AFTER recording full-run baseline.</transformation>
+      <transformation>Normalise field paths to dotted lowercase form.</transformation>
+      <transformation>Default ci_width to 0.05 if not specified.</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
+
+    <schema-reference path="templates/output-schema.json"/>
   </output-contract>
-  <section title="Self-check checklist">
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "spec_id": "rollback-customer-support-agent",
+  "environment": "prod",
+  "bundle_fields": ["prompt_sha", "schema_version", "tool_registry_sha", "model", "eval_set_version"],
+  "immutable_fields": ["conversations.messages", "accounts.*", "audit_log.*", "billing.*"],
+  "eval_gate": {"golden_set_version": "golden-v3-frozen-2026-05-15", "min_pass_rate": 0.80, "ci_width": 0.05},
+  "button_label": "Rollback to previous stable",
+  "audit_log_path": "s3://ops-audit/agent-rollbacks/",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "spec_id": "rb",
+  "environment": "prod",
+  "bundle_fields": ["prompt_sha", "conversations.messages"],
+  "immutable_fields": ["conversations.messages"],
+  "eval_gate": {"min_pass_rate": "high"},
+  "button_label": "Rollback",
+  "audit_log_path": "tbd",
+  "owner": "we",
+  "version": "1.0",
+  "last_reviewed": "2026"
+}]]></code>
+      <note>f1 (overlap), f3 (non-numeric), f5 (plural owner), invalid version, invalid date.</note>
+    </example>
+  </section>
+
+  <section title="Self-check">
     <list>
-      <item>n ≥ 20</item>
-      <item>CI present</item>
-      <item>Model + prompt pinned</item>
-      <item>Cost reported</item>
+      <item>bundle_fields ∩ immutable_fields == ∅</item>
+      <item>min_pass_rate numeric in [0,1]</item>
+      <item>owner is named individual</item>
+      <item>Output validates against templates/output-schema.json</item>
     </list>
   </section>
 </text>

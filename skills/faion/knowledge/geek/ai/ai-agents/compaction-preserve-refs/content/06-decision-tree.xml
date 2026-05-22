@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="compaction-preserve-refs Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Decision tree routing the agent from compaction trigger to compaction strategy.</summary>
+
+  <decision-tree>
+    <root-question id="q-trigger">Is context utilization above the compaction threshold (default 0.85) OR conversation length above the configured turn cap?</root-question>
+
+    <branch when="utilization &lt; 0.85 AND turns &lt; cap">
+      <conclusion ref="r1-preserve-verbatim">Do not compact yet; methodology does not apply this turn.</conclusion>
+    </branch>
+
+    <branch when="utilization &gt;= 0.85 OR turns &gt;= cap">
+      <question id="q-resume-needed">Will a downstream session (next turn, next process restart, next agent in the mesh) read this state and resume work?</question>
+
+      <branch when="resume_needed == false">
+        <conclusion ref="r2-drop-reasoning">Use plain conversation summary; this methodology's full schema is overkill for display-only summaries.</conclusion>
+      </branch>
+
+      <branch when="resume_needed == true">
+        <question id="q-offload-available">Are large tool outputs already offloaded to the agent's filesystem (per filesystem-as-working-memory)?</question>
+
+        <branch when="offload_available == true">
+          <conclusion ref="r3-fixed-schema">Run full six-key compaction; refs point at the on-disk artifacts, decisions and errors_open carry verbatim strings.</conclusion>
+        </branch>
+
+        <branch when="offload_available == false">
+          <question id="q-context-shape">Does the conversation contain raw tool output bodies above ~2000 tokens?</question>
+
+          <branch when="raw_tool_output_present == true">
+            <conclusion ref="r2-drop-reasoning">Offload bodies to filesystem first (delegating to filesystem-as-working-memory), then run the six-key compaction so refs can point at the freshly-written paths.</conclusion>
+          </branch>
+
+          <branch when="raw_tool_output_present == false">
+            <conclusion ref="r3-fixed-schema">Run full six-key compaction directly; no offload step needed.</conclusion>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="utilization=0.88, turns=22, resume_needed=true, offload_available=true">
+    q-trigger → branch(utilization &gt;= 0.85) → q-resume-needed → branch(true) → q-offload-available → branch(true) → conclusion(r3-fixed-schema).
+  </example>
+</text>

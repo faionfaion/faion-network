@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="enum-constraints-closed-vocabularies Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Choose enum, semi-open union, or free string based on value-set shape.</summary>
+
+  <decision-tree>
+    <root-question id="q-finite">Is the set of valid values finite AND known at schema-definition time?</root-question>
+
+    <branch when="finite_and_known == false">
+      <conclusion ref="r3-semi-open-via-union">Use plain `str` WITHOUT a pattern (or with a description-only hint). Enum would clip valid answers.</conclusion>
+    </branch>
+
+    <branch when="finite_and_known == true">
+      <question id="q-fully-closed">Is the set fully closed (no novel values ever expected)?</question>
+
+      <branch when="fully_closed == true">
+        <question id="q-decoder-strict">Does the decoder support strict mode or a grammar backend?</question>
+
+        <branch when="strict_available == true">
+          <conclusion ref="r1-literal-or-enum">Use `Literal[...]` or `enum`. Decoder masks all non-enum tokens; no further work.</conclusion>
+        </branch>
+
+        <branch when="strict_available == false">
+          <conclusion ref="r4-retry-and-map">Use `Literal[...]` for documentation; add a post-validation retry-with-feedback loop or a deterministic mapping table for drift.</conclusion>
+        </branch>
+      </branch>
+
+      <branch when="fully_closed == false">
+        <conclusion ref="r3-semi-open-via-union">Use a discriminated union with `known` (Literal[...]) + `novel` (free str) branches. NEVER `Literal | str`.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="finite_and_known=true, fully_closed=true, strict_available=true">
+    q-finite → branch(true) → q-fully-closed → branch(true) → q-decoder-strict → branch(true) → conclusion(r1-literal-or-enum).
+  </example>
+</text>

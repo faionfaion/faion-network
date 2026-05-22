@@ -1,3 +1,8 @@
+# purpose: Pydantic ticket schema with Literal enum fields wired for strict mode
+# consumes: customer message text
+# produces: Ticket instance with category/priority/sentiment enums
+# depends-on: pydantic v2; OpenAI strict mode or Anthropic tool-call mode
+# token-budget-impact: schema serialisation ~200 tokens
 """Strict-mode Pydantic schema with Literal enum fields.
 
 Use with OpenAI:

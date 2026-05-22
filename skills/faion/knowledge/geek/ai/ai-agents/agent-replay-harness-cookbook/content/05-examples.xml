@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Agent Replay Harness Cookbook Examples" version="1.0.0" est_tokens="1100" depth="medium">
+  <summary>One full worked example: applying the cookbook to a Claude Agent SDK research agent that occasionally returns truncated results.</summary>
+
+  <section title="Example: research agent intermittent truncation">
+    <example type="good" title="Captured trace">
+      <code lang="json"><![CDATA[{"run_id":"r-2026-05-22-001","event_id":1,"class":"stubbable_llm",
+ "prompt_hash":"a3f...","completion":"I'll search arxiv first.","tool_calls":[{"name":"web_search","args":{"q":"agent harness 2026"}}]}
+{"run_id":"r-2026-05-22-001","event_id":2,"class":"stubbable_tool",
+ "tool":"web_search","args_hash":"b1c...","returns":[{"url":"...","snippet":"..."}],"duration_ms":840}
+{"run_id":"r-2026-05-22-001","event_id":3,"class":"stubbable_llm",
+ "prompt_hash":"d2e...","completion":"<TRUNCATED>","tool_calls":[]}]]></code>
+      <note>Event 3 is the truncation — the bug we want to reproduce.</note>
+    </example>
+
+    <example type="good" title="Wired LLM stub">
+      <code lang="python"><![CDATA[from claude_agent_sdk import LLMClient
+import json, hashlib
+
+class ReplayLLM(LLMClient):
+    def __init__(self, trace_path):
+        self.events = [json.loads(l) for l in open(trace_path)
+                       if json.loads(l)["class"] == "stubbable_llm"]
+        self.idx = 0
+
+    def call(self, messages, **_):
+        prompt_hash = hashlib.sha1(json.dumps(messages).encode()).hexdigest()
+        e = self.events[self.idx]
+        if e["prompt_hash"][:8] != prompt_hash[:8]:
+            raise ReplayMissError(f"event {self.idx}: prompt drift")
+        self.idx += 1
+        return {"completion": e["completion"], "tool_calls": e.get("tool_calls", [])}]]></code>
+      <note>The stub raises on prompt drift instead of fabricating a completion.</note>
+    </example>
+
+    <example type="good" title="Emitted harness manifest">
+      <code lang="json"><![CDATA[{
+  "harness_id": "h-research-2026-05-22",
+  "trace_path": "traces/r-2026-05-22-001.jsonl",
+  "coverage_ratio": 0.97,
+  "stubs": [
+    {"type": "llm", "class": "ReplayLLM", "path": "harness/replay_llm.py"},
+    {"type": "tool", "name": "web_search", "class": "ReplayWebSearch"}
+  ],
+  "frozen_clock": "2026-05-21T14:00:00Z",
+  "random_seed": 42,
+  "reproduces": true,
+  "first_failing_event": 3,
+  "owner": "ruslan@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T11:00:00Z"
+}]]></code>
+    </example>
+
+    <example type="good" title="Pytest replay assertion">
+      <code lang="python"><![CDATA[def test_replay_reproduces_truncation():
+    harness = load_manifest("harness-manifest.json")
+    result = harness.run()
+    assert result.events[3]["completion"] == "<TRUNCATED>"
+    # Bug is now reproducible; next we fix and re-run.]]></code>
+      <note>Once this test passes, fixes can be validated by inverting the assertion.</note>
+    </example>
+  </section>
+</text>

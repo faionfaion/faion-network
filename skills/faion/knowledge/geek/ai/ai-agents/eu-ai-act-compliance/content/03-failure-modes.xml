@@ -1,12 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="eu-ai-act-compliance Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for eu-ai-act-compliance as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="eu-ai-act-compliance Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five failure modes specific to LLM-driven AI Act compliance work.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-hallucinated-articles">
+      <description>Agent confidently cites nonexistent EU AI Act articles or invented Annex points.</description>
+      <reason>LLMs interpolate plausible-looking article numbers from training data. A regulator who spots a fabricated citation will distrust the entire submission.</reason>
+    </antipattern>
+    <p>Symptom: rationale cites "Article 47" or other numbers that do not exist. Root cause: no citation verification step. Fix: add the reviewer subagent that cross-checks every citation against the official EUR-Lex text; pattern-validate citations syntactically in the validator script.</p>
+
+    <antipattern id="fm-02-classification-drift">
+      <description>System risk tier drifts as features are added, but the compliance pipeline is not re-triggered.</description>
+      <reason>Adding biometric authentication to a "limited risk" recommender system flips it to high-risk; without a re-classification trigger the documentation lags reality and the system operates illegally.</reason>
+    </antipattern>
+    <p>Symptom: feature ships in production before its risk implications are reviewed. Root cause: classification treated as one-shot. Fix: integrate `scripts/validate-eu-ai-act-compliance.py` into CI as a gating check on any change touching the system description.</p>
+
+    <antipattern id="fm-03-missing-human-gate">
+      <description>Pipeline auto-submits generated compliance documents to regulators without explicit human legal review.</description>
+      <reason>The Act treats submitted documentation as legally binding; un-reviewed agent output is a self-inflicted compliance breach.</reason>
+    </antipattern>
+    <p>Symptom: documents land at regulator with no reviewer attribution. Root cause: orchestrator skipped the hard stop. Fix: require `reviewer_signoff` in the schema; validator rejects any output without it; orchestrator must block on human sign-off.</p>
+
+    <antipattern id="fm-04-uninterpretable-explanations">
+      <description>Running SHAP/LIME on a large transformer agent and shipping the resulting "explanations" as Article 13/14 satisfaction.</description>
+      <reason>SHAP/LIME on transformers produces technically valid but practically uninterpretable surrogate explanations; the regulator wants meaningful interpretability, not numeric noise.</reason>
+    </antipattern>
+    <p>Symptom: regulator requests clarification on explanations; engineers cannot defend them. Root cause: blind application of explanation libraries. Fix: choose interpretability technique that matches the model class; document limitations explicitly; use behavioural eval over feature-attribution where appropriate.</p>
+
+    <antipattern id="fm-05-gdpr-collision">
+      <description>Compliance pipeline processes real user data for bias checks without honouring GDPR rights (DPIA, legal basis, retention).</description>
+      <reason>GDPR applies independently of the AI Act; ignoring it during compliance work creates a second, distinct violation.</reason>
+    </antipattern>
+    <p>Symptom: data-subject request reveals AI Act bias-check dataset retains personal data beyond the agreed window. Root cause: parallel-regime confusion. Fix: stand up a DPIA for the compliance pipeline; pseudonymise or aggregate before bias check; set short retention.</p>
   </section>
 </text>

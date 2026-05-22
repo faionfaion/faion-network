@@ -4,76 +4,99 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agent replay harness cookbook that walks an operator from trigger to closed outcome with named artefacts at each step.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Concrete cookbook for wiring deterministic replay into an existing Claude Agent SDK or LangGraph stack — stubs, seeds, clocks, and recorded traces that make agent failures reproducible.
 content_id: "95218d70a3d1e92b"
-tags: [agent, ai, playbook]
+complexity: deep
+produces: playbook-step
+est_tokens: 5500
+tags: [agent, ai, playbook, replay, determinism, harness]
 ---
 # Agent Replay Harness Cookbook
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agent replay harness cookbook that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Concrete cookbook for wiring deterministic replay into an existing Claude Agent SDK or LangGraph stack — stubs, seeds, clocks, and recorded traces that make agent failures reproducible.
 
-**One-paragraph:** End-to-end playbook for agent replay harness cookbook that walks an operator from trigger to closed outcome with named artefacts at each step. record-replay-debugging is a principle; engineers need a concrete cookbook (deterministic seeds, stubbed tools, time/clock control) for actual Claude Agent SDK / LangGraph stacks.
+**One-paragraph:** Agents that depend on live LLMs, network calls, and wall-clock cannot be debugged with rerun-it-again. This cookbook walks an operator through capturing every nondeterministic dependency (LLM completion, tool result, time, randomness) as a typed trace, then swapping each one for a replay stub that returns the recorded value when seeded. The output is a runnable replay harness plus a one-page deviation log. Two adapters are provided (Claude Agent SDK and LangGraph); each names which class to subclass and where to inject the stub.
+
+**Ефективно для:** Команд, у яких агент іноді ламається в проді, ніхто не може його повторити локально, і кожен дебаг — це новий запуск з іншим результатом; cookbook за пів дня дає працюючий replay-стек, після якого падіння реплеїться 1-в-1.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agent replay harness cookbook end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Agent stack already runs in production or staging (not greenfield design).
+- Failures have been observed but are not reliably reproducible locally.
+- Trace storage (S3, sqlite, jsonl) is available with at least 7-day retention.
+- Owner can hold a 2-hour pairing session for the harness wire-in.
+- Tool wrappers can be subclassed (no closed-source binaries in the hot path).
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Agent has no production traffic yet — record at least one real failure first.
+- Tool calls are out-of-process binaries with no stubbable surface.
+- Trace recording would violate user-data residency rules and no scrubber is available.
+- Failures are caused by infra-layer bugs (k8s, network) that the agent layer cannot replay.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artifact | Format | Source |
+|---|---|---|
+| Production agent code | git ref or path | Repo |
+| Sample failure trace | jsonl / langfuse / langsmith export | Observability stack |
+| Tool registry | JSON `{name, args_schema, side_effect_class}` | Tool catalogue |
+| Storage URL | s3:// or file:// path | Ops |
+| Named owner | handle/email | Operator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/ai/ai-agents/autonomous-agents/AGENTS.md` | Provides agent loop vocabulary referenced by stubs. |
+| `geek/ai/ai-agents/chaos-eval-fault-injection/AGENTS.md` | Sibling — chaos eval runs on top of replay harness. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: capture-everything, deterministic-seeds, stub-by-type, named-owner, deviation-log | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the replay-harness manifest (stubs + seeds + traces) | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (missing fields, vague signals, orphan playbook, write-only log, unspecified output location) | ~900 |
+| `content/04-procedure.xml` | deep | 7-step procedure from trace capture to replay-green run | ~1300 |
+| `content/05-examples.xml` | medium | Worked example: Claude Agent SDK harness for a failing research agent | ~1100 |
+| `content/06-decision-tree.xml` | essential | Decision tree: capturable? → stubbable? → reproducible? → adopt / split / escalate | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `parse_failure_trace` | haiku | Structured extraction of tool calls and LLM completions. |
+| `synthesize_stubs` | sonnet | Per-tool stub authoring with type-correct returns. |
+| `author_harness_manifest` | sonnet | Composes the manifest JSON. |
+| `review_for_pii` | opus | Sensitive when traces include user data; high stakes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema for the replay-harness manifest. |
+| `templates/harness-manifest.example.json` | Filled minimal valid example. |
+| `templates/replay-stub.py.tmpl` | Python skeleton showing the stub pattern. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-output.py` | Validate the harness manifest against the JSON Schema. | After subagent emits manifest, before harness is invoked. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- peer: [[chaos-eval-fault-injection]] — fault injection rides on top of replay.
+- peer: [[agent-trajectory-eval-method]] — trajectory evals consume replay traces.
+- external refs: Datadog harness-first agents post; SakuraSky deterministic-replay series.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree asks: (1) is the failure already captured in a trace? (2) is every nondeterministic dependency stubbable? (3) does the replayed run reproduce the failure bit-for-bit? Leaves point to "adopt harness", "split — capture more state first", or "escalate — non-stubbable infra dependency".

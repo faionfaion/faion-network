@@ -1,11 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agent-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agent-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Agent Patterns Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules every agent-pattern decision enforces. Hard rules — operator input cannot relax them.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-bounded-iterations" testable="true" depth="essential">
+      <statement>Every pattern carries a hard max_iterations (ReAct) or max_attempts (Reflexion) or max_steps (Plan-and-Execute). No unbounded loops in production.</statement>
+      <rationale source="ReAct paper, Yao et al. 2022 (arXiv:2210.03629); production agent harnesses">Unbounded loops are the #1 cost-runaway and the most common production incident. Bound is a hard pre-condition for any pattern.</rationale>
+    </rule>
+    <rule id="r2-idempotent-tools" testable="true" depth="essential">
+      <statement>All tools the agent calls must be idempotent at the level of the underlying side effect, OR the call must be guarded by a deduplication key derived from the tool arguments.</statement>
+      <rationale source="distributed-systems: at-least-once delivery; LangChain tool design guide">Retries are inherent in ReAct/Reflexion. Non-idempotent tools double-charge, duplicate writes, or corrupt state on retry.</rationale>
+    </rule>
+    <rule id="r3-terminal-condition" testable="true" depth="essential">
+      <statement>Every pattern declares a terminal condition that is either deterministic (test command exits 0, schema validates) or operator-supplied (success_check callback). Vibes-based "the agent decides it's done" is forbidden.</statement>
+      <rationale source="Reflexion paper, Shinn et al. 2023 (arXiv:2303.11366)">Reflexion without an objective check turns into max_attempts on every run. ReAct without one runs until the model "decides", which is a context overflow.</rationale>
+    </rule>
+    <rule id="r4-model-by-role" testable="true" depth="essential">
+      <statement>Reflexion's critic step uses a cheaper-or-equal model than the actor. Plan-and-Execute's planner may use a stronger model than the per-step executor.</statement>
+      <rationale source="OpenAI cookbook; production cost analysis at Anthropic / OpenAI">Asymmetric model choice cuts cost 40-70% vs. running the same model in every role. Critics rarely need top-tier reasoning.</rationale>
+    </rule>
+    <rule id="r5-observability" testable="true" depth="essential">
+      <statement>Every iteration emits a structured log line: {iteration, pattern, tool_name, tool_args_hash, result_summary, latency_ms, tokens}. No silent steps.</statement>
+      <rationale source="LangSmith / W&amp;B Weave / Helicone observability conventions 2026">Debugging an agent loop without per-iteration logs is impossible; failures look identical to successes. Logging is part of the contract, not optional polish.</rationale>
+    </rule>
+    <rule id="r6-human-checkpoint" testable="true" depth="essential">
+      <statement>For irreversible actions (file writes outside scratch dirs, API mutations, payments, sends), the pattern inserts a human-confirm gate BEFORE the call. Reflexion loops do not retry past a denied confirmation.</statement>
+      <rationale source="agent safety best practices; Anthropic responsible deployment guide">Autonomous loops applied to destructive actions compound errors. The gate is the only reliable backstop when the success_check is wrong.</rationale>
     </rule>
   </section>
+
+  <section title="Canonical examples">
+    <example type="good" title="ReAct loop with all six rules">
+      <code lang="python"><![CDATA[react = ReActAgent(
+    tools=tools,
+    model="claude-sonnet-4",
+    max_iterations=10,  # r1
+    log_emitter=structured_logger,  # r5
+)
+# tools are idempotent (r2): each carries a dedup_key derived from args
+# terminal_condition = response without tool_calls (r3)
+# destructive tools wrap in human_confirm() (r6)
+react.run(task)]]></code>
+      <note>All six rules satisfied. Cost is predictable.</note>
+    </example>
+    <example type="bad" title="Unbounded Reflexion with side-effectful tools">
+      <code lang="python"><![CDATA[ReflexionAgent(tools=[write_to_prod_db, ...]).run(task)]]></code>
+      <note>No max_attempts (r1), no success_check (r3), destructive tools without confirm gate (r6). Will retry the same broken write until quota explodes.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/06-decision-tree.xml" />
+  </see-also>
 </text>

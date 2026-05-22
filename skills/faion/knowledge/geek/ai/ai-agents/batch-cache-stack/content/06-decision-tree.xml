@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Batch + Cache Stack Decision Tree" version="1.0.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q1" text="Can the workload tolerate 24h turnaround (async)?">
+      <branch when="async_ok == true">
+        <question id="q2" text="Is batch volume ≥50?">
+          <branch when="volume_ok == true">
+            <question id="q3" text="Is there a byte-identical stable prefix across items?">
+              <branch when="stable_prefix == true">
+                <conclusion ref="r1-batch-route" outcome="install-stack">Install full stack: batch + cache_control on prefix. Target hit-rate ≥0.9.</conclusion>
+              </branch>
+              <branch when="stable_prefix == false">
+                <conclusion ref="r1-batch-route" outcome="batch-only">Batch-only (50% off); cache will not hit.</conclusion>
+              </branch>
+            </question>
+          </branch>
+          <branch when="volume_ok == false">
+            <conclusion ref="r1-batch-route" outcome="cache-only-sync">Use sync + cache only; batch overhead exceeds savings for small volume.</conclusion>
+          </branch>
+        </question>
+      </branch>
+      <branch when="async_ok == false">
+        <question id="q4" text="Is there a stable prefix?">
+          <branch when="stable_prefix == true">
+            <conclusion ref="r3-cache-control-marker" outcome="cache-only-sync">Sync + cache only (no batch).</conclusion>
+          </branch>
+          <branch when="stable_prefix == false">
+            <conclusion ref="r1-batch-route" outcome="skip">Skip — neither optimisation applies.</conclusion>
+          </branch>
+        </question>
+      </branch>
+    </root-question>
+  </decision-tree>
+
+  <example trace="overnight-labelling">
+    <p>async_ok=true → volume_ok=true (5000/night) → stable_prefix=true → conclusion: install-stack.</p>
+  </example>
+</text>

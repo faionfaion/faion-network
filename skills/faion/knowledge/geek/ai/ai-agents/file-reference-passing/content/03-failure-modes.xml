@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="file-reference-passing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for file-reference-passing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="file-reference-passing Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Five failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Stage 1 returns "summary + content of relevant items"</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Content is duplicated across stages, consuming tokens in both stage 1's output and stage 2's input. The summary itself becomes context-debt. Return refs only; stage 2 re-fetches on demand.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Subagent returns the entire file it analyzed</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Parent context blows up, especially if the subagent returns many files. The parent must parse and summarize-again. Instead, subagent should return a summary + list of paths, and parent re-reads what it needs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Refs are LLM-generated paths that don't exist</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hallucinated refs break loading and waste downstream compute. Constrain refs to a manifest (enum or regex) that the LLM was explicitly given, or validate refs post-hoc and retry with a correction prompt.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Refs are remote URLs that expire</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A rerun days later fails because the URL no longer resolves. Snapshot the resource at the time of reference and reference the snapshot instead. Use timestamped URLs or immutable refs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Pipeline persists raw content between steps</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Disk and memory both bloat as the corpus grows. State files become large and slow to load. Instead, persist only refs (tiny) and resolve at use time. This also allows the corpus to refresh without invalidating the pipeline state.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-summary-plus-content">
+      <description>Stage 1 returns "summary AND content of relevant items".</description>
+      <reason>Content duplicated across stages consumes tokens twice; the summary itself becomes context-debt the next stage must re-summarise.</reason>
+    </antipattern>
+    <p>Symptom: stage 1 output tokens grow linearly with corpus size. Root cause: content embedded in scan result. Fix: return refs only; stage 2 re-fetches on demand.</p>
+
+    <antipattern id="fm-02-subagent-returns-full-file">
+      <description>Subagent returns the entire file content it analysed.</description>
+      <reason>Parent context blows up, especially with multi-file subagents. The parent then re-summarises content it could have re-read on demand.</reason>
+    </antipattern>
+    <p>Symptom: parent context utilisation spikes after every subagent call. Root cause: subagent emits content. Fix: subagent schema must be `{summary, interesting_refs[], follow_up_questions[]}` — no content.</p>
+
+    <antipattern id="fm-03-hallucinated-refs">
+      <description>Refs are LLM-generated paths that do not exist.</description>
+      <reason>Downstream load fails or, worse, loads the wrong file. The pipeline silently degrades.</reason>
+    </antipattern>
+    <p>Symptom: downstream "file not found" errors; sometimes worse, wrong-file loads. Root cause: refs not constrained to a manifest. Fix: validate refs against the manifest after every scan; retry-with-feedback when invalid.</p>
+
+    <antipattern id="fm-04-expirable-refs">
+      <description>Refs are remote URLs that expire.</description>
+      <reason>Reruns days later fail; debugging is hard because the original content is gone.</reason>
+    </antipattern>
+    <p>Symptom: reruns of historical pipeline output fail. Root cause: live-URL refs. Fix: snapshot the resource at scan time; ref the snapshot path.</p>
+
+    <antipattern id="fm-05-content-in-state">
+      <description>Pipeline state files persist raw content between steps.</description>
+      <reason>Disk bloats; state files become slow to load; the system cannot benefit from upstream refresh.</reason>
+    </antipattern>
+    <p>Symptom: state files in GB-range; cold-start latency unacceptable. Root cause: content persisted instead of refs. Fix: persist only refs; resolve at use time.</p>
   </section>
 </text>

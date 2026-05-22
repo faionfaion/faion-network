@@ -1,32 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="filesystem-as-working-memory Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for filesystem-as-working-memory as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="filesystem-as-working-memory Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Summarizing the conversation at the first sign of pressure (50-60% utilization) instead of offloading the next tool result.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lossy compression applied while reversible space-savings are still available — the agent loses recoverable facts to save tokens it didn't need to save yet.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>FS in tmpfs / per-process RAM, conversation in Postgres — process restart leaves the agent with file paths that 404.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Memory model splits across two persistence boundaries; agent's references decay independently of its own awareness of them.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Compaction routine fires whenever context utilization crosses ~50%, replacing the conversation with a summary while large tool outputs are still inline.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The lossless lever (offload to FS) was still available; the agent burned facts it could have kept.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Tool reads a file, returns the full content to the model, model emits a tool call to write the same content to a different file.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The blob crosses the model boundary twice for no reason — pay the input + output token cost on data the model never needed to "see".</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Agent stores files in /tmp or in-memory dict, conversation in durable store; restart leaves dangling paths.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Two persistence boundaries — agent's mental model assumes the file still exists because the message that mentions it does.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-premature-compaction">
+      <description>Compaction fires at 50-60% utilisation while large tool outputs remain inline.</description>
+      <reason>Lossy compression applied while lossless offload was still available. Recoverable facts get burned.</reason>
+    </antipattern>
+    <p>Symptom: agent claims it cannot remember a path it used three turns ago. Root cause: ordering wrong. Fix: enforce r5-compact-last — never trigger LLM compaction until offload yields no further reduction.</p>
+
+    <antipattern id="fm-02-blob-roundtrip">
+      <description>Tool reads a file, returns full content; model emits another tool call to write the same content to a different file.</description>
+      <reason>The blob crosses the model boundary twice for no reason — pay token cost on data the model never needed to "see".</reason>
+    </antipattern>
+    <p>Symptom: doubled token cost for file copy operations. Root cause: missing server-side copy primitive. Fix: add a `copy_file(src, dst)` server tool that returns only `{copied_from, to}`; content never enters the model.</p>
+
+    <antipattern id="fm-03-dangling-paths">
+      <description>FS in `/tmp` or in-process RAM, conversation in durable store. Restart leaves the agent with paths that 404.</description>
+      <reason>Two persistence boundaries; the agent's references decay independently of its awareness of them.</reason>
+    </antipattern>
+    <p>Symptom: post-restart agent reads files that no longer exist. Root cause: split persistence. Fix: same-store atomic checkpoint of FS + conversation; or write-ahead reconciliation step on resume.</p>
+
+    <antipattern id="fm-04-adhoc-taxonomy">
+      <description>Agent invents top-level folder names per call (`tmp_search_42/`, `notes_today/`).</description>
+      <reason>`ls` becomes useless; agent forgets where it put things; reproducibility drops.</reason>
+    </antipattern>
+    <p>Symptom: agent re-fetches data it already wrote because it cannot find the earlier copy. Root cause: no taxonomy enforcement. Fix: hard-code `search/`, `docs/`, `plan/`, `scratch/` in SKILL.md; validator rejects paths outside.</p>
   </section>
 </text>

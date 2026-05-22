@@ -4,73 +4,101 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: EU AI Act and regulations require compliance frameworks for high-risk AI systems.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a governance pack for an AI system under EU AI Act / SOC2 / ISO 42001 — model card, bias audit report, explainability artefacts, human-oversight design, audit-log spec.
 content_id: "2f7186694b8481f5"
-tags: [governance, compliance, bias-detection, explainability, audit-logging]
+complexity: deep
+produces: report
+est_tokens: 5800
+tags: [governance, compliance, bias-detection, explainability, audit-logging, eu-ai-act]
 ---
 # AI Governance and Compliance
 
 ## Summary
 
-**One-sentence:** EU AI Act and regulations require compliance frameworks for high-risk AI systems.
+**One-sentence:** Produces a governance pack for an AI system under EU AI Act / SOC2 / ISO 42001 — model card, bias audit report, explainability artefacts, human-oversight design, audit-log spec.
 
-**One-paragraph:** EU AI Act and regulations require compliance frameworks for high-risk AI systems. Implement governance through model cards, bias monitoring, explainability reporting (SHAP/LIME), human oversight mechanisms, and data governance documentation to meet regulatory requirements for risk classification, transparency, and bias mitigation.
+**One-paragraph:** Regulatory and enterprise-buyer pressure (EU AI Act, SOC 2, ISO 42001, MiCA) now require AI systems to ship with a documented governance pack. This methodology produces five named artefacts: a model card (provenance + intended use + limits), a bias audit report (demographic slices + statistical tests), explainability artefacts (SHAP/LIME or rule-based), a human-oversight design (when and how a human intervenes), and an audit-log spec (what is logged, retention, immutability). Output is one signed governance pack PMs and compliance officers can hand to auditors.
+
+**Ефективно для:** Команд, які продають в Європу або в enterprise, і де на ревизії покупця питають «де ваш model card?»; pack за тиждень дає 5 артефактів — і відкриває контракти, які без них стоять у статусі «pending compliance review».
 
 ## Applies If (ALL must hold)
 
-- Deploying AI systems in EU markets where the AI Act applies (effective August 2024, tiered enforcement through 2027).
-- Building high-risk AI applications: recruitment, credit scoring, biometric ID, medical diagnostics, law enforcement tools.
-- Any product that makes consequential automated decisions affecting natural persons.
-- When organizational policies require documented model cards, bias audits, or explainability reports.
-- Preparing for enterprise sales where buyers require SOC 2 / ISO 42001 compliance evidence.
-- Audit trail requirements: financial services, healthcare, public sector AI deployments.
+- AI system is or will be in production with external users.
+- At least one of: EU market exposure, enterprise buyer with compliance gate, healthcare/finance/HR vertical, regulated industry.
+- Named compliance owner exists.
+- Bias audit data (demographic-tagged samples) is available or can be assembled.
+- Model is not entirely third-party hosted with no introspection (otherwise governance pack is the provider's).
 
 ## Skip If (ANY kills it)
 
-- Internal developer tooling with no external user impact — overhead exceeds benefit.
-- Pure B2B APIs where the downstream customer handles their own compliance.
-- Low-risk AI (EU AI Act Annex III exclusions): spam filters, AI-powered search on public content, simple recommendation engines with no legal/financial effect.
-- Prototype / research phase — implement governance before production launch, not before first demo.
+- Internal developer tooling with no external impact.
+- Pure B2B passthrough where downstream customer holds the compliance burden.
+- EU AI Act Annex III low-risk class: spam filters, public-content search, trivial recommenders.
+- Prototype / pre-launch — implement before first paying customer, not before first demo.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artifact | Format | Source |
+|---|---|---|
+| Model identity | name + version + provider + training-data summary | ML team |
+| Demographic-tagged sample set | jsonl with protected-attribute labels | QA / data |
+| Explainability tooling | SHAP / LIME setup or rule trace | Eng |
+| Human-oversight policy template | Markdown | Compliance |
+| Audit log endpoint | URL + retention policy | Ops |
+| Named compliance owner | handle / email | Legal / compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/eu-ai-act-compliance/AGENTS.md` | Sibling — risk classification feeds this pack. |
+| `geek/ai/ai-agents/ai-feature-brief-extension-pack/AGENTS.md` | Hallucination policy anchors the human-oversight design. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: model-card-required, bias-audit-statistical, explainability-typed, human-oversight-named, audit-log-immutable | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the governance pack manifest | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns | ~900 |
+| `content/04-procedure.xml` | deep | 7-step procedure across the 5 artefacts | ~1300 |
+| `content/05-examples.xml` | medium | Worked example: governance pack for a CV-screening AI | ~1100 |
+| `content/06-decision-tree.xml` | essential | Risk-class → mandatory artefacts → ship/escalate | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify_risk` | sonnet | Risk-class mapping requires regulatory judgment. |
+| `draft_model_card` | sonnet | Structured artefact authoring. |
+| `bias_audit_stats` | haiku | Mechanical statistical computation. |
+| `explainability_draft` | sonnet | Pattern-match SHAP/LIME outputs to plain-English claims. |
+| `legal_review` | opus | High-stakes cross-input synthesis with compliance vocabulary. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema for the governance pack manifest. |
+| `templates/output.example.json` | Filled example. |
+| `templates/model-card.md` | Markdown skeleton with EU AI Act + ISO 42001 fields. |
+| `templates/bias-audit-report.md` | Markdown skeleton for statistical bias audit. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-output.py` | Validate the governance pack manifest. | After pack assembly, before auditor handoff. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
+- peer: [[eu-ai-act-compliance]] — risk classification methodology.
+- peer: [[ai-incident-postmortem-template]] — incidents feed the audit log.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) what is the EU AI Act risk class (Prohibited / High / Limited / Minimal)? (2) is there enterprise-buyer compliance gate? (3) is human oversight architecturally possible? Leaves point to "ship full pack", "ship abbreviated pack" (Limited / Minimal), or "escalate / refuse deployment" (Prohibited).

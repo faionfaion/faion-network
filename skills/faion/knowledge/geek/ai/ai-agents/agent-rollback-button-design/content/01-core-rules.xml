@@ -1,43 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Agent Rollback Button Design Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Four testable rules every application of Agent Rollback Button Design enforces. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The four rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The Agent Rollback Button Design ground-truth set is versioned and frozen before each comparison run. Adding examples mid-comparison invalidates the comparison.</statement>
-      <rationale source="ML reproducibility / Pineau et al., Reproducibility Checklist 2020">Mutable eval sets produce non-comparable metrics. Score 0.82 → 0.85 is meaningless if the denominator changed.</rationale>
+  <summary>Five testable rules every rollback-button spec enforces. Hard rules — operator input cannot relax them.</summary>
+
+  <section title="Rules">
+    <rule id="r1-bundled-rollback" testable="true" depth="essential">
+      <statement>Rollback reverts a named bundle (prompt SHA + schema version + tool registry SHA + model name + eval-set version) atomically. Partial-field rollback is forbidden.</statement>
+      <rationale source="Datadog harness-first agents, 2026; SRE rollback patterns">Partial rollback leaves the system in a state never tested in eval. Atomic bundles are the only reproducible target.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Each eval reports n, mean, and confidence interval — not a single number.</statement>
-      <rationale source="statistics / Wasserstein &amp; Lazar, ASA Statement on p-values (2016)">Naked mean ignores sampling noise. 0.82 ± 0.08 over n=30 is a different story than 0.82 ± 0.01 over n=1000.</rationale>
+    <rule id="r2-immutable-customer-state" testable="true" depth="essential">
+      <statement>Customer-state fields (conversation history, account artefacts, billing events, audit log) are explicitly listed and remain untouched by rollback. Loss of these fields is a sev-1 incident.</statement>
+      <rationale source="data-loss best practices; GDPR / SOC2 requirements">Customer messages are user-generated content; deleting them on rollback is a data-loss bug masquerading as a feature.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Judge-LLM scoring is recalibrated against ≥20 human-labeled examples per quarter. Drift in the judge invalidates downstream metrics.</statement>
-      <rationale source="LLM-as-judge research / Zheng et al., MT-Bench (2023)">Judge models change. Without recalibration the eval becomes a measurement of the judge, not the target.</rationale>
+    <rule id="r3-eval-gated" testable="true" depth="essential">
+      <statement>The rollback target must pass the frozen golden eval at ≥ baseline pass-rate (within the 95% CI of the originally-deployed version). Rollback to a worse-scoring bundle is blocked unless overridden by a named human.</statement>
+      <rationale source="ML reproducibility / Pineau et al. 2020 Reproducibility Checklist">Rolling forward to a known-bad bundle is the rollback equivalent of "fixing" by reintroducing the bug.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Per-example cost is logged. Eval that costs &gt;2× the production daily traffic is downsampled or moved to nightly.</statement>
-      <rationale source="FinOps for ML / FinOps Foundation">Unbounded eval budgets break the cost case and reduce eval frequency, which defeats the purpose.</rationale>
+    <rule id="r4-single-button" testable="true" depth="essential">
+      <statement>Operators see exactly one button per environment. Multiple "rollback to vX" buttons fragment cognitive load and produce wrong-version selections in incidents.</statement>
+      <rationale source="UX of ops tooling; Google SRE workbook">Single-button rollback with a clear default and an "advanced" override is more reliable under stress than a menu of versions.</rationale>
+    </rule>
+    <rule id="r5-audit-log" testable="true" depth="essential">
+      <statement>Every rollback emits an audit-log entry: {who, when, from_bundle, to_bundle, eval_score_before, eval_score_after, reason}. Log is append-only and immutable.</statement>
+      <rationale source="SOC2 change-management requirements; incident postmortem practice">Without audit trail the team relitigates "was that rollback intentional?" forever; insurers require it.</rationale>
     </rule>
   </section>
+
   <section title="Canonical examples">
-    <example type="good" title="Versioned eval report">
-      <code lang="text"><![CDATA[
-set: golden-v3-frozen-2026-05-15 (n=247)
-model: claude-opus-4.6
-prompt: jtbd-synthesis@a3f1c (git SHA)
-result: pass-rate 0.83 ± 0.04 (95% CI)
-]]></code>
-      <note>Every element of the comparison is pinned. Reproducible.</note>
+    <example type="good" title="Atomic bundle definition">
+      <code lang="yaml"><![CDATA[bundle:
+  version: v3.1.0
+  prompt_sha: a3f1c9
+  schema_version: 2.0.0
+  tool_registry_sha: b2d4e1
+  model: claude-sonnet-4
+  eval_set_version: golden-v3-frozen-2026-05-15
+immutable_fields: [conversations.messages, accounts.*, audit_log.*]]]></code>
+      <note>Everything reverts together; customer state is named as preserved.</note>
     </example>
-    <example type="bad" title="Naked eval result">
-      <code lang="text"><![CDATA[
-score: 0.85
-]]></code>
-      <note>Unknown set, unknown model, no CI. Useless for regression detection.</note>
+    <example type="bad" title="Per-field rollback">
+      <code lang="text"><![CDATA[rollback: revert prompt only, keep schema v2.0.0]]></code>
+      <note>Untested combination of prompt v3.0.0 + schema v2.0.0. Eval set never saw this mix.</note>
     </example>
   </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

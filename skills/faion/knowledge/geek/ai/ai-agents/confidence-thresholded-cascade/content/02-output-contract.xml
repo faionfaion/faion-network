@@ -1,22 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="confidence-thresholded-cascade Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="confidence-thresholded-cascade Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for cheap-model answer, strong-model answer, and the cascade-level telemetry payload.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Cheap model schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "confidence-thresholded-cascade/cheap-answer",
+  "type": "object",
+  "required": ["reasoning", "answer", "confidence_0_to_1", "requires_escalation"],
+  "additionalProperties": false,
+  "properties": {
+    "reasoning":             {"type": "string", "maxLength": 1500},
+    "answer":                {"type": ["string", "null"]},
+    "confidence_0_to_1":     {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "requires_escalation":   {"type": "boolean"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Strong model schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "confidence-thresholded-cascade/strong-answer",
+  "type": "object",
+  "required": ["reasoning", "answer"],
+  "additionalProperties": false,
+  "properties": {
+    "reasoning": {"type": "string"},
+    "answer":    {"type": "string"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Cascade decision (telemetry payload)">
+    <code lang="json"><![CDATA[
+{
+  "$id": "confidence-thresholded-cascade/decision",
+  "type": "object",
+  "required": ["used_model", "cheap_confidence", "escalated", "answer"],
+  "additionalProperties": false,
+  "properties": {
+    "used_model":       {"enum": ["cheap", "strong", "third"]},
+    "cheap_confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "escalated":        {"type": "boolean"},
+    "answer":           {"type": "string"}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (valid cheap-model output)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "reasoning": "The ticket mentions a charge of $19.99 with no associated subscription; billing category fits.",
+  "answer": "billing",
+  "confidence_0_to_1": 0.91,
+  "requires_escalation": false
+}
+      ]]></code>
+      <note>Reasoning first, confidence calibrated, IDK flag explicit. Accepted at threshold 0.85.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (invalid)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "answer": "billing",
+  "confidence": 0.91
+}
+      ]]></code>
+      <note>Wrong field name (`confidence` vs `confidence_0_to_1`), no reasoning, no IDK flag. Validator rejects.</note>
+    </example>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Round `confidence_0_to_1` to 2 decimals.</item>
+      <item>Map enum-style `answer` strings to canonical lower-snake-case for the downstream switch.</item>
+    </list>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Cheap schema has `reasoning` BEFORE `confidence_0_to_1`.</item>
+      <item>`requires_escalation` is a required field, not optional.</item>
+      <item>Strong schema has no confidence field.</item>
+      <item>Telemetry payload's `used_model` enum is exhaustive.</item>
     </list>
   </section>
 </text>

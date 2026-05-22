@@ -1,31 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Agent Trajectory Eval Method Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Trajectory Eval Method deliverable. Subagent must satisfy this before returning.</summary>
+  <summary>Pins the shape of a trajectory-eval report. Downstream promotion gates read this directly.</summary>
+
   <output-contract>
     <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
+      <field name="report_id" type="string" required="true">stable slug</field>
+      <field name="golden_set_version" type="string" required="true">frozen set id</field>
+      <field name="n_examples" type="integer" required="true">≥30</field>
+      <field name="agent_version" type="string" required="true">git SHA or semver</field>
+      <field name="system_efficiency" type="object" required="true">{latency_ms{mean,ci_low,ci_high}, tokens{...}, tool_calls{...}}</field>
+      <field name="session_quality" type="object" required="true">{trajectory_exact_match{...}, trajectory_precision{...}, trajectory_recall{...}}</field>
+      <field name="node_precision" type="object" required="true">{tool_selection_accuracy{...}, param_accuracy{...}}</field>
+      <field name="judge_calibration_date" type="date" required="true">ISO date ≤90 days old when judge is LLM</field>
+      <field name="cost_usd" type="number" required="true">≥0</field>
+      <field name="owner" type="string" required="true">named individual</field>
+      <field name="version" type="string" required="true">semver of the report</field>
+      <field name="produced_at" type="datetime" required="true">ISO-8601</field>
     </required>
+
     <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
+      <pattern id="f1">any layer missing (system_efficiency / session_quality / node_precision)</pattern>
+      <pattern id="f2">a metric reported without mean+ci</pattern>
+      <pattern id="f3">n_examples &lt; 30</pattern>
+      <pattern id="f4">judge_calibration_date &gt; 90 days old</pattern>
+      <pattern id="f5">cost_usd missing OR &gt; 2× daily prod traffic without nightly tag</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
+      <transformation>Downsample for cost only after recording a full-run baseline once.</transformation>
+      <transformation>Round CI to 2 decimal places.</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
+
+    <schema-reference path="templates/output-schema.json"/>
   </output-contract>
-  <section title="Self-check checklist">
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "report_id": "traj-eval-support-v3.1.0",
+  "golden_set_version": "golden-trajectory-v3-frozen-2026-05-15",
+  "n_examples": 120,
+  "agent_version": "support-agent@3.1.0",
+  "system_efficiency": {
+    "latency_ms": {"mean": 4200, "ci_low": 3900, "ci_high": 4500},
+    "tokens": {"mean": 8200, "ci_low": 7600, "ci_high": 8800},
+    "tool_calls": {"mean": 3.8, "ci_low": 3.3, "ci_high": 4.3}
+  },
+  "session_quality": {
+    "trajectory_exact_match": {"mean": 0.61, "ci_low": 0.54, "ci_high": 0.68},
+    "trajectory_precision": {"mean": 0.84, "ci_low": 0.80, "ci_high": 0.88},
+    "trajectory_recall": {"mean": 0.79, "ci_low": 0.74, "ci_high": 0.84}
+  },
+  "node_precision": {
+    "tool_selection_accuracy": {"mean": 0.92, "ci_low": 0.89, "ci_high": 0.95},
+    "param_accuracy": {"mean": 0.87, "ci_low": 0.83, "ci_high": 0.91}
+  },
+  "judge_calibration_date": "2026-04-15",
+  "cost_usd": 4.20,
+  "owner": "qa@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T14:00:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Self-check">
     <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
+      <item>All three layers present with mean+CI</item>
+      <item>n ≥ 30</item>
+      <item>judge_calibration_date within 90 days</item>
+      <item>Output validates against templates/output-schema.json</item>
     </list>
   </section>
 </text>

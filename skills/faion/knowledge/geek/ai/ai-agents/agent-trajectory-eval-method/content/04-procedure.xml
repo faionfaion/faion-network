@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Agent Trajectory Eval Method Procedure" version="1.0.0" est_tokens="1000" depth="medium">
+  <summary>Five-step procedure from raw trace logs to a signed trajectory-eval report.</summary>
+
+  <section title="Steps">
+    <step n="1" name="freeze-golden-set">
+      <input>Historical traces; QA-curated expected trajectories.</input>
+      <action>Assemble ≥30 entries of {task, expected_tools[], expected_order, allowed_alternatives}. Tag with set_version. Commit to repo (immutable).</action>
+      <output>golden-trajectory-vX-frozen-YYYY-MM-DD.jsonl</output>
+      <decision-gate>If &lt;30 entries available, escalate to QA owner.</decision-gate>
+    </step>
+    <step n="2" name="score-per-layer">
+      <input>Frozen golden set; agent version under test; replay harness from [[agent-replay-harness-cookbook]].</input>
+      <action>For each entry: run the agent, compute system_efficiency (latency_ms, tokens, tool_calls), session_quality (exact_match, precision, recall vs expected_tools), node_precision (tool_selection accuracy, param accuracy).</action>
+      <output>Per-entry score dataframe.</output>
+    </step>
+    <step n="3" name="aggregate-with-ci">
+      <input>Per-entry scores.</input>
+      <action>For each metric: compute mean + 95% CI via bootstrap (1000 resamples) or t-distribution.</action>
+      <output>Per-layer aggregated metrics with CI.</output>
+    </step>
+    <step n="4" name="judge-calibration-check">
+      <input>If any layer uses LLM-as-judge: human-labelled calibration set + current judge model.</input>
+      <action>Verify judge_calibration_date is ≤90 days. If older, re-calibrate against ≥20 human labels.</action>
+      <output>{judge_calibration_date} stamped in report.</output>
+      <decision-gate>If recalibration shifts judge by &gt;5 points, re-score the run before publishing.</decision-gate>
+    </step>
+    <step n="5" name="emit-report-and-validate">
+      <input>All previous outputs.</input>
+      <action>Compose report per content/02-output-contract.xml; run scripts/validate-output.py; route to named QA owner.</action>
+      <output>Validated report; promotion gate updated with the new metrics.</output>
+    </step>
+  </section>
+</text>

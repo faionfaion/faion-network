@@ -1,0 +1,45 @@
+# purpose: skeleton for a per-tool replay stub
+# consumes: traces/{run_id}.jsonl event of class stubbable_tool
+# produces: deterministic return values matching the recorded run
+# depends-on: harness/trace_loader.py
+# token-budget-impact: none (offline harness only)
+
+import hashlib
+import json
+from pathlib import Path
+
+
+class ReplayMissError(RuntimeError):
+    """Raised when a replay lookup misses (prompt drift, tool drift)."""
+
+
+class ReplayTool:
+    """Generic replay stub: subclass per tool, override args_hash if needed."""
+
+    def __init__(self, trace_path: Path, tool_name: str):
+        self.tool_name = tool_name
+        self.events = [
+            json.loads(line)
+            for line in trace_path.read_text().splitlines()
+            if line.strip()
+            and json.loads(line).get("class") == "stubbable_tool"
+            and json.loads(line).get("tool") == tool_name
+        ]
+        self.idx = 0
+
+    def args_hash(self, args: dict) -> str:
+        canonical = json.dumps(args, sort_keys=True)
+        return hashlib.sha1(canonical.encode()).hexdigest()
+
+    def execute(self, **args):
+        if self.idx >= len(self.events):
+            raise ReplayMissError(f"{self.tool_name}: trace exhausted at idx {self.idx}")
+        expected = self.events[self.idx]
+        actual_hash = self.args_hash(args)
+        if expected["args_hash"][:8] != actual_hash[:8]:
+            raise ReplayMissError(
+                f"{self.tool_name}@{self.idx}: args drift "
+                f"recorded={expected['args_hash'][:8]} actual={actual_hash[:8]}"
+            )
+        self.idx += 1
+        return expected["returns"]

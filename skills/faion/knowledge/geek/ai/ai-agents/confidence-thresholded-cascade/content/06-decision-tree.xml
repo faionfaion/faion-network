@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="confidence-thresholded-cascade Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Decision tree from task description to cascade depth (none, 2-level, 3-level).</summary>
+
+  <decision-tree>
+    <root-question id="q-eligible">Is this task high-volume AND has elicitable confidence (classification, extraction, structured output)?</root-question>
+
+    <branch when="volume &lt; 1000_per_day OR confidence_not_elicitable">
+      <conclusion ref="r1-schema-shape">Skip cascade; use single strong model. Cost savings do not justify routing complexity.</conclusion>
+    </branch>
+
+    <branch when="volume &gt;= 1000_per_day AND confidence_elicitable">
+      <question id="q-critical">Is the task mission-critical (any error has high downstream cost)?</question>
+
+      <branch when="mission_critical == true">
+        <conclusion ref="r1-schema-shape">Use single strong model. Cascade is not appropriate when downside of cheap-leg errors exceeds compute savings.</conclusion>
+      </branch>
+
+      <branch when="mission_critical == false">
+        <question id="q-difficulty">Does the difficulty distribution have a long tail (some tasks need deep reasoning, most are trivial)?</question>
+
+        <branch when="distribution == uniform">
+          <conclusion ref="r2-calibrated-threshold">Two-level cascade is sufficient. Calibrate threshold on 100+ eval tasks; expect 60-80% cost savings.</conclusion>
+        </branch>
+
+        <branch when="distribution == long_tail">
+          <question id="q-latency-budget">Does the p99 latency budget allow an extra 200-500ms hop?</question>
+
+          <branch when="latency_budget_ok == true">
+            <conclusion ref="r4-cap-depth">Three-level cascade (Haiku → Sonnet → Opus). Calibrate both thresholds; expect 85-95% cost savings.</conclusion>
+          </branch>
+
+          <branch when="latency_budget_ok == false">
+            <conclusion ref="r2-calibrated-threshold">Two-level cascade only; accept lower savings to stay within latency SLA.</conclusion>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="volume=10000_per_day, confidence_elicitable=true, mission_critical=false, distribution=long_tail, latency_budget_ok=true">
+    q-eligible → branch(yes) → q-critical → branch(no) → q-difficulty → branch(long_tail) → q-latency-budget → branch(yes) → conclusion(r4-cap-depth).
+  </example>
+</text>

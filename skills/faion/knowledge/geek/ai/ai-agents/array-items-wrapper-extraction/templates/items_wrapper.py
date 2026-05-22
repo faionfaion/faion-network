@@ -1,3 +1,8 @@
+# purpose: Pydantic envelope `{items, total_found, truncated}` for variable-cardinality extraction
+# consumes: per-domain Entity model (replace the stub below)
+# produces: strict-mode-valid structured output schema
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~150 tokens added to system schema per call
 """Batch-extraction schema with the items wrapper.
 
 The wrapper is mandatory under OpenAI/Azure strict mode (which forbids

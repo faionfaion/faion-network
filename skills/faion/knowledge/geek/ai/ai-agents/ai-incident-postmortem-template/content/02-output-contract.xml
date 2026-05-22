@@ -1,31 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Incident Postmortem Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Incident Postmortem Template deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="AI Incident Postmortem Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of an AI-incident postmortem report.</summary>
+
   <output-contract>
     <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
+      <field name="incident_id" type="string" required="true"/>
+      <field name="time_window" type="object" required="true">{start, end} ISO-8601</field>
+      <field name="root_cause_class" type="enum" required="true">drift | prompt-regression | schema-change | judge-change | retrieval-failure | tool-fault | hallucination | data-poisoning | other</field>
+      <field name="ml_axes" type="object" required="true">{model_version_before, model_version_after, prompt_sha_before, prompt_sha_after, eval_set_version_before, eval_set_version_after}</field>
+      <field name="blast_radius" type="object" required="true">{users_affected, revenue_usd_impact, detect_min, mitigate_min, resolve_min}</field>
+      <field name="narrative" type="string" required="true">blameless narrative ≥200 chars</field>
+      <field name="fix_summary" type="string" required="true">≥50 chars</field>
+      <field name="eval_guard_added" type="object" required="true">{path, description} OR {none: true, rationale}</field>
+      <field name="follow_up_actions" type="list" required="true">≥1 action with owner + due_date</field>
+      <field name="incident_commander" type="string" required="true"/>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="produced_at" type="datetime" required="true"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
+      <pattern id="f1">narrative contains person names in subject of negative verbs ("Alex broke", "X failed to")</pattern>
+      <pattern id="f2">eval_guard_added is missing AND no rationale provided</pattern>
+      <pattern id="f3">blast_radius numbers are "n/a" or "many" — must be a number or bounded range</pattern>
+      <pattern id="f4">root_cause_class missing or outside enum</pattern>
+      <pattern id="f5">eval_set_version_after == before (no update happened)</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
+      <transformation>Bound users_affected as "≥N" when exact count is unobtainable.</transformation>
+      <transformation>Mark revenue_usd_impact=0 when read-only feature with no billing.</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
+
+    <schema-reference path="templates/output-schema.json"/>
   </output-contract>
-  <section title="Self-check checklist">
+
+  <section title="Self-check">
     <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
+      <item>root_cause_class is from enum</item>
+      <item>ml_axes complete</item>
+      <item>blast_radius has numbers</item>
+      <item>eval_guard or rationale present</item>
+      <item>narrative is blameless</item>
     </list>
   </section>
 </text>

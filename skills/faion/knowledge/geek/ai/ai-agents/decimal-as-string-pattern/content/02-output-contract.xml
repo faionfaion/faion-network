@@ -1,22 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="decimal-as-string-pattern Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="decimal-as-string-pattern Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Pattern catalog + JSON Schema for an invoice line item using pattern-constrained strings.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Battle-tested pattern catalog">
+    <list>
+      <item>USD/EUR currency, two decimals: `^\\d+\\.\\d{2}$`</item>
+      <item>Currency with optional negative (refunds): `^-?\\d+\\.\\d{2}$`</item>
+      <item>BTC, eight decimals: `^\\d+\\.\\d{8}$`</item>
+      <item>Semver: `^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$`</item>
+      <item>ISO-8601 date: `^\\d{4}-\\d{2}-\\d{2}$`</item>
+      <item>ISO-8601 datetime UTC: `^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$`</item>
+      <item>E.164 phone: `^\\+\\d{8,15}$`</item>
+      <item>IBAN (loose): `^[A-Z]{2}\\d{2}[A-Z0-9]{10,30}$`</item>
+      <item>Big integer up to 32 digits: `^\\d{1,32}$`</item>
+    </list>
+  </section>
+
+  <section title="JSON Schema (line item)">
+    <code lang="json"><![CDATA[
+{
+  "$id": "decimal-as-string-pattern/line-item",
+  "type": "object",
+  "required": ["sku", "quantity", "unit_price_usd"],
+  "additionalProperties": false,
+  "properties": {
+    "sku": {
+      "type": "string",
+      "pattern": "^[A-Z0-9-]{2,40}$",
+      "description": "Uppercase SKU. Example: 'WIDGET-001'."
+    },
+    "quantity": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "unit_price_usd": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d{2}$",
+      "description": "USD unit price as decimal string. Two decimals required. Example: '19.99'."
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (valid)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{"sku": "WIDGET-001", "quantity": 3, "unit_price_usd": "19.99"}
+      ]]></code>
+      <note>Pattern matches; consumer parses `Decimal("19.99") * 3 = Decimal("59.97")` with no drift.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (invalid)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"sku": "widget-001", "quantity": 3, "unit_price_usd": 19.99}
+      ]]></code>
+      <note>SKU lowercase fails the uppercase pattern; price is a float and triggers binary-rounding drift on the consumer side.</note>
+    </example>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Trim leading/trailing whitespace before pattern match.</item>
+      <item>Upper-case SKU before storage if domain allows.</item>
+    </list>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every money field uses `pattern` with exact decimal count.</item>
+      <item>No JSON `number` type for currency, IBANs, phone numbers, or timestamps.</item>
+      <item>Every patterned field has a `description` with the format and an example.</item>
+      <item>Consumer code parses to `Decimal`/`int`/`datetime` immediately after validation.</item>
     </list>
   </section>
 </text>

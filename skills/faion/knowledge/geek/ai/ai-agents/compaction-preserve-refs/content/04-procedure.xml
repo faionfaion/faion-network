@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="compaction-preserve-refs Procedure" version="1.0.0" est_tokens="900" depth="recommended">
+  <summary>Five-step compaction pipeline: trigger, prompt, generate, validate, persist.</summary>
+
+  <section title="Steps">
+    <step n="1" name="detect-trigger">
+      <input>Current conversation buffer + context window utilization metric.</input>
+      <action>Compute utilization (tokens used / window). Fire compaction if utilization &gt; 0.85 OR turn count &gt; configured threshold (default 30).</action>
+      <output>Boolean: should_compact.</output>
+      <decision-gate>If false, return without compaction. If true, proceed.</decision-gate>
+    </step>
+
+    <step n="2" name="bind-prompt">
+      <input>Conversation buffer, the schema template, the workspace path roots.</input>
+      <action>Load `templates/compaction-prompt.txt`, substitute the active goal and the workspace prefixes, append the buffer.</action>
+      <output>Compaction prompt ready for inference.</output>
+    </step>
+
+    <step n="3" name="run-inference">
+      <input>Compaction prompt.</input>
+      <action>Invoke a haiku-tier model in JSON-emitting mode (no free-form preamble). Cap output at 1500 tokens.</action>
+      <output>Raw YAML string.</output>
+      <decision-gate>If raw output contains text outside the YAML document, reject and retry once with a stricter prompt.</decision-gate>
+    </step>
+
+    <step n="4" name="validate">
+      <input>Raw YAML.</input>
+      <action>Run `scripts/validate-compaction-preserve-refs.py` against the YAML. Check every rule from `content/01-core-rules.xml`.</action>
+      <output>Validation report; exit 0 on pass.</output>
+      <decision-gate>If validation fails with a missing-key error, retry once with the failing key called out in the prompt. If it fails twice, escalate to sonnet.</decision-gate>
+    </step>
+
+    <step n="5" name="persist-and-replace">
+      <input>Validated compacted YAML.</input>
+      <action>Write the YAML to the agent's checkpoint store (same store as conversation state). Replace the prior conversation buffer with a single system message containing the YAML.</action>
+      <output>Updated agent state; next turn reads from the compacted message.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

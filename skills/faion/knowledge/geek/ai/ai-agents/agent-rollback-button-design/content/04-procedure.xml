@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Agent Rollback Button Design Procedure" version="1.0.0" est_tokens="1000" depth="medium">
+  <summary>Five-step procedure from bundle inventory to validated rollback-button spec.</summary>
+
+  <section title="Steps">
+    <step n="1" name="enumerate-bundle-fields">
+      <input>Existing deployment manifests, prompt store, schema registry, tool catalogue.</input>
+      <action>List every field that defines an agent deployment: prompt SHA, schema version, tool registry SHA, model name, eval set version, retrieval index version.</action>
+      <output>Bundle field list (≥5 fields).</output>
+    </step>
+
+    <step n="2" name="partition-mutable-immutable">
+      <input>Database schema; bundle field list.</input>
+      <action>For every persisted table, classify as: (a) bundle-coupled (reverts with rollback) or (b) customer-state (immutable across rollback). Default classification when in doubt: immutable.</action>
+      <output>{bundle_fields[], immutable_fields[]} with bundle_fields ∩ immutable_fields == ∅.</output>
+      <decision-gate>If any table cannot be cleanly classified, escalate to the data owner before continuing.</decision-gate>
+    </step>
+
+    <step n="3" name="wire-eval-gate">
+      <input>Golden eval set version; historical pass-rates per bundle.</input>
+      <action>Pick min_pass_rate = baseline_pass_rate - ci_width. Specify the golden_set_version and ci_width.</action>
+      <output>eval_gate object.</output>
+    </step>
+
+    <step n="4" name="draft-button-spec">
+      <input>All previous outputs.</input>
+      <action>Compose the spec JSON per content/02-output-contract.xml. Single button per environment. Audit log path is required.</action>
+      <output>Draft rollback-spec.json.</output>
+    </step>
+
+    <step n="5" name="validate-and-review">
+      <input>Draft spec.</input>
+      <action>Run scripts/validate-output.py. Named ops owner reads immutable_fields; signs off.</action>
+      <output>Validated spec at the path supplied by the caller; sign-off recorded in the audit log.</output>
+      <decision-gate>If validator fails or owner rejects, revise and re-run; never publish unsigned.</decision-gate>
+    </step>
+  </section>
+</text>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Agent Rollback Button Design Examples" version="1.0.0" est_tokens="1000" depth="medium">
+  <summary>One full worked example: rollback button for a customer-support agent.</summary>
+
+  <section title="Customer-support agent rollback button">
+    <example type="good" title="Bundle inventory (step 1)">
+      <code lang="yaml"><![CDATA[bundle_fields:
+  - prompt_sha
+  - schema_version
+  - tool_registry_sha
+  - model
+  - eval_set_version
+  - retrieval_index_version]]></code>
+    </example>
+
+    <example type="good" title="Mutable/immutable partition (step 2)">
+      <code lang="yaml"><![CDATA[immutable_fields:
+  - conversations.messages          # customer-authored text
+  - conversations.metadata           # routing tags written by humans
+  - accounts.*                       # billing + identity
+  - audit_log.*                      # ops history
+  - feedback.scores                  # CSAT submissions]]></code>
+    </example>
+
+    <example type="good" title="Eval gate (step 3)">
+      <code lang="json"><![CDATA[{"golden_set_version": "support-golden-v3-frozen-2026-05-15",
+ "min_pass_rate": 0.78,
+ "ci_width": 0.04,
+ "baseline_pass_rate": 0.82}]]></code>
+      <note>Threshold = baseline (0.82) - ci_width (0.04) = 0.78. Anything below blocks the rollback target.</note>
+    </example>
+
+    <example type="good" title="Final spec (step 4-5)">
+      <code lang="json"><![CDATA[{
+  "spec_id": "rollback-customer-support-agent",
+  "environment": "prod",
+  "bundle_fields": ["prompt_sha", "schema_version", "tool_registry_sha", "model",
+                    "eval_set_version", "retrieval_index_version"],
+  "immutable_fields": ["conversations.messages", "conversations.metadata",
+                       "accounts.*", "audit_log.*", "feedback.scores"],
+  "eval_gate": {"golden_set_version": "support-golden-v3-frozen-2026-05-15",
+                "min_pass_rate": 0.78, "ci_width": 0.04},
+  "button_label": "Rollback to previous stable",
+  "audit_log_path": "s3://faion-ops/audit/rollbacks/",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}]]></code>
+    </example>
+
+    <example type="good" title="Audit-log entry emitted on rollback">
+      <code lang="json"><![CDATA[{
+  "ts": "2026-05-22T15:42:00Z",
+  "who": "ruslan@faion.net",
+  "from_bundle": "v3.2.0",
+  "to_bundle": "v3.1.0",
+  "eval_score_before": 0.71,
+  "eval_score_after": 0.83,
+  "reason": "p99 latency regression in v3.2.0 schema migration"
+}]]></code>
+    </example>
+  </section>
+</text>

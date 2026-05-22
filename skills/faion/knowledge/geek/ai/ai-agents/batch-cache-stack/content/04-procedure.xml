@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Batch + Cache Stack Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Five-step procedure to convert a sync uncached pipeline into batch+cache.</summary>
+
+  <section title="Steps">
+    <step n="1" name="extract-prefix">
+      <input>Workload sample (jsonl).</input>
+      <action>Identify the longest substring shared byte-for-byte across all items. Compute hash.</action>
+      <output>Stable prefix string + sha256.</output>
+    </step>
+    <step n="2" name="hoist-per-item-context">
+      <input>Workload sample.</input>
+      <action>Move any per-item context (timestamp, request_id, doc URL, query text) out of the prefix and into the user turn at the end.</action>
+      <output>Refactored prompt template.</output>
+    </step>
+    <step n="3" name="insert-cache-control">
+      <input>Refactored template.</input>
+      <action>Place cache_control marker at the end of the system prompt block (or end of tools block, whichever is the stable tail).</action>
+      <output>Cached template.</output>
+    </step>
+    <step n="4" name="switch-to-batch-endpoint">
+      <input>Existing pipeline code.</input>
+      <action>Replace sync `messages.create` with `batches.create`; aggregate items until batch_size ≥ target; submit; poll.</action>
+      <output>Batch-mode pipeline.</output>
+    </step>
+    <step n="5" name="monitor-and-tune">
+      <input>First batch run.</input>
+      <action>Track cache_read_input_tokens / total prefix tokens = hit_rate. Tune marker position if hit_rate &lt; 0.9.</action>
+      <output>Hit-rate metrics; tuned pipeline.</output>
+      <decision-gate>If hit_rate stays &lt; 0.5 after one week, root-cause prefix drift before declaring savings real.</decision-gate>
+    </step>
+  </section>
+</text>

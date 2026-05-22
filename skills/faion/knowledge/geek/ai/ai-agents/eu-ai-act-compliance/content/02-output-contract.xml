@@ -1,22 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="eu-ai-act-compliance Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="eu-ai-act-compliance Output Contract" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>JSON Schema for the risk-classification report and model-card stub; both are required outputs of the pipeline.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Risk-classification report schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "eu-ai-act-compliance/risk-classification",
+  "type": "object",
+  "required": ["risk_tier", "applicable_articles", "rationale", "requires_conformity_assessment", "reviewer_signoff"],
+  "additionalProperties": false,
+  "properties": {
+    "risk_tier": {"enum": ["unacceptable", "high", "limited", "minimal"]},
+    "applicable_articles": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^Article \\d+(\\(\\d+\\))?$"}
+    },
+    "rationale":                       {"type": "string", "minLength": 20},
+    "requires_conformity_assessment":  {"type": "boolean"},
+    "reviewer_signoff": {
+      "type": "object",
+      "required": ["reviewer_id", "signed_at"],
+      "additionalProperties": false,
+      "properties": {
+        "reviewer_id": {"type": "string", "minLength": 1},
+        "signed_at":   {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Model-card stub schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "eu-ai-act-compliance/model-card",
+  "type": "object",
+  "required": ["model_name", "version", "purpose", "training_data_sources", "limitations", "risk_tier"],
+  "additionalProperties": false,
+  "properties": {
+    "model_name":            {"type": "string"},
+    "version":               {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "purpose":               {"type": "string"},
+    "training_data_sources": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "limitations":           {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "risk_tier":             {"enum": ["unacceptable", "high", "limited", "minimal"]}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (valid risk-classification)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "risk_tier": "high",
+  "applicable_articles": ["Article 6", "Article 11", "Article 49"],
+  "rationale": "System makes automated employment-screening decisions; falls under Annex III point 4 (employment).",
+  "requires_conformity_assessment": true,
+  "reviewer_signoff": {
+    "reviewer_id": "legal-lead-eu",
+    "signed_at": "2026-06-01T09:30:00Z"
+  }
+}
+      ]]></code>
+      <note>Tier is correct; article citations match real Act articles; reviewer signed before submission.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (invalid)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "risk_tier": "high",
+  "applicable_articles": ["Article 999"],
+  "rationale": "high risk",
+  "requires_conformity_assessment": true
+}
+      ]]></code>
+      <note>Fabricated article number, rationale too short, no reviewer sign-off. Validator rejects.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Risk tier is one of the four canonical values.</item>
+      <item>Every cited article matches an existing Act article.</item>
+      <item>Rationale references the specific Annex III point or Article 50 transparency clause.</item>
+      <item>Reviewer sign-off block is present with reviewer_id + signed_at ISO timestamp.</item>
     </list>
   </section>
 </text>

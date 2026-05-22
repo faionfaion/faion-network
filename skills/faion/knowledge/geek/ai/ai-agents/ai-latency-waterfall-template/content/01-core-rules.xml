@@ -1,46 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="AI Latency Waterfall Template Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Four testable rules every application of AI Latency Waterfall Template enforces. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The four rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every field in the AI Latency Waterfall Template template is either filled, marked N/A with reason, or absent — no placeholder text in the delivered artefact.</statement>
-      <rationale source="Pattern-driven design / Cope, Templating discipline">Placeholder text ('TBD', 'lorem ipsum') ships to clients and erodes trust. Required fields force decision before sign-off.</rationale>
+  <summary>Five testable rules every waterfall investigation enforces.</summary>
+
+  <section title="Rules">
+    <rule id="r1-segment-not-aggregate" testable="true" depth="essential">
+      <statement>Latency is reported per segment (ttfb, prefill, decode_tps, per-tool round-trip, post-process). A single end-to-end number is not acceptable as a waterfall.</statement>
+      <rationale source="OpenTelemetry spans practice; LangSmith trace anatomy">Aggregates hide the bottleneck; the entire methodology is the decomposition.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Template fields are named with their consumer in mind — every label maps to who reads it (client, contractor, executive, AI agent).</statement>
-      <rationale source="technical writing standards / Microsoft Manual of Style">Internal-jargon labels create misreads. 'Stage gate' for the client should read 'Approval milestone'.</rationale>
+    <rule id="r2-budget-per-segment" testable="true" depth="essential">
+      <statement>Each segment carries a budget. The report flags every segment whose observed p95 exceeds budget.</statement>
+      <rationale source="Google SRE workbook ch.4; latency SLOs">Budgets force prioritisation: 50ms over budget on prefill matters; 10ms over budget on post-process usually does not.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Versioning rule: any change to template field set bumps a version stamp on the template, AND each instance carries the template_version it was authored against.</statement>
-      <rationale source="schema versioning practice / SemVer.org">Field-set drift breaks downstream consumers (parsers, automations). Pinning the version restores compatibility.</rationale>
+    <rule id="r3-min-30-samples" testable="true" depth="essential">
+      <statement>Each segment value is computed over ≥30 samples drawn within the same observation window. Anything less is noise.</statement>
+      <rationale source="statistics / CLT n≥30 heuristic">Smaller samples produce wildly different percentiles; recommendations off such data are wrong half the time.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Each template ships with at least one fully-worked good example beside it. Empty templates without an exemplar are not deliverable.</statement>
-      <rationale source="documentation usability research / Carroll, Minimalism">Empty templates are interpreted differently by every user. A worked example is the spec.</rationale>
+    <rule id="r4-p50-and-p95" testable="true" depth="essential">
+      <statement>Each segment reports p50 AND p95 (or higher). p50 alone misses tail behaviour; p95 alone misses headline.</statement>
+      <rationale source="Google SRE workbook; latency distribution literature">Long-tail latency in AI is dominated by decode variance + cold prefill; p50-only reports look fine while users churn.</rationale>
+    </rule>
+    <rule id="r5-cached-vs-cold" testable="true" depth="essential">
+      <statement>Prefill segment splits cached vs cold; cache_hit_rate is reported. Mixing the two hides the true cost of cold prefill.</statement>
+      <rationale source="Anthropic prompt-caching guide; OpenAI batch + cache stack">Cached prefill is 90% cheaper; aggregating across hit/miss makes optimisation guesswork.</rationale>
     </rule>
   </section>
+
   <section title="Canonical examples">
-    <example type="good" title="Templated brief with anchored fields">
-      <code lang="text"><![CDATA[
-Project: <name>
-Client: <legal entity>
-Scope: <one paragraph + bullet list of deliverables>
-Out of scope: <bullet list>
-Milestones: <date + acceptance criterion>
-]]></code>
-      <note>Each field directs the author to a specific decision. Empty fields are visible.</note>
+    <example type="good" title="Segmented waterfall">
+      <code lang="text"><![CDATA[segment      p50    p95    budget  status
+ttfb         120ms  180ms  200ms   OK
+prefill_cold 1.1s   1.6s   800ms   OVER (cache_hit=0.32 → opportunity)
+prefill_hit  140ms  220ms  300ms   OK
+decode_tps   85tps  60tps  100tps  OVER (tail)
+tool_search  240ms  410ms  500ms   OK
+post_process 30ms   50ms   100ms   OK]]></code>
     </example>
-    <example type="bad" title="Free-form 'use this template' doc with placeholder prose">
-      <code lang="text"><![CDATA[
-Project: TBD
-Client: TBD
-Scope: To be discussed
-]]></code>
-      <note>TBD ships to the client. The template adds zero discipline.</note>
+    <example type="bad" title="Aggregate only">
+      <code lang="text"><![CDATA[p95 latency: 4.2s (SLO 5s) — within budget]]></code>
+      <note>No segments; no insight into where to optimise.</note>
     </example>
   </section>
+
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

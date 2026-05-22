@@ -1,3 +1,8 @@
+# purpose: Pydantic invoice schema with regex-patterned price and big-int ID fields
+# consumes: nothing (used as a model spec for SO calls)
+# produces: structured Invoice/LineItem instances after model_validate_json
+# depends-on: pydantic v2, decimal stdlib
+# token-budget-impact: schema serialization ~250 tokens
 """Invoice schema with pattern-constrained decimals and big-int identifiers.
 
 Money and large IDs are strings with regex patterns — strict-mode and grammar

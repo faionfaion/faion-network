@@ -4,76 +4,100 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Operational runbook for ai incident response playbook — step-by-step actions, decision points, and escalation triggers ready to execute under stress.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Operational runbook for AI-system incidents — explicit steps with signals, thresholds, kill-switch and rollback paths, escalation contacts at top, drilled within 90 days.
 content_id: "9f99865ef7b57428"
-tags: [ai, runbook]
+complexity: medium
+produces: playbook-step
+est_tokens: 4800
+tags: [ai, runbook, sre, incident, ops]
 ---
 # AI Incident Response Playbook
 
 ## Summary
 
-**One-sentence:** Operational runbook for ai incident response playbook — step-by-step actions, decision points, and escalation triggers ready to execute under stress.
+**One-sentence:** Operational runbook for AI-system incidents — explicit steps with signals, thresholds, kill-switch and rollback paths, escalation contacts at top, drilled within 90 days.
 
-**One-paragraph:** Operational runbook for ai incident response playbook — step-by-step actions, decision points, and escalation triggers ready to execute under stress. When an AI feature misbehaves in production, PMs co-own the response with eng. No playbook for triage + comms + rollback.
+**One-paragraph:** Generic SRE runbooks miss AI-specific decision points: when to flip a kill-switch on the model, when to fall back to a deterministic rule, when to rollback to a prior bundle, when to throttle. This methodology produces one runbook per AI feature with structured steps (input signal, threshold, action, post-condition, time budget), escalation block at the top, and a drill-completion-date stamp. Output is committed in the ops repo alongside the incident-tracker links.
+
+**Ефективно для:** Команд, які на incident читають runbook і знаходять «check if things look bad» — і потім втрачають 20 хвилин на догадки; методологія примушує писати «error_rate > 2% AND p95 latency > 3s → kill-switch step 5», і одна людина о 3-й ранку це виконує без думання.
 
 ## Applies If (ALL must hold)
 
-- You are on-call or directly responsible for the operational scenario covered by ai incident response playbook.
-- The runbook is loaded BEFORE the incident (drill or pre-read) — not discovered during a page.
-- Each step has an unambiguous owner, exit criterion, and elapsed-time budget.
-- Decision branches name the input signal explicitly (metric, log line, alert ID).
+- AI feature is in production with monitoring (error rate, latency, cost dashboards).
+- A kill-switch or rollback mechanism exists in code (no runbook for non-revertible systems).
+- On-call rotation exists with at least 2 engineers.
+- Owner can schedule a drill within 90 days.
+- Incident tracker (Linear / GitHub / PagerDuty) integrates with the runbook.
 
 ## Skip If (ANY kills it)
 
-- Investigative R&D where the goal is to learn, not restore service.
-- Rare events with cost-of-staleness > cost-of-improvisation (annual close, novel breach).
-- Vendor-owned systems where the action is 'call support and wait'.
+- No production AI traffic (pre-launch).
+- No kill-switch / rollback path — runbook would have no actions to take.
+- Single-engineer project where escalation block is meaningless.
+- One-off batch job with no live users.
 
 ## Prerequisites
 
-- On-call rotation or paging path that loads this runbook on alert.
-- Test/staging environment where each branch is exercisable.
-- Last incident postmortem read; any open action item from it consumed.
+| Artifact | Format | Source |
+|---|---|---|
+| Monitoring dashboards | URLs / IDs | Observability |
+| Kill-switch endpoint | URL + auth scheme | Platform |
+| Rollback bundle spec | from `agent-rollback-button-design` | Platform |
+| Escalation contacts | name + handle + on-call shift | HR / on-call schedule |
+| Incident tracker integration | issue template | Tools |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/ai/ai-agents/agent-rollback-button-design/AGENTS.md` | Rollback mechanism the playbook calls into. |
+| `geek/ai/ai-agents/agent-kill-switch-design/AGENTS.md` | Kill-switch endpoint the playbook references. |
+| `geek/ai/ai-agents/ai-incident-postmortem-template/AGENTS.md` | Closes the loop after the incident. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 4 rules: explicit steps with budgets, signal+threshold branches, drill within 90 days, escalation at top | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the runbook | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns | ~900 |
+| `content/04-procedure.xml` | medium | 5-step authoring procedure | ~900 |
+| `content/05-examples.xml` | medium | Worked example: runbook for a hallucination incident class | ~1000 |
+| `content/06-decision-tree.xml` | essential | Tree: severity? → contained? → kill-switch or rollback? → escalate or close | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `step_execute` | haiku | Imperative action against named system |
-| `branch_decision` | sonnet | Signal interpretation and route choice |
-| `incident_writeup` | opus | Postmortem narrative with root cause |
+| `extract_monitoring_signals` | haiku | Structured pull from dashboards. |
+| `author_steps` | sonnet | Per-step composition with thresholds. |
+| `validate_runbook` | sonnet | Final composition. |
+| `executive_review` | opus | For high-stakes services. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema for the runbook. |
+| `templates/output.example.json` | Filled example. |
+| `templates/runbook.md` | Markdown skeleton with escalation header + step table. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-output.py` | Validate the runbook. | After authoring, before publishing to ops repo. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- peer: [[agent-kill-switch-design]] — kill switch invoked from step in runbook.
+- peer: [[agent-rollback-button-design]] — rollback path used when kill-switch is insufficient.
+- peer: [[ai-incident-postmortem-template]] — runbook completion triggers postmortem.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) what is severity (sev-1/2/3)? (2) is the failure contained (single feature) or systemic? (3) is kill-switch sufficient or do we need rollback to prior bundle? Leaves point to the step path through the runbook.

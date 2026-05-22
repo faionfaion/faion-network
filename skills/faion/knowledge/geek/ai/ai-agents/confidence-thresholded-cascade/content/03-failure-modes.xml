@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="confidence-thresholded-cascade Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for confidence-thresholded-cascade as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="confidence-thresholded-cascade Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Five failure modes with observable symptom, root cause, and repair.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Threshold set without measurement</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Calibrate on 100+ tasks; pick threshold where escalation rate is acceptable</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Cheap model's confidence not calibrated</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Run eval at each bucket; if 0.9 confidence is only 70% accurate, adjust threshold</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Always escalating regardless of confidence</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>You've reverted to single-model — measure and remove the always-escalate path</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Cascade with &gt; 3 levels</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Diminishing returns; usually 2 levels suffice</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Cheap model is just a smaller version of strong model</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Often best; but check if a different family (cheaper provider) does better at filter-tier</repair>
-    </failure-mode>
+    <antipattern id="fm-01-uncalibrated-threshold">
+      <description>Threshold set by intuition ("0.5 feels reasonable") rather than from eval data.</description>
+      <reason>Accuracy at that threshold is unknown; production quality drops silently because the cascade ships answers from confidence buckets where the cheap model is wrong half the time.</reason>
+    </antipattern>
+    <p>Symptom: eval-set accuracy drops 5-15 pp vs strong-only baseline; users complain about specific bad answers. Root cause: no calibration step. Fix: run the calibration script on 100+ tasks, plot accuracy per confidence bucket, set threshold at the bucket where accuracy crosses the SLA target.</p>
+
+    <antipattern id="fm-02-confidence-not-elicitable">
+      <description>Applying the cascade to a task where confidence is meaningless (creative writing, planning).</description>
+      <reason>The cheap model emits high confidence on low-quality output because there is no objective signal to ground self-rating. Cascade makes quality worse than single-strong.</reason>
+    </antipattern>
+    <p>Symptom: low escalation rate (&lt;5%) but eval quality drops vs strong-only. Root cause: task does not match cascade applicability. Fix: skip cascade; use strong model directly, or split the task into a classification subtask (cascade) plus a generation subtask (strong only).</p>
+
+    <antipattern id="fm-03-always-escalate">
+      <description>Always escalating regardless of confidence, often introduced "to be safe" after a complaint.</description>
+      <reason>The cascade has reverted to single-strong with extra latency. All the cost savings disappear and the cheap leg becomes pure overhead.</reason>
+    </antipattern>
+    <p>Symptom: escalation rate close to 100%; cost matches strong-only baseline. Root cause: defensive code path. Fix: remove the unconditional escalate; if quality concerns remain, raise the threshold instead.</p>
+
+    <antipattern id="fm-04-too-deep">
+      <description>Cascade with 4+ levels (e.g. Haiku → Sonnet → Opus → external eval API).</description>
+      <reason>Each level adds latency and routing complexity; the marginal savings beyond level 3 fall below the operational cost of the extra hop.</reason>
+    </antipattern>
+    <p>Symptom: p99 latency exceeds SLA; routing logic has more code than the cascade primitives. Root cause: depth crept up incrementally. Fix: cap at 3 levels; merge fine-grained intermediate stages.</p>
+
+    <antipattern id="fm-05-same-family-cheap-and-strong">
+      <description>Cheap and strong models from the same family with the same training data (Haiku and Opus, both Claude).</description>
+      <reason>The cheap model makes the same systematic mistakes as the strong model in many cases, so escalation does not recover quality on those tasks. Cross-family pairs often outperform.</reason>
+    </antipattern>
+    <p>Symptom: escalated answers still wrong on the tasks where cheap was confidently wrong. Root cause: correlated errors. Fix: test a cross-family cheap model (Gemini Flash, Llama 3.3) and pick the pair with the largest accuracy lift on escalated cases.</p>
   </section>
 </text>

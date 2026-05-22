@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="file-reference-passing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="file-reference-passing Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a ScanResult (refs + rationale) and a SubagentReport (summary + interesting_refs).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="ScanResult schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "file-reference-passing/scan-result",
+  "type": "object",
+  "required": ["rationale", "relevant_refs"],
+  "additionalProperties": false,
+  "properties": {
+    "rationale": {"type": "string", "minLength": 4, "maxLength": 400},
+    "relevant_refs": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "string",
+        "pattern": "^(path|db|gh|http|https):[^\\s]+$"
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="SubagentReport schema">
+    <code lang="json"><![CDATA[
+{
+  "$id": "file-reference-passing/subagent-report",
+  "type": "object",
+  "required": ["summary", "interesting_refs"],
+  "additionalProperties": false,
+  "properties": {
+    "summary":          {"type": "string", "maxLength": 800},
+    "interesting_refs": {"type": "array", "items": {"type": "string"}},
+    "follow_up_questions": {"type": "array", "items": {"type": "string"}}
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Good example (scan)">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "rationale": "Tickets matching 'refund' or 'billing' appear most relevant to the user's question.",
+  "relevant_refs": [
+    "path:tickets/2026-04/T-1842.json",
+    "path:tickets/2026-04/T-1851.json"
+  ]
+}
+      ]]></code>
+      <note>Refs follow the kind:path pattern; rationale is brief and informative.</note>
+    </example>
+  </section>
+
+  <section title="Bad example (content-passing in disguise)">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "rationale": "Tickets are: 1) T-1842 about refund... 2) T-1851 about billing... [3KB of content here]",
+  "relevant_refs": []
+}
+      ]]></code>
+      <note>Content embedded in rationale; defeats the purpose of refs. Validator caps rationale length.</note>
+    </example>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Sort `relevant_refs` for deterministic diff.</item>
+      <item>Deduplicate identical refs.</item>
+    </list>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Every ref matches the `(path|db|gh|http|https):...` pattern.</item>
+      <item>Rationale is short and contains no embedded content.</item>
+      <item>Subagent reports never embed file content in `summary`.</item>
     </list>
   </section>
 </text>

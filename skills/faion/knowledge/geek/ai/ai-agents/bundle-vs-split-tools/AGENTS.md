@@ -4,73 +4,92 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When tool count exceeds about 25, model tool-selection accuracy collapses and tokens spent on tool definitions dominate.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Decides whether to bundle related tools into one composite with a mode arg or split them — default split below 25 tools; bundle only when modes share audience + arg shape and a 50-task eval confirms no quality loss.
 content_id: "d5a9bc774894d04b"
+complexity: medium
+produces: decision-record
+est_tokens: 4500
 tags: [tool-use, bundling, tool-routing, agent-design, function-calling]
 ---
 # Bundle vs Split Tools
 
 ## Summary
 
-**One-sentence:** When tool count exceeds about 25, model tool-selection accuracy collapses and tokens spent on tool definitions dominate.
+**One-sentence:** Decides whether to bundle related tools into one composite with a mode arg or split them — default split below 25 tools; bundle only when modes share audience + arg shape and a 50-task eval confirms no quality loss.
 
-**One-paragraph:** When tool count exceeds about 25, model tool-selection accuracy collapses and tokens spent on tool definitions dominate. Bundle related atomic tools into a single composite tool with a mode arg ONLY when modes share most of their argument shape AND the model has training-data prior for that bundle pattern. Default is split — many small named tools. Bundle only to escape the >25 limit; never as a first design choice.
+**One-paragraph:** When tool count crosses ~25, model tool-selection accuracy collapses and tool-definition tokens dominate. Naive fix: bundle "search_email + search_slack + search_docs" into one search(source, query). Real fix: bundle only when the modes share an audience AND most argument shape AND the model has a training-data prior for that bundle pattern. This methodology produces one decision record per tool group recommending split / bundle / refactor and ships only after a 50-task eval shows no quality drop.
+
+**Ефективно для:** Команд, у яких агент бачить 60+ tools і вибирає неправильний у 30% випадків; правильна декомпозиція знижує помилку у 2-3 рази без зміни моделі.
 
 ## Applies If (ALL must hold)
 
-- Tool count exceeds 25 and you can group related ops cleanly.
-- The same prompt audience uses all modes (e.g., "file ops" → list, read, write, delete).
-- Training data has strong priors for the bundle (e.g., REST verbs, file ops, git commands).
-- Tools share most of their args (e.g., they all take `path`).
-- Reducing tool-def tokens is critical (e.g., streaming-based systems where prompt size affects latency).
+- Tool count is ≥ 20 OR tool-selection error rate > 5%.
+- Eval set of ≥50 tasks exists or can be assembled.
+- Tools are under your control (not third-party closed).
+- Owner can run an A/B between split and bundled versions.
+- Bundle change can be reverted on quality regression.
 
 ## Skip If (ANY kills it)
 
-- Tool count < 25 — default to split; each tool's description is a tight prompt for one job.
-- Tools have meaningfully different purposes — keep them split for clarity.
-- Tools serve completely different audiences (e.g., git vs npm vs docker) — model gets confused; better as separate tools.
-- Modes have totally different args — shared args is part of the bundle premise.
-- Mode arg would require the model to guess user intent — the mode should map to user-explicit intent.
+- Tool count < 20 — default to split.
+- No eval set — bundling without measurement is guesswork.
+- Single tool that does too much already — refactor it, don't bundle.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artifact | Format | Source |
+|---|---|---|
+| Tool inventory | name + description + schema | Tool catalogue |
+| Tool-selection error rate | per-tool error rate from production traces | Observability |
+| 50-task eval | jsonl with expected tool sequence | QA |
+| Named owner | handle | Engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/enum-constraints-closed-vocabularies/AGENTS.md` | Mode-arg enum constraint. |
+| `geek/ai/ai-agents/verb-object-tool-naming/AGENTS.md` | Naming rules for split tools. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 3 rules: threshold, decision procedure, enum-constrained mode | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the decision record | ~600 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure | ~900 |
+| `content/06-decision-tree.xml` | essential | Tree: count? → shared audience+args? → eval delta? → bundle/split | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `cluster_tools` | sonnet | Per-instance judgment on audience/args overlap. |
+| `eval_bundle_proposal` | sonnet | Compose A/B eval design. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema for the decision record. |
+| `templates/output.example.json` | Filled example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-output.py` | Validate the decision. | Before A/B rollout. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
+- peer: [[enum-constraints-closed-vocabularies]] — mode enum.
+- peer: [[verb-object-tool-naming]] — naming for split tools.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) is tool count ≥25? (2) does a candidate group share audience + arg shape? (3) does the 50-task eval show ≤2% quality drop? Leaves point to "bundle", "split (default)", or "refactor the offending tool".

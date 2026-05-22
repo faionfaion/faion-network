@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="eu-ai-act-compliance Procedure" version="1.0.0" est_tokens="1000" depth="recommended">
+  <summary>Six-step compliance pipeline: classify → docgen → bias-check → explainability → human review → register.</summary>
+
+  <section title="Steps">
+    <step n="1" name="risk-classification">
+      <input>System description + deployment context (countries, user types, domain).</input>
+      <action>Run classifier subagent (Sonnet) to produce a `risk-classification` report matching the schema in content/02-output-contract.xml.</action>
+      <output>Risk-tier report.</output>
+      <decision-gate>If `risk_tier == unacceptable`, HALT — system cannot be deployed in EU. If high, continue full pipeline. If limited, jump to step 4. If minimal, halt with "no further action" note.</decision-gate>
+    </step>
+
+    <step n="2" name="documentation-generation">
+      <input>Risk-tier report + structured system facts.</input>
+      <action>Docgen subagent (Sonnet) generates the model card, data sheet, and conformity-assessment draft per Article 11. Flag any missing facts with `[MISSING: reason]`.</action>
+      <output>Document drafts in version-controlled storage.</output>
+    </step>
+
+    <step n="3" name="bias-check">
+      <input>Eval dataset with sensitive-attribute columns.</input>
+      <action>Run Fairlearn / AIF360 bias report on the dataset and model predictions; output JSON bias report.</action>
+      <output>Bias report (JSON) attached to the documentation set.</output>
+    </step>
+
+    <step n="4" name="explainability-or-transparency">
+      <input>Risk tier from step 1.</input>
+      <action>For high-risk: produce SHAP/LIME explanations where model class allows; otherwise document limitations explicitly. For limited-risk: ensure Article 50 transparency disclosures are in place (chatbot identity, deepfake watermarks).</action>
+      <output>Explainability section in the docs OR Article 50 disclosure copy.</output>
+    </step>
+
+    <step n="5" name="human-legal-review">
+      <input>Full document set.</input>
+      <action>Reviewer subagent (Opus) cross-checks every citation against the official Act text, flags any unverifiable claims, then HALTS for human legal sign-off.</action>
+      <output>Reviewer report + reviewer-signoff block in the risk-classification record.</output>
+      <decision-gate>If reviewer flags any hallucinated citation, return to step 2 with the flags. Block until human signs.</decision-gate>
+    </step>
+
+    <step n="6" name="register-and-monitor">
+      <input>Signed document set.</input>
+      <action>Register the high-risk system in the EU AI database (Article 49). Configure post-market monitoring per Article 72. Set CI gate to re-trigger step 1 on any substantial modification.</action>
+      <output>EU database registration ID + monitoring dashboard.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

@@ -1,11 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="array-items-wrapper-extraction Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for array-items-wrapper-extraction. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Array Items Wrapper Core Rules" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Three testable rules every variable-cardinality extraction enforces.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For variable-cardinality extraction, declare the top-level schema as an object with at least items: list[Entity], total_found: int, and truncated: bool. Never return a bare list as the top-level structured-output type.</statement>
-      <rationale source="v1-source">OpenAI/Azure strict mode rejects top-level arrays because additionalProperties only applies to objects. On other providers, list[Entity] collapses zero/one/many into inconsistent shapes ([], null, single dict, [ent], ent). The wrapper standardises the shape and exposes hooks for count and truncation diagnostics.</rationale>
+  <section title="Rules">
+    <rule id="r1-object-root" testable="true" depth="essential">
+      <statement>Top-level structured-output schema is an object, not a bare list. The shape is `{items: list[Entity], total_found: int, truncated: bool}`.</statement>
+      <rationale source="OpenAI strict-mode docs; Azure SO requirements 2026">Strict-mode rejects top-level arrays; lenient providers collapse zero/one/many into inconsistent shapes.</rationale>
     </rule>
+    <rule id="r2-metadata-honest" testable="true" depth="essential">
+      <statement>total_found reflects what the model believes the source contains, not the length of `items`. truncated=true iff total_found > len(items).</statement>
+      <rationale source="extraction system design at scale">Mismatched count signals lossy extraction and lets downstream decide to re-run with higher max_items.</rationale>
+    </rule>
+    <rule id="r3-empty-is-explicit" testable="true" depth="essential">
+      <statement>Zero entities returned as `{items: [], total_found: 0, truncated: false}`. Never null and never a missing field.</statement>
+      <rationale source="parser robustness">Null vs [] vs missing key is the #1 cause of crashed extraction parsers across providers.</rationale>
+    </rule>
+  </section>
+
+  <section title="Canonical examples">
+    <example type="good">
+      <code lang="json"><![CDATA[{"items":[{"name":"Acme","type":"company"}],"total_found":1,"truncated":false}]]></code>
+    </example>
+    <example type="good" title="Empty case">
+      <code lang="json"><![CDATA[{"items":[],"total_found":0,"truncated":false}]]></code>
+    </example>
+    <example type="bad" title="Bare array">
+      <code lang="json"><![CDATA[[{"name":"Acme"}]]]></code>
+      <note>Strict-mode rejects; parser must handle missing diagnostics.</note>
+    </example>
   </section>
 </text>

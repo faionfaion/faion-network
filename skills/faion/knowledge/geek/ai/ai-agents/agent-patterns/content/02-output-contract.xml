@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="agent-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Agent Patterns Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>The agent-patterns decision record schema. Subagent returns exactly this shape; downstream agents read it without re-deriving.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="task_id" type="string" required="true">stable identifier for the task being analysed</field>
+      <field name="chosen_pattern" type="enum" required="true">one of: react | plan-and-execute | reflexion | escalate-to-human</field>
+      <field name="caps" type="object" required="true">{max_iterations:int, max_attempts:int, max_steps:int} — exactly the fields applicable to chosen_pattern</field>
+      <field name="terminal_condition" type="string" required="true">deterministic check, e.g. "pytest -x exits 0" or "output validates templates/result.json"</field>
+      <field name="rationale" type="string" required="true">≥2 sentences citing observables: success-signal present?, subtasks enumerable?, action reversibility?</field>
+      <field name="rejected_patterns" type="list" required="true">list of {pattern, reason} for the patterns not chosen</field>
+      <field name="actor_model" type="string" required="true">model name for the inner loop (e.g. claude-sonnet-4)</field>
+      <field name="critic_model" type="string" required="false">required only if chosen_pattern == reflexion</field>
+      <field name="human_gate_required" type="bool" required="true">true if any tool can mutate prod state</field>
+      <field name="version" type="string" required="true">semver of the decision record</field>
+      <field name="produced_at" type="datetime" required="true">ISO-8601</field>
     </required>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">chosen_pattern == reflexion AND terminal_condition is non-deterministic prose</pattern>
+      <pattern id="f2">human_gate_required == false BUT any listed tool name contains "write" / "send" / "post" / "delete"</pattern>
+      <pattern id="f3">max_iterations missing OR &gt; 50 (cost runaway)</pattern>
+      <pattern id="f4">rejected_patterns list is empty (no comparison performed)</pattern>
+      <pattern id="f5">rationale does not mention success-signal availability</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Clamp max_iterations to operator-supplied ceiling if request exceeds it.</transformation>
+      <transformation>Substitute actor_model with the next-cheaper tier if cost policy demands.</transformation>
+      <transformation>Promote chosen_pattern to "escalate-to-human" when none of the three patterns fits the task.</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/decision-record.json"/>
   </output-contract>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "task_id": "T-2026-05-22-001",
+  "chosen_pattern": "reflexion",
+  "caps": {"max_attempts": 3, "max_iterations": 6},
+  "terminal_condition": "pytest tests/test_parser.py exits 0",
+  "rationale": "Task is parser-fix with a deterministic success signal (test suite). Subtasks are not enumerable up-front because the model must discover failure modes through iteration. Action is reversible (local code edits in a feature branch).",
+  "rejected_patterns": [
+    {"pattern": "react", "reason": "no built-in retry; would loop once on failed test and stop"},
+    {"pattern": "plan-and-execute", "reason": "subtasks unknown until model sees test output"}
+  ],
+  "actor_model": "claude-sonnet-4",
+  "critic_model": "claude-haiku-4",
+  "human_gate_required": false,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:14:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "task_id": "T-002",
+  "chosen_pattern": "reflexion",
+  "caps": {},
+  "terminal_condition": "agent feels confident the code is correct",
+  "rationale": "Tries again until it works.",
+  "rejected_patterns": [],
+  "actor_model": "opus",
+  "human_gate_required": false,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:00:00Z"
+}]]></code>
+      <note>Violates f1 (vibes-based terminal condition), f3 (no max_iterations), f4 (no rejected patterns), f5 (no success-signal mention in rationale).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>chosen_pattern is one of four enum values</item>
+      <item>caps contains the field(s) appropriate to the chosen pattern</item>
+      <item>terminal_condition is testable, not prose</item>
+      <item>rejected_patterns is non-empty</item>
+      <item>Output validates against templates/decision-record.json</item>
     </list>
   </section>
 </text>

@@ -4,72 +4,96 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: When you need an autonomous agent for a coding, devops, or research task, invoke `claude -p` with a prompt string as a subprocess instead of writing a custom Agent SDK loop.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: For coding / devops / research tasks the first implementation is `claude -p` headless invocation — not a custom Agent SDK loop. The CLI already ships filesystem, bash, git, MCP, plan mode, sub-agents, hooks, compaction; drop down to the SDK only on documented switch-triggers.
 content_id: "58b86b1a689281ec"
+complexity: medium
+produces: decision-record
+est_tokens: 4500
 tags: [claude-code, agents, headless, orchestration, sdk]
 ---
 # Claude Code Headless As Default Agent Runtime
 
 ## Summary
 
-**One-sentence:** When you need an autonomous agent for a coding, devops, or research task, invoke `claude -p` with a prompt string as a subprocess instead of writing a custom Agent SDK loop.
+**One-sentence:** For coding / devops / research tasks the first implementation is `claude -p` headless invocation — not a custom Agent SDK loop. The CLI already ships filesystem, bash, git, MCP, plan mode, sub-agents, hooks, compaction; drop down to the SDK only on documented switch-triggers.
 
-**One-paragraph:** When you need an autonomous agent for a coding, devops, or research task, invoke `claude -p` with a prompt string as a subprocess instead of writing a custom Agent SDK loop. The Claude Code CLI ships with a battle-tested harness — filesystem, bash, git, MCP, plan mode, sub-agents, hooks, skills, automatic compaction — already wired together. Drop down to the Claude Agent SDK only when you have a concrete reason the CLI cannot satisfy: a non-coding domain, custom tools beyond MCP, programmatic control of the inner loop, or embedding inside a SaaS product that cannot shell out.
+**One-paragraph:** Teams reflexively reach for the Claude Agent SDK to build an autonomous agent and re-implement what the CLI already gives them — and ship a fragile version. This methodology produces a per-task decision record: default to `claude -p` with `--allowedTools`, `--max-turns`, `--output-format stream-json --verbose`; allow custom SDK loop ONLY on one of four switch-triggers (non-coding domain, custom tools beyond MCP, programmatic inner-loop control, SaaS embed that cannot shell out).
+
+**Ефективно для:** Команд, які за тиждень намагаються повторити Claude Code SDK і отримують гірший продукт; одна сторінка decision record економить тиждень розробки і дає більш надійний agent.
 
 ## Applies If (ALL must hold)
 
-- Coding, devops, refactoring, or research tasks runnable from a shell.
-- Cron jobs, GitHub Actions, queue workers, internal automation.
-- Any task that benefits from filesystem + git + bash context out of the box.
-- Multi-agent pipelines where the orchestrator can shell out to subprocesses.
-- Prototyping an agent before deciding whether a custom SDK loop is justified.
+- Task is coding, devops, research, or content authoring on a machine with shell.
+- Claude Code CLI is installable (Anthropic API credentials available).
+- The orchestrator can parse stream-json events.
+- Task is not embedded inside a SaaS product that cannot shell out.
+- A named eng owner can review the decision record.
 
 ## Skip If (ANY kills it)
 
-- Non-coding business workflows (sales triage, claims, invoice routing) — Agent SDK + custom tools is leaner.
-- SaaS product embedding where the host process cannot fork subprocesses.
-- Custom inner-loop control (intercept every tool call, branch the conversation tree) — needs SDK.
-- Domains needing non-MCP tools that cannot be expressed as MCP servers.
+- Task is non-coding domain with no shell affinity (pure structured-output extraction at scale).
+- Custom tools required beyond MCP coverage.
+- Inner-loop programmatic control needed (e.g. step-by-step state in a graph).
+- SaaS product cannot shell out (regulatory / sandbox constraint).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artifact | Format | Source |
+|---|---|---|
+| Task brief | natural language | Operator |
+| Tool requirements list | inventory | Tech lead |
+| Allowed-tools policy | enum list | Sec/Ops |
+| Iteration budget | int (max_turns) | Tech lead |
+| Named owner | handle | Eng |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ai-agents/headless-cli-four-guards/AGENTS.md` | Four CLI guards (-p, --allowedTools, --max-turns, stream-json). |
+| `geek/ai/ai-agents/stream-json-orchestration/AGENTS.md` | Event-by-event orchestration pattern. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 4 rules: CLI default, four guards, switch-triggers, log line-by-line | ~800 |
+| `content/01-cli-vs-sdk-decision.xml` | essential | Companion narrative for the switch-triggers | ~400 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the CLI-vs-SDK decision record | ~700 |
+| `content/02-invocation-shape.xml` | essential | Canonical argv shape for `claude -p` headless | ~400 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns | ~700 |
+| `content/04-procedure.xml` | medium | 5-step procedure | ~900 |
+| `content/06-decision-tree.xml` | essential | Tree: coding-ish? → tools fit MCP? → shell ok? → CLI/SDK | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify_task_for_cli_fit` | haiku | Mechanical. |
+| `compose_decision_record` | sonnet | Per-instance. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema for the decision record. |
+| `templates/output.example.json` | Filled example. |
+| `templates/run-headless.sh` | Shell wrapper showing the canonical argv. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-output.py` | Validate the decision record. | Before kickoff. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
+- peer: [[headless-cli-four-guards]], [[stream-json-orchestration]].
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) is the task coding/devops/research with shell affinity? (2) do tool requirements fit MCP catalogue? (3) is shell-out permitted? (4) is inner-loop control required? Leaves point to "use claude-code-headless" or "drop to SDK with named trigger".

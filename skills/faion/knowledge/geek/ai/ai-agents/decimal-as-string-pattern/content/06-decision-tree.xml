@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="decimal-as-string-pattern Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Field-by-field routing: when to use int, float, pattern-string, or free-string.</summary>
+
+  <decision-tree>
+    <root-question id="q-exact-form">Does this field's exact textual form matter for downstream correctness (billing, identity match, format dispatch)?</root-question>
+
+    <branch when="exact_form_matters == false">
+      <question id="q-numeric">Is the value numeric and lossy drift tolerable (sensor noise, ML scores, counts)?</question>
+
+      <branch when="numeric_lossy_ok == true AND value_is_integral">
+        <conclusion ref="r1-string-with-pattern">Use JSON `integer`. Counts/ranks/indices do not need string + pattern.</conclusion>
+      </branch>
+
+      <branch when="numeric_lossy_ok == true AND value_is_fractional">
+        <conclusion ref="r1-string-with-pattern">Use JSON `number` (float). Acceptable for measurements where a few ULPs of drift do not matter.</conclusion>
+      </branch>
+
+      <branch when="value_is_text_freeform">
+        <conclusion ref="r4-no-wide-patterns">Use JSON `string` WITHOUT a pattern. Free-form text needs no decode-time constraint.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="exact_form_matters == true">
+      <question id="q-catalog-match">Does the field match a known format in the pattern catalog (money, semver, ISO-8601, IBAN, big-int, E.164)?</question>
+
+      <branch when="catalog_match == true">
+        <conclusion ref="r2-strictest-pattern">Use JSON `string` with the catalog pattern + a `description` naming the format and example. Parse to native type on consume.</conclusion>
+      </branch>
+
+      <branch when="catalog_match == false">
+        <conclusion ref="r5-description-format-example">Author a domain-specific pattern that is the strictest expression of the legitimate distribution. Pair with description + example + the one edge case that has bitten before.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="field=unit_price_usd, exact_form_matters=true, catalog_match=true">
+    q-exact-form → branch(true) → q-catalog-match → branch(true) → conclusion(r2-strictest-pattern). Result: `^\\d+\\.\\d{2}$` + description "USD price as decimal string. Example: '19.99'.".
+  </example>
+</text>

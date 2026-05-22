@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="batch-cache-stack Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for batch-cache-stack. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Batch + Cache Stack Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four testable rules every batch+cache pipeline enforces.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Rules">
+    <rule id="r1-batch-route" testable="true" depth="essential">
+      <statement>The pipeline submits requests through the provider's batch endpoint (Anthropic Message Batches / OpenAI Batch API), not the synchronous endpoint.</statement>
+      <rationale source="Anthropic Message Batches docs; OpenAI Batch API docs">50% discount applies only on batch submissions; synchronous is full price.</rationale>
     </rule>
+    <rule id="r2-stable-prefix" testable="true" depth="essential">
+      <statement>The system prompt + tool definitions + canonical instructions are byte-identical across every batch item. Tested by a hash check before submission.</statement>
+      <rationale source="Anthropic prompt caching docs 2026">Cache lookup requires exact byte match; a single space difference invalidates the cache.</rationale>
+    </rule>
+    <rule id="r3-cache-control-marker" testable="true" depth="essential">
+      <statement>cache_control marker is placed at the end of the longest stable prefix; everything before it is cached, everything after is item-specific.</statement>
+      <rationale source="Anthropic prompt caching docs">The marker tells the provider where the cacheable suffix ends; misplaced markers fail to hit cache.</rationale>
+    </rule>
+    <rule id="r4-monitor-hit-rate" testable="true" depth="essential">
+      <statement>Pipeline emits cache_read_input_tokens and cache_creation_input_tokens metrics per batch run. Target cache_hit_rate ≥ 0.9 once warm.</statement>
+      <rationale source="ops practice">Without monitoring, silent regressions (prompt edit, model version bump) drop hit rate without alerting.</rationale>
+    </rule>
+  </section>
+
+  <section title="Canonical examples">
+    <example type="good">
+      <code lang="python"><![CDATA[messages = [
+  {"role": "system", "content": [
+    {"type": "text", "text": SYSTEM_PROMPT_FROZEN, "cache_control": {"type": "ephemeral"}}
+  ]},
+  {"role": "user", "content": item_specific}
+]
+# Submit via batch endpoint
+batch.create(requests=[...])]]></code>
+    </example>
   </section>
 </text>

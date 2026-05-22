@@ -1,22 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ai-agent-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AI Agent Patterns Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pattern+framework decision-record schema.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="task_id" type="string" required="true"/>
+      <field name="classification" type="object" required="true">{needs_tools, step_count, branching}</field>
+      <field name="chosen_pattern" type="enum" required="true">cot | react | plan-and-execute | tool-use</field>
+      <field name="chosen_framework" type="enum" required="true">raw-sdk | langgraph | autogen | crewai | openai-agents-sdk | claude-code</field>
+      <field name="framework_pin" type="string" required="true">exact version pin string</field>
+      <field name="caps" type="object" required="true">{max_steps:int, loop_detect:bool}</field>
+      <field name="tools" type="list" required="true">list of {name, description, schema_ref}</field>
+      <field name="rationale" type="string" required="true">≥2 sentences citing classification axes</field>
+      <field name="rejected" type="list" required="true">non-empty list of {pattern, framework, reason}</field>
+      <field name="owner" type="string" required="true"/>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="produced_at" type="datetime" required="true"/>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">classification.needs_tools=false AND chosen_pattern in {react, plan-and-execute, tool-use}</pattern>
+      <pattern id="f2">framework_pin missing or floating (no exact version)</pattern>
+      <pattern id="f3">caps.max_steps missing or &gt; 50</pattern>
+      <pattern id="f4">tools[] empty when chosen_pattern != cot</pattern>
+      <pattern id="f5">rejected[] empty</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Substitute framework with raw-sdk if team experience matrix has zero familiarity with the chosen one.</transformation>
     </allowed-transformations>
+    <schema-reference path="templates/output-schema.json"/>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "task_id": "T-research-001",
+  "classification": {"needs_tools": true, "step_count": 4, "branching": false},
+  "chosen_pattern": "react",
+  "chosen_framework": "raw-sdk",
+  "framework_pin": "anthropic==0.39.0",
+  "caps": {"max_steps": 15, "loop_detect": true},
+  "tools": [{"name":"web_search","description":"Search the web","schema_ref":"schemas/web_search.json"}],
+  "rationale": "Task needs tools (research) but step count is small (4) and no branching — ReAct on raw SDK is the smallest fit.",
+  "rejected": [{"pattern":"plan-and-execute","framework":"langgraph","reason":"step count too small to justify graph"}],
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T16:00:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"task_id":"T-002","classification":{"needs_tools":false,"step_count":1,"branching":false},
+  "chosen_pattern":"react","chosen_framework":"langgraph","framework_pin":"latest",
+  "caps":{},"tools":[],"rationale":"langgraph is popular","rejected":[],
+  "owner":"team","version":"1.0","produced_at":"2026"}]]></code>
+      <note>f1 (no tools but react), f2 (floating pin), f3 (no caps), f4 (empty tools), f5 (no rejected).</note>
+    </example>
   </section>
 </text>

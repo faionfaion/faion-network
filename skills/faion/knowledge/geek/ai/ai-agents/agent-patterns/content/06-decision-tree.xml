@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Agent Patterns Decision Tree" version="1.0.0" est_tokens="600">
+  <decision-tree>
+    <root-question id="q1" text="Does the task have a deterministic success signal (test command, schema validator, rule check)?">
+      <branch when="has_success_signal == true">
+        <question id="q2" text="Are subtasks enumerable up-front from the brief alone?">
+          <branch when="subtasks_enumerable == true">
+            <question id="q3" text="Are all tool actions reversible (no prod-state mutation)?">
+              <branch when="action_reversibility == reversible">
+                <conclusion ref="r1-bounded-iterations" pattern="plan-and-execute">Use Plan-and-Execute. Enumerable subtasks + success signal + reversible. Cap max_steps=8.</conclusion>
+              </branch>
+              <branch when="action_reversibility != reversible">
+                <conclusion ref="r6-human-checkpoint" pattern="escalate-to-human">Escalate. Irreversible actions never go through autonomous loops.</conclusion>
+              </branch>
+            </question>
+          </branch>
+          <branch when="subtasks_enumerable == false">
+            <question id="q4" text="Is the success check stable (same input → same verdict)?">
+              <branch when="success_check_stable == true">
+                <conclusion ref="r3-terminal-condition" pattern="reflexion">Use Reflexion. Stable check + unknown subtasks = retry-with-critique pattern.</conclusion>
+              </branch>
+              <branch when="success_check_stable == false">
+                <conclusion ref="r3-terminal-condition" pattern="react">Use ReAct. Reflexion without a stable check turns into max_attempts every run.</conclusion>
+              </branch>
+            </question>
+          </branch>
+        </question>
+      </branch>
+      <branch when="has_success_signal == false">
+        <question id="q5" text="Are tool actions reversible (read-only or scratch dirs)?">
+          <branch when="action_reversibility == reversible">
+            <conclusion ref="r1-bounded-iterations" pattern="react">Use ReAct. No success signal → cannot use Reflexion; reversible actions tolerate exploration. Cap max_iterations=10.</conclusion>
+          </branch>
+          <branch when="action_reversibility != reversible">
+            <conclusion ref="r6-human-checkpoint" pattern="escalate-to-human">Escalate. No success signal + non-reversible actions = no agent pattern fits.</conclusion>
+          </branch>
+        </question>
+      </branch>
+    </root-question>
+  </decision-tree>
+
+  <example trace="research-task">
+    <p>Brief: "Find three papers on agent harness engineering." has_success_signal=false → q5 → action_reversibility=reversible (web search) → conclusion: ReAct.</p>
+  </example>
+
+  <example trace="parser-fix">
+    <p>Brief: "Fix failing pytest." has_success_signal=true → q2 → subtasks_enumerable=false → q4 → success_check_stable=true (pytest is deterministic) → conclusion: Reflexion.</p>
+  </example>
+</text>

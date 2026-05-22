@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="AI Incident Response Playbook Examples" version="1.0.0" est_tokens="1000" depth="medium">
+  <summary>Worked example: runbook for the "hallucination spike" incident class in a customer-support agent.</summary>
+
+  <section title="Hallucination-spike runbook">
+    <example type="good" title="Escalation header (at top)">
+      <code lang="markdown"><![CDATA[# Hallucination spike — support-agent
+
+> ESCALATION: minute 10 → eng-lead@faion.net (PagerDuty: P12345)
+> minute 25 → cto@faion.net
+> Incident channel: #incident-support-agent]]></code>
+    </example>
+
+    <example type="good" title="Steps with signal+threshold+action">
+      <code lang="markdown"><![CDATA[## Step 1 — Confirm signal (budget 2 min)
+- Signal: `dashboards/support-agent.hallucination_flag_rate` over last 5 min
+- Threshold: >0.05
+- Action: open incident; tag sev-1 if also `user_complaint_rate >0.01`
+- Post: incident created in tracker
+
+## Step 2 — Throttle (budget 3 min)
+- Action: `POST /api/v1/cli/throttle?feature=support-agent&qps=10`
+- Post: `metrics/support-agent.qps` <= 10
+
+## Step 3 — Decide kill-switch vs rollback (budget 5 min)
+- Signal: time since last good eval result
+- If <24h → flip kill-switch (Step 4)
+- Else → rollback to prior bundle (Step 5)
+
+## Step 4 — Kill-switch (budget 2 min)
+- Action: `POST /api/v1/cli/kill-switch?feature=support-agent`
+- Post: `feature_flag.support-agent.enabled = false`
+- Fallback: rule-based responder activates automatically
+
+## Step 5 — Rollback to prior bundle (budget 5 min)
+- Action: use rollback-button (see [[agent-rollback-button-design]])
+- Post: bundle_version matches prior stable
+
+## Step 6 — Notify customers (budget 10 min)
+- Action: send status-page update; email impacted accounts (list from `users_affected.csv`)
+
+## Step 7 — Open postmortem (within 24h)
+- Use [[ai-incident-postmortem-template]]]]></code>
+    </example>
+
+    <example type="bad" title="Counter-example: vague step">
+      <code lang="text"><![CDATA[Step 2: Check if things look weird and decide what to do]]></code>
+      <note>No signal, no threshold, no action, no budget. Useless under stress.</note>
+    </example>
+  </section>
+</text>

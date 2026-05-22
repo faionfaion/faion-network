@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="confidence-thresholded-cascade Procedure" version="1.0.0" est_tokens="900" depth="recommended">
+  <summary>Six-step procedure: build eval, run cheap-only, bucket confidence, set threshold, deploy with telemetry, monitor.</summary>
+
+  <section title="Steps">
+    <step n="1" name="build-eval-set">
+      <input>Production samples or representative synthetic tasks (&gt;=100).</input>
+      <action>Collect inputs + ground-truth answers; balance across the difficulty spectrum.</action>
+      <output>`eval.jsonl` with `{input, expected}` rows.</output>
+    </step>
+
+    <step n="2" name="run-cheap-only">
+      <input>Eval set + cheap model + Pydantic schema with reasoning/answer/confidence/requires_escalation.</input>
+      <action>Run every eval input through the cheap model; record answer, confidence, and the IDK flag.</action>
+      <output>`predictions.jsonl` with cheap-model outputs.</output>
+    </step>
+
+    <step n="3" name="bucket-and-measure">
+      <input>`predictions.jsonl` + `eval.jsonl`.</input>
+      <action>Bucket predictions by confidence (0.0-0.5, 0.5-0.7, 0.7-0.85, 0.85-0.95, 0.95-1.0). Compute accuracy per bucket.</action>
+      <output>Calibration table: bucket → accuracy → support count.</output>
+      <decision-gate>If accuracy in the top bucket is below the target SLA, the cheap model is the wrong choice; swap models and restart at step 2.</decision-gate>
+    </step>
+
+    <step n="4" name="set-threshold">
+      <input>Calibration table.</input>
+      <action>Pick the lowest bucket whose accuracy meets the target SLA. The threshold is that bucket's lower bound.</action>
+      <output>`threshold` constant (typically 0.80-0.92).</output>
+    </step>
+
+    <step n="5" name="deploy-with-telemetry">
+      <input>Cascade implementation + threshold + OTel exporter.</input>
+      <action>Wire the cascade per `templates/two-level-cascade-pydantic.py`. Add the spans from `templates/span-instrumentation.py`. Ship behind a feature flag.</action>
+      <output>Production traffic on cascade, with per-request spans capturing model used and confidence.</output>
+    </step>
+
+    <step n="6" name="monitor-and-recalibrate">
+      <input>Rolling escalation-rate metric, sampled production accuracy.</input>
+      <action>Alert if escalation rate moves more than 2x from baseline. Recalibrate quarterly or after any prompt or model change.</action>
+      <output>Stable cost-quality curve over time.</output>
+      <decision-gate>If escalation rate spikes &gt;2x, freeze the cascade and rerun steps 2-4 with the current model snapshot.</decision-gate>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

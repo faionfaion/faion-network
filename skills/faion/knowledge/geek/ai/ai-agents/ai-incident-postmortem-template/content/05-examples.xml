@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="AI Incident Postmortem Examples" version="1.0.0" est_tokens="1000" depth="medium">
+  <summary>Worked example: postmortem for a hallucination incident where the summariser invented a customer's account balance.</summary>
+
+  <section title="Hallucination incident postmortem">
+    <example type="good" title="Filled report">
+      <code lang="json"><![CDATA[{
+  "incident_id": "INC-2026-05-18-007",
+  "time_window": {"start":"2026-05-18T09:14:00Z","end":"2026-05-18T11:42:00Z"},
+  "root_cause_class": "hallucination",
+  "ml_axes": {
+    "model_version_before": "claude-sonnet-4@2026-04-12",
+    "model_version_after": "claude-sonnet-4@2026-04-12",
+    "prompt_sha_before": "a3f1c9",
+    "prompt_sha_after": "b4d2e0 (added grounding constraint)",
+    "eval_set_version_before": "summary-golden-v3-frozen-2026-04-30",
+    "eval_set_version_after": "summary-golden-v4-frozen-2026-05-18 (+1 case)"
+  },
+  "blast_radius": {
+    "users_affected": 12,
+    "revenue_usd_impact": 0,
+    "detect_min": 23,
+    "mitigate_min": 41,
+    "resolve_min": 148
+  },
+  "narrative": "Summariser produced a numeric account balance not present in the source documents. The figure was plausible but fabricated. Detection came from a customer support ticket; the agent had been live in production for 8 hours before the first complaint. Root cause: the prompt allowed paraphrasing of numeric fields. The team rolled back the prompt, added a grounding constraint, and shipped an eval case asserting all numbers in output appear verbatim in input.",
+  "fix_summary": "Prompt update: added 'numbers must appear verbatim in the source; if not, omit the number'. New eval case: tests/eval/test_numeric_grounding.py.",
+  "eval_guard_added": {
+    "path": "tests/eval/test_numeric_grounding.py",
+    "description": "Asserts every digit-bearing token in summariser output appears in input chunk."
+  },
+  "follow_up_actions": [
+    {"action": "Extend grounding rule to dates and email addresses", "owner": "alex@faion.net", "due_date": "2026-06-01"},
+    {"action": "Add numeric-grounding metric to weekly eval dashboard", "owner": "qa@faion.net", "due_date": "2026-05-29"}
+  ],
+  "incident_commander": "ruslan@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-19T14:00:00Z"
+}]]></code>
+    </example>
+
+    <example type="bad" title="Counter-example with blame language">
+      <code lang="text"><![CDATA[Narrative: "QA failed to catch this case. Alex deployed a bad prompt without review."]]></code>
+      <note>Violates r3 (blameless). Rewrite: "The eval set lacked a numeric-grounding case; the prompt change cleared CI but did not exercise the failure mode."</note>
+    </example>
+  </section>
+</text>

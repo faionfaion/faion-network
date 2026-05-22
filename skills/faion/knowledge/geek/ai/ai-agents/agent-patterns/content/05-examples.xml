@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Agent Patterns Worked Examples" version="1.0.0" est_tokens="1100" depth="medium">
+  <summary>Three worked examples — one per pattern — showing the full chain from task brief to validated decision record.</summary>
+
+  <section title="Example 1: ReAct for research task">
+    <example type="good">
+      <code lang="text"><![CDATA[Brief: "Find the three most-cited 2026 papers on agent harness engineering and summarise their thesis."
+Classification: task_class=research, has_success_signal=false (no objective check), subtasks_enumerable=false, action_reversibility=reversible.
+Decision-tree walk: no success-signal → not Reflexion; subtasks not enumerable → not Plan-and-Execute; default → ReAct.]]></code>
+      <code lang="json"><![CDATA[{
+  "task_id": "T-research-001",
+  "chosen_pattern": "react",
+  "caps": {"max_iterations": 12},
+  "terminal_condition": "model returns response without tool calls AND output contains 3 numbered summaries",
+  "rationale": "Research task with no deterministic success signal and unknowable number of subtasks. ReAct's reason-act loop lets the agent follow citation trails. Action is fully reversible (read-only web search).",
+  "rejected_patterns": [
+    {"pattern": "plan-and-execute", "reason": "cannot enumerate which papers/citations to chase before starting"},
+    {"pattern": "reflexion", "reason": "no objective check that summaries are correct"}
+  ],
+  "actor_model": "claude-sonnet-4",
+  "human_gate_required": false,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:00:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Example 2: Reflexion for parser fix">
+    <example type="good">
+      <code lang="text"><![CDATA[Brief: "Fix tests/test_parser.py — three tests fail."
+Classification: task_class=code-fix, has_success_signal=true (pytest exit code), subtasks_enumerable=false, action_reversibility=reversible (feature branch).
+Decision-tree walk: success-signal yes → Reflexion candidate; subtasks unknown → confirms Reflexion.]]></code>
+      <code lang="json"><![CDATA[{
+  "task_id": "T-code-002",
+  "chosen_pattern": "reflexion",
+  "caps": {"max_attempts": 3, "max_iterations": 8},
+  "terminal_condition": "pytest tests/test_parser.py exits 0",
+  "rationale": "Code-fix with deterministic success signal (pytest). Subtasks unknown until model reads test output, so plan-then-execute would be premature. Reflexion's critic step learns from each failure trace.",
+  "rejected_patterns": [
+    {"pattern": "react", "reason": "lacks retry-with-reflection; one failed test would stop the loop"},
+    {"pattern": "plan-and-execute", "reason": "subtasks emerge from failure traces, not from upfront plan"}
+  ],
+  "actor_model": "claude-sonnet-4",
+  "critic_model": "claude-haiku-4",
+  "human_gate_required": false,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:05:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Example 3: Plan-and-Execute for multi-step build">
+    <example type="good">
+      <code lang="text"><![CDATA[Brief: "Scaffold a new FastAPI service with auth, database, three CRUD endpoints, and Dockerfile."
+Classification: task_class=multi-step-build, has_success_signal=true (project compiles + tests pass), subtasks_enumerable=true (auth, db, endpoints, docker), action_reversibility=reversible.
+Decision-tree walk: subtasks enumerable yes → Plan-and-Execute.]]></code>
+      <code lang="json"><![CDATA[{
+  "task_id": "T-build-003",
+  "chosen_pattern": "plan-and-execute",
+  "caps": {"max_steps": 8, "max_iterations_per_step": 5},
+  "terminal_condition": "all planned steps status=completed AND `pytest && docker build .` exit 0",
+  "rationale": "Multi-step build with enumerable subtasks (auth, db, endpoints, docker). Planning upfront prevents the agent from rebuilding the same file twice. Success signal is the combined test+build exit code.",
+  "rejected_patterns": [
+    {"pattern": "react", "reason": "no upfront decomposition; risks redundant edits across modules"},
+    {"pattern": "reflexion", "reason": "no single check that fires per step — would need a planner anyway"}
+  ],
+  "actor_model": "claude-sonnet-4",
+  "human_gate_required": false,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:10:00Z"
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Counter-example: escalate-to-human">
+    <example type="bad">
+      <code lang="text"><![CDATA[Brief: "Ship the v2 pricing change to production."]]></code>
+      <code lang="json"><![CDATA[{
+  "task_id": "T-prod-004",
+  "chosen_pattern": "escalate-to-human",
+  "caps": {},
+  "terminal_condition": "operator signs off and runs the deploy command manually",
+  "rationale": "Action is irreversible (production pricing). No agent pattern fits — even Reflexion with a test signal cannot validate revenue impact. Escalate per r6 of 01-core-rules.xml.",
+  "rejected_patterns": [
+    {"pattern": "react", "reason": "destructive without gate"},
+    {"pattern": "reflexion", "reason": "no terminal signal exists for revenue impact"},
+    {"pattern": "plan-and-execute", "reason": "humans must approve each step anyway"}
+  ],
+  "actor_model": "n/a",
+  "human_gate_required": true,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:15:00Z"
+}]]></code>
+      <note>Correct decision: never wrap irreversible production actions in an autonomous loop, regardless of pattern.</note>
+    </example>
+  </section>
+</text>

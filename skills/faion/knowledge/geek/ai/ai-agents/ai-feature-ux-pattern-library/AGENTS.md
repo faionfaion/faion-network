@@ -4,76 +4,97 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Feature-management method for ai feature ux pattern library — what the brief, gate, and rollout artefacts must contain to move a feature from idea to production safely.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Catalogue of UX patterns specific to AI features — confidence indicators, refusal surfaces, edit-the-output, "why did the model say this" trails, undo gates — selectable per feature with a one-page picker.
 content_id: "8e00fa6b6cd3032f"
-tags: [ai, feature-mgmt]
+complexity: medium
+produces: spec
+est_tokens: 4500
+tags: [ai, ux, patterns, design, hallucination]
 ---
 # AI Feature UX Pattern Library
 
 ## Summary
 
-**One-sentence:** Feature-management method for ai feature ux pattern library — what the brief, gate, and rollout artefacts must contain to move a feature from idea to production safely.
+**One-sentence:** Catalogue of UX patterns specific to AI features — confidence indicators, refusal surfaces, edit-the-output, "why did the model say this" trails, undo gates — selectable per feature with a one-page picker.
 
-**One-paragraph:** Feature-management method for ai feature ux pattern library — what the brief, gate, and rollout artefacts must contain to move a feature from idea to production safely. Generative-UI and AI-design-assistant patterns are about tools that help the designer. There is no library of patterns for AI-powered end-user features (copilot side-panel, inline autocomplete, action cards, streaming response surfaces).
+**One-paragraph:** Generic component libraries (buttons, modals, lists) don't cover the AI-specific UX choices that make or break user trust: how to surface confidence, what to render when the model refuses, how to give users editable hand-off, how to explain a prediction, how to undo an AI-generated action. This methodology catalogues seven core patterns, prescribes a per-feature picker (which patterns are mandatory, which are optional), and outputs one UX spec attached to the feature brief that designers can hand to engineering.
+
+**Ефективно для:** Команд, де AI-фічі ходять у production з generic UX («Sure, here's your output») і потім скаржаться, що користувачі їм не довіряють; pattern library дає чек-лист — і Designer закриває гепи до релізу, не після першого incident.
 
 ## Applies If (ALL must hold)
 
-- You shepherd a feature through the SDLC gate covered by ai feature ux pattern library.
-- There is a named owner accountable for the gate exit criteria.
-- Rollback or kill-criteria for the feature are explicit before the gate.
-- Cross-team consumers (support, finance, legal) are pre-briefed.
+- AI feature is user-facing (not a backend pipeline).
+- A design owner exists for the feature.
+- The feature has at least one of: model refusal, confidence variability, irreversible action.
+- A component library / design system exists to extend.
+- Feature is past pre-MVP — UX iteration is on the critical path.
 
 ## Skip If (ANY kills it)
 
-- Spikes / research with no production path — gate criteria are inapplicable.
-- Hot-fix or restore-path changes — incident response, not feature gating.
-- Internal-only, blameless dogfood features with no external customer signal.
+- Backend-only AI feature (no UI surface).
+- Greenfield with no design system — establish one first.
+- Single-user prototype where UX is intentionally rough.
+- Feature is read-only deterministic (no refusal / no action / no confidence).
 
 ## Prerequisites
 
-- Feature brief or RFC at the gate's expected maturity.
-- Named gate-owner and downstream consumer-owner.
-- Roll-back or kill-criteria decision recorded.
+| Artifact | Format | Source |
+|---|---|---|
+| Feature brief | Markdown | PM |
+| Design system | Figma + tokens | Design |
+| Hallucination policy | from `ai-feature-brief-extension-pack` | PM |
+| Named design owner | handle | Design lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/ai/ai-agents/ai-feature-brief-extension-pack/AGENTS.md` | Hallucination policy section anchors which refusal surfaces are needed. |
+| `geek/ai/ai-agents/ai-governance-compliance/AGENTS.md` | Compliance dictates which explanation patterns are mandatory. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 4 rules: per-feature picker, mandatory subset, confidence shown, undo for irreversible | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the UX spec | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (no confidence, hidden refusal, no undo, etc.) | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure: list patterns → classify feature → mandate subset → spec → review | ~900 |
+| `content/05-examples.xml` | medium | Worked example: UX spec for a content-suggestion feature | ~900 |
+| `content/06-decision-tree.xml` | essential | Tree: surface? → refusal? → irreversible? → mandatory pattern set | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `artefact_check` | haiku | Lint the feature brief against gate criteria |
-| `gap_diagnosis` | sonnet | Identify which exit criteria are unmet |
-| `gate_decision` | opus | Author go/no-go with consequence narrative |
+| `classify_feature_surfaces` | haiku | Structured tagging of UI surfaces. |
+| `pick_patterns` | sonnet | Per-feature judgment from the catalogue. |
+| `compose_ux_spec` | sonnet | Final composition. |
+| `design_review` | opus | High-stakes when irreversible actions are involved. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema for the UX spec. |
+| `templates/output.example.json` | Filled example. |
+| `templates/pattern-picker.md` | One-page picker template (seven core patterns × mandatory/optional). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-output.py` | Validate the UX spec. | After draft, before design review. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- peer: [[ai-feature-brief-extension-pack]] — brief feeds policy into UX choices.
+- peer: [[ai-governance-compliance]] — explainability requirements.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) does the feature have user-facing UI surfaces? (2) is model refusal possible? (3) is the action irreversible? Leaves point to the mandatory pattern subset (confidence + refusal-surface + undo gate) plus optional adds.

@@ -4,76 +4,99 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for ai incident postmortem template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: ML-specific postmortem template covering trigger / blast radius / root-cause class / fix / eval-guard added — fills the gap left by DevOps templates which assume deterministic failures.
 content_id: "e9cf25ced35a32cb"
-tags: [ai, template]
+complexity: medium
+produces: report
+est_tokens: 4800
+tags: [ai, postmortem, incident, sre, eval-guard]
 ---
 # AI Incident Postmortem Template
 
 ## Summary
 
-**One-sentence:** Reusable template for ai incident postmortem template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** ML-specific postmortem template covering trigger / blast radius / root-cause class / fix / eval-guard added — fills the gap left by DevOps templates which assume deterministic failures.
 
-**One-paragraph:** Reusable template for ai incident postmortem template that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. DevOps has DORA + incident-event templates; ML-specific postmortems (trigger / blast radius / fix / eval guard) are missing.
+**One-paragraph:** Generic DORA-style postmortems list "5 whys" and a fix; they have no place for the ML-specific axes that drive AI incidents — was it model drift, prompt regression, schema change, judge change, retrieval failure, tool fault, hallucination class. This methodology produces one filled postmortem per incident with required sections (trigger, blast radius, root-cause class, fix, eval-guard added, follow-up actions). Output is a versioned report committed to the team's incident archive that downstream agents can search by root-cause class to spot patterns.
+
+**Ефективно для:** Команд, які пишуть AI postmortem за template для звичайних сервісів — і пропускають «модель сама змінилась, eval set не зловив, бо там цього випадку немає»; ML-specific template ловить такі гепи у структуру, а не в narrative.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by ai incident postmortem template (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- AI/ML system had a production incident with user-visible impact.
+- Incident is closed (live triage is done; this is the writeup phase).
+- A named incident commander or eval owner exists.
+- Trace data from before / during / after the incident is available.
+- A follow-up review meeting is scheduled within 7 days.
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Pre-prod incident with no user impact — log only, no full postmortem.
+- Deterministic-only failure (DB down, deploy script error) — use DevOps template instead.
+- Incident is ongoing — finish triage first.
+- Single-author research postmortem with no organisational impact.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artifact | Format | Source |
+|---|---|---|
+| Incident ID | string | Incident tracker |
+| Time window | start + end ISO timestamps | Observability stack |
+| User impact | qualitative + count | Customer ops |
+| Pre/during/post traces | jsonl logs | Observability |
+| Eval results before/after fix | jsonl | QA |
+| Named incident commander | handle | Incident tracker |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/ai/ai-agents/ai-incident-response-playbook/AGENTS.md` | Response runbook precedes the postmortem. |
+| `geek/ai/ai-agents/agent-trajectory-eval-method/AGENTS.md` | Eval-guard added section references trajectory eval. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: ML-specific axes filled, eval-guard added, blameless, blast-radius quantified, eval-set updated | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the postmortem report | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure: gather → root-cause-class → fix → eval-guard → publish | ~900 |
+| `content/05-examples.xml` | medium | Worked example: postmortem for hallucination incident | ~1000 |
+| `content/06-decision-tree.xml` | essential | Tree: ML failure? → which root-cause class? → which eval-guard? | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `extract_facts_from_traces` | haiku | Structured extraction. |
+| `classify_root_cause` | sonnet | Domain judgment over 8 root-cause classes. |
+| `draft_postmortem` | sonnet | Composition. |
+| `review_blameless_language` | opus | High-stakes voice review when teams are at odds. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema for the postmortem report. |
+| `templates/output.example.json` | Filled example. |
+| `templates/postmortem.md` | Markdown skeleton with the required ML-specific sections. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-output.py` | Validate the postmortem report. | After draft, before publication to incident archive. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- peer: [[ai-incident-response-playbook]] — runbook used during live triage.
+- peer: [[agent-trajectory-eval-method]] — eval guard referenced from "guard added" section.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) is this an ML failure (not pure infra)? (2) which root-cause class fits (drift / prompt regression / schema change / judge change / retrieval failure / tool fault / hallucination / data poisoning)? (3) is an eval-guard added that would have caught it? Leaves point to the postmortem section template.

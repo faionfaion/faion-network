@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="discriminated-union-output Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Decision routing: union vs flatten vs registry vs two-call.</summary>
+
+  <decision-tree>
+    <root-question id="q-multiple-shapes">Does the output space genuinely have 2 or more distinct shapes (different required fields per shape)?</root-question>
+
+    <branch when="multiple_shapes == false">
+      <conclusion ref="r3-collapse-if-90pct-overlap">Use a single model with all fields; no union machinery needed.</conclusion>
+    </branch>
+
+    <branch when="multiple_shapes == true">
+      <question id="q-field-overlap">Do the branches share more than ~90% of their fields?</question>
+
+      <branch when="overlap_high == true">
+        <conclusion ref="r3-collapse-if-90pct-overlap">Collapse to one model with a `kind` literal + branch-specific optional fields. Union machinery costs more than it saves.</conclusion>
+      </branch>
+
+      <branch when="overlap_high == false">
+        <question id="q-open-set">Is the set of branches open (user-defined / plug-ins)?</question>
+
+        <branch when="open_set == true">
+          <conclusion ref="r4-open-set-needs-registry">Use a registry pattern with free-string `kind` + runtime branch lookup; do NOT use a discriminated union.</conclusion>
+        </branch>
+
+        <branch when="open_set == false">
+          <question id="q-decoder-supports-discriminator">Does the decoder backend honour JSON Schema `discriminator` (OpenAI strict, Pydantic v2, Outlines, XGrammar)?</question>
+
+          <branch when="decoder_supports == true">
+            <conclusion ref="r1-discriminator-first">Use a discriminated union with `Annotated[..., Field(discriminator="kind")]`. Discriminator first in every branch.</conclusion>
+          </branch>
+
+          <branch when="decoder_supports == false">
+            <conclusion ref="r2-annotated-discriminator">Fall back to two sequential calls: (1) classify the kind with an enum, (2) extract the branch fields with the matching schema.</conclusion>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="multiple_shapes=true, overlap=20%, open_set=false, decoder=openai_strict">
+    q-multiple-shapes → branch(true) → q-field-overlap → branch(low) → q-open-set → branch(closed) → q-decoder-supports → branch(true) → conclusion(r1-discriminator-first).
+  </example>
+</text>

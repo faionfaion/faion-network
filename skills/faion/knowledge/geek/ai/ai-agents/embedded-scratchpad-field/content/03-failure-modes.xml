@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embedded-scratchpad-field Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embedded-scratchpad-field as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="embedded-scratchpad-field Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Five failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>scratchpad placed AFTER the answer</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reverse order — scratchpad must come BEFORE the answer to act as CoT</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>reasoning field with vague description</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Description should say "Step-by-step analysis of evidence" — concrete</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Multiple scratchpad fields competing</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pick one (or one per phase); stacking confuses</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Scratchpad that just echoes the input</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Description must demand actual analysis, not paraphrase</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Scratchpad max_tokens cap too small</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Let it breathe; ~200-500 tokens for non-trivial reasoning</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-scratchpad-after-answer">
+      <description>Scratchpad/reasoning field placed AFTER the answer (post-hoc rationalisation, not CoT).</description>
+      <reason>Autoregressive generation means the answer was committed before reasoning was produced. The reasoning field becomes a story explaining a decision already made, not the chain that produced it.</reason>
+    </antipattern>
+    <p>Symptom: reasoning frequently contradicts the answer; CoT lift is zero or negative. Root cause: schema field order. Fix: swap to place scratchpad first.</p>
+
+    <antipattern id="fm-02-vague-description">
+      <description>`reasoning` field with empty or generic description ("think step by step").</description>
+      <reason>Without a concrete description naming WHAT to think about, the model writes filler. The lift collapses; tokens are wasted.</reason>
+    </antipattern>
+    <p>Symptom: scratchpad content is generic prose unrelated to the input. Root cause: missing description anchor. Fix: rewrite description to name the dependent answer fields and the criteria to consider; cap word count.</p>
+
+    <antipattern id="fm-03-multiple-scratchpads">
+      <description>Multiple competing scratchpad fields in one schema (`reasoning` + `analysis` + `notes`).</description>
+      <reason>The model splits effort across the fields, none of which gets enough budget; the prompt becomes ambiguous about which should drive the answer.</reason>
+    </antipattern>
+    <p>Symptom: every scratchpad field is short and shallow. Root cause: schema accumulation over iterations. Fix: keep exactly one scratchpad per schema; if you need multi-stage thinking, split into two SO calls.</p>
+
+    <antipattern id="fm-04-paraphrased-input">
+      <description>Scratchpad that just paraphrases the input instead of reasoning about it.</description>
+      <reason>Description does not demand analysis; model defaults to safe paraphrase, gaining no insight.</reason>
+    </antipattern>
+    <p>Symptom: scratchpad reads like a TL;DR of the input. Root cause: vague description. Fix: description must instruct the model to compare, evaluate, or decide — not summarise.</p>
+
+    <antipattern id="fm-05-too-tight-cap">
+      <description>`max_tokens` cap or word-budget so tight the scratchpad cannot breathe.</description>
+      <reason>For non-trivial reasoning, ~200-500 tokens is needed; smaller caps truncate the chain mid-step and the answer suffers.</reason>
+    </antipattern>
+    <p>Symptom: scratchpad truncated; answer wrong on hard cases. Root cause: over-aggressive token budget. Fix: cap at ~300 words for free-form, ~5-10 items for list-style; measure on an eval and adjust.</p>
   </section>
 </text>

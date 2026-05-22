@@ -4,76 +4,99 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Reusable template for agent trajectory eval method that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Evaluation method that scores not just an agent's final answer but the full tool-call trajectory — right tools, right order, redundancy, recovery — and produces a per-run report with trajectory metrics.
 content_id: "1edcfbef62e06922"
-tags: [agent, ai, template]
+complexity: medium
+produces: report
+est_tokens: 5000
+tags: [agent, ai, eval, trajectory, observability]
 ---
 # Agent Trajectory Eval Method
 
 ## Summary
 
-**One-sentence:** Reusable template for agent trajectory eval method that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented.
+**One-sentence:** Evaluation method that scores not just an agent's final answer but the full tool-call trajectory — right tools, right order, redundancy, recovery — and produces a per-run report with trajectory metrics.
 
-**One-paragraph:** Reusable template for agent trajectory eval method that codifies the structure, named fields, and decision points so each new instance ships in minutes instead of being re-invented. Methodology to score not just final answer but the full tool-call sequence (right tools, right order, redundancy, recovery). Critical for agent GA but missing.
+**One-paragraph:** Output-only evals miss the half of agent quality that lives in the trajectory: did the agent pick the right tools, in a sensible order, without redundancy, and recover gracefully from tool errors? This methodology defines a three-layer score (system efficiency: latency + tokens + tool calls; session: trajectory exact-match / precision / recall; node: per-tool selection and parameter accuracy) and emits a per-run report that gates promotion. Required for any agent feature that survived first-week sunny-day testing and now needs an honest production readiness signal.
+
+**Ефективно для:** Команд, у яких pass-rate на golden set ≥80%, але в проді агент іноді робить дивне і ніхто не знає чому; метрики траєкторії показують конкретні misselect-tool / redundant-call / no-recovery випадки, які output-only-евали ховають.
 
 ## Applies If (ALL must hold)
 
-- You are starting a new instance of the artefact addressed by agent trajectory eval method (kickoff, contract, brief, deck).
-- The instance has a named owner and a target review date.
-- Filled fields will be read by humans outside the author's team (clients, contractors, executives).
-- Sensitive data (contract terms, salary, IP) is captured but redacted before broad sharing.
+- Agent is past initial-prototype stage (has ≥1 deployed version).
+- Trajectory logs (per-tool call + args + return) are persisted.
+- A golden set of ≥30 expected-trajectory examples exists or can be assembled.
+- Owner is willing to gate GA promotion on trajectory metrics, not only final-answer metrics.
+- An eval harness can replay or fresh-run trajectories (see [[agent-replay-harness-cookbook]]).
 
 ## Skip If (ANY kills it)
 
-- First instance ever, no comparable past work — write freeform, extract a template after.
-- One-off bespoke artefact (M&A doc, lawsuit, novel R&D) — template constrains the wrong axes.
-- Localized cultural or regulatory context the template does not encode — start from local norms.
+- Agent is a single-tool wrapper (no trajectory to score).
+- Trajectory logs are unavailable and cannot be added (closed harness).
+- Final-answer quality alone meets the team's bar and trajectory variation does not affect outcomes.
+- Production cost ceiling cannot accommodate the eval run cost.
 
 ## Prerequisites
 
-- Empty instance of the artefact created and named (filename, doc ID).
-- Required input metadata reachable (parties, dates, scope, budget).
-- Reviewer identified with deadline acknowledged.
+| Artifact | Format | Source |
+|---|---|---|
+| Golden trajectory set | jsonl `[{task, expected_tools, expected_order}]` ≥30 entries | QA |
+| Live trajectory logs | jsonl from observability stack | Datadog / Langfuse / LangSmith |
+| Tool registry | JSON name+schema | Tool catalogue |
+| Cost ceiling | $ per eval run | Finance |
+| Named owner | handle | QA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `geek/ai/ai-agents/agent-replay-harness-cookbook/AGENTS.md` | Harness emits the trajectories this evaluator consumes. |
+| `geek/ai/ai-agents/chaos-eval-fault-injection/AGENTS.md` | Chaos-eval extends this with deliberate fault injection. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: golden frozen, three-layer scoring, CI reported, judge calibrated, cost capped | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the trajectory-eval report | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (output-only, judge drift, cherry-picked traces, etc.) | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure: build golden → score per-layer → aggregate → CI → report | ~1000 |
+| `content/05-examples.xml` | medium | Worked example: trajectory report for a code-fixer agent | ~900 |
+| `content/06-decision-tree.xml` | essential | Tree: logs available? → golden set? → cost ok? → run/build/escalate | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `structural_fill` | haiku | Slot in known fields from inputs |
-| `ambiguity_resolution` | sonnet | Resolve open fields against context |
-| `stakeholder_voice` | opus | Write narrative sections coherent with strategy |
+| `parse_traces` | haiku | Structured extraction. |
+| `score_trajectory` | sonnet | LLM-as-judge for trajectory quality where rule-based fails. |
+| `aggregate_report` | sonnet | Compose final report. |
+| `review_regression` | opus | Cross-version drift diagnosis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema for the trajectory-eval report. |
+| `templates/report.example.json` | Filled minimal valid example. |
+| `templates/golden-trajectory.jsonl` | Skeleton golden-set with two example entries. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-output.py` | Validate the report against the schema. | After subagent emits report, before promotion gate. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- peer: [[agent-replay-harness-cookbook]] — replay produces the input traces.
+- peer: [[chaos-eval-fault-injection]] — extends trajectory eval with fault injection.
+- external: TRACE (arXiv:2602.21230); Vertex AI trajectory_exact_match / precision / recall.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Asks: (1) are trajectory logs available? (2) is a golden set ≥30 examples ready? (3) does cost fit ceiling? Leaves point to "run eval", "build prerequisites first", or "escalate".

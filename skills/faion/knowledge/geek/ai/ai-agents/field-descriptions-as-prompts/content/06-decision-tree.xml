@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="field-descriptions-as-prompts Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Routing for whether and how to author a description for a given field.</summary>
+
+  <decision-tree>
+    <root-question id="q-trivial">Is the field semantics fully self-explanatory from name + type (e.g. `is_deleted: bool`)?</root-question>
+
+    <branch when="trivial == true">
+      <conclusion ref="r1-non-trivial-fields-have-description">Omit description; one less token in the prompt cache.</conclusion>
+    </branch>
+
+    <branch when="trivial == false">
+      <question id="q-name-conflict">Does a draft description contradict the field name or type?</question>
+
+      <branch when="conflict == true">
+        <conclusion ref="r5-no-contradictions-with-name-or-type">Rename the field; do NOT paper over with a description.</conclusion>
+      </branch>
+
+      <branch when="conflict == false">
+        <question id="q-depends-on">Does the field depend on another field generated earlier in the schema?</question>
+
+        <branch when="depends_on == true">
+          <conclusion ref="r3-reference-dependent-fields">Description must reference the dependency by backtick-wrapped name; covers format + units + the relation.</conclusion>
+        </branch>
+
+        <branch when="depends_on == false">
+          <question id="q-mis-fill-history">Has the model previously mis-filled this field shape?</question>
+
+          <branch when="mis_fill == true">
+            <conclusion ref="r2-cover-format-units-edges-forbidden">Description must include the format + units + the specific forbidden pattern observed in the past.</conclusion>
+          </branch>
+
+          <branch when="mis_fill == false">
+            <conclusion ref="r2-cover-format-units-edges-forbidden">Description covers format + units + 1 edge case; leave forbidden patterns out until evidence emerges.</conclusion>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="trivial=false, conflict=false, depends_on=true (slug depends on title)">
+    q-trivial → branch(false) → q-name-conflict → branch(false) → q-depends-on → branch(true) → conclusion(r3-reference-dependent-fields).
+  </example>
+</text>

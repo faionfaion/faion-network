@@ -1,19 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ai-governance-compliance Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ai-governance-compliance. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AI Governance and Compliance Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every governance pack enforces. Hard rules — regulator overrides only with documented derogation.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>High-risk AI systems MUST implement documentation (model cards, data sheets), monitoring (bias detection, drift monitoring), explainability (SHAP/LIME for decisions), human oversight (review queues, escalation), and data governance (consent, retention, deletion).</statement>
-      <rationale source="v1-source">EU AI Act Article 11-15 mandates these elements for high-risk systems. Model cards document a system at a point in time; they go stale after fine-tuning unless versioned in CI. Automated bias monitoring requires ground-truth labels to measure outcome disparity; these are rarely available in real-time but stratified validation sets provide evidence for pre-deployment audit.</rationale>
+  <section title="Rules">
+    <rule id="r1-model-card-required" testable="true" depth="essential">
+      <statement>Every shipped high-risk system has a versioned model card with at least: provenance (training data summary, dates), intended use, out-of-scope use, evaluation metrics, fairness metrics, known limitations. Card is stored as code in the model repo and bumped on every retrain.</statement>
+      <rationale source="EU AI Act Article 11-13; Hugging Face model card spec; Google PAIR practice">Undocumented systems cannot be audited; cards go stale within a release if not pinned to code.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Bias checks MUST run on stratified validation sets, not production data, to avoid GDPR issues with real user data. Define demographic parity difference threshold (0.1 is industry default; stricter for high-stakes decisions). Version every model card as code in the same repo as the model; require PR review for changes.</statement>
-      <rationale source="v1-source">GDPR prohibits collecting sensitive demographic data; validation sets are synthetic or historical. Automated bias monitoring post-deployment requires ground-truth labels that don't exist in real-time. Schedule weekly batch monitoring jobs instead. Model cards go stale after fine-tuning or prompt updates unless versioned.</rationale>
+    <rule id="r2-bias-audit-statistical" testable="true" depth="essential">
+      <statement>Bias audit reports demographic parity difference, equalised odds, and disparate impact ratios against a stratified validation set. Each metric ships with a 95% CI. Industry default threshold: 0.1 demographic parity difference; tighter for credit / hiring / law enforcement.</statement>
+      <rationale source="EU AI Act Annex IV; ISO/IEC 23894; fairness ML literature (Verma+Rubin 2018)">Naked claims of "we tested for bias" without statistical tests do not survive auditor review.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Recommended subagents: compliance-checker (runs pre-deployment checklist: model card completeness, bias metrics, documentation audit), audit-logger (wraps every inference call, records structured log entry immutable and timestamped), explainability-reporter (generates SHAP/LIME report for sampled batch, flags top feature contributions), drift-monitor (compares production input distribution against training distribution weekly, alerts on divergence).</statement>
-      <rationale source="v1-source">Multi-agent pattern enables separation of concerns: governance verification before launch, audit trails during production, explainability on demand, drift detection as a background job. Each agent can run on different cadences and thresholds.</rationale>
+    <rule id="r3-explainability-typed" testable="true" depth="essential">
+      <statement>Explainability artefacts are typed: per-decision (SHAP/LIME or rule trace per sample), per-feature (global feature importance), per-cohort (subgroup performance). At least the per-decision type is produced on demand for any consequential automated decision.</statement>
+      <rationale source="EU AI Act Article 13 (transparency); GDPR Article 22 (automated decision-making)">A right-to-explanation request without typed explainability is a regulatory finding.</rationale>
+    </rule>
+    <rule id="r4-human-oversight-named" testable="true" depth="essential">
+      <statement>Human oversight is designed before deployment: queue path, escalation triggers, named reviewer roles, SLA. For each automated decision class, the policy is one of: pre-decision review, post-decision review with reversal window, sampled review, none-with-rationale.</statement>
+      <rationale source="EU AI Act Article 14; ISO 42001 §6.2.4">Unspecified oversight defaults to none; that fails high-risk audit.</rationale>
+    </rule>
+    <rule id="r5-audit-log-immutable" testable="true" depth="essential">
+      <statement>Every inference call writes a structured audit log entry: {ts, model_version, input_hash, output_hash, decision, confidence, reviewer (if human-in-loop), retention_class}. Log is append-only and held per retention policy (≥7 years for high-risk).</statement>
+      <rationale source="EU AI Act Article 12; SOC 2 CC7; ISO 42001 §8.3">Mutable or short-retention logs cannot evidence compliance during incident review or audit.</rationale>
     </rule>
   </section>
+
+  <section title="Canonical examples">
+    <example type="good" title="Versioned model card commit">
+      <code lang="text"><![CDATA[models/cv-screening/MODEL_CARD.md @ v3.2.1
+  provenance: trained on dataset CVScreen-v4 (2025-11-01..2026-03-15)
+  intended_use: rank applicants by job-fit; not auto-reject
+  out_of_scope: candidates under 18; non-EN CVs
+  metrics: top-5 accuracy 0.82 (CI ±0.04); demographic parity diff 0.07 (gender)
+  oversight: post-rank human review of bottom 20%; reversal SLA 24h
+  retention: audit-log 7 years]]></code>
+    </example>
+    <example type="bad" title="No card, no bias stats">
+      <code lang="text"><![CDATA[shipped cv-screening v3.2.1; "we tested for bias and it looks fine"]]></code>
+      <note>Will not pass any external audit; right-to-explanation requests cannot be served.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

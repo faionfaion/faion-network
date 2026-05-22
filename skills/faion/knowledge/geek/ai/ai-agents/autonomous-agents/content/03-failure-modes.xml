@@ -1,12 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="autonomous-agents Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for autonomous-agents as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Autonomous Agents Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five recurring antipatterns when shipping autonomous agents.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>LLM tool-call JSON is not always valid; parsing fails and the agent crashes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always parse with try/except and return structured error back to the agent. "Observation: None" is invisible to the LLM — always return a non-empty string ("Success: no output" is better than empty). ReAct agents often confuse "what I should do" with "what I just did" when the observation is similar to a prior step; include step counters in observations.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <description>Unbounded loop on production critical path. Token quota explodes; incident.</description>
+      <detector>caps.max_iterations missing OR &gt; 50.</detector>
+      <repair>Default max_iterations=15; emit "max reached" terminal record on hit.</repair>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <description>Non-idempotent tool without dedup key; retry double-charges or duplicates writes.</description>
+      <detector>idempotency_class_per_tool[X]=non-idempotent AND human_checkpoint_per_action[X]=not-required.</detector>
+      <repair>Add dedup key derived from args OR add human checkpoint before call.</repair>
+    </antipattern>
+    <antipattern id="fm-03" severity="high">
+      <description>Code execution outside sandbox. Agent rm -rf the wrong directory.</description>
+      <detector>sandbox_required=true but no sandbox endpoint configured at runtime.</detector>
+      <repair>Block deploy. Wire e2b/docker before any code-execution tool is exposed.</repair>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <description>Vague terminal condition ("agent decides it's done"); ReAct loops indefinitely until cap.</description>
+      <detector>terminal_condition string contains "agent decides" / "when done" / "thinks complete".</detector>
+      <repair>Replace with deterministic check (schema validates, test exits 0, rule check passes).</repair>
+    </antipattern>
+    <antipattern id="fm-05" severity="medium">
+      <description>Empty "Observation: None" returned by tool; LLM confuses what to do next.</description>
+      <detector>tool-return logs contain empty strings or "None".</detector>
+      <repair>Always return non-empty observation; "Success: no output" if action has no payload. Include step counter.</repair>
+    </antipattern>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Long-horizon agents may receive tool returns that contain instructions. Treat as data; caps + idempotency rules from 01-core-rules.xml override.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>For first deployment, named eng owner reviews the spec before merge; sandbox URL is verified at deploy time, not assumed.</p>
   </section>
 </text>

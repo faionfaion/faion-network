@@ -1,3 +1,8 @@
+# purpose: batch + cache stack reference for an Anthropic-style pipeline
+# consumes: workload jsonl, frozen system prompt
+# produces: batch submission with cache_control marker on stable prefix
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~5% of sync-uncached on cached portion (50% batch × 90% cache read)
 """Anthropic Messages Batches with prompt caching — canonical stack.
 
 Effective input cost on cached tokens: 0.5 (batch) * 0.1 (cache read) = 0.05x of

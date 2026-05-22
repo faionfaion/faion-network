@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="enum-constraints-closed-vocabularies Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for enum-constraints-closed-vocabularies as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Four failure modes with symptom, root cause, and repair.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Listing the valid values inside the prompt body (or Field description) but keeping the field type as str.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Soft constraints. The model usually obeys but drifts under long context, low temperature variation, or small models — and a single wrong label silently breaks the next pipeline stage. Enums move the constraint into the decoder mask, where it cannot drift.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
+  <section title="Antipatterns">
+    <antipattern id="fm-01-prompt-only-enum">
+      <description>Listing valid values inside the prompt or `description` while the field type stays `str`.</description>
+      <reason>Soft constraint. The model mostly obeys but drifts under long context, low-temperature variation, or smaller models. A single wrong label silently breaks the downstream switch/case.</reason>
+    </antipattern>
+    <p>Symptom: 1-5% of production rows have labels not in the canonical list. Root cause: decoder is not masking. Fix: convert to `Literal[...]` / `enum`; enable strict mode.</p>
+
+    <antipattern id="fm-02-no-strict-on-fallback">
       <description>Trusting JSON-mode output to respect an enum without post-validation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mini/nano models hallucinate enum values under JSON-mode-only fallback. Reported on OpenAI Community threads — the schema is shown to the model but never enforced by the decoder. Production systems must either upgrade to strict mode or validate-and-retry.</repair>
-    </failure-mode>
+      <reason>JSON mode shows the schema to the model but never enforces it via the decoder. Mini/nano models hallucinate enum values.</reason>
+    </antipattern>
+    <p>Symptom: validator-retry rate is high on the JSON-mode path. Root cause: no enforcement. Fix: upgrade to strict mode on this provider, or add retry-with-feedback / map-to-nearest in the orchestrator.</p>
+
+    <antipattern id="fm-03-literal-or-str-union">
+      <description>Modelling semi-open sets as `Literal["a","b","c"] | str` directly.</description>
+      <reason>The union collapses to `str` in strict mode; the enum constraint is silently lost.</reason>
+    </antipattern>
+    <p>Symptom: every value reaches downstream as plain `str`. Root cause: wrong union shape. Fix: use a discriminated union with `kind: Literal["known"|"novel"]`.</p>
+
+    <antipattern id="fm-04-capitalisation-drift">
+      <description>Enum values that are case-sensitive in the schema but where the prompt examples use mixed case ("Billing" vs "billing").</description>
+      <reason>Strict mode still accepts only exact-match tokens; mixed-case examples confuse the model and lead to validator failures.</reason>
+    </antipattern>
+    <p>Symptom: validator rejects ~5% of outputs with case mismatches. Root cause: inconsistent casing across schema + prompt. Fix: pick lowercase snake_case across schema, prompts, and DB; document the convention; add a normaliser as a safety net.</p>
   </section>
 </text>

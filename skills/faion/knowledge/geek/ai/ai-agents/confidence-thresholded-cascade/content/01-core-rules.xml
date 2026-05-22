@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="confidence-thresholded-cascade Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for confidence-thresholded-cascade. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="confidence-thresholded-cascade Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules covering cheap-model schema shape, threshold calibration, escalation triggers, depth limits, and explicit IDK handling.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-schema-shape" testable="true">
+      <statement>The cheap model's structured-output schema MUST contain `reasoning: str`, `answer: <task type>`, and `confidence_0_to_1: float` in that order; the strong model's schema MUST contain `reasoning: str` and `answer: <task type>` with no confidence field.</statement>
+      <rationale source="frugal-gpt-2023">Field order is generation order; reasoning before confidence forces the model to think before self-rating. The strong model has no confidence because escalation already committed to its answer.</rationale>
+    </rule>
+
+    <rule id="r2-calibrated-threshold" testable="true">
+      <statement>The escalation threshold MUST be derived from an eval set of at least 100 representative tasks by computing actual accuracy at each confidence bucket and picking the bucket where accuracy crosses the target SLA.</statement>
+      <rationale source="route-llm-2024">Arbitrary thresholds (0.5, 0.8 "feels right") destroy quality. RouteLLM achieves 95% of GPT-4 performance at 26% of GPT-4 calls only when the threshold is calibrated on representative data.</rationale>
+    </rule>
+
+    <rule id="r3-explicit-idk-bypass" testable="true">
+      <statement>The cheap model schema MUST include a boolean `requires_escalation` field; if true, the orchestrator MUST escalate regardless of the numeric confidence score.</statement>
+      <rationale source="anthropic-tool-use-2025">Confidence alone misses blind-spot failures where the cheap model confidently answers an out-of-distribution question. An explicit IDK channel catches these.</rationale>
+    </rule>
+
+    <rule id="r4-cap-depth" testable="true">
+      <statement>Cascade depth MUST NOT exceed 3 levels in production; each additional level adds a round-trip and the marginal cost saving falls below the latency penalty.</statement>
+      <rationale source="cascade-deployments-2026">Three-level cascades (Haiku → Sonnet → Opus) capture &gt;95% of the cost savings achievable. Beyond that, the routing overhead exceeds the savings.</rationale>
+    </rule>
+
+    <rule id="r5-monitor-escalation-rate" testable="true">
+      <statement>Every cascade deployment MUST emit an OpenTelemetry span per request with `cascade.cheap_confidence`, `cascade.escalated`, and `cascade.used_model` attributes; the rolling escalation rate MUST be tracked and alerted on a &gt;2x baseline jump.</statement>
+      <rationale source="otel-genai-2025">A sudden escalation-rate spike is the leading signal of cheap-model drift, prompt regressions, or upstream changes; without telemetry the first signal is angry users.</rationale>
     </rule>
   </section>
 </text>

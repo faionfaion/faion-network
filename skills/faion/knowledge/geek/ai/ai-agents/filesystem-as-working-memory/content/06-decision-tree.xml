@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="filesystem-as-working-memory Decision Tree" version="1.0.0" est_tokens="600">
+  <summary>Two decisions: per tool call (inline vs offload) and per turn (offload vs compact).</summary>
+
+  <decision-tree>
+    <root-question id="q-tool-result-size">Did the latest tool call produce a result larger than ~2000 tokens?</root-question>
+
+    <branch when="size_above_2k == false">
+      <conclusion ref="r1-offload-2k">Return inline envelope; no offload needed.</conclusion>
+    </branch>
+
+    <branch when="size_above_2k == true">
+      <question id="q-taxonomy">Does the result fit one of the canonical taxonomy roots (search/, docs/, plan/, scratch/)?</question>
+
+      <branch when="taxonomy_root == true">
+        <conclusion ref="r3-stable-taxonomy">Write to the taxonomy path; return offloaded envelope with head ≤ 800 chars.</conclusion>
+      </branch>
+
+      <branch when="taxonomy_root == false">
+        <conclusion ref="r3-stable-taxonomy">Bucket the result under the closest existing taxonomy root (default `scratch/`); do NOT invent a new root.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="utilisation &gt;= 0.85">
+      <question id="q-offload-remaining">Is any inline tool output above 2K tokens still in context?</question>
+
+      <branch when="offload_remaining == true">
+        <conclusion ref="r5-compact-last">Offload the remaining blobs FIRST; do not compact yet.</conclusion>
+      </branch>
+
+      <branch when="offload_remaining == false">
+        <conclusion ref="r5-compact-last">Trigger LLM-based compaction (see compaction-preserve-refs).</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="size_above_2k=true, taxonomy_root=true(search)">
+    q-tool-result-size → branch(true) → q-taxonomy → branch(true) → conclusion(r3-stable-taxonomy). Wrote `search/refund-policy.json`.
+  </example>
+</text>
