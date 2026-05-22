@@ -3,7 +3,7 @@ slug: launch-pr-sign-off-coordination
 tier: solo
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

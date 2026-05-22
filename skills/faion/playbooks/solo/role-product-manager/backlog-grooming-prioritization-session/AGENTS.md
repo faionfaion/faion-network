@@ -3,7 +3,7 @@ slug: backlog-grooming-prioritization-session
 tier: solo
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

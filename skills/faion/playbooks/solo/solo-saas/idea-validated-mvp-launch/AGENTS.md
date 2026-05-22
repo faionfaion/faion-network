@@ -3,7 +3,7 @@ slug: idea-validated-mvp-launch
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: heuristic-evaluation-on-a-new-screen-1hr
 tier: solo
 group: role-ux-ui-designer
 persona: Designer running a heuristic eval on a new or changed screen
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

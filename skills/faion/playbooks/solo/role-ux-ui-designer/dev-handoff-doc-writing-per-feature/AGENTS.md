@@ -3,7 +3,7 @@ slug: dev-handoff-doc-writing-per-feature
 tier: solo
 group: role-ux-ui-designer
 persona: Designer writing the handoff spec engineering will build from
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

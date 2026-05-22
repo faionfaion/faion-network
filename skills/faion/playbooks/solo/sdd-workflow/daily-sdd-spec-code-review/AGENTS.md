@@ -3,7 +3,7 @@ slug: daily-sdd-spec-code-review
 tier: solo
 group: sdd-workflow
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft

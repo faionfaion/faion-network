@@ -3,7 +3,7 @@ slug: friday-metrics-check-mrr-pulse
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

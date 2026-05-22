@@ -3,7 +3,7 @@ slug: regression-suite-hardening-flaky-test-elimination
 tier: solo
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

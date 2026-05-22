@@ -3,7 +3,7 @@ slug: customer-feedback-triage-from-intercompylon
 tier: solo
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

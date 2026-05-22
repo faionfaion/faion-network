@@ -3,7 +3,7 @@ slug: user-interview-prep-run
 tier: solo
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

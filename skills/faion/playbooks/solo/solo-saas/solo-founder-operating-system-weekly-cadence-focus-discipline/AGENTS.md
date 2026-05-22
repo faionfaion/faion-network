@@ -3,7 +3,7 @@ slug: solo-founder-operating-system-weekly-cadence-focus-discipline
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

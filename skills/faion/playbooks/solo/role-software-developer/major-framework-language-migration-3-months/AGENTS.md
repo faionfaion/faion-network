@@ -3,7 +3,7 @@ slug: major-framework-language-migration-3-months
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

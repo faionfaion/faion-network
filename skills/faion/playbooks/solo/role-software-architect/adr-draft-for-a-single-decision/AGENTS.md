@@ -3,7 +3,7 @@ slug: adr-draft-for-a-single-decision
 tier: solo
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

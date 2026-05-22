@@ -3,7 +3,7 @@ slug: test-case-writing-for-new-acceptance-criteria
 tier: solo
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: plan-design
 complexity: light
 version: 1.0.0
 status: draft

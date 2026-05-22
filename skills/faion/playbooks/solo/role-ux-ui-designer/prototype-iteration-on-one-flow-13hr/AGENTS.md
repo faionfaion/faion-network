@@ -3,7 +3,7 @@ slug: prototype-iteration-on-one-flow-13hr
 tier: solo
 group: role-ux-ui-designer
 persona: Designer iterating a prototype after fresh user feedback
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: sentrydatadog-alert-bugfix-ship
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: fix-incident
 complexity: medium
 version: 1.0.0
 status: draft

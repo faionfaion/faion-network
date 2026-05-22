@@ -3,7 +3,7 @@ slug: synthesis-build-a-topical-authority-cluster-end-to-end-with-e-e-a-t-eviden
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: library-evaluation-spike
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

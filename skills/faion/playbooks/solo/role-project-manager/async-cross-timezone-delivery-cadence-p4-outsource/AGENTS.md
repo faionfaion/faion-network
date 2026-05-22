@@ -3,7 +3,7 @@ slug: async-cross-timezone-delivery-cadence-p4-outsource
 tier: solo
 group: role-project-manager
 persona: PM on a P4 outsource engagement with <2h overlap between dev team and client
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

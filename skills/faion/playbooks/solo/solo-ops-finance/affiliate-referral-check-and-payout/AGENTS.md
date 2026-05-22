@@ -3,7 +3,7 @@ slug: affiliate-referral-check-and-payout
 tier: solo
 group: solo-ops-finance
 persona: P2
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

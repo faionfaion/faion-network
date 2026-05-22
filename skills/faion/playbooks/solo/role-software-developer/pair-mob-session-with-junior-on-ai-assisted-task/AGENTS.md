@@ -3,7 +3,7 @@ slug: pair-mob-session-with-junior-on-ai-assisted-task
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

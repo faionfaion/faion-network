@@ -3,7 +3,7 @@ slug: test-suite-health-dashboard-review
 tier: solo
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

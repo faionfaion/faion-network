@@ -3,7 +3,7 @@ slug: client-deliverable-redesign-for-outsource-engagement-4-weeks
 tier: solo
 group: role-ux-ui-designer
 persona: "Outsource designer redesigning a client's existing surface in a P4 engagement"
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: hold-a-focused-11-with-a-team-member
 tier: solo
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

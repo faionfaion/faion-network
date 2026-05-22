@@ -3,7 +3,7 @@ slug: test-data-setup-for-tricky-scenario
 tier: solo
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

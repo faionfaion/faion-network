@@ -3,7 +3,7 @@ slug: deploy-day-staging-to-prod-gate
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

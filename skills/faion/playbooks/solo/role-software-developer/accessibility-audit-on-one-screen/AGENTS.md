@@ -3,7 +3,7 @@ slug: accessibility-audit-on-one-screen
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: audit-comply
 complexity: light
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: run-a-15-minute-daily-standup-that-surfaces-blockers-not-status
 tier: solo
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: greenfield-service-from-scaffold-to-first-production-deploy-8-weeks-p6-pro
 tier: solo
 group: role-software-developer
 persona: In-house dev or small product squad shipping a new internal service
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

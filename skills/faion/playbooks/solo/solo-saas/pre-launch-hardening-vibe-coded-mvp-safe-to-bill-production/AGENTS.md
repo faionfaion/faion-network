@@ -3,7 +3,7 @@ slug: pre-launch-hardening-vibe-coded-mvp-safe-to-bill-production
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

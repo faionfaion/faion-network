@@ -3,7 +3,7 @@ slug: solo-prod-incident-response-no-team-safety-net
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: fix-incident
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: performance-profiling-pass-on-one-hot-path
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: facilitate-sprint-planning-end-to-end
 tier: solo
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

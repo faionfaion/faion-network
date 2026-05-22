@@ -3,7 +3,7 @@ slug: living-architecture-diagram-refresh
 tier: solo
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

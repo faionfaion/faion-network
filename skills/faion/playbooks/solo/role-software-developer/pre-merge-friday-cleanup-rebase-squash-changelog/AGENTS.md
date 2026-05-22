@@ -3,7 +3,7 @@ slug: pre-merge-friday-cleanup-rebase-squash-changelog
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

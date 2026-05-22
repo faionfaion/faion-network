@@ -3,7 +3,7 @@ slug: usability-test-moderation-single-session
 tier: solo
 group: role-ux-ui-designer
 persona: Designer/researcher moderating one usability test session on a prototype
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: test-strategy-from-scratch-for-a-new-product
 tier: solo
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

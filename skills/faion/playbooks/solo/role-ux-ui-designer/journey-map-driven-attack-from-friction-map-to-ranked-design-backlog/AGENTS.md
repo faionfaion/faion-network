@@ -3,7 +3,7 @@ slug: journey-map-driven-attack-from-friction-map-to-ranked-design-backlog
 tier: solo
 group: role-ux-ui-designer
 persona: Designer taking a journey map and converting friction into a backlog
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

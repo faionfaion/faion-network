@@ -3,7 +3,7 @@ slug: solo-prod-incident-response
 tier: solo
 group: server-craft
 persona: P1
-goal: TBD
+goal: fix-incident
 complexity: deep
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: research-insight-synthesis-2hrweek
 tier: solo
 group: role-ux-ui-designer
 persona: "Designer/researcher synthesizing the week's research"
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: usability-test-cycle-end-to-end-3-weeks
 tier: solo
 group: role-ux-ui-designer
 persona: Designer running a focused usability cycle on a defined feature
-goal: TBD
+goal: discover-validate
 complexity: light
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: feature-from-spec-to-production-3-weeks-p4-client-rules-edition
 tier: solo
 group: role-software-developer
 persona: "Outsource developer shipping a client-issued ticket end-to-end on the client's repo"
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: two-hour-refactor-block-on-one-module
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

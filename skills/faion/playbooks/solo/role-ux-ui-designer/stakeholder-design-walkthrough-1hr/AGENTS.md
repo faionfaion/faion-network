@@ -3,7 +3,7 @@ slug: stakeholder-design-walkthrough-1hr
 tier: solo
 group: role-ux-ui-designer
 persona: Designer walking non-designer stakeholders through in-flight work
-goal: TBD
+goal: govern-decide
 complexity: light
 version: 1.0.0
 status: draft

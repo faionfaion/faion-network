@@ -3,7 +3,7 @@ slug: social-cadence-post-x-linkedin-threads-per-post-20-min
 tier: solo
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: weekly-content-seo-atomic-push
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 1.0.0
 status: draft

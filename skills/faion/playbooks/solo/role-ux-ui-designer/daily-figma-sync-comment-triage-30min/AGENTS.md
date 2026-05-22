@@ -3,7 +3,7 @@ slug: daily-figma-sync-comment-triage-30min
 tier: solo
 group: role-ux-ui-designer
 persona: Designer maintaining inbox-zero on Figma comments
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

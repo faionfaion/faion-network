@@ -3,7 +3,7 @@ slug: deploy-to-staging-smoke-sign-off
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: build-ship
 complexity: light
 version: 1.0.0
 status: draft

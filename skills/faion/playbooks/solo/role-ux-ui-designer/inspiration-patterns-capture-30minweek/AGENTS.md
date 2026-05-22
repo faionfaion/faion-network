@@ -3,7 +3,7 @@ slug: inspiration-patterns-capture-30minweek
 tier: solo
 group: role-ux-ui-designer
 persona: Designer maintaining a personal pattern bank
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

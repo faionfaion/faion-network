@@ -3,7 +3,7 @@ slug: test-pyramid-rebalance-too-many-e2e-to-contract-unit
 tier: solo
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 1.0.0
 status: draft

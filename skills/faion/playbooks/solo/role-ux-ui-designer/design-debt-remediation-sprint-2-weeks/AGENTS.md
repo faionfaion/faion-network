@@ -3,7 +3,7 @@ slug: design-debt-remediation-sprint-2-weeks
 tier: solo
 group: role-ux-ui-designer
 persona: Designer in a P6 product team clearing accumulated design debt
-goal: TBD
+goal: optimize-tune
 complexity: light
 version: 1.0.0
 status: draft

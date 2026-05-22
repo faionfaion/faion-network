@@ -3,7 +3,7 @@ slug: pre-commit-hook-tune-up
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: optimize-tune
 complexity: light
 version: 1.0.0
 status: draft

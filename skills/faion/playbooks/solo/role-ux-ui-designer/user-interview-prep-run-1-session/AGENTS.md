@@ -3,7 +3,7 @@ slug: user-interview-prep-run-1-session
 tier: solo
 group: role-ux-ui-designer
 persona: Designer/researcher running a single participant interview
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

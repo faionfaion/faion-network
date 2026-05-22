@@ -3,7 +3,7 @@ slug: weekly-design-review-meeting-1hr
 tier: solo
 group: role-ux-ui-designer
 persona: Designer or design lead facilitating a cross-functional review
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

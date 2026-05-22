@@ -3,7 +3,7 @@ slug: dependency-audit-bump
 tier: solo
 group: role-software-developer
 persona: software developer
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

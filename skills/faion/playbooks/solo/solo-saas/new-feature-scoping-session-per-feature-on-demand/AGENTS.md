@@ -3,7 +3,7 @@ slug: new-feature-scoping-session-per-feature-on-demand
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

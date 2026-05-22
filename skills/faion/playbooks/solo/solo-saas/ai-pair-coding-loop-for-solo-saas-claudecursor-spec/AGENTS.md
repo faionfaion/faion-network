@@ -3,7 +3,7 @@ slug: ai-pair-coding-loop-for-solo-saas-claudecursor-spec
 tier: solo
 group: solo-saas
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

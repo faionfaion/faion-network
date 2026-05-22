@@ -3,7 +3,7 @@ slug: write-the-weekly-client-status-report-p4-leadership-update-p6
 tier: solo
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

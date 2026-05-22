@@ -3,7 +3,7 @@ slug: ai-pair-coding-loop-solo
 tier: solo
 group: sdd-workflow
 persona: P1
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 0.1.0
 status: draft
