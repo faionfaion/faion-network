@@ -1,22 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="claude-tool-use Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Claude Tool Use Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for one tool definition + the canonical agent-loop message-trace format.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Tool definition schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/claude-tool-definition",
+  "type": "object",
+  "required": ["name", "description", "input_schema"],
+  "properties": {
+    "name": {"type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"},
+    "description": {"type": "string", "minLength": 30},
+    "input_schema": {
+      "type": "object",
+      "required": ["type", "properties"],
+      "properties": {
+        "type": {"const": "object"},
+        "properties": {"type": "object"},
+        "required": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Agent-loop trace format">
+    <code lang="text"><![CDATA[messages = [
+  {"role": "user", "content": "..."},
+  {"role": "assistant", "content": [<text|tool_use>...]}    # full content list
+  {"role": "user", "content": [<tool_result>...]}            # all tool_use results in one turn
+  ...
+]
+]]></code>
+  </section>
+
+  <section title="Valid tool example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "name": "get_weather",
+  "description": "Get current weather for a location. Call this when the user asks about weather conditions.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": {"type": "string", "description": "City name, e.g., 'Kyiv, Ukraine'"},
+      "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "description": "Temperature unit"}
+    },
+    "required": ["location"]
+  }
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{
+  "name": "Get-Weather!",
+  "description": "Weather.",
+  "input_schema": {"type": "object", "properties": {"x": {"type": "object", "properties": {"y": {"type": "object", "properties": {"z": {"type": "string"}}}}}}}
+}]]></code>
+      <note>Fails: non-identifier name, vague description (&lt;30 chars), input_schema nested >2 levels.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Tool name matches identifier regex.</item>
+      <item>Description ≥30 chars and intent-named.</item>
+      <item>input_schema nesting ≤2 levels.</item>
+      <item>Trace appends full response.content as assistant turn.</item>
+      <item>All tool_results for one turn returned in ONE user message.</item>
     </list>
   </section>
 </text>

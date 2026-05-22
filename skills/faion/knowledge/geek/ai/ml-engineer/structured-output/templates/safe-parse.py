@@ -1,3 +1,8 @@
+# purpose: safe-parse with one-shot repair retry for structured LLM output
+# consumes: raw model output text, target Pydantic class
+# produces: code (drop-in module returning typed value + repair_attempts)
+# depends-on: pydantic >=2
+# token-budget-impact: ~200 tokens if loaded into LLM context
 """
 Safe structured output extraction: strips markdown fences, validates, retries with error context.
 Use when not using instructor's automatic retry (e.g., with prompt-based JSON output).

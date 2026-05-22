@@ -1,3 +1,8 @@
+# purpose: Pydantic entity-extraction template using OpenAI response_format
+# consumes: free-form text input (email, transcript, doc)
+# produces: code (drop-in module returning typed entity object)
+# depends-on: pydantic >=2, openai >=1.40
+# token-budget-impact: ~250 tokens if loaded into LLM context for editing
 """
 Entity extraction Pydantic schema.
 Works with OpenAI native structured output and instructor (Claude/others).
