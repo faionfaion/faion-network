@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Reranking — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five-step procedure: measure recall ceiling → pick provider by constraints → tune top-N/top-K → wire fallback → eval + ship.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="measure-recall-ceiling">
+      <input>labelled eval set + first-stage retrieval</input>
+      <action>Run recall@20 (or @50) without reranker. Verify ≥80%; if &lt;80%, fix first-stage retrieval before adding reranker (reranker improves precision, not recall).</action>
+      <output>recall metric per query type</output>
+      <decision-gate>If recall@20 &lt; 80% — STOP; reranker won't help (r1-reranker-after-retrieval).</decision-gate>
+    </step>
+
+    <step n="2" name="pick-provider">
+      <input>latency budget, privacy requirement, monthly cost cap</input>
+      <action>Use decision tree: managed + latency-tight → Cohere/Voyage; on-prem + privacy → BGE local; batch / async → FlashRank. Pin model version.</action>
+      <output>provider + model in reranker.yaml</output>
+      <decision-gate>If provider cap &lt; needed top_n — pick different provider or reduce top_n (r2-top-n-capacity).</decision-gate>
+    </step>
+
+    <step n="3" name="tune-top-n-top-k">
+      <input>eval set + latency budget</input>
+      <action>Sweep top_n ∈ {20, 50, 100} × top_k ∈ {3, 5, 10}. Pick the (top_n, top_k) that maximises precision@K under latency budget.</action>
+      <output>tuned top_n_input + top_k_output</output>
+      <decision-gate>If best precision violates latency budget — reduce top_n; do not silently exceed budget (r3-latency-budget).</decision-gate>
+    </step>
+
+    <step n="4" name="wire-fallback">
+      <input>health-check endpoint + local BGE container OR first-stage handler</input>
+      <action>Implement fallback: on 3 consecutive 5xx OR timeout &gt; 2s, switch to fallback strategy. Test with synthetic outage in staging.</action>
+      <output>fallback live, tested</output>
+      <decision-gate>If fallback latency &gt; budget × 2 — accept degraded mode banner; don't try to mask (r5-fallback-on-outage).</decision-gate>
+    </step>
+
+    <step n="5" name="eval-and-ship">
+      <input>tuned config + eval set</input>
+      <action>Final run on hold-out set: precision_lift ≥ 0.10 vs no-reranker baseline. Document in eval_evidence. Ship behind feature flag at 5% → 25% → 100%.</action>
+      <output>reranker.yaml ready + audit trail</output>
+      <decision-gate>If precision_lift &lt; 0.10 — STOP; reranker not justified (r4-eval-before-adopt).</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
