@@ -1,22 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-quality-security Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-quality-security Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Output is a Markdown report with YAML frontmatter validating against the JSON Schema below. Each finding cites a rule and a fix.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <reference path="templates/audit-report.md">Markdown skeleton matching this contract.</reference>
+  <reference path="scripts/validate-django-quality-security.py">Validator script.</reference>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (frontmatter of the audit report)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DjangoSecurityAuditReport",
+  "type": "object",
+  "required": [
+    "methodology", "target_repo", "django_version",
+    "https_baseline", "rate_limits", "input_validation",
+    "secrets", "check_deploy_verdict", "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "methodology": { "const": "django-quality-security" },
+    "target_repo": { "type": "string", "minLength": 1 },
+    "django_version": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+    "https_baseline": {
+      "type": "object",
+      "required": ["debug_false","ssl_redirect","hsts_seconds","csp_mode","cookie_secure"],
+      "properties": {
+        "debug_false": { "type": "boolean" },
+        "ssl_redirect": { "type": "boolean" },
+        "hsts_seconds": { "type": "integer", "minimum": 0 },
+        "csp_mode": { "enum": ["off","report-only","enforce"] },
+        "cookie_secure": { "type": "boolean" }
+      }
+    },
+    "rate_limits": {
+      "type": "object",
+      "required": ["auth_endpoints_throttled","axes_installed","stacked_libraries"],
+      "properties": {
+        "auth_endpoints_throttled": { "type": "boolean" },
+        "axes_installed": { "type": "boolean" },
+        "stacked_libraries": { "type": "boolean" }
+      }
+    },
+    "input_validation": {
+      "type": "object",
+      "required": ["all_inputs_validated","raw_sql_findings","file_upload_magic_check"],
+      "properties": {
+        "all_inputs_validated": { "type": "boolean" },
+        "raw_sql_findings": { "type": "integer", "minimum": 0 },
+        "file_upload_magic_check": { "type": "boolean" }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "required": ["env_loaded","secret_key_default_check","sentry_scrubber"],
+      "properties": {
+        "env_loaded": { "type": "boolean" },
+        "secret_key_default_check": { "type": "boolean" },
+        "sentry_scrubber": { "type": "boolean" }
+      }
+    },
+    "check_deploy_verdict": { "enum": ["pass","warning","error"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id","severity","file","line","fix"],
+        "properties": {
+          "rule_id": {
+            "enum": ["r1-https-headers","r2-rate-limits","r3-input-validation","r4-specific-exceptions","r5-secrets"]
+          },
+          "severity": { "enum": ["error","warning","info"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 0 },
+          "fix": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
+    ]]></code>
+  </section>
+
+  <section title="Examples">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+---
+methodology: django-quality-security
+target_repo: faion-net/faion-net-be
+django_version: "5.2"
+https_baseline:
+  debug_false: true
+  ssl_redirect: true
+  hsts_seconds: 31536000
+  csp_mode: enforce
+  cookie_secure: true
+rate_limits:
+  auth_endpoints_throttled: true
+  axes_installed: true
+  stacked_libraries: false
+input_validation:
+  all_inputs_validated: true
+  raw_sql_findings: 0
+  file_upload_magic_check: true
+secrets:
+  env_loaded: true
+  secret_key_default_check: true
+  sentry_scrubber: true
+check_deploy_verdict: pass
+findings: []
+---
+      ]]></code>
+      <note>Valid: every required section present, HSTS at production ramp value, CSP enforced, no findings.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+---
+methodology: django-quality-security
+target_repo: x
+django_version: "5.2"
+https_baseline:
+  debug_false: true
+  hsts_seconds: -1
+  csp_mode: maybe
+rate_limits:
+  auth_endpoints_throttled: false
+check_deploy_verdict: pass
+findings:
+  - severity: warn
+    rule_id: r1
+---
+      ]]></code>
+      <note>Invalid: hsts_seconds negative; csp_mode not in enum; rate_limits missing keys; input_validation/secrets sections absent; finding has wrong severity enum and short rule_id.</note>
+    </example>
   </section>
 </text>

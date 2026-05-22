@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LLM Cost Optimization Procedure" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>6-step procedure from a raw spend dashboard to a committed cost-plan artefact.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="instrument-attribution">
+      <input>API gateway / SDK middleware; observability stack URL.</input>
+      <action>Tag every request with pipeline_stage, model, user_id, tokens (input/output/cache_read/cache_creation/thinking). Persist for ≥14 days. Build a per-stage cost-share view.</action>
+      <output>Dashboard with cost_share, output_token_share, and request_rate per stage.</output>
+      <decision-gate>If &lt;7 days of data, STOP — measure-before-optimize rule blocks all downstream steps.</decision-gate>
+    </step>
+
+    <step n="2" name="classify-stages">
+      <input>Per-stage dashboard from step 1.</input>
+      <action>Rank stages by cost_share. For top stages flag: (a) is request offline-tolerant (≥1h)? (b) is prefix ≥1024/2048 tokens and stable? (c) is output_token_share &gt;60%? (d) does the current model exceed task complexity? Capture as per-stage classification rows.</action>
+      <output>Stage classification table with offline-OK, prefix-stable, output-heavy, model-overshoot flags.</output>
+    </step>
+
+    <step n="3" name="route-by-complexity">
+      <input>Stages where model-overshoot=true.</input>
+      <action>Install a Haiku-grade classifier that emits {simple, medium, complex}. Configure router map: simple→Haiku, medium→Sonnet, complex→Opus. Validate on the golden eval set BEFORE rollout.</action>
+      <output>Router config; eval delta per stage (must be ≥SLO).</output>
+    </step>
+
+    <step n="4" name="cache-stable-prefixes">
+      <input>Stages where prefix-stable=true AND request_rate ≥12/h.</input>
+      <action>Reorder content array: static prefix first (system + tool schemas + corpus), cache_control on its tail, dynamic content last. Choose TTL=300 (default) or 3600 (gap &gt;5min, burst justifies 2× write surcharge).</action>
+      <output>Updated request layout; expected hit rate target ≥50%.</output>
+    </step>
+
+    <step n="5" name="batch-the-offline">
+      <input>Stages where offline-OK=true AND batch_size ≥100.</input>
+      <action>Move stage workload to client.beta.messages.batches.create (Claude) or batches.create (OpenAI). Add polling worker that retrieves batch_id and parses results. Hard-isolate from interactive endpoints.</action>
+      <output>Batch worker; 50% discount applied; per-stage SLA documented at 24h.</output>
+    </step>
+
+    <step n="6" name="install-budget-guard">
+      <input>Daily soft / hard / alert thresholds.</input>
+      <action>Wire a middleware budget guard at the API gateway: record cost per call, alert at alert_at_pct of daily_soft, refuse requests at daily_hard. Emit cost-plan artefact per content/02-output-contract.xml and run scripts/validate-cost-optimization.py.</action>
+      <output>Validated cop-* artefact; live budget guard; pre/post savings recorded after 7 days.</output>
+    </step>
+
+  </section>
+
+  <reference path="templates/model-router.py">Complexity-based router skeleton.</reference>
+  <reference path="templates/prompt-cache-claude.py">Prompt caching prefix-layout helper.</reference>
+  <reference path="templates/token-budget.py">Daily budget guard.</reference>
+
+</text>
