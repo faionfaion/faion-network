@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="previous-response-id-reasoning-reuse Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for previous-response-id-reasoning-reuse. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="previous_response_id Reasoning Reuse Core Rules" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 testable rules for reusing reasoning items via OpenAI Responses API previous_response_id.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-pass-previous-id" testable="true" depth="essential">
+      <statement>Multi-turn Responses API calls MUST pass previous_response_id from the prior turn's response.id.</statement>
+      <rationale source="platform.openai.com/docs/api-reference/responses">Without it, server-side reasoning items are discarded and the model re-derives them at full cost.</rationale>
+    </rule>
+    <rule id="r2-store-per-conversation" testable="true" depth="essential">
+      <statement>previous_response_id MUST be stored per-conversation in a session store keyed by user_id+conversation_id. Sharing ids across conversations is forbidden.</statement>
+      <rationale source="multi-tenant safety">Leaking ids across users surfaces reasoning from another conversation.</rationale>
+    </rule>
+    <rule id="r3-fallback-on-404" testable="true" depth="essential">
+      <statement>On 404 (id expired or invalid), the spec MUST fall back to a fresh Responses call without previous_response_id, NOT reconstruct a Chat Completions message array.</statement>
+      <rationale source="OpenAI retention policy">Responses API retention is bounded; the fallback path keeps the agent live.</rationale>
+    </rule>
+    <rule id="r4-retention-ttl" testable="true" depth="essential">
+      <statement>The spec MUST document retention_ttl_hours from OpenAI policy and treat ids older than that as invalid before sending.</statement>
+      <rationale source="OpenAI policy">Local pre-flight check saves a round-trip 404.</rationale>
+    </rule>
+    <rule id="r5-log-id-per-turn" testable="true" depth="essential">
+      <statement>Every turn MUST log (user_id, conversation_id, previous_response_id, new_response_id, turn_n) for audit and replay.</statement>
+      <rationale source="agent ops">Without per-turn id logs, replay debugging is impossible.</rationale>
+    </rule>
+    <rule id="r-use-previous-id" testable="true" depth="essential">
+      <statement>When api_flavor == 'responses' AND multi_turn == true, the spec MUST use previous_response_id.</statement>
+      <rationale source="OpenAI docs">This is the recommended continuity primitive.</rationale>
+    </rule>
+    <rule id="r-message-array-fallback" testable="true" depth="essential">
+      <statement>When api_flavor == 'chat' OR single_turn == true, the spec MUST NOT use previous_response_id (incompatible).</statement>
+      <rationale source="API incompatibility">previous_response_id is a Responses-API-only concept.</rationale>
     </rule>
   </section>
 </text>
