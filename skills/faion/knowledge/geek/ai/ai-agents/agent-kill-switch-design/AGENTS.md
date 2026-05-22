@@ -4,76 +4,97 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Safety control design for agent kill switch design — the kill, isolate, and rollback paths tested before any production exposure.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a runtime kill-switch spec for an agent: per-tenant + global + per-tool kill paths, latency budget <5s end-to-end, recovery / rollback path documented, both directions tested."
 content_id: "d5fe7d2addd146f7"
-tags: [agent, ai, safety]
+complexity: medium
+produces: spec
+est_tokens: 4500
+tags: [kill-switch, safety, agent, rollback, recovery, scopes]
 ---
-# Agent Kill Switch Design
+
+# Agent Kill-Switch Design
 
 ## Summary
 
-**One-sentence:** Safety control design for agent kill switch design — the kill, isolate, and rollback paths tested before any production exposure.
+**One-sentence:** Produces a runtime kill-switch spec for an agent: per-tenant + global + per-tool kill paths, latency budget <5s end-to-end, recovery / rollback path documented, both directions tested.
 
-**One-paragraph:** Safety control design for agent kill switch design — the kill, isolate, and rollback paths tested before any production exposure. How to design and test a runtime kill switch for an agent (per-tenant, global, per-tool). Required for production rollout but absent.
+**One-paragraph:** How to design and test a runtime kill switch for an agent (per-tenant, global, per-tool). Required for production rollout but absent in most stacks. Output: kill-switch spec + test recipe (kill + recovery) + observability hooks + escalation runbook.
+
+**Ефективно для:** agents exposed to non-internal users; agents with destructive tools (create / delete / pay); agents subject to safety review or regulatory scrutiny.
 
 ## Applies If (ALL must hold)
 
-- You expose or operate the system covered by agent kill switch design to non-internal users (customers, paying or pilot).
-- Failure of the safety control results in user-visible damage (cost, data, trust).
-- Pre-prod verification of the control is feasible and budgeted.
-- Roll-forward and roll-back paths are both tested, not just documented.
+- You expose or operate the system to non-internal users (customers, paying or pilot)
+- Failure of the safety control results in user-visible damage (cost, data, trust)
+- Pre-prod verification of the control is feasible and budgeted
+- Roll-forward and roll-back paths are both tested, not just documented
 
 ## Skip If (ANY kills it)
 
-- Internal-only, dev-tier tools with no external blast radius.
-- Trivially reversible actions (DRAFT-only outputs, dry-run flags) where safety is implicit.
-- Cost of safety control > expected loss times probability over the next 90 days.
+- Internal-only, dev-tier tools with no external blast radius
+- Trivially reversible actions (DRAFT-only outputs, dry-run flags) where safety is implicit
+- Cost of safety control > expected loss × probability over the next 90 days
 
 ## Prerequisites
 
-- Audit log of operations the control gates (one-way street: every privileged action observable).
-- Drill scheduled — control verified at least once outside an incident.
-- Roll-forward + roll-back contracts written and dry-run.
+| Input artifact | Format | Source |
+|---|---|---|
+| Agent deployment with traffic | service | eng |
+| Feature-flag system or config store | vendor | platform |
+| Observability hooks (kill-event topic) | OTel + queue | observability |
+| On-call rota | PagerDuty / Opsgenie | on-call |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[agent-observability-stack-blueprint]]` | Hooks for kill-event signal |
+| `[[agent-ga-readiness-checklist]]` | GA gate that requires kill-switch test |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `control_invocation` | haiku | Tool call to kill / quarantine / freeze |
-| `postcontrol_audit` | sonnet | Verify control effects in logs |
-| `policy_iteration` | opus | Tune thresholds based on drill outcomes |
+| Author kill-switch spec | sonnet | Pattern application. |
+| Tune latency | opus | System-design trade-off. |
+| Author recovery runbook | sonnet | Composition. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/kill-switch-spec.md.tmpl` | Spec skeleton with all 3 scopes + latency + recovery. |
+| `templates/kill-test.sh.tmpl` | Day-0 + per-release test recipe. |
+| `templates/recovery-runbook.md.tmpl` | Who/what/when/how recovery doc. |
+| `templates/_smoke-test.sh` | Local smoke test of toggle propagation. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agent-kill-switch-design.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[agent-ga-readiness-checklist]]`
+- `[[agent-customer-zero-pilot-protocol]]`
+- `[[agent-observability-stack-blueprint]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-kill-switch-design applies: root question — "Is the agent exposed to non-internal users with non-trivial blast radius?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

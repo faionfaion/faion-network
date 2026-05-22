@@ -4,79 +4,90 @@ tier: free
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Daily Marketing Standup Checklist: codified marketing practice that turns the recurring 'role-growth-marketing/Daily 15-min content + social pulse check' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a 15-minute morning checklist artefact: content queue status, social pulse (3 channels), pipeline anomalies, today's one-thing focus — written, dated, signed by owner."
 content_id: "0678d769b9344680"
-tags: [daily-marketing-standup-checklist, marketing, free]
+complexity: light
+produces: checklist
+est_tokens: 4500
+tags: [marketing, standup, checklist, daily-routine, anomaly-detection]
 ---
+
 # Daily Marketing Standup Checklist
 
 ## Summary
 
-**One-sentence:** Daily Marketing Standup Checklist: codified marketing practice that turns the recurring 'role-growth-marketing/Daily 15-min content + social pulse check' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a 15-minute morning checklist artefact: content queue status, social pulse (3 channels), pipeline anomalies, today's one-thing focus — written, dated, signed by owner.
 
-**One-paragraph:** Daily Marketing Standup Checklist addresses the gap surfaced by 'role-growth-marketing/Daily 15-min content + social pulse check'. P6 in-house marketers and P4 solo growth folks both lack a single-screen morning routine; reduces tool-sprawl pain by forcing one consolidated check. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Codifies the recurring 15-minute morning marketing routine for in-house marketers and solo growth folks. Reduces tool-sprawl pain by forcing one consolidated screen per day. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (dated, owner-signed) that downstream tasks can consume without re-deriving the rationale.
+
+**Ефективно для:** in-house marketers running content + social + paid in parallel; solo founders doing growth alongside dev; agencies handing off a daily report to clients.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-growth-marketing/Daily 15-min content + social pulse check' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == free or higher (gating enforced by tier-manifest)
+- Marketer or founder runs ≥2 channels (e.g., LinkedIn + newsletter + paid)
+- There is no shared daily ritual today (slack-driven chaos or silent drift)
+- An owner exists and can sign off in 15 minutes
+- Yesterday's data is queryable (analytics, ad dashboards, inbox)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Solo marketer with one channel only — overhead exceeds signal
+- Team already runs a tighter daily standup with same scope
+- No analytics access — checklist would fail at step 1
 
 ## Prerequisites
 
-- recent context for the 'role-growth-marketing/Daily 15-min content + social pulse check' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Input artifact | Format | Source |
+|---|---|---|
+| Yesterday's analytics screenshot | PNG or CSV | GA4 / Plausible / Posthog |
+| Content queue status | Notion / Trello / Sheets | team tool |
+| Paid campaign dashboard | Meta / Google / LinkedIn Ads | ads vendor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `free/marketing/marketing-manager` | parent role skill — provides the operating context for this methodology |
+| `[[content-marketing]]` | Content queue conventions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| Fill standup template | sonnet | Data pull + summarisation. |
+| Diagnose anomaly hypothesis | opus | Cross-channel reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/daily-marketing-standup-checklist.json` | JSON schema for the Daily Marketing Standup Checklist output contract |
-| `templates/daily-marketing-standup-checklist.md` | Markdown skeleton with the required fields |
+| `templates/standup.md.tmpl` | Daily standup artefact skeleton with all sections. |
+| `templates/anomaly-table.md.tmpl` | Anomaly table with metric, delta, hypothesis, owner columns. |
+| `templates/_smoke-test.md` | Example filled standup. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-daily-marketing-standup-checklist.py` | Enforce Daily Marketing Standup Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-daily-marketing-standup-checklist.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `free/marketing/marketing-manager/`
-- upstream playbook: `role-growth-marketing/Daily 15-min content + social pulse check`
-- methodology family: `free/marketing/` (gap-p2 batch, F-059-063)
+- parent skill: `free/marketing/`
+- `[[content-marketing]]`
+- `[[growth-marketing]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether daily-marketing-standup-checklist applies: root question — "Does the marketer run ≥2 channels today?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Agent Postmortem Template (Agent-as-Defendant) Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying agent-postmortem-template must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-postmortem-template-output",
+  "required": [
+    "trace_id",
+    "model_id",
+    "incident_summary",
+    "layer_attribution",
+    "prompt_diff",
+    "eval_delta",
+    "replay_artefacts",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "trace_id": {
+      "description": "Unique trace identifier."
+    },
+    "model_id": {
+      "description": "Provider/name-version."
+    },
+    "incident_summary": {
+      "description": "\u2264200 chars."
+    },
+    "layer_attribution": {
+      "description": "Exactly one."
+    },
+    "prompt_diff": {
+      "description": "Byte-exact unified diff."
+    },
+    "eval_delta": {
+      "description": "{before, after, target}."
+    },
+    "replay_artefacts": {
+      "description": "Paths or trace links."
+    },
+    "trace_gaps": {
+      "description": "Layers without replay artefact."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
+  <output-contract>
+    <required>
+      <field name="trace_id" format="string" required="true">Unique trace identifier.</field>
+      <field name="model_id" format="string" required="true">Provider/name-version.</field>
+      <field name="incident_summary" format="string" required="true">≤200 chars.</field>
+      <field name="layer_attribution" format="enum&lt;model|system-prompt|tool-schema|tool-result|retrieval|user-input&gt;" required="true">Exactly one.</field>
+      <field name="prompt_diff" format="string" required="true">Byte-exact unified diff.</field>
+      <field name="eval_delta" format="object" required="true">{before, after, target}.</field>
+      <field name="replay_artefacts" format="array&lt;string&gt;" required="true">Paths or trace links.</field>
+      <field name="trace_gaps" format="array&lt;string&gt;" required="false">Layers without replay artefact.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
+    </required>
+    <forbidden>
+      <pattern id="f1">No model id without version pin.</pattern>
+      <pattern id="f2">No layer attribution of &apos;combination&apos;.</pattern>
+      <pattern id="f3">No closure without eval delta showing green after fix.</pattern>
+      <pattern id="f4">No paraphrased prompt diff.</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "trace_id": "example-value",
+  "model_id": "example-value",
+  "incident_summary": "example-value",
+  "layer_attribution": "example",
+  "prompt_diff": "example-value",
+  "eval_delta": {},
+  "replay_artefacts": [],
+  "trace_gaps": [],
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "model_id": "example-value",
+  "incident_summary": "example-value",
+  "layer_attribution": "example",
+  "prompt_diff": "example-value",
+  "eval_delta": {},
+  "replay_artefacts": [],
+  "trace_gaps": [],
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-postmortem-template.py` exit 0.</item>
+    </list>
+  </section>
+</text>

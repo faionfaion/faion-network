@@ -4,77 +4,92 @@ tier: free
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a versioned decision record picking one newsletter platform from {Substack, Beehiiv, ConvertKit, Ghost} based on revenue model, list size projection, owned-audience priority, and tech tole..."
 content_id: "c753d2dfb6f5d8d0"
-summary: "Substack Beehiiv Pick: produces a versioned, owner-signed artefact that closes the gap 'p2-indie-hacker/Weekly newsletter ideation + draft'."
-tags: [substack-beehiiv-pick, marketing, free]
+complexity: light
+produces: decision-record
+est_tokens: 4500
+tags: [newsletter, substack, beehiiv, convertkit, ghost, decision-record, marketing]
 ---
-# Substack Beehiiv Pick
+
+# Substack vs Beehiiv vs ConvertKit vs Ghost
 
 ## Summary
 
-**One-sentence:** Substack Beehiiv Pick: produces a versioned, owner-signed artefact that closes the gap 'p2-indie-hacker/Weekly newsletter ideation + draft'.
+**One-sentence:** Produces a versioned decision record picking one newsletter platform from {Substack, Beehiiv, ConvertKit, Ghost} based on revenue model, list size projection, owned-audience priority, and tech tole...
 
-**One-paragraph:** Addresses the gap surfaced by 'p2-indie-hacker/Weekly newsletter ideation + draft': Newsletter-growth methodology assumes you already chose a tool; indie hackers need a fast pick-one decision matrix between Substack/Beehiiv/ConvertKit/Ghost. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a substack beehiiv pick artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Indie hackers need a fast pick-one decision matrix between Substack / Beehiiv / ConvertKit / Ghost. Newsletter-growth methodology assumes you already chose. This produces a 1-page decision record: weighted criteria, scores per vendor, recommendation, migration cost note. Bounded inputs → contract-checked transformation → versioned output downstream agents or humans can consume without re-deriving the rationale.
+
+**Ефективно для:** first-time newsletter authors, founders considering migration from a current platform, agencies advising a client between options.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p2-indie-hacker/Weekly newsletter ideation + draft' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == free or higher (gating enforced by tier-manifest)
+- Author is about to start a newsletter OR considering migration
+- Author can commit to one platform for ≥6 months
+- Author has a revenue intent (sub, sponsorship, lead-magnet)
+- Author can name list-size projection at 6 / 12 months
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working substack beehiiv pick artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Author already has 10k+ subscribers — switching cost dominates rubric output
+- Author needs B2B sequenced automation — pick MailerLite/Customer.io not the four here
+- Author is on a self-hosted stack and rejects all SaaS
 
 ## Prerequisites
 
-- recent context for the 'p2-indie-hacker/Weekly newsletter ideation + draft' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Revenue model intent | enum {sub, sponsorship, lead-magnet, hybrid} | founder |
+| List size projection 12mo | integer | founder estimate |
+| Owned-audience priority (1-5) | integer | founder ranking |
+| Tech tolerance (1-5) | integer | founder ranking |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `free/marketing/marketing` | parent domain group — provides operating context for Substack Beehiiv Pick |
+| `[[content-marketing]]` | Newsletter cadence + tone conventions |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| Score vendors against criteria | sonnet | Rubric application. |
+| Compute migration cost | sonnet | Arithmetic from vendor pricing. |
+| Recommend in ambiguous cases | opus | Multi-criterion trade-off. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/substack-beehiiv-pick.json` | JSON schema for the Substack Beehiiv Pick output contract |
-| `templates/substack-beehiiv-pick.md` | Markdown skeleton with the required fields |
+| `templates/decision-record.md.tmpl` | Decision record skeleton: inputs, scorecard, recommendation, migration cost, signature. |
+| `templates/scorecard.md.tmpl` | 4-criteria × 4-vendor scorecard. |
+| `templates/_smoke-test.md` | Filled example for indie hacker shipping paid sub newsletter. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-substack-beehiiv-pick.py` | Enforce Substack Beehiiv Pick output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-substack-beehiiv-pick.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `free/marketing/`
-- upstream playbook: `p2-indie-hacker/Weekly newsletter ideation + draft`
-- free/marketing/p2-indie-hacker
+- `[[content-marketing]]`
+- `[[growth-marketing]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether substack-beehiiv-pick applies: root question — "Is owned-audience priority ≥4 on the 1-5 scale?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

@@ -1,44 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Agent Kill Switch Design Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Four testable rules every application of Agent Kill Switch Design enforces. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The four rules">
+<text id="01-core-rules" title="Agent Kill-Switch Design Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every application of agent-kill-switch-design enforces. Each rule has a statement, a rationale anchored to industry practice, and a source citation.</summary>
+  <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Every Agent Kill Switch Design safety control has documented activation criteria, blast radius, and reversal path.</statement>
-      <rationale source="safety-critical systems / Leveson, Engineering a Safer World (2012)">Controls without reversal create worse incidents than the original failure (data loss, perma-block).</rationale>
+      <statement>Kill switch has 3 scopes: global (all tenants), per-tenant, per-tool. Each scope is independently togglable.</statement>
+      <rationale source="Industry practice 2026">Single-scope kill is too blunt for production; 3 scopes match the actual failure shapes (provider outage, single-tenant abuse, single-tool bug).</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Controls are drilled at least quarterly outside any real incident. Untested controls have 30%+ failure rate at first real use.</statement>
-      <rationale source="chaos engineering / Rosenthal, Chaos Engineering (O'Reilly 2017)">Drills reveal credential expiry, IAM drift, runbook decay. Real incidents are the worst time to discover them.</rationale>
+      <statement>End-to-end kill latency (toggle → no new requests reach LLM) is ≤5 seconds at p95.</statement>
+      <rationale source="Industry practice 2026">Beyond 5 seconds the kill is theatre; per-request cache lookups must propagate within that window.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Controls have audit logs that record who invoked, when, why, and outcome. Invocations without trace are non-events.</statement>
-      <rationale source="audit-trail practice / SOC 2 CC7">Untraced controls become political ('was it kill-switch, or did it just break?'). Logs settle the question.</rationale>
+      <statement>Kill switch is tested in production-equivalent staging on day 0 AND retested at every release.</statement>
+      <rationale source="Industry practice 2026">Untested kill switches fail when needed; per-release retest catches wiring regressions.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Multi-tenant controls have per-tenant scope by default — global activation requires explicit step and approval.</statement>
-      <rationale source="multi-tenant safety / AWS Well-Architected: Reliability">Global kill-switches activated by mistake kill everyone. Per-tenant default contains the blast.</rationale>
+      <statement>Recovery path is documented and tested: who flips back, under what condition, with which approval.</statement>
+      <rationale source="Industry practice 2026">Without a recovery path the kill becomes a permanent outage; explicit path prevents over-cautious freeze.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Every kill event emits a structured log + alert: scope, actor, reason, timestamp; consumed by incident channel.</statement>
+      <rationale source="Industry practice 2026">Silent kills bypass the team; structured events make root cause and recovery traceable.</rationale>
     </rule>
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Kill switch with scope, criterion, reversal">
-      <code lang="text"><![CDATA[
-Control: agent-kill-switch-tenant-X
-Activation: error_rate(tenant=X) >5% over 5min OR manual override
-Reversal: 1-click 're-enable' after eval rerun passes baseline
-Audit: log entry with invoker, reason, timestamp
-]]></code>
-      <note>Per-tenant scope contains the blast. Reversal is concrete.</note>
-    </example>
-    <example type="bad" title="Global manual kill with no reversal plan">
-      <code lang="text"><![CDATA[
-Control: KILL ALL AGENTS
-Reversal: 'restart service'
-]]></code>
-      <note>Will be invoked by mistake. Reversal is hand-wavy.</note>
-    </example>
-  </section>
   <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

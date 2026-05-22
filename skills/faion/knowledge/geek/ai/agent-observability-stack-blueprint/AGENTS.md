@@ -4,68 +4,98 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Wires OTel + judge + cost + trajectory storage + drift dashboard into a single deployable stack with vendor decision-tree (LangSmith / Langfuse / Helicone / Phoenix).
-content_id: "7bd9cb9908a70ee5"
-tags: [agent-observability-stack-blueprint, ai, geek]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a deployable observability spec wiring OTel + LLM-judge + cost ledger + trajectory storage + drift dashboard into one stack, with a vendor decision tree across LangSmith / Langfuse / Helic..."
+content_id: "2757359120c165a2"
+complexity: deep
+produces: spec
+est_tokens: 4500
+tags: [observability, otel, llm-judge, cost-tracking, drift, langsmith, langfuse, phoenix]
 ---
 
 # Agent Observability Stack Blueprint
 
 ## Summary
 
-**One-sentence:** Wires OTel + judge + cost + trajectory storage + drift dashboard into a single deployable stack with vendor decision-tree (LangSmith / Langfuse / Helicone / Phoenix).
+**One-sentence:** Produces a deployable observability spec wiring OTel + LLM-judge + cost ledger + trajectory storage + drift dashboard into one stack, with a vendor decision tree across LangSmith / Langfuse / Helic...
 
-**One-paragraph:** faion has reference catalogues (llm-observability-stack-2026, llm-observability) but no buildable blueprint. Engineers can't evaluate options without reading 5 docs. Mechanism: deployable stack diagram + opinionated vendor pick per use case + minimum data model. Output: stack-decision artefact + integration plan + week-1 eval-loop wiring.
+**One-paragraph:** faion has reference catalogues (llm-observability-stack-2026, llm-observability) but no buildable blueprint. Engineers can't evaluate options without reading 5 docs. This produces a deployable stack diagram + opinionated vendor pick per use case + minimum data model. Output: stack-decision artefact + integration plan + week-1 eval-loop wiring.
+
+**Ефективно для:** teams shipping an LLM agent to production with paying users; engineering leads choosing between LangSmith / Langfuse / Helicone / Phoenix; SREs adding OTel traces to an agent pipeline; PMs requesting a drift dashboard.
 
 ## Applies If (ALL must hold)
 
-- team shipping an LLM agent to production OR pre-prod with paying users
-- ≥1 engineer ≥20% time on ops/observability
-- trace volume ≥1k spans/day OR ≥10 unique tools
-- cost tracking is a stated requirement (board/finance/SLO)
+- Team shipping an LLM agent to production OR pre-prod with paying users
+- Eval scores or cost are not currently visible per request
+- ≥2 LLM providers OR ≥2 prompt variants are in play
+- Owner exists for the dashboard once shipped
 
 ## Skip If (ANY kills it)
 
-- single-prompt chatbot with <100 calls/day — use vendor dashboard only
-- team has zero infra (no logging/metrics) — set up basic logging first
-- compliance overrides (HIPAA/PCI in flight) — defer to regulated stack patterns
+- Pre-PMF prototype with <100 requests/day — manual logs are cheaper
+- Compliance requires fully self-hosted with no external SaaS option
+- Team already on a working stack (LangSmith etc.) and just needs prompt-eng
 
 ## Prerequisites
 
-- stack inventory: model provider(s), framework, language
-- trace volume estimate + cost run-rate
-- 1 sample failing trace from production to validate against
+| Input artifact | Format | Source |
+|---|---|---|
+| Agent code | Python / TS source | repo |
+| LLM provider list + traffic split | config | team |
+| Cost ceiling | USD / month | finance |
+| Eval ground-truth set ≥30 examples | JSONL | eval owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/llm-observability` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/llm-observability-stack-2026` | peer methodology — produces inputs or consumes outputs |
+| `[[llm-integration]]` | Provider SDK knowledge |
+| `[[ai-agents]]` | Trajectory definition |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| Pick vendor | sonnet | Rubric application. |
+| Author OTel instrumentation | sonnet | Mechanical from template. |
+| Diagnose drift alert | opus | Multi-signal reasoning. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/stack-blueprint.md.tmpl` | Architecture diagram + vendor decision + cost model. |
+| `templates/otel-instrumentation.py.tmpl` | Python OTel instrumentation skeleton for LLM/tool/retrieval calls. |
+| `templates/cost-ledger.sql.tmpl` | DDL for the cost ledger table. |
+| `templates/drift-alert.yaml.tmpl` | Drift alert rule template. |
+| `templates/_smoke-test.md` | Filled blueprint for a 2-model agent on Langfuse self-host. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-agent-observability-stack-blueprint.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/llm-observability`
-- peer methodology: `geek/ai/llm-observability-stack-2026`
-- external: https://opentelemetry.io/docs/specs/semconv/gen-ai/ (OTel GenAI semconv); https://langfuse.com/docs; https://docs.smith.langchain.com
+- parent skill: `geek/ai/`
+- `[[agent-postmortem-template]]`
+- `[[agent-drift-detection-statistical]]`
+- `[[agent-eval-harness-bootstrap-recipe]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-observability-stack-blueprint applies: root question — "Is the agent in production OR pre-prod with paying users?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

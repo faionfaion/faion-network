@@ -1,31 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Agent Eval Cost Budget Policy Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Eval Cost Budget Policy deliverable. Subagent must satisfy this before returning.</summary>
+  <summary>JSON-schema output contract the subagent applying agent-eval-cost-budget-policy must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-eval-cost-budget-policy-output",
+  "required": [
+    "nightly_full_suite_size",
+    "per_pr_subset_size",
+    "weekly_adversarial_size",
+    "cost_ceiling_daily_usd",
+    "fallback_judge_model",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "nightly_full_suite_size": {
+      "description": "Examples in nightly run."
+    },
+    "per_pr_subset_size": {
+      "description": "Examples in PR run (\u226420% of full)."
+    },
+    "weekly_adversarial_size": {
+      "description": "Examples in adversarial run."
+    },
+    "cost_ceiling_daily_usd": {
+      "description": "Daily cap."
+    },
+    "fallback_judge_model": {
+      "description": "Cheaper judge model id."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
   <output-contract>
     <required>
-      <field name="eval_set_id" format="versioned_id" />
-      <field name="n_examples" type="integer" min="20" />
-      <field name="model_id_pinned" format="provider_model_version" />
-      <field name="metric_values" type="object" schema="{mean,ci_low,ci_high}" />
-      <field name="cost_per_run_usd" format="float" />
+      <field name="nightly_full_suite_size" format="integer" required="true">Examples in nightly run.</field>
+      <field name="per_pr_subset_size" format="integer" required="true">Examples in PR run (≤20% of full).</field>
+      <field name="weekly_adversarial_size" format="integer" required="true">Examples in adversarial run.</field>
+      <field name="cost_ceiling_daily_usd" format="number" required="true">Daily cap.</field>
+      <field name="fallback_judge_model" format="string" required="true">Cheaper judge model id.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">naked metric without n and CI</pattern>
-      <pattern id="f2">eval_set_id not frozen</pattern>
-      <pattern id="f3">judge-LLM uncalibrated within 90 days</pattern>
-      <pattern id="f4">eval cost unmeasured</pattern>
+      <pattern id="f1">No full-suite-per-PR policy.</pattern>
+      <pattern id="f2">No random PR subset — must be stratified.</pattern>
+      <pattern id="f3">No adversarial mixed into nightly.</pattern>
+      <pattern id="f4">No hard halt without judge fallback.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Downsample for cost only AFTER recording full-run baseline.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "nightly_full_suite_size": 1,
+  "per_pr_subset_size": 1,
+  "weekly_adversarial_size": 1,
+  "cost_ceiling_daily_usd": 1,
+  "fallback_judge_model": "example-value",
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "per_pr_subset_size": 1,
+  "weekly_adversarial_size": 1,
+  "cost_ceiling_daily_usd": 1,
+  "fallback_judge_model": "example-value",
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>n ≥ 20</item>
-      <item>CI present</item>
-      <item>Model + prompt pinned</item>
-      <item>Cost reported</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-eval-cost-budget-policy.py` exit 0.</item>
     </list>
   </section>
 </text>

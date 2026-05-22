@@ -1,22 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="agent-architectures Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Agent Architectures (Memory + Tools + Planning + Reflection) Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying agent-architectures must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-architectures-output",
+  "required": [
+    "memory_size_limit",
+    "memory_summarization",
+    "tool_count",
+    "fsm_states",
+    "planning_enabled",
+    "reflection_enabled",
+    "idle_evict_iterations",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "memory_size_limit": {
+      "description": "Token budget for memory."
+    },
+    "memory_summarization": {
+      "description": "Compression enabled."
+    },
+    "tool_count": {
+      "description": "Tools registered."
+    },
+    "fsm_states": {
+      "description": "States in the FSM."
+    },
+    "planning_enabled": {
+      "description": "Planning step present."
+    },
+    "reflection_enabled": {
+      "description": "Reflection step present."
+    },
+    "idle_evict_iterations": {
+      "description": "K for eviction policy."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="memory_size_limit" format="integer" required="true">Token budget for memory.</field>
+      <field name="memory_summarization" format="boolean" required="true">Compression enabled.</field>
+      <field name="tool_count" format="integer" required="true">Tools registered.</field>
+      <field name="fsm_states" format="array&lt;string&gt;" required="true">States in the FSM.</field>
+      <field name="planning_enabled" format="boolean" required="true">Planning step present.</field>
+      <field name="reflection_enabled" format="boolean" required="true">Reflection step present.</field>
+      <field name="idle_evict_iterations" format="integer" required="true">K for eviction policy.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">No raw `while True:` loop without iteration cap.</pattern>
+      <pattern id="f2">No tool dispatch without schema validation.</pattern>
+      <pattern id="f3">No memory grow path without summarization or eviction.</pattern>
+      <pattern id="f4">No agent without OTel spans per state transition.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "memory_size_limit": 1,
+  "memory_summarization": true,
+  "tool_count": 1,
+  "fsm_states": [],
+  "planning_enabled": true,
+  "reflection_enabled": true,
+  "idle_evict_iterations": 1,
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "memory_summarization": true,
+  "tool_count": 1,
+  "fsm_states": [],
+  "planning_enabled": true,
+  "reflection_enabled": true,
+  "idle_evict_iterations": 1,
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-architectures.py` exit 0.</item>
     </list>
   </section>
 </text>

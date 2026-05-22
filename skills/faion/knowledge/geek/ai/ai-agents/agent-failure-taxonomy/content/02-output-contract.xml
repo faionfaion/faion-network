@@ -1,30 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Agent Failure Taxonomy Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Failure Taxonomy deliverable. Subagent must satisfy this before returning.</summary>
+  <summary>JSON-schema output contract the subagent applying agent-failure-taxonomy must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-failure-taxonomy-output",
+  "required": [
+    "labels",
+    "primary_label_per_instance",
+    "history_log",
+    "owner",
+    "version",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "labels": {
+      "description": "{name, definition, remediation_lane, detector}."
+    },
+    "primary_label_per_instance": {
+      "description": "Always true."
+    },
+    "history_log": {
+      "description": "{instance_id, old_label, new_label, timestamp, rationale}."
+    },
+    "owner": {
+      "description": "Taxonomy owner."
+    },
+    "version": {
+      "description": "Semver."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
   <output-contract>
     <required>
-      <field name="version" format="semver" />
-      <field name="labels" type="list" min="3" schema="{name,definition,detector,remediation,examples}" />
-      <field name="instances_classified" type="list" schema="{instance_id,primary_label,secondary_tags,evidence}" />
+      <field name="labels" format="array&lt;label&gt;" required="true">{name, definition, remediation_lane, detector}.</field>
+      <field name="primary_label_per_instance" format="boolean" required="true">Always true.</field>
+      <field name="history_log" format="array&lt;entry&gt;" required="true">{instance_id, old_label, new_label, timestamp, rationale}.</field>
+      <field name="owner" format="string" required="true">Taxonomy owner.</field>
+      <field name="version" format="string" required="true">Semver.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">multi-primary labels</pattern>
-      <pattern id="f2">ad-hoc labels not in the versioned set</pattern>
-      <pattern id="f3">label without remediation lane</pattern>
-      <pattern id="f4">destructive re-tagging (overwrite without history)</pattern>
+      <pattern id="f1">No multi-primary labels.</pattern>
+      <pattern id="f2">No new label without ≥3 instances + owner approval.</pattern>
+      <pattern id="f3">No destructive re-classification.</pattern>
+      <pattern id="f4">No label without a remediation lane.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Append new labels only after ≥3 justifying instances.</transformation>
-      <transformation>Re-classify with prior_label preserved.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "labels": [],
+  "primary_label_per_instance": true,
+  "history_log": [],
+  "owner": "example-value",
+  "version": "example-value",
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "primary_label_per_instance": true,
+  "history_log": [],
+  "owner": "example-value",
+  "version": "example-value",
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>Single primary label per instance</item>
-      <item>Every label has remediation</item>
-      <item>Re-classifications append, not overwrite</item>
-      <item>Version stamped</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-failure-taxonomy.py` exit 0.</item>
     </list>
   </section>
 </text>

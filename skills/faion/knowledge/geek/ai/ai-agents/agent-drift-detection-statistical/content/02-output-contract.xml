@@ -1,31 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agent Drift Detection Statistical Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Drift Detection Statistical deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="Agent Drift Detection (Statistical) Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying agent-drift-detection-statistical must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-drift-detection-statistical-output",
+  "required": [
+    "baseline_pass_rate",
+    "cusum_k",
+    "cusum_h",
+    "kl_threshold_yellow",
+    "kl_threshold_red",
+    "retest_factor",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "baseline_pass_rate": {
+      "description": "Reference pass-rate."
+    },
+    "cusum_k": {
+      "description": "CUSUM k parameter (default 0.5)."
+    },
+    "cusum_h": {
+      "description": "CUSUM h threshold (default 4)."
+    },
+    "kl_threshold_yellow": {
+      "description": "0.05."
+    },
+    "kl_threshold_red": {
+      "description": "0.10."
+    },
+    "retest_factor": {
+      "description": "Sample-size multiplier on alert."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
   <output-contract>
     <required>
-      <field name="eval_set_id" format="versioned_id" />
-      <field name="n_examples" type="integer" min="20" />
-      <field name="model_id_pinned" format="provider_model_version" />
-      <field name="metric_values" type="object" schema="{mean,ci_low,ci_high}" />
-      <field name="cost_per_run_usd" format="float" />
+      <field name="baseline_pass_rate" format="number" required="true">Reference pass-rate.</field>
+      <field name="cusum_k" format="number" required="true">CUSUM k parameter (default 0.5).</field>
+      <field name="cusum_h" format="number" required="true">CUSUM h threshold (default 4).</field>
+      <field name="kl_threshold_yellow" format="number" required="true">0.05.</field>
+      <field name="kl_threshold_red" format="number" required="true">0.10.</field>
+      <field name="retest_factor" format="number" required="true">Sample-size multiplier on alert.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">naked metric without n and CI</pattern>
-      <pattern id="f2">eval_set_id not frozen</pattern>
-      <pattern id="f3">judge-LLM uncalibrated within 90 days</pattern>
-      <pattern id="f4">eval cost unmeasured</pattern>
+      <pattern id="f1">No deploy decision off a single eval run.</pattern>
+      <pattern id="f2">No binary alert without severity bands.</pattern>
+      <pattern id="f3">No regression test without multiple-comparison correction.</pattern>
+      <pattern id="f4">No drift detector without baseline.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Downsample for cost only AFTER recording full-run baseline.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "baseline_pass_rate": 1,
+  "cusum_k": 1,
+  "cusum_h": 1,
+  "kl_threshold_yellow": 1,
+  "kl_threshold_red": 1,
+  "retest_factor": 1,
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "cusum_k": 1,
+  "cusum_h": 1,
+  "kl_threshold_yellow": 1,
+  "kl_threshold_red": 1,
+  "retest_factor": 1,
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>n ≥ 20</item>
-      <item>CI present</item>
-      <item>Model + prompt pinned</item>
-      <item>Cost reported</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-drift-detection-statistical.py` exit 0.</item>
     </list>
   </section>
 </text>

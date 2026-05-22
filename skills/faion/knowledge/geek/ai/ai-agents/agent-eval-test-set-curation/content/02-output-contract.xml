@@ -1,31 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agent Eval Test Set Curation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Eval Test Set Curation deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="Agent Eval Test-Set Curation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying agent-eval-test-set-curation must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-eval-test-set-curation-output",
+  "required": [
+    "trajectory_count",
+    "real_trace_fraction",
+    "tag_schema",
+    "partition",
+    "version_control_path",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "trajectory_count": {
+      "description": "\u226530."
+    },
+    "real_trace_fraction": {
+      "description": "\u22650.3."
+    },
+    "tag_schema": {
+      "description": "{capability[], persona[], difficulty[1..5]}."
+    },
+    "partition": {
+      "description": "{fast_subset_pct, full_suite_remainder}."
+    },
+    "version_control_path": {
+      "description": "Git path."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
   <output-contract>
     <required>
-      <field name="eval_set_id" format="versioned_id" />
-      <field name="n_examples" type="integer" min="20" />
-      <field name="model_id_pinned" format="provider_model_version" />
-      <field name="metric_values" type="object" schema="{mean,ci_low,ci_high}" />
-      <field name="cost_per_run_usd" format="float" />
+      <field name="trajectory_count" format="integer" required="true">≥30.</field>
+      <field name="real_trace_fraction" format="number" required="true">≥0.3.</field>
+      <field name="tag_schema" format="object" required="true">{capability[], persona[], difficulty[1..5]}.</field>
+      <field name="partition" format="object" required="true">{fast_subset_pct, full_suite_remainder}.</field>
+      <field name="version_control_path" format="string" required="true">Git path.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">naked metric without n and CI</pattern>
-      <pattern id="f2">eval_set_id not frozen</pattern>
-      <pattern id="f3">judge-LLM uncalibrated within 90 days</pattern>
-      <pattern id="f4">eval cost unmeasured</pattern>
+      <pattern id="f1">No set &lt;30 trajectories.</pattern>
+      <pattern id="f2">No trajectory without capability + persona + difficulty tags.</pattern>
+      <pattern id="f3">No real-trace trajectory without provenance.</pattern>
+      <pattern id="f4">No edits to golden set outside PR.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Downsample for cost only AFTER recording full-run baseline.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "trajectory_count": 1,
+  "real_trace_fraction": 1,
+  "tag_schema": {},
+  "partition": {},
+  "version_control_path": "example-value",
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "real_trace_fraction": 1,
+  "tag_schema": {},
+  "partition": {},
+  "version_control_path": "example-value",
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>n ≥ 20</item>
-      <item>CI present</item>
-      <item>Model + prompt pinned</item>
-      <item>Cost reported</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-eval-test-set-curation.py` exit 0.</item>
     </list>
   </section>
 </text>

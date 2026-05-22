@@ -1,30 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Agent Eval Harness Bootstrap Recipe Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Eval Harness Bootstrap Recipe deliverable. Subagent must satisfy this before returning.</summary>
+  <summary>JSON-schema output contract the subagent applying agent-eval-harness-bootstrap-recipe must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-eval-harness-bootstrap-recipe-output",
+  "required": [
+    "harness_path",
+    "trajectory_count",
+    "criteria_count",
+    "ci_gate_threshold_pct",
+    "replay_dir",
+    "otel_trace_correlation",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "harness_path": {
+      "description": "Path to harness runner."
+    },
+    "trajectory_count": {
+      "description": "Golden set size."
+    },
+    "criteria_count": {
+      "description": "Rubric criteria."
+    },
+    "ci_gate_threshold_pct": {
+      "description": "Pass-rate drop threshold (default 5)."
+    },
+    "replay_dir": {
+      "description": "Where replays are stored."
+    },
+    "otel_trace_correlation": {
+      "description": "Trace IDs joined to scores."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
   <output-contract>
     <required>
-      <field name="dimensions" type="list" min="3" schema="{name,anchors_1_3_5,weight}" />
-      <field name="instance_scores" type="list" min="1" schema="{instance_id,dimension_scores,evidence_refs}" />
-      <field name="rater_count" type="integer" min="1" />
-      <field name="weighted_total" format="float" />
+      <field name="harness_path" format="string" required="true">Path to harness runner.</field>
+      <field name="trajectory_count" format="integer" required="true">Golden set size.</field>
+      <field name="criteria_count" format="integer" required="true">Rubric criteria.</field>
+      <field name="ci_gate_threshold_pct" format="number" required="true">Pass-rate drop threshold (default 5).</field>
+      <field name="replay_dir" format="string" required="true">Where replays are stored.</field>
+      <field name="otel_trace_correlation" format="boolean" required="true">Trace IDs joined to scores.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">scores without evidence_refs</pattern>
-      <pattern id="f2">post-hoc weight changes after scoring</pattern>
-      <pattern id="f3">missing anchors_1_3_5 for any dimension</pattern>
-      <pattern id="f4">single-rater scores on decisions ≥$10k</pattern>
+      <pattern id="f1">No free-form judge prompts without 1-5 anchors.</pattern>
+      <pattern id="f2">No failed trajectory without a replay artefact.</pattern>
+      <pattern id="f3">No harness without OTel correlation.</pattern>
+      <pattern id="f4">No CI gate that only checks total pass-rate (must check tagged subsets).</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Average scores across raters only after reconciliation when divergence &gt;1.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "harness_path": "example-value",
+  "trajectory_count": 1,
+  "criteria_count": 1,
+  "ci_gate_threshold_pct": 1,
+  "replay_dir": "example-value",
+  "otel_trace_correlation": true,
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "trajectory_count": 1,
+  "criteria_count": 1,
+  "ci_gate_threshold_pct": 1,
+  "replay_dir": "example-value",
+  "otel_trace_correlation": true,
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>Every score cites evidence</item>
-      <item>Weights frozen pre-scoring</item>
-      <item>Anchors present 1/3/5</item>
-      <item>Reconciliation step recorded when needed</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-eval-harness-bootstrap-recipe.py` exit 0.</item>
     </list>
   </section>
 </text>

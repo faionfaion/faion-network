@@ -4,76 +4,96 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agent customer zero pilot protocol that walks an operator from trigger to closed outcome with named artefacts at each step.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a customer-zero pilot playbook: scope contract, success criteria with thresholds, kill switches, billing model, GA exit gate — for a single vertical agent."
 content_id: "036bfdbb67004442"
-tags: [agent, ai, playbook]
+complexity: medium
+produces: playbook-step
+est_tokens: 4500
+tags: [pilot, customer-zero, agent, playbook, ga-exit, kill-switch]
 ---
-# Agent Customer Zero Pilot Protocol
+
+# Agent Customer-Zero Pilot Protocol
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agent customer zero pilot protocol that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Produces a customer-zero pilot playbook: scope contract, success criteria with thresholds, kill switches, billing model, GA exit gate — for a single vertical agent.
 
-**One-paragraph:** End-to-end playbook for agent customer zero pilot protocol that walks an operator from trigger to closed outcome with named artefacts at each step. Customer-zero is the single highest-leverage moment for a vertical agent. Builders need a protocol covering pilot scope, success criteria, kill switches, billing, and exit-to-GA. No methodology covers this end-to-end today.
+**One-paragraph:** Customer-zero is the single highest-leverage moment for a vertical agent. Builders need a protocol covering pilot scope, success criteria, kill switches, billing, and exit-to-GA. No methodology covers this end-to-end today. This produces a 1-page playbook plus a 5-checkpoint checklist (week-1 scope, week-2 deploy, week-4 mid-pilot review, week-8 success-gate, week-12 GA exit or sunset).
+
+**Ефективно для:** first paying customer for a new vertical agent; design partner programs; agencies running pilots for client agents.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agent customer zero pilot protocol end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Executing a customer-zero pilot for a new vertical agent
+- All inputs reachable (people, data, artefacts)
+- Output consumed by a named downstream owner with a deadline
+- Deviations from the protocol are logged with rationale
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Highly contextual one-shot work where playbook constrains the wrong axes
+- Pre-discovery — playbook assumes the problem is named
+- Teams already running a well-tuned variant — re-tooling friction outweighs upside
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Input artifact | Format | Source |
+|---|---|---|
+| Customer-zero contract / signed LOI | PDF | sales |
+| Vertical agent v1 in pre-prod | deployed service | eng |
+| Eval suite ≥30 in-domain trajectories | JSONL | eval owner |
+| Kill-switch design | spec | `[[agent-kill-switch-design]]` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[agent-kill-switch-design]]` | Safety control wired before launch |
+| `[[agent-ga-readiness-checklist]]` | GA gate inputs |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| Author scope contract | sonnet | Template application. |
+| Define numeric thresholds | opus | Cross-criterion reasoning. |
+| Run mid-pilot review | opus | Traffic-light judgement. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/pilot-playbook.md.tmpl` | 1-page pilot playbook with all five sections. |
+| `templates/scope-contract.md.tmpl` | Use cases + thresholds + time-box contract. |
+| `templates/mid-pilot-review.md.tmpl` | Week-4 traffic-light review template. |
+| `templates/_smoke-test.md` | Filled example for a customer-support pilot. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agent-customer-zero-pilot-protocol.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[agent-kill-switch-design]]`
+- `[[agent-ga-readiness-checklist]]`
+- `[[agent-eval-cost-budget-policy]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-customer-zero-pilot-protocol applies: root question — "Is this a customer-zero pilot for a vertical agent?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

@@ -1,30 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agent Customer Zero Pilot Protocol Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Agent Customer Zero Pilot Protocol deliverable. Subagent must satisfy this before returning.</summary>
+<text id="02-output-contract" title="Agent Customer-Zero Pilot Protocol Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying agent-customer-zero-pilot-protocol must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-customer-zero-pilot-protocol-output",
+  "required": [
+    "use_cases",
+    "success_thresholds",
+    "pilot_weeks",
+    "kill_switch_tested_at_day0",
+    "billing_model",
+    "mid_pilot_review_date",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "use_cases": {
+      "description": "\u22643 use cases."
+    },
+    "success_thresholds": {
+      "description": "Numeric gates per criterion."
+    },
+    "pilot_weeks": {
+      "description": "\u226412."
+    },
+    "kill_switch_tested_at_day0": {
+      "description": "True iff verified."
+    },
+    "billing_model": {
+      "description": "Decided up-front."
+    },
+    "mid_pilot_review_date": {
+      "description": "Week-4 review."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
+
   <output-contract>
     <required>
-      <field name="steps" type="list" min="4" schema="{id,input,owner,exit_criterion,output_location}" />
-      <field name="decision_branches" type="list" />
-      <field name="owner_of_playbook" type="string" />
-      <field name="deviation_log_reference" format="url_or_path" />
+      <field name="use_cases" format="array&lt;string&gt;" required="true">≤3 use cases.</field>
+      <field name="success_thresholds" format="object" required="true">Numeric gates per criterion.</field>
+      <field name="pilot_weeks" format="integer" required="true">≤12.</field>
+      <field name="kill_switch_tested_at_day0" format="boolean" required="true">True iff verified.</field>
+      <field name="billing_model" format="enum&lt;free|credit|full-rate&gt;" required="true">Decided up-front.</field>
+      <field name="mid_pilot_review_date" format="ISO date" required="true">Week-4 review.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
     <forbidden>
-      <pattern id="f1">step without exit_criterion</pattern>
-      <pattern id="f2">playbook without named owner</pattern>
-      <pattern id="f3">decision branch without explicit signal</pattern>
-      <pattern id="f4">deviation log missing</pattern>
+      <pattern id="f1">No retroactive billing.</pattern>
+      <pattern id="f2">No pilot &gt;12 weeks without explicit re-scoping decision.</pattern>
+      <pattern id="f3">No success criteria defined after pilot start.</pattern>
+      <pattern id="f4">No kill switch verified later than day 0.</pattern>
     </forbidden>
     <allowed-transformations>
-      <transformation>Reorder steps as long as input/output graph stays acyclic.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "use_cases": [],
+  "success_thresholds": {},
+  "pilot_weeks": 1,
+  "kill_switch_tested_at_day0": true,
+  "billing_model": "example",
+  "mid_pilot_review_date": "2026-05-22",
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "success_thresholds": {},
+  "pilot_weeks": 1,
+  "kill_switch_tested_at_day0": true,
+  "billing_model": "example",
+  "mid_pilot_review_date": "2026-05-22",
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>Every step has exit_criterion</item>
-      <item>Owner named</item>
-      <item>Branches explicit</item>
-      <item>Deviation log exists</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-customer-zero-pilot-protocol.py` exit 0.</item>
     </list>
   </section>
 </text>

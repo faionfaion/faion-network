@@ -4,76 +4,94 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Shared vocabulary and decision tree for agent failure taxonomy — assigns every observed instance to one labelled class so postmortems and dashboards aggregate cleanly.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a shared agent-failure taxonomy: one primary label per incident from a closed vocabulary (hallucination / reasoning-shortfall / tool-misuse / context-overflow / injection / drift), each la..."
 content_id: "f0b9b19a7254aee5"
-tags: [agent, ai, taxonomy]
+complexity: medium
+produces: decision-record
+est_tokens: 4500
+tags: [taxonomy, failure-classification, agent, postmortem, dashboard]
 ---
+
 # Agent Failure Taxonomy
 
 ## Summary
 
-**One-sentence:** Shared vocabulary and decision tree for agent failure taxonomy — assigns every observed instance to one labelled class so postmortems and dashboards aggregate cleanly.
+**One-sentence:** Produces a shared agent-failure taxonomy: one primary label per incident from a closed vocabulary (hallucination / reasoning-shortfall / tool-misuse / context-overflow / injection / drift), each la...
 
-**One-paragraph:** Shared vocabulary and decision tree for agent failure taxonomy — assigns every observed instance to one labelled class so postmortems and dashboards aggregate cleanly. Without a shared vocabulary (hallucination vs reasoning-shortfall vs tool-misuse vs context-overflow vs injection vs drift) postmortems are ad-hoc and regression evals are not reusable across teams. P7's strategic-AI-narrative requires faion to own this taxonomy before competitors do.
+**One-paragraph:** Without a shared vocabulary (hallucination vs reasoning-shortfall vs tool-misuse vs context-overflow vs injection vs drift) postmortems are ad-hoc and regression evals are not reusable across teams. P7's strategic-AI-narrative requires faion to own this taxonomy before competitors do. Output: labelled list, per-label remediation lane, append-only re-classification policy.
+
+**Ефективно для:** incident triage, dashboard aggregation, regression-eval reusability across teams, executive reporting on agent quality.
 
 ## Applies If (ALL must hold)
 
-- You triage incidents, issues, or failures and need a shared label set per agent failure taxonomy.
-- Labels feed dashboards or postmortems — consistent classification matters more than perfect labels.
-- Mis-classification cost (wrong remediation path) is bounded — labels are not safety-critical.
-- Taxonomy is versioned; new categories require explicit approval, not ad-hoc creation.
+- You triage incidents, issues, or failures and need a shared label set
+- Labels feed dashboards or postmortems — consistent classification matters more than perfect labels
+- Mis-classification cost (wrong remediation path) is bounded — labels are not safety-critical
+- Taxonomy is versioned; new categories require explicit approval, not ad-hoc creation
 
 ## Skip If (ANY kills it)
 
-- Failure modes that are still being discovered — premature labels lock in wrong categories.
-- Pre-incident exercises with no real data yet — interview-driven, not taxonomy-driven.
-- Single-incident retros where one-off detail matters more than aggregation.
+- Failure modes still being discovered — premature labels lock in wrong categories
+- Pre-incident exercises with no real data yet
+- Single-incident retros where one-off detail matters more than aggregation
 
 ## Prerequisites
 
-- Initial label set drafted from ≥10 historical instances.
-- Owner who can approve new categories without weekly meeting overhead.
-- Tagging tool that lets re-labelling happen without losing history.
+| Input artifact | Format | Source |
+|---|---|---|
+| ≥10 incident records OR trace samples | Markdown or JSONL | observability + postmortems |
+| Owner / approver for taxonomy | person | engineering lead |
+| Remediation-lane catalogue | list | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[agent-postmortem-template]]` | Postmortem records consumed taxonomy labels |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `single_instance_classify` | haiku | Fast label assignment from pre-existing taxonomy |
-| `taxonomy_review` | sonnet | Detect misuse, propose new categories |
-| `policy_update` | opus | Re-shape taxonomy when drift exceeds threshold |
+| Label single incident | sonnet | Pattern match. |
+| Propose new label | opus | Cross-incident reasoning. |
+| Map label → lane | opus | Process-design judgement. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/taxonomy.md.tmpl` | Versioned taxonomy doc skeleton. |
+| `templates/label-definition.md.tmpl` | Single-label definition + remediation lane. |
+| `templates/classification-log.jsonl.tmpl` | Append-only re-classification log schema. |
+| `templates/_smoke-test.md` | Filled example with 6 default labels. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agent-failure-taxonomy.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[agent-postmortem-template]]`
+- `[[agent-drift-detection-statistical]]`
+- `[[agent-eval-test-set-curation]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-failure-taxonomy applies: root question — "Are you triaging an agent incident or building label aggregation?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

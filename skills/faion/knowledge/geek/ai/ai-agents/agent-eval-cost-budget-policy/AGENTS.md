@@ -4,76 +4,96 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Evaluation method for agent eval cost budget policy that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a 3-cadence eval policy: nightly full suite, per-PR fast subset, weekly adversarial — with sampling rules and a judge-model fallback when budget breached."
 content_id: "f65647d1f66a439c"
-tags: [agent, ai, eval]
+complexity: medium
+produces: decision-record
+est_tokens: 4500
+tags: [eval, cost, policy, judge, cadence, agent]
 ---
+
 # Agent Eval Cost Budget Policy
 
 ## Summary
 
-**One-sentence:** Evaluation method for agent eval cost budget policy that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs.
+**One-sentence:** Produces a 3-cadence eval policy: nightly full suite, per-PR fast subset, weekly adversarial — with sampling rules and a judge-model fallback when budget breached.
 
-**One-paragraph:** Evaluation method for agent eval cost budget policy that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs. Evals can cost more than production traffic. Need a policy: nightly full / per-PR fast-subset / weekly adversarial; sampling rules; judge-model fallback when budget breached. No methodology today.
+**One-paragraph:** Evals can cost more than production traffic. Need a policy: nightly full / per-PR fast-subset / weekly adversarial; sampling rules; judge-model fallback when budget breached. No methodology today. This produces a versioned policy record + per-cadence schema + breach playbook.
+
+**Ефективно для:** production agents with daily eval spend ≥$50; teams whose CI cost is dominated by evals; pre-GA agents that need both fast PR feedback and deep nightly coverage.
 
 ## Applies If (ALL must hold)
 
-- You are stabilizing or comparing the AI feature behavior described by agent eval cost budget policy across model, prompt, or retrieval versions.
-- A ground-truth set ≥30 examples exists OR can be assembled in one work-cycle.
-- Eval results gate at least one production decision (deploy, rollback, freeze).
-- Cost ceiling per eval run is defined before the first run.
+- Eval cost is a measurable line item ≥$50/month
+- ≥1 PR per day touches the agent
+- Ground-truth set ≥30 examples exists
+- Cost ceiling defined and visible
 
 ## Skip If (ANY kills it)
 
-- Pre-MVP exploration where output quality is judged by founders eyeballing.
-- Features so niche that authoring a ground-truth set takes longer than 3 sprints.
-- Cost-prohibitive evals when cheaper proxies (regression of intermediate metric) cover risk.
+- Pre-MVP — manual eval is cheaper than authoring policy
+- No CI pipeline yet — author CI first
+- Single nightly cadence already works and costs <$10/day
 
 ## Prerequisites
 
-- Ground-truth set with ≥30 examples and a versioned identifier.
-- Run-isolation: same eval can be replayed on different model / prompt versions.
-- Cost dashboard or per-run budget enforced.
+| Input artifact | Format | Source |
+|---|---|---|
+| Eval suite + judge rubric | JSONL + rubric | eval owner |
+| Per-run cost telemetry | table | observability |
+| Cost ceiling per cadence | USD | finance |
+| Cheap-judge fallback model | API access | ML platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[agent-eval-harness-bootstrap-recipe]]` | Harness to schedule cadences |
+| `[[agent-eval-test-set-curation]]` | Test set partitioned into fast subset |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `eval_runner_orchestration` | haiku | Test harness driver |
-| `judge_scoring` | sonnet | LLM-as-judge per rubric |
-| `regression_diagnosis` | opus | Cross-version drift analysis |
+| Stratified-sample fast subset | sonnet | Mechanical. |
+| Pick fallback judge | sonnet | Vendor selection. |
+| Tune ceiling vs cadence | opus | Cost / quality trade-off. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/policy.md.tmpl` | Eval cost policy skeleton with 3 cadences + ceiling + fallback. |
+| `templates/stratified-sample.py.tmpl` | Stratified subset selector. |
+| `templates/fallback-judge.py.tmpl` | Cheap-judge fallback switch. |
+| `templates/_smoke-test.md` | Filled example for a 200-example suite. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agent-eval-cost-budget-policy.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[agent-eval-harness-bootstrap-recipe]]`
+- `[[agent-eval-test-set-curation]]`
+- `[[agent-drift-detection-statistical]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-eval-cost-budget-policy applies: root question — "Is eval spend ≥$50/month AND ≥1 PR/day touches the agent?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

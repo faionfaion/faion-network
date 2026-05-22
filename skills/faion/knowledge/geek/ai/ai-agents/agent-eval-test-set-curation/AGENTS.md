@@ -4,76 +4,97 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Evaluation method for agent eval test set curation that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a curated agent-eval golden set: trajectory cases + capability tags + provenance + version-control conventions — partitioned into fast-subset and full-suite buckets."
 content_id: "1fda62d5087fc57c"
-tags: [agent, ai, eval]
+complexity: medium
+produces: spec
+est_tokens: 4500
+tags: [eval, test-set, golden-set, trajectory, tags, version-control]
 ---
-# Agent Eval Test Set Curation
+
+# Agent Eval Test-Set Curation
 
 ## Summary
 
-**One-sentence:** Evaluation method for agent eval test set curation that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs.
+**One-sentence:** Produces a curated agent-eval golden set: trajectory cases + capability tags + provenance + version-control conventions — partitioned into fast-subset and full-suite buckets.
 
-**One-paragraph:** Evaluation method for agent eval test set curation that defines test set, scoring function, pass/fail thresholds, and regression rules so quality is comparable across runs. There are RAG eval test-set methodologies but no agent-eval-specific guide on trajectory cases, capability tags, and version control of the golden set.
+**One-paragraph:** RAG eval test-set methodologies exist but no agent-eval-specific guide covers trajectory cases, capability tags, and version control of the golden set. This produces a spec for sourcing, labelling, partitioning, and version-controlling the golden set; the harness consumes its output verbatim.
+
+**Ефективно для:** first-time eval setup for a new agent; quarterly review of an existing golden set; replacing 'eyeballed 10 random examples' with a versioned set; turning real production failures into permanent regression cases.
 
 ## Applies If (ALL must hold)
 
-- You are stabilizing or comparing the AI feature behavior described by agent eval test set curation across model, prompt, or retrieval versions.
-- A ground-truth set ≥30 examples exists OR can be assembled in one work-cycle.
-- Eval results gate at least one production decision (deploy, rollback, freeze).
-- Cost ceiling per eval run is defined before the first run.
+- Building an eval harness AND need ≥30 representative trajectories
+- Production has ≥100 traces to sample from OR a domain expert can hand-author cases
+- Tagging schema decided (capability, persona, difficulty)
+- Version control system exists for the set
 
 ## Skip If (ANY kills it)
 
-- Pre-MVP exploration where output quality is judged by founders eyeballing.
-- Features so niche that authoring a ground-truth set takes longer than 3 sprints.
-- Cost-prohibitive evals when cheaper proxies (regression of intermediate metric) cover risk.
+- No traces and no domain expert — defer until either exists
+- Tags would not affect any decision — premature taxonomy
+- Existing test set already passes the 4 rules below
 
 ## Prerequisites
 
-- Ground-truth set with ≥30 examples and a versioned identifier.
-- Run-isolation: same eval can be replayed on different model / prompt versions.
-- Cost dashboard or per-run budget enforced.
+| Input artifact | Format | Source |
+|---|---|---|
+| Trace history OR domain expert | trace store OR person | observability OR SME |
+| Capability taxonomy | list of tags | domain expert |
+| Version-controlled location | git repo | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[agent-observability-stack-blueprint]]` | Trace history source |
+| `[[agent-failure-taxonomy]]` | Labels for tagging failure-derived cases |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `eval_runner_orchestration` | haiku | Test harness driver |
-| `judge_scoring` | sonnet | LLM-as-judge per rubric |
-| `regression_diagnosis` | opus | Cross-version drift analysis |
+| Sample real traces | sonnet | Stratified sampling. |
+| Author tag taxonomy | opus | Domain reasoning. |
+| Tag trajectories | sonnet | Pattern matching. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/trajectory.jsonl.tmpl` | Single trajectory schema. |
+| `templates/tag-taxonomy.md.tmpl` | Capability + persona + difficulty taxonomy. |
+| `templates/provenance.json.tmpl` | Provenance record for real-trace cases. |
+| `templates/_smoke-test.jsonl` | Minimal 3-trajectory example set. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agent-eval-test-set-curation.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[agent-eval-harness-bootstrap-recipe]]`
+- `[[agent-eval-cost-budget-policy]]`
+- `[[agent-drift-detection-statistical]]`
+- `[[agent-failure-taxonomy]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-eval-test-set-curation applies: root question — "Does the team have ≥30 trajectories OR can source them?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

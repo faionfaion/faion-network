@@ -4,75 +4,99 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Numeric scoring rubric for agent eval harness bootstrap recipe that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a CI-gated eval harness in one engineer-week: wires trajectory-eval-otel + llm-judge-rubric + record-replay + chaos-eval + behavioral-evals + llm-as-judge into a single runnable harness."
 content_id: "6291b267c09f0f30"
-tags: [agent, ai, scorecard]
+complexity: deep
+produces: code
+est_tokens: 4500
+tags: [eval, harness, ci-gate, rubric, trajectory, judge, replay]
 ---
+
 # Agent Eval Harness Bootstrap Recipe
 
 ## Summary
 
-**One-sentence:** Numeric scoring rubric for agent eval harness bootstrap recipe that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
+**One-sentence:** Produces a CI-gated eval harness in one engineer-week: wires trajectory-eval-otel + llm-judge-rubric + record-replay + chaos-eval + behavioral-evals + llm-as-judge into a single runnable harness.
 
-**One-paragraph:** Numeric scoring rubric for agent eval harness bootstrap recipe that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts. Atomized methodologies exist (`trajectory-eval-otel`, `llm-judge-rubric-evidence-first`, `record-replay-debugging`, `chaos-eval-fault-injection`, `behavioral-evals-adversarial`, `llm-as-judge-harness`). Missing: the wiring playbook that turns those 6 into a working CI gate in one engineer-week. Right now P7 reinvents the integration for every agent.
+**One-paragraph:** Atomized methodologies exist (`trajectory-eval-otel`, `llm-judge-rubric-evidence-first`, `record-replay-debugging`, `chaos-eval-fault-injection`, `behavioral-evals-adversarial`, `llm-as-judge-harness`). Missing: the wiring playbook that turns those 6 into a working CI gate in one engineer-week. Right now P7 reinvents the integration for every agent.
+
+**Ефективно для:** engineering teams shipping a new agent who need a working CI gate within one sprint; teams migrating ad-hoc eval scripts into a single harness; ML-platform builders standardising eval across multiple agents.
 
 ## Applies If (ALL must hold)
 
-- You evaluate >1 instance against the same criteria addressed by agent eval harness bootstrap recipe (calls, vendors, candidates).
-- Scores will be used for a binary decision (advance, reject, prioritize).
-- Each criterion has a defined 1-5 anchor; raters trained on the rubric before scoring.
-- ≥2 raters per instance for any score that gates a >$10k or strategic decision.
+- Team has an agent + ≥30 trajectory examples
+- CI exists and can run a Python or TS harness in a job
+- Owner exists for harness maintenance
+- Budget allows one engineer-week of bootstrap effort
 
 ## Skip If (ANY kills it)
 
-- n < 3 instances — gut feel is faster and accuracy is similar.
-- Decisions are single-criterion (price-only, deadline-only) — full rubric is overhead.
-- Strategic, single-shot decisions where qualitative narrative beats numeric blend.
+- Existing harness already passes the 6-capability test — extension, not bootstrap
+- No trajectory data — collect first via observability
+- n<3 instances — gut feel is faster
 
 ## Prerequisites
 
-- Rubric file or sheet with anchors written for each criterion 1-5.
-- Rater(s) trained on at least 3 calibration examples before scoring real instances.
-- Storage for scores reachable from downstream decision step (CRM, spreadsheet).
+| Input artifact | Format | Source |
+|---|---|---|
+| ≥30 trajectory examples (golden set) | JSONL | eval owner |
+| Judge rubric (1-5 anchors per criterion) | Markdown | domain expert |
+| OTel trace ingest | tracing backend | observability |
+| LLM API access (judge + agent) | keys | ML platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `[[agent-eval-test-set-curation]]` | Curated test set |
+| `[[agent-observability-stack-blueprint]]` | Trace ingest path |
+| `[[agent-eval-cost-budget-policy]]` | Cadence policy this harness implements |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_criterion_score` | sonnet | Anchored 1-5 judgment per dimension |
-| `multi_rater_reconciliation` | opus | Resolve divergent scores with rationale |
+| Author rubric anchors | opus | Domain reasoning. |
+| Implement runner | sonnet | Template application. |
+| Tune CI thresholds | opus | Trade-off across false-positive vs detection. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/runner.py.tmpl` | Harness runner: replay → judge → score → CI exit. |
+| `templates/rubric.md.tmpl` | Anchored rubric template. |
+| `templates/golden-set.jsonl.tmpl` | Golden-set example schema. |
+| `templates/ci-gate.yaml.tmpl` | GitHub Actions / GitLab CI gate. |
+| `templates/_smoke-test.py` | Smoke test that runs harness against 3 trajectories. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agent-eval-harness-bootstrap-recipe.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer methodologies: see siblings under `geek/ai/ai-agents/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[agent-eval-test-set-curation]]`
+- `[[agent-eval-cost-budget-policy]]`
+- `[[agent-drift-detection-statistical]]`
+- `[[agent-observability-stack-blueprint]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-eval-harness-bootstrap-recipe applies: root question — "Does the team have ≥30 trajectories AND a CI pipeline?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

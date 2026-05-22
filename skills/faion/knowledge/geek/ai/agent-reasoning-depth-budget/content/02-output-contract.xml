@@ -1,42 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Agent Reasoning Depth Budget Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Agent Reasoning Depth Budget output. Subagent must satisfy this before returning to the caller.</summary>
+  <summary>JSON-schema output contract the subagent applying agent-reasoning-depth-budget must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "agent-reasoning-depth-budget-output",
+  "required": [
+    "task_budgets",
+    "pareto_pick_budget",
+    "under_thinking_pct",
+    "over_thinking_pct",
+    "inter_turn_compression_tokens",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "task_budgets": {
+      "description": "{task_id, budget_tokens, score, usd_per_call}."
+    },
+    "pareto_pick_budget": {
+      "description": "Chosen budget tokens."
+    },
+    "under_thinking_pct": {
+      "description": "% failures from premature stop."
+    },
+    "over_thinking_pct": {
+      "description": "% calls in plateau zone."
+    },
+    "inter_turn_compression_tokens": {
+      "description": "Summary cap."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="task_budget_table" type="list" required="true">[{task_class, budget_tokens, baseline_score, plateau_score}]</field>
-      <field name="eval_evidence" type="object" required="true">{eval_set_path, n_cases, last_run_date}</field>
-      <field name="under_thinking_flag" type="bool" required="true">r3 detector</field>
-      <field name="over_thinking_flag" type="bool" required="true">r4 detector</field>
-      <field name="compression_template" type="string" required="true">≤200-token state-summary template</field>
-      <field name="owner" type="string" required="true">named engineer responsible for retuning</field>
+      <field name="task_budgets" format="array&lt;row&gt;" required="true">{task_id, budget_tokens, score, usd_per_call}.</field>
+      <field name="pareto_pick_budget" format="integer" required="true">Chosen budget tokens.</field>
+      <field name="under_thinking_pct" format="number" required="true">% failures from premature stop.</field>
+      <field name="over_thinking_pct" format="number" required="true">% calls in plateau zone.</field>
+      <field name="inter_turn_compression_tokens" format="integer" required="true">Summary cap.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">task_budget_table starts at max budget without eval evidence</pattern>
-      <pattern id="f2">eval_evidence.n_cases &lt; 50</pattern>
-      <pattern id="f3">thinking traces included verbatim in next-turn context</pattern>
-      <pattern id="f4">no plateau measurement before locking budget</pattern>
+      <pattern id="f1">No budget chosen without eval-evidence sweep.</pattern>
+      <pattern id="f2">No multi-turn agent without inter-turn compression.</pattern>
+      <pattern id="f3">No &apos;use max budget by default&apos; policy.</pattern>
+      <pattern id="f4">No reuse of old budget after model version change.</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/agent-reasoning-depth-budget.json"/>
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "task_budgets": [],
+  "pareto_pick_budget": 1,
+  "under_thinking_pct": 1,
+  "over_thinking_pct": 1,
+  "inter_turn_compression_tokens": 1,
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "pareto_pick_budget": 1,
+  "under_thinking_pct": 1,
+  "over_thinking_pct": 1,
+  "inter_turn_compression_tokens": 1,
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>task_budget_table populated with a typed value</item>
-      <item>eval_evidence populated with a typed value</item>
-      <item>under_thinking_flag populated with a typed value</item>
-      <item>over_thinking_flag populated with a typed value</item>
-      <item>compression_template populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-agent-reasoning-depth-budget.py` exit 0.</item>
     </list>
   </section>
 </text>

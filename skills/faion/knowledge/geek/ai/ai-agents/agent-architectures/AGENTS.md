@@ -4,71 +4,98 @@ tier: geek
 group: ai
 domain: ai-agents
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-ready architectures for autonomous agents with memory, tools, and planning capabilities.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a production-ready agent scaffold: memory with embeddings + summarization, typed tool framework, async state machine, planning + reflection loops, and an idle-eviction policy for long-runn..."
 content_id: "a8a3f8d625a6295f"
-tags: [agents, architecture, production, memory, tools]
+complexity: deep
+produces: code
+est_tokens: 4500
+tags: [agent, architecture, memory, tools, planning, reflection, fsm]
 ---
-# Agent Architectures
+
+# Agent Architectures (Memory + Tools + Planning + Reflection)
 
 ## Summary
 
-**One-sentence:** Production-ready architectures for autonomous agents with memory, tools, and planning capabilities.
+**One-sentence:** Produces a production-ready agent scaffold: memory with embeddings + summarization, typed tool framework, async state machine, planning + reflection loops, and an idle-eviction policy for long-runn...
 
-**One-paragraph:** Production-ready architectures for autonomous agents with memory, tools, and planning capabilities.
+**One-paragraph:** Production-ready architectures for autonomous agents with memory, tools, planning, and reflection. Covers memory system with embeddings, tool registry framework, async state machine, planner / reflection loop, and long-run summarization. Memory summarization becomes critical for long-running agents: at 50+ iterations raw concatenation overflows context; implement compress step or limit summary_recent() to last 3-5 entries.
+
+**Ефективно для:** production agents running >100 iterations; multi-tool agents with ≥5 callable tools; agents persisting across sessions; agents required to plan before acting and reflect after.
 
 ## Applies If (ALL must hold)
 
-- Building a production autonomous agent that requires persistent memory, tool use, and failure recovery
-- Designing the state machine for a multi-step agent workflow (IDLE → PLANNING → EXECUTING → REFLECTING → COMPLETE)
-- Implementing a memory system (short-term + long-term with embedding-based retrieval) for a Claude subagent
-- Replacing a monolithic prompt chain with a proper tool-equipped agent that can handle partial failures
+- Building or scaling a production LLM agent (not a prototype)
+- Agent uses ≥3 tools
+- Agent runs for ≥50 iterations or across sessions
+- Latency budget allows for planning + reflection loops (≥2s)
 
 ## Skip If (ANY kills it)
 
-- Simple single-step LLM tasks where the architecture overhead is not justified
-- When the task graph is fully deterministic (no conditional branching based on tool results); use a chain instead of an agent
-- Latency-critical paths where multi-iteration ReAct loops add unacceptable delay
-- When you don't control the execution environment (e.g., no way to sandbox tool calls or enforce iteration limits)
+- Single-turn extraction / classification task — full agent loop is overhead
+- Sub-100ms latency budget — planning + reflection blows the budget
+- Stateless function call replacing a deterministic API
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Tool inventory + schemas | JSON Schema | team |
+| Vector store (Pinecone / pgvector / Weaviate) | service | infra |
+| LLM provider with structured-output support | API key | team |
+| Eval suite ≥30 trajectories | JSONL | eval owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `[[llm-integration]]` | Provider SDK + structured output |
+| `[[rag-engineer]]` | Embedding + vector-store fundamentals |
+| `[[agent-observability-stack-blueprint]]` | Trace + cost + eval wiring |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Author tool registry | sonnet | Schema generation. |
+| Tune reflection threshold | opus | Multi-trajectory reasoning. |
+| Author memory summarizer prompt | sonnet | Template application. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agent.py.tmpl` | Agent scaffold: FSM + memory + tools + planning + reflection. |
+| `templates/tool-registry.py.tmpl` | Schema-validated tool registry. |
+| `templates/memory.py.tmpl` | Memory class with summarization. |
+| `templates/reflection-prompt.txt.tmpl` | Reflection prompt template. |
+| `templates/_smoke-test.py` | Minimal runnable agent stub. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agent-architectures.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
+- `[[agent-observability-stack-blueprint]]`
+- `[[agent-reasoning-depth-budget]]`
+- `[[agent-failure-taxonomy]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether agent-architectures applies: root question — "Is the workload a multi-tool, multi-iteration agent (not a single LLM call)?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.

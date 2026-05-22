@@ -1,42 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="02-output-contract" title="Lean Stack Bootstrapper Blueprint Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Lean Stack Bootstrapper Blueprint output. Subagent must satisfy this before returning to the caller.</summary>
+  <summary>JSON-schema output contract the subagent applying lean-stack-bootstrapper-blueprint must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "lean-stack-bootstrapper-blueprint-output",
+  "required": [
+    "services",
+    "monthly_ceiling_usd",
+    "alert_threshold_pct",
+    "upgrade_triggers",
+    "vendor_lock_acceptance",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "services": {
+      "description": "\u22645 services with role assignment."
+    },
+    "monthly_ceiling_usd": {
+      "description": "Hard cap."
+    },
+    "alert_threshold_pct": {
+      "description": "Default 80."
+    },
+    "upgrade_triggers": {
+      "description": "{metric, threshold, action} per trigger."
+    },
+    "vendor_lock_acceptance": {
+      "description": "True iff portability is explicitly deferred."
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty)."
+    }
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="services" type="list" required="true">≤5 services with role</field>
-      <field name="monthly_cost_ceiling" type="number" required="true">USD</field>
-      <field name="alert_thresholds" type="object" required="true">{warn_pct: 0.8, autopause_pct: 1.0}</field>
-      <field name="upgrade_triggers" type="list" required="true">[{trigger, threshold, action}]</field>
-      <field name="review_date" type="date" required="true">quarterly review</field>
-      <field name="owner" type="string" required="true">the founder</field>
+      <field name="services" format="array&lt;service&gt;" required="true">≤5 services with role assignment.</field>
+      <field name="monthly_ceiling_usd" format="number" required="true">Hard cap.</field>
+      <field name="alert_threshold_pct" format="number" required="true">Default 80.</field>
+      <field name="upgrade_triggers" format="array&lt;trigger&gt;" required="true">{metric, threshold, action} per trigger.</field>
+      <field name="vendor_lock_acceptance" format="boolean" required="true">True iff portability is explicitly deferred.</field>
+      <field name="forbidden_seen" format="array&lt;string&gt;" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">services.length &gt; 6</pattern>
-      <pattern id="f2">monthly_cost_ceiling unset</pattern>
-      <pattern id="f3">stack includes Docker/k8s pre-PMF</pattern>
-      <pattern id="f4">upgrade_triggers empty</pattern>
+      <pattern id="f1">No Docker/k8s services in the stack.</pattern>
+      <pattern id="f2">No self-hosted DB.</pattern>
+      <pattern id="f3">No &gt;5 services.</pattern>
+      <pattern id="f4">No missing cost ceiling.</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key (slug, id, name) before serialising.</transformation>
+      <transformation>Round numeric values to 2 decimal places when serialising.</transformation>
+      <transformation>Normalize ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/lean-stack-bootstrapper-blueprint.json"/>
   </output-contract>
+
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "services": [],
+  "monthly_ceiling_usd": 1,
+  "alert_threshold_pct": 1,
+  "upgrade_triggers": [],
+  "vendor_lock_acceptance": true,
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; `forbidden_seen` empty.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "monthly_ceiling_usd": 1,
+  "alert_threshold_pct": 1,
+  "upgrade_triggers": [],
+  "vendor_lock_acceptance": true,
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing the first required field and `forbidden_seen` is non-empty — schema rejects both.</note>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>services populated with a typed value</item>
-      <item>monthly_cost_ceiling populated with a typed value</item>
-      <item>alert_thresholds populated with a typed value</item>
-      <item>upgrade_triggers populated with a typed value</item>
-      <item>review_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>All required fields present and non-null.</item>
+      <item>`forbidden_seen` is an empty array.</item>
+      <item>Output validates against `scripts/validate-lean-stack-bootstrapper-blueprint.py` exit 0.</item>
     </list>
   </section>
 </text>
