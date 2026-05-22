@@ -1,0 +1,44 @@
+# purpose: K8s StatefulSet for production Qdrant
+# consumes: cluster + storage class + image tag
+# produces: config (manifest applicable with kubectl apply)
+# depends-on: K8s >= 1.27 + a durable StorageClass
+# token-budget-impact: 0
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant
+  namespace: vector-db
+spec:
+  serviceName: qdrant
+  replicas: 1
+  selector:
+    matchLabels: {app: qdrant}
+  template:
+    metadata:
+      labels: {app: qdrant}
+    spec:
+      containers:
+        - name: qdrant
+          image: qdrant/qdrant:v1.10.0   # pinned
+          ports:
+            - {name: http, containerPort: 6333}
+            - {name: grpc, containerPort: 6334}
+          resources:
+            requests: {cpu: "2", memory: "16Gi"}
+            limits: {cpu: "4", memory: "24Gi"}
+          volumeMounts:
+            - {name: data, mountPath: /qdrant/storage}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 6333}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: 6333}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: ebs-gp3
+        resources: {requests: {storage: 200Gi}}

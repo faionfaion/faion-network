@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="TTS Basics — Worked Example" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>One end-to-end synthesize() call for a news headline payload: cache miss path on first call, cache hit on the second identical call, both returning the canonical output contract.</summary>
+
+  <section title="Worked synthesis — news headline, voice=onyx, provider=openai">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+import hashlib, json, re
+from pathlib import Path
+from pydub import AudioSegment
+
+CACHE_DIR = Path("out/audio/cache")
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+VOICE_MAP = {
+    "news":      {"openai": "onyx",   "google": "en-US-Neural2-D"},
+    "assistant": {"openai": "nova",   "google": "en-US-Neural2-F"},
+    "narrator":  {"openai": "fable",  "google": "en-US-Studio-O"},
+    "neutral":   {"openai": "alloy",  "google": "en-US-Neural2-C"},
+}
+
+def preprocess_for_tts(text: str) -> str:
+    text = re.sub(r'#{1,6}\s+', '', text)
+    text = re.sub(r'\*+([^*]+)\*+', r'\1', text)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = text.replace('$', ' dollars ').replace('%', ' percent ')
+    return text.strip()
+
+def synthesize(text, content_type="news", provider="openai",
+               model="tts-1", speed=1.0, fmt="mp3") -> dict:
+    cleaned = preprocess_for_tts(text)
+    if len(cleaned) > 4000:
+        return {"status": "error", "error": "payload >4000 chars, route to tts-implementation",
+                "path": "", "duration_s": 0.0, "provider": provider, "voice": "",
+                "model": model, "cache_key": "", "cached": False}
+
+    voice = VOICE_MAP[content_type][provider]
+    key_src = f"{cleaned}|{voice}|{speed}|{model}|{provider}"
+    cache_key = hashlib.sha256(key_src.encode()).hexdigest()
+    out_path = CACHE_DIR / f"{cache_key}.{fmt}"
+
+    if out_path.exists():
+        dur = AudioSegment.from_file(out_path).duration_seconds
+        return {"status": "ok", "path": str(out_path), "duration_s": dur,
+                "provider": provider, "voice": voice, "model": model,
+                "speed": speed, "cache_key": cache_key, "cached": True}
+
+    client = OpenAI()
+    resp = client.audio.speech.create(model=model, voice=voice, input=cleaned,
+                                      speed=speed, response_format=fmt)
+    resp.stream_to_file(out_path)
+    dur = AudioSegment.from_file(out_path).duration_seconds
+    if dur == 0.0:
+        return {"status": "error", "error": "0-second audio file",
+                "path": str(out_path), "duration_s": 0.0, "provider": provider,
+                "voice": voice, "model": model, "cache_key": cache_key, "cached": False}
+    return {"status": "ok", "path": str(out_path), "duration_s": dur,
+            "provider": provider, "voice": voice, "model": model,
+            "speed": speed, "cache_key": cache_key, "cached": False}
+
+# First call — cache miss, provider hit
+print(json.dumps(synthesize("Markets closed up 2 percent today.", "news"), indent=2))
+# Second call — cache hit, no provider call
+print(json.dumps(synthesize("Markets closed up 2 percent today.", "news"), indent=2))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Expected outputs">
+    <p>First call returns cached=false with a duration ~2.3s. Second call returns cached=true with the same path, same cache_key, same duration. Both pass the validate-tts-basics.py schema check.</p>
+  </section>
+</text>
