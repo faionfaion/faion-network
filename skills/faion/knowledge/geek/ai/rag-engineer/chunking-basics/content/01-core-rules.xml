@@ -1,43 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="chunking-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for chunking-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Chunking Basics — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules for chunking: tiktoken measurement, default 500/50 band, content-type routing, metadata at creation, content-based IDs, version on strategy change.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Start with chunk_size equals 500 tokens and overlap equals 50 tokens. Use 1000-1500 tokens for technical/legal. Use 200-400 tokens for QA content.</statement>
-      <rationale source="v1-source">500 tokens is a practical middle ground that preserves context while keeping chunks focused. Adjust based on retrieval benchmarks - no theoretical size works universally.</rationale>
+    <rule id="r1-tiktoken-measure" testable="true" depth="essential">
+      <statement>Token counts MUST be measured with the same tiktoken encoding as the target embedding model (e.g. cl100k_base for OpenAI text-embedding-3-*). Word counts MUST NOT be used as a token proxy.</statement>
+      <rationale source="Pinecone chunking guide + OpenAI tokenizer docs">Word counts diverge from token counts by ~30% for English and far more for non-Latin scripts. Chunk_size enforced in words can produce chunks that exceed the embedding model's input cap.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Always measure chunk token counts with tiktoken before indexing. Word counts diverge significantly from token counts.</statement>
-      <rationale source="v1-source">Token counts directly impact embedding model input budgets and retrieval quality. Word counts are approximately 30 percent inaccurate for token budgets.</rationale>
+
+    <rule id="r2-default-band" testable="true" depth="essential">
+      <statement>Start with chunk_size=500 tokens, overlap=50 tokens. Use 1000–1500 for legal/technical, 200–400 for QA. Tune only after the first retrieval benchmark on ≥5 queries.</statement>
+      <rationale source="LangChain/LlamaIndex defaults + retrieval benchmarks">500 tokens is the empirical middle ground that preserves context while keeping chunks focused. Tuning without a benchmark is guesswork.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Set overlap to 10-20 percent of chunk_size. For QA corpora where questions span chunk boundaries use 20 percent.</statement>
-      <rationale source="v1-source">Overlap prevents abrupt context loss at chunk boundaries. Queries that span boundaries benefit from overlapping chunks.</rationale>
+
+    <rule id="r3-content-type-routing" testable="true" depth="essential">
+      <statement>Different content types MUST route to different splitters: code goes to AST splitter, markdown goes to header splitter, html goes to tag splitter, prose goes to recursive/sentence splitter. The pipeline MUST detect type before applying the splitter.</statement>
+      <rationale source="LangChain text_splitters module design">A prose splitter on code destroys function boundaries; a code splitter on prose creates incoherent chunks. Strategy must match structure.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Attach source, page, chunk_index, and strategy metadata at creation time. Retrofitting metadata later requires full re-index.</statement>
-      <rationale source="v1-source">Metadata attached to chunks at creation enables source tracking, deduplication, and quality auditing downstream.</rationale>
+
+    <rule id="r4-overlap-band" testable="true" depth="essential">
+      <statement>Overlap MUST be 10–20% of chunk_size. For QA corpora where questions span chunk boundaries use the upper 20% bound.</statement>
+      <rationale source="Retrieval recall studies on overlapping windows">Zero overlap causes boundary-spanning queries to retrieve no relevant chunk. Overlap above 20% inflates index size with diminishing recall gain.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use content-based IDs like md5(source_path + chunk_index) for chunk IDs, not sequential integers.</statement>
-      <rationale source="v1-source">Sequential IDs cause collisions when documents are updated or re-indexed. Content-based IDs enable idempotent re-ingestion.</rationale>
+
+    <rule id="r5-metadata-at-creation" testable="true" depth="essential">
+      <statement>Each chunk MUST carry source, page, chunk_index, strategy, version, token_count at creation. Retrofitting metadata after indexing requires a full re-index.</statement>
+      <rationale source="Faion-network ingestion incident log">Missing source/page makes hits unattributable; missing strategy/version makes A/B comparisons impossible.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Test chunking with at least five representative queries before committing to a strategy. Retrieval accuracy is the only ground truth.</statement>
-      <rationale source="v1-source">Theoretical chunking decisions rarely survive contact with real query patterns. Even 30 percent change in chunk size can dramatically affect retrieval.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>For mixed corpora (documentation, code, chat), route each file type through its own chunker before merging into one index.</statement>
-      <rationale source="v1-source">A chunking strategy tuned for prose performs poorly on code and vice versa. Separate routing ensures each content type gets appropriate treatment.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Pre-clean text (strip headers/footers, normalize whitespace) before chunking. Noise propagates into all downstream chunks.</statement>
-      <rationale source="v1-source">Document headers, page numbers, and boilerplate become part of every chunk. Pre-cleaning prevents embedding model confusion.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Version the index name with the chunking config hash when strategy changes. Existing vector index entries become stale with new chunk sizes.</statement>
-      <rationale source="v1-source">Re-indexing with different chunk sizes invalidates relevance scores from the old index. Version tracking prevents accidental searches against mixed indices.</rationale>
+
+    <rule id="r6-content-based-ids" testable="true" depth="essential">
+      <statement>Chunk IDs MUST be content-based: md5(source_path + chunk_index + strategy_version). Sequential integers MUST NOT be used.</statement>
+      <rationale source="Idempotent re-ingest pattern">Sequential IDs collide on update or re-chunk. Content-based IDs keep re-ingest idempotent and allow incremental delete/replace.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
