@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Voice Basics — Worked Example" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>Worked single turn: VAD record → Whisper en → GPT-4o reasoning → strip Markdown → streaming TTS to file.</summary>
+
+  <section title="Single turn end-to-end">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import collections, io, re, time, wave
+import sounddevice as sd, webrtcvad
+from openai import OpenAI
+
+SAMPLE_RATE = 16000
+client = OpenAI()
+
+def record_until_silence(silence_ms=1000, max_s=30):
+    vad = webrtcvad.Vad(2)
+    frame_ms = 30
+    frame_samples = SAMPLE_RATE * frame_ms // 1000
+    silence_frames = silence_ms // frame_ms
+    ring = collections.deque(maxlen=silence_frames)
+    frames, t0 = [], time.monotonic()
+    with sd.RawInputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
+        while time.monotonic() - t0 < max_s:
+            data, _ = stream.read(frame_samples)
+            frame = bytes(data)
+            ring.append(vad.is_speech(frame, SAMPLE_RATE))
+            frames.append(frame)
+            if len(frames) > silence_frames and not any(ring):
+                break
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SAMPLE_RATE)
+        w.writeframes(b"".join(frames))
+    return buf.getvalue()
+
+def strip_markdown(t): return re.sub(r'[*_`#>]', '', t).strip()
+
+HISTORY = [{"role": "system",
+            "content": "You are a helpful voice assistant. Reply in 1-3 short sentences."
+                       " No markdown. No lists. No code."}]
+
+def voice_turn(voice="nova", language="en", out_path="turn.mp3"):
+    t = {"vad_start": time.monotonic()}
+    wav = record_until_silence()
+    t["stt_start"] = time.monotonic()
+    transcript = client.audio.transcriptions.create(
+        model="whisper-1", file=("audio.wav", io.BytesIO(wav)), language=language).text
+    if not transcript.strip(): return {"status":"interrupt", "transcribed_text":""}
+
+    t["llm_start"] = time.monotonic()
+    HISTORY.append({"role":"user", "content": transcript})
+    HISTORY[:] = HISTORY[:1] + HISTORY[1:][-20:]   # cap 10 pairs
+    resp = client.chat.completions.create(model="gpt-4o", messages=HISTORY, max_tokens=200)
+    response_text = strip_markdown(resp.choices[0].message.content)
+    HISTORY.append({"role":"assistant", "content": response_text})
+
+    t["tts_start"] = time.monotonic()
+    with client.audio.speech.with_streaming_response.create(
+            model="tts-1", voice=voice, input=response_text, response_format="mp3") as r:
+        with open(out_path, "wb") as f:
+            for chunk in r.iter_bytes(1024): f.write(chunk)
+    t["end"] = time.monotonic()
+
+    lat = {"vad":   int((t["stt_start"] - t["vad_start"]) * 1000),
+           "stt":   int((t["llm_start"] - t["stt_start"]) * 1000),
+           "llm":   int((t["tts_start"] - t["llm_start"]) * 1000),
+           "tts":   int((t["end"]       - t["tts_start"]) * 1000),
+           "total": int((t["end"]       - t["vad_start"]) * 1000)}
+    return {"status":"ok", "transcribed_text": transcript, "response_text": response_text,
+            "audio_path": out_path, "latencies_ms": lat,
+            "history_len": len(HISTORY), "language": language, "voice": voice,
+            "interrupted": False}
+]]></code>
+    </example>
+  </section>
+</text>

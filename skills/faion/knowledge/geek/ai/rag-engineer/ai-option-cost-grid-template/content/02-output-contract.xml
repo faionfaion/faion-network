@@ -1,31 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Option Cost Grid Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Option Cost Grid Template deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="template_version" format="semver" />
-      <field name="filled_fields" type="object" schema="all_required_fields_named" />
-      <field name="na_fields_with_reason" type="object" />
-      <field name="worked_example_path" format="file_path" />
-    </required>
-    <forbidden>
-      <pattern id="f1">placeholder text remaining ('TBD', 'lorem ipsum', '&lt;fill&gt;')</pattern>
-      <pattern id="f2">fields silently omitted (must be N/A with reason or filled)</pattern>
-      <pattern id="f3">template_version mismatched between header and footer</pattern>
-      <pattern id="f4">no worked example bundled with the template</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Reorder fields only via a template_version bump.</transformation>
-      <transformation>Localize labels but keep the field key stable.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
+<text id="02-output-contract" title="AI Option Cost Grid — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the AI option cost grid: rows[] (option_name + metrics) + eval_set_hash + recommendation + sign-off metadata.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://ai-option-cost-grid-template/output.schema.json",
+  "type": "object",
+  "required": ["template_version", "decision_owner", "eval_set_hash", "rows", "recommendation", "last_reviewed"],
+  "properties": {
+    "template_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "decision_owner": {"type": "string", "minLength": 3},
+    "eval_set_hash": {"type": "string", "pattern": "^[a-f0-9]{16,64}$"},
+    "rows": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["option_name", "family", "dev_cost_usd", "infra_cost_usd_per_1k_calls", "latency_p95_ms", "quality_score", "vendor_lock_risk", "ttv_weeks", "maintenance_load"],
+        "properties": {
+          "option_name": {"type": "string"},
+          "family": {"type": "string", "enum": ["prompt-eng", "rag", "sft", "dpo", "vendor-swap", "hybrid"]},
+          "dev_cost_usd": {"type": ["number", "string"]},
+          "infra_cost_usd_per_1k_calls": {"type": ["number", "string"]},
+          "latency_p95_ms": {"type": ["integer", "string"]},
+          "quality_score": {"type": ["number", "string"]},
+          "vendor_lock_risk": {"type": "string", "enum": ["low", "medium", "high"]},
+          "ttv_weeks": {"type": ["number", "string"]},
+          "maintenance_load": {"type": "string", "enum": ["low", "medium", "high"]},
+          "na_reasons": {"type": "object"}
+        }
+      }
+    },
+    "recommendation": {"type": "string", "minLength": 20},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Any cell value is literal "TBD" / "lorem ipsum" / "&lt;fill&gt;".</description>
+      <reason>Violates r1-no-tbd; placeholders ship to client and erode trust.</reason>
+    </antipattern>
+    <antipattern>
+      <description>rows.length &lt; 2.</description>
+      <reason>The grid exists to compare options; one row is not a comparison.</reason>
+    </antipattern>
+    <antipattern>
+      <description>eval_set_hash absent OR mismatched with the eval set on disk.</description>
+      <reason>Quality scores are unattributable without the eval anchor.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "template_version": "1.1.0",
+  "decision_owner": "founder:ruslan",
+  "eval_set_hash": "9c1e2d3a4b5f6708",
+  "rows": [
+    {"option_name": "GPT-4o + prompt-eng", "family": "prompt-eng", "dev_cost_usd": 2400, "infra_cost_usd_per_1k_calls": 4.2, "latency_p95_ms": 1800, "quality_score": 0.72, "vendor_lock_risk": "high", "ttv_weeks": 1, "maintenance_load": "low"},
+    {"option_name": "Llama-3-70B SFT (5k labels)", "family": "sft", "dev_cost_usd": 18000, "infra_cost_usd_per_1k_calls": 1.1, "latency_p95_ms": 900, "quality_score": 0.78, "vendor_lock_risk": "low", "ttv_weeks": 5, "maintenance_load": "medium"},
+    {"option_name": "OpenAI embeddings + RAG", "family": "rag", "dev_cost_usd": 4800, "infra_cost_usd_per_1k_calls": 2.3, "latency_p95_ms": 1100, "quality_score": 0.81, "vendor_lock_risk": "medium", "ttv_weeks": 2, "maintenance_load": "medium"}
+  ],
+  "recommendation": "Ship RAG path now (quality 0.81, ttv 2w). Re-evaluate SFT after 3 months of usage data.",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"template_version": "TBD", "rows": [{"option_name": "Pick best", "dev_cost_usd": "TBD"}], "recommendation": "TBD"}
+]]></code>
+      <note>Invalid: TBDs present, fewer than 2 rows, no eval_set_hash, no decision_owner, no last_reviewed.</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>No TBD anywhere</item>
-      <item>All required fields present</item>
-      <item>template_version stamped</item>
-      <item>Worked example reachable</item>
+      <item>No TBD strings anywhere.</item>
+      <item>rows.length ≥ 2.</item>
+      <item>eval_set_hash matches eval set on disk.</item>
+      <item>recommendation ≥ 20 chars.</item>
+      <item>last_reviewed within 30 days.</item>
     </list>
   </section>
 </text>

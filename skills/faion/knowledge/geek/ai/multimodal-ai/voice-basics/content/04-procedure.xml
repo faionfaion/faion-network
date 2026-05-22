@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Voice Basics — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step turn procedure: VAD-record → Whisper STT → GPT-4o reason → strip Markdown → streaming TTS → log latencies.</summary>
+
+  <section title="Steps">
+    <step n="1" name="record-until-silence">
+      <input>microphone device, silence_ms (default 1000), max_duration_s (default 30)</input>
+      <action>webrtcvad aggressiveness 2 over 30ms frames. Accumulate while speech detected; stop after silence_ms of consecutive silence. Cap at max_duration_s.</action>
+      <output>WAV bytes (single-channel, 16kHz, paInt16).</output>
+    </step>
+
+    <step n="2" name="stt-whisper">
+      <input>WAV bytes, language (ISO 639-1)</input>
+      <action>`client.audio.transcriptions.create(model="whisper-1", file=BytesIO(wav), language=language)`. Always pass language explicitly (rule r5).</action>
+      <output>transcribed_text string.</output>
+      <decision-gate>if transcribed_text is empty / 1-2 chars → treat as silence, skip turn.</decision-gate>
+    </step>
+
+    <step n="3" name="reason-llm">
+      <input>transcribed_text, conversation_history (max 10 pairs), system_prompt</input>
+      <action>Append user message; call GPT-4o with `max_tokens=200`. Append assistant message to history; truncate to last 10 pairs (rule r4).</action>
+      <output>response_text string.</output>
+    </step>
+
+    <step n="4" name="strip-markdown">
+      <input>response_text</input>
+      <action>`re.sub(r'[*_`#&gt;]', '', text).strip()`. Validate no Markdown remains.</action>
+      <output>cleaned response_text.</output>
+    </step>
+
+    <step n="5" name="tts-streaming">
+      <input>cleaned response_text, voice id, output_path</input>
+      <action>Use `with_streaming_response.create(model="tts-1", voice=voice, input=text, response_format="pcm")`. Stream chunks to speaker / WebSocket / file.</action>
+      <output>audio_path (saved or streamed reference).</output>
+    </step>
+
+    <step n="6" name="log-latencies">
+      <input>per-step start/end times, final result</input>
+      <action>Emit `{turn_id, transcribed_text, response_text, audio_path, latencies_ms, history_len, language, voice}` to the audit log. Warn if total &gt; 1000ms; error if &gt; 1500ms.</action>
+      <output>audit-log entry; result per 02-output-contract.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>

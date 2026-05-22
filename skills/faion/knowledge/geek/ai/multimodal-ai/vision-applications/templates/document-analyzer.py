@@ -1,4 +1,9 @@
-"""DocumentAnalyzer and VisionService with config dataclass."""
+# purpose: DocumentAnalyzer + VisionService — typed field extraction with json_object + retry.
+# consumes: image source, fields list or Pydantic schema, VisionConfig (detail, max_retries).
+# produces: dict per document schema: status, fields, cache_key, retries.
+# depends-on: OpenAI Vision; vision-basics prepare_image; rule r1 size validate, r3 schema-in-prompt.
+# token-budget-impact: ~200 prompt tokens + image tokens (detail=high).
+"""DocumentAnalyzer + VisionService with json_object + retry pattern."""
 from openai import OpenAI
 from dataclasses import dataclass
 from typing import Optional, Union, Any

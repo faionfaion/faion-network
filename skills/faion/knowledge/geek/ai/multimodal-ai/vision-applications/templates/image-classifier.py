@@ -1,4 +1,9 @@
-"""ImageClassifier with batch support."""
+# purpose: ImageClassifier — categorical decision against fixed list with confidence + batch.
+# consumes: image source, categories list[str], optional batch_images list.
+# produces: dict per classify schema: category (lowercased, ∈ list), confidence, reasoning.
+# depends-on: OpenAI/Anthropic SDK; rule r4 normalize; rule r5 async batch cap.
+# token-budget-impact: ~100 prompt tokens + image tokens (detail=auto).
+"""ImageClassifier with batch (asyncio.gather under semaphore) + normalization."""
 from openai import OpenAI
 import base64
 import json

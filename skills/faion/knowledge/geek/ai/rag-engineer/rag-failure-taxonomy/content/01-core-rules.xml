@@ -1,64 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="RAG Failure Taxonomy Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules that define the closed 7-category taxonomy and how reviewers apply it consistently across triage and weekly review.</summary>
+<text id="01-core-rules" title="rag-failure-taxonomy Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of rag-failure-taxonomy enforces.</summary>
 
-  <section title="The five rules">
-
-    <rule id="r1-closed-seven-category-taxonomy" testable="true" depth="essential">
-      <statement>Every RAG failure maps to exactly one of seven categories: retrieval-miss (correct passage not retrieved at all), retrieval-misranked (correct passage retrieved but below the top-k cutoff), chunk-boundary (correct doc retrieved but the answer spans a chunk boundary or sits in the wrong chunk), generation-grounding-fail (retrieved context contains the answer but the generator hallucinated or contradicted it), stale-doc (correct passage retrieved but the underlying document is out of date), prompt-instruction-leak (system prompt or template forced the wrong framing), downstream-tool-fail (RAG returned correct text but the tool-use / function-calling step failed).</statement>
-      <rationale source="empirical RAG failure analysis at multiple production teams; RAGAS / Pinecone failure taxonomies">A closed taxonomy is the only mechanism that produces consistent diagnoses across reviewers. Free-text labels generate hundreds of near-duplicate tags and defeat aggregation. Seven categories is the empirical sweet spot — granular enough to map to distinct fix paths, coarse enough to be memorised.</rationale>
-      <example type="good" title="Category classification">
-        <code lang="yaml"><![CDATA[
-failure_id: f-2026-05-19-114
-question: "What is the refund window on annual plans?"
-correct_answer: "30 days from charge date for annual subscriptions."
-actual_answer: "We do not currently offer refunds."
-classification: generation-grounding-fail
-evidence:
-  retrieval: passage P-447 contains the refund policy, retrieved at rank 2
-  context_to_model: passage was included in the prompt
-  generation: model output contradicts the passage, no quote from P-447
-fix_path: tune generator-prompt; add refusal-on-contradiction rule
-        ]]></code>
-      </example>
+  <section title="Rule set">
+    <rule id="r1-closed-taxonomy" testable="true" depth="essential">
+      <statement>Use only the closed label set: retrieval-fail, generation-fail, chunk-boundary, stale-doc, wrong-doc-ranked, prompt-leak.</statement>
+      <rationale source="v1-source">Open-ended labels diverge between reviewers; closed sets stay diff-able.</rationale>
     </rule>
-
-    <rule id="r2-one-cause-per-failure" testable="true" depth="essential">
-      <statement>Each failure is assigned exactly ONE category — the root cause that, if fixed, would resolve the failure. When evidence supports multiple categories, the reviewer picks the upstream cause (retrieval before generation, chunking before retrieval, KB before chunking). Secondary contributing factors are recorded in a `contributing_factors` field but do not change the primary category.</statement>
-      <rationale source="root-cause analysis discipline; multi-tag noise in failure logs">Multi-category tagging defeats aggregation: a single failure tagged as both retrieval-miss and generation-grounding-fail double-counts in the weekly report. Picking the upstream cause aligns the fix-path with the actual remediation; contributing-factor field preserves the nuance without polluting the primary classification.</rationale>
+    <rule id="r2-evidence-required" testable="true" depth="essential">
+      <statement>Every label requires a short evidence quote (≤200 chars) from the answer or retrieved context.</statement>
+      <rationale source="v1-source">Labels without evidence can't be audited later.</rationale>
     </rule>
-
-    <rule id="r3-detector-evidence-required" testable="true" depth="essential">
-      <statement>Each entry includes evidence sufficient to confirm the category: the retrieval log (chunk IDs + ranks + similarity scores), the generation prompt (context window), the actual model output, and the source-of-truth answer. Failures without this evidence are tagged `evidence-incomplete` and skipped from the weekly aggregation until backfilled.</statement>
-      <rationale source="evidentiary discipline in defect tracking; common RAG-triage failure patterns">Without evidence, classifications drift to whatever the reviewer feels most often. Required evidence forces the reviewer to look at the retrieval log and the prompt, which catches mis-classifications.</rationale>
+    <rule id="r3-one-primary-label" testable="true" depth="essential">
+      <statement>Pick exactly one primary label; optional secondary labels allowed but limited to 1.</statement>
+      <rationale source="v1-source">Multi-label fanout makes dashboard counts double-count.</rationale>
     </rule>
-
-    <rule id="r4-fix-path-per-category" testable="true" depth="essential">
-      <statement>Each category maps to a default fix path: retrieval-miss → retriever (embedding model, hybrid search, query rewriting); retrieval-misranked → reranker; chunk-boundary → chunker (size, overlap, hierarchical); generation-grounding-fail → generator prompt (refusal rules, citation requirement); stale-doc → knowledge-base refresh cadence; prompt-instruction-leak → system prompt audit; downstream-tool-fail → tool-use prompt + schema. Recommendations may override the default with justification.</statement>
-      <rationale source="targeted-remediation research; observed RAG fix patterns">The fix-path mapping turns a category from a label into an action. Weekly review surfaces the top category; the fix path tells the team which subsystem to invest in. Without this mapping, the taxonomy becomes a museum.</rationale>
+    <rule id="r4-disagreement-protocol" testable="true" depth="essential">
+      <statement>If two reviewers disagree, the case escalates to a third reviewer; final label is recorded with the reviewer ids.</statement>
+      <rationale source="v1-source">Disagreement is the signal that the taxonomy needs sharpening.</rationale>
     </rule>
-
-    <rule id="r5-weekly-aggregation-required" testable="true" depth="essential">
-      <statement>On Fridays the team runs the weekly aggregation: category frequency, top-3 categories by count, recommended fix path for each. The report is posted to the team channel. Fixes commit in the following week aligned with the top category; weekly progress measured by category-frequency change.</statement>
-      <rationale source="quality-loop research; failure-investigation cadence patterns">Failure data without a weekly review feeds nothing. The Friday rhythm makes the data actionable. Categories that consistently dominate week-over-week signal where the system needs structural change, not incremental patches.</rationale>
+    <rule id="r5-quarterly-revisit" testable="true" depth="essential">
+      <statement>Revisit the taxonomy each quarter; add labels only with team consensus.</statement>
+      <rationale source="v1-source">Taxonomy without revisit decays into legacy.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Category quick-reference">
-    <list>
-      <item>retrieval-miss — the right passage was NEVER in the top-k retrieved set</item>
-      <item>retrieval-misranked — right passage was retrieved but below the top-k cutoff or with low rank</item>
-      <item>chunk-boundary — chunking split the answer across boundaries, or the right chunk lacks crucial context</item>
-      <item>generation-grounding-fail — context contained the answer, model hallucinated or contradicted it</item>
-      <item>stale-doc — source document is outdated, system retrieved it correctly, answer is stale</item>
-      <item>prompt-instruction-leak — system prompt forced wrong framing (over-refusal, persona drift, format violation)</item>
-      <item>downstream-tool-fail — answer was correct but the tool-use / function-calling step failed</item>
-    </list>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip when there is no team-shared review process.</statement>
+      <rationale source="phase-d">Stub rule referenced from 06-decision-tree.xml when none of the qualifying branches fire.</rationale>
+    </rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

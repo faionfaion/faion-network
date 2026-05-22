@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Vision Basics — Provider + Input Mode Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-sensitivity">Is the image sensitive (PII / internal doc / customer screenshot)?</root-question>
+    <branch when="sensitive == true">
+      <question id="q-size-claude">After resize to 1024px, is post-base64 size &lt;= 5 MB?</question>
+      <branch when="post_b64_size &lt;= 5_000_000">
+        <conclusion ref="r2-base64-for-sensitive">Provider = Anthropic Claude Sonnet (best at complex layouts + 200K context). Send as base64.</conclusion>
+      </branch>
+      <branch when="post_b64_size &gt; 5_000_000">
+        <conclusion ref="r1-resize-1024">Reduce further: resize to 768px long edge, quality=75. If still &gt; 5 MB, fall back to OpenAI GPT-4o (20 MB cap) with base64.</conclusion>
+      </branch>
+    </branch>
+    <branch when="sensitive == false">
+      <question id="q-volume">Is this part of a high-volume batch (&gt; 100 images / minute)?</question>
+      <branch when="high_volume == true">
+        <conclusion ref="r6-cache-by-image-hash">Provider = Gemini Flash (cheapest per image, 1 M context, native batch). Apply cache aggressively.</conclusion>
+      </branch>
+      <branch when="high_volume == false">
+        <question id="q-json-strict">Does the downstream consumer require strict json_object enforcement?</question>
+        <branch when="json_strict == true">
+          <conclusion ref="r4-json-object-enforce">Provider = OpenAI GPT-4o with `response_format={"type": "json_object"}`. URL input acceptable for public images.</conclusion>
+        </branch>
+        <branch when="json_strict == false">
+          <conclusion ref="r5-retry-on-parse-error">Provider = Anthropic Claude Sonnet with schema-in-prompt + prefill `{`. URL input acceptable.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="sensitive-invoice">
+      <p>Input: invoice scan with PII, ~2 MB after resize. sensitive=true → post_b64_size ≤ 5 MB → conclusion r2-base64-for-sensitive: Claude Sonnet, base64 input. Cache by image hash + task + provider + model.</p>
+    </example>
+  </decision-tree>
+</text>

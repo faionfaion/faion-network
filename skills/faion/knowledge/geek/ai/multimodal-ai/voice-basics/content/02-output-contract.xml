@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="voice-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Voice Basics — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON shape returned by a single voice turn: transcribed_text, response_text, audio_path, per-component latencies, updated history.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://voice-basics/output.schema.json",
+  "type": "object",
+  "required": ["status", "transcribed_text", "response_text", "audio_path",
+               "latencies_ms", "history_len", "language", "voice"],
+  "properties": {
+    "status":            {"type": "string", "enum": ["ok", "error", "interrupt"]},
+    "transcribed_text":  {"type": "string"},
+    "response_text":     {"type": "string"},
+    "audio_path":        {"type": "string"},
+    "latencies_ms":      {"type": "object",
+                          "required": ["vad", "stt", "llm", "tts", "total"],
+                          "properties": {
+                            "vad":   {"type": "integer", "minimum": 0},
+                            "stt":   {"type": "integer", "minimum": 0},
+                            "llm":   {"type": "integer", "minimum": 0},
+                            "tts":   {"type": "integer", "minimum": 0},
+                            "total": {"type": "integer", "minimum": 0}
+                          }},
+    "history_len":       {"type": "integer", "minimum": 0, "maximum": 21},
+    "language":          {"type": "string", "minLength": 2, "maxLength": 5},
+    "voice":             {"type": "string"},
+    "interrupted":       {"type": "boolean", "default": false},
+    "error":             {"type": "string"}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>latencies_ms.total &lt;= 1500ms; warn at 1000ms (rule r1).</item>
+      <item>history_len &lt;= 21 (system prompt + 10 user/assistant pairs; rule r4).</item>
+      <item>response_text contains NO Markdown symbols (`*`, `_`, `#`, backtick) (rule r3).</item>
+      <item>language is an explicit ISO 639-1 tag, never empty (rule r5).</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>response_text contains `**`, `##`, or backticks.</description>
+      <reason>Rule r3-short-replies + TTS readability; symbols are read literally.</reason>
+    </antipattern>
+    <antipattern>
+      <description>latencies_ms.total &gt; 1500ms with status="ok".</description>
+      <reason>User-perception threshold blown; should escalate or mark status="error".</reason>
+    </antipattern>
+    <antipattern>
+      <description>history_len &gt; 21.</description>
+      <reason>Rule r4-history-cap; context overflow imminent.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "transcribed_text": "What is the weather today?",
+  "response_text": "It is sunny and 22 degrees in your area.",
+  "audio_path": "out/voice/turn_001.mp3",
+  "latencies_ms": {"vad": 85, "stt": 270, "llm": 410, "tts": 180, "total": 945},
+  "history_len": 5,
+  "language": "en",
+  "voice": "nova",
+  "interrupted": false
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "transcribed_text": "list options",
+  "response_text": "**Options:**\n- A\n- B\n# Summary\nChoose one.",
+  "audio_path": "out/voice/turn_002.mp3",
+  "latencies_ms": {"vad": 100, "stt": 800, "llm": 1200, "tts": 400, "total": 2500},
+  "history_len": 30, "language": "", "voice": "nova"
+}
+]]></code>
+      <note>Invalid: Markdown in response_text; total &gt; 1500ms with status ok; history overflow; empty language.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>latencies_ms.total = vad+stt+llm+tts (±50ms tolerance).</item>
+      <item>response_text passes `re.search(r'[*_`#]', text) is None`.</item>
+      <item>history_len ≤ 21.</item>
+      <item>audio_path file exists and pydub reports duration &gt; 0.</item>
     </list>
   </section>
 </text>

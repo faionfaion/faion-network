@@ -1,3 +1,9 @@
+# purpose: reranker service skeleton dispatching across backends
+# consumes: query + candidates + reranker backend
+# produces: ranked list with stable interface
+# depends-on: content/01-core-rules.xml r1-r5
+# token-budget-impact: zero at runtime; service code
+
 """
 RerankerService — production reranking with cross-encoder/Cohere dispatch, fallback, and FastAPI endpoint.
 

@@ -1,4 +1,10 @@
-"""BatchImageGenerator with ThreadPoolExecutor and rate-limit-safe variant."""
+"""
+purpose: Rate-limit-aware batch image generator with ThreadPoolExecutor and exponential backoff.
+consumes: list of prompts + provider client + RL budget (per-min)
+produces: list of (storage_uri, revised_prompt) per item
+depends-on: content/01-core-rules.xml r4
+token-budget-impact: bounded by rate_limit_per_min
+"""
 import time
 from concurrent.futures import ThreadPoolExecutor
 from openai import OpenAI, RateLimitError

@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="img-gen-tools Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for img-gen-tools. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Image Generation Tools Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules for a production multi-provider image-generation service.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="impl-discipline">All providers sit behind a single ImageService abstraction with a `generate(prompt, use_case, tenant_id)` signature. Direct SDK use in business code is rejected.</statement>
+      <rationale>Provider migrations become config-only when the abstraction holds.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="cache-discipline">Cache is keyed by sha1(prompt + provider + params) and persists to S3. Retries with the same inputs hit cache and do not re-bill.</statement>
+      <rationale>Without params in the key, parameter changes silently return stale images; without prompt in the key, retries double-bill.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="impl-discipline">A prompt-template library maps use_case → structured prompt. New use cases extend the library, not the business code.</statement>
+      <rationale>Inline prompt strings drift; library + version pins make prompt history reviewable.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="ops-discipline">Fallback chain is idempotent: primary fail → secondary with same inputs; cache must be populated by whichever provider succeeds.</statement>
+      <rationale>Non-idempotent fallback bills twice for what the user perceives as one image.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="finops-discipline">Per-tenant cost attribution emitted per call: {tenant_id, provider, cost_usd, use_case}.</statement>
+      <rationale>Without attribution, abuse / runaway costs cannot be traced back to source.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="audit-discipline">Audit log records input_hash + revised_prompt (if provider supplies one) + storage_uri.</statement>
+      <rationale>Audit links each image to the input that produced it for postmortem.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire ImageService per procedure.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Single use case + single provider → use img-gen-basics.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

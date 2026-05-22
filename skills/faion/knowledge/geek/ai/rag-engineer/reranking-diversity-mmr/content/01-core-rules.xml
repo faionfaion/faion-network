@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="reranking-diversity-mmr Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for reranking-diversity-mmr. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="reranking-diversity-mmr Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of reranking-diversity-mmr enforces.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>MMR requires document embeddings at rerank time, not just relevance scores. If the pipeline discards embeddings after indexing (to save memory), embeddings must be recomputed for the candidate pool before MMR can run. This doubles embedding cost for the candidate pool.</statement>
-      <rationale source="v1-source">MMR uses cosine similarity between candidate embeddings and already-selected document embeddings to compute the diversity term. Without embeddings, only the relevance term is available, which reduces MMR to standard reranking.</rationale>
+    <rule id="r1-lambda-explicit" testable="true" depth="essential">
+      <statement>λ (lambda) is an explicit config value, default 0.5; tune per domain.</statement>
+      <rationale source="v1-source">Implicit defaults differ across libraries and confuse cross-team comparison.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use MMR when top-k results from standard reranking are near-duplicates. A simple heuristic: if cosine similarity between the top-2 results exceeds 0.92, the corpus has a redundancy problem that MMR should address.</statement>
-      <rationale source="v1-source">Near-duplicate passages (similarity &gt; 0.92) waste context window tokens without adding new information. MMR resolves this by penalizing documents too similar to already-selected ones.</rationale>
+    <rule id="r2-need-candidate-embeddings" testable="true" depth="essential">
+      <statement>Candidates must carry their embedding; do not re-embed inside MMR.</statement>
+      <rationale source="v1-source">Re-embedding inside the loop blows latency.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>When evaluating MMR quality, measure both relevance (e.g., NDCG of the MMR result set vs. ground truth) and diversity (average pairwise similarity between selected documents). A good MMR configuration reduces average pairwise similarity by 20-40% with less than 5% NDCG drop.</statement>
-      <rationale source="v1-source">Optimizing MMR lambda without measuring the relevance/diversity tradeoff is tuning blind. The 20-40% diversity gain target ensures meaningful redundancy reduction while the 5% NDCG tolerance prevents sacrificing answer quality.</rationale>
+    <rule id="r3-candidate-pool-2k" testable="true" depth="essential">
+      <statement>Pool size N &gt;= 2K; warn when N &lt; 2K (MMR has too little to choose from).</statement>
+      <rationale source="v1-source">With N≈K, MMR collapses to identity.</rationale>
+    </rule>
+    <rule id="r4-pairwise-cosine" testable="true" depth="essential">
+      <statement>Use cosine similarity for pairwise comparisons; do not mix scoring schemes.</statement>
+      <rationale source="v1-source">Mixing dot-product and cosine in the same loop produces nonsense.</rationale>
+    </rule>
+    <rule id="r5-log-lambda-and-pool" testable="true" depth="essential">
+      <statement>Every MMR call logs λ, N (pool), and K (output) for offline analysis.</statement>
+      <rationale source="v1-source">Without logging, post-hoc tuning is impossible.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip MMR for factoid queries or when candidate pool &lt; 2K.</statement>
+      <rationale source="phase-d">Stub rule referenced from 06-decision-tree.xml when none of the qualifying branches fire.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

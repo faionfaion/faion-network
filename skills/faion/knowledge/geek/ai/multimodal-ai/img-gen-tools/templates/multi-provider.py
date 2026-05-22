@@ -1,4 +1,10 @@
-"""MultiProviderImageService with ordered provider fallback."""
+"""
+purpose: Provider adapters + idempotent fallback chain (DALL-E → Flux → SDXL → Stability).
+consumes: prompt + ordered provider list + per-tenant budget
+produces: result from first succeeding provider + fallback_count
+depends-on: content/01-core-rules.xml r4
+token-budget-impact: at most one billable call per request
+"""
 import logging
 from openai import OpenAI
 

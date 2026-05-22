@@ -1,22 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="vision-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Vision Basics — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON shape returned by extract(). A Pydantic-validatable ImageResult: description, text_content (nullable), confidence (high/low), provider/model/cache_key metadata.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://vision-basics/output.schema.json",
+  "type": "object",
+  "required": ["status", "description", "text_content", "confidence",
+               "provider", "model", "cache_key", "cached"],
+  "properties": {
+    "status":       {"type": "string", "enum": ["ok", "error"]},
+    "description":  {"type": "string", "minLength": 1},
+    "text_content": {"type": ["string", "null"]},
+    "confidence":   {"type": "string", "enum": ["high", "low"]},
+    "provider":     {"type": "string", "enum": ["openai", "anthropic", "google"]},
+    "model":        {"type": "string", "minLength": 1},
+    "cache_key":    {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "cached":       {"type": "boolean"},
+    "image_count":  {"type": "integer", "minimum": 1},
+    "retries":      {"type": "integer", "minimum": 0, "maximum": 2},
+    "error":        {"type": "string"}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+
+  <section title="Per-provider size caps">
+    <list>
+      <item>Anthropic Claude: 5 MB per image (post-base64 decoded); enforce pre-encode.</item>
+      <item>OpenAI GPT-4o: 20 MB per image; 4 images per request soft limit.</item>
+      <item>Google Gemini: 20 MB per image; up to 16 images per request.</item>
+    </list>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>description — one-sentence summary; null/empty rejected.</item>
+      <item>text_content — extracted text or null; do NOT pad with "no text" string.</item>
+      <item>confidence — "high" requires ≥ 90% of fields fully visible; "low" otherwise.</item>
+      <item>cache_key — sha256 of image_bytes + task_prompt + provider + model.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>confidence "high" while text_content contains placeholder ("see image", "as shown").</description>
+      <reason>Placeholder text means the VLM did not actually extract; confidence cannot be high.</reason>
+    </antipattern>
+    <antipattern>
+      <description>description matching boilerplate ("The image shows ...").</description>
+      <reason>Prompt-leak / refusal pattern; not a useful extraction. Re-prompt with stricter instruction.</reason>
+    </antipattern>
+    <antipattern>
+      <description>cache_key not a 64-char sha256 hex.</description>
+      <reason>Cache lookups will silently miss; integrity check fails downstream.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "description": "An invoice from Acme Co dated 2026-04-15 with three line items totaling $1,247.50.",
+  "text_content": "Acme Co\nInvoice #4421\nDate: 2026-04-15\nTotal: $1,247.50",
+  "confidence": "high",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-5",
+  "cache_key": "9f4a7c3e8d2b1a5f6e9c0d3b2a1f4e8d7c9b6a5d4e3c2b1a0f9e8d7c6b5a4f3e",
+  "cached": false,
+  "image_count": 1,
+  "retries": 0
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "description": "The image shows something.",
+  "text_content": "see image",
+  "confidence": "high",
+  "provider": "openai",
+  "model": "gpt-4o",
+  "cache_key": "abc",
+  "cached": false
+}
+]]></code>
+      <note>Invalid: boilerplate description, placeholder text_content with confidence=high, cache_key not sha256.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>description &gt;= 10 characters and does not match boilerplate template.</item>
+      <item>text_content is null OR a real extracted string (no placeholders).</item>
+      <item>retries &lt;= 2; status="error" if retry budget exhausted.</item>
+      <item>cache_key passes sha256 regex.</item>
     </list>
   </section>
 </text>

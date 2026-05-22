@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="DB Comparison — Decision Tree" version="1.0.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-year-one">What is the year-1 vector count ceiling?</root-question>
+    <branch when="year_one_vectors &lt; 100000">
+      <conclusion ref="r1-anchor-year-one">Recommend Chroma. Single-process prototype scale, zero infra.</conclusion>
+    </branch>
+    <branch when="year_one_vectors &gt;= 100000 AND year_one_vectors &lt; 5000000">
+      <question id="q-existing-pg">Existing Postgres footprint with idle ops capacity?</question>
+      <branch when="existing_postgres == true AND ops_capacity == 'idle'">
+        <conclusion ref="r2-weighted-scoring">Recommend pgvector. Re-uses existing operational tooling.</conclusion>
+      </branch>
+      <branch when="existing_postgres == false OR ops_capacity == 'tight'">
+        <question id="q-hybrid">Hybrid search required?</question>
+        <branch when="hybrid_search_required == true AND knowledge_graph_required == true">
+          <conclusion ref="r2-weighted-scoring">Recommend Weaviate. Native hybrid + graph relationships.</conclusion>
+        </branch>
+        <branch when="hybrid_search_required == true AND knowledge_graph_required == false">
+          <conclusion ref="r2-weighted-scoring">Recommend Qdrant (with sparse vectors enabled). Strong filter perf.</conclusion>
+        </branch>
+        <branch when="hybrid_search_required == false">
+          <conclusion ref="r2-weighted-scoring">Recommend Qdrant. Best filter perf and self-hosting story.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <branch when="year_one_vectors &gt;= 5000000">
+      <question id="q-managed">Managed-only constraint?</question>
+      <branch when="managed_only == true">
+        <conclusion ref="r2-weighted-scoring">Recommend Pinecone or Qdrant Cloud. Compare on per-vector cost.</conclusion>
+      </branch>
+      <branch when="managed_only == false">
+        <conclusion ref="r2-weighted-scoring">Recommend Qdrant or Milvus self-hosted. Add Milvus only if distributed sharding is needed.</conclusion>
+      </branch>
+    </branch>
+    <example trace="solo-rag-quarterly-growth">
+      <p>250k year-1, no Postgres, hybrid required, no graph → Qdrant with sparse vectors → fallbacks: Weaviate (if graph), pgvector (if Postgres ops capacity opens).</p>
+    </example>
+  </decision-tree>
+</text>

@@ -1,75 +1,106 @@
 ---
 slug: vision-applications
 tier: geek
-group: ai
+group: ai-core
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production patterns for vision LLM tasks: OCR, document extraction, image classification, and content moderation using GPT-4o, Claude, or Gemini Vision.
-content_id: "c81d8dc8021b63cb"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces typed extractions for OCR / document / classification / moderation tasks via GPT-4o / Claude / Gemini Vision, with async batch + human-review routing.
+content_id: "8c4e2f7a1b305d96"
+complexity: deep
+produces: code
+est_tokens: 4400
 tags: [vision, ocr, document-extraction, image-classification, content-moderation]
 ---
 # Vision Applications
 
 ## Summary
 
-**One-sentence:** Production patterns for vision LLM tasks: OCR, document extraction, image classification, and content moderation using GPT-4o, Claude, or Gemini Vision.
+**One-sentence:** Production VLM patterns for OCR, document extraction, image classification, and content moderation — each typed, retry-safe, and human-review-gated.
 
-**One-paragraph:** Production patterns for vision LLM tasks: OCR, document extraction, image classification, and content moderation using GPT-4o, Claude, or Gemini Vision. Each task sends an image plus a structured prompt and receives JSON-formatted output.
+**One-paragraph:** Wraps four common VLM tasks behind VisionService: DocumentAnalyzer (typed field extraction from receipts / forms / passports), ImageClassifier (predefined categories with confidence), ContentModerator (severity flags with low-confidence → human-review route), and VisionService (size validation, async batch via asyncio.gather with concurrency cap, content-hash cache). Each call enforces json_object output, normalises severity / category strings to lowercase, and rejects requests over 20 MB before any provider hit.
+
+**Ефективно для:** інженера AI-конвеєра, що обробляє користувацький контент (інвойси, фото, скриншоти) у потоці — закриває петлю між зображенням і структурованим рішенням з human-review-фолбеком.
 
 ## Applies If (ALL must hold)
 
-- Document digitization: invoices, receipts, forms, passports, business cards
-- Content moderation: classify user-uploaded images before storage or display
-- E-commerce: auto-tag product images, generate descriptions, classify categories
-- Accessibility: generate alt-text for images at upload time
-- Visual QA: answer questions about screenshots, diagrams, charts
+- Document digitisation (invoices, receipts, forms, passports, business cards) at &gt; 10 docs / hour.
+- Content moderation pipeline classifies user uploads before storage or display.
+- E-commerce auto-tag / alt-text generation at upload time.
+- Output is consumed by downstream auto-action (write to DB, route, hide) — confidence threshold matters.
+- Per-image cost is acceptable; volume &lt; 10 000 / day.
 
 ## Skip If (ANY kills it)
 
-- High-volume bulk processing (>10k images/day) — per-image token cost accumulates; CLIP/YOLO/Tesseract are 100-1000x cheaper for classification/detection
-- Pixel-level precision tasks (medical imaging, satellite analysis) — vision LLMs reason semantically, not at pixel level
-- Real-time video analysis — frame-by-frame API calls add 1-3s latency per frame
-- Standardized forms with fixed layout — dedicated OCR tools are faster and cheaper
+- Bulk processing &gt; 10 000 images / day — CLIP / YOLO / Tesseract are 100-1000x cheaper.
+- Pixel-level precision (medical, satellite) — VLMs reason semantically, not at pixel level.
+- Real-time video — frame-by-frame VLM adds 1-3 s latency per frame.
+- Standardised forms with fixed layout — AWS Textract / dedicated OCR is faster and cheaper.
+- Sole-source content moderation — false-negative rate is non-zero; pair with a second-pass model.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Image source | URL or local path | upload / scrape / CDN |
+| Task type | enum: `document` / `classify` / `moderate` | router |
+| Category list (classify) | list[str] | catalog / policy registry |
+| Policy categories (moderate) | list[str] | compliance team |
+| Pydantic schema (document) | class extending BaseModel | downstream consumer contract |
+| Provider credentials | env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | secrets manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/multimodal-ai/vision-basics` | core resize / encode / cache / Pydantic patterns reused here. |
+| `geek/ai/llm-integration/structured-output-basics` | response_format + retry-on-parse contract. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: size cap, detail-auto default, json_object + schema, normalize severity, async-gather cap, human-review gate | ~1000 |
+| `content/02-output-contract.xml` | essential | Per-task schemas: document, classify, moderate + needs_human_review flag | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: HIGH severity drift, URL behind auth, sequential batch, prompt-only schema, no-review-on-low | ~900 |
+| `content/04-procedure.xml` | deep | 7-step procedure: route task → validate size → cache probe → call VLM → parse → normalize → route to review | ~900 |
+| `content/05-examples.xml` | medium | Worked invoice extraction + content moderation with severity normalization + review routing | ~600 |
+| `content/06-decision-tree.xml` | essential | Task router: document vs classify vs moderate + provider routing + review threshold | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `route-task` | sonnet | Decide document / classify / moderate from incoming metadata. |
+| `extract-document` | sonnet | Typed field extraction needs per-field judgment. |
+| `classify-image` | haiku | Categorical decision against fixed list. |
+| `moderate-image` | sonnet | Multi-category severity decision with confidence. |
+| `escalate-low-conf` | sonnet | Compose human-review ticket with evidence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/document-analyzer.py` | DocumentAnalyzer wrapping GPT-4o Vision with json_object. |
+| `templates/image-classifier.py` | ImageClassifier with batch support and confidence. |
+| `templates/content-moderator.py` | ContentModerator returning structured severity flags + needs_human_review. |
+| `templates/prompt-extract.txt` | Structured field-extraction prompt with null-on-ambiguity. |
+| `templates/prompt-moderate.txt` | Content moderation prompt with severity threshold. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vision-applications.py` | Validate task-specific JSON against 02-output-contract task schemas. | Post-VLM call, before downstream auto-action. |
 
 ## Related
 
-- parent skill: `geek/ai/multimodal-ai/`
+- [[vision-basics]] — single-image typed extraction layer this builds on.
+- [[content-moderation]] — moderation patterns extended with policy enforcement.
+- [[structured-output-basics]] — JSON-schema contract.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` routes by task type (document → DocumentAnalyzer; classify → ImageClassifier; moderate → ContentModerator), provider by stakes (high-stakes → Claude or GPT-4o; high-volume → Gemini Flash), and decides when to escalate to human review based on confidence threshold (default 0.7) and severity. Use it at the route() entry point in VisionService.

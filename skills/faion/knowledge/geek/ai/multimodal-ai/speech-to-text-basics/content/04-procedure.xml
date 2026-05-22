@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Speech-to-Text Basics Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Six-step procedure for a Whisper transcription pipeline.</summary>
+
+  <step n="1" name="pick-provider">
+    <input>volume + latency + privacy requirement</input>
+    <action>Volume ≤10k hr/month and no privacy ban → OpenAI API. Else → local faster-whisper on GPU.</action>
+    <output>provider id locked</output>
+  </step>
+  <step n="2" name="format-guard">
+    <input>source audio path</input>
+    <action>Reject if extension not in {mp3, mp4, mpeg, mpga, m4a, wav, webm}.</action>
+    <output>validated path</output>
+    <decision-gate>If FLAC/OGG/AAC → convert upstream or reject.</decision-gate>
+  </step>
+  <step n="3" name="split-if-large">
+    <input>audio file size</input>
+    <action>If &gt;25 MB → pydub split on silence into chunks ≤22 MB. Preserve segment ordering.</action>
+    <output>list of chunks</output>
+  </step>
+  <step n="4" name="transcribe">
+    <input>each chunk + pinned language</input>
+    <action>Call Whisper API (or local faster-whisper) with language= + response_format="verbose_json" + timestamp_granularities=["segment"].</action>
+    <output>per-chunk verbose_json</output>
+  </step>
+  <step n="5" name="merge">
+    <input>per-chunk results + chunk offsets</input>
+    <action>Shift each segment's start/end by the chunk offset; concatenate; emit a single verbose_json.</action>
+    <output>full transcript JSON</output>
+  </step>
+  <step n="6" name="post-process">
+    <input>transcript JSON</input>
+    <action>Store transcript next to audio; emit (audio_uri, transcript_uri, language, provider, cost_usd) to audit.</action>
+    <output>persisted transcript + audit row</output>
+  </step>
+</text>

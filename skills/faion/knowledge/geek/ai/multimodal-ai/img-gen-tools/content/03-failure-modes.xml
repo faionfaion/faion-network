@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="img-gen-tools Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for img-gen-tools as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Image Generation Tools Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five recurring failures in multi-provider image-generation services.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>File-based URL caching for DALL-E generated images</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DALL-E pre-signed URLs expire in ~1 hour. Agents resuming after 1+ hours get 404 on all cached entries. Cache image bytes to S3 instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Passing **kwargs directly to multiple providers with incompatible parameter sets</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DALL-E 3 accepts quality and style parameters; SDXL does not. Passing unified kwargs causes TypeError on incompatible providers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Running generate_variant_set without rate-limit delays between DALL-E calls</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DALL-E tier-1 rate limit is 5 images/minute (12s/image). Generating 12 variants without delay triggers 429 errors on all but the first few requests.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using output[0] to access Replicate Flux-schnell results</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Flux output format varies by model version; some return a URL string, not a list. Use next(iter(output)) instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Relying on file-based cache for image bytes — cached entries go stale when provider URLs expire</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Provider URLs expire (~1 hour for DALL-E). Agents resuming after 1+ hours will get 404 on cached entries. Always revalidate before returning cached result or use byte-based cache with S3/Redis backend.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <symptom>Same prompt re-runs return different params silently; cache returns stale results.</symptom>
+      <root-cause>Cache key includes prompt + provider only — not params (size, quality, seed).</root-cause>
+      <fix>Hash sha1(prompt + provider + canonical_json(params)). Recompute on any param drift (rule r2).</fix>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Primary provider rate-limits; users see 5xx; no fallback fires.</symptom>
+      <root-cause>No fallback chain wired; the abstraction passes errors through.</root-cause>
+      <fix>Implement fallback_chain with same inputs; cache populated by whichever provider succeeds (rule r4).</fix>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Business code calls `OpenAI().images.generate(...)` directly; provider migration touches every caller.</symptom>
+      <root-cause>No ImageService abstraction; provider SDK leaks into business code.</root-cause>
+      <fix>Force all callers through ImageService.generate(prompt, use_case, tenant_id) (rule r1).</fix>
+    </antipattern>
+    <antipattern id="fm-04" severity="high">
+      <symptom>One tenant's runaway loop burns the org budget; nobody knows which tenant.</symptom>
+      <root-cause>No per-tenant attribution emitted per call.</root-cause>
+      <fix>Emit {tenant_id, provider, cost_usd, use_case} per call to attribution sink (rule r5).</fix>
+    </antipattern>
+    <antipattern id="fm-05" severity="medium">
+      <symptom>Postmortem cannot link generated image to the input that produced it.</symptom>
+      <root-cause>Audit log records storage_uri only — no input_hash or revised_prompt.</root-cause>
+      <fix>Persist {ts, tenant_id, provider_used, input_hash, revised_prompt, storage_uri, cost_usd, fallback_count} (rule r6).</fix>
+    </antipattern>
   </section>
 </text>

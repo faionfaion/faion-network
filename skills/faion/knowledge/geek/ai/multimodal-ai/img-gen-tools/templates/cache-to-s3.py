@@ -1,4 +1,10 @@
-"""Download generated image and upload to S3 to resolve provider URL expiry."""
+"""
+purpose: S3 cache layer keyed by sha1(prompt + provider + canonical params).
+consumes: prompt + provider id + params dict + provider image URL
+produces: S3 storage_uri for the cached image
+depends-on: content/01-core-rules.xml r2
+token-budget-impact: zero per call after sunk S3 storage cost
+"""
 import boto3
 import hashlib
 import requests

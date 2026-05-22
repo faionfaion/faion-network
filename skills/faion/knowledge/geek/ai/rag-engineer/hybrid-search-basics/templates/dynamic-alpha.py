@@ -1,3 +1,9 @@
+# purpose: dynamic alpha selector for linear-fusion hybrid search
+# consumes: query string + query features
+# produces: alpha ∈ [0,1] per query
+# depends-on: content/01-core-rules.xml r2-tune-alpha
+# token-budget-impact: zero at runtime; reference scaffold only
+
 """Dynamic alpha selection for hybrid search based on query characteristics.
 
 Usage:

@@ -1,27 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="reranking-models Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for reranking-models as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Observable antipatterns when applying reranking-models.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Comparing relevance scores across different reranking providers (e.g., Cohere 0.9 vs local cross-encoder 0.9).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reranker output scores are not calibrated probabilities. The same numeric value from two providers carries different semantics. Use rankings, not absolute scores, for cross-provider comparisons.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Relying on reranking to surface a document not retrieved in the first stage.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Rerankers only re-order the candidate set returned by ANN. If the relevant document is not in the top-50 candidates, reranking cannot surface it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Cohere API returns results indexed into the original documents list — assuming results are in input order.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents must preserve the original list order and use result.index to map back, not assume results are in input order.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>LLM-based reranking with JSON output returning indices out of range if the LLM hallucinates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents must bounds-check all rankings values before indexing into the candidate list.</repair>
-    </failure-mode>
+    <antipattern id="fm-cold-start-spike">
+      <description>Cross-encoder served without warmup; first query takes 8s.</description>
+      <reason>p95 latency violates SLA. Detector: histogram shows bimodal tail. Fix: r3-warm-the-encoder.</reason>
+    </antipattern>
+    <antipattern id="fm-version-drift">
+      <description>Config pins 'cohere-rerank-latest'; scores change after vendor releases v4.</description>
+      <reason>Cross-deploy comparison invalid. Detector: model identifier non-immutable. Fix: r4-document-version-pin.</reason>
+    </antipattern>
+    <antipattern id="fm-no-fallback">
+      <description>Reranker call fails and the whole request returns 5xx.</description>
+      <reason>Reliability drops. Detector: 5xx correlated with reranker timeouts. Fix: r5-fallback-on-rerank-fail.</reason>
+    </antipattern>
   </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

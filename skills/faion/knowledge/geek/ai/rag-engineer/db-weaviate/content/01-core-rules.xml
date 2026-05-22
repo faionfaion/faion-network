@@ -1,47 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="db-weaviate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for db-weaviate. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Weaviate — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 rules: v4 client pinned, schema-first design, native hybrid not client fusion, replication factor at schema creation, multi-vector for multi-modal.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Installation MUST use Docker for local development and the official Weaviate Cloud service for production deployments. The Python client MUST be pinned to v4 or later for compatibility with the latest API.</statement>
-      <rationale source="v1-source">Docker provides reproducible, version-controlled local environments. Weaviate Cloud offers managed infrastructure with SLA uptime. The v4 Python client is incompatible with v3; mixing versions breaks code at runtime.</rationale>
+    <rule id="r1-v4-client" testable="true" depth="essential">
+      <statement>Python client MUST be pinned to v4 or later. Mixing v3 + v4 in the same codebase is forbidden.</statement>
+      <rationale source="Weaviate v4 release notes">v4 broke compatibility with v3; mixing produces silent runtime errors in connection handling.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every collection MUST define a schema with explicit properties, MUST set vectorizer_config to none() to manage embeddings externally, and MUST skip_vectorization on metadata fields (category, date, IDs). HNSW parameters MUST be set at collection creation time (ef=100, max_connections=16 as safe production defaults).</statement>
-      <rationale source="v1-source">Explicit schema prevents schema drift and silent data loss. External vectorization avoids vendor coupling and unpredictable latency from auto-vectorizer modules. Skipping non-semantic fields saves compute and keeps the vector space meaningful. HNSW parameters affect recall and query latency; tuning after index construction is expensive.</rationale>
+
+    <rule id="r2-schema-first" testable="true" depth="essential">
+      <statement>Classes, properties, and cross-references MUST be defined in schema before upsert. Schema-on-write is forbidden; runtime field addition risks tokenizer drift.</statement>
+      <rationale source="Weaviate indexing pipeline">Implicit schema changes silently re-index parts of the corpus and corrupt sparse-index stats used for BM25.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All data insertion MUST use batch.dynamic() for throughput optimization. Single inserts MUST only be used in development or testing. Cross-reference inserts MUST insert target objects before source objects (insertion order matters for referential integrity).</statement>
-      <rationale source="v1-source">Dynamic batching maximizes throughput by tuning batch size to server capacity. Single inserts serialize requests and are 10x slower at scale. Cross-reference ordering prevents reference errors when target objects do not yet exist.</rationale>
+
+    <rule id="r3-native-hybrid" testable="true" depth="essential">
+      <statement>Hybrid scoring (vector + BM25) MUST use the native `Hybrid(query, alpha)` query, NOT client-side fusion of separate vector + keyword calls.</statement>
+      <rationale source="Hybrid-search benchmarks">Native fusion uses corpus-aware BM25 stats; client-side fusion misweights rare terms and inflates latency by 2x.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Vector search MUST use near_vector with return_metadata=MetadataQuery(certainty=True) for confidence scoring. Hybrid search MUST set alpha explicitly (alpha=0.5 default for balanced semantic/keyword, tune based on query classification). Filtered search MUST apply filters before ANN search using Filter.by_property().</statement>
-      <rationale source="v1-source">Certainty metadata enables confidence-based reranking and filtering at the application level. Alpha tuning affects result relevance; explicit tuning prevents silent surprises when query type changes. Pre-filters reduce the search space before ANN and improve latency; post-filters (applied after ANN) are slower and less accurate.</rationale>
+
+    <rule id="r4-replication-at-schema" testable="true" depth="essential">
+      <statement>Replication factor + sharding config MUST be set at schema/class creation. Changing them later requires class recreation + re-import.</statement>
+      <rationale source="Weaviate cluster docs">Topology is bound at class creation; runtime change requires migration.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>GraphQL MUST only be used for advanced patterns: cross-reference traversal, aggregations, or metrics that the Python client does not expose. Common operations (near_vector, hybrid, filters) MUST use the Python client methods, not raw GraphQL, for type safety and error handling.</statement>
-      <rationale source="v1-source">The Python client provides type-safe method chaining and automatic error translation. Raw GraphQL strings are prone to syntax errors and harder to debug. The client covers 95% of use cases; GraphQL is for the 5% edge case (e.g., multi-hop cross-references or monthly aggregate counts).</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Knowledge graph implementations MUST use subagent separation: indexer subagent creates cross-references at write time (Document → Author, Document → Topic), retriever subagent executes hybrid queries, graph-enricher subagent traverses cross-references to enrich results, and generator subagent synthesizes answers. Cross-references MUST be established at schema time, not queried as post-processing.</statement>
-      <rationale source="v1-source">Subagent separation isolates concerns and enables concurrent indexing/retrieval without lock contention. Establishing cross-references at schema time (not querying for them) keeps the graph explicit and traceable. This pattern scales to 10M+ vectors with predictable latency.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>GraphQL schema changes MUST NOT be attempted on live collections; collection MUST be dropped and re-created. The Python client MUST be pinned to v4 (not v3 mixed with v4). AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED MUST NOT be true in production; API key or OIDC auth MUST be configured. BM25 index rebuild on large collections blocks reads; rebuild operations MUST be scheduled during maintenance windows.</statement>
-      <rationale source="v1-source">Weaviate v4 has no in-place schema migration; dropping and re-indexing is the only path forward. v3/v4 client incompatibility is a runtime trap: code silently fails or crashes. Anonymous access is a security liability in production. BM25 rebuilds are synchronous and block the entire collection.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Connections MUST use context managers (with weaviate.connect_to_local() as client:) or explicit close() calls; unclosed gRPC connections leak file descriptors. Vectorizer config MUST be set to none() and embeddings managed externally; vendor modules add latency and coupling. Metadata properties MUST have skip_vectorization=True; non-semantic fields waste vector space. HNSW parameters MUST be set at collection creation time: ef=100, max_connections=16 is safe for production; tune based on latency and recall SLAs. Filter predicates MUST be applied before vector search, not after; post-filters are slower and less accurate.</statement>
-      <rationale source="v1-source">gRPC resource leaks cause file descriptor exhaustion and connection timeouts over hours. External vectorization decouples embedding strategy from the index schema and enables model experimentation. Non-vectorized metadata fields reduce noise in the embedding space and improve recall. HNSW tuning is a one-time cost at collection creation; post-hoc changes require re-indexing. Pre-filtering shrinks the ANN search space and improves latency by 2-5x.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Sonnet model MUST be used for analysis, assessment, evaluation, planning, quality assurance, and code review tasks. Haiku model MUST be used for execution, pattern application, performance tuning, and documentation. Opus model MUST be reserved for novel scenarios, strategic decisions, and multi-step reasoning tasks that defy established patterns.</statement>
-      <rationale source="v1-source">Sonnet provides a good balance of reasoning depth and cost for evaluation and planning. Haiku is cost-efficient for routine execution and documentation. Opus is justified only when the task cannot be decomposed into established patterns.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>All design and integration decisions SHOULD reference official Weaviate documentation first, then community examples. ChatGPT/Claude responses about Weaviate are often outdated (they confuse v3 and v4 APIs); always verify against the official docs.</statement>
-      <rationale source="v1-source">Weaviate's API has evolved significantly between v3 and v4; LLM training data does not reflect these breaking changes. Official docs are the source of truth.</rationale>
+
+    <rule id="r5-multi-vector-multimodal" testable="true" depth="essential">
+      <statement>Multi-modal data (text + image) MUST use named vectors per modality on one object, NOT separate classes per modality.</statement>
+      <rationale source="Multi-modal retrieval design">Separate classes break joint ranking and cross-reference queries.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

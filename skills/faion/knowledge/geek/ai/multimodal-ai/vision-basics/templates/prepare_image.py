@@ -1,8 +1,9 @@
-"""
-Image preprocessing: resize to 1024px long edge and base64-encode for VLM API calls.
-Reduces token cost by 50-70% vs. full-size images with minimal quality loss for text/diagram tasks.
-Anthropic limit: 5MB per image. OpenAI limit: 20MB per image.
-"""
+# purpose: Resize image to 1024px long edge + base64 encode (rule r1, r2).
+# consumes: file path or bytes; max_px parameter (default 1024).
+# produces: (base64_str, media_type) tuple ready for VLM payload.
+# depends-on: Pillow; provider-cap awareness (5 MB Anthropic, 20 MB OpenAI/Gemini).
+# token-budget-impact: zero LLM tokens; reduces downstream image-token cost 50-70%.
+"""Image preprocessing: resize 1024px + base64 + media-type detection."""
 from __future__ import annotations
 
 import base64

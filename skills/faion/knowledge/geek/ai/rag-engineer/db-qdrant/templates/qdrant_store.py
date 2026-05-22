@@ -1,3 +1,8 @@
+# purpose: minimal Qdrant wrapper with collection + payload indexes + batch upsert + filtered search
+# consumes: qdrant URL, collection name, distance metric, HNSW params, payload index fields
+# produces: search response dict per templates/qdrant-schema.json
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: small
 """
 QdrantStore — minimal Qdrant wrapper: create collection, batch upsert, filtered search.
 

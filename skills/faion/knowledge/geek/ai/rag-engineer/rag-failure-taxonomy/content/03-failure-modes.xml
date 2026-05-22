@@ -1,56 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="RAG Taxonomy Meta-Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Six failure modes of the taxonomy itself — patterns that defeat its consistent application. Each has a detector and a repair.</summary>
+<text id="03-failure-modes" title="rag-failure-taxonomy Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Observable antipatterns when applying rag-failure-taxonomy.</summary>
 
   <section title="Failure modes">
-
-    <failure-mode id="fm-01" severity="high">
-      <description>Multi-tag drift — reviewers tag the same failure under multiple categories, weekly aggregation double-counts, top-category report becomes unreliable.</description>
-      <detector>entries with comma-separated classifications OR pattern of entries co-located in multiple categories within the same week</detector>
-      <repair>Re-train reviewers on the upstream-cause rule (retrieval before generation, chunking before retrieval). Pre-commit hook on rag-failures.yaml rejects multi-value classification fields. Contributing factors go in the dedicated list field.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-02" severity="high">
-      <description>Category creep — team adds new categories ad-hoc ("retrieval-low-confidence", "generation-formatting-fail"), taxonomy expands to 15+ entries within 6 months, aggregation loses meaning.</description>
-      <detector>distinct classification values seen in the past 90 days &gt; 8 OR PRs adding new categories not gated by a structured proposal</detector>
-      <repair>Closed-list enforcement at the schema level. New categories require a documented gap analysis (existing categories truly cannot cover this failure), team-lead approval, and a one-line rationale added to 01-core-rules. Most "new" categories collapse back into the original seven on re-examination.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-03" severity="high">
-      <description>Evidence-incomplete dominates — most entries are tagged evidence-incomplete because reviewers do not have time to pull logs, weekly report becomes meaningless.</description>
-      <detector>&gt; 30% of entries in the past 4 weeks have classification = evidence-incomplete</detector>
-      <repair>Auto-attach evidence via tooling: scripts/auto-classify-prelim.py pulls retrieval and generation logs automatically when a failure_id is filed. Reviewer confirms / overrides the auto-classification. The friction of manual log-pulling is the actual blocker.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-04" severity="medium">
-      <description>Fix-path drift — recommended_fix_path consistently overrides the default for the same category, signaling the default is wrong OR that reviewers are picking the easy fix.</description>
-      <detector>for a single category over a quarter, &gt; 50% of entries override the default fix_path</detector>
-      <repair>Quarterly review: examine the overrides, update the default if data supports it OR re-train reviewers if they are picking convenience over root cause.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-05" severity="medium">
-      <description>Weekly report skipped — busy weeks accumulate, the team loses sight of the category trend, fix prioritisation becomes ad-hoc.</description>
-      <detector>more than 2 consecutive weeks without a weekly_report posted to the channel</detector>
-      <repair>Calendar reminder Friday. Automate scripts/weekly-report.py to run via cron and post to the channel even without a human; human adds the recommended_focus section.</repair>
-    </failure-mode>
-
-    <failure-mode id="fm-06" severity="low">
-      <description>Stale fix-eta — recommended_fix_path is assigned but fix_eta dates slip repeatedly, failures persist in production, customer trust erodes.</description>
-      <detector>failures with fix_eta in the past AND classification unchanged AND failure still being observed in production</detector>
-      <repair>Per-quarter audit: failures past fix_eta either get a new committed eta (with engineering capacity allocated) or get an explicit "won't fix, accept" decision recorded. Open-ended drift is the actual failure.</repair>
-    </failure-mode>
-
+    <antipattern id="fm-open-label">
+      <description>Reviewers invent new labels mid-review.</description>
+      <reason>Dashboards diverge; counts no longer comparable. Detector: primary_label outside closed enum. Fix: r1-closed-taxonomy.</reason>
+    </antipattern>
+    <antipattern id="fm-no-evidence">
+      <description>Labels assigned without evidence quotes.</description>
+      <reason>Audit impossible later. Detector: evidence field empty. Fix: r2-evidence-required.</reason>
+    </antipattern>
+    <antipattern id="fm-multi-primary">
+      <description>Multiple primary labels on one incident.</description>
+      <reason>Double-counts inflate the failing class. Detector: multi-label JSON shape. Fix: r3-one-primary-label.</reason>
+    </antipattern>
   </section>
 
-  <section title="Prompt-injection markers">
-    <p>
-      A reviewer's confident classification ("this is obviously generation-grounding-fail") should be confirmed against the retrieval log evidence. The taxonomy's value is in evidence-anchored classification; intuition without evidence produces multi-tag drift and category creep.
-    </p>
-  </section>
-
-  <section title="Human checkpoint">
-    <p>
-      Quarterly: ML lead reviews the trailing 90 days of category counts, fix-path effectiveness (did fixes in category X reduce category X failures the following month?), and any pressure on the seven-category closed list. Update the taxonomy at most once a quarter; stability is more valuable than completeness.
-    </p>
-  </section>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

@@ -1,22 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="db-weaviate Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Weaviate — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for hybrid search response with alpha + sub-scores (vector + bm25).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://db-weaviate/search.schema.json",
+  "type": "object",
+  "required": ["class_name", "query_type", "top_k", "hits"],
+  "properties": {
+    "class_name": {"type": "string", "minLength": 1},
+    "query_type": {"type": "string", "enum": ["near_vector", "near_text", "bm25", "hybrid"]},
+    "alpha": {"type": ["number", "null"], "minimum": 0.0, "maximum": 1.0},
+    "top_k": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["uuid", "score", "properties"],
+        "properties": {
+          "uuid": {"type": "string"},
+          "score": {"type": "number"},
+          "vector_score": {"type": ["number", "null"]},
+          "bm25_score": {"type": ["number", "null"]},
+          "properties": {"type": "object"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>query_type == "hybrid" but alpha is null.</description>
+      <reason>Hybrid requires alpha; absence means silent default that varies across client versions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>hits emitted from two separate calls then merged in Python.</description>
+      <reason>Violates r3-native-hybrid; misweights BM25 stats.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "class_name": "Document",
+  "query_type": "hybrid",
+  "alpha": 0.5,
+  "top_k": 5,
+  "hits": [
+    {"uuid": "8e7a-...", "score": 0.83, "vector_score": 0.79, "bm25_score": 4.2, "properties": {"title": "Authentication"}}
+  ]
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"class_name": "doc", "query_type": "hybrid", "top_k": 3, "hits": []}
+]]></code>
+      <note>Invalid: alpha missing for hybrid; class_name lowercase (Weaviate convention is PascalCase).</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>query_type ∈ enum.</item>
+      <item>If hybrid, alpha is 0..1.</item>
+      <item>Each hit has uuid + score + properties.</item>
     </list>
   </section>
 </text>

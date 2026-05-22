@@ -1,4 +1,10 @@
-"""ImageGenerationService with SHA-256 caching and DALL-E 3 / SDXL backends."""
+"""
+purpose: ImageService abstraction with SHA-keyed cache + provider registry + audit.
+consumes: prompt + use_case + tenant_id + provider params
+produces: storage_uri + revised_prompt + cost_usd
+depends-on: content/01-core-rules.xml r1, r2, r6
+token-budget-impact: per-call (provider cost); cache returns free after first generation
+"""
 import hashlib
 import json
 import logging

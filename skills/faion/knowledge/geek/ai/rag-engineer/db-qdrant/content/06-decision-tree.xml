@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Qdrant — Decision Tree" version="1.0.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-scale">Is the corpus ≥ 100k vectors AND production-bound?</root-question>
+    <branch when="vectors &gt;= 100000 AND env == 'production'">
+      <question id="q-ops">Does the team have ops capacity for self-hosting?</question>
+      <branch when="ops_capacity == true">
+        <question id="q-ram">Is RAM the binding constraint?</question>
+        <branch when="ram_constrained == true AND embedding_dim &gt;= 1024">
+          <conclusion ref="r3-quantization-tradeoff">Self-host Qdrant. Enable binary quantization with rescoring. Apply r1, r2, r4, r5.</conclusion>
+        </branch>
+        <branch when="ram_constrained == true AND embedding_dim &lt; 1024">
+          <conclusion ref="r3-quantization-tradeoff">Self-host Qdrant. Enable scalar (Int8) quantization. Apply r1, r2, r4, r5.</conclusion>
+        </branch>
+        <branch when="ram_constrained == false">
+          <conclusion ref="r1-config-at-creation">Self-host Qdrant without quantization. Apply r1, r2, r4, r5.</conclusion>
+        </branch>
+      </branch>
+      <branch when="ops_capacity == false">
+        <conclusion ref="r1-config-at-creation">Use Qdrant Cloud. Same rules apply; ops handled by managed service.</conclusion>
+      </branch>
+    </branch>
+    <branch when="vectors &lt; 100000 OR env != 'production'">
+      <conclusion ref="r1-config-at-creation">Skip Qdrant. Use Chroma for prototype or pgvector if Postgres already deployed.</conclusion>
+    </branch>
+    <example trace="prod-rag-1m">
+      <p>1.2M vectors, prod, dim=1536, RAM tight → self-hosted Qdrant + binary quantization + payload indexes on tenant_id, language → r3 applied.</p>
+    </example>
+  </decision-tree>
+</text>

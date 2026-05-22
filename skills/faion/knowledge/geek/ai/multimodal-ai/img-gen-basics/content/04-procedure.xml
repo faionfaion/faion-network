@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Image Generation Basics Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Six-step procedure for an image-generation pipeline.</summary>
+
+  <step n="1" name="pick-provider">
+    <input>cost-per-image budget + quality bar + volume</input>
+    <action>Match to provider: tight brand low-volume → DALL-E 3; high-volume social → Flux-schnell; cost-only with editable seed → SDXL.</action>
+    <output>provider id locked</output>
+  </step>
+  <step n="2" name="build-prompts">
+    <input>style guide + ImagePromptBuilder template</input>
+    <action>Assemble (subject + style + lighting + composition + technical) per prompt. Reject free-text concatenation.</action>
+    <output>prompt list</output>
+  </step>
+  <step n="3" name="smoke-3">
+    <input>first 3 prompts from the list</input>
+    <action>Generate 3 images. Inspect manually for prompt-policy refusals, drift in revised_prompt, brand mismatch.</action>
+    <output>smoke report</output>
+    <decision-gate>If &gt;0 refusals or drift unacceptable → revise prompts, repeat smoke.</decision-gate>
+  </step>
+  <step n="4" name="batch-with-rl">
+    <input>full prompt list + provider RL budget</input>
+    <action>Run batch with exponential backoff on 429. Track org-level concurrent calls; respect per-org cap.</action>
+    <output>image_url + revised_prompt per item</output>
+  </step>
+  <step n="5" name="download">
+    <input>image_url</input>
+    <action>Download bytes within the call; PUT to durable storage_uri prefix. Store storage_uri + revised_prompt in the audit log.</action>
+    <output>storage_uri per item</output>
+    <decision-gate>If download fails → retry with backoff; never cache the URL.</decision-gate>
+  </step>
+  <step n="6" name="log-audit">
+    <input>per-item audit entries</input>
+    <action>Append (ts, provider, input_prompt, revised_prompt, storage_uri, cost_usd) to the audit sink.</action>
+    <output>audit_log.jsonl</output>
+  </step>
+</text>

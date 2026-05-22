@@ -1,6 +1,9 @@
-"""
-Vision extraction: analyze_image_url, analyze_local_image, structured_analysis, VisualQA.
-"""
+# purpose: VLM extraction wrappers — single image, multi-image, stateful Q&A.
+# consumes: image path/URL/base64, task prompt, Pydantic schema, provider+model.
+# produces: validated Pydantic instance OR status="error" after 2 retries.
+# depends-on: prepare_image.py for resize+encode; OpenAI/Anthropic/Google SDKs.
+# token-budget-impact: per-call cost dominated by image tokens (525 @ 1024px).
+"""Vision extraction: typed Pydantic output with retry-on-parse-error."""
 from __future__ import annotations
 
 import base64

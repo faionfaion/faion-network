@@ -1,4 +1,10 @@
-"""DALL-E 3 generation: generate_image, generate_and_save, DALL-E 2 variations/edit."""
+"""
+purpose: DALL-E 3 client with revised_prompt logging + immediate-download helper.
+consumes: prompt + OpenAI API key + destination directory
+produces: image bytes on disk + audit log entry
+depends-on: content/01-core-rules.xml r2, r3
+token-budget-impact: per-call cost $0.04-$0.12 per image
+"""
 import base64
 import requests
 from openai import OpenAI

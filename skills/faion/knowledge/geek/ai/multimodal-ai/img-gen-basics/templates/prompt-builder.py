@@ -1,4 +1,10 @@
-"""ImagePromptBuilder fluent API with style/lighting/composition/technical fields."""
+"""
+purpose: ImagePromptBuilder — structured prompt assembly with subject/style/lighting/composition/technical fields.
+consumes: brand style guide + content brief
+produces: deterministic structured prompt string for the provider
+depends-on: content/01-core-rules.xml r1
+token-budget-impact: zero — prompt-only
+"""
 
 
 class ImagePromptBuilder:

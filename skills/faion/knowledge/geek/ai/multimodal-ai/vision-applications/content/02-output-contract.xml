@@ -1,22 +1,131 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="vision-applications Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Vision Applications — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Per-task output schemas: document (fields dict), classify (category + confidence), moderate (is_safe + flags + severity + needs_human_review). Common metadata: provider, model, cache_key, retries.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema — task=document">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://vision-applications/document.schema.json",
+  "type": "object",
+  "required": ["status", "task", "fields", "provider", "model", "cache_key"],
+  "properties": {
+    "status":    {"type": "string", "enum": ["ok", "error"]},
+    "task":      {"const": "document"},
+    "fields":    {"type": "object", "description": "extracted field name → string|null"},
+    "provider":  {"type": "string", "enum": ["openai", "anthropic", "google"]},
+    "model":     {"type": "string"},
+    "cache_key": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "cached":    {"type": "boolean"},
+    "retries":   {"type": "integer", "minimum": 0, "maximum": 2},
+    "error":     {"type": "string"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="JSON Schema — task=classify">
+    <code lang="json"><![CDATA[
+{
+  "$id": "faion://vision-applications/classify.schema.json",
+  "type": "object",
+  "required": ["status", "task", "category", "confidence", "reasoning",
+               "provider", "model", "cache_key"],
+  "properties": {
+    "status":     {"type": "string", "enum": ["ok", "error"]},
+    "task":       {"const": "classify"},
+    "category":   {"type": "string", "description": "must be member of provided categories list, lowercased"},
+    "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "reasoning":  {"type": "string"},
+    "provider":   {"type": "string", "enum": ["openai", "anthropic", "google"]},
+    "model":      {"type": "string"},
+    "cache_key":  {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "cached":     {"type": "boolean"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="JSON Schema — task=moderate">
+    <code lang="json"><![CDATA[
+{
+  "$id": "faion://vision-applications/moderate.schema.json",
+  "type": "object",
+  "required": ["status", "task", "is_safe", "flags", "severity", "confidence",
+               "needs_human_review", "provider", "model", "cache_key"],
+  "properties": {
+    "status":              {"type": "string", "enum": ["ok", "error"]},
+    "task":                {"const": "moderate"},
+    "is_safe":             {"type": "boolean"},
+    "flags":               {"type": "array", "items": {"type": "string"}},
+    "severity":            {"type": "string", "enum": ["none", "low", "medium", "high"]},
+    "confidence":          {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "needs_human_review":  {"type": "boolean"},
+    "provider":            {"type": "string"},
+    "model":               {"type": "string"},
+    "cache_key":           {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "cached":              {"type": "boolean"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>severity not lowercased ("HIGH" / "Medium").</description>
+      <reason>Violates rule r4-normalize-categorical; breaks downstream enum routing.</reason>
+    </antipattern>
+    <antipattern>
+      <description>needs_human_review false while confidence &lt; 0.7.</description>
+      <reason>Violates rule r6-human-review-threshold; risk of policy-violation reaching production.</reason>
+    </antipattern>
+    <antipattern>
+      <description>category in classify task NOT in the supplied categories list.</description>
+      <reason>Model invented a category; downstream router has no branch for it.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example — moderate">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "task": "moderate",
+  "is_safe": false,
+  "flags": ["violence", "hate_symbols"],
+  "severity": "high",
+  "confidence": 0.92,
+  "needs_human_review": true,
+  "provider": "openai",
+  "model": "gpt-4o",
+  "cache_key": "9f4a7c3e8d2b1a5f6e9c0d3b2a1f4e8d7c9b6a5d4e3c2b1a0f9e8d7c6b5a4f3e",
+  "cached": false
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok", "task": "moderate", "is_safe": false,
+  "flags": [], "severity": "HIGH",
+  "confidence": 0.45, "needs_human_review": false,
+  "provider": "openai", "model": "gpt-4o",
+  "cache_key": "abc", "cached": false
+}
+]]></code>
+      <note>Invalid: severity not lowercased; confidence below threshold but needs_human_review false; cache_key not sha256.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>severity / category / status are lowercase enum members.</item>
+      <item>For moderate: confidence &lt; 0.7 OR severity in {medium, high} → needs_human_review must be true.</item>
+      <item>For classify: category in caller-supplied categories list.</item>
+      <item>cache_key passes sha256 regex.</item>
     </list>
   </section>
 </text>

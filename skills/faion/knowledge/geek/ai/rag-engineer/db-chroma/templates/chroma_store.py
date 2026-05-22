@@ -1,3 +1,8 @@
+# purpose: minimal Chroma wrapper for upsert/search/delete with metric pinning
+# consumes: persist_dir, collection name, distance metric, embeddings + string IDs
+# produces: search response dict per templates/chroma-schema.json
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: small
 """
 ChromaStore — minimal Chroma wrapper implementing upsert, search, delete.
 

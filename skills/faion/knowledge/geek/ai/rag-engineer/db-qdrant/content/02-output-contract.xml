@@ -1,22 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="db-qdrant Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Qdrant — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for QdrantStore search response: collection + distance + hnsw + hits[] with id (int|uuid), score, payload + payload_indexes_used.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://db-qdrant/search.schema.json",
+  "type": "object",
+  "required": ["collection", "distance", "top_k", "hits", "payload_indexes_used"],
+  "properties": {
+    "collection": {"type": "string", "minLength": 1},
+    "distance": {"type": "string", "enum": ["Cosine", "Dot", "Euclid", "Manhattan"]},
+    "top_k": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "quantization": {"type": "string", "enum": ["none", "scalar", "binary"]},
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "score", "payload"],
+        "properties": {
+          "id": {"type": ["integer", "string"]},
+          "score": {"type": "number"},
+          "payload": {"type": "object"}
+        }
+      }
+    },
+    "payload_indexes_used": {"type": "array", "items": {"type": "string"}}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Filter on a payload field not in `payload_indexes_used`.</description>
+      <reason>Violates r2-payload-indexes; full collection scan triggered.</reason>
+    </antipattern>
+    <antipattern>
+      <description>distance not in enum.</description>
+      <reason>Must be one of Qdrant's supported Distance values.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "collection": "documents",
+  "distance": "Cosine",
+  "top_k": 5,
+  "quantization": "scalar",
+  "hits": [
+    {"id": 42, "score": 0.91, "payload": {"category": "technical", "source": "a.pdf"}}
+  ],
+  "payload_indexes_used": ["category"]
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"collection": "", "distance": "magic", "top_k": 0, "hits": [], "payload_indexes_used": null}
+]]></code>
+      <note>Invalid: empty collection; distance not enum; top_k below 1; payload_indexes_used null.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>distance ∈ enum.</item>
+      <item>For every filter field, an entry in payload_indexes_used.</item>
+      <item>quantization recorded when enabled.</item>
     </list>
   </section>
 </text>

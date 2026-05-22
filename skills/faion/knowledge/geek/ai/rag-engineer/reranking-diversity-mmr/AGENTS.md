@@ -4,71 +4,87 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Maximal Marginal Relevance (MMR) reranking selects documents that are both relevant to the query and dissimilar to already-selected documents.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Reranks top-N candidates with MMR to balance query relevance and inter-doc diversity, returning a diverse top-K.
 content_id: "881e7fb271a64eb8"
+complexity: medium
+produces: code
+est_tokens: 2800
 tags: [reranking, mmr, diversity, rag, retrieval]
 ---
 # Diversity-Aware Reranking with Maximal Marginal Relevance (MMR)
 
 ## Summary
 
-**One-sentence:** Maximal Marginal Relevance (MMR) reranking selects documents that are both relevant to the query and dissimilar to already-selected documents.
+**One-sentence:** Reranks top-N candidates with MMR to balance query relevance and inter-doc diversity, returning a diverse top-K.
 
-**One-paragraph:** Maximal Marginal Relevance (MMR) reranking selects documents that are both relevant to the query and dissimilar to already-selected documents. Unlike pure relevance reranking, MMR prevents returning multiple nearly identical passages that waste the LLM context window without adding new information.
+**One-paragraph:** Maximal Marginal Relevance (MMR) reranking selects documents that are both relevant to the query and dissimilar to already-selected documents. The lambda parameter balances relevance (λ→1) vs diversity (λ→0). MMR is the right choice when the retriever returns near-duplicate or highly redundant top-K, but it adds O(N×K) similarity comparisons on top of the base retrieval cost.
+
+**Ефективно для:** інженерів RAG, у яких top-K насичений near-duplicate чанками й треба покрити кілька різних аспектів запиту.
 
 ## Applies If (ALL must hold)
 
-- Corpora where documents cluster around a few popular topics and top-k results are near-duplicates of each other.
-- Long-context RAG where the LLM receives 5-10 passages and redundancy wastes context budget.
-- Question-answering over documents that repeat the same fact multiple times (e.g., legal contracts, news archives).
-- When user complaints indicate the LLM gives repetitive answers that seem to all say the same thing.
+- Top-K from retrieval is dominated by near-duplicate chunks.
+- Query is broad and a diverse multi-faceted answer is expected.
+- Downstream LLM context budget is tight and redundant chunks waste it.
+- Embeddings for candidate chunks are available for pairwise similarity.
 
 ## Skip If (ANY kills it)
 
-- When query asks for a single precise fact — diversity hurts precision in this case; use pure relevance reranking.
-- When the corpus is already highly diverse and there is no redundancy problem — MMR adds cost without benefit.
-- When document embeddings were discarded after indexing — MMR requires embeddings at rerank time (recomputation doubles cost).
-- Latency-critical paths — MMR requires an embedding call for every candidate document in addition to the relevance scoring step.
+- Top-K already diverse — MMR cost is wasted.
+- Single-fact factoid queries — diversity is irrelevant.
+- Retriever returns < K * 2 candidates — MMR has nothing to choose from.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Candidate pool (N >= 2K) | list of {id, score, embedding} | retrieval step |
+| Query embedding | vector | embedding-generation |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `geek/ai/rag-engineer/reranking-two-stage` | MMR runs as the second stage. |
+| `geek/ai/rag-engineer/embedding-generation` | Candidates carry embeddings. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~700 |
+| `content/06-decision-tree.xml` | essential | Decision tree with rule-id refs | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Score candidates with MMR | haiku | Mechanical pairwise loop. |
+| Tune λ on a labeled set | sonnet | Multi-criteria. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mmr.py` | MMR algorithm with explicit λ + pool. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-reranking-diversity-mmr.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[reranking-two-stage]]
+- [[reranking-pipeline-integration]]
+- [[reranking-models]]
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` decides MMR vs skip based on pool redundancy and query type. Each leaf references a rule id from `01-core-rules.xml`.

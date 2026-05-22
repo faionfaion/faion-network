@@ -1,77 +1,102 @@
 ---
 slug: vision-basics
 tier: geek
-group: ai
+group: ai-core
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Analyze images with VLM APIs (GPT-4o, Claude Sonnet, Gemini Flash): single-image analysis, multi-image comparison, structured JSON extraction via Pydantic, and stateful visual Q&A.
-content_id: "8b214b9c67435fbf"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a typed Pydantic vision extraction (description, text_content, confidence) from one or more images via GPT-4o / Claude / Gemini, with sha256 cache.
+content_id: "7a3f9c5b8e201d46"
+complexity: medium
+produces: code
+est_tokens: 4000
 tags: [vision, vlm, structured-extraction, pydantic, image-analysis]
 ---
 # Vision Basics
 
 ## Summary
 
-**One-sentence:** Analyze images with VLM APIs (GPT-4o, Claude Sonnet, Gemini Flash): single-image analysis, multi-image comparison, structured JSON extraction via Pydantic, and stateful visual Q&A.
+**One-sentence:** Analyses one or more images with a VLM (GPT-4o / Claude Sonnet / Gemini Flash) and returns a typed Pydantic object with description, text_content, confidence.
 
-**One-paragraph:** Analyze images with VLM APIs (GPT-4o, Claude Sonnet, Gemini Flash): single-image analysis, multi-image comparison, structured JSON extraction via Pydantic, and stateful visual Q&A. Covers input methods (URL vs. base64), detail settings, token cost control, and the failure modes that make VLMs unsuitable for precision tasks.
+**One-paragraph:** Resizes images to 1024px long edge (50-70% token reduction), base64-encodes them, sends to the chosen VLM with `response_format={"type": "json_object"}`, parses the response into a Pydantic model with retry-on-parse-error, and caches the result by sha256 of the image bytes. Includes input-method choice (URL vs base64), per-provider size cap awareness (Anthropic 5MB, OpenAI 20MB), and stateful Q&A pattern that sends the image only on the first turn.
+
+**Ефективно для:** агента-перцептора, що читає скриншоти / скани / діаграми у пайплайні — закриває петлю між зображенням і типізованим JSON для downstream-агентів.
 
 ## Applies If (ALL must hold)
 
-- Agents need to read content from screenshots, diagrams, or scanned forms.
-- Pipeline receives images as intermediate outputs (web scraping returns screenshot; agent reads the page).
-- Generating alt-text or captions for images at scale.
-- Classifying images (safe/unsafe, relevant/irrelevant) as a routing step.
-- Extracting text from images when dedicated OCR is unavailable or layout is complex.
+- Agent reads content from screenshots, scans, diagrams, photos, or scraped images.
+- Output is consumed by a downstream agent (typed schema needed, not free text).
+- Image size fits the provider cap (5 MB Anthropic / 20 MB OpenAI) after resize.
+- Latency budget allows 500ms-2s per call (VLM call latency floor).
+- Privacy policy permits sending image bytes to the chosen provider.
 
 ## Skip If (ANY kills it)
 
-- Real-time video analysis at >2 FPS — VLM API latency (500ms-2s) is too high; use YOLOv11 or GroundingDINO locally.
-- High-volume barcode/QR decoding — use zxing or python-qrcode; 100x cheaper and deterministic.
-- Pixel-level measurement — VLM outputs are statistical estimates, not precise values.
-- Privacy-sensitive images that must not leave the local environment — use Qwen2.5-VL or LLaVA via Ollama.
-- Tasks reducible to image metadata (EXIF, creation date) — VLMs cannot see metadata; use Pillow or ExifTool.
-- Medical, legal, or forensic images where model content policies may silently reject inputs.
+- Real-time video at &gt; 2 FPS — VLM latency is too high; use YOLOv11 or GroundingDINO locally.
+- High-volume barcode / QR decoding — `zxing` or `python-qrcode` is 100x cheaper and deterministic.
+- Pixel-level measurement — VLMs produce semantic estimates, not precise pixel values.
+- Privacy-sensitive content must stay local — use Qwen2.5-VL or LLaVA via Ollama.
+- Task is reducible to EXIF / file metadata — VLMs cannot see metadata; use Pillow / ExifTool.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Image source | URL, local path, or base64 string | content store / scraper / upload |
+| Task description | string in the agent prompt | caller |
+| Pydantic schema | class extending BaseModel | downstream consumer contract |
+| Provider credentials | env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` | secrets manager |
+| Cache dir | filesystem path with rw | pipeline orchestrator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/multimodal-ai/vision-applications` | downstream patterns for OCR / classification / moderation that build on this. |
+| `geek/ai/llm-integration/structured-output-basics` | Pydantic + response_format contract this methodology depends on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: resize 1024px, base64 for sensitive, label multi-image, json_object enforce, retry-on-parse, cache by image hash | ~1000 |
+| `content/02-output-contract.xml` | essential | Pydantic schema + valid/invalid examples + per-provider size caps | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: oversized image, missing labels, schema drift, chart hallucination, EXIF asked of VLM | ~900 |
+| `content/04-procedure.xml` | medium | 6-step procedure: validate → resize → encode → cache probe → VLM call → parse with retry | ~700 |
+| `content/05-examples.xml` | medium | Worked Claude Sonnet extraction of an invoice with retry-on-bad-JSON | ~500 |
+| `content/06-decision-tree.xml` | essential | Provider choice (Claude vs GPT-4o vs Gemini), URL vs base64, detail level | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `resize-encode` | haiku | Mechanical: Pillow resize + base64; no judgment. |
+| `extract` | sonnet | Per-image judgment, structured Pydantic. |
+| `route-provider` | sonnet | Decision-tree walk on layout complexity + size + language. |
+| `cross-validate-numbers` | sonnet | Second pass for chart values when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/vision_extract.py` | analyze_image_url / analyze_local_image / structured_analysis / VisualQA with Pydantic. |
+| `templates/prepare_image.py` | Resize to 1024px long edge + base64 encode + media-type detection. |
+| `templates/prompt-vision.txt` | Agent prompt for structured vision extraction with null-on-ambiguity rule. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vision-basics.py` | Validate extraction JSON against the declared Pydantic schema. | Post-VLM call, before downstream consumes. |
 
 ## Related
 
-- parent skill: `geek/ai/multimodal-ai/`
+- [[vision-applications]] — production patterns (OCR, classification, moderation) on top of these basics.
+- [[structured-output-basics]] — Pydantic + json_object contract used everywhere.
+- [[img-gen-basics]] — generator side; vision-basics verifies generated frames.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` picks the provider (Claude for complex layouts and 200K context, GPT-4o for json_object enforcement, Gemini Flash for high-volume batch), the input mode (URL vs base64 based on sensitivity), and the detail level (`low` for classification, `high` for dense text). Use it at the extract() entry point before any provider call.

@@ -1,22 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="img-gen-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Image Generation Basics Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for img-gen-config.json + per-call audit log entry.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Config schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/img-gen-basics-config",
+  "type": "object",
+  "required": ["provider", "prompt_builder", "storage_uri", "rate_limit_per_min", "log_revised_prompt"],
+  "properties": {
+    "provider": {"enum": ["dalle3", "flux-schnell", "sdxl"]},
+    "prompt_builder": {
+      "type": "object",
+      "required": ["subject", "style"],
+      "properties": {
+        "subject": {"type": "string"},
+        "style": {"type": "string"},
+        "lighting": {"type": "string"},
+        "composition": {"type": "string"},
+        "technical": {"type": "string"}
+      }
+    },
+    "storage_uri": {"type": "string", "format": "uri"},
+    "rate_limit_per_min": {"type": "integer", "minimum": 1, "maximum": 60},
+    "log_revised_prompt": {"type": "boolean", "const": true},
+    "smoke_n": {"type": "integer", "minimum": 1, "maximum": 10}
+  }
+}]]></code>
+  </section>
+
+  <section title="Per-call audit log entry">
+    <code lang="json"><![CDATA[{
+  "ts": "2026-05-22T14:32:00Z",
+  "provider": "dalle3",
+  "input_prompt": "...",
+  "revised_prompt": "...",
+  "storage_uri": "s3://.../...png",
+  "cost_usd": 0.04
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "provider": "dalle3",
+  "prompt_builder": {"subject": "city skyline", "style": "cinematic", "lighting": "golden hour", "composition": "rule of thirds", "technical": "35mm"},
+  "storage_uri": "s3://media/imgs/",
+  "rate_limit_per_min": 5,
+  "log_revised_prompt": true,
+  "smoke_n": 3
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"provider": "dalle3", "prompt_builder": {}, "storage_uri": "", "rate_limit_per_min": 60, "log_revised_prompt": false}]]></code>
+      <note>Fails: empty prompt_builder, empty storage_uri, RL=60 (tier-1 cap is 5), log_revised_prompt=false.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>provider in {dalle3, flux-schnell, sdxl}.</item>
+      <item>prompt_builder.subject + .style non-empty.</item>
+      <item>storage_uri is a reachable URI.</item>
+      <item>rate_limit_per_min matches provider tier.</item>
+      <item>log_revised_prompt = true.</item>
     </list>
   </section>
 </text>

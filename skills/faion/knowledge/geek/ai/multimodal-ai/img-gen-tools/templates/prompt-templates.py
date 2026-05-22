@@ -1,4 +1,10 @@
-"""PromptTemplates static methods: product_photo, logo, social_media, ui_mockup."""
+"""
+purpose: Use-case → structured prompt template library (product_photo, logo, social_media, ui_mockup).
+consumes: brand style guide + content brief per use case
+produces: structured prompt strings consumed by ImageService.generate
+depends-on: content/01-core-rules.xml r3
+token-budget-impact: zero — prompt assembly only
+"""
 
 
 class PromptTemplates:

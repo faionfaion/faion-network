@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Voice Basics — Pipeline + Latency Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-latency-budget">Is the latency SLA below 300ms end-to-end?</root-question>
+    <branch when="latency_sla_ms &lt; 300">
+      <conclusion ref="r1-latency-budget">Escalate out of voice-basics. Use OpenAI Realtime API (WebSocket native STT+LLM+TTS). voice-basics chained pipeline cannot meet this SLA.</conclusion>
+    </branch>
+    <branch when="latency_sla_ms &gt;= 300">
+      <question id="q-environment">Is the deployment environment guaranteed silent (closed-mic, studio)?</question>
+      <branch when="silent_env == false">
+        <conclusion ref="r2-vad-recording">Use Silero VAD or WebRTC VAD aggressiveness 2. Forbid energy-based VAD in production.</conclusion>
+      </branch>
+      <branch when="silent_env == true">
+        <question id="q-language-known">Is the conversation language fixed for the session?</question>
+        <branch when="language_fixed == true">
+          <conclusion ref="r5-explicit-language">Set `language="<iso>"` explicitly in Whisper. Forbid auto-detect.</conclusion>
+        </branch>
+        <branch when="language_fixed == false">
+          <conclusion ref="r5-explicit-language">Pre-classify language from a quick 1s sample via Whisper-mini language-id mode, then lock for the session. Auto-detect per turn is forbidden.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="customer-service-en">
+      <p>Input: customer-service voice agent, latency SLA 1500ms, en-only, office environment. → SLA &gt;= 300ms → silent_env false → conclusion r2-vad-recording: WebRTC VAD aggressiveness 2 + language=en in Whisper + tts-1 streaming voice=nova.</p>
+    </example>
+  </decision-tree>
+</text>

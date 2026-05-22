@@ -4,73 +4,85 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Two-stage retrieval: fast ANN retrieves top-50 candidates, then a reranker (cross-encoder or API service) rescores them to return top-5 for generation.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Picks a reranker (cross-encoder vs Cohere/MixedBread API) for two-stage retrieval based on latency, cost, and self-host constraints.
 content_id: "eaef26648b495581"
+complexity: medium
+produces: decision-record
+est_tokens: 2800
 tags: [rag, reranking, cross-encoder, retrieval, vector-search]
 ---
 # Reranking Models
 
 ## Summary
 
-**One-sentence:** Two-stage retrieval: fast ANN retrieves top-50 candidates, then a reranker (cross-encoder or API service) rescores them to return top-5 for generation.
+**One-sentence:** Picks a reranker (cross-encoder vs Cohere/MixedBread API) for two-stage retrieval based on latency, cost, and self-host constraints.
 
-**One-paragraph:** Two-stage retrieval: fast ANN retrieves top-50 candidates, then a reranker (cross-encoder or API service) rescores them to return top-5 for generation. Covered: Cohere Rerank, Jina Rerank, Voyage AI, LLM-based scoring (GPT-4o), local cross-encoders (sentence-transformers), and a production RerankerService with fallback to original ordering on timeout or error.
+**One-paragraph:** Two-stage retrieval: fast ANN retrieves top-50 candidates, then a reranker (cross-encoder or API service) rescores them to return top-5 for generation. Choice between local cross-encoders (ms-marco-MiniLM, bge-reranker) and API services (Cohere rerank-3, MixedBread) is driven by latency budget, cost, accuracy targets, and self-host requirements.
+
+**Ефективно для:** інженерів, які обирають конкретну реранкер-модель для two-stage RAG: cross-encoder локально vs Cohere/MixedBread API.
 
 ## Applies If (ALL must hold)
 
-- RAG pipelines where first-stage precision is low (top-5 does not contain the answer but top-50 does)
-- Two-stage retrieval pattern: ANN (k=50-100) → rerank to top-5 for generation
-- Domain-specific corpora where embedding similarity scores are poorly calibrated (legal, medical, code)
-- Multilingual retrieval where query and document languages may differ
-- Pipelines tolerating 100-400ms additional latency per query for precision gains
+- Two-stage RAG retrieval already designed; need to pick the actual reranker model.
+- Have constraints on cost-per-query, latency p95, or self-hosting.
+- Need to benchmark candidate rerankers on a labeled set.
 
 ## Skip If (ANY kills it)
 
-- First-stage precision@5 is already above 0.85 — reranking adds latency and cost with diminishing returns
-- Total latency SLA is <100ms — even fast local cross-encoders add 20-50ms
-- Chunk corpus is very short (<200 chars per chunk) — cross-encoders underperform on very short texts
-- Cost is the primary constraint and a small local model is not viable
-- Queries are purely keyword-based — BM25 or hybrid search already handles these well
+- Single-stage retrieval is enough (recall target met without rerank).
+- All-in on a managed retrieval product that includes reranking — pick rules don't matter.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Candidate top-N from ANN | list | rag pipeline |
+| Labeled eval set | JSONL | rag-eval-test-set-generation |
+| Latency + cost budgets | config | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `geek/ai/rag-engineer/reranking-two-stage` | Two-stage pattern this model plugs into. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~700 |
+| `content/06-decision-tree.xml` | essential | Decision tree with rule-id refs | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Run rerank benchmarks | haiku | Mechanical eval loop. |
+| Pick winner with rationale | sonnet | Multi-criteria. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/reranker-config.yaml` | Reranker config + warmup hook + fallback policy. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-reranking-models.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[reranking-two-stage]]
+- [[reranking-pipeline-integration]]
+- [[reranking-diversity-mmr]]
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` picks reranker type by traffic, self-host policy, and recall need. Each leaf references a rule id from `01-core-rules.xml`.

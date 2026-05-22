@@ -1,3 +1,9 @@
+# purpose: Chroma-backed RAG pipeline (legacy module variant)
+# consumes: loaders + chunker config + Chroma client
+# produces: RAG answer matching 02-output-contract
+# depends-on: content/01-core-rules.xml r1-r5
+# token-budget-impact: zero at runtime; pipeline code
+
 """
 RAGPipeline — complete RAG pipeline: ingest + retrieve + generate.
 

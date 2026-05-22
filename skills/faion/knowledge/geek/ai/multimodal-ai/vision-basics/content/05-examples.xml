@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Vision Basics — Worked Example" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>End-to-end Claude Sonnet extraction of an invoice image with resize, base64, schema-in-prompt, and retry-on-validation-error.</summary>
+
+  <section title="Worked invoice extraction with retry-on-parse">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64, hashlib, io, json
+from pathlib import Path
+from typing import Optional
+import anthropic
+from PIL import Image
+from pydantic import BaseModel, ValidationError
+
+CACHE = Path("out/vision/cache"); CACHE.mkdir(parents=True, exist_ok=True)
+
+class ImageResult(BaseModel):
+    description: str
+    text_content: Optional[str]
+    confidence: str  # "high" | "low"
+
+def prepare(path: str, max_px: int = 1024):
+    img = Image.open(path)
+    img.thumbnail((max_px, max_px), Image.LANCZOS)
+    fmt = img.format or "PNG"
+    buf = io.BytesIO(); img.save(buf, format=fmt, quality=85)
+    mt = {"JPEG":"image/jpeg","PNG":"image/png","WEBP":"image/webp"}.get(fmt, "image/png")
+    return buf.getvalue(), mt
+
+SCHEMA = ImageResult.model_json_schema()
+
+def extract(path: str, task: str, model: str = "claude-sonnet-4-5"):
+    img_bytes, mt = prepare(path)
+    b64 = base64.standard_b64encode(img_bytes).decode()
+    key = hashlib.sha256(img_bytes + task.encode()
+                         + b"anthropic" + model.encode()).hexdigest()
+    cache_file = CACHE / f"{key}.json"
+    if cache_file.exists():
+        return {**json.loads(cache_file.read_text()), "cached": True, "cache_key": key,
+                "provider":"anthropic","model":model,"status":"ok","retries":0,"image_count":1}
+
+    client = anthropic.Anthropic()
+    prompt = f"{task}\nReturn JSON matching this schema (no prose):\n{json.dumps(SCHEMA)}"
+    for attempt in range(3):
+        resp = client.messages.create(
+            model=model, max_tokens=1024,
+            messages=[{"role":"user","content":[
+                {"type":"image","source":{"type":"base64","media_type":mt,"data":b64}},
+                {"type":"text","text": prompt}]}])
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"): raw = raw.strip("`").lstrip("json\n")
+        try:
+            parsed = ImageResult(**json.loads(raw))
+            out = {"status":"ok","description":parsed.description,
+                   "text_content":parsed.text_content,"confidence":parsed.confidence,
+                   "provider":"anthropic","model":model,"cache_key":key,
+                   "cached":False,"image_count":1,"retries":attempt}
+            cache_file.write_text(json.dumps(out))
+            return out
+        except (json.JSONDecodeError, ValidationError) as e:
+            prompt = (f"Previous response caused: {e}. Return ONLY JSON matching: "
+                      f"{json.dumps(SCHEMA)}")
+    return {"status":"error","error":"retry budget exhausted","retries":2,
+            "description":"","text_content":None,"confidence":"low",
+            "provider":"anthropic","model":model,"cache_key":key,"cached":False,"image_count":1}
+
+print(json.dumps(extract("invoice.png",
+    "Extract store_name, invoice_number, total. Use null for missing fields."),
+    indent=2, default=str))
+]]></code>
+    </example>
+  </section>
+</text>

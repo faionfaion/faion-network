@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Vision Basics — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step procedure for a typed VLM extraction: validate → resize → encode → cache probe → call with json_object → parse with retry.</summary>
+
+  <section title="Steps">
+    <step n="1" name="validate-input">
+      <input>image path or URL, target provider</input>
+      <action>Check format in {jpeg, png, webp, gif}. For URLs, HEAD to verify size + reachability. For local paths, check size against per-provider cap (5 MB Anthropic, 20 MB OpenAI / Gemini).</action>
+      <output>verified bytes or accessible URL.</output>
+      <decision-gate>oversize after resize → return error.</decision-gate>
+    </step>
+
+    <step n="2" name="resize">
+      <input>image bytes</input>
+      <action>`Image.open(io.BytesIO(bytes)); img.thumbnail((1024, 1024), Image.LANCZOS); img.save(buf, format=detected_format, quality=85)`.</action>
+      <output>resized bytes ≤ provider cap.</output>
+    </step>
+
+    <step n="3" name="encode">
+      <input>resized bytes, sensitivity flag</input>
+      <action>If sensitive → base64 encode + record media_type. Else → keep URL for URL-input mode.</action>
+      <output>base64 string or URL.</output>
+    </step>
+
+    <step n="4" name="cache-probe">
+      <input>image_bytes, task_prompt, provider, model</input>
+      <action>cache_key = sha256(image_bytes + task_prompt + provider + model); read `{cache_dir}/{cache_key}.json`; if present, return cached=true.</action>
+      <output>cache_key; cached result on hit.</output>
+    </step>
+
+    <step n="5" name="vlm-call">
+      <input>encoded image, task prompt with JSON schema, provider, model, detail level</input>
+      <action>OpenAI: `response_format={"type": "json_object"}` + schema in prompt. Anthropic: schema in prompt + prefill `{`. Gemini: schema in prompt. Set detail="low" for classification, "high" for dense text.</action>
+      <output>raw response string.</output>
+    </step>
+
+    <step n="6" name="parse-with-retry">
+      <input>raw response string, Pydantic model</input>
+      <action>Try `json.loads()` → `Model(**data)`. On JSONDecodeError or ValidationError, re-prompt with the error message and the schema. Cap at 2 retries.</action>
+      <output>validated Pydantic instance OR status="error" if retry budget exhausted.</output>
+      <decision-gate>retries exhausted → status="error" with retries=2.</decision-gate>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>

@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="db-chroma Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for db-chroma. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Chroma — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 rules: distance metric set once at creation, string IDs, get_or_create idempotent, single-process writes, explicit persistence path.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Set the distance metric at collection creation time; it cannot be changed without recreating the collection.</statement>
-      <rationale source="v1-source">Chroma bakes the metric into the HNSW index. Changing it later requires a full data migration.</rationale>
+    <rule id="r1-metric-at-creation" testable="true" depth="essential">
+      <statement>Distance metric MUST be set at collection creation via `metadata={"hnsw:space": "cosine"|"l2"|"ip"}`. Changing the metric requires recreating the collection and re-upserting all vectors.</statement>
+      <rationale source="Chroma HNSW internals">The metric is baked into the HNSW index structure; runtime change is not supported.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Always use string IDs; integer IDs must be stringified before passing to Chroma.</statement>
-      <rationale source="v1-source">Chroma enforces string-typed IDs; passing integers causes a type error.</rationale>
+
+    <rule id="r2-string-ids" testable="true" depth="essential">
+      <statement>IDs MUST be strings. Integer IDs MUST be stringified before passing to Chroma APIs.</statement>
+      <rationale source="Chroma API contract">Chroma enforces str-typed IDs; passing integers raises a TypeError.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Convert Chroma distances to similarity scores before returning to callers: similarity = 1 - distance for cosine space.</statement>
-      <rationale source="v1-source">Chroma returns distances (lower = more similar) not similarity scores (higher = more similar). Callers expect similarity semantics.</rationale>
+
+    <rule id="r3-get-or-create-idempotent" testable="true" depth="essential">
+      <statement>Ingestion code MUST use `get_or_create_collection` (never `create_collection`), and `upsert` (never `add`), so re-runs are idempotent.</statement>
+      <rationale source="Re-ingest incident pattern">`create_collection` raises on existing name; `add` errors on duplicate IDs. Idempotent variants make notebooks and CI re-runs safe.</rationale>
+    </rule>
+
+    <rule id="r4-single-process-writes" testable="true" depth="essential">
+      <statement>Chroma PersistentClient MUST be accessed by a single writer process at a time. Concurrent writers WILL corrupt the SQLite store.</statement>
+      <rationale source="SQLite + Chroma persistence model">SQLite locking is not safe for concurrent multi-process writes through Chroma's stack; corruption is silent and irrecoverable without backups.</rationale>
+    </rule>
+
+    <rule id="r5-explicit-persistence" testable="true" depth="essential">
+      <statement>Production-adjacent code MUST use `PersistentClient(path=...)`; in-memory `Client()` is restricted to ephemeral tests because all data vanishes on process exit.</statement>
+      <rationale source="Data-loss incident review">Developers conflate `Client()` with persisted state; explicit path forces an intentional persistence decision.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

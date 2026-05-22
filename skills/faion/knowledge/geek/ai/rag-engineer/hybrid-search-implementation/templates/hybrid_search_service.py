@@ -1,3 +1,9 @@
+# purpose: production HybridSearchService duplicate of .tmpl for runnable smoke test
+# consumes: dense_client + sparse_client + query
+# produces: fused result dict matching 02-output-contract
+# depends-on: templates/hybrid_search_service.py.tmpl
+# token-budget-impact: zero at runtime; service code
+
 """
 HybridSearchService — backend-agnostic BM25 + dense hybrid search with RRF and linear fusion.
 

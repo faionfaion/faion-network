@@ -1,35 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="db-comparison Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for db-comparison. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="DB Comparison — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 rules: anchor on year-1 scale, weighted scoring not opinion, named fallbacks, named decision owner, version bump on re-decide.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Default to Qdrant for new self-hosted production RAG systems; it has the best balance of performance, filtering, and operational simplicity.</statement>
-      <rationale source="v1-source">Qdrant exposes HNSW tuning knobs, supports payload-level filtering, and achieves 41 QPS @ 50M vectors with minimal ops overhead relative to managed solutions.</rationale>
+    <rule id="r1-anchor-year-one" testable="true" depth="essential">
+      <statement>The decision MUST be anchored on year-1 projected vector count + growth rate, not peak vectors at year-5. Migration cost is bounded by year-1 ceiling, not vendor marketing scale.</statement>
+      <rationale source="Vendor lock-in retrospective">Picking Pinecone at year-5 numbers commits the team to managed costs that overshoot a year-1 prototype's revenue. Anchor decisions on the next 12 months.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use pgvector when the team already operates PostgreSQL and corpus is under 5M vectors — zero new infra, ACID transactions, SQL filtering.</statement>
-      <rationale source="v1-source">pgvector integrates seamlessly into existing Postgres stacks, eliminating the ops burden of a separate DB. HNSW and IVFFlat indexes provide sub-second queries on well-tuned configs.</rationale>
+
+    <rule id="r2-weighted-scoring" testable="true" depth="essential">
+      <statement>Each candidate MUST be scored against a weighted criteria list {scale_fit, hosting_fit, hybrid_search, payload_filter_perf, multi_tenant, existing_postgres, team_familiarity}. Weights MUST sum to 1.0; scores are 0..3.</statement>
+      <rationale source="Multi-criteria decision analysis">Opinion-only picks rationalise vendor preference. Weighted scoring forces the team to publish the trade-off.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Never use Chroma as the only vector store in production; it lacks replication, auth, and backup primitives.</statement>
-      <rationale source="v1-source">Chroma's in-memory mode loses data on restart. PersistentClient uses SQLite, which is single-writer only and prone to corruption under concurrent load.</rationale>
+
+    <rule id="r3-named-fallbacks" testable="true" depth="essential">
+      <statement>decision.json MUST list 1–3 fallback DBs in ranked order with a one-line trigger condition each ("if year-1 doubles, switch to Qdrant").</statement>
+      <rationale source="Migration-plan incident log">Without a documented fallback, the team rebuilds the decision under pressure when scale shifts.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>HNSW (Hierarchical Navigable Small World) is best for most use cases, balancing speed and accuracy. IVFFlat is better for faster build time when recall@10 &gt; 0.95 is not required.</statement>
-      <rationale source="v1-source">HNSW provides better recall with tunable parameters (M for connections, ef_construction for build quality, ef_search for query quality). IVF builds faster on large datasets but requires careful tuning of probes vs. clusters.</rationale>
+
+    <rule id="r4-named-owner" testable="true" depth="essential">
+      <statement>decision.json MUST carry decision_owner (role+person) and last_reviewed (ISO date within 30 days).</statement>
+      <rationale source="Stale-decision triage pattern">Anonymous, undated decisions become folklore that nobody owns when corpus growth changes the right answer.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Run a 3-day production load test before committing to a managed SaaS DB — cost curves are non-obvious under real query patterns.</statement>
-      <rationale source="v1-source">Public benchmarks use synthetic datasets; your domain query distribution may differ significantly. Managed SaaS costs scale non-linearly with vector count and query volume — modeling cost before committing prevents budget surprises.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>M parameter (HNSW connections): Higher = better recall, more memory. Recommended: 12-48. ef_construction (build quality): Higher = better index quality, slower build. Recommended: 100-500. ef_search (query quality): Higher = better recall, slower search. Recommended: 50-200.</statement>
-      <rationale source="v1-source">HNSW tuning directly impacts recall-latency tradeoff. Choosing appropriate M, ef_construction, and ef_search values balances memory, build time, and query speed for your workload.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>IVF parameters — nlist (clusters, default sqrt(n)): Higher = more clusters, better accuracy. Recommended: sqrt(n) to 4*sqrt(n). nprobe (search clusters, default 1): Higher = better recall, slower search. Recommended: nlist/10 to nlist/4.</statement>
-      <rationale source="v1-source">IVF is faster to build than HNSW on large datasets but requires careful tuning of clustering granularity and search depth. Choosing nprobe based on recall targets prevents silent performance degradation.</rationale>
+
+    <rule id="r5-version-on-redecide" testable="true" depth="essential">
+      <statement>Any re-decision MUST bump `decision_version` (semver) and reference the prior decision in `prior_decisions[]`.</statement>
+      <rationale source="Audit-trail requirement">Versioned decisions let new team members replay the rationale; loose overwrites destroy that history.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

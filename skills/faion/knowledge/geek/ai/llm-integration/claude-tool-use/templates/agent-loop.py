@@ -1,4 +1,10 @@
 """
+purpose: Canonical Claude agentic loop with parallel tool execution + max-turns guard.
+consumes: anthropic.Anthropic client + tool list + execute_fn + user_input
+produces: final text response after the loop terminates
+depends-on: content/01-core-rules.xml r2-r5; content/04-procedure.xml step 3
+token-budget-impact: bounded by MAX_TURNS x avg turn cost
+
 Canonical Claude agentic loop with parallel tool execution.
 
 Usage:

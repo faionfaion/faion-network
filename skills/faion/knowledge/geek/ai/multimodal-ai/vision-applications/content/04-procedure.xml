@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Vision Applications — Procedure" version="1.1.0" est_tokens="900" depth="deep">
+  <summary>7-step procedure for a VLM task service call: route task → validate size → cache probe → call → parse → normalize → route to review or auto-action.</summary>
+
+  <section title="Steps">
+    <step n="1" name="route-task">
+      <input>incoming request (image source, task_type, optional categories / policy_categories / schema)</input>
+      <action>Walk `content/06-decision-tree.xml`. Pick task handler (document / classify / moderate) and provider (Claude / GPT-4o / Gemini Flash).</action>
+      <output>task_handler reference + provider + model.</output>
+    </step>
+
+    <step n="2" name="validate-size">
+      <input>image source (URL or local path)</input>
+      <action>For URL: HEAD check (rule fm-02). For local: stat size. Reject &gt; provider cap. Reject unsupported formats. Resize to 1024px long edge.</action>
+      <output>resized bytes + media_type.</output>
+      <decision-gate>oversize after resize → return status="error", error="image too large".</decision-gate>
+    </step>
+
+    <step n="3" name="cache-probe">
+      <input>image bytes, task params (categories / policy / schema), provider, model</input>
+      <action>cache_key = sha256(bytes + json(task_params) + provider + model); probe `{cache_dir}/{cache_key}.json`; return cached=true on hit.</action>
+      <output>cache_key; cached result on hit.</output>
+    </step>
+
+    <step n="4" name="vlm-call">
+      <input>encoded image, task-specific prompt with schema, provider, model, detail level</input>
+      <action>Set `detail="auto"` default, `"high"` only for document task. Set `response_format={"type": "json_object"}` for OpenAI. Pass categories / policy_categories as text in prompt.</action>
+      <output>raw response.</output>
+    </step>
+
+    <step n="5" name="parse">
+      <input>raw response, Pydantic model per task</input>
+      <action>Parse JSON; validate against task-specific Pydantic. On JSONDecodeError / ValidationError, re-prompt with the error message; cap retries=2.</action>
+      <output>validated dict.</output>
+    </step>
+
+    <step n="6" name="normalize">
+      <input>validated dict</input>
+      <action>Lowercase severity / category. For classify, verify category ∈ supplied list. For moderate, compute `needs_human_review = confidence &lt; 0.7 OR severity in {medium, high}`.</action>
+      <output>normalised result with needs_human_review flag.</output>
+    </step>
+
+    <step n="7" name="route-to-action-or-review">
+      <input>normalised result</input>
+      <action>If `needs_human_review` → write to review queue with image_id + result. Else → route to auto-action handler. Persist cache_key + result JSON.</action>
+      <output>side-effect: review queue entry OR auto-action triggered.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>

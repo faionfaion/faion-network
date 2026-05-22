@@ -1,4 +1,11 @@
-"""Self-consistency CoT: N parallel reasoning paths, majority vote, confidence score.
+"""
+purpose: Self-consistency CoT — N parallel reasoning paths + majority vote + confidence.
+consumes: prompt + N + LLM call + answer parser
+produces: dict {final, votes, confidence}
+depends-on: content/01-core-rules.xml; cot-techniques sibling
+token-budget-impact: N x baseline CoT cost
+
+Self-consistency CoT: N parallel reasoning paths, majority vote, confidence score.
 
 Usage:
     answer, confidence = self_consistency("If a shirt costs $25 and is 20% off, price?")

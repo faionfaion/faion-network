@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="vision-applications Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for vision-applications. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Vision Applications — Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every production VLM-task service must enforce: size cap, detail default, schema-in-prompt, normalize outputs, async batch cap, human-review threshold.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-size-validate" testable="true" depth="essential">
+      <statement>Validate image file size BEFORE base64 encoding. Reject &gt; 20 MB (OpenAI cap) or &gt; 5 MB (Anthropic cap) early. Reject unsupported formats (only jpeg / png / webp / gif allowed).</statement>
+      <rationale source="OpenAI 20 MB and Anthropic 5 MB API limits">Base64 expands payload by ~33%; a 20 MB image becomes ~27 MB on the wire. Pre-validation prevents wasted API spend and confusing 400 errors.</rationale>
+    </rule>
+
+    <rule id="r2-detail-auto-default" testable="true" depth="essential">
+      <statement>Use `detail="auto"` as default; switch to `detail="high"` ONLY for dense text documents (invoice with small print, chart with labels). Forbid `detail="high"` on classification tasks.</statement>
+      <rationale source="OpenAI vision pricing: detail=high consumes 85 tokens per 512x512 tile + 85 base">A 1024px image at detail=high costs ~525 tokens; at detail=low ~85 tokens. Misusing high on a yes/no classification quadruples cost with no accuracy gain.</rationale>
+    </rule>
+
+    <rule id="r3-schema-in-prompt" testable="true" depth="essential">
+      <statement>Include the exact JSON schema in the prompt AND set `response_format={"type": "json_object"}`. Parse with try/except and re-prompt on JSONDecodeError or ValidationError.</statement>
+      <rationale source="json_object alone does not enforce schema; OpenAI Cookbook + production traces">json_object guarantees valid JSON but not field names. Schema-in-prompt + retry-on-parse is the empirical sweet spot for schema adherence.</rationale>
+    </rule>
+
+    <rule id="r4-normalize-categorical" testable="true" depth="essential">
+      <statement>Normalise categorical output fields: severity / category / status MUST be lowercased before being persisted or routed. Reject responses where the field does not match the allowed enum after normalisation.</statement>
+      <rationale source="Severity drift incidents: HIGH vs High vs high broke downstream routing">VLMs occasionally return "HIGH" or "Medium" instead of the expected enum value. Normalising at the boundary prevents silent downstream branching failures.</rationale>
+    </rule>
+
+    <rule id="r5-async-batch-cap" testable="true" depth="essential">
+      <statement>For batch processing, use `asyncio.gather` with a semaphore capped at 10-20 concurrent requests. Never run sequential batch with `for` loop in production.</statement>
+      <rationale source="Sequential vs parallel batch benchmark: 10-100x throughput delta">Sequential batches at production volume hit pipeline-level latency budgets. The 10-20 cap balances throughput with provider tier-2 rate limits.</rationale>
+    </rule>
+
+    <rule id="r6-human-review-threshold" testable="true" depth="essential">
+      <statement>For content moderation, set `needs_human_review = true` whenever `confidence &lt; 0.7` OR severity is `medium` / `high`. Never auto-action low-confidence moderation results.</statement>
+      <rationale source="False-negative incidents on subtly harmful content">VLM moderation is probabilistic; the false-negative rate on subtle harm is non-zero. The threshold + review queue prevents policy-violation incidents reaching production.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

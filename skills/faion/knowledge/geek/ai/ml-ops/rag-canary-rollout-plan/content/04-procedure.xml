@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="RAG Canary Rollout Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure to execute a RAG canary rollout per the fixed curve.</summary>
+
+  <step n="1" name="draft-plan">
+    <input>baseline_version + target_version + golden_eval_id + rubric_id + cost budget</input>
+    <action>Author rollout-plan.json with the fixed 4-step curve, golden_eval thresholds, online_quality.sample_rate≥0.05, kill_switch ≥4 criteria.</action>
+    <output>rollout-plan.json + validator pass</output>
+    <decision-gate>validate-rag-canary-rollout-plan.py returns OK; else fix and re-author.</decision-gate>
+  </step>
+  <step n="2" name="rehearse-kill-switch">
+    <input>gateway service</input>
+    <action>Trigger a synthetic kill-switch flip; measure completion time end-to-end. Must complete in ≤60s without a deploy.</action>
+    <output>rehearsal report</output>
+    <decision-gate>If &gt;60s → block rollout; redesign gateway for atomic flips.</decision-gate>
+  </step>
+  <step n="3" name="step-1pct">
+    <input>plan + 1% traffic flag</input>
+    <action>Enable 1% for 24h. Run golden eval at start; sample online quality at ≥5% of canary traffic (≥200/hr). Watch latency p95 delta.</action>
+    <output>step_gate_result(1%)</output>
+    <decision-gate>If gate fails or composite_score &lt; floor → kill switch + rollback receipt.</decision-gate>
+  </step>
+  <step n="4" name="step-5pct">
+    <input>1% gate passed</input>
+    <action>Promote to 5% for 24h. Re-run golden eval; raise online sample_rate as load allows.</action>
+    <output>step_gate_result(5%)</output>
+    <decision-gate>Same as step 3; if fail → rollback.</decision-gate>
+  </step>
+  <step n="5" name="step-25pct">
+    <input>5% gate passed</input>
+    <action>Promote to 25% for 48h. Watch for distribution shifts that only appear at scale.</action>
+    <output>step_gate_result(25%)</output>
+    <decision-gate>Same as step 3; if fail → rollback.</decision-gate>
+  </step>
+  <step n="6" name="step-100pct-and-soak">
+    <input>25% gate passed</input>
+    <action>Promote to 100%. Soak 168h with online quality scoring on continuously.</action>
+    <output>final report + retire baseline_version</output>
+    <decision-gate>If soak detects drift → kill switch + rollback.</decision-gate>
+  </step>
+</text>

@@ -1,4 +1,9 @@
-"""ContentModerator returning structured severity flags."""
+# purpose: ContentModerator — policy-category VLM call with severity + human-review gate.
+# consumes: image source, policy_categories list, confidence_threshold (default 0.7).
+# produces: dict per moderate schema: is_safe, flags, severity, needs_human_review.
+# depends-on: OpenAI SDK; rule r4 normalization; rule r6 review threshold.
+# token-budget-impact: ~150 prompt tokens + image tokens.
+"""ContentModerator with severity normalization and human-review gate."""
 from openai import OpenAI
 import base64
 import json

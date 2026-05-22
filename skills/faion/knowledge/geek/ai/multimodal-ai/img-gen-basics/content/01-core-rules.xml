@@ -1,43 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="img-gen-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for img-gen-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Image Generation Basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules for production image-generation pipelines (DALL-E 3 + Flux + SDXL).</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>DALL-E 3 deployments MUST log revised_prompt alongside the original prompt for every generation. MUST download images immediately after generation and store them (not cache the provider URL). MUST use style="natural" for product photography and style="vivid" for artistic/marketing content. MUST NOT rely on DALL-E 2 variation or edit endpoints for new workflows — these endpoints are deprecated.</statement>
-      <rationale source="v1-source">revised_prompt reveals what the model actually generated when it differs from input — essential for debugging quality issues. Provider URLs expire in ~60 minutes; file-based URL caches go stale. Style choice directly impacts photorealism: "vivid" hyper-saturates colors (unacceptable for product photos), "natural" is realistic. DALL-E 2 endpoints are being sunset; new workflows should use DALL-E 3 or Flux.</rationale>
+      <statement source="impl-discipline">Prompts are assembled via a structured builder (subject + style + lighting + composition + technical). Free-text concatenation is rejected.</statement>
+      <rationale>Unstructured prompts drift; the builder forces consistency and is diffable.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Image generation pipelines MUST use ImagePromptBuilder or equivalent structured prompt API to assemble generation requests. Components MUST include subject, style, lighting, composition, and at least 2 technical specs. Do NOT rely on manual string concatenation for production batches — inconsistent prompts produce inconsistent output and make debugging difficult.</statement>
-      <rationale source="v1-source">Structured prompts enable reproducibility and debugging. If batch quality suddenly drops, a structured approach lets you compare successful and failed prompts side-by-side by component. Manual strings make it hard to isolate which component caused quality degradation.</rationale>
+      <statement source="openai-dalle3-docs-2026">Log response.revised_prompt for every DALL-E 3 call. Compare to input on-demand.</statement>
+      <rationale>DALL-E 3 silently rewrites prompts; without logging the audit trail is lost.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Image-to-image reimagine workflows MUST use GPT-4o Vision to generate a detailed description, then feed that description into DALL-E 3 or Flux as a generation prompt. MUST communicate to stakeholders that output is loosely-related, not a precise variation (i.e., it is a new image inspired by the original, not the original tweaked). MUST NOT use DALL-E 2 variation endpoints for new workflows.</statement>
-      <rationale source="v1-source">GPT-4o vision accurately describes images. DALL-E 3 then generates something new from that description. The output is often creative and useful, but it is not a constrained variation. Stakeholders expecting pixel-level similarity will be disappointed. Setting expectations upfront prevents feedback cycles and rework.</rationale>
+      <statement source="openai-dalle3-docs-2026">Download image bytes to durable storage within the call; URLs expire in ~1h.</statement>
+      <rationale>Pipelines that cache URLs and resume later get 404s.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Batch generation on DALL-E 3 MUST serialize requests with a 12-second delay between calls (5 img/min = 12s/img) and implement exponential backoff on 429 rate-limit errors. MUST NOT use ThreadPoolExecutor with multiple concurrent threads on DALL-E 3 — the shared org rate limit will fail all concurrent threads. For high-volume generation (&gt;100 images), MUST use Replicate Flux-schnell (40-120x cheaper than DALL-E 3) or fall back to DALL-E 3 only if photorealistic quality is non-negotiable.</statement>
-      <rationale source="v1-source">DALL-E 3 rate limit is per-organization, not per-key, so concurrent agents sharing an org key compete for the shared limit. Serialization with delay respects the limit. Flux-schnell at ~$0.001/image vs. DALL-E 3 at $0.04–$0.12/image is a 40-120x cost difference. For high-volume social content, Flux quality is acceptable and cost becomes the primary optimization.</rationale>
+      <statement source="openai-rate-limit-docs-2026">Respect provider rate limits with exponential backoff; tier-1 DALL-E 3 = 5 imgs/min per org (not per key).</statement>
+      <rationale>Shared-org keys silently throttle concurrent agents.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>DALL-E 3 revised_prompt MUST be logged alongside the original prompt for every generation. This is not optional debugging — it is audit trail critical for post-hoc analysis when generated image quality surprises.</statement>
-      <rationale source="v1-source">DALL-E 3 silently rewrites prompts. revised_prompt can diverge substantially from input. Comparing the two reveals what the model actually generated vs. what was requested. Without this log, you have no way to debug quality issues or train on what works.</rationale>
+      <statement source="ops-discipline">Smoke-test the first 3 outputs of any new prompt set before launching a 100+ image batch.</statement>
+      <rationale>Content-policy refusals or revised-prompt drift surface here; catching at 3 saves 97 wasted calls.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
-      <statement>Images MUST be downloaded immediately after generation and stored locally or in S3/blob storage. Use content-based cache key (SHA-256 of image bytes) not provider URL. Provider URLs expire in ~60 minutes — pipelines that cache URLs and resume hours later get 404s.</statement>
-      <rationale source="v1-source">DALL-E pre-signed URLs are temporary. Async pipelines that reference URLs later in the same day receive 404 responses. Download immediately and store locally or in a blob service. Content-based cache keys enable duplicate detection and cost optimization.</rationale>
+      <statement source="finops-discipline">Route by cost-tolerance: DALL-E 3 for tight-brand low-volume; Flux-schnell or SDXL via Replicate for cost-sensitive high-volume.</statement>
+      <rationale>DALL-E 3 at $0.04-$0.12/image is 100x Replicate; using it for high-volume is a finops anti-pattern.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Test prompts manually on the first 3 before launching a batch of 100+ images. Content policy enforcement is not deterministic — a prompt that passes today may be rejected next week. Early validation prevents wasted batch budget.</statement>
-      <rationale source="v1-source">OpenAI's content policy is complex and occasionally changes. Edge cases that pass testing may fail in production. Testing first 3 catches policy surprises before committing full batch budget. Graceful error handling (log and surface for review, not infinite retry) is the correct escalation.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire generation pipeline per procedure.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Provider selection MUST be based on three factors: (1) Quality/aesthetics: DALL-E 3 for photorealistic and detailed art, Flux for artistic/anime, SDXL for general purpose. (2) Cost: Flux-schnell ~$0.001/image, SDXL ~$0.01/image, DALL-E 3 $0.04–$0.12/image. (3) Automation support: DALL-E 3 and Replicate (SDXL/Flux) have official APIs; Midjourney only via unofficial API and automation violates ToS. For high-volume social content, use Replicate Flux-schnell. For photorealistic quality, use DALL-E 3. Never use Midjourney in automated pipelines.</statement>
-      <rationale source="v1-source">Quality tiers are tuned for specific use cases. Cost can differ by 100x depending on volume and provider. Automation support is important for production systems — unofficial APIs are fragile and violate terms of service.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Content policy refusals MUST be logged and surfaced for human review without automatic retry. Content policy decisions are non-deterministic — retrying the exact same prompt will sometimes pass after changes to the policy engine. Infinite retry is wasteful. Log the prompt, error, and context (user, intent, timestamp), then escalate to human review for decisions about rephrasing or acceptance.</statement>
-      <rationale source="v1-source">OpenAI's content policy is complex and evolves. A prompt that is rejected can sometimes pass if retried after a backend update. But retrying the same prompt indefinitely is a waste of API budget. Human review is the correct escalation — it identifies patterns OpenAI's policy is blocking and enables informed decisions about rephrasing vs. accepting the refusal.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Pixel-perfect brand required OR real-person likeness OR on-image text → skip.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

@@ -1,35 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="db-qdrant Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for db-qdrant. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Qdrant — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>5 rules: distance + HNSW at collection creation, payload indexes for filters, quantization tradeoffs, snapshot before schema change, named vectors for multi-modal.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Set on_disk_payload=True for collections storing large text payloads; keeps vectors in RAM while payloads hit disk.</statement>
-      <rationale source="v1-source">Text payloads bloat RAM; moving them to disk reduces memory while maintaining vector search speed.</rationale>
+    <rule id="r1-config-at-creation" testable="true" depth="essential">
+      <statement>Distance metric + HNSW m + ef_construct MUST be set at collection creation via `VectorParams` / `HnswConfigDiff`. Changing m or distance requires recreating the collection.</statement>
+      <rationale source="Qdrant HNSW internals">m is baked into the graph topology; m change requires a full re-index.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Create payload indexes before bulk ingestion, not after — adding indexes post-ingest locks the collection during the (hours-long) build for large collections.</statement>
-      <rationale source="v1-source">Payload index creation is synchronous and can stall searches. Building indexes upfront prevents downtime during production bulk loads.</rationale>
+
+    <rule id="r2-payload-indexes" testable="true" depth="essential">
+      <statement>For every payload field referenced in a `Filter` clause, a payload index MUST be created. Filter-only retrieval on unindexed fields scans the entire collection.</statement>
+      <rationale source="Qdrant filter performance docs">Unindexed payload filter scans degrade by O(N); a payload index brings it to sub-millisecond at high cardinality.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Upsert in batches of 100 points; single-point upserts at scale crush throughput.</statement>
-      <rationale source="v1-source">Each upsert call has per-request overhead. Batching amortizes that cost across 100 points.</rationale>
+
+    <rule id="r3-quantization-tradeoff" testable="true" depth="essential">
+      <statement>Scalar quantization (Int8) halves RAM with &lt;1% recall loss on dense models; binary quantization gives ~32x but ONLY on high-dim (≥1024) models, with rescoring enabled.</statement>
+      <rationale source="Qdrant quantization benchmarks">Binary on low-dim collapses recall; scalar is the safer default.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Pre-compute BM25 sparse vectors outside Qdrant before upserting; Qdrant stores indices/values but has no built-in tokenizer.</statement>
-      <rationale source="v1-source">Qdrant's sparse vector format expects pre-tokenized (indices, values) pairs. Raw text tokenization must happen in the application layer.</rationale>
+
+    <rule id="r4-snapshot-before-change" testable="true" depth="essential">
+      <statement>Before any schema change (collection recreate, quantization toggle, named-vector add) a point-level snapshot MUST be taken via `snapshot_collection` and verified restorable.</statement>
+      <rationale source="Qdrant snapshot semantics">Schema changes are destructive; without a verified snapshot, rollback is impossible.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Snapshot restore requires the target collection to be absent first; restoring over an existing collection fails silently.</statement>
-      <rationale source="v1-source">Qdrant uses atomic collection swap. The collection to be restored into must not exist to prevent data corruption.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Enable rescoring (oversampling=2.0) when using quantization to recover the top-k precision loss.</statement>
-      <rationale source="v1-source">Quantization reduces recall. Fetching 2x candidates and rescoring with original float vectors restores near-original precision at the cost of extra memory reads.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Do not use binary quantization for embeddings with fewer than 256 dimensions; recall degrades significantly at low dimensionality.</statement>
-      <rationale source="v1-source">Binary quantization compresses each float to a single bit. Low-dimensional vectors have few bits, making the approximation too coarse for reliable similarity.</rationale>
+
+    <rule id="r5-named-vectors-multimodal" testable="true" depth="essential">
+      <statement>Multi-modal data (text + image) MUST use named vectors on a single point, NOT separate points per modality.</statement>
+      <rationale source="Multi-modal retrieval design">Separate points break joint ranking; named vectors keep one logical document searchable across modalities.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Vision Applications — Worked Examples" version="1.1.0" est_tokens="600" depth="medium">
+  <summary>Two worked calls: document extraction of a receipt and moderation of a user upload with severity normalization + review routing.</summary>
+
+  <section title="Receipt extraction with json_object + retry">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64, hashlib, io, json
+from openai import OpenAI
+from PIL import Image
+
+def b64(path, max_px=1024):
+    img = Image.open(path); img.thumbnail((max_px, max_px), Image.LANCZOS)
+    buf = io.BytesIO(); img.save(buf, format=img.format or "JPEG", quality=85)
+    return base64.standard_b64encode(buf.getvalue()).decode(), buf.getvalue()
+
+def extract_receipt(path):
+    img_b64, raw = b64(path)
+    key = hashlib.sha256(raw + b"document|gpt-4o").hexdigest()
+    schema = ('{"store_name": str, "date": "YYYY-MM-DD", "items": [{"name": str, "qty": int, "price": float}],'
+              ' "subtotal": float, "tax": float, "total": float}')
+    prompt = (f"Extract: store_name, date, items, subtotal, tax, total. "
+              f"Schema: {schema}. Use null for missing fields. Return JSON only.")
+    for attempt in range(3):
+        resp = OpenAI().chat.completions.create(model="gpt-4o", response_format={"type":"json_object"},
+            messages=[{"role":"user","content":[{"type":"text","text":prompt},
+                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}","detail":"high"}}]}])
+        try:
+            fields = json.loads(resp.choices[0].message.content)
+            return {"status":"ok","task":"document","fields":fields,"provider":"openai",
+                    "model":"gpt-4o","cache_key":key,"cached":False,"retries":attempt}
+        except json.JSONDecodeError as e:
+            prompt = f"Previous response invalid JSON: {e}. Return ONLY JSON matching schema: {schema}"
+    return {"status":"error","task":"document","fields":{},"provider":"openai",
+            "model":"gpt-4o","cache_key":key,"cached":False,"retries":2,"error":"parse failed"}
+
+print(json.dumps(extract_receipt("receipt.jpg"), indent=2))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Moderation with severity normalization + review routing">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import json
+from openai import OpenAI
+
+POLICY = ["violence","adult_content","hate_symbols","self_harm","illegal_activity"]
+
+def moderate(image_url):
+    prompt = (f"Analyse for policy violations: {', '.join(POLICY)}. "
+              'Return JSON {"is_safe": bool, "flags": [str], "severity": "none|low|medium|high",'
+              ' "confidence": 0-1, "reasoning": str}')
+    resp = OpenAI().chat.completions.create(model="gpt-4o", response_format={"type":"json_object"},
+        messages=[{"role":"user","content":[{"type":"text","text":prompt},
+            {"type":"image_url","image_url":{"url": image_url, "detail":"auto"}}]}])
+    raw = json.loads(resp.choices[0].message.content)
+    raw["severity"] = str(raw.get("severity","none")).strip().lower()
+    if raw["severity"] not in {"none","low","medium","high"}:
+        raw["severity"] = "low"
+    conf = float(raw.get("confidence", 0))
+    needs_review = conf < 0.7 or raw["severity"] in {"medium","high"}
+    out = {"status":"ok","task":"moderate","is_safe": bool(raw.get("is_safe")),
+           "flags": list(raw.get("flags",[])), "severity": raw["severity"],
+           "confidence": conf, "needs_human_review": needs_review,
+           "provider":"openai","model":"gpt-4o",
+           "cache_key":"a"*64, "cached":False}
+    return out
+
+result = moderate("https://example.com/uploaded.jpg")
+if result["needs_human_review"]:
+    # write to review queue, do NOT auto-hide
+    pass
+print(json.dumps(result, indent=2))
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rag-eval-strategy Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rag-eval-strategy. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="rag-eval-strategy Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of rag-eval-strategy enforces.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>LLM-judge metrics (faithfulness, answer relevance, context relevance) MUST run on a sampled subset (10-20%) of production queries, not on every query. Retrieval metrics (precision, recall, MRR, hit rate, NDCG) MUST run on the full labeled test set.</statement>
-      <rationale source="v1-source">LLM-judge calls cost money and add latency. Running faithfulness on 15% of queries captures statistically meaningful trends while keeping eval costs 5-7x lower. Retrieval metrics have zero API cost and should cover the full test set to avoid sampling noise in rank-quality measurements.</rationale>
+    <rule id="r1-explicit-gates" testable="true" depth="essential">
+      <statement>Define numeric gates: MRR_min, faithfulness_min, latency_p95_max, cost_per_query_max. No 'good vibes' criteria.</statement>
+      <rationale source="v1-source">Without numeric gates, launch decisions slide.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Quality gates MUST be numeric and explicit before any production deployment: for example "faithfulness &gt;= 0.80 AND precision@5 &gt;= 0.70 AND hit_rate &gt;= 0.90". "Looks good" or "metrics are acceptable" are not quality gates.</statement>
-      <rationale source="v1-source">Vague quality gates cannot be enforced in CI and create reviewer subjectivity. Numeric gates are runnable as assertions, blockable in deployment pipelines, and comparable across time. Track metric trends over 2+ weeks — a metric trending downward is actionable even if the current value is above threshold.</rationale>
+    <rule id="r2-tiered-runs" testable="true" depth="essential">
+      <statement>Define three eval tiers: per-PR (fast 20-question set), per-release (full set, full Triad), weekly (sampled production drift check).</statement>
+      <rationale source="v1-source">Mixing speed and depth in one run wastes budget.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Quality gates MUST include at least one retrieval metric AND at least one generation metric. Never gate on a single metric.</statement>
-      <rationale source="v1-source">A model can improve faithfulness while degrading retrieval recall. A single-metric gate misses this cross-dimension regression. Minimum viable gate: faithfulness (generation) + precision@5 (retrieval).</rationale>
+    <rule id="r3-sampling-policy" testable="true" depth="essential">
+      <statement>Sampling fraction and seed are explicit; never 'about 10%'. Reproducibility requires deterministic sampling.</statement>
+      <rationale source="v1-source">Non-deterministic sampling breaks cross-run comparison.</rationale>
+    </rule>
+    <rule id="r4-rollback-criteria" testable="true" depth="essential">
+      <statement>Specify rollback criteria as inverse of launch gates (e.g., faithfulness drops by 0.05 absolute → rollback).</statement>
+      <rationale source="v1-source">Symmetric criteria avoid one-way ratchets.</rationale>
+    </rule>
+    <rule id="r5-owner-and-revisit" testable="true" depth="essential">
+      <statement>Strategy doc names a single owner and a revisit date (default 90 days).</statement>
+      <rationale source="v1-source">Ownerless strategies decay; revisit cadence prevents staleness.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip when there is no production target or shared team need.</statement>
+      <rationale source="phase-d">Stub rule referenced from 06-decision-tree.xml when none of the qualifying branches fire.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

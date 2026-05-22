@@ -1,3 +1,10 @@
+"""
+purpose: Heuristic to pick a CoT strategy from problem text.
+consumes: problem text + dominant-failure category
+produces: strategy slug ∈ {zero_shot, tree_of_thoughts, least_to_most, self_consistency}
+depends-on: content/01-core-rules.xml r1
+token-budget-impact: zero — pure-Python decision helper
+"""
 # CoT strategy selection heuristic
 # Usage: strategy = select_cot_strategy(problem_text)
 # Returns: "zero_shot" | "tree_of_thoughts" | "least_to_most"

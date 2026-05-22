@@ -1,22 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="db-chroma Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Chroma — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for ChromaStore search response: collection, metric, hits[] with id (string), score, payload, source.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://db-chroma/search.schema.json",
+  "type": "object",
+  "required": ["collection", "metric", "top_k", "hits"],
+  "properties": {
+    "collection": {"type": "string", "minLength": 1},
+    "metric": {"type": "string", "enum": ["cosine", "l2", "ip"]},
+    "top_k": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "score", "payload"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "score": {"type": "number"},
+          "payload": {"type": "object"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>hit.id is integer.</description>
+      <reason>Violates r2-string-ids; Chroma cannot have stored integer IDs in the first place.</reason>
+    </antipattern>
+    <antipattern>
+      <description>metric not in {cosine, l2, ip}.</description>
+      <reason>Violates r1-metric-at-creation enum.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "collection": "documents",
+  "metric": "cosine",
+  "top_k": 5,
+  "hits": [
+    {"id": "doc-a-0001", "score": 0.91, "payload": {"source": "a.pdf", "page": 3}}
+  ]
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"collection": "", "metric": "dot", "top_k": 0, "hits": [{"id": 1, "score": 0.5}]}
+]]></code>
+      <note>Invalid: empty collection; metric not enum; top_k below 1; id integer; missing payload.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>collection non-empty.</item>
+      <item>metric ∈ {cosine, l2, ip}.</item>
+      <item>top_k ≥ 1.</item>
+      <item>Every hit.id is a non-empty string.</item>
     </list>
   </section>
 </text>

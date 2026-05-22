@@ -1,3 +1,9 @@
+# purpose: Reciprocal Rank Fusion implementation for hybrid search
+# consumes: ranked result lists from dense + sparse legs
+# produces: fused rank list ready for the top-K cut
+# depends-on: content/01-core-rules.xml r1-rrf-default
+# token-budget-impact: zero at runtime; reference scaffold only
+
 """Provider-agnostic RRF fusion of ranked ID lists.
 
 Usage:

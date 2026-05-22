@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Vision Applications — Task + Provider + Review Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-task">What is the task_type in the request?</root-question>
+    <branch when="task_type == 'document'">
+      <question id="q-doc-stakes">Is the document high-stakes (financial / legal / medical / regulated)?</question>
+      <branch when="high_stakes == true">
+        <conclusion ref="r2-detail-auto-default">Provider = OpenAI GPT-4o with detail=high. response_format json_object + schema-in-prompt + retry-on-parse. Always set needs_human_review for amounts above threshold.</conclusion>
+      </branch>
+      <branch when="high_stakes == false">
+        <conclusion ref="r3-schema-in-prompt">Provider = OpenAI GPT-4o with detail=auto. json_object + schema-in-prompt. Standard retry budget.</conclusion>
+      </branch>
+    </branch>
+    <branch when="task_type == 'classify'">
+      <question id="q-volume">Is this part of a batch (&gt; 100 images / minute)?</question>
+      <branch when="high_volume == true">
+        <conclusion ref="r5-async-batch-cap">Provider = Gemini Flash. detail=auto (low effective). asyncio.gather under semaphore=15. Cache aggressively.</conclusion>
+      </branch>
+      <branch when="high_volume == false">
+        <conclusion ref="r4-normalize-categorical">Provider = OpenAI GPT-4o haiku-equivalent. detail=auto. Normalize category to lowercase before persisting.</conclusion>
+      </branch>
+    </branch>
+    <branch when="task_type == 'moderate'">
+      <conclusion ref="r6-human-review-threshold">Provider = OpenAI GPT-4o (best at policy reasoning) OR Claude Sonnet (alternative). Apply severity normalization + needs_human_review threshold rule. Never auto-action on confidence &lt; 0.7.</conclusion>
+    </branch>
+    <example trace="receipt-extraction">
+      <p>Input: task_type=document, high_stakes=true (financial). → conclusion r2-detail-auto-default: OpenAI GPT-4o with detail=high, json_object, schema-in-prompt; amounts above threshold → needs_human_review=true.</p>
+    </example>
+  </decision-tree>
+</text>

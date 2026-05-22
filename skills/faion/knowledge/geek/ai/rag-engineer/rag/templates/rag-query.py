@@ -1,3 +1,9 @@
+# purpose: RAG query execution helper (legacy variant)
+# consumes: vector_store + reranker + llm + query
+# produces: RAG answer dict matching 02-output-contract
+# depends-on: templates/rag-pipeline.py.tmpl
+# token-budget-impact: zero at runtime; scaffold
+
 """Minimal RAG query with cross-encoder reranking using LlamaIndex.
 
 Usage:

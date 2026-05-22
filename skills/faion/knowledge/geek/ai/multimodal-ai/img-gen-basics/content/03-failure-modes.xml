@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="img-gen-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for img-gen-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Image Generation Basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five recurring failures in DALL-E 3 / Flux / SDXL pipelines.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Expecting DALL-E 3 to render precise text within the image.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All current image generation models including DALL-E 3 are unreliable for rendering text strings inside images — characters are frequently garbled, misspelled, or completely wrong. Do not depend on this for production images.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running ThreadPoolExecutor with 10 threads on a DALL-E tier-1 API key.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DALL-E 3 rate limit is per-organization (5 img/min), not per-key. 10 concurrent threads will immediately exhaust the shared limit and all fail with 429. Serialize with delay instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Caching DALL-E provider URLs and resuming a pipeline hours later.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DALL-E pre-signed URLs expire in ~60 minutes. Late-stage resume attempts get 404 on all cached URLs. Download immediately and store locally/in blob storage.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Passing JPEG to DALL-E 2 variation or edit endpoints.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DALL-E 2 variation/edit endpoints require PNG images with an alpha channel. JPEG causes a cryptic 400 error. Convert to PNG first. (Better: use DALL-E 3 or Flux instead — DALL-E 2 endpoints are deprecated.)</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Assuming reimagine_image output matches the original image.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The describe-then-generate cycle produces a loosely-related new image, not a variation. It is creative and often useful, but stakeholders expecting similarity will be disappointed. Set expectations upfront.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <symptom>Generated images don't match the prompt; reviewer cannot diagnose why.</symptom>
+      <root-cause>response.revised_prompt was not logged; no audit trail of what DALL-E 3 actually saw.</root-cause>
+      <fix>Always persist response.revised_prompt next to the image and input prompt (rule r2).</fix>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Batch pipeline hits 404s on image URLs an hour after generation.</symptom>
+      <root-cause>URL was cached for later download; DALL-E URLs expire ~1h.</root-cause>
+      <fix>Download bytes to durable storage within the same call; never cache the URL (rule r3).</fix>
+    </antipattern>
+    <antipattern id="fm-03" severity="medium">
+      <symptom>Two agents share one org key; both throttled at 2.5 imgs/min instead of 5.</symptom>
+      <root-cause>Rate limits are per-org, not per-key; sharing splits the budget.</root-cause>
+      <fix>Track org-level concurrent calls in a shared counter; back off cooperatively (rule r4).</fix>
+    </antipattern>
+    <antipattern id="fm-04" severity="high">
+      <symptom>OpenAI returns content_policy_violation for celebrity / real-person prompts.</symptom>
+      <root-cause>Prompt requested real-person likeness; OpenAI policy blocks this.</root-cause>
+      <fix>Filter prompts for real-person names upstream; refer to subjects by role (e.g. "a doctor", not "Dr. House").</fix>
+    </antipattern>
+    <antipattern id="fm-05" severity="medium">
+      <symptom>Generated image has garbled text on it; product copy unreadable.</symptom>
+      <root-cause>All current generators struggle with on-image text rendering.</root-cause>
+      <fix>Composite text via post-processing (Pillow / Canvas); never trust the model to render text.</fix>
+    </antipattern>
   </section>
 </text>

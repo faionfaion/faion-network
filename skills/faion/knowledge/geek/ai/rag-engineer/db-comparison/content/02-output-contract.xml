@@ -1,22 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="db-comparison Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="DB Comparison — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for decision.json: chosen + score_matrix + fallbacks + migration_plan + owner + version.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://db-comparison/decision.schema.json",
+  "type": "object",
+  "required": ["decision_version", "decision_owner", "last_reviewed", "year_one_vectors", "chosen", "score_matrix", "fallbacks", "migration_plan"],
+  "properties": {
+    "decision_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "decision_owner": {"type": "string", "minLength": 3},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "year_one_vectors": {"type": "integer", "minimum": 1},
+    "chosen": {"type": "string", "enum": ["chroma", "qdrant", "weaviate", "pgvector", "pinecone", "milvus"]},
+    "score_matrix": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["scale_fit", "hosting_fit", "hybrid_search", "payload_filter_perf", "multi_tenant", "existing_postgres", "team_familiarity", "weighted_total"],
+        "properties": {
+          "scale_fit": {"type": "integer", "minimum": 0, "maximum": 3},
+          "hosting_fit": {"type": "integer", "minimum": 0, "maximum": 3},
+          "hybrid_search": {"type": "integer", "minimum": 0, "maximum": 3},
+          "payload_filter_perf": {"type": "integer", "minimum": 0, "maximum": 3},
+          "multi_tenant": {"type": "integer", "minimum": 0, "maximum": 3},
+          "existing_postgres": {"type": "integer", "minimum": 0, "maximum": 3},
+          "team_familiarity": {"type": "integer", "minimum": 0, "maximum": 3},
+          "weighted_total": {"type": "number"}
+        }
+      }
+    },
+    "fallbacks": {
+      "type": "array", "minItems": 1, "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["db", "trigger"],
+        "properties": {
+          "db": {"type": "string"},
+          "trigger": {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "migration_plan": {"type": "string", "minLength": 20},
+    "prior_decisions": {"type": "array", "items": {"type": "string"}}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>fallbacks empty.</description>
+      <reason>Violates r3-named-fallbacks.</reason>
+    </antipattern>
+    <antipattern>
+      <description>chosen not in enum.</description>
+      <reason>Free-string drift; must match supported enum.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "decision_version": "1.0.0",
+  "decision_owner": "founder:ruslan",
+  "last_reviewed": "2026-05-22",
+  "year_one_vectors": 250000,
+  "chosen": "qdrant",
+  "score_matrix": {
+    "qdrant": {"scale_fit": 3, "hosting_fit": 3, "hybrid_search": 2, "payload_filter_perf": 3, "multi_tenant": 2, "existing_postgres": 0, "team_familiarity": 2, "weighted_total": 2.5},
+    "chroma": {"scale_fit": 1, "hosting_fit": 3, "hybrid_search": 0, "payload_filter_perf": 1, "multi_tenant": 0, "existing_postgres": 0, "team_familiarity": 3, "weighted_total": 1.4}
+  },
+  "fallbacks": [
+    {"db": "weaviate", "trigger": "if knowledge-graph relations become primary access pattern"},
+    {"db": "pgvector", "trigger": "if existing Postgres footprint absorbs vector workload"}
+  ],
+  "migration_plan": "Phase 1 single-node Qdrant on Hetzner; Phase 2 add replica; Phase 3 hosted Qdrant Cloud if >5M."
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"chosen": "best-db", "score_matrix": {}, "fallbacks": []}
+]]></code>
+      <note>Invalid: chosen not in enum; empty matrix; empty fallbacks; missing owner/version/migration_plan.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>decision_version is semver.</item>
+      <item>chosen ∈ enum.</item>
+      <item>score_matrix has ≥2 candidates.</item>
+      <item>fallbacks has ≥1 entry with trigger.</item>
+      <item>migration_plan ≥ 20 chars.</item>
     </list>
   </section>
 </text>
