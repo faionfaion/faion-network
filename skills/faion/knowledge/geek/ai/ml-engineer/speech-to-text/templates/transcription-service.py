@@ -1,3 +1,8 @@
+# purpose: production TranscriptionService with multi-provider + fallback + large-file chunking
+# consumes: audio bytes + provider config
+# produces: code (drop-in service wrapping STT providers)
+# depends-on: provider SDKs (openai, assemblyai, deepgram, faster-whisper), pydantic
+# token-budget-impact: ~800 tokens if loaded into LLM context
 """
 Production TranscriptionService: multi-provider support, fallback, large-file chunking.
 Providers: OpenAI Whisper, GPT-4o Transcribe, GPT-4o Mini Transcribe,
