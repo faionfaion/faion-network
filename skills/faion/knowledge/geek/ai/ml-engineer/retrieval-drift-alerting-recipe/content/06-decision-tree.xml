@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Retrieval Drift Alerting — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Branches on metric class, magnitude, and sustained window — routes to P1 page, P3 ticket, or auto-safer-mode gate.</summary>
+
+  <decision-tree>
+    <root-question id="q-baseline">Is a frozen baseline ≤90 days old loaded?</root-question>
+    <branch when="baseline_age_days &gt; 90">
+      <conclusion ref="r1-baseline-freshness" verdict="STOP — refresh baseline before evaluating drift; stale baseline gives false alerts"/>
+    </branch>
+    <branch when="baseline_age_days &lt;= 90">
+      <question id="q-metrics">How many of the four metrics breach simultaneously?</question>
+      <branch when="metrics_breached &gt;= 2">
+        <conclusion ref="r3-routing-by-severity" verdict="P1 PAGE on-call + engage safer-mode gate (r4-safer-mode-gate)"/>
+      </branch>
+      <branch when="metrics_breached == 1">
+        <question id="q-magnitude">What is breach magnitude (σ from baseline mean)?</question>
+        <branch when="magnitude_sigma &gt;= 3">
+          <conclusion ref="r3-routing-by-severity" verdict="P1 PAGE — single-metric 3σ breach is severe enough to act"/>
+        </branch>
+        <branch when="magnitude_sigma &gt;= 1 and magnitude_sigma &lt; 3">
+          <question id="q-sustained">Sustained for ≥60 minutes?</question>
+          <branch when="sustained_minutes &gt;= 60">
+            <conclusion ref="r5-recontract-trigger" verdict="P3 TICKET — recontract candidate; review at next sync"/>
+          </branch>
+          <branch when="sustained_minutes &lt; 60">
+            <conclusion ref="r2-four-metric-coverage" verdict="suppress — transient noise; log to drift-history but no alert"/>
+          </branch>
+        </branch>
+      </branch>
+      <branch when="metrics_breached == 0">
+        <conclusion ref="r2-four-metric-coverage" verdict="no action; baseline still valid"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="2 metrics breach → P1 + safer-mode">
+    <code lang="text"><![CDATA[
+baseline_age_days=14 → metrics_breached=2 (jaccard, neighbour-recency) → r3-routing-by-severity verdict applied → on-call paged + gate engaged
+]]></code>
+  </example>
+</text>

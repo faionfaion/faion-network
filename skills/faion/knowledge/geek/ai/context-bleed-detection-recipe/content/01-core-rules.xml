@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Context Bleed Detection Recipe Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Context Bleed Detection Recipe application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Context Bleed Detection Recipe Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every context-bleed detection run must enforce. HARD rules — false positives are expensive, false negatives are catastrophic.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Context Bleed Detection Recipe only to a single instance of 'p7-llm-agent-developer/Agent-state debug session (cursor + replay)'. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="Anti-conflation pattern">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="r1-canary-per-session" testable="true" depth="essential">
+      <statement>Each session under probe receives a UNIQUE canary token injected into the system prompt context. Two sessions never share a canary in the same observation window.</statement>
+      <rationale source="zeroclaw issue 2590 / canary-token primer">Reused canaries cannot prove cross-tenant bleed because a hit is ambiguous. Per-session canaries collapse the bleed claim to a deterministic string match.</rationale>
     </rule>
 
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="Contract-first artefacts">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="r2-snapshot-before-probe" testable="true" depth="essential">
+      <statement>System prompt, tool registry, and model snapshot are captured BEFORE the probe runs. Probes against an undocumented runtime are rejected.</statement>
+      <rationale source="Audit-trail discipline">Without a baseline snapshot, post-hoc analysis cannot distinguish bleed from intentional config change.</rationale>
     </rule>
 
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No 'team' or 'we' as owner.</statement>
-      <rationale source="RACI / single-throat-to-choke">Plural ownership = no ownership. Future readers need a named human to chase when the artefact is stale.</rationale>
+    <rule id="r3-distance-threshold" testable="true" depth="essential">
+      <statement>Embedding distance is measured with a documented model + threshold. Default: cosine distance under 0.15 between turn N and any turn N-1 from another session triggers investigation. Threshold is recorded in the incident.</statement>
+      <rationale source="Galileo — embedding security">Undocumented thresholds make every alert a debate; explicit values make alerts reproducible and tunable per tenant pair.</rationale>
     </rule>
 
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) must be flagged on read.</statement>
-      <rationale source="Anti-decay practice">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="r4-named-incident" testable="true" depth="essential">
+      <statement>Every detector hit emits an incident record with a single named on-call owner. No 'team' / 'we'. Incident_id is unique and references session_ids by hash, not raw user-id.</statement>
+      <rationale source="RACI / privacy-by-default">Plural ownership means no triage. Raw user-ids in incidents become a secondary leak; hashing them preserves correlation without re-exposing PII.</rationale>
     </rule>
 
-    <rule id="r5-traceable-decision" testable="true" depth="essential">
-      <statement>Every decision in the output cites the input artefact(s) that justified it. Untraceable decisions are rejected.</statement>
-      <rationale source="Audit-trail discipline">Without traceability, the artefact becomes opinion. Citations make the output reviewable by a future operator with no context.</rationale>
+    <rule id="r5-no-blast-radius-fix" testable="true" depth="essential">
+      <statement>A confirmed bleed never triggers a fleet-wide reset by default; the recipe outputs a scoped kill switch (worker-pool slice, prompt-cache key, session-id range). Fleet-wide actions require human approval.</statement>
+      <rationale source="Anti-overfire pattern">Overfiring a kill switch on a false positive takes down paying tenants. Scoped switches preserve availability while containing the bleed.</rationale>
     </rule>
 
   </section>
@@ -34,5 +34,7 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

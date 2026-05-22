@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Trajectory Eval Setup Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to wire OTel GenAI spans, build the 3-axis rubric, and gate PRs in CI.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="wire-otel-tracer">
+      <input>Application source + OTLP backend endpoint (Langfuse / Phoenix / Datadog)</input>
+      <action>Install opentelemetry-sdk + opentelemetry-exporter-otlp. Initialize tracer at app startup; export to OTLP endpoint over gRPC.</action>
+      <output>Tracer instance available app-wide; spans visible in backend UI</output>
+    </step>
+
+    <step n="2" name="instrument-llm-and-tools">
+      <input>Tracer instance + LLM client (Anthropic / OpenAI) + tool dispatcher</input>
+      <action>Wrap every LLM call in `agent.llm` span with `gen_ai.*` attributes. Wrap every tool call in `agent.tool.&lt;name&gt;` child span with args_hash + outcome + duration_ms.</action>
+      <output>Production runs emit full trees of spans per agent run</output>
+    </step>
+
+    <step n="3" name="build-three-axis-rubric">
+      <input>Trace store + ground-truth answers + max-acceptable-cost/steps thresholds</input>
+      <action>Implement outcome scorer (LLM-as-judge or rule-match), trajectory scorer (steps, loops, tool-misuse), resource scorer (normalized tokens + cost + latency). Each returns 0-1.</action>
+      <output>EvalRubric module + per-task baseline values</output>
+    </step>
+
+    <step n="4" name="run-eval-suite">
+      <input>EvalRubric + eval-set of 50+ representative tasks + baseline scores</input>
+      <action>Run the agent against the eval set. For each run, ingest spans, compute the 3 scores, write a report matching the JSON Schema in 02-output-contract.xml.</action>
+      <output>Per-run eval-report.json + aggregated delta-vs-baseline table</output>
+    </step>
+
+    <step n="5" name="ci-gate">
+      <input>Eval reports + CI workflow file</input>
+      <action>Add a CI job that runs the eval on PR diff. Fail the build if any axis regresses &gt; 25% vs baseline (configurable). Surface the failing trace IDs in the PR comment.</action>
+      <output>CI gate active; cost regressions caught before merge.</output>
+      <decision-gate>If eval flake rate &gt; 5%, the eval is non-deterministic — investigate seed / temperature / cache before tightening gates.</decision-gate>
+    </step>
+
+  </section>
+</text>

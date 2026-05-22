@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="E2E Testing Worked Example" version="2.0.0" est_tokens="700" depth="recommended">
+  <summary>One worked example: checkout flow journey with POM + factory + route-mocked payment API.</summary>
+
+  <example type="good">
+    <note>Page Object using role-based selectors (r3) and exposing methods, not raw locators (r2).</note>
+    <code lang="typescript"><![CDATA[
+import { BasePage } from './base';
+
+export class CheckoutPage extends BasePage {
+  readonly url = '/checkout';
+  readonly payButton = this.page.getByRole('button', { name: 'Pay now' });
+  readonly successBanner = this.page.getByText('Order confirmed');
+
+  async pay(): Promise<void> {
+    await this.payButton.click();
+  }
+}
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>Complete user journey with route-mocked external API (r5), no fixed sleeps (r6), factory-generated data (r7).</note>
+    <code lang="typescript"><![CDATA[
+import { test, expect } from '@playwright/test';
+import { createUser } from '../fixtures/factory';
+import { CheckoutPage } from '../pages/checkout';
+
+test('checkout completes when gateway returns 200', async ({ page }) => {
+  const user = createUser();
+  await page.route('**/api/payments', route =>
+    route.fulfill({ status: 200, body: JSON.stringify({ id: 'pi_x' }) })
+  );
+  const checkout = new CheckoutPage(page);
+  await checkout.navigate();
+  await checkout.pay();
+  await expect(checkout.successBanner).toBeVisible();
+});
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Bad — fixed sleep (r6 violation), CSS class selector (r3 violation), full-page screenshot (r-component-screenshot violation).</note>
+    <code lang="typescript"><![CDATA[
+await page.locator('.btn-primary').click();
+await page.waitForTimeout(2000);
+await expect(page).toHaveScreenshot('checkout.png');  // full-page — flakes on dynamic content
+]]></code>
+  </example>
+</text>
