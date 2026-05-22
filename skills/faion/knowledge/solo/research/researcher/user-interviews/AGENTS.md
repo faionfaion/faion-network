@@ -2,7 +2,7 @@
 slug: user-interviews
 tier: solo
 group: research
-domain: researcher
+domain: research
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

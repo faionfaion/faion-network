@@ -2,7 +2,7 @@
 slug: value-proposition-design
 tier: solo
 group: ux
-domain: user-researcher
+domain: ux
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

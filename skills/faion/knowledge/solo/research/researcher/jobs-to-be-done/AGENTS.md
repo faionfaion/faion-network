@@ -2,7 +2,7 @@
 slug: jobs-to-be-done
 tier: solo
 group: research
-domain: researcher
+domain: research
 version: 1.0.0
 status: stable
 last_reviewed: 2026-05-17

@@ -2,7 +2,7 @@
 slug: design-to-dev-handoff
 tier: solo
 group: ux
-domain: ui-designer
+domain: frontend
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
