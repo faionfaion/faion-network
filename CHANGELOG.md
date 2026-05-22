@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 refactor: harvest +14 files (batch 0).
 - F-066 refactor: harvest +16 files (batch 0).
 - F-066 refactor: harvest +18 files (batch 0).
 - F-066 phase D: update faion/CLAUDE.md for v5.0 (20 canonical domains, 11 goal categories, 2-level retrieval).

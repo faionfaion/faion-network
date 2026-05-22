@@ -1,19 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-selectors Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-selectors. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-selectors Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Five testable rules for selector functions in HackSoft-style Django projects. Each is enforceable by `scripts/validate-django-selectors.py` or by a pytest-django test.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Selector functions MUST use keyword-only arguments (asterisk). List selectors return QuerySet[Model]. Single-object selectors return Model and raise Model.DoesNotExist or NotFoundError if not found — never return None from a "get" selector. Selectors MUST include all prefetch_related and select_related calls needed for the data their callers will access.</statement>
-      <rationale source="v1-source">Returning QuerySet allows the caller to chain additional filters without making a new query. Consistent exception behavior (DoesNotExist raised, not None returned) prevents None-check errors downstream. Bundling all prefetches in the selector guarantees N+1 prevention for every caller.</rationale>
+    <rule id="r1-kwarg-only" testable="true" depth="essential">
+      <statement>Every selector function MUST take keyword-only arguments (signature starts with `*,`). List selectors MUST be annotated to return `QuerySet[Model]`. Single-object selectors MUST be annotated to return `Model` and MUST raise `Model.DoesNotExist` (or a domain-specific 404) when nothing matches — they MUST NOT return `None`.</statement>
+      <rationale source="HackSoft Django styleguide https://github.com/HackSoftware/Django-Styleguide#selectors">Keyword-only signatures make call sites self-documenting and prevent positional misuse when arguments grow. QuerySet return enables further chaining without re-issuing a query. Raising DoesNotExist matches Django's own contract; returning None forces every caller to do None-checks that get forgotten.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use select_related for ForeignKey and OneToOne relations (single JOIN). Use prefetch_related for ManyToMany and reverse ForeignKey relations (separate query). Use Prefetch() object when the related queryset needs its own filter, ordering, or prefetch.</statement>
-      <rationale source="v1-source">select_related generates a SQL JOIN — right for FK/OneToOne where one related object per row. prefetch_related generates a separate query — right for M2M / reverse FK where multiple related objects per row. A blanket prefetch_related on an FK wastes round trips; a blanket select_related on a reverse FK causes cartesian product blowup.</rationale>
+
+    <rule id="r2-prefetch-ownership" testable="true" depth="essential">
+      <statement>The selector MUST include every `select_related(...)` for FK/OneToOne and every `prefetch_related(...)` for M2M / reverse FK / GFK that any caller will dereference. Use `Prefetch(queryset=..., to_attr=...)` when the related queryset needs its own filter, ordering, or inner select_related. Callers (views, serializers, tasks) MUST NOT add their own `select_related` / `prefetch_related` on top.</statement>
+      <rationale source="Django QuerySet docs">Centralising prefetch ownership guarantees the optimisation cannot drift between callers. If serializers add their own prefetches, the next caller forgets and reintroduces N+1.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use .exists() instead of .count() &gt; 0 or len(queryset) &gt; 0 for existence checks. Use .annotate() for aggregations that should be fetched in the same query. Use F() expressions for field references in filters and annotations.</statement>
-      <rationale source="v1-source">exists() generates SELECT 1 ... LIMIT 1 — O(1) DB cost. count() &gt; 0 generates SELECT COUNT(*) — O(N) DB cost. len(queryset) materializes the entire queryset in Python memory just to check if it's non-empty.</rationale>
+
+    <rule id="r3-exists-over-count" testable="true" depth="essential">
+      <statement>Existence checks MUST use `qs.exists()`. Forbid `qs.count() > 0`, `len(qs) > 0`, and `bool(list(qs))` for that purpose. Use `qs.annotate(...)` for in-query aggregations; use `F("field")` for atomic field references in filters and updates.</statement>
+      <rationale source="Django docs https://docs.djangoproject.com/en/stable/ref/models/querysets/#exists">`.exists()` translates to `SELECT 1 ... LIMIT 1` — O(1) cost. `.count()` issues `COUNT(*)` — O(N) on large tables. `len(qs)` materialises every row into Python memory. F() expressions evaluate server-side, eliminating the read-modify-write race.</rationale>
+    </rule>
+
+    <rule id="r4-read-only-no-side-effects" testable="true" depth="essential">
+      <statement>Selectors MUST be read-only. No `.save()`, no `.create()`, no `.update()`, no `.delete()`, no transaction state changes, no Celery `.delay()`. Write operations live in `services.py`. Side-effectful caching (cache.set) is allowed inside the selector when the cache layer is read-through; otherwise belongs in a service.</statement>
+      <rationale source="HackSoft styleguide separation of concerns">The read/write split is the entire point of selectors vs services. A selector that writes makes test isolation impossible (every call to a selector mutates DB) and breaks the mental model.</rationale>
+    </rule>
+
+    <rule id="r5-assertnumqueries-test" testable="true" depth="essential">
+      <statement>Every list selector MUST have a pytest using `django_assert_num_queries(N)` that locks the expected query count under representative fixture data. Single-object selectors with related data MUST do the same for detail-shaped tests.</statement>
+      <rationale source="pytest-django docs https://pytest-django.readthedocs.io/en/latest/helpers.html">Without the lock, accidental N+1 reintroduction (e.g. removing a prefetch during refactor) is invisible until production. Locking N inside the selector test, not the view test, isolates the failure to the right module.</rationale>
     </rule>
   </section>
 </text>

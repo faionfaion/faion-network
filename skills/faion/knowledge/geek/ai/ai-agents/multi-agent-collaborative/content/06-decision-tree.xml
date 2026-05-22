@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Collaborative vs Other Multi-Agent Decision Tree" version="1.0.0" est_tokens="300">
+  <decision-tree>
+    <root-question id="q-task-shape">Does the task have a single correct answer that the system should converge toward?</root-question>
+    <branch when="single_correct_answer == true">
+      <conclusion ref="r3-independent-synthesizer">Skip collaborative — pattern excels at coverage, not convergence. Use hierarchical (manager + workers) or debate (proponent + opponent + judge) for tasks with a correct answer.</conclusion>
+    </branch>
+    <branch when="single_correct_answer == false">
+      <question id="q-budget">Is the token budget ≥ 20k AND latency budget ≥ 30 s?</question>
+      <branch when="budget_tokens &lt; 20000 OR latency_budget_s &lt; 30">
+        <conclusion ref="r2-iteration-cap">Skip collaborative — N×M call pattern needs headroom. Downgrade to `parallel` (one round, gather, synthesize) for a 3x-cheaper coverage pattern.</conclusion>
+      </branch>
+      <branch when="budget_tokens &gt;= 20000 AND latency_budget_s &gt;= 30">
+        <question id="q-state">Does the task need fine-grained shared mutable state (agents editing the same artefact)?</question>
+        <branch when="needs_mutable_state == true">
+          <conclusion ref="r4-append-only-workspace">Skip collaborative — workspace is append-only by design. Use a custom orchestrator with a CRDT or central locking layer.</conclusion>
+        </branch>
+        <branch when="needs_mutable_state == false">
+          <conclusion ref="r1-simultaneous-synthesis">Pick `collaborative`. Configure CollaborativeGroup with contributors (≥2, mixed model families if available), independent synthesizer on a different family, max_iterations=4-5, budget guard at 90% of token_budget.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="naming-brainstorm">
+      <p>"Generate 10 candidate product names with rationale and risks": no single correct answer, budget 30k tokens, no mutable state → q-task-shape=open → q-budget=ok → q-state=no → conclusion r1-simultaneous-synthesis (collaborative).</p>
+    </example>
+  </decision-tree>
+</text>
