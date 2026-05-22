@@ -1,3 +1,8 @@
+# purpose: FastAPI transcription endpoint with sync + async (webhook) modes
+# consumes: multipart audio upload
+# produces: code (drop-in transcription API service)
+# depends-on: fastapi, python-multipart, httpx, STT provider SDK
+# token-budget-impact: ~600 tokens if loaded into LLM context for editing
 """
 FastAPI transcription endpoint with sync and async (webhook) modes.
 Requires: pip install fastapi python-multipart httpx

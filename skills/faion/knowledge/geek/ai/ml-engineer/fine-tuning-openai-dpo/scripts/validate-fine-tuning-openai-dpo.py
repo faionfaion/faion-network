@@ -26,7 +26,7 @@ REQUIRED = ['sft_base_model_id', 'pair_count', 'beta', 'epochs', 'inter_rater_ag
 ENUMS = json.loads('{}')
 
 VALID_FIXTURE = json.loads('{"sft_base_model_id": "ft:gpt-4o-mini-2024-07-18:org::sft_v1", "pair_count": 1850, "beta": 0.1, "epochs": 2, "inter_rater_agreement": 0.72, "preference_eval_gate_passed": true}')
-INVALID_FIXTURE = json.loads('{"sft_base_model_id": "gpt-4o-mini", "pair_count": 80, "beta": 5.0, "epochs": 0, "inter_rater_agreement": 0.2, "preference_eval_gate_passed": false}')
+INVALID_FIXTURE = json.loads('{"sft_base_model_id": "", "pair_count": 80, "beta": 5.0, "epochs": 0, "inter_rater_agreement": 0.2, "preference_eval_gate_passed": false}')
 
 
 def validate(obj: dict) -> list[str]:

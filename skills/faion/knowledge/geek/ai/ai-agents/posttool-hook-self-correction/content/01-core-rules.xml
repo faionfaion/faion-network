@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="posttool-hook-self-correction Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for posttool-hook-self-correction. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="PostTool Hook Self-Correction Core Rules" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every PostToolUse self-correction hook MUST enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-scope-per-file" testable="true" depth="essential">
+      <statement>Each validator command MUST be scoped to the affected file via $CLAUDE_FILE_PATH (or equivalent), NOT run against the whole repo.</statement>
+      <rationale source="docs.anthropic.com/claude-code/hooks">Repo-wide validation on every Edit explodes latency; the agent never finishes a turn before the next hook fires.</rationale>
     </rule>
+
+    <rule id="r2-nonzero-exit" testable="true" depth="essential">
+      <statement>Validator commands MUST exit non-zero on failure so stderr is surfaced to the agent as a tool-result error.</statement>
+      <rationale source="claude-code hook spec">stderr from non-zero exits is the channel that wires self-correction. Silent success blocks the feedback loop.</rationale>
+    </rule>
+
+    <rule id="r3-timeout-cap" testable="true" depth="essential">
+      <statement>Every hook command MUST carry a timeout (default 5s; max 30s). Long validators are deferred to commit-time gates.</statement>
+      <rationale source="agent UX">Hooks block the next turn; runaway commands stall the agent visibly.</rationale>
+    </rule>
+
+    <rule id="r4-loop-cap" testable="true" depth="essential">
+      <statement>The hook system MUST cap consecutive self-correction loops at retry_max (default 3). After retry_max failures on the same file, the hook MUST surface a structured "stuck" message instead of looping.</statement>
+      <rationale source="agent ops">Infinite self-correction on a structurally broken file (missing dependency, syntax beyond fix range) drains budget.</rationale>
+    </rule>
+
+    <rule id="r5-exempt-documented" testable="true" depth="essential">
+      <statement>Any file pattern exempted from hooks (e.g., migrations/*.py) MUST be listed in decision.exempt_globs and documented inline.</statement>
+      <rationale source="audit hygiene">Silently exempting paths creates surprise; reviewers must see the carveouts.</rationale>
+    </rule>
+
+    <rule id="r-python-ruff" testable="true" depth="essential">
+      <statement>When language == 'python' AND runtime_per_file &lt; 5s, the spec MUST use ruff (check + format) as the validator.</statement>
+      <rationale source="ruff docs">ruff replaces black + isort + flake8 + many pylint rules with one fast Rust binary.</rationale>
+    </rule>
+
+    <rule id="r-typescript-tsc-eslint" testable="true" depth="essential">
+      <statement>When language == 'typescript' AND runtime_per_file &lt; 5s, the spec MUST chain tsc --noEmit AND eslint --max-warnings 0 per file.</statement>
+      <rationale source="typescript-eslint docs">tsc catches type errors; eslint catches style + correctness lints. Both are required for typescript projects.</rationale>
+    </rule>
+
+    <rule id="r-defer-slow" testable="true" depth="essential">
+      <statement>When runtime_per_file &gt;= 5s, the spec MUST defer the validator to a commit-time gate (pre-commit hook) rather than PostToolUse.</statement>
+      <rationale source="agent UX">Sub-second hooks are fine; multi-second hooks stall the agent and waste tokens on lint waits.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
