@@ -1,3 +1,11 @@
+<!--
+purpose: skill body scaffold; loads on trigger match, defers details to references/
+consumes: nothing (loaded automatically when frontmatter triggers fire)
+produces: keyword-triggered procedural body
+depends-on: r2-body-keyword-triggered, r3-references-on-read
+token-budget-impact: ~300 tokens
+-->
+
 # Faion Deploy
 
 > Procedure-only body. Loads on activation. Defers details to `references/`.

@@ -1,4 +1,9 @@
-# Qdrant collection setup: HNSW + scalar quantization + payload index
+# purpose: Qdrant collection setup with HNSW + scalar quantization + payload index
+# consumes: collection name, dim, metric, tenant filter field
+# produces: code (drop-in setup module)
+# depends-on: qdrant-client >= 1.10
+# token-budget-impact: ~200 tokens if loaded into LLM context
+"""Qdrant collection setup: HNSW + scalar quantization + payload index."""
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, HnswConfigDiff,
