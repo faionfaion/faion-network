@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Vector DB Monitoring — Worked Example" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Worked example: Qdrant Prometheus + Grafana with paged alerts for latency p95 and memory.</summary>
+
+  <example title="monitoring.yaml for Qdrant production">
+    <code lang="yaml"><![CDATA[
+metrics:
+  - {name: query_latency_p95, pillar: latency, slo: {target: "<80ms"}}
+  - {name: error_rate_5m, pillar: error, slo: {target: "<1%"}}
+  - {name: memory_used_ratio, pillar: memory, slo: {target: "<0.85"}}
+  - {name: disk_used_ratio, pillar: disk, slo: {target: "<0.80"}}
+
+alerts:
+  - name: QdrantP95Breach
+    expr: histogram_quantile(0.95, query_latency_bucket) > 0.08
+    severity: page
+    runbook_url: https://runbooks.example.com/qdrant-latency
+  - name: QdrantMemoryHigh
+    expr: memory_used_ratio > 0.85
+    severity: ticket
+    runbook_url: https://runbooks.example.com/qdrant-memory
+  - name: QdrantDiskCapacity30d
+    expr: predict_linear(disk_used_bytes[7d], 30 * 86400) > disk_capacity_bytes
+    severity: ticket
+    runbook_url: https://runbooks.example.com/qdrant-capacity
+
+capacity:
+  forecast_window_days: 30
+  alert_when_lt_days: 14
+
+dashboard:
+  slo_overlay: true
+  panels: [query_latency, error_rate, memory, disk]
+]]></code>
+    <note>r1 all 4 pillars covered, r2 page+ticket distinction, r3 30d forecast +14d alert, r4 SLO overlay, r5 runbook on every alert.</note>
+  </example>
+</text>
