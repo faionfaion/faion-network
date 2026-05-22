@@ -1,22 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="speech-to-text Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Speech-to-Text — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins (a) stt-config.yaml declarative spec and (b) Transcript JSON shape returned to callers.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="provider" type="enum" values="openai-whisper|openai-gpt4o|assemblyai|deepgram|elevenlabs-scribe|faster-whisper-local"/>
+      <field name="model" type="string"/>
+      <field name="mode" type="enum" values="batch|streaming"/>
+      <field name="max_chunk_seconds" type="integer" min="30" max="600"/>
+      <field name="overlap_seconds" type="integer" min="0" max="10"/>
+      <field name="fallback" type="object" required_keys="provider,trigger"/>
+      <field name="diarization" type="boolean"/>
+      <field name="custom_vocab" type="array"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">provider == "openai-whisper" AND mode == "streaming" (Whisper is batch-only)</pattern>
+      <pattern id="f2">max_chunk_seconds &gt; 300 AND overlap_seconds &lt; 3 (boundary word loss; r4-chunking-with-overlap)</pattern>
+      <pattern id="f3">fallback missing (r5-mandatory-fallback)</pattern>
+      <pattern id="f4">provider == "openai-gpt4o" AND custom_vocab present (GPT-4o transcribe ignores vocab; use Deepgram)</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Swap provider with reasoning recorded in commit message.</transformation>
+      <transformation>Tune chunk size + overlap within band.</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/stt-config.schema.yaml"/>
   </output-contract>
+
+  <section title="Transcript JSON shape (caller-visible)">
+    <code lang="json"><![CDATA[
+{
+  "text": "<full transcript>",
+  "segments": [
+    {"start": 0.00, "end": 4.12, "text": "...", "confidence": 0.94}
+  ],
+  "speakers": [{"id": "S1", "label": "agent"}],
+  "language": "en",
+  "provider": "deepgram",
+  "model": "nova-2",
+  "degraded": false
+}
+]]></code>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>provider + model declared</item>
+      <item>mode matches provider capability (no streaming on Whisper)</item>
+      <item>fallback provider != primary provider</item>
+      <item>chunking config respects r4 boundary rule</item>
+      <item>custom_vocab only on providers that honour it</item>
     </list>
   </section>
 </text>
