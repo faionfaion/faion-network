@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="RAG Feature Acceptance Contract — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by intent-count, SME availability, and eval-set size — drives whether to author the contract, defer, or downgrade to preference-label flow.</summary>
+
+  <decision-tree>
+    <root-question id="q-intents">How many distinguishable intent classes does query analysis surface?</root-question>
+    <branch when="intent_count &lt; 2">
+      <conclusion ref="r1-per-intent-decomposition" verdict="downgrade — single-intent feature does not need this contract; use recall@k gate instead"/>
+    </branch>
+    <branch when="intent_count &gt;= 2">
+      <question id="q-sme">Is an authoritative SME committed for ≥4h of rubric work?</question>
+      <branch when="sme_available == false">
+        <conclusion ref="r2-three-signatures" verdict="STOP — without SME the contract is vibe-check; escalate or downgrade to preference-label + Elo"/>
+      </branch>
+      <branch when="sme_available == true">
+        <question id="q-eval">Is the labelled eval set ≥50 queries per intent?</question>
+        <branch when="eval_set_size &lt; 50">
+          <conclusion ref="r4-threshold-defensibility" verdict="defer — thresholds cannot be defended on &lt;50 samples; sample more first"/>
+        </branch>
+        <branch when="eval_set_size &gt;= 50">
+          <question id="q-telemetry">Is matched online telemetry live (thumbs-down OR escalation OR CSAT)?</question>
+          <branch when="online_signal == false">
+            <conclusion ref="r3-offline-paired-with-online" verdict="instrument telemetry first, then author contract; offline-only is forbidden"/>
+          </branch>
+          <branch when="online_signal == true">
+            <conclusion ref="r5-recontract-trigger" verdict="author contract; collect three signatures; wire recontract triggers; register as CI ship gate"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="2 intents + SME + 80-query eval + thumbs-down live → full contract">
+    <code lang="text"><![CDATA[
+intent_count=4 → q-sme → sme_available=true → q-eval → eval_set_size=80 → q-telemetry → online_signal=true → r5-recontract-trigger verdict applied
+]]></code>
+  </example>
+
+  <example trace="2 intents + no SME → escalate">
+    <code lang="text"><![CDATA[
+intent_count=2 → q-sme → sme_available=false → r2-three-signatures verdict: escalate
+]]></code>
+  </example>
+</text>

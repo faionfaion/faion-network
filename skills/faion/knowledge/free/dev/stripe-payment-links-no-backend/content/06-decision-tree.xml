@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Stripe Payment Links No Backend Decision Tree" version="2.0.0" est_tokens="600">
+  <decision-tree>
+    <root-question id="q-root" text="Does the catalog satisfy preconditions (drivers present: billing_model, custom_amount_per_buyer, connect_required, catalog_size)?">
+      <branch when="drivers.valid == false">
+        <conclusion ref="skip-this-methodology">Catalog incomplete — return structured error, do not guess defaults.</conclusion>
+      </branch>
+      <branch when="drivers.valid == true">
+        <question id="q-connect" text="Is connect_required true (marketplace, application_fee, transfer_data)?">
+          <branch when="connect_required == true">
+            <conclusion ref="r-reject-connect">Reject no-backend pattern; escalate to stripe-connect-backend methodology.</conclusion>
+          </branch>
+          <branch when="connect_required == false">
+            <question id="q-billing" text="Is billing_model one-off or recurring?">
+              <branch when="billing_model == 'recurring'">
+                <conclusion ref="r-checkout-session">Use Checkout Session (Zapier Stripe action) — Payment Links cannot subscribe.</conclusion>
+              </branch>
+              <branch when="billing_model == 'one-off'">
+                <question id="q-amount" text="Is custom_amount_per_buyer true?">
+                  <branch when="custom_amount_per_buyer == true">
+                    <conclusion ref="r-checkout-session">Use Checkout Session for dynamic amounts.</conclusion>
+                  </branch>
+                  <branch when="custom_amount_per_buyer == false">
+                    <conclusion ref="r-payment-link">Pick Stripe Payment Link (hosted URL) — fixed price, no backend.</conclusion>
+                  </branch>
+                </question>
+              </branch>
+            </question>
+          </branch>
+        </question>
+      </branch>
+    </root-question>
+    <example trace="drivers.valid=true, connect_required=false, billing_model=one-off, custom_amount_per_buyer=false">
+      q-root yes → q-connect no → q-billing one-off → q-amount no → r-payment-link
+    </example>
+  </decision-tree>
+</text>

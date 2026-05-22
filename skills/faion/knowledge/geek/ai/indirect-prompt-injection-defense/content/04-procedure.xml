@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Indirect Prompt Injection Defense Procedure" version="1.0.0" est_tokens="1000" depth="medium">
+  <summary>Seven-step procedure from data-source inventory to a CI-gated defense spec.</summary>
+
+  <section title="Steps">
+    <step n="1" name="inventory-inputs-and-tools">
+      <input>System architecture, tool registry, RAG corpus list.</input>
+      <action>Enumerate every channel that injects text into the model: system prompt, user input, tool returns (per tool), RAG retrievals, persisted memory. For each, classify trust_level ∈ {trusted, partially_trusted, untrusted} and content_type.</action>
+      <output>untrusted_sources array in defense-spec.json + tool_scopes table with allowed_paths/allowed_hosts.</output>
+      <decision-gate>If untrusted_sources is empty AND no tools have write/send/charge effect → skip-this-methodology.</decision-gate>
+    </step>
+    <step n="2" name="draw-trust-boundaries">
+      <input>Inventory from step 1.</input>
+      <action>Draw three boundaries minimum: developer-instructions, end-user, tool-content. Add a fourth for RAG if the corpus is user-contributed. Each boundary names the channel and trust label.</action>
+      <output>boundaries array (≥3 entries) in defense-spec.json + a Mermaid/PlantUML diagram in trust-boundary.md.</output>
+      <decision-gate>If a single boundary cannot be cleanly drawn (tool output flows into system prompt) → halt and fix the architecture first.</decision-gate>
+    </step>
+    <step n="3" name="choose-split-pattern">
+      <input>Tool blast-radius assessment.</input>
+      <action>If any tool has write/send/charge effect, mandate dual_llm_planner_reader: a reader LLM produces typed JSON from raw tool output; a planner LLM reads only the typed JSON and dispatches next tools. If only read-only tools, single_llm with structural separator suffices.</action>
+      <output>split_pattern field + per-LLM responsibility table.</output>
+      <decision-gate>If tools include arbitrary code execution → escalate to n_llm_pipeline with code-exec sandboxed in a separate process.</decision-gate>
+    </step>
+    <step n="4" name="wire-taint-tags">
+      <input>untrusted_sources array.</input>
+      <action>For each source pattern, choose a wrap_with template that includes a unique XML span tag (e.g. &lt;untrusted-content source='zendesk'&gt;...&lt;/untrusted-content&gt;). Truncate content at max_quote_chars before wrapping. Implement in context-assembly code.</action>
+      <output>taint_rules array + a unit test that asserts every untrusted-source assembly path wraps content.</output>
+      <decision-gate>If runtime cannot wrap (legacy direct-concat code) → freeze the source until refactor lands.</decision-gate>
+    </step>
+    <step n="5" name="inject-canaries">
+      <input>Outbound tool list (URL fetch, send_email, write_file, post_message).</input>
+      <action>Generate a per-request unique canary token (CANARY-{uuid}) and inject into every untrusted span. Wrap every outbound tool with a middleware that scans the payload for the canary; on match, abort + log + page.</action>
+      <output>canary config in defense-spec.json + middleware module + canary-trigger unit test.</output>
+      <decision-gate>Verify canary appears in eval traces before counting this step done.</decision-gate>
+    </step>
+    <step n="6" name="build-adversarial-eval-set">
+      <input>Threat model + sample adversarial payloads.</input>
+      <action>Author ≥10 categories x ≥2 cases each: direct override, Spotlight, base64-smuggle, markdown-exfil, embedded-URL fetch, role-confusion, rule-override, persona-flip, jailbreak-cipher, tool-misuse. Each case asserts agent does NOT call an unauthorised tool or exfil canary.</action>
+      <output>evals/ipi/cases.jsonl + eval runner that scores pass-rate per category.</output>
+      <decision-gate>Pass-rate target ≥95% per category on first run; categories below trigger architectural fix, not prompt tweak.</decision-gate>
+    </step>
+    <step n="7" name="gate-ci">
+      <input>Eval runner + repo CI config.</input>
+      <action>Wire `validate-indirect-prompt-injection-defense.py` + the eval runner into the merge gate. Trigger paths: changes under system-prompt/, tools/, context-assembly/, defense-spec.json. Block PR on schema mismatch or eval regression > 1pp.</action>
+      <output>CI workflow YAML + branch protection rule.</output>
+      <decision-gate>Disable bypass paths (no admin override on prompt files).</decision-gate>
+    </step>
+  </section>
+</text>
