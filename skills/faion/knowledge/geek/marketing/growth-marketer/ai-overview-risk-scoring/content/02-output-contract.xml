@@ -1,65 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AIO Risk Scoring Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the per-query decision-row shape, action-mapping rule, and re-score cadence.</summary>
+<text id="02-output-contract" title="AI Overview Risk Scoring Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract every AI Overview Risk Scoring application must satisfy. Required fields, forbidden patterns, allowed transformations, plus a valid and an invalid worked example.</summary>
 
-  <section title="Required decision-row fields">
-    <list>
-      <item><code>query</code> (string)</item>
-      <item><code>scored_at_utc</code> (ISO timestamp)</item>
-      <item><code>scored_by</code> (named human OR named agent identity with human approver)</item>
-      <item><code>axes</code> (object with six keys, each integer 0-4)</item>
-      <item><code>risk_index</code> (integer 0-24 with default weights)</item>
-      <item><code>action</code> (enum: skip, target, hedge)</item>
-      <item><code>rationale</code> (string &gt;= 60 chars)</item>
-      <item><code>next_review_utc</code> (ISO date; &lt;= 90 days from scored_at_utc)</item>
-      <item><code>tracker_snapshot_ref</code> (reference to the AIO presence snapshot used)</item>
-    </list>
-    <reference path="templates/decision-row.json">Authoritative JSON Schema for the decision row.</reference>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "ai-overview-risk-scoring-output",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "artefact_id": {
+      "description": "Stable slug used to reference this artefact downstream.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Single named accountable owner (handle / email / role).",
+      "type": "string"
+    },
+    "decision": {
+      "description": "The chosen value, ranking, or verdict produced by this run.",
+      "type": "string"
+    },
+    "rationale": {
+      "description": "\u22652 sentences citing at least one input artefact by name.",
+      "type": "string"
+    },
+    "inputs_used": {
+      "description": "List of input artefact names with source paths or URLs.",
+      "type": "array"
+    },
+    "version": {
+      "description": "Semver, e.g. 1.0.0.",
+      "type": "string"
+    },
+    "last_reviewed": {
+      "description": "ISO-8601 date the artefact was last validated.",
+      "type": "string"
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty).",
+      "type": "array"
+    }
+  }
+}]]></code>
   </section>
 
-  <section title="Action-mapping rule (default weights)">
-    <list>
-      <item><code>skip</code>: risk_index &gt;= 16 OR monetisation_potential == 0.</item>
-      <item><code>target</code>: 10 &lt;= risk_index &lt; 16 AND our_citation_eligibility &gt;= 2.</item>
-      <item><code>hedge</code>: otherwise — write, with middle-funnel CTA emphasis.</item>
-    </list>
-    <reference path="templates/scoring-rubric.json">Weighted-sum formula and threshold rationale.</reference>
-  </section>
+  <output-contract>
+    <required>
+      <field name="artefact_id" format="string" required="true">Stable slug used to reference this artefact downstream.</field>
+      <field name="owner" format="string" required="true">Single named accountable owner (handle / email / role).</field>
+      <field name="decision" format="string" required="true">The chosen value, ranking, or verdict produced by this run.</field>
+      <field name="rationale" format="string" required="true">≥2 sentences citing at least one input artefact by name.</field>
+      <field name="inputs_used" format="array" required="true">List of input artefact names with source paths or URLs.</field>
+      <field name="version" format="string" required="true">Semver, e.g. 1.0.0.</field>
+      <field name="last_reviewed" format="string" required="true">ISO-8601 date the artefact was last validated.</field>
+      <field name="forbidden_seen" format="array" required="true">Forbidden patterns matched (must be empty).</field>
+    </required>
+    <forbidden>
+      <pattern id="f1">owner equals &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
+      <pattern id="f2">rationale that does not reference any input by name</pattern>
+      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
+      <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f5">last_reviewed older than 90 days without a refresh note</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Trim rationale to ≤500 chars while preserving numeric claims and named tools.</transformation>
+      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by natural key (slug / id) before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
+    </allowed-transformations>
+    <schema-reference path="templates/ai-overview-risk-scoring.json"/>
+  </output-contract>
 
-  <section title="Re-score cadence">
-    <list>
-      <item>Quarterly batch re-score for all decision rows.</item>
-      <item>Threshold-triggered re-score when the sibling tracker reports a &gt; 25 point presence shift on the query.</item>
-      <item>Decisions older than next_review_utc are flagged `expired` and excluded from the topic-cluster plan until re-scored.</item>
-    </list>
-  </section>
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "artefact_id": "ai-overview-risk-scoring-2026-05-22-001",
+  "owner": "example-value",
+  "decision": "example-value",
+  "rationale": "example-value",
+  "inputs_used": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; forbidden_seen empty; owner is a single named handle.</note>
+  </example>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>action != skip while monetisation_potential == 0.</description>
-      <reason>r4 violation. Zero-monetisation queries default to skip; exceptions require explicit override in rationale.</reason>
-    </antipattern>
-    <antipattern>
-      <description>axes object missing any of the six keys.</description>
-      <reason>r1 violation. Six-axis scoring is non-negotiable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rationale text &lt; 60 chars or contains only "gut feel" / "feels right".</description>
-      <reason>r5 violation. Documented rationale required.</reason>
-    </antipattern>
-    <antipattern>
-      <description>action mapping defies the rule table (e.g. risk_index=20 with action=hedge).</description>
-      <reason>r2 violation. Mapping must follow the rubric.</reason>
-    </antipattern>
-  </section>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "owner": "example-value",
+  "decision": "example-value",
+  "rationale": "example-value",
+  "inputs_used": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing artefact_id and forbidden_seen non-empty — schema rejects both.</note>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>Every axis score is 0-4 integer.</item>
-      <item>risk_index = computed weighted sum, not hand-edited.</item>
-      <item>tracker_snapshot_ref points to a real snapshot within last 30 days.</item>
-      <item>next_review_utc set within 90 days.</item>
-      <item>Action consistent with the rule table.</item>
+      <item>All required fields present and non-null.</item>
+      <item>forbidden_seen is an empty array.</item>
+      <item>Output validates against `scripts/validate-ai-overview-risk-scoring.py` exit 0.</item>
+      <item>Produces shape: decision-record.</item>
     </list>
   </section>
 </text>

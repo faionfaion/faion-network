@@ -4,79 +4,95 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Daily Standup Ai Prebrief Template: codified pm practice that turns the recurring 'p6-product-dev-team/Daily standup with AI pre-brief' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Spec for the AI pre-brief artefact (sections, data sources, length cap) that goes out 30 minutes before daily standup so the team arrives prepared."
 content_id: "346c3999f99d19a2"
-tags: [daily-standup-ai-prebrief-template, pm, geek]
+complexity: medium
+produces: spec
+est_tokens: 2900
+tags: [standup, ai-prebrief, agile, pm, geek]
 ---
-# Daily Standup Ai Prebrief Template
+
+# Daily Standup AI Pre-Brief Template
 
 ## Summary
 
-**One-sentence:** Daily Standup Ai Prebrief Template: codified pm practice that turns the recurring 'p6-product-dev-team/Daily standup with AI pre-brief' decision into a repeatable, auditable artefact.
+**One-sentence:** Spec for the AI pre-brief artefact (sections, data sources, length cap) that goes out 30 minutes before daily standup so the team arrives prepared.
 
-**One-paragraph:** Daily Standup Ai Prebrief Template addresses the gap surfaced by 'p6-product-dev-team/Daily standup with AI pre-brief'. P6 teams need a concrete template for the AI pre-brief artifact (sections, data sources, length cap). Faion's pm-agile/scrum-ceremonies is too high-level for the daily AI-augmented format. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** P6 teams need a concrete template for the AI pre-brief artefact — Faion's `pm-agile/scrum-ceremonies` is too high-level for the daily AI-augmented format. This methodology specifies the sections (yesterday's deltas, today's plan, blockers, anomalies), the data sources (Jira, GitHub PRs, CI signals, Slack), the length cap (≤400 words), and the send-time discipline (30 min before standup). Output: the pre-brief team members read before the meeting starts.
+
+**Ефективно для:** PMs running daily standups with AI augmentation; scrum masters speeding up standup throughput; engineering managers reducing meeting waste.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p6-product-dev-team/Daily standup with AI pre-brief' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team runs daily standups
+- Data sources (Jira, GitHub, CI, Slack) are accessible via API
+- Team will read a 400-word pre-brief 30 min before the meeting
+- PM has budget for AI drafting
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Team does not run daily standups
+- Data sources inaccessible
+- Team rejects async pre-reads
+- Standup already <10 minutes and effective — no need
 
 ## Prerequisites
 
-- recent context for the 'p6-product-dev-team/Daily standup with AI pre-brief' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Input artifact | Format | Source |
+|---|---|---|
+| Last 24h Jira activity | API | Jira |
+| Last 24h GitHub PR + CI signal | API | GitHub |
+| Slack channel activity for the team | API | Slack |
+| Per-engineer planned focus block (if available) | Calendar | team calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `geek/pm/project-manager` | parent role skill |
+| [[ai-status-digest-pipeline]] | shares data extraction pattern |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `ingest_24h_activity` | haiku | Mechanical extraction |
+| `draft_prebrief` | sonnet | Bounded synthesis within 400-word cap |
+| `flag_anomalies` | sonnet | Bounded detection + escalation |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/daily-standup-ai-prebrief-template.json` | JSON schema for the Daily Standup Ai Prebrief Template output contract |
-| `templates/daily-standup-ai-prebrief-template.md` | Markdown skeleton with the required fields |
+| `templates/daily-standup-ai-prebrief-template.json` | JSON schema for the pre-brief |
+| `templates/daily-standup-ai-prebrief-template.md` | Markdown pre-brief skeleton with all sections |
+| `templates/_smoke-test.md` | Minimum-viable filled pre-brief |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-daily-standup-ai-prebrief-template.py` | Enforce Daily Standup Ai Prebrief Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-daily-standup-ai-prebrief-template.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
-- upstream playbook: `p6-product-dev-team/Daily standup with AI pre-brief`
-- methodology family: `geek/pm/` (gap-p2 batch, F-059-063)
+- parent skill: `geek/pm/`
+- [[ai-status-digest-pipeline]]
+- [[ai-sprint-planning-agent]]
+- [[anti-theater-retro-guardrails]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether daily-standup-ai-prebrief-template applies: root question — "Does the team run a daily standup AND data sources are accessible AND team will read a pre-brief?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-length-cap, r2-send-time, r3-typed-input, r4-anomaly-flagging, r5-named-owner, r6-versioned-record.

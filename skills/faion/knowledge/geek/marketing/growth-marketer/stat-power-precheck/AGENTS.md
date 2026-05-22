@@ -4,58 +4,95 @@ tier: geek
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
+summary: "Pre-flight power calculation that converts traffic, baseline conversion, and target lift into a GO / STRETCH / KILL verdict before any CRO experiment launches."
 content_id: "fcf6e7965651b195"
-summary: A short pre-test power calculation that tells solopreneurs and small-team marketers whether their primary landing page has enough traffic to detect a stated lift at a stated confidence within a stated window — before they launch an A/B test.
-tags: [cro, ab-testing, power-analysis, experiment-design, geek, marketing]
+complexity: medium
+produces: decision-record
+est_tokens: 2900
+tags: [cro, ab-testing, power-analysis, experiment-design, marketing, geek]
 ---
-# Stat Power Pre-Check
+
+# Stat-Power Pre-Check
 
 ## Summary
 
-**One-sentence:** A required pre-flight check on every CRO experiment that converts traffic, baseline conversion, and target lift into a "can we even detect this?" verdict before the test launches.
+**One-sentence:** Pre-flight power calculation that converts traffic, baseline conversion, and target lift into a GO / STRETCH / KILL verdict before any CRO experiment launches.
 
-**One-paragraph:** Solopreneurs and small-team marketers run statistically underpowered tests constantly — too-little traffic, premature stops, "winners" that are noise. This methodology blocks that. Before launching any experiment on a primary landing page, the marketer fills a five-input form (weekly visitors, baseline conversion, target relative lift, desired alpha, desired power) and reads a verdict: GO (enough traffic for stated window), STRETCH (need to extend window or accept lower power), or KILL (the effect size is uneconomic — pivot to a structural change instead). The check is qualitative-numerate: no full Bayesian rigor, just enough math to refuse to run tests that cannot conclude. Pairs with `experiment-ledger-discipline` (pro/marketing) which logs the verdict and outcome.
+**One-paragraph:** Solopreneurs and small-team marketers run underpowered tests constantly — too little traffic, premature stops, noisy 'winners'. This methodology blocks that. Before any experiment, the marketer fills five typed inputs (weekly visitors, baseline conversion, target relative lift, alpha, power) and reads a verdict: GO (enough traffic in the window), STRETCH (need to extend the window or accept lower power), KILL (effect size uneconomic — pivot to a structural change). The check is qualitative-numerate, just enough math to refuse to run tests that cannot conclude.
+
+**Ефективно для:** solopreneurs running CRO; growth marketers triaging hypotheses; agencies setting client expectations before launching tests.
 
 ## Applies If (ALL must hold)
 
-- Planning a CRO experiment on a page with conversion event tracking already wired (no test runs blind).
-- Weekly traffic to the test surface is measurable and stable (±20% week over week).
-- Baseline conversion rate is known for the last 4 weeks at minimum.
-- Decision authority rests with the marketer (no committee approval lag eating test window).
+- Planning a CRO experiment on a page with conversion event tracking already wired
+- Weekly traffic to the test surface is measurable and stable (±20% WoW)
+- Baseline conversion rate known for ≥4 weeks
+- Decision authority sits with the marketer (no committee approval lag)
 
 ## Skip If (ANY kills it)
 
-- Traffic is too sparse for any reasonable test (< ~200 conversions / week at baseline) — switch to qualitative methods: 5-second tests, user interviews, scroll-depth heatmaps.
-- The change is a bug fix or compliance fix that MUST ship — do not gate shipping on power.
-- The change is a brand / trust signal that cannot be measured by a single conversion event — different evaluation method applies.
-- The test is structurally underpowered AND cannot be redesigned (e.g. one-shot launch announcement) — accept it as a non-experiment and label accordingly in the ledger.
+- Traffic too sparse (<~200 conversions / week at baseline) — use qualitative methods
+- Change is a bug or compliance fix that MUST ship — do not gate on power
+- Change is a brand / trust signal not measurable by a single conversion event
+- Test is structurally underpowered AND cannot be redesigned — accept as non-experiment
 
 ## Prerequisites
 
-- Last 4 weeks of weekly visitor + conversion counts on the test surface.
-- A target lift expressed as a relative percentage (e.g. "10% lift on signup rate", not "0.5 percentage points").
-- An agreed maximum test window (e.g. 4 weeks); shorter than the calculated minimum → STRETCH or KILL verdict.
-- Optionally: a power calculator (Evan Miller, optimizely-sample-size, or a 10-line Python script invoking `statsmodels.stats.power`).
+| Input artifact | Format | Source |
+|---|---|---|
+| Last 4 weeks of weekly visitors + conversions on the test surface | CSV / dashboard | analytics |
+| Target lift as a relative percentage (e.g. '10% lift on signup') | Note | hypothesis brief |
+| Agreed maximum test window | Note | experiment ledger |
+| Optional: power calculator (Evan Miller / statsmodels) | Link or Python script | tools/ |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/experiment-hypothesis-scoring` | Upstream scoring decides which hypotheses are worth power-checking at all. |
-| `pro/marketing/experiment-ledger-discipline` | The ledger is where the GO / STRETCH / KILL verdict is recorded. |
-| `geek/marketing/seo-manager/google-ai-overviews-optimization` | Some CRO targets are AIO-eligibility changes; the power math is the same. |
+| `pro/marketing/experiment-hypothesis-scoring` | upstream hypothesis scoring |
+| `pro/marketing/experiment-ledger-discipline` | where the verdict is recorded |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: required-inputs, no-launch-without-verdict, minimum-conversions, sequential-stop guard, lift-as-relative | ~1200 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `collect_inputs` | haiku | Mechanical extraction from analytics |
+| `compute_power_verdict` | sonnet | Bounded math with typed inputs |
+| `write_verdict_record` | sonnet | Bounded synthesis for the ledger entry |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/stat-power-precheck.json` | JSON schema for the verdict record |
+| `templates/stat-power-precheck.md` | Markdown skeleton with all five inputs and the verdict block |
+| `templates/power-calc.py` | 10-line Python power calculator using statsmodels |
+| `templates/_smoke-test.json` | Minimum-viable filled verdict |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-stat-power-precheck.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/marketing/growth-marketer/`
-- peer methodologies: `experiment-hypothesis-scoring` (pro/marketing), `experiment-ledger-discipline` (pro/marketing), `pricing-experiment-design` (pro/product)
-- external: [Evan Miller — Sample Size Calculator](https://www.evanmiller.org/ab-testing/sample-size.html) · [statsmodels power module](https://www.statsmodels.org/) · [Optimizely Stats Engine paper](https://www.optimizely.com/)
+- parent skill: `geek/marketing/`
+- `pro/marketing/experiment-hypothesis-scoring`
+- `pro/marketing/experiment-ledger-discipline`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether stat-power-precheck applies: root question — "Is the change a measurable CRO experiment AND traffic is stable AND baseline known?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-required-inputs, r2-no-launch-without-verdict, r3-minimum-conversions, r4-sequential-stop-guard, r5-lift-as-relative, r6-window-frozen.

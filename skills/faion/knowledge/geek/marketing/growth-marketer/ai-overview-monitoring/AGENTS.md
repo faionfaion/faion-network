@@ -4,66 +4,74 @@ tier: geek
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Weekly monitoring report covering AI Overview, Perplexity, and ChatGPT-Search citation presence across a priority query list, with a per-finding action ladder."
 content_id: "3946b3f6b9dc3779"
-summary: A documented monitoring approach for AI Overview presence, Perplexity citation, and ChatGPT-Search visibility — weekly cadence, citation counts per query, and an action ladder when presence drops.
-tags: [aio, monitoring, seo, perplexity, chatgpt-search, marketing, geek]
+complexity: medium
+produces: report
+est_tokens: 2900
+tags: [aio, monitoring, perplexity, chatgpt-search, marketing, geek]
 ---
+
 # AI Overview Monitoring
 
 ## Summary
 
-**One-sentence:** A weekly monitoring cadence for AI Overview (Google AIO), Perplexity, and ChatGPT-Search citation presence across the marketer's priority query list — with a documented action ladder when presence drops.
+**One-sentence:** Weekly monitoring report covering AI Overview, Perplexity, and ChatGPT-Search citation presence across a priority query list, with a per-finding action ladder.
 
-**One-paragraph:** Optimization without monitoring is theatre. This methodology defines the monitoring stack: a query list (priority + watch), three citation sources (AIO, Perplexity, ChatGPT-Search), a weekly cadence, a per-query record (cited / not_cited / partial), and an action ladder that fires when a query falls off citation. Output: a `aio-monitoring/` folder with weekly snapshots, a trends report, and a per-query investigation log that feeds back into content edits via the sibling `ai-overview-content-template`. This is the "is our optimization working" feedback loop for 2026 search reality.
+**One-paragraph:** Optimisation without monitoring is theatre. This methodology defines the monitoring stack: a priority + watch query list, three citation sources (AIO, Perplexity, ChatGPT-Search), a weekly cadence, a per-query record (cited / partial / not_cited), and an action ladder that fires when presence drops. Output is a `aio-monitoring/` folder with weekly snapshots, a trend report, and a per-query investigation log that feeds the sibling `ai-overview-content-template` retrofit work.
+
+**Ефективно для:** growth teams running AIO retrofits; SEO managers measuring AI search visibility; agencies reporting AIO progress to clients.
 
 ## Applies If (ALL must hold)
 
-- Marketer has 10+ priority queries with measurable AIO / Perplexity presence.
-- Content cluster has been retrofit per `ai-overview-content-template` for at least 30 days.
-- A monitoring stack (manual, BrightEdge, sistrix, custom Playwright scraper, or commercial AIO tracker) is reachable.
-- Team can act on monitoring findings (rewrite sections, re-publish, update citations).
+- Marketer has 10+ priority queries with measurable AIO / Perplexity presence
+- Content cluster has been retrofit per `ai-overview-content-template` for ≥30 days
+- Monitoring stack (manual or BrightEdge/sistrix/custom Playwright) is reachable
+- Team can act on monitoring findings (rewrite sections, re-publish, update citations)
 
 ## Skip If (ANY kills it)
 
-- Priority list has &lt; 5 queries — monitoring overhead exceeds the signal.
-- Niche has zero AIO / Perplexity coverage in your geography — monitor coverage, not presence.
-- Monitoring stack is unreliable (results vary &gt; 50% week-over-week without content changes) — fix the stack first.
-- Team cannot act on findings — monitor is wasted; defer.
+- Priority list <5 queries — overhead exceeds signal
+- Niche has zero AIO / Perplexity coverage in geo — monitor coverage, not presence
+- Monitoring stack varies >50% week-over-week without content changes — fix the stack first
+- Team cannot act on findings — monitor is wasted
 
 ## Prerequisites
 
-- Priority + watch query lists in `aio-monitoring/queries.yaml`.
-- Citation-source adapters: `google-aio-fetch.py`, `perplexity-fetch.py`, `chatgpt-search-fetch.py` (or commercial-tool integration).
-- Storage of weekly snapshots (Git or DB) for trend analysis.
-- A defined action ladder (which findings trigger what action).
+| Input artifact | Format | Source |
+|---|---|---|
+| Priority + watch query lists | YAML | aio-monitoring/queries.yaml |
+| Citation-source adapters (google-aio-fetch, perplexity-fetch, chatgpt-search-fetch) | Python or shell | tools/ |
+| Weekly snapshot storage (Git or DB) | Repo path or DB connection | ops |
+| Action ladder doc (which findings trigger what action) | Markdown | growth playbook |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/marketing/growth-marketer/ai-overview-presence-tracker` | Sibling — operational tracker; this methodology covers cadence and decision-making. |
-| `geek/marketing/growth-marketer/ai-overview-content-template` | Sibling — content retrofit feeds the monitor. |
-| `geek/marketing/growth-marketer/ai-overview-risk-scoring` | Sibling — risk scoring informs which queries to monitor closely vs hedge. |
+| [[ai-overview-content-template]] | retrofit upstream |
+| [[ai-overview-risk-scoring]] | scoring upstream — informs which queries to monitor closely |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: weekly cadence, three sources required, snapshot immutability, action-ladder discipline, human review | ~1100 |
-| `content/02-output-contract.xml` | essential | Weekly snapshot schema, trend report, action-log shape | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: scraper drift, source-coverage gap, action-fatigue | ~1000 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scrape-aio-perplexity-chatgpt` | haiku | Mechanical: HTTP + parse |
+| `scrape-aio-perplexity-chatgpt` | haiku | Mechanical HTTP + parse |
 | `classify-citation-status` | sonnet | Bounded judgement: cited / partial / not_cited |
-| `trend-narrative` | sonnet | Bounded synthesis: week-over-week changes |
-| `action-ladder-decide` | sonnet | Bounded: map drop to action (rewrite, citation update, abandon) |
+| `trend-narrative` | sonnet | Bounded week-over-week synthesis |
+| `action-ladder-decide` | sonnet | Bounded mapping of drop → action |
 
 ## Templates
 
@@ -72,17 +80,21 @@ tags: [aio, monitoring, seo, perplexity, chatgpt-search, marketing, geek]
 | `templates/queries.yaml` | Priority + watch query lists |
 | `templates/weekly-snapshot.json` | Per-query citation status across the three sources |
 | `templates/action-ladder.md` | Documented action mapping for each finding type |
+| `templates/_smoke-test.json` | Minimum-viable filled snapshot |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/run-monitor.sh` | Run all three source fetches; write weekly-snapshot.json | Weekly cron |
-| `scripts/trend-report.py` | 4-week trend report; emit per-query deltas | Weekly post-snapshot |
-| `scripts/action-router.py` | Read trend report; emit suggested actions from the ladder | Weekly post-trend |
+| `scripts/validate-ai-overview-monitoring.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/marketing/growth-marketer/`
-- peer methodologies: `ai-overview-presence-tracker`, `ai-overview-content-template`, `ai-overview-risk-scoring`, `google-ai-overviews-optimization`
-- external: [SISTRIX AIO data](https://www.sistrix.com/) · [Sparktoro 2025 AIO study](https://sparktoro.com/) · [Perplexity citation guidelines](https://www.perplexity.ai/hub)
+- parent skill: `geek/marketing/`
+- [[ai-overview-content-template]]
+- [[ai-overview-risk-scoring]]
+- [[google-ai-overviews-optimization]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether ai-overview-monitoring applies: root question — "Is the priority query list ≥10 queries with ≥30 days of retrofit AND the monitoring stack working?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-weekly-cadence, r2-three-sources-required, r3-snapshot-immutability, r4-action-ladder-discipline, r5-human-review, r6-versioned-record.

@@ -1,76 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AIO Risk Scoring Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules that make AIO risk scoring an executable decision tool, not a discussion topic.</summary>
-
-  <section title="The five rules">
-
+<text id="01-core-rules" title="AI Overview Risk Scoring Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every AI Overview Risk Scoring application must enforce. These are HARD rules — user-supplied input cannot override them. Plus a skip-methodology rule for decision-tree leaves that exit the methodology.</summary>
+  <section title="Rule set">
     <rule id="r1-six-axis-scoring" testable="true" depth="essential">
-      <statement>Every priority query MUST be scored on SIX axes, each on a 0-4 integer scale: intent_class, panel_persistence, snippet_length, monetisation_potential, our_citation_eligibility, alternative_value. The risk_index is the weighted sum (default weights documented in `scoring-rubric.json`). Free-form scoring without the six axes is REJECTED.</statement>
-      <rationale source="Multi-criteria decision-making literature; Saaty AHP">A single-number "AIO risk" hides the trade-offs. The six axes force the marketer to articulate what kind of risk: high intent + high panel persistence is different from low monetisation + high citation eligibility. Each axis maps to a specific countermeasure.</rationale>
+      <statement>Score each query on six axes (intent_class, panel_persistence, snippet_length, monetisation, citation_eligibility, alternative_value). Missing an axis = REJECT.</statement>
+      <rationale source="Audit completeness">Selective scoring hides risk.</rationale>
     </rule>
-
     <rule id="r2-decision-mapping" testable="true" depth="essential">
-      <statement>The risk_index maps to one of three actions: `skip` (don't write), `target` (write only for citation hunting), `hedge` (write but invest in middle-funnel CTAs). The mapping uses thresholds documented in scoring-rubric.json. Ad-hoc actions outside this set MUST update the rubric before becoming routine.</statement>
-      <rationale source="OODA loops; institutional decision memory">Typed decisions accumulate institutional learning. Off-rubric actions produce one-off bets that don't compound. The three-action set is small enough to be remembered and broad enough to cover real cases.</rationale>
+      <statement>Risk index maps deterministically to skip / target / hedge. Custom overrides require a documented rationale.</statement>
+      <rationale source="Determinism">Per-query intuition does not scale; deterministic mapping does.</rationale>
     </rule>
-
-    <rule id="r3-periodic-re-score" testable="true" depth="essential">
-      <statement>Every priority query MUST be re-scored at least quarterly OR when its tracker presence shifts by &gt; 25 points. Scores are NOT permanent; AIO behaviour shifts as Google retunes the panel. Decisions older than 6 months without re-evaluation are REJECTED.</statement>
-      <rationale source="Empirical AIO churn rates 2024-2025">AIO selection criteria change with Google retunes. Quarterly re-score catches drift; threshold-triggered re-score catches sudden shifts. Static decisions are a known anti-pattern.</rationale>
+    <rule id="r3-periodic-rescore" testable="true" depth="essential">
+      <statement>Re-score every 90 days OR on a material AIO panel change in the niche.</statement>
+      <rationale source="Anti-decay">AIO behaviour drifts; sunk-cost retention is the failure mode.</rationale>
     </rule>
-
     <rule id="r4-monetisation-grounded" testable="true" depth="essential">
-      <statement>The monetisation_potential axis MUST derive from actual analytics — estimated revenue per click per query from the team's analytics model. Gut-feel "this query is valuable" is REJECTED. Queries with monetisation_potential = 0 default to `skip` regardless of citation eligibility (citation alone, without business impact, is vanity).</statement>
-      <rationale source="ROI-grounded marketing decision frameworks">Citation rate is an output metric; revenue is the outcome metric. Acting on citation without revenue tracking is the dominant SEO failure mode. Tying the rubric to revenue keeps it honest.</rationale>
+      <statement>Monetisation axis uses analytics or revenue model — not gut estimate. Source path required.</statement>
+      <rationale source="Numeric anchor">Monetisation by intuition manufactures decisions to keep writing what feels important.</rationale>
     </rule>
-
     <rule id="r5-document-the-decision" testable="true" depth="essential">
-      <statement>Every decision row MUST include a `rationale` field with at least 60 characters explaining the decision. The rationale references specific axis scores and / or recent tracker observations. Empty / generic rationale ("low ROI") is REJECTED.</statement>
-      <rationale source="Decision-quality literature; SDD design-document conventions">Rationale fields make future re-scores tractable. The next quarter's reviewer can see why the prior decision was made and challenge it on specifics. Empty rationale forces the next reviewer to start from scratch.</rationale>
+      <statement>Every decision row carries a one-line rationale and named owner. Anonymous decisions = REJECT.</statement>
+      <rationale source="RACI">Without a named owner, the next quarter re-litigates everything.</rationale>
     </rule>
-
+    <rule id="r6-versioned-record" testable="true" depth="essential">
+      <statement>Decision record carries semver + last_reviewed. Re-baseline quarterly.</statement>
+      <rationale source="Anti-decay">Stale records lead to stale strategy.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the decision tree resolves to a skip branch — preconditions are not met OR an adjacent methodology fits better.</statement>
+      <rationale source="Decision-tree discipline">Skipping cleanly preserves the integrity of the rubric; misapplied methodologies produce false positives downstream.</rationale>
+    </rule>
   </section>
-
-  <section title="The six axes (summary)">
-    <list>
-      <item><code>intent_class</code> (0-4): 0=transactional, 2=commercial-informational, 4=pure informational (higher → higher AIO risk).</item>
-      <item><code>panel_persistence</code> (0-4): how stable is AIO panel presence on this query (4=present in &gt;80% of scrapes).</item>
-      <item><code>snippet_length</code> (0-4): AIO snippet length vs query answer completeness (4=AIO answers fully, 0=AIO truncates).</item>
-      <item><code>monetisation_potential</code> (0-4): inverted axis — 4=high revenue per click (lowers net risk).</item>
-      <item><code>our_citation_eligibility</code> (0-4): inverted axis — 4=we are already cited / highly eligible.</item>
-      <item><code>alternative_value</code> (0-4): inverted axis — 4=middle-funnel content can capture meaningful value via CTAs.</item>
-    </list>
-    <reference path="templates/scoring-rubric.json">Full rubric: axis definitions, scoring questions, threshold table.</reference>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Skip decision on zero-click query with low monetisation">
-      <code lang="text"><![CDATA[
-Query: "what time is it in Tokyo"
-Scores: intent_class=4 (pure info), panel_persistence=4, snippet_length=4 (fully answered),
-        monetisation_potential=0, our_citation_eligibility=2, alternative_value=0.
-Risk index: 18 / 24 → skip.
-Rationale: "Pure informational query with full panel answer and zero monetisation;
-            no CTA path; writing wastes effort. Re-evaluate Q2 2027."
-      ]]></code>
-      <note>r1, r4, r5 satisfied. The decision is documented; rationale is specific to axis scores.</note>
-    </example>
-
-    <example type="bad" title="Single-number ad-hoc scoring">
-      <code lang="text"><![CDATA[
-Query: "best CRM for solos"
-Score: 7/10 (gut feel).
-Decision: write.
-Rationale: "feels important"
-      ]]></code>
-      <note>r1 + r5 violations. No axis breakdown; rationale empty. The next reviewer cannot challenge or update.</note>
-    </example>
-
-  </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

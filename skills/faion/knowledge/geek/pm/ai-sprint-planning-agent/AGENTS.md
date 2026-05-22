@@ -4,77 +4,95 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Sprint Planning Agent: codified delivery-management practice that turns the recurring 'role-project-manager/AI-assisted sprint planning with capacity reality-check' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Spec for an agent that ingests team velocity, calendar (OOO, holidays, on-call), and carryover, and proposes a realistic capacity plan for the next sprint with named confidence bounds."
 content_id: "8cb6d427feabd658"
-tags: [ai-sprint-planning-agent, pm, geek]
+complexity: deep
+produces: spec
+est_tokens: 2900
+tags: [sprint-planning, ai-agent, capacity, pm, geek]
 ---
-# Ai Sprint Planning Agent
+
+# AI Sprint Planning Agent
 
 ## Summary
 
-**One-sentence:** Ai Sprint Planning Agent: codified delivery-management practice that turns the recurring 'role-project-manager/AI-assisted sprint planning with capacity reality-check' decision into a repeatable, auditable artefact.
+**One-sentence:** Spec for an agent that ingests team velocity, calendar (OOO, holidays, on-call), and carryover, and proposes a realistic capacity plan for the next sprint with named confidence bounds.
 
-**One-paragraph:** Ai Sprint Planning Agent addresses the gap identified by the role-project-manager/AI-assisted sprint planning with capacity reality-check playbook: Existing agile-ceremonies-setup gives a template; nothing runs an agent that ingests velocity + calendar + carryover and proposes realistic capacity. Brief calls out 'AI Gantt without people-dynamics' — this is the antidote. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Existing agile-ceremonies-setup gives a meeting template; nothing runs an agent that ingests velocity, calendar, and carryover and proposes a sprint capacity plan with confidence bounds. This methodology specifies the agent: typed input (last 4 sprints' velocity, OOO calendar, on-call rotation, sprint carryover), bounded transformation (per-engineer capacity × confidence band), and a sprint plan output the PM and team review before commit.
+
+**Ефективно для:** scrum masters running planning; PMs setting sprint commitments; engineering managers running ad-hoc capacity reviews.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-project-manager/AI-assisted sprint planning with capacity reality-check OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team has ≥4 sprints of velocity data
+- Calendar (OOO, holidays, on-call) is machine-readable
+- Carryover from previous sprint is documented
+- Team is willing to use AI-augmented planning
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Team <4 sprints old — no velocity baseline
+- Calendar inaccessible (no shared system) — agent input not feasible
+- Team rejects AI-augmented planning — political constraint
+- Single-engineer team — overkill
 
 ## Prerequisites
 
-- recent context for the role-project-manager/AI-assisted sprint planning with capacity reality-check task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Last 4 sprints' velocity (story points or hours) | CSV / API | Jira / Linear |
+| OOO + on-call calendar for next sprint | ICS or YAML | team calendar |
+| Carryover work list | YAML / CSV | sprint backlog |
+| Per-engineer focus-time budget | YAML | team config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `geek/pm/project-manager` | parent role skill |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `ingest_velocity_calendar` | haiku | Mechanical extraction |
+| `compute_capacity_bands` | sonnet | Bounded math + confidence band per engineer |
+| `propose_sprint_plan` | sonnet | Bounded recommendation |
+| `review_with_team` | opus | Cross-engineer narrative for the planning meeting |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-sprint-planning-agent.json` | JSON schema for the Ai Sprint Planning Agent output contract |
-| `templates/ai-sprint-planning-agent.md` | Markdown skeleton with the required fields |
+| `templates/ai-sprint-planning-agent.json` | JSON schema for the sprint plan |
+| `templates/ai-sprint-planning-agent.md` | Markdown skeleton for the plan review |
+| `templates/_smoke-test.json` | Minimum-viable filled plan |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-sprint-planning-agent.py` | Enforce Ai Sprint Planning Agent output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-sprint-planning-agent.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
 - parent skill: `geek/pm/`
-- upstream playbook: `role-project-manager/AI-assisted sprint planning with capacity reality-check`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[ai-status-digest-pipeline]]
+- [[ai-risk-aging-agent]]
+- [[cross-team-estimation-normalisation]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether ai-sprint-planning-agent applies: root question — "Does the team have ≥4 sprints of velocity AND machine-readable calendar AND a willingness to use the agent?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-bound-scope, r2-typed-input, r3-confidence-bands, r4-carryover-accounted, r5-llm-grounding, r6-versioned-record.

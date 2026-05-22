@@ -4,76 +4,93 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Anti Theater Retro Guardrails: codified delivery-management practice that turns the recurring 'p6-product-dev-team/Bi-weekly retro with mistake-memory feedback' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Rubric for bi-weekly retros that blocks status-theatre patterns: forces one specific named-mistake-with-fix, enforces psychological-safety language rules, and emits a tracked decision the team checks at the next retro."
 content_id: "869e2fa735b29d50"
-tags: [anti-theater-retro-guardrails, pm, geek]
+complexity: medium
+produces: rubric
+est_tokens: 2900
+tags: [retrospective, agile, pm, psychological-safety, geek]
 ---
-# Anti Theater Retro Guardrails
+
+# Anti-Theatre Retro Guardrails
 
 ## Summary
 
-**One-sentence:** Anti Theater Retro Guardrails: codified delivery-management practice that turns the recurring 'p6-product-dev-team/Bi-weekly retro with mistake-memory feedback' decision into a repeatable, auditable artefact.
+**One-sentence:** Rubric for bi-weekly retros that blocks status-theatre patterns: forces one specific named-mistake-with-fix, enforces psychological-safety language rules, and emits a tracked decision the team checks at the next retro.
 
-**One-paragraph:** Anti Theater Retro Guardrails addresses the gap identified by the p6-product-dev-team/Bi-weekly retro with mistake-memory feedback playbook: Scrum-ceremonies covers happy path; the failure mode (status theater retros) has no opinionated guardrail page. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Scrum-ceremonies covers the happy path; the failure mode (status-theatre retros) has no opinionated guardrail. This rubric forces every retro to surface exactly one named mistake with a concrete fix, applies a psychological-safety language rule (separate behaviour from identity), and emits a tracked decision the team must review at the next retro. Output: a retro record the team and sponsor can audit for theatre.
+
+**Ефективно для:** scrum masters running bi-weekly retros; PMs salvaging political teams; engineering managers building mistake-memory.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p6-product-dev-team/Bi-weekly retro with mistake-memory feedback OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team runs a regular retro cadence (bi-weekly or sprint-end)
+- Past retros have produced action items that nobody owned or completed
+- Team is willing to surface one specific mistake per session
+- A facilitator role exists
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Brand-new team with no history yet — wait 2-3 sprints
+- Hostile environment where surfacing mistakes is unsafe — fix psychological safety first
+- Single-person team — there is no team retro
+- Pure status meeting masquerading as retro — different methodology applies
 
 ## Prerequisites
 
-- recent context for the p6-product-dev-team/Bi-weekly retro with mistake-memory feedback task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Last 3 retros' decisions / action items | Markdown / sheet | team wiki |
+| Facilitator with authority to enforce rubric | Named person | team |
+| Psychological-safety language guide | Markdown | team culture doc |
+| Retro-decision tracker | Sheet / Linear list | PM tool |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `geek/pm/project-manager` | parent role skill |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `review_last_retro_decisions` | haiku | Mechanical lookup |
+| `facilitate_retro` | sonnet | Bounded facilitation prompts |
+| `synthesise_one_mistake` | opus | High-stakes synthesis of specific mistake |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-theater-retro-guardrails.json` | JSON schema for the Anti Theater Retro Guardrails output contract |
-| `templates/anti-theater-retro-guardrails.md` | Markdown skeleton with the required fields |
+| `templates/anti-theater-retro-guardrails.json` | JSON schema for the retro record |
+| `templates/anti-theater-retro-guardrails.md` | Markdown retro skeleton with required sections |
+| `templates/_smoke-test.md` | Minimum-viable filled retro |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-anti-theater-retro-guardrails.py` | Enforce Anti Theater Retro Guardrails output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-anti-theater-retro-guardrails.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
 - parent skill: `geek/pm/`
-- upstream playbook: `p6-product-dev-team/Bi-weekly retro with mistake-memory feedback`
+- [[ai-status-digest-pipeline]]
+- [[client-trust-rebuild-comms-templates]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether anti-theater-retro-guardrails applies: root question — "Does the team run a regular retro AND past retros have produced unowned action items?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-one-named-mistake, r2-concrete-fix, r3-language-rule, r4-prior-decision-review, r5-named-owner, r6-versioned-record.

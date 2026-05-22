@@ -4,79 +4,95 @@ tier: geek
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cross Team Estimation Normalisation: codified pm practice that turns the recurring 'role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Report converting cross-team story points into normalised throughput (cycle-time × items-per-week), with calibration session notes and an honest non-comparability caveat for the steering committee."
 content_id: "61b2b6d3689685c3"
-tags: [cross-team-estimation-normalisation, pm, geek]
+complexity: deep
+produces: report
+est_tokens: 2900
+tags: [estimation, throughput, program, agile, pm, geek]
 ---
-# Cross Team Estimation Normalisation
+
+# Cross-Team Estimation Normalisation
 
 ## Summary
 
-**One-sentence:** Cross Team Estimation Normalisation: codified pm practice that turns the recurring 'role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)' decision into a repeatable, auditable artefact.
+**One-sentence:** Report converting cross-team story points into normalised throughput (cycle-time × items-per-week), with calibration session notes and an honest non-comparability caveat for the steering committee.
 
-**One-paragraph:** Cross Team Estimation Normalisation addresses the gap surfaced by 'role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)'. Story points are not comparable across teams, yet program rollups constantly pretend they are. No methodology covers calibration sessions, throughput-based forecasting at program tier, or how to communicate the non-comparability honestly to a steering committee. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Story points are not comparable across teams, yet program rollups pretend they are. This methodology specifies calibration sessions, throughput-based forecasting at program tier (cycle-time × items-per-week, not summed points), and an honest non-comparability caveat communicated to the steering committee. Output: a program report grounded in throughput, with per-team confidence bands and a 'why we do not sum points' explainer.
+
+**Ефективно для:** program managers reconciling multi-team velocity; PMOs preparing executive briefings; agencies running multi-pod delivery.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Program coordinates ≥3 teams with their own velocity systems
+- Steering committee asks for cross-team rollups
+- ≥4 sprints of per-team throughput data exists
+- PM has authority to introduce normalisation methodology
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Single-team program — normalisation unnecessary
+- Teams use same estimation system AND have shared calibration history — normalisation already done
+- Steering committee accepts per-team independence — political win, no normalisation needed
 
 ## Prerequisites
 
-- recent context for the 'role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Input artifact | Format | Source |
+|---|---|---|
+| Per-team throughput (items/week) for last 8 weeks | CSV | PM tool |
+| Per-team cycle-time distribution | CSV | PM tool |
+| Calibration session notes (last 30 days) | Markdown | program wiki |
+| Steering committee escalation history | Markdown | PMO log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `geek/pm/project-manager` | parent role skill |
+| [[ai-sprint-planning-agent]] | per-team capacity inputs |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `collect_per_team_throughput` | haiku | Mechanical extraction |
+| `compute_program_throughput` | sonnet | Bounded math + confidence bands |
+| `draft_caveat_explainer` | sonnet | Bounded narrative on why not sum points |
+| `executive_brief` | opus | Cross-team synthesis for steering |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cross-team-estimation-normalisation.json` | JSON schema for the Cross Team Estimation Normalisation output contract |
-| `templates/cross-team-estimation-normalisation.md` | Markdown skeleton with the required fields |
+| `templates/cross-team-estimation-normalisation.json` | JSON schema for the program report |
+| `templates/cross-team-estimation-normalisation.md` | Markdown program report skeleton |
+| `templates/non-comparability-caveat.md` | Reusable explainer for the steering committee |
+| `templates/_smoke-test.json` | Minimum-viable filled report |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-cross-team-estimation-normalisation.py` | Enforce Cross Team Estimation Normalisation output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-cross-team-estimation-normalisation.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/pm/project-manager/`
-- upstream playbook: `role-project-manager/Multi-team coordination program (continuous, weekly checkpoints)`
-- methodology family: `geek/pm/` (gap-p2 batch, F-059-063)
+- parent skill: `geek/pm/`
+- [[ai-sprint-planning-agent]]
+- [[ai-status-digest-pipeline]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether cross-team-estimation-normalisation applies: root question — "Does the program span ≥3 teams AND steering committee asks for rollups?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-throughput-not-points, r2-typed-input, r3-confidence-bands, r4-named-caveat, r5-calibration-session-required, r6-versioned-record.

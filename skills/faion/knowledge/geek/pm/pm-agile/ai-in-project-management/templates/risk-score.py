@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# purpose: Python helper that scores risk items Low/Medium/High from a JSON risk register; consumed by the digest pipeline.
+# consumes: methodology inputs listed in AGENTS.md `## Prerequisites`
+# produces: input for the artefact matching content/02-output-contract.xml
+# depends-on: templates/header.yaml for frontmatter contract; AGENTS.md for body sections
+# token-budget-impact: <600 tokens; validates via scripts/validate-<slug>.py
+
 """risk-score.py — score risk register items Low/Medium/High.
 Input: risks.json — list of {id, last_updated (YYYY-MM-DD), dependent_tasks (int), owner, description}
 Output: same list with added "score" field, printed as JSON.

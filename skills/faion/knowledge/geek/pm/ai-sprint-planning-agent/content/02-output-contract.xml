@@ -1,39 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ai Sprint Planning Agent Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ai Sprint Planning Agent output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="AI Sprint Planning Agent Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract every AI Sprint Planning Agent application must satisfy. Required fields, forbidden patterns, allowed transformations, plus a valid and an invalid worked example.</summary>
+
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "ai-sprint-planning-agent-output",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "forbidden_seen"
+  ],
+  "properties": {
+    "artefact_id": {
+      "description": "Stable slug used to reference this artefact downstream.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Single named accountable owner (handle / email / role).",
+      "type": "string"
+    },
+    "decision": {
+      "description": "The chosen value, ranking, or verdict produced by this run.",
+      "type": "string"
+    },
+    "rationale": {
+      "description": "\u22652 sentences citing at least one input artefact by name.",
+      "type": "string"
+    },
+    "inputs_used": {
+      "description": "List of input artefact names with source paths or URLs.",
+      "type": "array"
+    },
+    "version": {
+      "description": "Semver, e.g. 1.0.0.",
+      "type": "string"
+    },
+    "last_reviewed": {
+      "description": "ISO-8601 date the artefact was last validated.",
+      "type": "string"
+    },
+    "forbidden_seen": {
+      "description": "Forbidden patterns matched (must be empty).",
+      "type": "array"
+    }
+  }
+}]]></code>
+  </section>
 
   <output-contract>
     <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      <field name="artefact_id" format="string" required="true">Stable slug used to reference this artefact downstream.</field>
+      <field name="owner" format="string" required="true">Single named accountable owner (handle / email / role).</field>
+      <field name="decision" format="string" required="true">The chosen value, ranking, or verdict produced by this run.</field>
+      <field name="rationale" format="string" required="true">≥2 sentences citing at least one input artefact by name.</field>
+      <field name="inputs_used" format="array" required="true">List of input artefact names with source paths or URLs.</field>
+      <field name="version" format="string" required="true">Semver, e.g. 1.0.0.</field>
+      <field name="last_reviewed" format="string" required="true">ISO-8601 date the artefact was last validated.</field>
+      <field name="forbidden_seen" format="array" required="true">Forbidden patterns matched (must be empty).</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
+      <pattern id="f1">owner equals &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
       <pattern id="f2">rationale that does not reference any input by name</pattern>
       <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
       <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      <pattern id="f5">last_reviewed older than 90 days without a refresh note</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
+      <transformation>Trim rationale to ≤500 chars while preserving numeric claims and named tools.</transformation>
       <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by natural key (slug / id) before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
     <schema-reference path="templates/ai-sprint-planning-agent.json"/>
   </output-contract>
 
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "artefact_id": "ai-sprint-planning-agent-2026-05-22-001",
+  "owner": "example-value",
+  "decision": "example-value",
+  "rationale": "example-value",
+  "inputs_used": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "forbidden_seen": []
+}]]></code>
+    <note>Required fields populated; forbidden_seen empty; owner is a single named handle.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "owner": "example-value",
+  "decision": "example-value",
+  "rationale": "example-value",
+  "inputs_used": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "forbidden_seen": [
+    "f1"
+  ]
+}]]></code>
+    <note>Missing artefact_id and forbidden_seen non-empty — schema rejects both.</note>
+  </example>
+
   <section title="Self-check checklist">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ai-sprint-planning-agent.json</item>
+      <item>All required fields present and non-null.</item>
+      <item>forbidden_seen is an empty array.</item>
+      <item>Output validates against `scripts/validate-ai-sprint-planning-agent.py` exit 0.</item>
+      <item>Produces shape: spec.</item>
     </list>
   </section>
 </text>

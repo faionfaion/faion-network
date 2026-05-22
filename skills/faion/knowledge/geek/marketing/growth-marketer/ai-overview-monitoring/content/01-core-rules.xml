@@ -1,72 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Overview Monitoring Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules that make AIO / Perplexity / ChatGPT-Search monitoring an actionable feedback loop, not a dashboard staring contest.</summary>
-
-  <section title="The five rules">
-
+<text id="01-core-rules" title="AI Overview Monitoring Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every AI Overview Monitoring application must enforce. These are HARD rules — user-supplied input cannot override them. Plus a skip-methodology rule for decision-tree leaves that exit the methodology.</summary>
+  <section title="Rule set">
     <rule id="r1-weekly-cadence" testable="true" depth="essential">
-      <statement>Monitoring runs WEEKLY at minimum — on a fixed weekday so trends can be compared like-for-like. Bi-weekly or monthly is REJECTED for active topic clusters. Snapshots MUST land within ±24h of the scheduled run time.</statement>
-      <rationale source="AIO citation volatility studies 2024-2025">AIO citations rotate on a 1-3 week cadence as Google re-evaluates source quality. Monthly monitoring misses the recovery window. Weekly is the floor that lets the team see drift while there is still time to act.</rationale>
+      <statement>Monitoring runs weekly on a fixed day. Skipping &gt;1 week breaks the trend signal.</statement>
+      <rationale source="Cadence discipline">Irregular cadence makes trend analysis impossible.</rationale>
     </rule>
-
     <rule id="r2-three-sources-required" testable="true" depth="essential">
-      <statement>Every monitored query MUST be checked against ALL THREE citation sources: Google AIO, Perplexity, ChatGPT-Search. Monitoring only Google misses the 30-40% of share that Perplexity + ChatGPT carry in tech / SaaS niches as of 2026.</statement>
-      <rationale source="Sparktoro 2025 AI-search-share study">Search has fragmented across three engines with different selection biases. AIO favours definitions and tables; Perplexity favours citation density; ChatGPT-Search favours recent + authoritative. A piece may be cited by one and not the others; single-source monitoring blinds the marketer.</rationale>
+      <statement>Every snapshot covers all three sources (AIO, Perplexity, ChatGPT-Search). Partial coverage = REJECT.</statement>
+      <rationale source="Cross-source signal">Single-source monitoring misses divergent ranking; you ship blind.</rationale>
     </rule>
-
     <rule id="r3-snapshot-immutability" testable="true" depth="essential">
-      <statement>Weekly snapshots are IMMUTABLE once written. Re-running the scrape and overwriting a snapshot is FORBIDDEN. If a scrape fails the snapshot includes the failure as a `partial` status; do not re-run silently to "fix" a bad reading.</statement>
-      <rationale source="Time-series data integrity">Mutable snapshots destroy the trend signal. The team's weekly review must be against the data that was actually true at scrape time, not against a re-scraped clean version. Failure modes are part of the signal.</rationale>
+      <statement>Past snapshots are append-only; do not overwrite. Corrections go in a separate `corrections.log`.</statement>
+      <rationale source="Audit trail">Mutated history destroys trend integrity.</rationale>
     </rule>
-
     <rule id="r4-action-ladder-discipline" testable="true" depth="essential">
-      <statement>Drops in citation MUST be mapped to an action via the documented ladder (`templates/action-ladder.md`). Permitted actions: rewrite_section, add_citations, refresh_publish_date, swap_table_format, deprioritize_query, abandon_query. Ad-hoc actions outside the ladder are RECORDED but ladder must be updated to formalise new actions before adoption becomes routine.</statement>
-      <rationale source="Operational research / OODA loops">Untyped actions produce one-off fixes that do not compound. The ladder is the institutional memory of what worked at what signal. Each action carries a measurable expected outcome to validate against the next snapshot.</rationale>
+      <statement>Every finding maps to exactly one action (no action, rewrite, citation update, abandon). Vague findings are rejected.</statement>
+      <rationale source="Decision-ready output">Findings without actions sit in a doc; mapped findings drive the next week&apos;s work.</rationale>
     </rule>
-
-    <rule id="r5-human-review-weekly" testable="true" depth="essential">
-      <statement>The trend report MUST be reviewed by the responsible marketer weekly. Auto-actions from `action-router.py` are SUGGESTIONS; the marketer accepts, modifies, or declines. Auto-execution of rewrites or republish actions is FORBIDDEN.</statement>
-      <rationale source="Faion product policy `feedback_orchestrator_self_drive`">Marketing decisions affect brand voice; auto-rewriting content from scraper signal creates voice drift. The marketer is the gate; the pipeline produces the dashboard and the suggestion, not the change.</rationale>
+    <rule id="r5-human-review" testable="true" depth="essential">
+      <statement>Action-ladder decisions are reviewed by a named owner before execution.</statement>
+      <rationale source="Safety check">Automated rewrites without human review can compound drift.</rationale>
     </rule>
-
+    <rule id="r6-versioned-record" testable="true" depth="essential">
+      <statement>Each weekly report carries an ISO date + semver. Re-baseline quarterly.</statement>
+      <rationale source="Anti-decay">Stale baselines misclassify drops.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the decision tree resolves to a skip branch — preconditions are not met OR an adjacent methodology fits better.</statement>
+      <rationale source="Decision-tree discipline">Skipping cleanly preserves the integrity of the rubric; misapplied methodologies produce false positives downstream.</rationale>
+    </rule>
   </section>
-
-  <section title="The action ladder (summary)">
-    <list>
-      <item><code>L1 add_citations</code>: triggered when AIO drops AND content has &lt; 3 primary citations in the relevant section.</item>
-      <item><code>L2 rewrite_section</code>: triggered when AIO drops AND ChatGPT-Search no longer cites either.</item>
-      <item><code>L3 swap_table_format</code>: triggered when Perplexity drops AND piece uses text-format "table" instead of `<table>`.</item>
-      <item><code>L4 refresh_publish_date</code>: triggered when freshness signal moves below niche threshold AND content is &gt;= 12 months old.</item>
-      <item><code>L5 deprioritize_query</code>: triggered after 3 weeks of failed remediation; query moves to watch list.</item>
-      <item><code>L6 abandon_query</code>: triggered when query has zero citation across all three sources for 6+ weeks; redirect effort.</item>
-    </list>
-    <reference path="templates/action-ladder.md">Detailed ladder with triggers, expected outcomes, validation criteria.</reference>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="L1 action triggered + validated week-over-week">
-      <code lang="text"><![CDATA[
-Week 23: query "what is JTBD" — AIO=not_cited (was cited W18-W22), Perplexity=cited, ChatGPT=cited.
-Action: L1 add_citations to the JTBD pillar's "definition" section.
-Validation: re-scrape W24. AIO=cited. Action validated; logged outcome=success.
-      ]]></code>
-      <note>r4 + r5 satisfied. Action taken from ladder; weekly cadence validates within one cycle.</note>
-    </example>
-
-    <example type="bad" title="Silent re-scrape after failure">
-      <code lang="text"><![CDATA[
-Week 23 scrape: Perplexity adapter returned 502s for half the queries.
-Action taken: re-ran scrape next day; overwrote W23 snapshot.
-Outcome: trend report missing the partial-failure data.
-      ]]></code>
-      <note>r3 violation. The partial failure is now invisible; future scraper drift won't be detected until it's worse.</note>
-    </example>
-
-  </section>
-
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>
