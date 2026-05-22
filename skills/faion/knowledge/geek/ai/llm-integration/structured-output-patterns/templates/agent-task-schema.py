@@ -1,25 +1,29 @@
-# Canonical agent pipeline output schema
-# Usage: import AgentTaskResult and use as response_format in StructuredOutputService
+# purpose: Example Pydantic schema with versioning convention
+# consumes: Inputs declared in `AGENTS.md` Prerequisites.
+# produces: Filled artefact for `structured-output-patterns` matching `content/02-output-contract.xml`.
+# depends-on: `content/01-core-rules.xml`, `scripts/validate-structured-output-patterns.py`.
+# token-budget-impact: small.
+"""Skeleton for the `structured-output-patterns` template `agent-task-schema.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
-from typing import Optional, Literal, List
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-patterns"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
 
 
-class AgentTaskResult(BaseModel):
-    """Standard output contract for agent pipeline steps.
-
-    All agents in the pipeline should return this schema so the orchestrator
-    can make routing decisions based on status and next_action.
-    """
-    status: Literal["success", "partial", "failed"]
-    output: str = Field(description="Primary result text from this step")
-    confidence: float = Field(
-        ge=0.0, le=1.0,
-        description="Agent's confidence in the output. 0.0=none, 1.0=certain")
-    missing_data: List[str] = Field(
-        default_factory=list,
-        description="List of data items the agent could not extract or compute")
-    next_action: Optional[str] = Field(
-        default=None,
-        description="Recommended follow-up action for the orchestrator, "
-                    "or null if this step is complete")
+if __name__ == "__main__":
+    import json
+    print(json.dumps(Skeleton().render(), indent=2))

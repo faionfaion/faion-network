@@ -1,75 +1,101 @@
----
-slug: agents-react-pattern
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: ReAct (Reason + Act) is the canonical single-agent loop: the LLM thinks, calls a tool, observes the result, and repeats until the task is done or an iteration cap is hit.
-content_id: "ec663546d4646ae6"
-tags: [agents, react, tool-use, llm, autonomous-agents]
----
-# ReAct Agent Pattern — Reason + Act Loop Implementation
+        ---
+        slug: agents-react-pattern
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Single-agent ReAct loop: Thought → Action → Observation, with bounded iterations, typed tool registry, audit log, and termination guard.
+        content_id: "ffaea0fd7318b363"
+        complexity: medium
+        produces: code
+        est_tokens: 4200
+        tags: [agents, react, tool-use, llm, autonomous-agents]
+        ---
+        # Agents ReAct Pattern
 
-## Summary
+        ## Summary
 
-**One-sentence:** ReAct (Reason + Act) is the canonical single-agent loop: the LLM thinks, calls a tool, observes the result, and repeats until the task is done or an iteration cap is hit.
+        **One-sentence:** Single-agent ReAct loop: Thought → Action → Observation, with bounded iterations, typed tool registry, audit log, and termination guard.
 
-**One-paragraph:** ReAct (Reason + Act) is the canonical single-agent loop: the LLM thinks, calls a tool, observes the result, and repeats until the task is done or an iteration cap is hit. It is adaptive and cheap compared to Plan-and-Execute — typically 50% fewer LLM calls for exploratory tasks — but requires hard iteration limits and explicit completion detection to avoid runaway loops.
+        **One-paragraph:** ReAct is the canonical single-agent loop. The LLM thinks, calls a tool, observes the result, and repeats until the task is done or an iteration cap is hit. This methodology codifies the loop into a small Python class with a typed tool registry, a termination guard (final answer detection), an iteration cap, and audit logging. Foundation for all higher-order agent patterns.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Девів, що будують перший справжній агентний цикл, не хочуть LangGraph і хочуть зрозуміти, що там всередині насправді.
 
-- Task requires dynamic tool selection across multiple steps with branching based on intermediate results.
-- Workflow involves research + synthesis + action that cannot be scripted in advance.
-- Code generation and execution loops where the agent must test and fix iteratively.
-- Multi-source data gathering where the number of sources is unknown upfront.
-- Automation of knowledge work: writing, classification, extraction across variable-length inputs.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - single agent (no multi-agent coordination yet)
+- tools are well-defined and bounded
+- iteration cap ≤ 15 acceptable
+- you can detect a «final answer» from the LLM output
+- audit log is required
 
-- Task is deterministic and mappable to a fixed pipeline — use a DAG, not an agent.
-- Real-time response under 500ms is required — autonomous loop latency is incompatible.
-- Actions are irreversible (send email, delete records, charge cards) without human approval — use Plan-and-Execute with approval gate instead.
-- Cost budget is fixed and tight — ReAct loops can expand token usage 5-20x vs a single call.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - task is single-shot — no loop needed
+- multi-agent coordination is required — use a graph framework
+- tools have non-deterministic side-effects requiring human gate
+- iteration cap is too restrictive — pick plan-execute instead
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-agents-react-pattern.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/react-loop.py` | ReAct loop class skeleton |
+| `templates/react-prompt.txt` | Prompt template requiring Thought + Action JSON |
+| `templates/final-answer-tool.py` | FinalAnswer typed tool |
+| `templates/audit-row.py` | Structured audit row schema |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-agents-react-pattern.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-thought-action-observation`, `r2-typed-action`, `r3-bounded-iter`, `r4-termination-guard`, `r5-audit-log` from `content/01-core-rules.xml`.

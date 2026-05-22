@@ -1,73 +1,101 @@
----
-slug: agents-memory-system
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Autonomous agents running long tasks overflow their context window without explicit memory management.
-content_id: "e294125be6147459"
-tags: [agents, memory, vector-store, context-management, embeddings]
----
-# Agent Memory System — Short-Term, Long-Term, and Context Management
+        ---
+        slug: agents-memory-system
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Three-tier agent memory: short-term buffer, episodic store, long-term vector store; with summarisation, eviction, and recall scoring.
+        content_id: "e9325a1ffb112e0b"
+        complexity: deep
+        produces: code
+        est_tokens: 4200
+        tags: [agents, memory, vector-store, context-management, embeddings]
+        ---
+        # Agents Memory System
 
-## Summary
+        ## Summary
 
-**One-sentence:** Autonomous agents running long tasks overflow their context window without explicit memory management.
+        **One-sentence:** Three-tier agent memory: short-term buffer, episodic store, long-term vector store; with summarisation, eviction, and recall scoring.
 
-**One-paragraph:** Autonomous agents running long tasks overflow their context window without explicit memory management. A three-tier memory architecture — short-term conversation buffer, long-term vector store, episodic task log — keeps agents grounded across sessions. Summarize conversation history every N steps; use cosine similarity recall to inject only relevant past experiences rather than raw history.
+        **One-paragraph:** Long-running agents overflow their context window without explicit memory management. This methodology defines a three-tier memory system: short-term (recent N turns, raw), episodic (per-session summary, structured), long-term (cross-session embeddings). Includes summarisation strategy (rolling summary every N turns), eviction policy (LRU on episodic), and recall scoring (BM25 + vector hybrid).
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Команд, що тримають агента live > 1 години і вже бачили, як він «забуває» через 50 turns; пора додати дисциплінований memory-стек.
 
-- Long-running agents that execute more than 20 steps in a single session.
-- Agents that handle recurring similar tasks and should learn from past runs.
-- Agents that must remember user preferences or domain knowledge across sessions.
-- Multi-session research or content generation workflows where context exceeds 50K tokens.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - agent sessions run > 50 turns or > 1 hour
+- context window exceeded in production at least once
+- session continuity matters (the user returns and expects «remembering»)
+- vector store is available for long-term storage
+- summariser model is configured
 
-- Single-turn agents completing in under 10 steps — memory overhead exceeds value.
-- Tasks where all necessary context fits in one context window — adding memory layers introduces complexity with no benefit.
-- Strict reproducibility requirements — memory recall is non-deterministic, which conflicts with auditing needs.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - single-shot or short (< 10 turn) sessions — no memory needed
+- context window is never the bottleneck — pure context handling suffices
+- no privacy budget for cross-session storage — opt for ephemeral only
+- compliance forbids storing user content (HIPAA / GDPR without consent)
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-agents-memory-system.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/memory-tiers.py` | Three-tier memory class skeleton |
+| `templates/summariser.py` | Rolling summariser implementation |
+| `templates/hybrid-recall.py` | Hybrid BM25 + vector recall |
+| `templates/eviction-policy.py` | LRU + TTL eviction helpers |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-agents-memory-system.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-three-tiers`, `r2-bounded-short-term`, `r3-rolling-summary`, `r4-hybrid-recall`, `r5-eviction-policy` from `content/01-core-rules.xml`.

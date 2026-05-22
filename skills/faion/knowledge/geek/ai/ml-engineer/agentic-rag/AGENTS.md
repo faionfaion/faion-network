@@ -1,76 +1,102 @@
----
-slug: agentic-rag
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Agentic RAG embeds autonomous agents into the retrieval pipeline to enable multi-hop retrieval, query routing, self-correction, and iterative refinement.
-content_id: "cdb282feeb7d1121"
-tags: [rag, retrieval, agents, langgraph, multi-hop, corrective-rag]
----
-# Agentic RAG (RAG 2.0)
+        ---
+        slug: agentic-rag
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Agentic RAG pattern: query routing, multi-hop retrieval, self-correction (CRAG), iterative refinement, with LangGraph state machine + Pydantic schemas.
+        content_id: "49802dc931354b4d"
+        complexity: deep
+        produces: code
+        est_tokens: 4200
+        tags: [rag, retrieval, agents, langgraph, multi-hop, corrective-rag]
+        ---
+        # Agentic RAG
 
-## Summary
+        ## Summary
 
-**One-sentence:** Agentic RAG embeds autonomous agents into the retrieval pipeline to enable multi-hop retrieval, query routing, self-correction, and iterative refinement.
+        **One-sentence:** Agentic RAG pattern: query routing, multi-hop retrieval, self-correction (CRAG), iterative refinement, with LangGraph state machine + Pydantic schemas.
 
-**One-paragraph:** Agentic RAG embeds autonomous agents into the retrieval pipeline to enable multi-hop retrieval, query routing, self-correction, and iterative refinement. Unlike traditional single-shot RAG, agents plan decompositions, grade retrieved documents, rewrite failed queries, and verify answers before returning — trading latency for higher accuracy on complex queries.
+        **One-paragraph:** Embeds autonomous agents into the retrieval pipeline to handle complex queries that single-shot RAG fails on. Components: query router (vectorstore vs web vs nothing), retrieval grader (relevance scoring), generation node, hallucination grader (groundedness), answer grader (question alignment). Pulls Corrective RAG (CRAG) and Self-RAG patterns into one production-ready LangGraph state machine with typed state.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** ML engineer, що бачить «single-shot RAG не тягне багатоходові запитання» і готовий перейти на CRAG-style цикл з graders + retries.
 
-- Queries require multi-hop reasoning across documents
-- Single-shot retrieval consistently fails for complex or ambiguous questions
-- Knowledge base spans multiple heterogeneous sources (internal docs, web, APIs)
-- Self-correction is essential: domain where one retrieval miss produces costly wrong answers (legal, medical, financial)
-- Complex pipelines already have observability tooling (traces, per-turn cost logging)
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - queries require multi-hop retrieval (more than one source needed)
+- domain has both internal docs AND public web content
+- you can afford 2-5x the latency of single-shot RAG
+- you have a vector store + (optional) web search tool wired
+- groundedness / answer-relevance evaluation is in scope
 
-- Simple factual Q&A with a single knowledge base and high recall — standard RAG is faster and cheaper
-- Latency budget under 2 seconds — agentic loops add 2-10x more turns than static RAG
-- The orchestration infrastructure does not exist yet — build standard RAG first, then layer agentic behavior
-- Cost constraints are tight — multi-hop retrieval multiplies token usage; each agent turn = one LLM call
-- No observability tooling — debugging agentic loop failures without traces is impractical
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - single-hop queries dominate (>80%) — vanilla RAG is enough
+- latency budget < 2s — agentic RAG is too slow
+- no eval suite for retrieval — build that first
+- domain has no public-web fallback path
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-agentic-rag.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/crag-workflow.py` | LangGraph CRAG workflow skeleton |
+| `templates/state-schemas.py` | Pydantic GraphState + intermediate schemas |
+| `templates/pydantic-schemas.py` | Pydantic schemas for graders + routes |
+| `templates/prompt-grader.txt` | Relevance / groundedness grader prompt template |
+| `templates/prompt-router.txt` | Query router prompt template |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-agentic-rag.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-typed-state`, `r2-router-first`, `r3-grade-before-generate`, `r4-bounded-loop`, `r5-groundedness-gate` from `content/01-core-rules.xml`.

@@ -1,76 +1,100 @@
----
-slug: openai-assistants
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The Assistants API is a stateful layer over Chat Completions that manages conversation threads, file uploads, a built-in vector store (File Search), and a sandboxed Python runtime (Code Interpreter).
-content_id: "5bc4d1160f015d13"
-tags: [assistants-api, stateful-llm, file-search, code-interpreter, rag]
----
-# OpenAI Assistants API
+        ---
+        slug: openai-assistants
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Stateful OpenAI Assistants integration: thread lifecycle, File Search vector store, Code Interpreter, polling vs streaming, resource cleanup.
+        content_id: "88d56b700b1003e3"
+        complexity: medium
+        produces: code
+        est_tokens: 3700
+        tags: [assistants-api, stateful-llm, file-search, code-interpreter, rag]
+        ---
+        # OpenAI Assistants API
 
-## Summary
+        ## Summary
 
-**One-sentence:** The Assistants API is a stateful layer over Chat Completions that manages conversation threads, file uploads, a built-in vector store (File Search), and a sandboxed Python runtime (Code Interpreter).
+        **One-sentence:** Stateful OpenAI Assistants integration: thread lifecycle, File Search vector store, Code Interpreter, polling vs streaming, resource cleanup.
 
-**One-paragraph:** The Assistants API is a stateful layer over Chat Completions that manages conversation threads, file uploads, a built-in vector store (File Search), and a sandboxed Python runtime (Code Interpreter). It is designed for multi-turn user-facing applications where the caller should not manage message history, document indexing, or code execution infrastructure.
+        **One-paragraph:** Provides production patterns for the Assistants API: assistant creation as a long-lived resource (registered + versioned), thread-per-conversation lifecycle, File Search vector-store hygiene, Code Interpreter sandbox limits, and the run-polling state machine vs streaming run events. Includes a managed-resources helper that prevents the #1 Assistants bug — leaked threads and vector stores piling up at $0.10/GB/day.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Команд, що будують stateful чат / помічника поверх OpenAI і не хочуть платити $40/міс за забуті thread-и та векторні сховища.
 
-- Multi-turn user-facing applications where conversation history must persist across sessions.
-- RAG over uploaded documents without building a custom vector pipeline (File Search).
-- Data analysis where the LLM needs to execute Python on uploaded CSV/Excel files (Code Interpreter).
-- Prototyping agent applications when stateful conversation overhead is acceptable.
-- Users upload files mid-conversation and the assistant must act on them immediately.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - you need a stateful conversation surface (threads survive across turns)
+- you need built-in File Search OR Code Interpreter (sandboxed Python)
+- you can tolerate Assistants API's polling/streaming run model
+- OPENAI_API_KEY with Assistants access is provisioned
+- you can clean up threads + vector stores on session end
 
-- High-throughput automated pipelines — Assistants adds HTTP round-trips per turn; Chat Completions is faster.
-- When deterministic, auditable tool execution is required — internal tool calling is opaque.
-- Cost-sensitive workloads — file search + thread storage add per-token overhead.
-- Data that must not be stored on OpenAI servers (GDPR/HIPAA) — threads and files persist.
-- Sub-100ms first-token latency requirements — `create_and_poll` polling overhead is too high.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - stateless one-shot completion is sufficient — use chat.completions instead
+- you need on-prem hosting — Assistants is hosted-only
+- latency budget < 1s — Assistants polling adds 200-500ms per turn
+- you need fine-grained control over the tool loop — use raw tool-use
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-openai-assistants.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/managed-resources.py` | Context-managed assistant + thread + vector-store lifecycle |
+| `templates/query-assistant.py` | Run + poll OR stream against a thread |
+| `templates/vector-store-bootstrap.py` | Project-named vector store creation with TTL |
+| `templates/cleanup-sweeper.py` | Nightly sweeper for orphaned threads / vector stores |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-openai-assistants.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/llm-integration/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-assistant-as-resource`, `r2-thread-lifecycle`, `r3-vector-store-hygiene`, `r4-run-polling-bounded`, `r5-cost-meter` from `content/01-core-rules.xml`.

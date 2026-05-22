@@ -1,54 +1,29 @@
-# Iteration-capped tool loop for OpenAI function calling
-# Usage: call agent_loop(client, messages, tools, registry)
+# purpose: Provider-agnostic request-execute-respond loop
+# consumes: Inputs declared in `AGENTS.md` Prerequisites.
+# produces: Filled artefact for `tool-use-basics` matching `content/02-output-contract.xml`.
+# depends-on: `content/01-core-rules.xml`, `scripts/validate-tool-use-basics.py`.
+# token-budget-impact: small.
+"""Skeleton for the `tool-use-basics` template `agent-loop.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
 
-import json
-from typing import Any, Callable, Dict, List, Optional
+
+@dataclass
+class Skeleton:
+    slug: str = "tool-use-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
 
 
-def agent_loop(
-    client,
-    messages: List[Dict],
-    tools: List[Dict],
-    tool_registry: Dict[str, Callable],
-    model: str = "gpt-4o",
-    max_iter: int = 10,
-) -> Optional[str]:
-    """Run OpenAI tool-use loop with hard iteration cap.
-
-    Returns the final text response, or "[max_iterations_reached]" if the
-    cap is hit. Never raises on tool execution errors — returns error dict.
-    """
-    for _ in range(max_iter):
-        resp = client.chat.completions.create(
-            model=model, messages=messages, tools=tools
-        )
-        msg = resp.choices[0].message
-        messages.append(msg)
-
-        if not msg.tool_calls:
-            return msg.content
-
-        for tc in msg.tool_calls:
-            fn_name = tc.function.name
-            try:
-                args: Dict[str, Any] = json.loads(tc.function.arguments)
-            except json.JSONDecodeError as exc:
-                args = {}
-                result: Any = {"error": f"malformed arguments: {exc}"}
-            else:
-                fn = tool_registry.get(fn_name)
-                if fn is None:
-                    result = {"error": f"unknown tool: {fn_name}"}
-                else:
-                    try:
-                        result = fn(**args)
-                    except Exception as exc:
-                        result = {"error": str(exc)}
-
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc.id,
-                "content": json.dumps(result),
-            })
-
-    return "[max_iterations_reached]"
+if __name__ == "__main__":
+    import json
+    print(json.dumps(Skeleton().render(), indent=2))

@@ -1,39 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Methodology Corpus Licence Bundle Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Methodology Corpus Licence Bundle output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Methodology Corpus Licence Bundle — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Schema for the spec produced by one application of `methodology-corpus-licence-bundle`. Validated by `scripts/validate-methodology-corpus-licence-bundle.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://methodology-corpus-licence-bundle/output.schema.json",
+  "type": "object",
+  "required": ["slug", "version", "owner", "produced_at", "produces", "scope", "approver", "review"],
+  "properties": {
+    "slug": {"type": "string", "const": "methodology-corpus-licence-bundle"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "produced_at": {"type": "string", "format": "date-time"},
+    "produces": {"type": "string", "const": "spec"},
+    "scope": {
+      "type": "object",
+      "required": ["title", "context_link"],
+      "properties": {
+        "title": {"type": "string", "minLength": 5},
+        "context_link": {"type": "string", "format": "uri"}
+      }
+    },
+    "approver": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "review": {
+      "type": "object",
+      "required": ["cadence", "next_review_at"],
+      "properties": {
+        "cadence": {"type": "string", "enum": ["weekly", "monthly", "quarterly"]},
+        "next_review_at": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "slug": "methodology-corpus-licence-bundle",
+  "version": "1.1.0",
+  "owner": "ml-eng:alice",
+  "produced_at": "2026-05-22T10:00:00Z",
+  "produces": "spec",
+  "scope": {"title": "Example application of methodology-corpus-licence-bundle", "context_link": "https://github.com/org/repo/issues/123"},
+  "approver": "tl:bob",
+  "review": {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+}
+]]></code>
+    </example>
+  </section>
 
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "0.1",
+  "owner": "team",
+  "produced_at": "soon",
+  "produces": "vibes",
+  "scope": {"title": "tbd"},
+  "approver": "",
+  "review": {}
+}
+]]></code>
+      <note>Invalid: slug doesn&apos;t match const; version is not semver; owner is team-level; produced_at not date-time; produces not in enum; scope.title too short and context_link missing; approver empty; review missing required fields.</note>
+    </example>
+  </section>
 
-    <schema-reference path="templates/methodology-corpus-licence-bundle.json"/>
-  </output-contract>
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Anonymous owner / approver — «team», «engineering», empty string.</description>
+      <reason>Accountability dissolves; rollback decisions have no owner.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Open-ended review — `cadence: «perpetual»` or `next_review_at` empty.</description>
+      <reason>Artefacts decay; never get revisited.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Scope without a context link (issue / PR / doc).</description>
+      <reason>No upstream anchor; impossible to audit «why was this produced».</reason>
+    </antipattern>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/methodology-corpus-licence-bundle.json</item>
+      <item>slug matches the methodology folder name.</item>
+      <item>version is semver and matches AGENTS.md.</item>
+      <item>owner + approver are role:person (not team-level).</item>
+      <item>produces matches the methodology&apos;s declared `produces`.</item>
+      <item>scope.title is informative, scope.context_link is a real URL.</item>
+      <item>review.cadence is one of weekly | monthly | quarterly.</item>
+      <item>review.next_review_at is in the future.</item>
     </list>
   </section>
 </text>

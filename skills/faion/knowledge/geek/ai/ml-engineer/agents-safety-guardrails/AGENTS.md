@@ -1,73 +1,101 @@
----
-slug: agents-safety-guardrails
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Autonomous agents require five categories of guardrail before production deployment: execution safety (iteration limits, timeouts), content safety (input validation, PII handling), financial safety (cost caps, rate limiting), action safety (sandboxed execution, blocked patterns), and human-in-loop gates for irreversible actions.
-content_id: "3f3ef0143d291706"
-tags: [agents, safety, guardrails, human-in-loop, sandboxing]
----
-# Agent Safety Guardrails — Iteration Limits, Cost Caps, Human-in-Loop
+        ---
+        slug: agents-safety-guardrails
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Five guardrail categories for production agents: execution, content, financial, action, human-in-loop. Each carries trip-conditions and a recovery path.
+        content_id: "801330a8dce3344d"
+        complexity: deep
+        produces: config
+        est_tokens: 4200
+        tags: [agents, safety, guardrails, human-in-loop, sandboxing]
+        ---
+        # Agents Safety Guardrails
 
-## Summary
+        ## Summary
 
-**One-sentence:** Autonomous agents require five categories of guardrail before production deployment: execution safety (iteration limits, timeouts), content safety (input validation, PII handling), financial safety (cost caps, rate limiting), action safety (sandboxed execution, blocked patterns), and human-in-loop gates for irreversible actions.
+        **One-sentence:** Five guardrail categories for production agents: execution, content, financial, action, human-in-loop. Each carries trip-conditions and a recovery path.
 
-**One-paragraph:** Autonomous agents require five categories of guardrail before production deployment: execution safety (iteration limits, timeouts), content safety (input validation, PII handling), financial safety (cost caps, rate limiting), action safety (sandboxed execution, blocked patterns), and human-in-loop gates for irreversible actions. Each category must be implemented in code — not just in the system prompt — because LLM instructions alone are not reliable safety mechanisms.
+        **One-paragraph:** Autonomous agents require five categories of guardrail before production deployment: execution safety (iteration limits, timeouts), content safety (input validation, PII handling), financial safety (cost caps, rate limiting), action safety (sandboxed execution, blocked patterns), and human-in-loop gates for irreversible actions. Each guardrail has explicit trip conditions and a documented recovery path.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Команд, що готують агента до production traffic і знають, що без guardrail-ів він зробить три нерозворотні дії в першу годину.
 
-- Any autonomous agent before production deployment.
-- Agents with access to external APIs, databases, file systems, or communication channels.
-- Agents that may execute code or shell commands.
-- Multi-step workflows where a wrong intermediate result cascades through subsequent steps.
-- Agents handling user data, financial information, or PII.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - agent has at least one tool with real-world side-effects
+- production traffic is in scope
+- cost budget is finite
+- regulatory / safety reviewers exist
+- there are irreversible actions in the tool list (payments, hires, deletes)
 
-- Read-only research agents with no external writes — full approval gates add unnecessary latency.
-- Human-supervised sandbox exploration where the user is actively watching every step.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - agent is read-only (no side-effect tools)
+- sandbox is fully isolated (no escape possible)
+- internal-only with single-user trust model
+- prototype phase — guardrails defer to step before launch
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=config + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=config`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-agents-safety-guardrails.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/guardrails.yaml` | Five-category guardrail config skeleton |
+| `templates/human-loop-gate.py` | Slack-based approval gate for irreversible actions |
+| `templates/pii-scrubber.py` | Input + log PII scrubber |
+| `templates/trip-handler.py` | Recovery-path dispatch helper |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-agents-safety-guardrails.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-five-categories`, `r2-trip-conditions`, `r3-recovery-path`, `r4-human-loop-irreversible`, `r5-cost-cap` from `content/01-core-rules.xml`.

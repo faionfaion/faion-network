@@ -1,72 +1,102 @@
----
-slug: agents-production-deployment
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production autonomous agents require five production-grade components beyond the core loop: (1) a typed tool base class with a shared registry, (2) YAML configuration with env-var substitution, (3) structured JSON logging for every LLM and tool call, (4) exponential backoff retry with circuit breaker for external services, (5) a repeatable evaluation harness that measures success rate, latency, iterations, and token cost.
-content_id: "6b7c79757cf6cfa5"
-tags: [agents, production, deployment, logging, evaluation]
----
-# Agent Production Deployment — Tool Design, Logging, Evaluation, Docker
+        ---
+        slug: agents-production-deployment
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Five production gates for shipping an agent: typed tool base, YAML config with env subst, structured JSON logs, retry/circuit breaker, repeatable eval harness.
+        content_id: "f234a444999f2aac"
+        complexity: deep
+        produces: config
+        est_tokens: 4200
+        tags: [agents, production, deployment, logging, evaluation]
+        ---
+        # Agents Production Deployment
 
-## Summary
+        ## Summary
 
-**One-sentence:** Production autonomous agents require five production-grade components beyond the core loop: (1) a typed tool base class with a shared registry, (2) YAML configuration with env-var substitution, (3) structured JSON logging for every LLM and tool call, (4) exponential backoff retry with circuit breaker for external services, (5) a repeatable evaluation harness that measures success rate, latency, iterations, and token cost.
+        **One-sentence:** Five production gates for shipping an agent: typed tool base, YAML config with env subst, structured JSON logs, retry/circuit breaker, repeatable eval harness.
 
-**One-paragraph:** Production autonomous agents require five production-grade components beyond the core loop: (1) a typed tool base class with a shared registry, (2) YAML configuration with env-var substitution, (3) structured JSON logging for every LLM and tool call, (4) exponential backoff retry with circuit breaker for external services, (5) a repeatable evaluation harness that measures success rate, latency, iterations, and token cost. Skip any one of these and debugging production failures becomes prohibitively expensive.
+        **One-paragraph:** Production autonomous agents require five components beyond the core loop: (1) typed tool base with shared registry, (2) YAML config with env-var substitution, (3) structured JSON logs for every LLM and tool call, (4) exponential backoff retry + circuit breaker for external services, (5) eval harness measuring success rate, latency, iterations, token cost. Each is a gate; passing all five = «agent is production-ready».
 
-## Applies If (ALL must hold)
+        **Ефективно для:** DevOps + ML eng, що готують агента до боя і не хочуть «прод-ready без логів і еволю».
 
-- Moving an autonomous agent from prototype to production deployment.
-- Agents that will run on a schedule or receive external requests.
-- Any agent deployment where failures are visible to users or have business impact.
-- Teams that need to measure agent quality over time and detect regressions.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - agent has passed prototype phase and is ≤ 2 weeks from production
+- real customer traffic is in scope
+- SLOs (latency_p95, success_rate, $/task) are defined
+- an on-call rotation exists
+- you have a CI/CD pipeline that can run the eval harness
 
-- One-off research experiments or local prototypes — production overhead exceeds value.
-- Agents run only in interactive notebooks with a human watching every step.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - still in prototype — these gates are overkill before customer traffic
+- internal-only tooling with no SLO — light logging is enough
+- single-team owner who is also the user — feedback loop is the gate
+- regulated environment requires extra gates — these five are necessary but not sufficient
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=config + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=config`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-agents-production-deployment.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/base-tool.py` | Typed BaseTool + ToolRegistry skeleton |
+| `templates/agent-config.yaml` | YAML config with env-var substitution |
+| `templates/structured-logging.py` | structlog setup emitting the 6 required fields |
+| `templates/retry-circuit.py` | tenacity + pybreaker integration |
+| `templates/eval-harness.py` | Eval harness skeleton with CI hook |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-agents-production-deployment.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-typed-tools`, `r2-config-via-yaml`, `r3-structured-logs`, `r4-retry-circuit`, `r5-eval-harness` from `content/01-core-rules.xml`.

@@ -1,76 +1,100 @@
----
-slug: openai-api-integration
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: OpenAI API provides access to GPT-4, GPT-4 Turbo, GPT-4o, and other models for text generation, embeddings, image generation, and more.
-content_id: "b56e9abdbb892e7e"
-tags: [openai, gpt-4, api-integration, llm, async]
----
-# OpenAI API Integration
+        ---
+        slug: openai-api-integration
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Production-grade OpenAI Chat Completions integration: client init, model selection, streaming, async batches, structured output, retries, token accounting.
+        content_id: "5b76a9a00da7640c"
+        complexity: medium
+        produces: code
+        est_tokens: 3700
+        tags: [openai, gpt-4, api-integration, llm, async]
+        ---
+        # OpenAI API Integration
 
-## Summary
+        ## Summary
 
-**One-sentence:** OpenAI API provides access to GPT-4, GPT-4 Turbo, GPT-4o, and other models for text generation, embeddings, image generation, and more.
+        **One-sentence:** Production-grade OpenAI Chat Completions integration: client init, model selection, streaming, async batches, structured output, retries, token accounting.
 
-**One-paragraph:** OpenAI API provides access to GPT-4, GPT-4 Turbo, GPT-4o, and other models for text generation, embeddings, image generation, and more. This methodology covers authentication, model selection, request handling, and production-ready integration patterns.
+        **One-paragraph:** Provides a small but opinionated wrapper over the official `openai` SDK so an agent shipping OpenAI-backed code never trips on auth, model-name drift, untyped responses, or rate-limit storms. Covers gpt-4o / gpt-4o-mini / gpt-4-turbo selection, AsyncOpenAI batching, JSON mode + structured outputs (beta.parse), exponential-backoff retries on RateLimitError/APIConnectionError, and tiktoken-driven cost tracking.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Backend devs, що тільки що отримали «приліпи GPT до нашого API» і не хочуть наступного дня ловити 429 + parsing-помилки в проді.
 
-- Building conversational AI applications
-- Text generation, summarization, translation
-- Code generation and analysis
-- Content moderation and classification
-- When you need state-of-the-art language capabilities
-- Production applications requiring high reliability
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - you are building or extending a production code path that calls OpenAI Chat Completions
+- the official `openai` Python SDK is available (>=1.0)
+- OPENAI_API_KEY (or AZURE_OPENAI_API_KEY) is provisioned in the runtime environment
+- you have a defined quality bar for the task and a model-selection budget
+- concurrency / batch needs are known up front (sync vs async)
 
-- The task fits a smaller model (Claude Haiku, GPT-4o-mini) — always start with the cheapest model that meets quality bar
-- You need 1M+ context — Gemini 1.5 Pro is the right tool; OpenAI's max is 128K
-- The project policy requires on-premise or self-hosted inference — use Ollama or a local model
-- The response format is unknown/flexible — structured output requires knowing the schema up front
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - task fits a smaller / cheaper provider (Claude Haiku, Gemini Flash, local Ollama)
+- you need >128K context — Gemini 1.5 Pro is the right tool
+- policy requires on-prem / self-hosted inference
+- response format is genuinely unknown — design a schema first or use a different methodology
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-openai-api-integration.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/client.py` | Singleton OpenAI client + AsyncOpenAI factory |
+| `templates/retry-policy.py` | tenacity decorator wired for RateLimitError / APIConnectionError |
+| `templates/typed-call.py` | Pydantic-typed chat completion call example |
+| `templates/cost-tracker.py` | Cost accounting helper using tiktoken |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-openai-api-integration.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/llm-integration/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-model-by-task`, `r2-typed-responses`, `r3-retry-policy`, `r4-async-batch`, `r5-cost-accounting` from `content/01-core-rules.xml`.

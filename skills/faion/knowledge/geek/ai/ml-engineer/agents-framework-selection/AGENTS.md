@@ -1,72 +1,101 @@
----
-slug: agents-framework-selection
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The 2025-2026 Python agent ecosystem has consolidated around six frameworks.
-content_id: "ca44e6e5a90e8170"
-tags: [agents, langgraph, crewai, autogen, framework-selection]
----
-# Agent Framework Selection — LangGraph, CrewAI, AutoGen, DSPy
+        ---
+        slug: agents-framework-selection
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Decision rubric to pick among LangGraph / CrewAI / AutoGen / Anthropic Agent SDK / OpenAI Swarm / no-framework for a new agent project.
+        content_id: "cdcc0bb7dee807ad"
+        complexity: medium
+        produces: decision-record
+        est_tokens: 4200
+        tags: [agents, langgraph, crewai, autogen, framework-selection]
+        ---
+        # Agents Framework Selection
 
-## Summary
+        ## Summary
 
-**One-sentence:** The 2025-2026 Python agent ecosystem has consolidated around six frameworks.
+        **One-sentence:** Decision rubric to pick among LangGraph / CrewAI / AutoGen / Anthropic Agent SDK / OpenAI Swarm / no-framework for a new agent project.
 
-**One-paragraph:** The 2025-2026 Python agent ecosystem has consolidated around six frameworks. LangGraph is the production default for state-machine workflows with persistence. CrewAI is the fastest path to role-based multi-agent teams. AutoGen handles conversational multi-agent research. DSPy is for teams that need automatic prompt optimization. Framework lock-in is real — LangGraph state schemas and CrewAI role configs are not portable across frameworks; choose deliberately.
+        **One-paragraph:** The 2025-2026 Python agent ecosystem has consolidated around six frameworks. Each is best at a different shape of problem. This methodology produces a decision record naming the chosen framework + the 3 axes that drove the choice (graph vs role, observability stack, deployment target) + the 2 explicitly rejected alternatives with reasons.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Tech lead, що стоїть перед «який agent-фреймворк брати» і хоче не вгадувати, а зробити decision record за один захід.
 
-- Starting a new agent project and needing to select the framework before writing implementation code.
-- Evaluating whether to migrate from an ad-hoc LangChain loop to a structured framework.
-- Adding a multi-agent pattern to an existing single-agent system.
-- Selecting observability tooling for agent debugging and evaluation.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - you are starting a new agent project from scratch
+- team has ≥1 Python dev with LLM experience
+- monthly compute budget is known
+- deployment target (serverless, kube, on-prem) is decided
+- observability requirements are documented
 
-- Already committed to a framework — switching mid-project is more expensive than finishing.
-- Simple single LLM call with no tools — no framework needed.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - existing codebase already uses a framework — migration is a separate methodology
+- single-agent + 3-tool tasks — raw provider SDK is enough; no framework needed
+- research / experimental prototype — pick whatever the team knows
+- framework choice is mandated by org policy
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=decision-record + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=decision-record`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-agents-framework-selection.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/decision-record.md` | Framework selection decision record skeleton |
+| `templates/axis-scoring.md` | 3-axis scoring rubric (graph-vs-role, observability, deployment) |
+| `templates/rejected-alternatives.md` | Rejected alternatives section template |
+| `templates/review-memo.md` | 6-month review memo template |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-agents-framework-selection.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-three-axes`, `r2-two-rejected`, `r3-no-framework-allowed`, `r4-named-owner`, `r5-deployment-fit` from `content/01-core-rules.xml`.

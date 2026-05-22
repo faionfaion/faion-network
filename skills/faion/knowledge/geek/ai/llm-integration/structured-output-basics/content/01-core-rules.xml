@@ -1,11 +1,33 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="structured-output-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for structured-output-basics. Verify and refine before relying on for production.</summary>
+        <?xml version="1.0" encoding="UTF-8"?>
+        <text id="01-core-rules" title="Structured Output Basics — Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+          <summary>5 testable rules every application of `structured-output-basics` MUST enforce. Each rule carries an empirical anchor under `source`.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
-    </rule>
+          <section title="Rules">
+        <rule id="r1-schema-first" testable="true" depth="essential">
+  <statement>Author the Pydantic model BEFORE writing the prompt. Prompt is generated from / aligned with the schema.</statement>
+  <rationale source="OpenAI Structured Outputs docs (https://platform.openai.com/docs/guides/structured-outputs)">Schema-second prompts drift; the prompt and schema fall out of sync and the parser fails silently.</rationale>
+</rule>
+<rule id="r2-provider-native" testable="true" depth="essential">
+  <statement>Use the provider&apos;s structured-output mode (OpenAI response_format=json_schema, Anthropic tool-as-schema) rather than ad-hoc «return JSON» instructions.</statement>
+  <rationale source="OpenAI Structured Outputs docs (https://platform.openai.com/docs/guides/structured-outputs)">Native modes are server-side-constrained and orders of magnitude more reliable than prompt-only «please return JSON».</rationale>
+</rule>
+<rule id="r3-validate-on-receipt" testable="true" depth="essential">
+  <statement>Every response is validated through the Pydantic model on receipt. Unvalidated dict access is rejected at review.</statement>
+  <rationale source="OpenAI Structured Outputs docs (https://platform.openai.com/docs/guides/structured-outputs)">Skipping validation lets soft errors (missing optional → default mismatch) propagate into the DB and corrupt rows.</rationale>
+</rule>
+<rule id="r4-retry-on-parse-fail" testable="true" depth="essential">
+  <statement>On ValidationError, retry exactly once with the error message injected into the prompt. Repeated failure escalates to fallback (None + log).</statement>
+  <rationale source="OpenAI Structured Outputs docs (https://platform.openai.com/docs/guides/structured-outputs)">One-shot retry-with-error catches the long-tail cases where the model hallucinated an extra field; unbounded retries mask underlying schema bugs.</rationale>
+</rule>
+<rule id="r5-strict-when-stakes-high" testable="true" depth="essential">
+  <statement>When the downstream consumer is a DB or another agent, set `strict=true` (OpenAI) or use tool-as-schema (Anthropic) for guaranteed conformance.</statement>
+  <rationale source="OpenAI Structured Outputs docs (https://platform.openai.com/docs/guides/structured-outputs)">Strict mode trades a small latency hit for zero parsing surprises; for high-stakes paths this is the right tradeoff.</rationale>
+</rule>
   </section>
-</text>
+
+          <see-also>
+            <link path="content/02-output-contract.xml"/>
+            <link path="content/03-failure-modes.xml"/>
+            <link path="content/06-decision-tree.xml"/>
+          </see-also>
+        </text>

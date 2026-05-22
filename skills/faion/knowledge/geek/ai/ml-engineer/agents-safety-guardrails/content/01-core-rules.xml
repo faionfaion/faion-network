@@ -1,19 +1,33 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="agents-safety-guardrails Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for agents-safety-guardrails. Verify and refine before relying on for production.</summary>
+        <?xml version="1.0" encoding="UTF-8"?>
+        <text id="01-core-rules" title="Agents Safety Guardrails — Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+          <summary>5 testable rules every application of `agents-safety-guardrails` MUST enforce. Each rule carries an empirical anchor under `source`.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every agent loop MUST enforce: (1) max_iterations limit (20-50), (2) timeout_seconds per run (60-300), (3) max_tool_calls_per_iteration (5), (4) same-argument deduplication guard (max 3 calls with identical args). These MUST be enforced in code, not only in the system prompt.</statement>
-      <rationale source="v1-source">Infinite loops are the most common agent failure. The iteration limit stops the loop before it exhausts the budget. The timeout handles deadlocks. The per-iteration tool call limit prevents a single confused step from calling 20 tools. Same-argument deduplication stops "stuck retry" patterns.</rationale>
-    </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Agents MUST require explicit human approval before executing any of the following: sending external messages (email, Slack, SMS), making financial transactions, deleting records, overwriting production data, or running shell commands with write access. The approval request MUST describe what will happen, why, the risk if declined, and offer APPROVE / MODIFY / DECLINE options.</statement>
-      <rationale source="v1-source">These actions are irreversible or have significant external impact. An agent that autonomously sends emails or deletes database records based on a misunderstood goal is catastrophically unsafe. The approval gate is the last line of defense between agent logic and real-world consequences.</rationale>
-    </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All tool inputs MUST be validated against a JSON Schema before execution. Tool implementations MUST NOT raise unhandled exceptions — all errors MUST be returned as structured text ("Error: &lt;reason&gt;"). Sandboxed code execution MUST use an isolated environment (E2B, Docker with no network, or subprocess with resource limits) — never exec() on the host directly.</statement>
-      <rationale source="v1-source">JSON Schema validation prevents tool argument hallucination from causing unexpected side effects. Text error returns let the agent recover gracefully. Sandboxed execution prevents a code-generation agent from running rm -rf or exfiltrating credentials.</rationale>
-    </rule>
+          <section title="Rules">
+        <rule id="r1-five-categories" testable="true" depth="essential">
+  <statement>Guardrail config covers all five categories (execution, content, financial, action, human-in-loop). Missing categories rejected.</statement>
+  <rationale source="Anthropic responsible scaling policy">Each category catches a different failure class; missing one leaves an unguarded surface.</rationale>
+</rule>
+<rule id="r2-trip-conditions" testable="true" depth="essential">
+  <statement>Every guardrail has explicit trip conditions (numeric thresholds, regex patterns, blocklists). Vague conditions («be careful») rejected.</statement>
+  <rationale source="Anthropic responsible scaling policy">Vague conditions can&apos;t be enforced or tested; explicit conditions can.</rationale>
+</rule>
+<rule id="r3-recovery-path" testable="true" depth="essential">
+  <statement>Every guardrail names the recovery path on trip — block, ask human, downscale, kill. No silent ignores.</statement>
+  <rationale source="Anthropic responsible scaling policy">Without a documented recovery path, trips degrade into noise; named paths produce measurable outcomes.</rationale>
+</rule>
+<rule id="r4-human-loop-irreversible" testable="true" depth="essential">
+  <statement>All irreversible actions (payments, hires, deletes) require human approval. Auto-approval rejected.</statement>
+  <rationale source="Anthropic responsible scaling policy">Irreversible actions are uniquely dangerous; the human-in-loop gate is the only honest defence against agent error.</rationale>
+</rule>
+<rule id="r5-cost-cap" testable="true" depth="essential">
+  <statement>Per-session and per-day cost caps are enforced. Without caps, a single stuck agent can spend 5-figures overnight.</statement>
+  <rationale source="Anthropic responsible scaling policy">Cost caps are the cheapest insurance against agent-induced bankruptcy events.</rationale>
+</rule>
   </section>
-</text>
+
+          <see-also>
+            <link path="content/02-output-contract.xml"/>
+            <link path="content/03-failure-modes.xml"/>
+            <link path="content/06-decision-tree.xml"/>
+          </see-also>
+        </text>

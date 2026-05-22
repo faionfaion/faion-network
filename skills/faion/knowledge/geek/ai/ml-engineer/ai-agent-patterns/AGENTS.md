@@ -1,75 +1,102 @@
----
-slug: ai-agent-patterns
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Six structured patterns for building agentic AI systems: ReAct (Thought-Action-Observation loop), Chain-of-Thought, Tool Use, Plan-Execute, Reflection, and Tree-of-Thoughts — plus multi-agent coordination topologies (Sequential, Parallel, Supervisor, Hierarchical).
-content_id: "ae3d45909ea9b747"
-tags: [agents, patterns, agentic-ai, architecture, llm]
----
-# AI Agent Design Patterns
+        ---
+        slug: ai-agent-patterns
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Six agentic AI patterns (ReAct, CoT, Tool Use, Plan-Execute, Reflection, Tree-of-Thoughts) + four multi-agent topologies. Decision record picking the right pattern.
+        content_id: "fd77137db832198f"
+        complexity: medium
+        produces: decision-record
+        est_tokens: 4200
+        tags: [agents, patterns, agentic-ai, architecture, llm]
+        ---
+        # AI Agent Patterns
 
-## Summary
+        ## Summary
 
-**One-sentence:** Six structured patterns for building agentic AI systems: ReAct (Thought-Action-Observation loop), Chain-of-Thought, Tool Use, Plan-Execute, Reflection, and Tree-of-Thoughts — plus multi-agent coordination topologies (Sequential, Parallel, Supervisor, Hierarchical).
+        **One-sentence:** Six agentic AI patterns (ReAct, CoT, Tool Use, Plan-Execute, Reflection, Tree-of-Thoughts) + four multi-agent topologies. Decision record picking the right pattern.
 
-**One-paragraph:** Six structured patterns for building agentic AI systems: ReAct (Thought-Action-Observation loop), Chain-of-Thought, Tool Use, Plan-Execute, Reflection, and Tree-of-Thoughts — plus multi-agent coordination topologies (Sequential, Parallel, Supervisor, Hierarchical). Choosing the right pattern at design time is more important than implementation details.
+        **One-paragraph:** Catalogues six structured patterns for agentic AI systems plus multi-agent coordination topologies (Sequential, Parallel, Supervisor, Hierarchical). The methodology output is a decision record naming the chosen pattern + the 2 axes that drove the choice (loop shape, multi-agent need) + the rejected alternatives.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Architects + tech leads, що уникають «давайте візьмемо ReAct, тому що всі беруть» через структурний вибір по двох осях.
 
-- Selecting an architecture before building any agentic system
-- Replacing informal LLM loops with debuggable, observable patterns
-- Multi-step workflows where intermediate results determine next steps (ReAct, Plan-Execute)
-- Quality-critical outputs where first-pass is insufficient (Reflection)
-- Multi-agent coordination with specialized workers
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - new agent project at scoping stage
+- task shape is at least partially known (single vs multi-step, single vs multi-agent)
+- you have ≥1 candidate framework selected
+- decision-record discipline is in scope
+- team can revisit the choice in 3 months
 
-- Single LLM call with deterministic output — patterns add latency and cost without benefit
-- Full input fits in one context window with no tool calls — just prompt directly
-- Real-time inference under 200ms — ReAct, Reflection, and ToT require multiple round-trips
-- Reproducible outputs for strict auditing — agent non-determinism conflicts with reproducibility requirements
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - task is trivially single-shot — no agent pattern needed
+- framework mandates a single pattern (e.g., CrewAI = role-based) — work within it
+- research / exploratory phase — try patterns; decision record later
+- patterns already decided by org policy
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=decision-record + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=decision-record`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-ai-agent-patterns.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/plan-execute-skeleton.py` | Plan-Execute pattern skeleton |
+| `templates/react-system-prompt.txt` | ReAct system prompt template |
+| `templates/reflection-critic-prompt.txt` | Reflection critic prompt template |
+| `templates/tool-definition.json` | Tool definition reused across patterns |
+| `templates/patterns-decision-record.md` | Decision record skeleton |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-ai-agent-patterns.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-two-axes`, `r2-default-react`, `r3-plan-execute-when-long`, `r4-reflection-when-self-correct`, `r5-multi-agent-when-roles` from `content/01-core-rules.xml`.

@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="openai-assistants Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="OpenAI Assistants API — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Schema for the code produced by one application of `openai-assistants`. Validated by `scripts/validate-openai-assistants.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://openai-assistants/output.schema.json",
+  "type": "object",
+  "required": ["slug", "version", "owner", "produced_at", "produces", "scope", "approver", "review"],
+  "properties": {
+    "slug": {"type": "string", "const": "openai-assistants"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "produced_at": {"type": "string", "format": "date-time"},
+    "produces": {"type": "string", "const": "code"},
+    "scope": {
+      "type": "object",
+      "required": ["title", "context_link"],
+      "properties": {
+        "title": {"type": "string", "minLength": 5},
+        "context_link": {"type": "string", "format": "uri"}
+      }
+    },
+    "approver": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "review": {
+      "type": "object",
+      "required": ["cadence", "next_review_at"],
+      "properties": {
+        "cadence": {"type": "string", "enum": ["weekly", "monthly", "quarterly"]},
+        "next_review_at": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "slug": "openai-assistants",
+  "version": "1.1.0",
+  "owner": "ml-eng:alice",
+  "produced_at": "2026-05-22T10:00:00Z",
+  "produces": "code",
+  "scope": {"title": "Example application of openai-assistants", "context_link": "https://github.com/org/repo/issues/123"},
+  "approver": "tl:bob",
+  "review": {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "slug": "wrong-slug",
+  "version": "0.1",
+  "owner": "team",
+  "produced_at": "soon",
+  "produces": "vibes",
+  "scope": {"title": "tbd"},
+  "approver": "",
+  "review": {}
+}
+]]></code>
+      <note>Invalid: slug doesn&apos;t match const; version is not semver; owner is team-level; produced_at not date-time; produces not in enum; scope.title too short and context_link missing; approver empty; review missing required fields.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Anonymous owner / approver — «team», «engineering», empty string.</description>
+      <reason>Accountability dissolves; rollback decisions have no owner.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Open-ended review — `cadence: «perpetual»` or `next_review_at` empty.</description>
+      <reason>Artefacts decay; never get revisited.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Scope without a context link (issue / PR / doc).</description>
+      <reason>No upstream anchor; impossible to audit «why was this produced».</reason>
+    </antipattern>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>slug matches the methodology folder name.</item>
+      <item>version is semver and matches AGENTS.md.</item>
+      <item>owner + approver are role:person (not team-level).</item>
+      <item>produces matches the methodology&apos;s declared `produces`.</item>
+      <item>scope.title is informative, scope.context_link is a real URL.</item>
+      <item>review.cadence is one of weekly | monthly | quarterly.</item>
+      <item>review.next_review_at is in the future.</item>
     </list>
   </section>
 </text>

@@ -1,71 +1,102 @@
----
-slug: ai-governance-compliance
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Comprehensive framework for AI governance, model risk management, and regulatory compliance in MLOps.
-content_id: "2f7186694b8481f5"
-tags: [governance, compliance, eu-ai-act, nist-ai-rmf, model-card, fairness, audit-trail, shap, fairlearn, mlflow]
----
-# AI Governance and Compliance
+        ---
+        slug: ai-governance-compliance
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: EU AI Act + NIST AI RMF aligned governance bundle: risk tier, model card, datasheet, fairness/explainability audit, audit trail, human-oversight plan, retention policy.
+        content_id: "ddf0110f3778bb16"
+        complexity: deep
+        produces: spec
+        est_tokens: 4200
+        tags: [governance, compliance, eu-ai-act, nist-ai-rmf, model-card, fairness, audit-trail]
+        ---
+        # AI Governance and Compliance
 
-## Summary
+        ## Summary
 
-**One-sentence:** Comprehensive framework for AI governance, model risk management, and regulatory compliance in MLOps.
+        **One-sentence:** EU AI Act + NIST AI RMF aligned governance bundle: risk tier, model card, datasheet, fairness/explainability audit, audit trail, human-oversight plan, retention policy.
 
-**One-paragraph:** Comprehensive framework for AI governance, model risk management, and regulatory compliance in MLOps. Provides agent-executable gates, templates, prompts, and verification commands for EU AI Act + NIST AI RMF alignment.
+        **One-paragraph:** Operationalises AI governance into seven concrete artefacts an agent must produce before shipping a production model: (1) risk tier per EU AI Act, (2) model card, (3) datasheet, (4) fairness + explainability audit, (5) immutable audit trail, (6) human-oversight plan, (7) data-retention policy with right-to-deletion path. Each artefact has a template, a verifier, and a named approver.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** ML eng + legal-counterpart, що шиплять модель з EU-експозицією і не хочуть платити 35M EUR штрафу, бо «не задокументували».
 
-- TBD — populate from v1 when-to-use list
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - model lands in production with real users
+- any user is in the EU OR model decides about people (credit, hiring, healthcare)
+- PII is processed by training or inference
+- regulatory exposure (EU AI Act, NIST AI RMF, ISO 42001) is in scope
+- a Designated Responsible Individual (DRI) exists
 
-- Proof-of-concept or internal tool with no production traffic — governance overhead is disproportionate.
-- Minimal-risk AI (spam filter, recommender with no legal/financial impact) — no formal governance required by EU AI Act.
-- Pre-revenue startup — lightweight logging suffices; formal governance adds friction without regulatory necessity.
-- No assigned DRI — governance without ownership degrades into checkbox theater.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - proof-of-concept with no production traffic
+- minimal-risk model (spam filter, recommender without legal impact)
+- pre-revenue startup with no EU exposure (yet)
+- no DRI assigned — governance without ownership is theatre
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=spec + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=spec`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-ai-governance-compliance.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/model-card.md` | Model card template per Google guidelines |
+| `templates/datasheet.md` | Datasheet template per Gebru et al. |
+| `templates/fairness-audit.md` | Fairlearn / AIF360 audit report skeleton |
+| `templates/audit-trail.sql` | Hash-chained append-only audit table DDL |
+| `templates/oversight-plan.md` | Human-oversight plan template |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-ai-governance-compliance.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-risk-tier-first`, `r2-named-dri`, `r3-audit-trail-immutable`, `r4-fairness-explainability`, `r5-human-oversight` from `content/01-core-rules.xml`.

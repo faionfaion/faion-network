@@ -1,79 +1,101 @@
----
-slug: methodology-corpus-licence-bundle
-tier: geek
-group: ai
-domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Methodology Corpus Licence Bundle: codified ai practice that turns the recurring 'p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks)' decision into a repeatable, auditable artefact.
-content_id: "e05ef9f955354cc9"
-tags: [methodology-corpus-licence-bundle, ai, geek]
----
-# Methodology Corpus Licence Bundle
+        ---
+        slug: methodology-corpus-licence-bundle
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Per-customer methodology corpus licence record: scope (which tiers + which domains), redistribution rights, attribution, audit hooks, renewal cadence.
+        content_id: "be69f0405be5ba46"
+        complexity: medium
+        produces: spec
+        est_tokens: 4200
+        tags: [methodology, corpus, licence, audit, renewal]
+        ---
+        # Methodology Corpus Licence Bundle
 
-## Summary
+        ## Summary
 
-**One-sentence:** Methodology Corpus Licence Bundle: codified ai practice that turns the recurring 'p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks)' decision into a repeatable, auditable artefact.
+        **One-sentence:** Per-customer methodology corpus licence record: scope (which tiers + which domains), redistribution rights, attribution, audit hooks, renewal cadence.
 
-**One-paragraph:** Methodology Corpus Licence Bundle addresses the gap identified by the p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks) playbook: Geek builders embedding faion content into their commercial agent need a clear licence story (re-distribution, attribution, EU AI Act data provenance). No current guide addresses this. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+        **One-paragraph:** Codifies the «sell our methodology corpus to a customer team» recurring decision into one auditable artefact. Defines: what is licensed (tiers, domains, slugs), what is forbidden (resale, ML training without consent), attribution requirements, the audit path that proves usage stayed in scope, and the renewal cadence with named approver. Pulls from F-026 corpus-integration playbook into a deal-ready record.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** Sales + legal, що мають клієнта на 2-тижневу інтеграцію Faion-corpus і потребують один файл замість листа з 6 нитями обговорень.
 
-- task is an instance of p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - a customer has signed a paid Faion plan with corpus access
+- the customer wants to embed corpus content in their internal agent
+- you need an artefact to point auditors / lawyers at
+- a named approver on Faion side is available for the deal
+- redistribution policy questions have arisen
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - customer uses Faion via CLI only — no corpus embedding
+- free tier — no licence bundle needed; standard ToS applies
+- internal team usage — no licence required
+- deal not yet closed — wait for signed plan
 
-- recent context for the p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `geek/ai/ml-engineer` | parent role skill — provides the operating context for this methodology |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=spec + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=spec`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-methodology-corpus-licence-bundle.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| `templates/methodology-corpus-licence-bundle.json` | JSON schema for the Methodology Corpus Licence Bundle output contract |
-| `templates/methodology-corpus-licence-bundle.md` | Markdown skeleton with the required fields |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/licence-bundle.md` | Per-customer licence bundle skeleton with all 5 sections |
+| `templates/audit-attestation.md` | Quarterly self-attestation form |
+| `templates/renewal-memo.md` | Renewal go/no-go memo |
+| `templates/attribution-snippet.md` | Suggested attribution placements + screenshots |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-methodology-corpus-licence-bundle.py` | Enforce Methodology Corpus Licence Bundle output contract | After subagent returns, before downstream consumer reads |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-methodology-corpus-licence-bundle.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
-- upstream playbook: `p7-llm-agent-developer/Methodology corpus integration: faion-into-our-agent (2 weeks)`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-scope-explicit`, `r2-redistribution-clause`, `r3-attribution-required`, `r4-audit-hook`, `r5-renewal-cadence` from `content/01-core-rules.xml`.
