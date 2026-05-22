@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="RAG Feature Acceptance Contract — Worked Example" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>End-to-end worked example: support-RAG bot with two intents — policy-lookup and troubleshooting — signed at v1.2.</summary>
+
+  <example title="Support-RAG acceptance contract v1.2">
+    <code lang="yaml"><![CDATA[
+feature: support-rag
+version: 1.2.0
+
+intents:
+  policy-lookup:
+    pm_outcome: "Resolve customer policy questions without human escalation"
+    acceptable_failure: "Refusal-to-answer (route to human) acceptable; hallucinated policy is NOT"
+    sme_rubric:
+      pass: "Cites correct policy section; quoted text matches source verbatim"
+      borderline: "Cites correct section; paraphrases instead of quoting"
+      fail: "No citation OR cited section does not contain the claim"
+    offline:
+      faithfulness:
+        threshold: ">= 0.92"
+        baseline: "junior agent 0.94 on same eval set"
+      context-precision:
+        threshold: ">= 0.85"
+        baseline: "current production 0.78"
+    online:
+      thumbs-down-rate:
+        threshold: "<= 3%"
+        baseline: "today 7%"
+      escalation-rate:
+        threshold: "<= 12%"
+        baseline: "today 22%"
+
+  troubleshooting:
+    pm_outcome: "Walk user through fix; partial diagnosis acceptable"
+    acceptable_failure: "Wrong-but-safe step acceptable; destructive wrong step is NOT"
+    sme_rubric:
+      pass: "Steps in correct order; no destructive step before confirmation"
+      fail: "Recommends data-destructive action without prior backup step"
+    offline:
+      answer-relevance:
+        threshold: ">= 0.80"
+        baseline: "previous prompt version 0.71"
+      destructive-step-detector:
+        threshold: "== 0"
+        baseline: "hard zero from PM"
+    online:
+      follow-up-rephrase-rate:
+        threshold: "<= 18%"
+        baseline: "today 31%"
+      data-loss-incidents:
+        threshold: "== 0"
+        baseline: "hard zero from legal"
+
+signatures:
+  pm: "alice@co  2026-04-12  v1.2"
+  sme: "ravi@co  2026-04-12  v1.2"
+  ml_engineer: "jonas@co  2026-04-12  v1.2"
+
+recontract_triggers:
+  - "query_intent_distribution_shift_chi2_p < 0.01"
+  - "embedding_model_upgrade"
+  - "online_vs_offline_divergence >= 0.20"
+  - "last_signed_date > 180_days"
+]]></code>
+    <note>Two intents (r1), three named signatures with dates (r2), every offline metric paired with online (r3), every threshold cites a baseline (r4), four explicit recontract triggers (r5).</note>
+  </example>
+
+  <example title="What the regression gate does with this contract">
+    <code lang="text"><![CDATA[
+PR opened → CI loads acceptance-contract.yaml v1.2
+  → runs eval harness for both intents on labelled set
+  → policy-lookup.faithfulness = 0.94 (>= 0.92) PASS
+  → policy-lookup.context-precision = 0.83 (< 0.85) FAIL
+  → CI exits non-zero; PR blocked
+  → engineer either improves retrieval OR opens recontract ticket
+]]></code>
+    <note>The contract is executable: numbers are compared automatically; humans only intervene to re-sign.</note>
+  </example>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

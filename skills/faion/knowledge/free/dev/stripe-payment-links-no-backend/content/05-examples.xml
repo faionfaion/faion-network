@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Stripe Payment Links No Backend Example" version="2.0.0" est_tokens="600" depth="recommended">
+  <summary>One worked example: a $29 lifetime-deal indie product with email + Sheets fulfillment.</summary>
+
+  <example type="good">
+    <note>Input catalog (templates/catalog.yaml filled in):</note>
+    <code lang="yaml"><![CDATA[
+catalog:
+  - sku: ltd-29
+    price_cents: 2900
+    currency: usd
+    name: "Lifetime Deal Bundle"
+    fulfill_action: email-license-key
+fulfillment_channels:
+  - {channel: email, address: downloads@faion.net}
+  - {channel: sheet, address: "https://docs.google.com/spreadsheets/d/.../edit"}
+webhook_events_needed:
+  - checkout.session.completed
+  - charge.refunded
+idempotency_store: "https://docs.google.com/spreadsheets/d/.../edit#gid=0"
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>Decision-tree walk: billing_model=one-off, custom_amount_per_buyer=false, connect_required=false → leaf r-payment-link.</note>
+    <note>Emitted spec.json (validated against the 02-output-contract schema):</note>
+    <code lang="json"><![CDATA[
+{
+  "slug": "stripe-payment-links-no-backend",
+  "version": "2.0.0",
+  "last_reviewed": "2026-05-22",
+  "owner": "ruslan@faion.net",
+  "decision": {
+    "mode": "payment-link",
+    "links": [{"sku": "ltd-29", "url": "https://buy.stripe.com/abc123", "price_cents": 2900, "currency": "usd"}],
+    "webhook_endpoint": "https://hooks.zapier.com/hooks/catch/123/abc/",
+    "signature_strategy": "hmac-sha256-stripe-sdk",
+    "idempotency_store": "https://docs.google.com/spreadsheets/d/.../edit#gid=0",
+    "fulfillment_channels": [
+      {"channel": "email", "address": "downloads@faion.net"},
+      {"channel": "sheet", "address": "https://docs.google.com/spreadsheets/d/.../edit"}
+    ]
+  },
+  "drivers": {"billing_model": "one-off", "custom_amount_per_buyer": false, "connect_required": false, "catalog_size": 1},
+  "audit": {"rule_refs": ["r1-verify-signature", "r2-raw-body", "r3-idempotency-key", "r-payment-link"]}
+}
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Bad example: same product priced "name your price" — Payment Link reused with manual URL edits between buyers.</note>
+    <note>Decision tree says custom_amount_per_buyer=true → r-checkout-session. Operator who insists on payment-link mode trips the validator and the spec is rejected.</note>
+  </example>
+</text>
