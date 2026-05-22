@@ -1,57 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Latency Vs Quality Decision Grid Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Latency Vs Quality Decision Grid artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Latency vs Quality Decision Grid Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for grid.json: per-call-site row with SLO + model + tactic + cost + owner.</summary>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/latency-vs-quality-decision-grid",
+  "type": "object",
+  "required": ["app", "sites", "rollback_minutes_max"],
+  "properties": {
+    "app": {"type": "string"},
+    "rollback_minutes_max": {"type": "integer", "maximum": 5},
+    "sites": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "latency_p50_ms", "latency_p95_ms", "quality_floor", "model", "tactic", "cost_per_call_usd", "owner", "last_reviewed"],
+        "properties": {
+          "id": {"type": "string"},
+          "latency_p50_ms": {"type": "integer", "minimum": 1},
+          "latency_p95_ms": {"type": "integer", "minimum": 1},
+          "quality_floor": {"type": "number", "minimum": 0, "maximum": 1},
+          "model": {"type": "string"},
+          "tactic": {"type": "string"},
+          "cost_per_call_usd": {"type": "number", "minimum": 0},
+          "owner": {"type": "string"},
+          "last_reviewed": {"type": "string"}
+        }
+      }
+    }
+  }
+}]]></code>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "app": "support-app",
+  "rollback_minutes_max": 5,
+  "sites": [
+    {"id": "autocomplete", "latency_p50_ms": 200, "latency_p95_ms": 400, "quality_floor": 0.75, "model": "haiku", "tactic": "prompt-cache + tight max_tokens", "cost_per_call_usd": 0.0005, "owner": "fe-team", "last_reviewed": "2026-05-22"},
+    {"id": "chat", "latency_p50_ms": 1500, "latency_p95_ms": 3000, "quality_floor": 0.88, "model": "sonnet", "tactic": "stream + tools", "cost_per_call_usd": 0.012, "owner": "chat-team", "last_reviewed": "2026-05-22"},
+    {"id": "audit-summary", "latency_p50_ms": 12000, "latency_p95_ms": 30000, "quality_floor": 0.95, "model": "opus", "tactic": "structured-output + 2-pass", "cost_per_call_usd": 0.18, "owner": "ops-team", "last_reviewed": "2026-05-22"}
+  ]
+}]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"app": "x", "rollback_minutes_max": 30, "sites": [{"id": "one", "model": "sonnet"}]}]]></code>
+      <note>Fails: rollback &gt;5 min, only 1 site, missing SLO + quality_floor + owner fields.</note>
+    </example>
   </section>
+
   <section title="Self-check checklist">
     <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
+      <item>sites array length ≥ 3.</item>
+      <item>Every row has the 9 required columns populated.</item>
+      <item>rollback_minutes_max ≤ 5.</item>
+      <item>quality_floor ∈ [0, 1].</item>
+      <item>owner is a named entity (not "team", "us").</item>
+      <item>last_reviewed within 90 days.</item>
     </list>
   </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
 </text>
