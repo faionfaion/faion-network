@@ -1,0 +1,35 @@
+# purpose: reference Prometheus rule set for vector DB monitoring
+# consumes: query_latency_*, error_rate_5m, memory_used_ratio, disk_used_ratio metrics
+# produces: config (Prometheus alerting rules)
+# depends-on: prometheus >= 2.40
+# token-budget-impact: 0
+groups:
+  - name: vector-db
+    interval: 30s
+    rules:
+      - alert: QdrantP95Breach
+        expr: histogram_quantile(0.95, query_latency_bucket) > 0.08
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Qdrant p95 latency > 80ms"
+          runbook_url: "https://runbooks.example.com/qdrant-latency"
+
+      - alert: QdrantMemoryHigh
+        expr: memory_used_ratio > 0.85
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Qdrant memory > 85% used"
+          runbook_url: "https://runbooks.example.com/qdrant-memory"
+
+      - alert: QdrantDiskCapacity30d
+        expr: predict_linear(disk_used_bytes[7d], 30 * 86400) > disk_capacity_bytes
+        for: 1h
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Qdrant disk forecast OOM <30d"
+          runbook_url: "https://runbooks.example.com/qdrant-capacity"
