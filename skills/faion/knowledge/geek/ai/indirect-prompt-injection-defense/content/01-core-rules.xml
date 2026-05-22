@@ -1,46 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Indirect Prompt Injection Defense Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Indirect Prompt Injection Defense must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
+  <summary>Seven testable architectural rules for input-side defense against indirect prompt injection in tool-using LLM agents.</summary>
+
+  <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+      <statement source="webemy-engineering-2026">Every agent design declares ≥3 explicit trust boundaries: developer instructions, user instructions, tool-returned content. No content type crosses a boundary without an explicit declassification rule.</statement>
+      <rationale>Teams that cannot draw three trust boundaries on a whiteboard cannot reason about IPI risk and are one tool-output injection away from compromise.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+      <statement source="lakera-ipi-2026">Tool-returned content is wrapped in a structural separator (XML span, JSON envelope, or system-tag) and never inlined as raw prose into the same channel as the system prompt.</statement>
+      <rationale>The model is statistically less likely to follow injected instructions when it sees the structural boundary; raw concatenation removes that signal.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+      <statement source="dual-llm-pattern-Willison-2024">When the agent has tools whose misuse causes write/send/charge effects, a privileged planner LLM is separated from a quarantined reader LLM; the planner never reads raw tool output, only the reader's typed summary.</statement>
+      <rationale>Single-LLM agents that mix privileged tool dispatch with raw untrusted reading collapse the trust boundary inside the context window.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for LLM-agent design, evals, safety, cost">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+      <statement source="callsphere-2026">Every tool ships with an explicit allow-list of scopes (paths, hosts, endpoints) and the agent runtime rejects calls outside the allow-list — no LLM decision can widen scope.</statement>
+      <rationale>Prompt-injected instructions routinely ask the agent to read files outside its sandbox or call internal hosts; allow-list enforcement at runtime makes this impossible regardless of model behaviour.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="canary-token-pattern">A unique exfiltration canary token is injected into every untrusted span; if the canary appears in any outbound tool call (fetch URL, email body, HTTP header), the request is aborted and the incident logged.</statement>
+      <rationale>Exfiltration via embedded markdown image or fetch-url is the dominant IPI payload; a canary catches it deterministically without ML.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="vectra-2026">Classifier-based defenses (prompt-injection classifier, regex matcher) are coarse-filter only and never substitute for a structural trust boundary; every classifier match is logged but a classifier miss must not enable a privileged tool call.</statement>
+      <rationale>Classifiers can be bypassed with creative phrasing or base64 smuggling; making them load-bearing turns a defense-in-depth layer into a single point of failure.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="jailbreakbench-2024">An adversarial eval suite with ≥10 IPI payload categories (direct override, Spotlight, base64-smuggle, markdown-exfil, embedded-URL fetch, role-confusion, rule-override, persona-flip, jailbreak-cipher, tool-misuse) runs in CI on every change to system prompt, tool descriptions, or context-assembly code.</statement>
+      <rationale>Without an eval gate any prompt change can silently break IPI defense; the suite catches regressions before merge.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">When all preconditions hold, execute the procedure in content/04-procedure.xml and produce a defense-spec.json conforming to content/02-output-contract.xml.</statement>
+      <rationale>Aggregate positive-branch conclusion target for the decision tree.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">When the agent does not read external untrusted content or has no consequential tools, do not apply this methodology — output-side guardrails suffice.</statement>
+      <rationale>Aggregate negative-branch conclusion target for the decision tree.</rationale>
     </rule>
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Harden an agent against prompt injection and jailbreak across tool boundaries (role: p7-llm-agent-developer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: faion has `cheap-guardrail-tripwire` + `refusal-field-strict-schema` (output side). Missing: input-side IPI defense — trust-boundary model across tools, span-tainting, sandboxed reasoning over untrusted content, exfil canaries. The single m</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

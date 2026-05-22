@@ -1,32 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Stripe Payment Links No Backend Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Stripe Payment Links No Backend application MUST enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Stripe Payment Links No Backend Core Rules" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every payment-links-spec MUST enforce. Hard rules — operator input cannot override them.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Stripe Payment Links No Backend only to a single instance of &apos;p2-indie-hacker/Distribution-First Idea Validation (audience before product)&apos;. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="gap-analysis 2026-05-17">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="r1-verify-signature" testable="true" depth="essential">
+      <statement>Every webhook handler (Zapier code-step, Make scenario, or serverless function) MUST verify the Stripe-Signature header using HMAC-SHA256 with the endpoint's signing secret before acting on the payload.</statement>
+      <rationale source="docs.stripe.com/webhooks/signature">Unverified payloads let an attacker forge `checkout.session.completed` and trigger free fulfillment. Stripe ships a signature header for this reason; default tolerance is 5 minutes, libraries enforce it.</rationale>
     </rule>
 
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="gap-analysis 2026-05-17">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="r2-raw-body" testable="true" depth="essential">
+      <statement>The webhook integration MUST preserve the raw request body byte-for-byte before any JSON parse or framework middleware touches it. Signature verification operates on the raw bytes, not on a re-serialized JSON.</statement>
+      <rationale source="docs.stripe.com/webhooks">Any framework that pretty-prints, re-orders keys, or normalizes whitespace breaks HMAC verification. Stripe explicitly documents this as the #1 webhook-rejection failure mode.</rationale>
     </rule>
 
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No &apos;team&apos; or &apos;we&apos; as owner.</statement>
-      <rationale source="gap-analysis 2026-05-17">RACI / single-throat-to-choke. Plural ownership = no ownership; future readers need a named human to chase.</rationale>
+    <rule id="r3-idempotency-key" testable="true" depth="essential">
+      <statement>Every fulfillment action MUST be guarded by an idempotency key derived from `event.id` (the Stripe event ID). The integration MUST consult a persistent store (Sheets row, KV, DB row) before running side effects.</statement>
+      <rationale source="hookray.com/blog/stripe-webhook-best-practices-2026">Stripe retries webhook delivery with exponential backoff for up to 3 days. Without idempotency, a single payment fires 5–10 fulfillment emails / license keys / Discord pings.</rationale>
     </rule>
 
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) are flagged on read.</statement>
-      <rationale source="gap-analysis 2026-05-17">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="r4-named-owner" testable="true" depth="essential">
+      <statement>The payment-links-spec MUST name a single accountable owner (handle / email / org role with on-call rotation). "team", "support@", or "we" are rejected.</statement>
+      <rationale source="raci-framework">Live money flows demand a human throat to choke when a webhook silently fails. Plural ownership means nobody pages on a 4xx response from the fulfillment step.</rationale>
     </rule>
 
-    <rule id="r5-grounded-in-rationale" testable="true" depth="essential">
-      <statement>Every section of the artefact cites the specific gap it closes: &apos;Indie hackers use Stripe Payment Links + webhooks-to-Zapier with no backend. Existing Stripe content (if any) assumes se&apos;.</statement>
-      <rationale source="gap-analysis 2026-05-17">Without grounding, the artefact becomes generic boilerplate. The cited gap is the falsifiability anchor.</rationale>
+    <rule id="r5-versioned-stale-flag" testable="true" depth="essential">
+      <statement>The spec MUST carry semver and `last_reviewed` ISO date. Records older than 90 days without review MUST be flagged on read; secrets MUST be rotated annually or on suspected compromise.</statement>
+      <rationale source="docs.stripe.com/webhooks/signature">Stripe recommends rotating webhook endpoint secrets periodically. A frozen 1.0.0 spec with stale secrets is a leak waiting to happen.</rationale>
+    </rule>
+
+  <rule id="r-payment-link" testable="true" depth="essential">
+      <statement>When `billing_model == one-off` AND `custom_amount_per_buyer == false` AND `connect_required == false`, the spec MUST select Stripe Payment Links (hosted URL) and document one webhook endpoint per fulfillment channel.</statement>
+      <rationale source="docs.stripe.com/payment-links">Payment Links are purpose-built for fixed-price digital sales; using Checkout Session here adds backend overhead without value.</rationale>
+    </rule>
+
+    <rule id="r-checkout-session" testable="true" depth="essential">
+      <statement>When `custom_amount_per_buyer == true` OR `dynamic_metadata == true`, the spec MUST escalate to Stripe Checkout Session (still no backend if Zapier Stripe action creates the session) and forbid raw Payment Link reuse.</statement>
+      <rationale source="docs.stripe.com/api/checkout/sessions">Payment Links cannot accept buyer-supplied amounts; Checkout Session can. Misusing a Payment Link for variable pricing leads to manual refund/regenerate cycles.</rationale>
+    </rule>
+
+    <rule id="r-reject-connect" testable="true" depth="essential">
+      <statement>When `connect_required == true` (marketplace, application_fee, transfer_data), the spec MUST reject the no-backend pattern and surface a recommendation to load `stripe-connect-backend` (not in this methodology).</statement>
+      <rationale source="docs.stripe.com/connect">Payment Links do not support `transfer_data` or `application_fee_amount`. Forcing Connect through Zapier produces undefined behavior and PCI exposure.</rationale>
     </rule>
 
   </section>
@@ -34,5 +49,6 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>
