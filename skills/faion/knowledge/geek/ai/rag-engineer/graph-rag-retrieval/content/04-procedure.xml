@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="graph-rag-retrieval Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Five-step procedure: classify → route → expand (if hybrid) → assemble → return. Each step names input, action, output, and the decision-gate that pushes the request to the fallback.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="classify-query">
+      <input>raw query string</input>
+      <action>One LLM call with the classifier prompt (templates/classify-query-prompt.txt); temperature=0; return one of GLOBAL/ENTITY/RELATIONSHIP/LOCAL.</action>
+      <output>query_type enum</output>
+      <decision-gate>If parsing fails, set query_type=LOCAL and record fallback_used=true.</decision-gate>
+    </step>
+    <step n="2" name="route-by-type">
+      <input>query_type</input>
+      <action>Dispatch to retrieval path: GLOBAL → read summaries[global]; ENTITY → extract entity, lookup graph neighbors; RELATIONSHIP → extract two entities, shortest_path with try/except; LOCAL → vector_store.search.</action>
+      <output>raw candidates list</output>
+      <decision-gate>If ENTITY entity not in graph OR RELATIONSHIP path-not-found → step 5 fallback.</decision-gate>
+    </step>
+    <step n="3" name="hybrid-expand">
+      <input>raw candidates (for ENTITY or LOCAL routes only)</input>
+      <action>Extract entities from candidate chunks, expand by graph neighbors (cap 3 per entity), retrieve chunks mentioning expanded entity set with vector_store.search(entity, k=2).</action>
+      <output>expanded candidates list</output>
+      <decision-gate>If expansion adds 0 new chunks, skip and proceed with raw candidates.</decision-gate>
+    </step>
+    <step n="4" name="assemble-context">
+      <input>candidates (raw or expanded)</input>
+      <action>Deduplicate by chunk_id, sort by score, truncate to top-k (default k=10), format with source markers.</action>
+      <output>assembled_context string</output>
+    </step>
+    <step n="5" name="fallback-and-return">
+      <input>any failure flag from step 2/3</input>
+      <action>If primary path returned 0 candidates, run vector_store.search(query, k=5), mark fallback_used=true.</action>
+      <output>final retrieval-result object conforming to 02-output-contract.xml</output>
+    </step>
+  </section>
+
+  <reference path="templates/router.py.tmpl">Concrete router skeleton implementing steps 2-5.</reference>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/02-output-contract.xml"/>
+  </see-also>
+</text>

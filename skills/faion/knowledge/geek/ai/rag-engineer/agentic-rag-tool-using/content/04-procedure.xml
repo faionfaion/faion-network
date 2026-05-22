@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Agentic RAG Tool-Using — Procedure" version="1.0.0" est_tokens="900" depth="deep">
+  <summary>6-step procedure to wire a tool-using RAG agent: define registry → write tool descriptions → run capped loop → cache → synthesise → log trace.</summary>
+
+  <section title="Step 1 — Define tool registry">
+    <p>Build a `dict[str, Callable[[str], list[dict]]]` mapping tool name to callable. Minimum useful registry: vector_search, keyword_search, sql_query, web_search, generate_answer (sentinel). Each callable returns a list of `{id, text, score, source}` dicts.</p>
+  </section>
+
+  <section title="Step 2 — Write specific tool descriptions">
+    <p>For each tool, write a one-line description naming verb + input + result shape. Pass these to the LLM verbatim as the `tools` block. Apply rule r2-specific-descriptions.</p>
+  </section>
+
+  <section title="Step 3 — Run the capped loop">
+    <p>Loop `for _ in range(max_calls)`: ask the routing model which tool to invoke next given (query, accumulated context summary). Execute selected tool. Append `{iteration, tool, query, result_summary[:200], latency_ms}` to the trace. Break when selector returns `generate_answer`. Enforce r1-cap-and-log.</p>
+  </section>
+
+  <section title="Step 4 — Cache intra-run">
+    <p>Key cache by `(tool_name, normalised_query)`. Before invoking, check cache; on hit, record `cached: true` in the trace and skip the network call. Clear the cache when the agent run completes. Apply r4-intra-run-cache.</p>
+  </section>
+
+  <section title="Step 5 — Synthesise the final answer">
+    <p>Hand the full accumulated context plus the original user question to the heavier synthesis model. Constrain the system prompt: "answer only from the supplied context; if information is missing say so explicitly". Cite each claim with the trace entry that produced it.</p>
+  </section>
+
+  <section title="Step 6 — Emit the JSON trace">
+    <p>Return the object specified by `content/02-output-contract.xml`. Run `scripts/validate-agentic-rag-tool-using.py` on the emitted object before passing the answer to downstream consumers.</p>
+  </section>
+</text>

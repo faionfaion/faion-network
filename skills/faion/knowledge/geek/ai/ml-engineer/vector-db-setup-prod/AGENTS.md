@@ -4,71 +4,101 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Deploy vector databases to production using Docker Compose (single-node), Kubernetes StatefulSets or Helm (multi-node), or managed cloud services; covers persistence, health checks, resource limits, high availability, backup/recovery, and the pre/post-deployment checklists required before serving live traffic.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "ffe203c994b76636"
+summary: Deploys a vector DB to production — Docker Compose (single-node), Kubernetes StatefulSet/Helm (multi-node), or managed — with persistence, health-checks, resource limits, HA, backup/recovery, and a pre/post-deploy checklist.
+complexity: deep
+produces: config
+est_tokens: 4000
 tags: [vector-database, kubernetes, production, docker-compose, terraform]
 ---
+
 # Vector Database Production Deployment
 
 ## Summary
 
-**One-sentence:** Deploy vector databases to production using Docker Compose (single-node), Kubernetes StatefulSets or Helm (multi-node), or managed cloud services; covers persistence, health checks, resource limits, high availability, backup/recovery, and the pre/post-deployment checklists required before serving live traffic.
+**One-sentence:** Production deployment manifest — Docker Compose for single-node, K8s StatefulSet/Helm for multi-node, managed for hands-off — with persistence, health checks, resource limits, HA, backup, restore drill, and a pre/post-deploy checklist.
 
-**One-paragraph:** Deploy vector databases to production using Docker Compose (single-node), Kubernetes StatefulSets or Helm (multi-node), or managed cloud services; covers persistence, health checks, resource limits, high availability, backup/recovery, and the pre/post-deployment checklists required before serving live traffic.
+**One-paragraph:** Moving from dev to prod requires more than `docker run`. Persistence: bind to durable storage class (EBS gp3, Ceph RBD); resource limits: CPU + memory requests + limits to prevent neighbour kills; HA: ≥3 replicas for Milvus/Weaviate, single replica + snapshots for Qdrant; backup: snapshot to S3 every 24h with 30-day retention + restore drilled quarterly. Output: a versioned `prod-deploy.yaml` + Terraform / Helm values + ops runbook.
+
+**Ефективно для:**
+
+- Self-host команд що готують Qdrant / Weaviate / Milvus у K8s — стандартизує HA + backup discipline.
+- Migrations dev → prod — checklist гарантує що persistence + monitoring + security вже на місці.
+- DR drills — quarterly restore тест плюс runbook = real recovery confidence.
+- Multi-region — Helm values для cross-region replication.
 
 ## Applies If (ALL must hold)
 
-- Deploying a vector database to serve real traffic (RAG pipeline, semantic search, recommendations).
-- Migrating from a development Docker setup to a hardened production environment.
-- Setting up Kubernetes StatefulSets or Helm releases for any major vector engine.
-- Provisioning managed cloud vector services (Qdrant Cloud, Weaviate Cloud, Zilliz, Pinecone Serverless) with VPC and auth.
-- Establishing disaster recovery with backup schedules and tested restore procedures.
+- Vector DB choice committed (`vector-databases` decision done)
+- Production environment (real users, real data)
+- Operational support exists (on-call, monitoring, backups)
 
 ## Skip If (ANY kills it)
 
-- Still evaluating database engines — stand up dev instances first (see vector-db-setup-dev).
-- Fully managed RAG without an ops team — use Pinecone Serverless or Weaviate Cloud; no infra required.
-- Prototype with fewer than 100K vectors — the complexity overhead exceeds the benefit.
+- Dev / staging — use vector-db-setup-dev
+- Fully managed DB (Pinecone) — provider handles ops; just configure tier
+- Air-gapped network with manual operations — different methodology
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `cluster-topology.yaml` | YAML | infra (K8s cluster spec) |
+| `storage-class-map.yaml` | YAML | available storage tiers |
+| `backup-retention-policy.yaml` | YAML | compliance / DR requirements |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `vector-databases` | DB chosen |
+| `vector-db-setup-dev` | Dev baseline |
+| `vector-db-monitoring` | Monitoring stack |
+| `vector-db-security` | Security baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: durable persistence, resource limits, HA per DB class, backup + restore drilled, pre+post deploy checklist | 1100 |
+| `content/02-output-contract.xml` | essential | prod-deploy.yaml schema | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: ephemeral volume, no limits, single replica without snapshot, untested backup, no rollback | 900 |
+| `content/04-procedure.xml` | essential | 6 steps: storage class → resource sizing → HA mode → backup → checklist → ship | 900 |
+| `content/05-examples.xml` | essential | Worked example: Qdrant K8s StatefulSet with EBS + daily snapshot | 600 |
+| `content/06-decision-tree.xml` | essential | Routes by DB kind + scale → deploy mode (compose / statefulset / managed) | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `helm_values_drafting` | sonnet | Schema synthesis |
+| `runbook_drafting` | opus | Cross-system thinking |
+| `prod_deploy_lint` | haiku | Schema check |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/qdrant-statefulset.yaml` | K8s StatefulSet for Qdrant |
+| `templates/backup-cronjob.yaml` | K8s CronJob for snapshot |
+| `templates/prod-deploy.schema.yaml` | Schema |
+| `templates/_smoke-test.yaml` | Minimum-viable spec |
+| `templates/deploy-checklist.md` | Pre+post deploy checklist |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vector-db-setup-prod.py` | Lint prod-deploy.yaml | Pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[vector-databases]] · [[vector-db-setup-dev]] · [[vector-db-monitoring]] · [[vector-db-security]] · [[vector-db-index-tuning]]
+- external: [Qdrant K8s](https://github.com/qdrant/qdrant-helm) · [Milvus on K8s](https://milvus.io/docs/install_cluster-helm.md)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes by DB kind + scale + ops profile to {single-node compose, StatefulSet/Helm, managed}.

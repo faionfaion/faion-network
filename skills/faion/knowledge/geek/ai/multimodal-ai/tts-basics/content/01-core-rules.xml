@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="tts-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for tts-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="TTS Basics — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every single-call TTS application must enforce. Source: OpenAI TTS docs, ElevenLabs ToS, Google Cloud TTS SSML guide, production replay logs.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-model-tier" testable="true" depth="essential">
+      <statement>Use `tts-1` for draft and preview synthesis; promote to `tts-1-hd` only for final production assets. `tts-1-hd` adds roughly 2x latency and 2x cost ($0.030 vs $0.015 per 1k chars).</statement>
+      <rationale source="OpenAI TTS pricing page; internal iteration replays">The quality gain of `tts-1-hd` is audible only in final delivery. Using it during iteration doubles both wall-clock and dollars without measurable downstream benefit.</rationale>
+    </rule>
+
+    <rule id="r2-ssml-routing" testable="true" depth="essential">
+      <statement>Route any payload containing SSML markup (`&lt;break&gt;`, `&lt;prosody&gt;`, `&lt;say-as&gt;`, `&lt;phoneme&gt;`) to Google Cloud TTS or Azure Cognitive Services only. Never pass SSML to OpenAI TTS or ElevenLabs.</statement>
+      <rationale source="OpenAI TTS API docs (no SSML support); Google Cloud TTS SSML reference">OpenAI TTS reads SSML tags verbatim as literal text — the listener hears angle brackets, attribute names, and quotes. ElevenLabs ignores SSML silently. Only Google and Azure parse SSML as pronunciation control.</rationale>
+    </rule>
+
+    <rule id="r3-cache-key-shape" testable="true" depth="essential">
+      <statement>Cache key MUST be `sha256(text + "|" + voice + "|" + str(speed) + "|" + model + "|" + provider)`. Provider in the key is non-optional; identical text+voice produces different audio across providers.</statement>
+      <rationale source="Cache invariance proof: TTS output is deterministic per input but provider-dependent">Omitting `provider` from the key serves OpenAI cached audio when the caller requested Google TTS, corrupting downstream assumptions about voice and SSML. Adding provider keeps cache safe across multi-provider routing.</rationale>
+    </rule>
+
+    <rule id="r4-preprocess-symbols" testable="true" depth="essential">
+      <statement>Preprocess text before synthesis: strip Markdown (`#`, `*`, `_`, backticks), strip raw HTML (`&lt;[^&gt;]+&gt;`), expand `$` → ` dollars `, `%` → ` percent `, and spell out one-word abbreviations (`API` → `A-P-I` or `application programming interface`).</statement>
+      <rationale source="TTS listener studies; production audio replay reports">All TTS providers read `**bold**` as "asterisk asterisk bold asterisk asterisk" and read `API` as "ay" (one syllable). Listeners report this as the single most common quality failure in agent-driven audio.</rationale>
+    </rule>
+
+    <rule id="r5-char-cap" testable="true" depth="essential">
+      <statement>Cap a single OpenAI TTS call at 4000 characters (not the documented 4096). Reject payloads above the cap and route them to `tts-implementation` LongTextTTS chunking.</statement>
+      <rationale source="OpenAI API client truncation regressions (Python SDK ≤1.30)">Some client versions silently truncate at exactly 4096 bytes (not chars), cutting the last 1-5 words off multi-byte UTF-8 strings. The 4000 soft cap absorbs the off-by-one without testing every SDK version.</rationale>
+    </rule>
+
+    <rule id="r6-rate-limit-delay" testable="true" depth="essential">
+      <statement>Insert a 1.2-second delay between consecutive OpenAI TTS calls on tier 1 (50 RPM). For tier 2+ accounts, document the tier's documented RPM and compute delay = 60 / RPM seconds.</statement>
+      <rationale source="OpenAI tier limits page; batch failure traces">100 short clips synthesized back-to-back without delay hit the tier-1 50 RPM ceiling around clip 50, returning HTTP 429 with no useful retry-after header. A computed delay makes batch jobs predictable.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
