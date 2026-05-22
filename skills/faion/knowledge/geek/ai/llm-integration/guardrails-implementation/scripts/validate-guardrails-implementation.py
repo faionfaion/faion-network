@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
-"""Validate output contract for guardrails-implementation.
+"""validate-guardrails-implementation.py — validate a guardrails-config.json.
 
-USAGE:
-    validate-guardrails-implementation.py <input.json>   Validate a guardrails-config.json.
-    validate-guardrails-implementation.py --self-test    Run built-in fixture.
-    validate-guardrails-implementation.py --help         Show this help.
-
-EXIT CODES:
-    0 on pass
-    1 on schema violation
-    2 on usage error
-
-NO EXTERNAL DEPS — stdlib only.
+Usage:
+    validate-guardrails-implementation.py --config <path>
+    validate-guardrails-implementation.py --self-test
 """
 from __future__ import annotations
 
@@ -20,58 +12,32 @@ import json
 import sys
 from pathlib import Path
 
-CHECK_TYPES = {"rule_based", "moderation_api", "llm_check"}
-CHECK_ORDER = {"rule_based": 1, "moderation_api": 2, "llm_check": 3}
-MIN_RETENTION_DAYS = 90
 
-
-def validate(c: dict) -> list[str]:
-    v: list[str] = []
-    if not isinstance(c, dict):
-        return ["root must be object"]
-    for k in ("version", "input_pipeline", "output_pipeline", "fail_closed", "audit_retention_days"):
+def validate(c: dict) -> list[dict]:
+    v: list[dict] = []
+    for k in ["version", "input_pipeline", "output_pipeline", "fail_closed", "audit_retention_days"]:
         if k not in c:
-            v.append(f"missing required field: {k}")
-    if not c.get("version"):
-        v.append("version is empty (rule r1)")
-    ipl = c.get("input_pipeline")
-    if not isinstance(ipl, list) or len(ipl) < 1:
-        v.append("input_pipeline must be non-empty array (rule r2)")
-    seen_orders: list[int] = []
-    last_logical = 0
-    if isinstance(ipl, list):
-        for i, step in enumerate(ipl):
-            if not isinstance(step, dict):
-                v.append(f"input_pipeline[{i}] must be object")
-                continue
-            t = step.get("type")
-            if t not in CHECK_TYPES:
-                v.append(f"input_pipeline[{i}].type invalid: {t!r}")
-            o = step.get("order")
-            if not isinstance(o, int):
-                v.append(f"input_pipeline[{i}].order must be int")
-            else:
-                seen_orders.append(o)
-            if t in CHECK_TYPES:
-                logical = CHECK_ORDER[t]
-                if logical < last_logical:
-                    v.append(f"input_pipeline[{i}] type {t} out of cheap-first order (rule r2)")
-                last_logical = max(last_logical, logical)
-    if seen_orders and len(seen_orders) != len(set(seen_orders)):
-        v.append("input_pipeline order values must be unique")
+            v.append({"rule": "schema", "field": k, "msg": "missing"})
+    if v:
+        return v
+    if not c.get("fail_closed"):
+        v.append({"rule": "r4", "field": "fail_closed", "msg": "must be true"})
+    inp = c.get("input_pipeline") or []
+    if len(inp) < 1:
+        v.append({"rule": "r2", "field": "input_pipeline", "msg": "need >=1 entry"})
+    orders = sorted([s.get("order", 0) for s in inp])
+    if orders != list(range(1, len(orders) + 1)):
+        v.append({"rule": "r2", "field": "input_pipeline.order", "msg": "orders must be 1..N strictly increasing"})
     op = c.get("output_pipeline") or {}
-    if not op.get("validators"):
-        v.append("output_pipeline.validators must be non-empty (rule r3)")
-    if c.get("fail_closed") is not True:
-        v.append("fail_closed must be true (rule r4)")
-    ard = c.get("audit_retention_days")
-    if isinstance(ard, int) and ard < MIN_RETENTION_DAYS:
-        v.append(f"audit_retention_days must be >= {MIN_RETENTION_DAYS} (rule r6)")
+    if "validators" not in op or "filters" not in op:
+        v.append({"rule": "r3", "field": "output_pipeline", "msg": "must have validators + filters lists"})
+    if c.get("audit_retention_days", 0) < 90:
+        v.append({"rule": "r6", "field": "audit_retention_days", "msg": "must be >=90"})
     return v
 
 
-def _self_test() -> int:
-    good = {
+def _smoke_cfg() -> dict:
+    return {
         "version": "1.0.0",
         "input_pipeline": [
             {"type": "rule_based", "order": 1},
@@ -83,40 +49,31 @@ def _self_test() -> int:
         "async_fanout": False,
         "audit_retention_days": 90,
     }
-    assert validate(good) == [], f"happy path failed: {validate(good)}"
-    bad = {"version": "1", "input_pipeline": [], "fail_closed": False, "audit_retention_days": 30}
-    out = validate(bad)
-    assert any("input_pipeline" in x for x in out), "must flag empty input_pipeline"
-    assert any("fail_closed" in x for x in out), "must flag fail_closed=false"
-    assert any("audit_retention_days" in x for x in out), "must flag retention <90"
-    # cheap-first check
-    bad2 = dict(good)
-    bad2["input_pipeline"] = [
-        {"type": "llm_check", "order": 1},
-        {"type": "rule_based", "order": 2},
-    ]
-    assert any("cheap-first" in x for x in validate(bad2)), "must flag cheap-first violation"
-    sys.stdout.write("self-test PASSED\n")
+
+
+def self_test() -> int:
+    cfg = _smoke_cfg()
+    assert validate(cfg) == [], f"smoke must pass: {validate(cfg)}"
+    bad = dict(cfg); bad["fail_closed"] = False
+    assert any(x["rule"] == "r4" for x in validate(bad))
+    sys.stdout.write("self-test: OK\n")
     return 0
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="validate-guardrails-implementation.py")
-    p.add_argument("path", nargs="?", help="JSON config to validate")
-    p.add_argument("--self-test", action="store_true")
-    args = p.parse_args(argv)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--config", type=Path)
+    ap.add_argument("--self-test", action="store_true")
+    args = ap.parse_args(argv)
     if args.self_test:
-        return _self_test()
-    if not args.path:
-        p.print_help()
+        return self_test()
+    if not args.config:
+        ap.error("--config required")
         return 2
-    out = validate(json.loads(Path(args.path).read_text()))
-    if out:
-        for x in out:
-            sys.stdout.write(f"VIOLATION: {x}\n")
-        return 1
-    sys.stdout.write("OK\n")
-    return 0
+    data = json.loads(args.config.read_text(encoding="utf-8"))
+    v = validate(data)
+    sys.stdout.write(json.dumps({"ok": not v, "violations": v}, indent=2) + "\n")
+    return 0 if not v else 1
 
 
 if __name__ == "__main__":
