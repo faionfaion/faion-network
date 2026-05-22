@@ -1,32 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-quality-security Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-quality-security as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-quality-security Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Five antipatterns with concrete symptom, root cause, and fix. Each maps to a rule from `01-core-rules.xml`.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Setting SECURE_HSTS_SECONDS=31536000 immediately on a new domain without testing with a shorter value first.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>HSTS is a one-way ratchet — browsers cache HSTS for the duration. If HTTPS breaks, users cannot reach the site until the HSTS TTL expires. Start with SECURE_HSTS_SECONDS=300 in staging, ramp to 3600, then 31536000 over weeks.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using django-ratelimit decorators AND DRF throttle classes on the same endpoint.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Both count separately, so a user hitting the limit on one may not be blocked by the other until double-threshold. Pick one per project: django-ratelimit for non-DRF views, DRF throttles for DRF views.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>django-axes and django-ratelimit without configuring X-Forwarded-For proxy trust.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without AXES_IPWARE_PROXY_COUNT (axes) or RATELIMIT_USE_CACHE + trusted proxy config (ratelimit), all traffic behind a load balancer appears to come from the same IP, causing false lockouts of all users when one attacker triggers limits. Always test behind a proxy in staging.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>CSP nonces with cached responses (Cloudflare, Nginx proxy cache).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CSP nonces must be unique per request. Cached responses serve the same nonce to all users, breaking CSP protection. Disable caching for pages with nonce-based CSP, or use CSP hashes for static inline scripts instead of nonces.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>debug_toolbar middleware leaking into production because DEBUG check is skipped.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Debug Toolbar exposes SQL queries, template variables, and settings through its web UI. Its middleware must be guarded by if DEBUG: in MIDDLEWARE configuration and restricted to INTERNAL_IPS.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01-hsts-full-on-day-one" severity="high">
+      <description>Setting `SECURE_HSTS_SECONDS=31536000` immediately on a new domain or after first enabling HTTPS.</description>
+      <symptom>Users cannot reach the site over HTTP for up to 1 year if HTTPS misconfigures; browsers refuse to fetch over HTTP regardless of server config.</symptom>
+      <root-cause>HSTS is a one-way ratchet — browsers cache the directive for the full max-age and refuse downgrades. Reverting requires waiting out the TTL or asking the user to clear HSTS cache (effectively impossible at scale).</root-cause>
+      <fix>Ramp: deploy with HSTS=300 (5 min), wait one deploy cycle, raise to 3600, wait, then 31536000. Add to preload list only after running 31536000 for at least 2 weeks.</fix>
+    </antipattern>
+
+    <antipattern id="fm-02-stacked-rate-limits" severity="medium">
+      <description>Applying both `@ratelimit(...)` (django-ratelimit) and DRF `throttle_classes` to the same view.</description>
+      <symptom>Users report blocked at unexpected request counts; on-call sees the limit fire at neither the configured ratelimit nor the throttle value individually.</symptom>
+      <root-cause>Each library counts independently. A 5/min ratelimit + 10/min throttle limits at the smaller (5) but logs as the other; users hitting 4 ratelimit requests then 9 throttle requests see one limit at a time, halving observability.</root-cause>
+      <fix>Pick one per project. DRF projects: drop django-ratelimit, use DRF throttle classes only. Mixed apps: ratelimit for non-DRF views, throttles for DRF view classes — no overlap.</fix>
+    </antipattern>
+
+    <antipattern id="fm-03-proxy-trust-misconfig" severity="high">
+      <description>Installing django-axes / django-ratelimit behind a load balancer without configuring X-Forwarded-For trust.</description>
+      <symptom>One attacker triggers global lockout — every legitimate user hits the limit because they appear as the load balancer IP.</symptom>
+      <root-cause>Default ipware-style IP detection treats `REMOTE_ADDR` as the client IP. Behind a proxy that is always the LB IP, making the per-IP counter collapse all users into one bucket.</root-cause>
+      <fix>Set `AXES_IPWARE_PROXY_COUNT` (or `AXES_IPWARE_META_PRECEDENCE_ORDER`) to skip the actual proxy hop count. For django-ratelimit configure `RATELIMIT_KEY` with `header:X-Forwarded-For` and trust only the rightmost LB. Test in staging behind the same proxy.</fix>
+    </antipattern>
+
+    <antipattern id="fm-04-csp-nonce-with-cache" severity="medium">
+      <description>Using CSP nonces while a caching layer (Cloudflare, Nginx proxy_cache) serves the same HTML to multiple users.</description>
+      <symptom>Random CSP violations in browser console; inline scripts blocked sporadically; report-only logs show the same nonce across thousands of clients.</symptom>
+      <root-cause>Nonces must be unique per response. Cached HTML reuses the same nonce, which violates CSP semantics — browsers reject scripts on every request that misses the original nonce generation.</root-cause>
+      <fix>Either disable cache for HTML responses that depend on nonces (`Cache-Control: no-store`) or switch to CSP hashes for static inline scripts. Long-lived nonces are not nonces.</fix>
+    </antipattern>
+
+    <antipattern id="fm-05-debug-toolbar-prod" severity="high">
+      <description>django-debug-toolbar middleware reachable in production due to a skipped DEBUG check.</description>
+      <symptom>External scanners surface `/__debug__/` exposing SQL log, environment variables, template variable dumps.</symptom>
+      <root-cause>Middleware list includes `debug_toolbar.middleware.DebugToolbarMiddleware` unconditionally; INTERNAL_IPS not restricted; DEBUG=True leaked into production.</root-cause>
+      <fix>Wrap middleware injection in `if DEBUG:` and confirm `INTERNAL_IPS = ["127.0.0.1"]` only. Run `python manage.py check --deploy` — it warns when DEBUG is True. Block deploy on any WARNING.</fix>
+    </antipattern>
   </section>
 </text>

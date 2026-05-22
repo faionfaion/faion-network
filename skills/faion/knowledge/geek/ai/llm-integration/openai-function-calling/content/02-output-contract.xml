@@ -1,22 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="openai-function-calling Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="OpenAI Function Calling — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Per-call record for either a tool-call response (tool_calls populated) or a structured-extraction (parsed populated). Captures model, refusal, tool_calls, parsed, and timing.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://openai-function-calling/output.schema.json",
+  "type": "object",
+  "required": ["model", "kind", "refusal", "latency_ms", "request_id"],
+  "properties": {
+    "model": {"type": "string", "minLength": 3},
+    "kind": {"type": "string", "enum": ["tool_calls", "parsed", "content"]},
+    "refusal": {"type": ["string", "null"]},
+    "parsed": {"type": ["object", "null"]},
+    "tool_calls": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "arguments"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "arguments": {"type": ["object", "string"]}
+        }
+      }
+    },
+    "content": {"type": ["string", "null"]},
+    "latency_ms": {"type": "integer", "minimum": 0},
+    "request_id": {"type": "string", "minLength": 4}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>kind ∈ {tool_calls, parsed, content} — exactly one populated.</item>
+      <item>refusal recorded; null if model complied.</item>
+      <item>If kind == tool_calls: every entry has id + name + arguments.</item>
+      <item>If kind == parsed: parsed is a non-null object matching the requested Pydantic schema.</item>
+      <item>latency_ms and request_id present.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>kind == parsed AND parsed == null AND refusal == null.</description>
+      <reason>Impossible state; indicates an SDK bug or a pipeline that swallowed the refusal.</reason>
+    </antipattern>
+    <antipattern>
+      <description>kind == tool_calls AND any tool_call missing `id`.</description>
+      <reason>tool_call_id is the only correlation key between assistant message and tool result.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "model": "gpt-4o",
+  "kind": "parsed",
+  "refusal": null,
+  "parsed": {"name": "John Doe", "age": 30, "email": "john@example.com"},
+  "tool_calls": null,
+  "content": null,
+  "latency_ms": 712,
+  "request_id": "req_xyz"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "model": "gpt-4o",
+  "kind": "parsed",
+  "refusal": null,
+  "parsed": null
+}
+]]></code>
+      <note>Invalid: kind=parsed but parsed=null and no refusal; latency_ms and request_id missing.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Exactly one of (parsed, tool_calls, content) populated, matching `kind`.</item>
+      <item>refusal handled: if non-null, downstream is notified.</item>
+      <item>Every tool_call has id, name, arguments.</item>
     </list>
   </section>
 </text>

@@ -1,11 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="openai-function-calling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for openai-function-calling. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="OpenAI Function Calling — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules for tool-use and structured-extraction calls. Source: OpenAI Function Calling guide, Structured Outputs docs, production failure logs (2026).</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-message-order" testable="true" depth="essential">
+      <statement>Append the assistant message (with `tool_calls`) to `messages` BEFORE appending any `role: tool` results. Sort tool results by matching `tool_call_id` order from the assistant message.</statement>
+      <rationale source="OpenAI Function Calling guide">The API rejects tool results that arrive without a preceding assistant message with `tool_calls`; out-of-order results corrupt the model's next reasoning step.</rationale>
+    </rule>
+
+    <rule id="r2-parse-on-gpt4o-only" testable="true" depth="essential">
+      <statement>Use `client.beta.chat.completions.parse` only on `gpt-4o` and newer. For older models, fall back to `json_object` mode + manual Pydantic validation.</statement>
+      <rationale source="OpenAI Structured Outputs docs">parse is not supported pre-gpt-4o; calling it raises NotImplementedError. Capability gating prevents silent fallback to wrong behaviour.</rationale>
+    </rule>
+
+    <rule id="r3-null-check-parsed" testable="true" depth="essential">
+      <statement>Before reading `response.choices[0].message.parsed`, check `message.refusal`. If non-null, raise with the refusal text. Never AttributeError on a None `parsed`.</statement>
+      <rationale source="OpenAI Structured Outputs safety semantics">Safety refusals return `refusal` populated and `parsed=None`; bare attribute access crashes the pipeline.</rationale>
+    </rule>
+
+    <rule id="r4-parallel-coherence" testable="true" depth="essential">
+      <statement>Before executing parallel tool calls that write external state, run a coherence check: no contradictory pairs (create+delete on same id, debit+credit same account at the same step).</statement>
+      <rationale source="Parallel-tool-calls failure mode logs">Default `parallel_tool_calls=true` lets the model batch contradictory writes; corruption races the second tool's return.</rationale>
+    </rule>
+
+    <rule id="r5-tool-choice-gate" testable="true" depth="essential">
+      <statement>Set `tool_choice="required"` when the pipeline depends on a tool result. Set `tool_choice={"type":"function","function":{"name":"<id>"}}` to force a specific tool. Default `auto` only for exploratory calls.</statement>
+      <rationale source="OpenAI Function Calling guide">`auto` lets the model answer from context, skipping the tool entirely; pipelines that expect a tool result then fail downstream.</rationale>
+    </rule>
+
+    <rule id="r6-register-then-call" testable="true" depth="essential">
+      <statement>Tool callables are registered in a single `tool_registry: dict[name, callable]` before the call. The dispatch loop looks up by `function.name`, never `eval` or dynamic import.</statement>
+      <rationale source="Security best-practice for tool dispatch">Dynamic import / eval on model-supplied names is an arbitrary-code-execution sink; the registry is the only authoritative dispatch.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

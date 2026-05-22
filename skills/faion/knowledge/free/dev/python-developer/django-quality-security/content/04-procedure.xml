@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-quality-security Procedure" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>Six-step procedure to apply the baseline, ramp HSTS / CSP safely, and gate every deploy.</summary>
+
+  <section title="Steps">
+    <step n="1" name="audit-settings">
+      <input>`config/settings/production.py`, MIDDLEWARE list, dependency manifest</input>
+      <action>Diff against `templates/production_settings.py`. Identify missing security settings, current HSTS value, CSP middleware presence/mode.</action>
+      <output>baseline gap list</output>
+      <decision-gate>If every setting matches and `manage.py check --deploy` is clean, skip to step 6.</decision-gate>
+    </step>
+
+    <step n="2" name="apply-transport-baseline">
+      <input>baseline gap list</input>
+      <action>Add missing flags. Set HSTS to 300 on first deploy. Install Django 6.0+ ContentSecurityPolicyMiddleware (or django-csp) in report-only mode with a permissive baseline policy.</action>
+      <output>settings diff</output>
+      <decision-gate>Deploy to staging; collect 24h CSP report-only telemetry before tightening the policy.</decision-gate>
+    </step>
+
+    <step n="3" name="rate-limits">
+      <input>list of auth endpoints + public API endpoints</input>
+      <action>For DRF: configure DEFAULT_THROTTLE_CLASSES (anon + user) and a `login` scope at 5/min. Install django-axes; configure AXES_IPWARE_PROXY_COUNT to match infra. Remove stacked ratelimit decorators if both libraries present.</action>
+      <output>throttle config + axes settings</output>
+      <decision-gate>Run a staging-side load test that exceeds the limit; confirm 429 is returned and axes lockout fires.</decision-gate>
+    </step>
+
+    <step n="4" name="input-validation">
+      <input>views and serializers handling user input</input>
+      <action>Grep for `objects.extra(`, raw SQL with string formatting, mass-assignment patterns. Replace with Form / Serializer. Add magic-byte upload validation. Call `full_clean()` in service functions.</action>
+      <output>updated validation layer</output>
+      <decision-gate>No `objects.extra` or unsafe SQL in source tree (ruff custom rule or grep CI step).</decision-gate>
+    </step>
+
+    <step n="5" name="secrets-and-checks">
+      <input>settings + env var manifest</input>
+      <action>Move every secret to env. Add `system_checks.py` checks for SECRET_KEY default and missing SENTRY_DSN. Register in `apps.py ready()`. Add CI step `python manage.py check --deploy --fail-level WARNING`.</action>
+      <output>environment-loaded secrets + check registration</output>
+      <decision-gate>CI step `check --deploy` exits 0.</decision-gate>
+    </step>
+
+    <step n="6" name="emit-report-and-ramp">
+      <input>findings + post-baseline HSTS / CSP plan</input>
+      <action>Render `templates/audit-report.md`. Schedule HSTS ramp (300 → 3600 over 1 week → 31536000 after 2 weeks). Move CSP from report-only to enforce after telemetry clean for 48h.</action>
+      <output>committed report + scheduled ramp tasks</output>
+      <decision-gate>Validator (`scripts/validate-django-quality-security.py`) exits 0.</decision-gate>
+    </step>
+  </section>
+</text>

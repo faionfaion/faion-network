@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="guardrails-nemo Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for guardrails-nemo. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="NeMo Guardrails Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules for NeMo Guardrails config and Colang flows.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="config-from-path" testable="true" depth="essential">
+      <statement>Production uses `RailsConfig.from_path("./config")`. Inline `from_content()` is for tests only and never appears in deployed code.</statement>
+      <rationale source="NeMo Guardrails docs; config-as-policy audit">Policy and code share a deploy if config is inline; rotating policy then requires a code release. File-based config lets ops rotate policy through a config bump.</rationale>
     </rule>
+
+    <rule id="separated-flows" testable="true" depth="essential">
+      <statement>Input and output rails are declared separately under `rails.input.flows` and `rails.output.flows`. Never run an output check from `rails.input` or vice versa.</statement>
+      <rationale source="NeMo docs + Colang DSL semantics">Input and output stages have different context shapes. Mixing them gives undefined behaviour in NeMo runtime and breaks `check facts` (no bot message yet at input stage).</rationale>
+    </rule>
+
+    <rule id="canonical-intents" testable="true" depth="essential">
+      <statement>Each `define user X` block contains ≥3 representative utterance examples covering paraphrases. Single-example intents are forbidden.</statement>
+      <rationale source="NeMo semantic similarity behaviour">NeMo generalises from examples via embedding similarity; 1-2 examples collapse to one cluster and miss paraphrases. ≥3 examples give enough variance for robust intent matching.</rationale>
+    </rule>
+
+    <rule id="async-actions" testable="true" depth="essential">
+      <statement>Every custom `@action()` is `async def`. Sync actions are forbidden in production configs.</statement>
+      <rationale source="NeMo runtime; asyncio docs">Sync actions block the Colang event loop; one slow check stalls all parallel conversations. Async actions allow concurrent rail evaluation.</rationale>
+    </rule>
+
+    <rule id="register-before-generate" testable="true" depth="essential">
+      <statement>All custom actions are registered via `rails.register_action(fn)` BEFORE the first `rails.generate(...)` call. Lazy registration is forbidden.</statement>
+      <rationale source="NeMo lifecycle docs">Late registration causes silent flow failures — the flow references an action that didn't exist at load time, and NeMo skips it without error in some versions.</rationale>
+    </rule>
+
+    <rule id="kb-grounded-facts" testable="true" depth="essential">
+      <statement>When `check facts` rail is enabled, the config declares a `knowledge_base:` block AND every grounded answer flow ends with the `check facts` flow as an output rail.</statement>
+      <rationale source="NeMo fact-check action source">Without a KB block, `check facts` falls back to LLM self-judgment with no grounding signal — fact-check becomes noise, hallucinations pass.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
