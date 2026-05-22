@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Mocking Strategies Worked Example" version="2.0.0" est_tokens="700" depth="recommended">
+  <summary>Worked examples in Python (autospec + boundary mock), TypeScript (Vitest module mock + clearAllMocks), and Go (interface substitution).</summary>
+
+  <example type="good">
+    <note>Python — patch where used (r3), autospec to catch typos (r2), boundary mock (r1).</note>
+    <code lang="python"><![CDATA[
+def test_payment_retries_on_timeout(mocker):
+    mock_post = mocker.patch(
+        "myapp.adapters.stripe.requests.post",  # patch where it's looked up
+        autospec=True,                            # signature drift catches typos
+    )
+    mock_post.side_effect = [Timeout(), Timeout(), Mock(status_code=200)]
+    result = PaymentService().charge(amount=100)
+    assert result.success is True
+    assert mock_post.call_count == 3
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>TypeScript Vitest — module-level mock with clearAllMocks per test (r5).</note>
+    <code lang="typescript"><![CDATA[
+import { vi, describe, it, expect, afterEach } from 'vitest';
+import { sendEmail } from '../adapters/email';
+import { registerUser } from '../services/user';
+
+vi.mock('../adapters/email');
+afterEach(() => vi.clearAllMocks());
+
+it('sends welcome email', async () => {
+  await registerUser({ email: 'new@example.com' });
+  expect(sendEmail).toHaveBeenCalledOnce();
+  expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'new@example.com' }));
+});
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>Go — interface substitution (the language-native mocking style).</note>
+    <code lang="go"><![CDATA[
+type Mailer interface { Send(to, subject, body string) error }
+
+type mockMailer struct{ calls []string }
+func (m *mockMailer) Send(to, _, _ string) error { m.calls = append(m.calls, to); return nil }
+
+func TestRegister(t *testing.T) {
+    mailer := &mockMailer{}
+    NewUserService(mailer).Register("user@x")
+    if len(mailer.calls) != 1 { t.Errorf("want 1 call, got %d", len(mailer.calls)) }
+}
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Bad — bare MagicMock no spec, patches origin not call site.</note>
+    <code lang="python"><![CDATA[
+mock = MagicMock()           # no spec → typos silently absorbed (r2 violation)
+mocker.patch("stripe.Charge.create")  # patches origin → live API still hit (r3 violation)
+]]></code>
+  </example>
+</text>

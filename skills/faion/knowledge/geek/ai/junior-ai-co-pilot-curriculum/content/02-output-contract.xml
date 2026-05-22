@@ -1,42 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Junior AI Co-Pilot Curriculum Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Junior AI Co-Pilot Curriculum output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Junior AI Co-Pilot Curriculum Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for curriculum.json: weeks, modules, exercises, rubric, mentor schedule.</summary>
 
-  <output-contract>
-    <required>
-      <field name="baseline_week_1" type="object" required="true">{tasks, score, observations}</field>
-      <field name="explanation_required_threshold" type="integer" required="true">AI-generated lines triggering explanation (≥10)</field>
-      <field name="self_review_prompt" type="string" required="true">verbatim prompt junior uses on own PRs</field>
-      <field name="pair_cadence" type="object" required="true">{weekly, duration_min, senior_partner}</field>
-      <field name="week_12_assessment" type="object" required="true">{tasks, with_ai_score, without_ai_score, gap}</field>
-      <field name="owner" type="string" required="true">named manager + buddy</field>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/junior-ai-co-pilot-curriculum",
+  "type": "object",
+  "required": ["junior_name", "mentor_name", "weeks", "modules", "rubric", "tool"],
+  "properties": {
+    "junior_name": {"type": "string", "minLength": 1},
+    "mentor_name": {"type": "string", "minLength": 1},
+    "tool": {"type": "string", "description": "Primary AI co-pilot, e.g. Claude Code"},
+    "weeks": {"type": "integer", "minimum": 4, "maximum": 8},
+    "modules": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "week", "exercise", "reflection_required"],
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "week": {"type": "integer", "minimum": 1, "maximum": 8},
+          "exercise": {"type": "string"},
+          "reflection_required": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "rubric": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "evidence"],
+        "properties": {
+          "id": {"type": "string"},
+          "statement": {"type": "string"},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "mentor_schedule": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["week", "duration_minutes", "agenda"],
+        "properties": {
+          "week": {"type": "integer"},
+          "duration_minutes": {"type": "integer", "minimum": 30},
+          "agenda": {"type": "string"}
+        }
+      }
+    }
+  }
+}]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">week_1 baseline skipped</pattern>
-      <pattern id="f2">explanation_required_threshold &gt; 50 lines (too lax)</pattern>
-      <pattern id="f3">pair_cadence missing OR with AI in the loop</pattern>
-      <pattern id="f4">week_12 assessment skipped</pattern>
-    </forbidden>
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "junior_name": "Alex Doe",
+  "mentor_name": "Sam Mentor",
+  "tool": "Claude Code",
+  "weeks": 6,
+  "modules": [
+    {"id": "m1", "title": "Prompt anatomy", "week": 1, "exercise": "Refactor 3 prompts using XML structure", "reflection_required": true},
+    {"id": "m2", "title": "Hallucination check", "week": 2, "exercise": "Find and document 5 hallucinations in AI output", "reflection_required": true},
+    {"id": "m3", "title": "Scoped edits", "week": 3, "exercise": "Make 5 changes < 50 LOC each with diff review", "reflection_required": true},
+    {"id": "m4", "title": "Test-first AI", "week": 4, "exercise": "Write tests before AI generates implementation", "reflection_required": true},
+    {"id": "m5", "title": "Security boundaries", "week": 5, "exercise": "Run IPI eval suite, document 3 findings", "reflection_required": true},
+    {"id": "m6", "title": "Mentor review", "week": 6, "exercise": "Co-pilot PR walkthrough with mentor", "reflection_required": true}
+  ],
+  "rubric": [
+    {"id": "r1", "statement": "Can spot a fabricated API in generated code", "evidence": "Exercise m2 reflection"},
+    {"id": "r2", "statement": "Writes prompts with explicit input/output contract", "evidence": "PR samples"}
+  ]
+}]]></code>
+    </example>
+  </section>
 
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/junior-ai-co-pilot-curriculum.json"/>
-  </output-contract>
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"junior_name": "x", "mentor_name": "y", "weeks": 2, "modules": [], "rubric": []}]]></code>
+      <note>Fails: weeks &lt;4, modules &lt;6, rubric &lt;10.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>baseline_week_1 populated with a typed value</item>
-      <item>explanation_required_threshold populated with a typed value</item>
-      <item>self_review_prompt populated with a typed value</item>
-      <item>pair_cadence populated with a typed value</item>
-      <item>week_12_assessment populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>Six core modules all present (prompt anatomy / hallucination check / scoped edits / test-first AI / security boundaries / mentor review).</item>
+      <item>Every module has reflection_required = true.</item>
+      <item>Rubric ≥ 10 items, each with evidence pointer.</item>
+      <item>Weeks ∈ [4, 8].</item>
+      <item>Mentor schedule has ≥ weeks entries with ≥30 min each.</item>
     </list>
   </section>
 </text>

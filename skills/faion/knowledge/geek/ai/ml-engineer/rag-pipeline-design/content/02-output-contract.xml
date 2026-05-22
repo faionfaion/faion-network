@@ -1,22 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rag-pipeline-design Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="RAG Pipeline Design — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Pins the YAML shape of `rag-pipeline.yaml` — declarative pipeline spec consumed by builders and CI eval gate.</summary>
 
   <output-contract>
     <required>
-      <field name="TBD" format="TBD"/>
+      <field name="tier" type="enum" values="naive|advanced|modular|agentic"/>
+      <field name="embedding" type="object" required_keys="model,dim"/>
+      <field name="vector_db" type="object" required_keys="kind,connection"/>
+      <field name="chunking" type="object" required_keys="strategy,size,overlap"/>
+      <field name="retrieval" type="object" required_keys="mode" expected_mode="hybrid|vector|bm25"/>
+      <field name="reranker" type="object" condition="tier != naive" required_keys="kind,model,top_n"/>
+      <field name="prompt" type="object" required_keys="citation_required,fallback_phrase"/>
+      <field name="eval_gate" type="object" required_keys="framework,thresholds"/>
+      <field name="telemetry" type="object" required_keys="log_query_embedding,log_retrieved_ids,log_scores"/>
     </required>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">retrieval.mode=="vector" in production (r2-hybrid-default)</pattern>
+      <pattern id="f2">tier!=naive and reranker missing (r4-reranker-after-retrieval)</pattern>
+      <pattern id="f3">prompt.citation_required==false (r5-citation-enforcement)</pattern>
+      <pattern id="f4">eval_gate missing thresholds for faithfulness OR context_recall (r6-eval-gate)</pattern>
+      <pattern id="f5">chunking.size &gt; 1500 or chunking.size &lt; 100 (out-of-band; force explicit override comment)</pattern>
+      <pattern id="f6">vector_db.kind=="chroma" with serve_mode=="multi-process" (Chroma is dev-only)</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Switching embedding model is a major version bump and forces re-index of the full corpus.</transformation>
+      <transformation>Adjusting reranker.top_n (5-10) is a patch bump if eval-gate passes.</transformation>
+      <transformation>Adding a new vector DB collection for a new tenant is a patch.</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/rag-pipeline.schema.yaml"/>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>tier is declared and matches query-sample analysis</item>
+      <item>retrieval.mode == "hybrid" for any tier above naive</item>
+      <item>reranker present when tier ≠ naive</item>
+      <item>prompt.citation_required == true</item>
+      <item>eval_gate.thresholds.faithfulness ≥ 0.9</item>
+      <item>eval_gate.thresholds.context_recall ≥ 0.85</item>
+      <item>telemetry logs query_embedding + retrieved_ids + scores (else drift detector is blind)</item>
     </list>
   </section>
 </text>
