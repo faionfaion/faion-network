@@ -1,22 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="multi-agent-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Multi-Agent Spec Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the multi-agent design spec the methodology emits — roster, pattern, message schema, budgets, termination, decision authority.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema (JSON Schema draft 2020-12)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/multi-agent-spec.v1.json",
+  "title": "MultiAgentSpec",
+  "type": "object",
+  "required": ["task", "agents", "pattern", "message_schema", "budget", "termination", "decision_authority"],
+  "properties": {
+    "task": {"type": "string", "minLength": 16},
+    "agents": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["name", "role", "model", "system_prompt", "token_budget", "timeout_s"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{1,32}$"},
+          "role": {"type": "string", "minLength": 8},
+          "model": {"type": "string", "enum": ["opus", "sonnet", "haiku", "gpt-4o", "gpt-4o-mini", "o3", "o4-mini", "gpt-5"]},
+          "system_prompt": {"type": "string", "minLength": 32},
+          "token_budget": {"type": "integer", "minimum": 256},
+          "timeout_s": {"type": "integer", "minimum": 5}
+        }
+      }
+    },
+    "pattern": {"type": "string", "enum": ["sequential", "parallel", "hierarchical", "debate", "collaborative", "conversational"]},
+    "message_schema": {
+      "type": "object",
+      "required": ["schema_version", "fields"],
+      "properties": {
+        "schema_version": {"type": "string", "pattern": "^v\\d+$"},
+        "fields": {"type": "array", "minItems": 1}
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["total_tokens", "wallclock_s"],
+      "properties": {"total_tokens": {"type": "integer", "minimum": 1000}, "wallclock_s": {"type": "integer", "minimum": 10}}
+    },
+    "termination": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["max_turns", "phrase", "shape_check", "predicate"]},
+        "max_turns": {"type": "integer", "minimum": 1},
+        "phrase": {"type": "string"},
+        "predicate": {"type": "string"}
+      }
+    },
+    "decision_authority": {"type": "string", "enum": ["orchestrator", "judge", "majority_vote", "human_in_loop"]}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns (will fail validation)">
+    <list>
+      <item>Two agents whose `role` fields share ≥3 of the same significant nouns (overlap detected by validator).</item>
+      <item>Any agent without `token_budget` or `timeout_s` (per-agent budget rule r6).</item>
+      <item>`message_schema.fields` lacking a `schema_version` field at index 0.</item>
+      <item>`pattern == "debate"` with `agents.length` &lt; 3 (no judge).</item>
+      <item>`termination.kind == "max_turns"` with `max_turns &gt; 30` (likely runaway).</item>
+    </list>
+  </section>
+
+  <section title="Valid example (excerpt)">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+task: "Produce a 1500-word internal explainer on AI Act compliance for the engineering blog"
+pattern: sequential
+decision_authority: orchestrator
+agents:
+  - name: researcher
+    role: "Gather and summarise public sources on AI Act Articles 5/6/9 relevant to product"
+    model: sonnet
+    system_prompt: "You are a research specialist; output strict JSON {findings[], sources[], confidence}"
+    token_budget: 6000
+    timeout_s: 90
+  - name: writer
+    role: "Compose the 1500-word explainer from researcher findings; no new claims"
+    model: sonnet
+    system_prompt: "You are a technical writer; output {draft_markdown, word_count}"
+    token_budget: 8000
+    timeout_s: 120
+  - name: editor
+    role: "Tighten clarity, fix factual drift against findings"
+    model: opus
+    system_prompt: "You are a senior editor; output {final_markdown, change_log}"
+    token_budget: 5000
+    timeout_s: 90
+message_schema:
+  schema_version: v1
+  fields: [schema_version, from, to, payload, ts]
+budget: {total_tokens: 25000, wallclock_s: 360}
+termination: {kind: shape_check, predicate: "result.final_markdown != null AND result.word_count >= 1400"}
+]]></code>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>No two agents share &gt;2 significant role nouns.</item>
+      <item>Every agent has a non-empty system prompt ≥32 chars.</item>
+      <item>`message_schema.schema_version` matches semver-prefixed `vN`.</item>
+      <item>`budget.total_tokens` ≥ sum of `agents[].token_budget`.</item>
+      <item>If `pattern == "debate"`, a `judge` agent is present.</item>
+      <item>`decision_authority` is one of the four canonical values.</item>
     </list>
   </section>
 </text>

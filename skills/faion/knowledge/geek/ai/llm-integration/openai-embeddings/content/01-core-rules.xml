@@ -1,11 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="openai-embeddings Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for openai-embeddings. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="OpenAI Embeddings — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules that every embedding pipeline must enforce. Source: OpenAI Embeddings guide, RAG retrieval research, internal failure logs (2026).</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-model-and-dims-pin" testable="true" depth="essential">
+      <statement>Pin both `model` (e.g., `text-embedding-3-small`) and `dimensions` (e.g., 1536) in a single config consumed by both ingestion and query paths. Mismatch fails the startup smoke test.</statement>
+      <rationale source="OpenAI Embeddings guide; production failure logs">Mixing model or dimensions between ingestion and query produces random similarity scores with no error — the silent-failure mode is the worst kind.</rationale>
+    </rule>
+
+    <rule id="r2-semantic-chunking" testable="true" depth="essential">
+      <statement>Chunk documents at semantic boundaries (paragraphs, sections) with ~10% overlap. Chunk before embed; never feed inputs &gt; 8191 tokens raw.</statement>
+      <rationale source="RAG retrieval research; OpenAI Embeddings docs">Fixed-token chunking loses semantic coherence; overlap prevents boundary misses; silent truncation produces partial embeddings.</rationale>
+    </rule>
+
+    <rule id="r3-store-text-with-vector" testable="true" depth="essential">
+      <statement>Persist both the embedding vector and the original chunk text in the vector store. Cache embeddings for unchanged content — never re-embed static text.</statement>
+      <rationale source="Vector-DB anti-decay practice">Embeddings cannot be reversed; storing only vectors makes search results unreturnable. Re-embedding static content wastes spend.</rationale>
+    </rule>
+
+    <rule id="r4-query-expansion" testable="true" depth="essential">
+      <statement>For RAG retrieval, embed an expanded / rewritten query (LLM-generated), not the raw user message — short or ambiguous inputs lose recall otherwise.</statement>
+      <rationale source="Query-expansion RAG literature">Short queries embed into sparse regions of the vector space; expansion enriches them.</rationale>
+    </rule>
+
+    <rule id="r5-batch-correlation" testable="true" depth="essential">
+      <statement>Every Batch API request carries a meaningful `custom_id` (e.g., `doc_{id}_chunk_{n}`). Results are reconstructed by `custom_id` — never by output line order.</statement>
+      <rationale source="OpenAI Batch API docs">Batch results return in arbitrary order; positional assumptions misattribute embeddings silently.</rationale>
+    </rule>
+
+    <rule id="r6-no-pii-shared-store" testable="true" depth="essential">
+      <statement>Do not embed sensitive PII (names, emails, SSNs, internal IDs) into a multi-tenant or shared vector store. Use per-tenant indices or redact pre-embed.</statement>
+      <rationale source="Data-leak attack surface analysis">Nearest-neighbor queries on a shared store let an adversary extract PII by probing with known fragments.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,22 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="stream-json-orchestration Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="stream-json-orchestration Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the orchestrator run report. One file per subprocess invocation.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <schema format="json-schema">
+<![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StreamJsonRunReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_id", "cli", "started_at", "ended_at", "events_count", "result_subtype", "total_cost_usd", "kill_reason", "replay_path"],
+  "properties": {
+    "session_id": {"type": "string", "minLength": 1},
+    "cli": {"type": "string", "enum": ["claude-code", "codex", "aider", "opencode"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "ended_at": {"type": "string", "format": "date-time"},
+    "events_count": {"type": "integer", "minimum": 1},
+    "result_subtype": {"type": "string", "enum": ["success", "error_max_turns", "error_during_execution", "killed_by_orchestrator"]},
+    "total_cost_usd": {"type": "number", "minimum": 0},
+    "kill_reason": {"type": ["string", "null"], "enum": [null, "budget_cap", "safety_veto", "max_turns", "timeout", "user_abort"]},
+    "replay_path": {"type": "string", "pattern": "^runs/.+\\.jsonl$"},
+    "allowed_tools": {"type": "array", "items": {"type": "string"}},
+    "max_turns": {"type": "integer", "minimum": 1}
+  }
+}
+]]>
+  </schema>
+
+  <example valid="true">
+<![CDATA[
+{
+  "session_id": "sess_abc123",
+  "cli": "claude-code",
+  "started_at": "2026-05-22T13:45:01Z",
+  "ended_at": "2026-05-22T13:46:32Z",
+  "events_count": 47,
+  "result_subtype": "success",
+  "total_cost_usd": 0.234,
+  "kill_reason": null,
+  "replay_path": "runs/sess_abc123.jsonl",
+  "allowed_tools": ["Read", "Grep", "Bash(npm test:*)"],
+  "max_turns": 20
+}
+]]>
+  </example>
+
+  <example valid="false">
+<![CDATA[
+{
+  "session_id": "",
+  "cli": "claude-code",
+  "started_at": "2026-05-22T13:45:01Z",
+  "ended_at": "2026-05-22T13:46:32Z",
+  "events_count": 0,
+  "result_subtype": "success",
+  "total_cost_usd": -0.5,
+  "replay_path": "out.txt"
+}
+]]>
+  </example>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`session_id` is non-empty and matches the value emitted in the `system/init` event.</item>
+      <item>`events_count ≥ 1` (init event minimum).</item>
+      <item>`replay_path` exists on disk and parses as JSONL.</item>
+      <item>`kill_reason` is `null` iff `result_subtype == "success"` (or one of the natural exit subtypes).</item>
+      <item>`total_cost_usd` equals the last seen `total_cost_usd` from the stream.</item>
     </list>
   </section>
 </text>

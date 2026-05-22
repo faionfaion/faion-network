@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="guardrails-custom-pipeline Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for guardrails-custom-pipeline as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Custom Guardrails Pipeline Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns specific to the hand-rolled pipeline.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running content moderation on every request without tiering, including the LLM-as-judge hallucination check.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLM-based checks add 500ms-2s per call. Running them on every request multiplies the pipeline latency. Reserve expensive checks for ambiguous cases that pass the fast tiers, or for post-hoc sampling in production monitoring.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Building a GuardrailsPipeline singleton that holds OpenAI client state across concurrent requests without connection pooling.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The OpenAI client is not thread-safe by default when the same underlying HTTP connection is reused. Use an AsyncOpenAI client with the async pipeline for concurrent request handling, or use a thread-local client pattern.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="blocking-sync-await" severity="high">
+      <symptom>FastAPI handler blocks for ~600 ms on every request because all three checks run sequentially with blocking I/O.</symptom>
+      <root-cause source="asyncio profiling traces">PIIDetector + InjectionDetector are CPU-bound and OpenAI moderation is I/O-bound — but everything is awaited sequentially in a single coroutine.</root-cause>
+      <fix>Wrap CPU-bound detectors in `asyncio.to_thread` and run them in `asyncio.gather(...)` with the moderation call. Drops p99 from 600 ms to 200 ms.</fix>
+    </antipattern>
+
+    <antipattern id="leaky-pii-regex" severity="high">
+      <symptom>Email like `user.name+tag@subdomain.example.co.uk` slips past regex; SSN with no separator (`123456789`) slips past.</symptom>
+      <root-cause source="OWASP regex pitfalls">Naive regex tuned to common formats; missing `+tag`, multi-level TLD, separator-less SSN. Real PII formats are messier than canonical examples.</root-cause>
+      <fix>Adopt the Microsoft Presidio pattern set or maintain a versioned `PII_PATTERNS_V2` constant with edge cases (Unicode, +tag emails, no-separator SSN). Cover via golden-file tests in `guardrails-testing`.</fix>
+    </antipattern>
+
+    <antipattern id="judge-on-every-call" severity="medium">
+      <symptom>HallucinationDetector fires on every call regardless of context length; adds 500 ms to non-RAG traffic; doubles OpenAI bill.</symptom>
+      <root-cause source="Cost postmortem reviews">Config flag is global on/off instead of conditional on `context` being non-empty.</root-cause>
+      <fix>Gate `enable_hallucination_detection` on `context is not None`. Add per-call escape hatch parameter to `process_output(skip_judge=True)`.</fix>
+    </antipattern>
+
+    <antipattern id="no-config-toggle" severity="medium">
+      <symptom>To disable a single check in production, devs comment out code and redeploy; emergency hotfix needs a CI cycle.</symptom>
+      <root-cause source="Internal incident retros">Hardcoded component composition instead of `GuardrailConfig` dataclass with per-component bool flags.</root-cause>
+      <fix>Every component reads `self.config.enable_<name>` at runtime; flags ship from env / feature-flag service. Disabling becomes a config change, not a deploy.</fix>
+    </antipattern>
+
   </section>
 </text>

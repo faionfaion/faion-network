@@ -1,42 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="react-hooks Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for react-hooks as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="React Hooks Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>4 antipatterns observed in production React apps; each ESLint-detectable or grep-detectable.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling a hook inside an if statement, loop, or after an early return.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>React tracks hook state by call order. Skipping a hook call on one render shifts every subsequent hook's slot, corrupting state in non-obvious ways that appear as stale values or infinite renders.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Missing dependency in useEffect: setCount(count + 1) inside an effect with empty deps [].</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>count is captured at mount time (stale closure). The interval or effect always sees count = 0 no matter how many times it fires. Use functional update setCount(c =&gt; c + 1) or add count to deps and clean up on change.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Passing an object or array literal as a useEffect dependency: useEffect(..., [{ page: 1 }]).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A new object is created on every render. {} !== {} in JavaScript. The effect fires on every render, creating an infinite loop. Destructure to primitives or memoize the object.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using useEffect to sync derived state: setFullName(first + " " + last) inside an effect.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Creates a second render cycle: props change, render, effect fires, state set, render again. Compute fullName during render directly—no state or effect needed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Defining a styled component or computing a large constant inside the function body.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any value defined inside render is recreated on every render. styled.div inside a component creates a new class on every render, causing style explosion and potentially infinite re-renders.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using useEffect for data fetching without abort cleanup in a component that can unmount or whose props change.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without abort, a response from a previous URL arrives after the URL changed and overwrites the correct data. In Strict Mode, the component unmounts and remounts in dev, causing the same double-fetch issue.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Silencing react-hooks/exhaustive-deps with // eslint-disable-next-line.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The suppressed warning is a stale closure waiting to manifest. Every suppression is a future production bug. Refactor to eliminate the dependency legitimately instead.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="conditional-hook-call" severity="high">
+      <symptom>`useState`/`useEffect`/`useMemo` appears inside `if`, after early `return`, or after an `await`. Dev console reports "Rendered fewer hooks than expected".</symptom>
+      <root-cause source="react.dev/learn/rules-of-hooks">React tracks hook state by call order. A conditional call shifts the order on subsequent renders, mismatching the internal linked list and corrupting state.</root-cause>
+      <fix>Pull every hook to the top of the component body. Move conditional logic AFTER all hook calls. Enable `react-hooks/rules-of-hooks: error` in ESLint to block PRs.</fix>
+    </antipattern>
+
+    <antipattern id="stale-closure-effect" severity="high">
+      <symptom>Effect captures `count` from outer scope but `count` is missing from the dep array; effect re-runs use the value from the render where it was first defined.</symptom>
+      <root-cause source="react.dev/reference/react/useEffect — stale closure">Hooks close over the values from the render they were created in. Without listing the value in deps, React does not re-create the closure when the value changes.</root-cause>
+      <fix>Run `eslint --rule react-hooks/exhaustive-deps:error` and fix every warning. If the value SHOULD be excluded (e.g. ref-like), wrap it in `useRef` so it does not need to be a dep.</fix>
+    </antipattern>
+
+    <antipattern id="sync-via-effect" severity="medium">
+      <symptom>Component holds `const [doubled, setDoubled] = useState(count * 2)` + `useEffect(() =&gt; setDoubled(count * 2), [count])`. UI flashes wrong value for one frame after `count` changes.</symptom>
+      <root-cause source="react.dev/learn/you-might-not-need-an-effect">Mirroring derivable state into `useState` creates two sources of truth. The effect fires AFTER render, so the stale value renders once before the effect's `setDoubled` schedules a second render.</root-cause>
+      <fix>Delete the state + effect. Compute `const doubled = count * 2` inline in render. If memoization needed for a memo'd child, use `useMemo`.</fix>
+    </antipattern>
+
+    <antipattern id="memo-everywhere" severity="low">
+      <symptom>Every callback wrapped in `useCallback`, every object literal in `useMemo`. Bundle size and render allocations grow; profiler shows memo overhead exceeds memo savings.</symptom>
+      <root-cause source="react.dev — React Compiler docs">Memoization has fixed cost (dep comparison + bookkeeping). On cheap renders that cost exceeds the work it would save. React 19 compiler now handles automatic memoization; manual wrapping is mostly noise.</root-cause>
+      <fix>Enable React Compiler (React 19+). For pre-19 code, restrict `useMemo`/`useCallback` to (a) memo'd-child props, (b) hook deps, (c) profiled hot paths &gt;1ms. Audit existing memos and remove the unjustified ones.</fix>
+    </antipattern>
+
   </section>
 </text>
