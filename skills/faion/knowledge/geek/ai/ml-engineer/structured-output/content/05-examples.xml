@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Structured Output — Worked Example" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Worked example: extract customer-issue entities from support emails using OpenAI response_format + Pydantic.</summary>
+
+  <example title="Entity extraction from support email">
+    <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from openai import OpenAI
+
+class SupportTicket(BaseModel):
+    customer_email: str
+    product_id: str
+    severity: str   # enum at the schema level
+    issue_summary: str
+    urgent: bool
+
+client = OpenAI()
+response = client.beta.chat.completions.parse(
+    model="gpt-4o-2024-08-06",
+    messages=[
+        {"role": "system", "content": "Extract a support ticket from the email."},
+        {"role": "user", "content": email_body},
+    ],
+    response_format=SupportTicket,
+)
+ticket: SupportTicket = response.choices[0].message.parsed
+]]></code>
+    <note>Demonstrates r1 (provider-native), r2 (pydantic-validated). 99%+ first-call parse rate.</note>
+  </example>
+
+  <example title="Safe-parse with one-shot repair">
+    <code lang="python"><![CDATA[
+def structured_call(prompt, schema):
+    raw = call_provider(prompt, response_format=schema)
+    try:
+        return schema.model_validate_json(raw), 0, None
+    except ValidationError as e:
+        # ONE repair attempt with error context
+        raw2 = call_provider(
+            prompt + f"\n\nPrevious output failed: {e}\nSchema:\n{schema.model_json_schema()}",
+            response_format=schema,
+        )
+        try:
+            return schema.model_validate_json(raw2), 1, None
+        except ValidationError as e2:
+            logger.error("parse-fail-twice", schema=schema.__name__, raw=raw2, error=str(e2))
+            raise
+]]></code>
+    <note>Demonstrates r3 (one repair only), r4 (log raw on second failure).</note>
+  </example>
+
+  <see-also>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

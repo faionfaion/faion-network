@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Structured Output — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+  <summary>Routes by provider availability + schema complexity to a structured-output mode.</summary>
+
+  <decision-tree>
+    <root-question id="q-recursive">Does the schema contain recursive types or unbounded depth?</root-question>
+    <branch when="recursive == true">
+      <conclusion ref="r5-no-recursive-schemas" verdict="FLATTEN schema to parent-id references first; recursive schemas unsupported"/>
+    </branch>
+    <branch when="recursive == false">
+      <question id="q-provider">Which provider is chosen?</question>
+      <branch when="provider == 'openai'">
+        <conclusion ref="r1-provider-native-first" verdict="mode=response_format with json_schema; use Pydantic via beta.chat.completions.parse"/>
+      </branch>
+      <branch when="provider == 'anthropic'">
+        <conclusion ref="r1-provider-native-first" verdict="mode=tool_use_json with input_schema; route via tools.use API"/>
+      </branch>
+      <branch when="provider == 'gemini'">
+        <conclusion ref="r1-provider-native-first" verdict="mode=schema_response with response_schema parameter"/>
+      </branch>
+      <branch when="provider not in ['openai','anthropic','gemini','mistral']">
+        <conclusion ref="r4-log-raw-on-failure" verdict="STOP — switch to a structured-output-capable provider; manual prompting unreliable"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="flat schema + OpenAI → response_format">
+    <code lang="text"><![CDATA[
+recursive=false → q-provider → openai → r1-provider-native-first verdict: response_format + Pydantic
+]]></code>
+  </example>
+</text>
