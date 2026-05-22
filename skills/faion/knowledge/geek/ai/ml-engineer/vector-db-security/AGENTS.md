@@ -4,69 +4,97 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Harden a vector database deployment against unauthorized access and data leakage: disable anonymous access, configure API key or OIDC authentication, enforce TLS for all connections, deploy in a private VPC subnet, enable encryption at rest, set up audit logging, and define PII handling procedures.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "a0d0baa91763cc20"
+summary: Hardens a vector DB deployment — disable anonymous access, API-key/OIDC auth, TLS everywhere, private VPC, encryption at rest, audit log, PII handling procedure.
+complexity: medium
+produces: config
+est_tokens: 3500
 tags: [vector-database, security, authentication, tls, network-isolation]
 ---
+
 # Vector Database Security Hardening
 
 ## Summary
 
-**One-sentence:** Harden a vector database deployment against unauthorized access and data leakage: disable anonymous access, configure API key or OIDC authentication, enforce TLS for all connections, deploy in a private VPC subnet, enable encryption at rest, set up audit logging, and define PII handling procedures.
+**One-sentence:** Hardens a vector DB with authentication (API key / OIDC), TLS-in-flight, encryption at rest, private VPC, audit log, and PII handling — closing the default-open posture most vector DBs ship with.
 
-**One-paragraph:** Harden a vector database deployment against unauthorized access and data leakage: disable anonymous access, configure API key or OIDC authentication, enforce TLS for all connections, deploy in a private VPC subnet, enable encryption at rest, set up audit logging, and define PII handling procedures.
+**One-paragraph:** Vector DBs default to open: Qdrant binds 0.0.0.0:6333 with no auth, pgvector inherits Postgres permissions (often weak), Pinecone uses static API keys. Hardening requires: enable auth (API key or OIDC), enforce TLS on all listeners, restrict listener to private subnet, enable encryption at rest, log every admin + query call, and document the PII handling procedure (anonymise / redact / drop on request). Output: a `security-config.yaml` declaring auth + tls + network + encryption + audit + PII handling.
+
+**Ефективно для:**
+
+- Multi-tenant SaaS — auth + audit log = compliance baseline.
+- PII-bearing corpora (medical, legal, finance) — encryption at rest + redact procedure = GDPR / HIPAA floor.
+- Compliance-driven products — explicit security-config audit trail.
+- Open-source self-host — closes the default-open posture before production exposure.
 
 ## Applies If (ALL must hold)
 
-- Any vector database deployment that handles non-public data (user documents, internal knowledge bases, PII-adjacent text).
-- Before promoting a development deployment to production traffic.
-- When adding a vector database to a stack that already enforces network isolation for other services.
-- Compliance requirements (SOC2, GDPR, HIPAA) mandate audit logging and encryption.
+- Production deployment (any non-dev environment)
+- DB contains real user / customer data
+- Compliance regime applies (GDPR, HIPAA, SOC2, PCI)
 
 ## Skip If (ANY kills it)
 
-- Local development with only synthetic data — anonymous access is acceptable to minimize setup friction.
-- Fully managed services (Pinecone Serverless, Weaviate Cloud) — authentication and network security are managed by the provider; verify their compliance docs instead.
+- Pure dev / local sandbox with synthetic data
+- DB in fully isolated air-gapped network (still consider, but priorities shift)
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `network-topology.yaml` | YAML | infra (VPC, subnets, firewall rules) |
+| `compliance-requirements.yaml` | YAML | legal / compliance |
+| `secret-manager-config.yaml` | YAML | Vault / KMS / SSM Parameter Store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `vector-databases` | DB chosen |
+| `vector-db-setup-prod` | Prod deploy baseline |
+| `vector-db-monitoring` | Monitoring needed to detect auth attacks |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: no anonymous, TLS everywhere, private network only, audit every admin call, PII handling procedure | 1100 |
+| `content/02-output-contract.xml` | essential | security-config.yaml schema | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: open binding, plain HTTP, static key in code, no audit, no PII process | 900 |
+| `content/04-procedure.xml` | essential | 5 steps: lock auth → TLS → network → encryption → audit + PII | 700 |
+| `content/05-examples.xml` | essential | Worked example: Qdrant hardened deployment | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by compliance regime → required hardening level | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `threat_model_drafting` | sonnet | Synthesise threats |
+| `security_review_drafting` | opus | Compliance + threat composition |
+| `security_config_lint` | haiku | Schema check |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/security-config.schema.yaml` | Schema |
+| `templates/_smoke-test.yaml` | Minimum-viable spec |
+| `templates/threat-model.md` | Threat model markdown skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vector-db-security.py` | Lint security-config | Pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[vector-databases]] · [[vector-db-setup-prod]] · [[vector-db-monitoring]]
+- external: [Qdrant security docs](https://qdrant.tech/documentation/guides/security/) · [OWASP top 10 LLM](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes by compliance regime (GDPR / HIPAA / SOC2 / none) to a required hardening level.
