@@ -1,11 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rag-pipeline-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rag-pipeline-design. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="RAG Pipeline Design — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules covering tier selection, hybrid search default, chunking, reranking, citation enforcement, and the eval gate.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-tier-selection" testable="true" depth="essential">
+      <statement>Pipeline tier MUST be one of {Naive, Advanced, Modular, Agentic}. Tier is picked from query-sample analysis BEFORE infrastructure work begins. Skipping straight to Agentic for a single-intent FAQ is forbidden.</statement>
+      <rationale source="Pinecone RAG patterns 2024; LlamaIndex docs">Each tier above Naive adds LLM calls per query. Naive RAG (vector + generate) suits FAQ; Advanced adds rerank for ambiguous queries; Modular fans out across heterogeneous sources; Agentic iterates retrieval up to 3 times for multi-step reasoning. Over-tiering inflates cost and latency without quality gain.</rationale>
     </rule>
+
+    <rule id="r2-hybrid-default" testable="true" depth="essential">
+      <statement>Production retrieval MUST use hybrid search (vector + BM25) fused via Reciprocal Rank Fusion. Pure vector search is forbidden as the only retrieval mode in production.</statement>
+      <rationale source="Pinecone, Qdrant, Weaviate hybrid benchmarks; industry analysis 2026">Pure vector search misses exact-match queries (product codes, names, technical terms). Hybrid lifts recall@10 by 15-25% over pure vector. Cost: one extra index (BM25), negligible at query time. Weight starting point: 0.6-0.7 vector / 0.3-0.4 BM25.</rationale>
+    </rule>
+
+    <rule id="r3-chunk-default" testable="true" depth="essential">
+      <statement>Default chunking is RecursiveCharacterTextSplitter at 400-512 tokens with 50-token overlap. Document-specific overrides (paragraph for legal, header-based for code, hierarchical for manuals) MUST cite the document type in the pipeline spec.</statement>
+      <rationale source="NVIDIA RAG benchmark; Firecrawl chunking benchmarks 2026">Page-level chunking achieves 0.648 accuracy; semantic chunking improves recall by 9%. RecursiveCharacterTextSplitter at 400-512 tokens achieves 85-90% recall — a reliable default before tuning.</rationale>
+    </rule>
+
+    <rule id="r4-reranker-after-retrieval" testable="true" depth="essential">
+      <statement>When tier ∈ {Advanced, Modular, Agentic}, a cross-encoder reranker MUST run after first-stage retrieval. Retrieve top-20, rerank to top-5. Forbidden: passing first-stage top-20 directly to synthesis.</statement>
+      <rationale source="Cohere Rerank; BGE Reranker benchmarks; Anthropic contextual retrieval">Embedding models optimise for broad recall; cross-encoders for precision on the specific query. Top-5 after reranking outperforms top-20 without it on every public benchmark — context cost goes down, quality goes up.</rationale>
+    </rule>
+
+    <rule id="r5-citation-enforcement" testable="true" depth="essential">
+      <statement>System prompt MUST enforce: cite every claim using returned doc IDs; if results are insufficient, say "I don't know" — do not guess. Output schema MUST include a `citations` array; empty citations on a factual claim is a validation error.</statement>
+      <rationale source="Anthropic — guarded RAG; Microsoft RAG eval">Without enforced citation the LLM hallucinates plausible-but-wrong answers. Citation enforcement converts hallucination from a quality issue into a schema violation that CI catches.</rationale>
+    </rule>
+
+    <rule id="r6-eval-gate" testable="true" depth="essential">
+      <statement>Pre-release CI MUST run Ragas (or equivalent) against ≥50 labelled QA pairs and gate on faithfulness ≥ 0.9 + context-recall ≥ 0.85. Releases without an eval-gate run are forbidden.</statement>
+      <rationale source="Ragas docs; Shankar 2024; DORA on measurable gates">RAG quality regresses silently on prompt or chunk changes. The eval gate is the only known reliable check before shipping.</rationale>
+    </rule>
+
   </section>
+
+  <section title="Canonical examples">
+
+    <example type="good" title="Hybrid search with RRF (Qdrant)">
+      <code lang="python"><![CDATA[
+results = qdrant.query_points(
+    collection_name="kb",
+    prefetch=[
+        {"query": dense_vec, "limit": 20},
+        {"query": SparseVector(indices=..., values=...), "limit": 20},
+    ],
+    query=FusionQuery(fusion=Fusion.RRF),
+    limit=10,
+    with_payload=True,
+)
+]]></code>
+      <note>Demonstrates r2-hybrid-default. RRF handles score incompatibility between dense and BM25.</note>
+    </example>
+
+    <example type="bad" title="Naive top-20 to synthesis">
+      <code lang="python"><![CDATA[
+# r4 violation: no reranker; 20 chunks blown into LLM context
+top_k = vector_db.search(query, top_k=20)
+answer = llm.generate(prompt + "\n".join(c.text for c in top_k))
+]]></code>
+      <note>Floods context, drops precision, ignores reranker discipline.</note>
+    </example>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
