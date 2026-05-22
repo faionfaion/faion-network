@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="graph-rag-retrieval Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Decision tree that selects the retrieval path based on query-shape observables. Each branch names a concrete observable (when) and concludes with a reference to the rule from 01-core-rules.xml that owns that branch.</summary>
+
+  <decision-tree>
+    <root-question>What canonical query type does the question match (after classifier returns)?</root-question>
+    <branch when="query_type == 'GLOBAL'">
+      <conclusion ref="r2-global-uses-summaries">Read pre-computed summaries[global]; never trigger live traversal.</conclusion>
+    </branch>
+    <branch when="query_type == 'RELATIONSHIP' AND extracted_entities_count &gt;= 2">
+      <conclusion ref="r3-relationship-bounded-paths">shortest_path between the two entities, depth-cap 3, wrap try/except.</conclusion>
+    </branch>
+    <branch when="query_type == 'RELATIONSHIP' AND extracted_entities_count &lt; 2">
+      <conclusion ref="r5-safe-fallback-local">Fall back to LOCAL vector search; mark fallback_used=true.</conclusion>
+    </branch>
+    <branch when="query_type == 'ENTITY' AND entity_in_graph == true">
+      <conclusion ref="r4-hybrid-first">Lookup neighbors, then hybrid-expand candidates with vector + neighbor chunks.</conclusion>
+    </branch>
+    <branch when="query_type == 'ENTITY' AND entity_in_graph == false">
+      <conclusion ref="r5-safe-fallback-local">Fall back to LOCAL vector search; mark fallback_used=true.</conclusion>
+    </branch>
+    <branch when="query_type == 'LOCAL'">
+      <conclusion ref="r4-hybrid-first">Run vector_store.search; optionally hybrid-expand if entities are extractable.</conclusion>
+    </branch>
+    <branch when="classifier_parse_failed == true">
+      <conclusion ref="r1-classify-every-query">Set query_type=LOCAL, mark fallback_used=true, continue.</conclusion>
+    </branch>
+    <branch when="knowledge_graph == None OR queries_are_local_only == true">
+      <conclusion ref="skip-methodology">Skip graph-rag-retrieval; use plain vector + reranking.</conclusion>
+    </branch>
+    <example trace="root → 'RELATIONSHIP' branch with 2 entities → r3-relationship-bounded-paths">
+      <description>For "How is Alice connected to Acme Corp?", classifier returns RELATIONSHIP; NER extracts {Alice, Acme Corp}; shortest_path runs depth-capped at 3 within try/except; conclusion ref r3 owns this path.</description>
+    </example>
+  </decision-tree>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="vector-db-setup-prod Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for vector-db-setup-prod. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Vector DB Prod Setup — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules: durable persistence, resource limits, HA per DB class, backup + restore drilled, pre+post deploy checklist.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-durable-persistence" testable="true" depth="essential">
+      <statement>Production data MUST sit on a durable persistent volume (EBS gp3, Ceph RBD, Premium SSD). emptyDir or local-storage without replication is forbidden.</statement>
+      <rationale source="K8s storage classes; durability lessons">Ephemeral or non-replicated storage loses data on node failure. Durable storage survives pod evictions, node drains, AZ reboots.</rationale>
     </rule>
+
+    <rule id="r2-resource-limits" testable="true" depth="essential">
+      <statement>K8s Pod MUST set both `requests` and `limits` for CPU + memory. Unbounded resource leads to noisy-neighbour evictions.</statement>
+      <rationale source="K8s SRE patterns">Without requests, the pod may not be scheduled on a node with enough memory; without limits, a misbehaving pod takes neighbours down.</rationale>
+    </rule>
+
+    <rule id="r3-ha-per-db-class" testable="true" depth="essential">
+      <statement>HA strategy MUST match DB class: Milvus/Weaviate ≥3 replicas (distributed); Qdrant single replica + frequent snapshot (no native HA in OSS); pgvector PG replication.</statement>
+      <rationale source="vendor HA docs">Each DB has different HA primitives. Forcing 3-replica on single-leader Qdrant doesn't add HA; it adds confusion.</rationale>
+    </rule>
+
+    <rule id="r4-backup-and-restore-drilled" testable="true" depth="essential">
+      <statement>Backup MUST run on schedule (≥daily) AND restore MUST be drilled in staging quarterly. Untested backup is no backup.</statement>
+      <rationale source="DR drill discipline">Backups that never restore successfully are common. Quarterly drill verifies the chain end-to-end.</rationale>
+    </rule>
+
+    <rule id="r5-pre-post-deploy-checklist" testable="true" depth="essential">
+      <statement>Each prod deploy MUST run a pre-deploy checklist (monitoring live, backup wired, security config applied) and a post-deploy verification (latency in band, ingest works, search returns results).</statement>
+      <rationale source="deployment runbook discipline">Skipped checklists are how prod regressions ship. Codify the steps so nobody forgets one at 02:00.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

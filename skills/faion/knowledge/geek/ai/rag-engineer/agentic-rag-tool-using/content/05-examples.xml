@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Agentic RAG Tool-Using — Worked Example" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>One end-to-end example: ToolUsingRAG class answering a hybrid SQL + document question with a 3-call budget and a cheap routing model.</summary>
+
+  <section title="ToolUsingRAG implementation">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import Callable
+
+import anthropic
+
+
+class ToolUsingRAG:
+    def __init__(
+        self,
+        registry: dict[str, Callable[[str], list[dict]]],
+        routing_model: str = "claude-3-haiku-20240307",
+        synthesis_model: str = "claude-3-5-sonnet-20241022",
+        max_calls: int = 3,
+        web_search_allowlist: list[str] | None = None,
+    ) -> None:
+        self.registry = registry
+        self.routing_model = routing_model
+        self.synthesis_model = synthesis_model
+        self.max_calls = max_calls
+        self.allowlist = set(web_search_allowlist or [])
+        self.client = anthropic.Anthropic()
+
+    def answer(self, query: str) -> dict:
+        trace: list[dict] = []
+        cache: dict[tuple[str, str], list[dict]] = {}
+        violations: list[str] = []
+        for i in range(1, self.max_calls + 1):
+            tool = self._select_tool(query, trace)
+            if tool == "generate_answer":
+                break
+            key = (tool, query.strip().lower())
+            if key in cache:
+                result, cached = cache[key], True
+                latency = 0
+            else:
+                t0 = __import__("time").perf_counter()
+                result = self.registry[tool](query)
+                latency = int((__import__("time").perf_counter() - t0) * 1000)
+                cache[key] = result
+                cached = False
+                if tool == "web_search":
+                    violations += [r["source"] for r in result if not self._allowed(r.get("source", ""))]
+            trace.append({
+                "iteration": i,
+                "tool": tool,
+                "query": query,
+                "result_summary": self._summarise(result)[:200],
+                "latency_ms": latency,
+                "cached": cached,
+            })
+        answer = self._synthesise(query, trace)
+        return {
+            "answer": answer,
+            "trace": trace,
+            "calls_used": len(trace),
+            "max_calls": self.max_calls,
+            "synthesis_model": self.synthesis_model,
+            "routing_model": self.routing_model,
+            "web_search_allowlist_violations": violations,
+        }
+
+    def _allowed(self, url: str) -> bool:
+        return any(url.startswith(domain) for domain in self.allowlist)
+
+    def _summarise(self, result: list[dict]) -> str:
+        if not result:
+            return "no results"
+        top = result[0]
+        return f"hits={len(result)} top_score={top.get('score', 0):.2f} snippet={top.get('text', '')[:80]}"
+
+    def _select_tool(self, query: str, trace: list[dict]) -> str:
+        ...  # routing call using self.routing_model with specific tool descriptions
+
+    def _synthesise(self, query: str, trace: list[dict]) -> str:
+        ...  # synthesis call using self.synthesis_model
+]]></code>
+      <note>Production skeleton: routing model is Haiku (cheap classification), synthesis is Sonnet (multi-source reasoning). Trace is the audit artifact validated by scripts/validate-agentic-rag-tool-using.py.</note>
+    </example>
+  </section>
+</text>

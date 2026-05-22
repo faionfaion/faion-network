@@ -7,91 +7,93 @@ version: 1.0.0
 status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
-summary: Produces a Gemini multimodal integration — Files API upload + ACTIVE polling, image/audio/video inline limits, context caching for repeated docs, file-expiry handler.
+summary: Gemini native multimodal — image/audio/video/PDF + code execution + 2M context + 75%-cheaper context caching, with polling + file-expiry handling.
 content_id: "84e848cad8338495"
 complexity: medium
 produces: code
-est_tokens: 3200
-tags: [gemini, multimodal, video, audio, context-cache]
+est_tokens: 3600
+tags: [gemini, multimodal, video, audio, context-caching, vertex-ai]
 ---
 # Gemini Multimodal Integration
 
 ## Summary
 
-**One-sentence:** Produces a Gemini multimodal integration — Files API upload + ACTIVE polling, image/audio/video inline limits, context caching for repeated docs, file-expiry handler.
+**One-sentence:** Gemini native multimodal — image/audio/video/PDF + code execution + 2M context + 75%-cheaper context caching, with polling + file-expiry handling.
 
-**One-paragraph:** Gemini natively ingests images, audio, video, and PDFs without separate pipelines. The shape: small images (≤4 MB total) can be inlined as base64 parts; everything else goes through Files API which is async (states PROCESSING → ACTIVE → FAILED). Caller polls until ACTIVE before sending, sets a 48h TTL alarm, and re-uploads on FAILED. Context caching lets repeated documents (>32K tokens cached) cut per-call cost ~75%. Must surface BLOCK_REASON the same way as text calls.
+**One-paragraph:** Gemini is the only frontier model with native video/audio understanding (no frame extraction or Whisper hop) and a 2M-token context window. For multi-document pipelines, context caching cuts input cost ~75% vs. full-price per call. Production wires need a polling state machine with a max-iteration guard, explicit FAILED handling, a 48h file-expiry handler, and either Files API or GCS URIs (Vertex AI). Code execution adds a Python sandbox (no internet, ~30s cap). Enterprise deployments must use Vertex AI (ADC, CMEK, VPC-SC) instead of the Developer API.
 
-**Ефективно для:** video summarisation, audio transcription pipelines, multi-document analysis, code/diagram understanding, multimodal chat.
+**Ефективно для:** інженера, який будує мультимодальний агент/пайплайн (video Q&A, OCR, audio transcribe, PDF extraction) на Gemini і потребує детермінованого state-machine + кеш-економії + Vertex AI compliance.
 
 ## Applies If (ALL must hold)
 
-- Vendor is Gemini AND at least one input modality is image/audio/video/PDF.
-- Caller can wait for Files API upload (async, seconds to minutes).
-- Storage cost / TTL acceptable for cached documents.
-- Outputs flow through the safety + block-reason handling from `[[gemini-api-integration]]`.
+- Processing video natively without frame extraction.
+- Audio transcription/analysis without a separate Whisper hop.
+- Long-document pipelines exploiting the 2M-token context window.
+- Combined-modality tasks (video+PDF, image+audio) in one call.
+- Enterprise deployment requires CMEK / VPC-SC / IAM (Vertex AI).
 
 ## Skip If (ANY kills it)
 
-- Text-only inputs — use `[[gemini-basics]]`.
-- Real-time live voice — Gemini Live API is separate.
-- Privacy-restricted content that cannot leave on-prem.
+- Text-only tasks already on OpenAI/Anthropic — adds SDK surface without gain.
+- Need maximum reasoning depth — Claude Opus / o1 outperform on multi-step reasoning.
+- Privacy-sensitive content that cannot leave on-prem — uploads to Google.
+- Low-latency realtime voice — OpenAI Realtime API simpler than Gemini Live.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Media inputs | file paths or bytes | application |
-| Files API quota | doc | finops |
-| Context-cache budget | doc | finops |
-| Gemini config (safety + generation) | JSON | `[[gemini-api-integration]]` |
+| Gemini SDK + API key (or ADC for Vertex) | secret | secrets manager |
+| Media file or GCS URI | bytes/uri | storage |
+| Polling budget (max iterations + timeout) | int | config |
+| Cache TTL policy (1h interactive / 24h batch) | duration | config |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |---|---|
-| `[[gemini-api-integration]]` | Safety + finish_reason handling. |
+| `geek/ai/llm-integration/gemini-api-integration` | Baseline SDK setup, safety, Files API. |
+| `geek/ai/llm-integration/gemini-basics` | Model selection (1.5-pro vs 2.0-flash) and pricing tiers. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 6 rules: Files API for &gt;4 MB / video / audio, ACTIVE poll before send, TTL alarm, context cache for &gt;32K repeat, surface BLOCK_REASON, mime-type explicit | ~700 |
-| `content/02-output-contract.xml` | essential | JSON Schema for multimodal-config.json | ~600 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: inline-base64 video, send-during-PROCESSING, ignore TTL, no cache for repeat doc, BLOCK swallowed | ~600 |
-| `content/04-procedure.xml` | medium | 6-step: classify input → upload via Files API → poll → cache if repeat → send → handle response | ~800 |
-| `content/06-decision-tree.xml` | essential | Root: "any non-text input?" | ~400 |
+| `content/01-core-rules.xml` | essential | 7 rules: poll until ACTIVE/FAILED, max-iteration guard, 48h expiry handler, ≥32K for cache, ADC for Vertex, separate part-types for code exec, GCS URIs for large files. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON contract for a gemini-multimodal config — uploads, polling, cache, modality flags. | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: infinite PROCESSING loop, silent re-upload, cache on <32K content, mixed Vertex/Developer auth, blind .parts[0] indexing. | ~700 |
+| `content/04-procedure.xml` | medium | Steps: classify modality → choose Files API vs GCS URI → upload+poll → optionally cache → generate → extract per-part output. | ~800 |
+| `content/06-decision-tree.xml` | essential | Is this multimodal AND vendor=Gemini? → modality routing → cache vs no-cache → Vertex vs Developer. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |---|---|---|
-| Classify input | sonnet | Mechanical. |
-| Upload + poll | runtime | Mechanical. |
-| Cache decisions | opus | Cost reasoning. |
-| Handle BLOCK_REASON | sonnet | Pattern. |
+| `wire-upload-poll-state-machine` | sonnet | Mechanical state machine, type-safe transitions. |
+| `decide-cache-vs-direct` | opus | Cost reasoning across query patterns. |
+| `audit-file-expiry` | haiku | Pattern-match for 48h expiry handling. |
 
 ## Templates
 
 | File | Purpose |
 |---|---|
-| `templates/multimodal-config.schema.json` | JSON Schema for multimodal-config.json. |
-| `templates/files-api-client.py` | Files API upload + ACTIVE polling + TTL alarm. |
-| `templates/context-cache.py` | Context-cache create + reuse pattern. |
-| `templates/_smoke-test.json` | Minimum valid multimodal-config. |
+| `templates/video-poll.py` | Async video upload + polling loop with max-iteration guard + FAILED handling. |
+| `templates/context-cache.py` | Cache create + reuse + TTL extend + delete lifecycle. |
+| `templates/vertex-setup.py` | Vertex AI init with ADC + GCS URI part construction. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |---|---|---|
-| `scripts/validate-gemini-multimodal.py` | Validates multimodal-config: inline_limit_mb ≤4, files_api enabled if video/audio. | Pre-commit on config. |
+| `scripts/validate-gemini-multimodal.py` | Validate gemini-multimodal-config JSON: modality, polling cap, expiry handling, cache token-floor, auth match. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ai/llm-integration/`
-- `[[gemini-api-integration]]`
-- `[[gemini-basics]]`
+- [[gemini-function-calling]]
+- [[gemini-api-integration]]
+- [[speech-to-text-basics]]
+- [[img-gen-basics]]
 
 ## Decision tree
 
-The decision tree at `content/06-decision-tree.xml` routes: text-only → skip; small images (≤4MB total) → inline; everything else → Files API path.
+The tree at `content/06-decision-tree.xml` walks: is the task multimodal? → is vendor Gemini? → which modality (image/audio/video/PDF/code-exec)? → does context fit a cache (≥32K, ≥2 reuses)? → Developer API vs Vertex AI based on compliance needs. Walk it before invoking the SDK so polling, caching, and auth are picked deterministically.
