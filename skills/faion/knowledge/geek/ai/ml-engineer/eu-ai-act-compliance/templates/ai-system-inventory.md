@@ -1,3 +1,11 @@
+<!--
+purpose: Inventory row + per-system detailed record skeleton.
+consumes: see AGENTS.md ## Prerequisites
+produces: report
+depends-on: content/02-output-contract.xml schema for eu-ai-act-compliance
+token-budget-impact: ≤500 tokens to fill
+-->
+
 # AI System Inventory
 
 | ID | System Name | Description | Risk Level | Role | Status |

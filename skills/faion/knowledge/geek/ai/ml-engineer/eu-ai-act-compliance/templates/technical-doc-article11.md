@@ -1,3 +1,11 @@
+<!--
+purpose: Article 11 technical documentation skeleton.
+consumes: see AGENTS.md ## Prerequisites
+produces: report
+depends-on: content/02-output-contract.xml schema for eu-ai-act-compliance
+token-budget-impact: ≤500 tokens to fill
+-->
+
 # Technical Documentation — Article 11
 ## [System Name] v[X.Y] — CLASSIFICATION: HIGH-RISK AI SYSTEM
 

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Thumbs-Down to Eval Pipeline — Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six-step procedure: ingest feedback → PII scrub → cluster for stop-the-bleed → triple-judge vote → admit under weekly cap → ship in next eval run.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="ingest-normalise">
+      <input>feedback-store rows since last cursor (interaction_id, prompt, response, signal, comment, timestamp, user_hash)</input>
+      <action>Filter signal ∈ {down, report}. Drop rows without prompt+response context. Emit `EvalCandidate` events keyed by interaction_id.</action>
+      <output>`eval-candidates.jsonl` per hour</output>
+      <decision-gate>If feedback volume drops to 0 — alert: silent failure of widget vs no users (r1-four-stage-pipeline).</decision-gate>
+    </step>
+
+    <step n="2" name="pii-scrub">
+      <input>EvalCandidate event</input>
+      <action>Run Presidio / AWS Comprehend / regex on prompt + response + comment. Mark `pii_clean: true` only after full pipeline pass. Quarantine rows with any detected PII for human review.</action>
+      <output>EvalCandidate annotated with `pii_clean` boolean</output>
+      <decision-gate>If pii_clean == false — route to quarantine, NEVER to judge stage (r2-pii-scrub-gate).</decision-gate>
+    </step>
+
+    <step n="3" name="cluster-for-stop-bleed">
+      <input>Last 4h of pii_clean candidates</input>
+      <action>Embed responses; cluster with min_cluster_size=3 + similarity threshold 0.88. Any cluster ≥3 → trigger stop-the-bleed alert to on-call within 15min.</action>
+      <output>Cluster IDs + page if triggered</output>
+      <decision-gate>If cluster fires — pause ship pipeline for the affected intent until human acknowledges (r5-stop-the-bleed).</decision-gate>
+    </step>
+
+    <step n="4" name="triple-judge-vote">
+      <input>pii_clean EvalCandidate without active stop-the-bleed</input>
+      <action>Run 3 independent LLM judges with different prompts: (a) "is this response factually wrong?", (b) "does this violate the rubric pass/fail criteria?", (c) "would a user reasonably thumbs-down?". Admit only if ≥2/3 vote ADMIT.</action>
+      <output>EvalCandidate with `admit_vote: ADMIT|REJECT` + per-judge reasoning</output>
+      <decision-gate>If judges split 1-2 ADMIT — REJECT; ties go to next week's manual triage (r3-three-judge-vote).</decision-gate>
+    </step>
+
+    <step n="5" name="admit-under-weekly-cap">
+      <input>Friday admit-batch + weekly counter</input>
+      <action>Sort ADMIT candidates by judge-confidence × cluster-size. Take top N where N + admitted_this_week ≤ 50. Render to eval-suite row format. Open PR.</action>
+      <output>PR with new eval rows, audit log entry</output>
+      <decision-gate>If weekly cap exceeded — surplus rows wait until next week; do NOT raise the cap silently (r4-weekly-cap).</decision-gate>
+    </step>
+
+    <step n="6" name="ship-in-next-eval-run">
+      <input>Merged PR + CI eval suite</input>
+      <action>Tag commit `eval-suite-vX.Y.Z+1`. Trigger backfill eval on the last 3 model versions. Surface any regression in #ml-ops.</action>
+      <output>Eval-suite version bumped; regression report posted</output>
+      <decision-gate>If regression appears on old version — likely the admitted row reveals a long-standing gap; file ticket, do not roll back.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

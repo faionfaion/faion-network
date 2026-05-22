@@ -1,3 +1,11 @@
+<!--
+purpose: GPAI model card (Article 53).
+consumes: see AGENTS.md ## Prerequisites
+produces: report
+depends-on: content/02-output-contract.xml schema for eu-ai-act-compliance
+token-budget-impact: ≤500 tokens to fill
+-->
+
 # Model Card: [Model Name]
 
 ## Model Details

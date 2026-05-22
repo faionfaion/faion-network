@@ -1,3 +1,11 @@
+<!--
+purpose: Conformity self-assessment template (Article 43).
+consumes: see AGENTS.md ## Prerequisites
+produces: report
+depends-on: content/02-output-contract.xml schema for eu-ai-act-compliance
+token-budget-impact: ≤500 tokens to fill
+-->
+
 # EU AI Act Conformity Self-Assessment
 
 **System:** [Name]
