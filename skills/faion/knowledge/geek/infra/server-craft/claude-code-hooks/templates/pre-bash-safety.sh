@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: PreToolUse hook: block destructive git/system commands.
+# consumes: inputs declared in claude-code-hooks/AGENTS.md Prerequisites table
+# produces: artefact matching claude-code-hooks/content/02-output-contract.xml
+# depends-on: rules in claude-code-hooks/content/01-core-rules.xml
+# token-budget-impact: ~200-600 tokens when filled
 # ~/.claude/hooks/pre-bash-safety.sh
 # PreToolUse hook: block destructive git and system commands.
 # Always include "reason" in block actions — without it Claude retries indefinitely.

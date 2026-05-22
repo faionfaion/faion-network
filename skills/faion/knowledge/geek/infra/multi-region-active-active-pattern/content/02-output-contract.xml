@@ -1,44 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Multi-Region Active-Active Pattern Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Multi-Region Active-Active Pattern output. Subagent must satisfy this before returning to the caller.</summary>
-
+<text id="02-output-contract" title="Multi-Region Active-Active Pattern Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying multi-region-active-active-pattern must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "multi-region-active-active-pattern-output",
+  "required": ["regions", "data_classes", "consistency_model", "conflict_policy", "drill_cadence"],
+  "properties": {
+    "regions": {"description": "Required field regions."},
+    "data_classes": {"description": "Required field data_classes."},
+    "consistency_model": {"description": "Required field consistency_model."},
+    "conflict_policy": {"description": "Required field conflict_policy."},
+    "drill_cadence": {"description": "Required field drill_cadence."}
+  }
+}]]></code>
+  </section>
   <output-contract>
     <required>
-      <field name="residency_map" type="list" required="true">[{dataset, allowed_regions}]</field>
-      <field name="rto_rpo_table" type="list" required="true">[{service, rto_seconds, rpo_seconds}]</field>
-      <field name="topology" type="string" required="true">active-active|active-passive|backup-only</field>
-      <field name="conflict_resolution" type="object" required="true">[{data_type, strategy}]</field>
-      <field name="failover_drill_cadence" type="string" required="true">quarterly</field>
-      <field name="traffic_steering" type="string" required="true">geo-dns|latency|weighted|sticky</field>
-      <field name="owner" type="string" required="true">named SRE / infra lead</field>
+      <field name="regions" required="true">Required field regions.</field>
+      <field name="data_classes" required="true">Required field data_classes.</field>
+      <field name="consistency_model" required="true">Required field consistency_model.</field>
+      <field name="conflict_policy" required="true">Required field conflict_policy.</field>
+      <field name="drill_cadence" required="true">Required field drill_cadence.</field>
     </required>
-
     <forbidden>
-      <pattern id="f1">residency_map missing AND multi-region planned</pattern>
-      <pattern id="f2">rto_rpo_table missing for any service</pattern>
-      <pattern id="f3">active-active without conflict_resolution per data type</pattern>
-      <pattern id="f4">failover_drill never run</pattern>
+      <pattern id="f1">Single region in `regions` list.</pattern>
+      <pattern id="f2">Strict-consistency data class without an explicit conflict_policy.</pattern>
+      <pattern id="f3">drill_cadence absent or &gt;1 year.</pattern>
     </forbidden>
-
     <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      <transformation>Order arrays deterministically by their natural key before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
     </allowed-transformations>
-
-    <schema-reference path="templates/multi-region-active-active-pattern.json"/>
   </output-contract>
-
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "regions": "...",
+  "data_classes": "...",
+  "consistency_model": "...",
+  "conflict_policy": "...",
+  "drill_cadence": "..."
+}]]></code>
+    <note>All required fields populated; forbidden patterns absent.</note>
+  </example>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "data_classes": "...",
+  "consistency_model": "...",
+  "conflict_policy": "...",
+  "drill_cadence": "..."
+}]]></code>
+    <note>Missing the first required field — schema rejects.</note>
+  </example>
   <section title="Self-check checklist">
     <list>
-      <item>residency_map populated with a typed value</item>
-      <item>rto_rpo_table populated with a typed value</item>
-      <item>topology populated with a typed value</item>
-      <item>conflict_resolution populated with a typed value</item>
-      <item>failover_drill_cadence populated with a typed value</item>
-      <item>traffic_steering populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>All required fields present and non-null.</item>
+      <item>No forbidden pattern matched.</item>
+      <item>Output validates against `scripts/validate-multi-region-active-active-pattern.py` exit 0.</item>
     </list>
   </section>
 </text>

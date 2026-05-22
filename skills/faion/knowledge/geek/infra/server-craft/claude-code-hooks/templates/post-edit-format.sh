@@ -1,4 +1,9 @@
 #!/bin/bash
+# purpose: PostToolUse hook: format files after Claude edits/writes them.
+# consumes: inputs declared in claude-code-hooks/AGENTS.md Prerequisites table
+# produces: artefact matching claude-code-hooks/content/02-output-contract.xml
+# depends-on: rules in claude-code-hooks/content/01-core-rules.xml
+# token-budget-impact: ~200-600 tokens when filled
 # ~/.claude/hooks/post-edit-format.sh
 # PostToolUse hook: auto-format files after Claude edits or writes them.
 # Supports: Python (ruff), JS/TS/JSON/CSS/YAML (prettier), Go (gofmt), Rust (rustfmt)

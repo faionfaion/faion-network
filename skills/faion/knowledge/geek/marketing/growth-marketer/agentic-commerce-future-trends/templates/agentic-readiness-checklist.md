@@ -1,47 +1,22 @@
-# Agentic Commerce Readiness Checklist
+# purpose: Per-axis readiness checklist with scoring guidance
+# consumes: inputs declared in agentic-commerce-future-trends/AGENTS.md Prerequisites table
+# produces: artefact matching agentic-commerce-future-trends/content/02-output-contract.xml
+# depends-on: rules in agentic-commerce-future-trends/content/01-core-rules.xml
+# token-budget-impact: ~200-600 tokens when filled
 
-## Immediate — Q1 2026
+# Agentic Commerce Future Trends — Per-axis readiness checklist with scoring guidance
 
-### Cross-Platform Consistency
-- [ ] Audit NAP (Name, Address, Phone) across all platforms
-- [ ] Standardize company description (identical on all profiles)
-- [ ] Verify Google Business Profile is accurate and complete
-- [ ] Check social media profiles for consistency
-- [ ] Audit directory listings for inconsistencies
+> Fill the blocks below; remove `<TODO:...>` markers before committing.
 
-### Structured Data
-- [ ] Implement comprehensive schema markup (Article, Organization, Product)
-- [ ] Add FAQSchema to Q&A content
-- [ ] Add author schema with credentials to all content
-- [ ] Test schema with Google Rich Results Test
+## Inputs
 
-### Foundation
-- [ ] Create /llms.txt at domain root
-- [ ] Optimize for featured snippets
-- [ ] Build review collection process (target 4.5+/5)
+- <TODO: list inputs per Prerequisites>
 
-## Short-Term — 2026
+## Body
 
-### Authority Building
-- [ ] Develop earned media strategy (publications to target)
-- [ ] Create original research or proprietary data content
-- [ ] Establish expert commentary relationships
-- [ ] Build author bio pages with credentials
+<TODO: produce artefact matching 02-output-contract>
 
-### Content
-- [ ] Create multi-format content library (text + video + audio)
-- [ ] Build AI-friendly FAQ pages for core use cases
-- [ ] Create task-oriented content for each customer job-to-be-done
-- [ ] Monitor AI-generated search results for brand mentions
+## Sign-off
 
-### Measurement
-- [ ] Set up AI referral traffic tracking
-- [ ] Track SGE appearance rate
-- [ ] Monitor review score averages monthly
-
-## Long-Term — 2027+
-
-- [ ] Develop API-first interfaces for AI agent access
-- [ ] Build autonomous commerce capabilities for repeat purchases
-- [ ] Establish category authority through consistent output
-- [ ] Adapt pricing transparency for AI comparison queries
+Owner: <TODO>
+Date: <TODO: ISO date>

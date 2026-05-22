@@ -2,75 +2,94 @@
 slug: claude-code-hooks
 tier: geek
 group: infra
-domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Claude Code hooks are user-defined shell scripts that execute synchronously at specific lifecycle events (PreToolUse, PostToolUse, UserPromptSubmit, SubagentStart, Stop, SessionStart, PreCompact, PostCompact).
-content_id: "38fef7c8a4025908"
-tags: [claude-code, hooks, quality-gates, automation, shell-scripting]
+domain: infra
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Claude Code hook configuration: PreToolUse, PostToolUse, UserPromptSubmit, SubagentStop, Notification — wired to project pre-commit, secrets blocking, telemetry routing."
+content_id: "41efd76130ed12b2"
+complexity: medium
+produces: config
+est_tokens: 3800
+tags: [claude-code, hooks, settings, pre-commit, telemetry, geek, infra]
 ---
+
 # Claude Code Hooks
 
 ## Summary
 
-**One-sentence:** Claude Code hooks are user-defined shell scripts that execute synchronously at specific lifecycle events (PreToolUse, PostToolUse, UserPromptSubmit, SubagentStart, Stop, SessionStart, PreCompact, PostCompact).
+**One-sentence:** Claude Code hook configuration: PreToolUse, PostToolUse, UserPromptSubmit, SubagentStop, Notification — wired to project pre-commit, secrets blocking, telemetry routing.
 
-**One-paragraph:** Claude Code hooks are user-defined shell scripts that execute synchronously at specific lifecycle events (PreToolUse, PostToolUse, UserPromptSubmit, SubagentStart, Stop, SessionStart, PreCompact, PostCompact). The core rule: always read stdin fully with `INPUT=$(cat)` as the first command and always return valid JSON on stdout — hooks that ignore stdin or emit invalid JSON break the Claude Code session.
+**One-paragraph:** Claude Code hook configuration: PreToolUse, PostToolUse, UserPromptSubmit, SubagentStop, Notification — wired to project pre-commit, secrets blocking, telemetry routing. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`config`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- Auto-formatting code after Claude edits a file (PostToolUse + Edit/Write matcher)
-- Blocking dangerous git commands before execution (PreToolUse + Bash matcher)
-- Saving tmux session state during long agent runs (UserPromptSubmit, SubagentStart)
-- Auto-running tests after code changes (PostToolUse + Edit matcher)
-- Enforcing coding standards on every edit without manual invocation
+- Project uses Claude Code with custom workflows or skills.
+- Need to enforce 'when X happens, run Y' automatically — pre-commit, secrets block, telemetry.
+- Settings.json is editable at user or project scope.
 
 ## Skip If (ANY kills it)
 
-- Logic that belongs in CI/CD pipelines — hooks run locally and do not replace remote quality gates
-- Actions taking more than 10 seconds — blocking hooks make the entire Claude session unresponsive
-- Network-dependent validation (external API calls, remote test runners) — latency is unpredictable
-- Operations requiring human judgment — hooks are automatic and cannot pause mid-execution
-- Environments without `jq` installed — most hook patterns depend on it for JSON parsing
+- Memory-only preferences suffice (no automated triggers needed).
+- Default hooks satisfy current needs.
+- Hook would only run rarely — a slash command is simpler.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Claude Code installed | version | user |
+| settings.json path | filesystem | user/project |
+| Hook target action | shell command / script | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/claude-code/skills-and-plugins` | How Claude Code skills + plugins relate to hooks. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `hook_yaml_compose` | haiku | Bounded fill of settings.json hooks block. |
+| `hook_target_design` | sonnet | Design the action script. |
+| `hook_failure_diagnose` | opus | Diagnose multi-hook interaction issues. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/settings.json.snippet` | Hooks block snippet for settings.json. |
+| `templates/pre-tool-use.sh` | Sample PreToolUse hook (e.g. secrets gate). |
+| `templates/post-tool-use.sh` | Sample PostToolUse hook (e.g. linter). |
+| `templates/subagent-stop.sh` | Sample SubagentStop hook (e.g. notify). |
+| `templates/_smoke-test.sh` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-claude-code-hooks.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/infra/server-craft/`
+- parent skill: `geek/infra/`
+- `[[skills-and-plugins]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether claude-code-hooks applies: root question — "Is the automation needed for every X event AND a simpler memory preference cannot suffice?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

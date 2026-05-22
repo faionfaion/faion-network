@@ -3,77 +3,94 @@ slug: platform-team-charter-template
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Platform Team Charter Template: codified infra practice that turns the recurring 'role-devops-engineer/Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks)' decision into a repeatable, auditable artefact.
-content_id: "d209a881acea3508"
-tags: [platform-team-charter-template, infra, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Platform team charter: mission, customers, scope/non-scope, paved-road services, SLAs, support model, success metrics, anti-charter (what we do NOT do)."
+content_id: "8a0a6c15c41ec2fe"
+complexity: medium
+produces: spec
+est_tokens: 4600
+tags: [platform-team, charter, internal-developer-platform, sla, geek, infra]
 ---
+
 # Platform Team Charter Template
 
 ## Summary
 
-**One-sentence:** Platform Team Charter Template: codified infra practice that turns the recurring 'role-devops-engineer/Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Platform team charter: mission, customers, scope/non-scope, paved-road services, SLAs, support model, success metrics, anti-charter (what we do NOT do).
 
-**One-paragraph:** Platform Team Charter Template addresses the gap identified by the role-devops-engineer/Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks) playbook: A platform team that owns golden paths needs an explicit charter (who-owns-what, RACI between platform vs app teams, SLAs). Missing for P6 product teams scaling from 1 to N services. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Platform team charter: mission, customers, scope/non-scope, paved-road services, SLAs, support model, success metrics, anti-charter (what we do NOT do). This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`spec`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Org has ≥3 product teams sharing infra / tooling concerns.
+- Engineering wants paved-road services with explicit ownership boundaries.
+- Platform team is being formed OR being repositioned.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Org is <20 engineers — full charter overhead; informal platform suffices.
+- Sole-shop where 1 engineer owns everything.
+- Existing charter is in steady-state operation — refresh, do not rewrite.
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Stakeholder map | Markdown | platform lead |
+| Existing services inventory | Spreadsheet | infra |
+| SLA + support tier matrix | Markdown | this methodology |
+| Anti-charter draft | Markdown | platform lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/dev/software-architect/team-topologies-skills` | Team-Topologies framing of platform team. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | One end-to-end worked example | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `charter_draft` | sonnet | Bounded transform from inputs to charter sections. |
+| `anti_charter_synthesis` | opus | Cross-stakeholder synthesis of 'we do NOT do'. |
+| `metrics_pick` | sonnet | Pick 3-5 platform-health metrics. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/platform-team-charter-template.json` | JSON schema for the Platform Team Charter Template output contract |
-| `templates/platform-team-charter-template.md` | Markdown skeleton with the required fields |
+| `templates/charter.md` | Charter sections: mission, customers, scope, anti-scope, services, SLA, metrics. |
+| `templates/anti-charter.md` | What the platform team does NOT do. |
+| `templates/service-catalogue.md` | Paved-road service list with SLAs. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-platform-team-charter-template.py` | Enforce Platform Team Charter Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-platform-team-charter-template.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/infra/devops-engineer/`
-- upstream playbook: `role-devops-engineer/Greenfield infra bootstrap: k8s + CI/CD + observability + secrets (4 weeks)`
+- parent skill: `geek/infra/`
+- `[[team-topologies-skills]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether platform-team-charter-template applies: root question — "Does the org have ≥3 product teams AND a dedicated platform team is forming or repositioning?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

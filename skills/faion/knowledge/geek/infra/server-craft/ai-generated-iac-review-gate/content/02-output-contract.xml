@@ -1,65 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI IaC Review Gate Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Pins the gate-report shape, the waiver record, and the merge-block rule.</summary>
-
-  <section title="Required gate-report fields">
-    <list>
-      <item><code>pr_number</code> (integer)</item>
-      <item><code>commit_sha</code> (string)</item>
-      <item><code>iac_files_touched</code> (array of repo-relative paths)</item>
-      <item><code>ai_authorship_signals</code> (array; same set as in `ai-base-image-cve-triage`)</item>
-      <item><code>checks</code> (object with four keys: drift, security, performance, multi_arch)</item>
-      <item><code>checks.<name></code> shape: {status: pass | block | advise, findings: [], waivers: []}</item>
-      <item><code>verdict</code> (enum: pass, block)</item>
-      <item><code>codeowners_approver</code> (string or null; required when verdict==pass AND any waiver present)</item>
-    </list>
-    <reference path="templates/gate-report.json">Authoritative JSON Schema for the gate report.</reference>
+<text id="02-output-contract" title="AI-Generated IaC Review Gate Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON-schema output contract the subagent applying ai-generated-iac-review-gate must produce. Required fields, forbidden patterns, allowed transformations, plus valid + invalid worked examples.</summary>
+  <section title="Output schema (JSON Schema draft-07)">
+    <code lang="json"><![CDATA[{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "ai-generated-iac-review-gate-output",
+  "required": ["change_id", "ai_assisted", "blast_radius", "automated_checks", "human_signoff"],
+  "properties": {
+    "change_id": {"description": "Required field change_id."},
+    "ai_assisted": {"description": "Required field ai_assisted."},
+    "blast_radius": {"description": "Required field blast_radius."},
+    "automated_checks": {"description": "Required field automated_checks."},
+    "human_signoff": {"description": "Required field human_signoff."}
+  }
+}]]></code>
   </section>
-
-  <section title="Waiver record structure">
-    <list>
-      <item><code>check_id</code>: stable id of the finding being waived</item>
-      <item><code>rationale</code>: free text, &gt;= 80 chars</item>
-      <item><code>expiry_utc</code>: ISO date, &lt;= 90 days from now</item>
-      <item><code>approver</code>: CODEOWNERS username, never an AI agent</item>
-      <item><code>approved_at_utc</code>: ISO timestamp</item>
-    </list>
-    <reference path="templates/waiver-template.md">Required structure with example.</reference>
-  </section>
-
-  <section title="Merge-block rule">
-    <list>
-      <item><code>verdict=pass</code> when every check is status `pass` OR every block-finding has a non-expired waiver with all required fields.</item>
-      <item><code>verdict=block</code> when ANY: a check is status `block` without waiver; a waiver is expired; a waiver lacks rationale / expiry / approver; codeowners_approver is empty when waivers present.</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Gate-report status `pass` while waivers list is non-empty and codeowners_approver is null.</description>
-      <reason>r5 violation. Waivers require human approval.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Plan output contains `apply` or `destroy` commands instead of plan diff.</description>
-      <reason>r2 violation. Gate must be plan-only.</reason>
-    </antipattern>
-    <antipattern>
-      <description>multi_arch check status `pass` with only amd64 in the build matrix while arch-matrix.yaml lists arm64.</description>
-      <reason>r4 violation. Arch-matrix declares the floor.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Waiver expiry date &gt; 90 days from now.</description>
-      <reason>r3 violation. Expiry must be bounded.</reason>
-    </antipattern>
-  </section>
-
+  <output-contract>
+    <required>
+      <field name="change_id" required="true">Required field change_id.</field>
+      <field name="ai_assisted" required="true">Required field ai_assisted.</field>
+      <field name="blast_radius" required="true">Required field blast_radius.</field>
+      <field name="automated_checks" required="true">Required field automated_checks.</field>
+      <field name="human_signoff" required="true">Required field human_signoff.</field>
+    </required>
+    <forbidden>
+      <pattern id="f1">ai_assisted == true AND human_signoff missing for medium+ blast radius.</pattern>
+      <pattern id="f2">automated_checks missing secrets scan.</pattern>
+      <pattern id="f3">blast_radius unset or 'unknown' on a production-scoped change.</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Order arrays deterministically by their natural key before serialising.</transformation>
+      <transformation>Normalise ISO dates to UTC (`YYYY-MM-DD`).</transformation>
+    </allowed-transformations>
+  </output-contract>
+  <example type="good">
+    <code lang="json"><![CDATA[{
+  "change_id": "...",
+  "ai_assisted": "...",
+  "blast_radius": "...",
+  "automated_checks": "...",
+  "human_signoff": "..."
+}]]></code>
+    <note>All required fields populated; forbidden patterns absent.</note>
+  </example>
+  <example type="bad">
+    <code lang="json"><![CDATA[{
+  "ai_assisted": "...",
+  "blast_radius": "...",
+  "automated_checks": "...",
+  "human_signoff": "..."
+}]]></code>
+    <note>Missing the first required field — schema rejects.</note>
+  </example>
   <section title="Self-check checklist">
     <list>
-      <item>All four checks have a status field, even if `advise` only.</item>
-      <item>Every waiver has the five required fields.</item>
-      <item>Expiry dates are in the future.</item>
-      <item>multi_arch check ran on every architecture from arch-matrix.yaml.</item>
-      <item>verdict matches the merge-block rule.</item>
+      <item>All required fields present and non-null.</item>
+      <item>No forbidden pattern matched.</item>
+      <item>Output validates against `scripts/validate-ai-generated-iac-review-gate.py` exit 0.</item>
     </list>
   </section>
 </text>

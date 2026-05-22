@@ -1,23 +1,22 @@
-# E-E-A-T Enhancement Template
+# purpose: Template for adding Experience / Expertise / Authoritativeness / Trust signals
+# consumes: inputs declared in ai-content-strategy/AGENTS.md Prerequisites table
+# produces: artefact matching ai-content-strategy/content/02-output-contract.xml
+# depends-on: rules in ai-content-strategy/content/01-core-rules.xml
+# token-budget-impact: ~200-600 tokens when filled
 
-## Adding Experience Signals
-Original: [Current generic text]
-Revised: Add "In my X years of [role]..." / "When we tested this with [sample]..." / "We measured [specific metric] and found..."
+# AI Content Strategy — Template for adding Experience / Expertise / Authoritativeness / Trust signals
 
-## Adding Expertise Signals
-Original: [Current text]
-Revised: Add credentials: "As a [credential/background]..." / Methodology: "We used [specific framework]..." / Research: "Our study of [N] [subjects] found..."
+> Fill the blocks below; remove `<TODO:...>` markers before committing.
 
-## Adding Authoritativeness Signals
-Original: [Current text]
-Revised: Add "According to [specific study/organization name + date]..." / "Our data, consistent with [Authority]'s findings, shows..." / Link to primary sources, not summaries.
+## Inputs
 
-## Adding Trustworthiness Signals
-Original: [Current text]
-Revised: Add "This approach works for [specific case] but not for [limitation]..." / "What we got wrong initially: [failure]..." / "Full methodology: [link]..."
+- <TODO: list inputs per Prerequisites>
 
-## Fact-Check Log
-| Claim | Source | Verified? | Date |
-|-------|--------|-----------|------|
-| [Statistic] | [URL] | [ ] | |
-| [Research finding] | [URL] | [ ] | |
+## Body
+
+<TODO: produce artefact matching 02-output-contract>
+
+## Sign-off
+
+Owner: <TODO>
+Date: <TODO: ISO date>

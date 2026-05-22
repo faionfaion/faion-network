@@ -1,31 +1,22 @@
-# Content Brief: [Topic]
+# purpose: AI content prompt template with role/constraints/context/task/output
+# consumes: inputs declared in ai-content-strategy/AGENTS.md Prerequisites table
+# produces: artefact matching ai-content-strategy/content/02-output-contract.xml
+# depends-on: rules in ai-content-strategy/content/01-core-rules.xml
+# token-budget-impact: ~200-600 tokens when filled
 
-## Role
-You are a [expert type, e.g., "B2B SaaS content strategist"] helping create content about [topic].
+# AI Content Strategy — AI content prompt template with role/constraints/context/task/output
 
-## Constraints
-- Avoid generic advice aggregated from top 10 search results
-- Focus on [specific perspective/angle]
-- Target audience: [specific ICP, e.g., "marketing managers at 50-500 person SaaS companies"]
-- Writing level: 6th-8th grade reading level
-- Tone: [e.g., "helpful, specific, opinionated — not hedging"]
+> Fill the blocks below; remove `<TODO:...>` markers before committing.
 
-## Context
-- Company: [Your company name and one-line description]
-- Product: [What it does, who it's for]
-- Unique angle: [What only you know or can say about this topic]
-- Brand voice: [3-5 word description + one example sentence]
+## Inputs
 
-## Task
-Write a [content type: blog post / article / guide] about [topic] that:
-1. Opens with [specific hook, e.g., "a surprising data point we discovered"]
-2. Includes [your proprietary data/insight]
-3. References [specific experiences you've had]
-4. Takes a stance on [controversial sub-topic]
-5. Ends with actionable next steps
+- <TODO: list inputs per Prerequisites>
 
-## Output
-Format: markdown
-Target length: [word count]
-Sections: [H2 list]
-Do not include: generic advice, hypotheticals, industry jargon without definition
+## Body
+
+<TODO: produce artefact matching 02-output-contract>
+
+## Sign-off
+
+Owner: <TODO>
+Date: <TODO: ISO date>

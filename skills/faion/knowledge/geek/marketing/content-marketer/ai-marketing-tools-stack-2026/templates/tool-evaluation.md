@@ -1,33 +1,22 @@
-# AI Marketing Tool Evaluation Matrix
+# purpose: Per-tool evaluation skeleton with function bucket and scoring axes
+# consumes: inputs declared in ai-marketing-tools-stack-2026/AGENTS.md Prerequisites table
+# produces: artefact matching ai-marketing-tools-stack-2026/content/02-output-contract.xml
+# depends-on: rules in ai-marketing-tools-stack-2026/content/01-core-rules.xml
+# token-budget-impact: ~200-600 tokens when filled
 
-## Tool: [Tool Name]
+# AI Marketing Tools Stack 2026 — Per-tool evaluation skeleton with function bucket and scoring axes
 
-| Criterion | Score (1-5) | Notes |
-|-----------|-------------|-------|
-| Integrates with existing stack | | Does it connect without manual export/import? |
-| Automates at least one manual handoff | | Which handoff does it eliminate? |
-| Management overhead vs time saved | | Net time saved per week? |
-| ROI measurable within 30 days | | Which metric captures ROI? |
-| Agent-friendly (API available) | | Can it be called from an automated pipeline? |
+> Fill the blocks below; remove `<TODO:...>` markers before committing.
 
-## Integration Assessment
-- Current tools it connects to: _______________
-- Manual steps required to integrate: _______________
-- Data stays in tool or exports to: _______________
+## Inputs
 
-## Automation Assessment
-- Current manual process it replaces: _______________
-- Estimated hours/week saved: _______________
-- Failure modes if automation breaks: _______________
+- <TODO: list inputs per Prerequisites>
 
-## ROI Tracking
-- Primary metric: _______________
-- Baseline (current): _______________
-- Target after 30 days: _______________
-- Target after 90 days: _______________
+## Body
 
-## Verdict
-- [ ] Adopt — fits all 4 criteria
-- [ ] Trial — fits 3/4, monitor for 30 days
-- [ ] Reject — fails integration or ROI criteria
-- [ ] Defer — valuable but not a current priority
+<TODO: produce artefact matching 02-output-contract>
+
+## Sign-off
+
+Owner: <TODO>
+Date: <TODO: ISO date>

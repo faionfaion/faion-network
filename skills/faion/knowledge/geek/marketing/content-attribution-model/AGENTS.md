@@ -4,79 +4,93 @@ tier: geek
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Content Attribution Model: codified marketing practice that turns the recurring 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a content-attribution report mapping each long-form piece to first-touch, lift-test, and assisted-conversion contribution, with attribution windows pinned and the owner accountable."
 content_id: "eb89b802fceefc3f"
-tags: [content-attribution-model, marketing, geek]
+complexity: deep
+produces: report
+est_tokens: 2900
+tags: [content-attribution, multi-touch, growth, content-marketing, geek]
 ---
+
 # Content Attribution Model
 
 ## Summary
 
-**One-sentence:** Content Attribution Model: codified marketing practice that turns the recurring 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a content-attribution report mapping each long-form piece to first-touch, lift-test, and assisted-conversion contribution, with attribution windows pinned and the owner accountable.
 
-**One-paragraph:** Content Attribution Model addresses the gap surfaced by 'role-growth-marketing/Content Engine Build from Zero (12 weeks)'. Tying long-form content to downstream revenue is a multi-touch attribution problem. Faion has conversion-tracking and attribution-models for ads but no content-specific attribution playbook. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Tying long-form content to downstream revenue is a multi-touch attribution problem distinct from paid-ad attribution. Faion already covers ads attribution; this methodology fills the content side: per-piece first-touch counts (from UTM + GA4), assisted conversions (data-driven attribution), and where possible a lift estimate from a content-holdout group. Output is a ranked content portfolio with revenue contribution per piece, owner-signed, attribution windows pinned, and a refresh cadence.
+
+**Ефективно для:** B2B content teams justifying budget to finance; SaaS growth teams ranking their content portfolio; agencies reporting content ROI to clients.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Long-form content (blog, newsletter, podcast, video) has been running for ≥90 days
+- UTM tagging is consistent across owned channels
+- Conversion event is wired and visible in analytics
+- Finance or content lead will use the report to make budget decisions
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Less than 90 days of consistent UTM tagging — too noisy for stable attribution
+- Single-piece content (one launch post) — overkill for one artefact
+- Pure brand / awareness content with no conversion event — measure differently
 
 ## Prerequisites
 
-- recent context for the 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Input artifact | Format | Source |
+|---|---|---|
+| Per-piece UTM + GA4 export | CSV | analytics warehouse |
+| Data-driven attribution model output | CSV | GA4 / Adobe Analytics |
+| Content inventory with publish dates | YAML / sheet | CMS export |
+| Optional: content holdout / lift test | Note + estimate | growth experiment log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| `geek/marketing/marketing-manager` | parent role context |
+| [[blended-cac-model]] | feeder of paid-channel CAC |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `collect_per_piece_data` | haiku | Mechanical extraction across UTM + analytics |
+| `rank_by_revenue` | sonnet | Bounded scoring with typed inputs |
+| `write_executive_summary` | opus | Cross-piece narrative for finance/board |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/content-attribution-model.json` | JSON schema for the Content Attribution Model output contract |
-| `templates/content-attribution-model.md` | Markdown skeleton with the required fields |
+| `templates/content-attribution-model.json` | JSON schema for the attribution report |
+| `templates/content-attribution-model.md` | Markdown skeleton with per-piece table |
+| `templates/_smoke-test.json` | Minimum-viable filled example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-content-attribution-model.py` | Enforce Content Attribution Model output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-content-attribution-model.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/marketing/growth-marketer/`
-- upstream playbook: `role-growth-marketing/Content Engine Build from Zero (12 weeks)`
-- methodology family: `geek/marketing/` (gap-p2 batch, F-059-063)
+- parent skill: `geek/marketing/`
+- [[blended-cac-model]]
+- [[anti-slop-rubric]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether content-attribution-model applies: root question — "Is the portfolio measured against a single conversion event with ≥90 days of UTM-tagged data?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision, r6-window-pinned.

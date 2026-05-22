@@ -3,55 +3,96 @@ slug: soc2-control-to-repo-artifact-map
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
 maintainers: [faion-network]
-content_id: "dfcc6e7f0221f461"
-summary: One-to-many YAML map from each SOC 2 Trust Service Criterion to concrete repo artifacts (file paths, CI jobs, dashboard URLs) so audit evidence pulls in minutes, not weeks.
+summary: "Per-SOC2-control mapping to live repo artifacts (CI config, runbook, IaC file, audit log path) — so auditors and engineers reference the same evidence."
+content_id: "09a16fc8a526036e"
+complexity: deep
+produces: spec
+est_tokens: 4600
+tags: [soc2, compliance, audit, evidence, geek, infra]
 ---
-# Soc2 Control To Repo Artifact Map
+
+# SOC2 Control-to-Repo Artifact Map
 
 ## Summary
 
-**One-sentence:** One-to-many YAML map from each SOC 2 Trust Service Criterion (TSC) control to concrete repo artifacts — file paths, CI job names, dashboard URLs — auto-rendered into the auditor evidence binder.
+**One-sentence:** Per-SOC2-control mapping to live repo artifacts (CI config, runbook, IaC file, audit log path) — so auditors and engineers reference the same evidence.
 
-**One-paragraph:** Annual SOC 2 audits stall when evidence lives in a hundred places and is re-discovered every year. This methodology defines a single source-of-truth `soc2-map.yaml` checked into the product repo, mapping every applicable TSC criterion to one or more concrete artifacts (file path, CI job, dashboard link, ticket query, IaC resource). A small renderer turns the map into the auditor's evidence index and detects rot (artifact paths that no longer exist or CI jobs that disappeared). Anchored to "SOC2 / GDPR audit prep (annual)" for the product dev team. Geek tier because it presupposes self-hosted CI, infra-as-code, and a dashboarding stack.
+**One-paragraph:** Per-SOC2-control mapping to live repo artifacts (CI config, runbook, IaC file, audit log path) — so auditors and engineers reference the same evidence. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`spec`) at a deep complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- You are preparing for or maintaining a SOC 2 Type II audit (or equivalent: ISO 27001, HIPAA SOC 2-style controls).
-- The product is shipped from one or a small set of monorepos / linked repos where artifacts live.
-- You have authority to enforce that new controls require a map entry.
-- A named consumer exists — auditor, GRC analyst, or compliance bot.
+- Org is pursuing or maintaining SOC2 Type II.
+- Engineering team owns infrastructure + change management.
+- Auditor expects auditable evidence repeatable across periods.
 
 ## Skip If (ANY kills it)
 
-- Pre-audit phase with no scoped TSC list yet — first run a scoping workshop; map comes after scope is frozen.
-- Artifacts live primarily outside the repo (e.g., paper logs, Notion-only) — fix the artifact-location problem first, then come back.
-- One-off snapshot for a tiny startup with <5 controls — overhead does not pay back; a flat checklist is cheaper.
+- No SOC2 obligation OR using a vCISO that produces evidence externally.
+- Pre-product company — controls not yet operating.
+- Existing GRC tool (Vanta / Drata) already maps controls to artifacts and engineers consume it.
 
 ## Prerequisites
 
-- Frozen list of in-scope TSC criteria (Security mandatory; Availability / Confidentiality / Processing Integrity / Privacy optional).
-- Read access to CI logs, dashboards, and ticket systems the artifacts point at.
-- A storage location for the rendered evidence binder (S3 bucket, doc, git tag) the auditor reads from.
+| Input artifact | Format | Source |
+|---|---|---|
+| SOC2 control list | Markdown / spreadsheet | compliance team |
+| Repo + IaC + CI | GitHub / GitLab | engineering |
+| Audit log catalogue | Markdown | audit-logging-baseline |
+| Evidence retention SLA | Markdown | compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/AGENTS.md` | Parent group context |
-| `pro/infra/pci-dss-vendor-evidence-pack` if present | Sibling evidence-collection discipline |
+| `pro/infra/devops-engineer/audit-logging-baseline` | Source of audit log evidence. |
+| `geek/infra/banking-core-data-residency-rules` | Residency artifacts overlap with SOC2 evidence. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules every map enforces | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/05-examples.xml` | medium | One end-to-end worked example | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `artifact_search` | sonnet | Find repo artifact matching control. |
+| `evidence_freshness_check` | haiku | Mechanical check of last-modified. |
+| `control_gap_analysis` | opus | Cross-control synthesis to find uncovered areas. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/control-map.yaml` | Per-control mapping to repo artifacts. |
+| `templates/evidence-bundle.md` | Audit-ready evidence bundle template. |
+| `templates/gap-analysis.md` | Per-quarter gap-analysis report. |
+| `templates/_smoke-test.yaml` | Minimum-viable filled-in example (smoke test). |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-soc2-control-to-repo-artifact-map.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
 - parent skill: `geek/infra/`
-- triggering activity: `p6-product-dev-team/SOC2 / GDPR audit prep (annual)`
-- adjacent: `soc2-evidence-generator-cli` (pro/sdd) — generates per-PR evidence stubs that link into this map.
+- `[[audit-logging-baseline]]`
+- `[[banking-core-data-residency-rules]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether soc2-control-to-repo-artifact-map applies: root question — "Does the org hold SOC2 Type II OR is in audit window AND engineering owns infrastructure?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

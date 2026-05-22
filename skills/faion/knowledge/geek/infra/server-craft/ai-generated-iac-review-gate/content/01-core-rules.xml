@@ -1,80 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI IaC Review Gate Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Five testable rules every AI-IaC review gate enforces. Hard rules; CI MUST refuse merge when any check fails without an explicit waiver.</summary>
-
-  <section title="The five rules">
-
-    <rule id="r1-four-check-mandatory" testable="true" depth="essential">
-      <statement>Every IaC PR touched by an AI assistant MUST execute all four checks: drift (provider-schema validation + plan-only diff), security (tfsec / kubesec / hadolint + posture-bound rules), performance (resource requests/limits, instance class, sync-in-async detection), multi-arch (build on every architecture in `arch-matrix.yaml`). Skipping a check requires an explicit waiver entry, never a silent pass.</statement>
-      <rationale source="Pareto of AI-IaC postmortems 2023-2025">The four checks cover the dominant prod-breaking shapes. Three-check gates miss multi-arch (most common failure: arm64 not in the build matrix); four-check gates catch &gt;95% of postmortem-classified failures.</rationale>
+<text id="01-core-rules" title="AI-Generated IaC Review Gate Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every application of ai-generated-iac-review-gate enforces. Each rule has a statement, a rationale anchored to industry practice, and a source citation.</summary>
+  <section title="Rule set">
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every AI-assisted IaC PR runs the automated gate: secrets scan, policy-as-code, plan-diff, drift detection.</statement>
+      <rationale source="OWASP AI Code Generation review guide 2026">AI tools leak secrets and produce drift that humans miss in review.</rationale>
     </rule>
-
-    <rule id="r2-plan-only-execution" testable="true" depth="essential">
-      <statement>The gate MUST run terraform / kubectl / helm in plan-only / dry-run mode. Apply / install in the gate is FORBIDDEN. CI credentials MUST be scoped to read + plan, never write. State files MUST be remote (S3, GCS, Terraform Cloud); local state in CI is FORBIDDEN.</statement>
-      <rationale source="Provider-blast-radius incidents">An apply-from-PR-CI gate destroys prod when the AI generates a destructive diff (`terraform destroy` lookalike). Plan-only is the only safe execution boundary; the gate's job is verification, not deployment.</rationale>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Blast-radius is classified before review starts; the classification gates which human reviewers are required.</statement>
+      <rationale source="Google SRE — Change-management practices">Without explicit classification, all changes get the same review (or none).</rationale>
     </rule>
-
-    <rule id="r3-waiver-discipline" testable="true" depth="essential">
-      <statement>A check waiver MUST include: (a) the check ID; (b) a written rationale &gt;= 80 characters; (c) an expiry date &lt;= 90 days out; (d) a named human approver from CODEOWNERS. Waivers without all four fields are REJECTED. Expired waivers re-block the merge automatically.</statement>
-      <rationale source="Waiver-decay surveys; SOC 2 change-management criterion">Open-ended waivers become permanent exceptions. Bounded waivers with rationale + expiry produce a tracked debt list rather than a silent rules graveyard.</rationale>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>High-blast changes require 2 reviewers: senior engineer + security; both sign-offs recorded in the PR.</statement>
+      <rationale source="OpenSSF Secure Supply Chain Consumption Framework 2026">Single-reviewer high-blast = single point of failure.</rationale>
     </rule>
-
-    <rule id="r4-multi-arch-test-no-arch-skip" testable="true" depth="essential">
-      <statement>Docker builds and Helm chart container references MUST build successfully on EVERY architecture listed in `arch-matrix.yaml` (minimum: linux/amd64, linux/arm64). A `--platform amd64` only build is REJECTED unless `arch-matrix.yaml` declares amd64 as the sole architecture (with rationale).</statement>
-      <rationale source="ARM transition data; Graviton / Apple Silicon adoption">AI assistants default to amd64 because most training examples were amd64. Modern fleets are mixed arch (Graviton in AWS, Apple Silicon for dev). Multi-arch build is the cheapest gate against "works on my laptop / fails on Graviton" incidents.</rationale>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>AI-generated comments + commit messages are reviewed for fabricated rationale (hallucinated justifications).</statement>
+      <rationale source="OWASP AI Code Generation review guide 2026">Hallucinated justifications mislead future maintainers; auditing them prevents the trap.</rationale>
     </rule>
-
-    <rule id="r5-human-approval-on-block-or-waive" testable="true" depth="essential">
-      <statement>A `block`-severity finding MUST receive either a fix (re-run the gate) or a waiver (with all four fields per r3). The AI assistant CANNOT self-waive; a CODEOWNERS human is required. The gate's verdict is the merge gate; CI MUST refuse merge until verdict is pass or all blocks waived.</statement>
-      <rationale source="Self-modifying-AI guard pattern">If the AI can waive its own gate findings, the gate is theatre. CODEOWNERS protection is the structural defence; cultural rules alone are insufficient.</rationale>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Approved AI-IaC patterns are pinned in a reference library; novel patterns require additional review.</statement>
+      <rationale source="tfsec / checkov rule libraries 2026">Approved patterns reduce review surface; novel ones surface risk.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, skip this methodology and route to the adjacent one referenced in Related.</statement>
+      <rationale source="F-066 skill-authoring conventions">A skip rule keeps the decision tree closed: every branch ends at a real rule id.</rationale>
+    </rule>
   </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Multi-arch caught at gate, AI repairs">
-      <code lang="dockerfile"><![CDATA[
-# AI draft (FAIL multi-arch)
-FROM python:3.12-slim
-RUN apt-get install -y libpq-dev gcc  # fails on arm64 base ABI
-
-# Repair after gate feedback
-FROM --platform=$BUILDPLATFORM python:3.12-slim AS build
-ARG TARGETARCH
-RUN case "$TARGETARCH" in \
-      amd64|arm64) apt-get update && apt-get install -y libpq-dev gcc ;; \
-      *) echo "unsupported arch: $TARGETARCH" && exit 1 ;; \
-    esac
-      ]]></code>
-      <note>r4 satisfied: explicit arch branching, supported-arch list matches arch-matrix.yaml.</note>
-    </example>
-
-    <example type="bad" title="Apply-from-PR-CI">
-      <code lang="yaml"><![CDATA[
-# CI job (FORBIDDEN per r2)
-steps:
-  - name: deploy
-    run: terraform apply -auto-approve
-      ]]></code>
-      <note>r2 violation. `apply -auto-approve` from PR CI on AI-generated diff is one of the highest-blast-radius patterns. The gate runs `plan`; apply is a separate, gated workflow with human approval.</note>
-    </example>
-
-    <example type="bad" title="Self-waiver by AI">
-      <code lang="text"><![CDATA[
-Gate finding: SEC-003 root container, severity=block
-Waiver added by claude-code commit:
-  reason: "not a production container"
-  expiry: (none)
-  approver: claude-code
-      ]]></code>
-      <note>r3 + r5 violations. Approver is the AI itself; no expiry. CI MUST reject the waiver.</note>
-    </example>
-
-  </section>
-
   <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/06-decision-tree.xml" />
   </see-also>
 </text>

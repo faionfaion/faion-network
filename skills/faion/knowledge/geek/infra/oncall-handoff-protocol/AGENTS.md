@@ -3,77 +3,89 @@ slug: oncall-handoff-protocol
 tier: geek
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Oncall Handoff Protocol: codified infra practice that turns the recurring 'p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop' decision into a repeatable, auditable artefact.
-content_id: "8ff841aabf1d8aa2"
-tags: [oncall-handoff-protocol, infra, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Structured on-call handoff: open incidents, pending follow-ups, known-quiet-period plans, paged-but-not-resolved items, escalation contacts, fatigue note."
+content_id: "702a59640c339abd"
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [on-call, handoff, incident, rotation, geek, infra]
 ---
-# Oncall Handoff Protocol
+
+# On-Call Handoff Protocol
 
 ## Summary
 
-**One-sentence:** Oncall Handoff Protocol: codified infra practice that turns the recurring 'p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop' decision into a repeatable, auditable artefact.
+**One-sentence:** Structured on-call handoff: open incidents, pending follow-ups, known-quiet-period plans, paged-but-not-resolved items, escalation contacts, fatigue note.
 
-**One-paragraph:** Oncall Handoff Protocol addresses the gap identified by the p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop playbook: Cross-cutting atomic task we surfaced in the angle prompt but couldn't fit into a playbook above without redundancy. P6 teams need a concrete handoff format (open incidents, suppressed alerts, scheduled work, known-fragile services). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Structured on-call handoff: open incidents, pending follow-ups, known-quiet-period plans, paged-but-not-resolved items, escalation contacts, fatigue note. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`checklist`) at a light complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- On-call rotation has ≥2 engineers handing off between shifts.
+- Recent shift handled ≥1 paging incident OR has open follow-up items.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-engineer on-call with no handoff partner (sit-back rotation).
+- Fully automated triage with no human shift — no handoff to do.
 
 ## Prerequisites
 
-- recent context for the p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Incident tracker | Jira / PagerDuty / Linear | ops |
+| Shift overlap slot | calendar | 15 min minimum |
+| Handoff template | Markdown | this methodology |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `geek/infra/on-call-rotation-setup` | Defines the rotation this protocol handed-off within. |
+| `pro/infra/devops-engineer/incident-response-playbook` | Active incidents may still be in motion. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `handoff_compose` | haiku | Bounded template fill. |
+| `escalation_check` | sonnet | Decide whether anything needs same-day exec briefing. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/oncall-handoff-protocol.json` | JSON schema for the Oncall Handoff Protocol output contract |
-| `templates/oncall-handoff-protocol.md` | Markdown skeleton with the required fields |
+| `templates/handoff.md` | Structured handoff checklist. |
+| `templates/fatigue-note.md` | Outgoing engineer fatigue + rest signal. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-oncall-handoff-protocol.py` | Enforce Oncall Handoff Protocol output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-oncall-handoff-protocol.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `geek/infra/devops-engineer/`
-- upstream playbook: `p6-product-dev-team/Cross-role handoff: PM -> Architect -> Dev -> QA -> DevOps in one loop`
+- parent skill: `geek/infra/`
+- `[[on-call-rotation-setup]]`
+- `[[incident-response-playbook]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether oncall-handoff-protocol applies: root question — "Did the shift have ≥1 paging incident OR open follow-ups?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

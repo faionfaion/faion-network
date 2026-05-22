@@ -4,76 +4,91 @@ tier: geek
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Anti Slop Rubric: codified growth-marketing practice that turns the recurring 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Codified anti-slop rubric that gates AI-assisted content pipelines on typed inputs, named owner, semver versioning, and a per-rule automated detector."
 content_id: "96087030558f7f7b"
-tags: [anti-slop-rubric, marketing, geek]
+complexity: medium
+produces: rubric
+est_tokens: 2900
+tags: [anti-slop, ai-content, rubric, marketing, geek]
 ---
-# Anti Slop Rubric
+
+# Anti-Slop Rubric
 
 ## Summary
 
-**One-sentence:** Anti Slop Rubric: codified growth-marketing practice that turns the recurring 'role-growth-marketing/Content Engine Build from Zero (12 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Codified anti-slop rubric that gates AI-assisted content pipelines on typed inputs, named owner, semver versioning, and a per-rule automated detector.
 
-**One-paragraph:** Anti Slop Rubric addresses the gap identified by the role-growth-marketing/Content Engine Build from Zero (12 weeks) playbook: AI-assisted content pipelines without explicit anti-slop guardrails produce plausible-but-unrankable posts. Need a concrete rubric and review SOP — this is the user's stated #1 pain point. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Closes the gap surfaced by 'role-growth-marketing/Content Engine Build from Zero (12 weeks)': AI-assisted content stacks without explicit anti-slop guardrails ship plausible-but-unrankable posts. The rubric forces six testable preconditions on every published piece — bounded scope, typed input with source, named owner, semver + last_reviewed date, automated detector defined before the corrective action, and pre-declared attribution windows — then emits an audited artefact downstream agents can read without re-deriving the judgement.
+
+**Ефективно для:** in-house content teams running AI drafts at >10 pieces/week; agencies needing a defensible quality gate; growth marketers shipping under E-E-A-T pressure.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-growth-marketing/Content Engine Build from Zero (12 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- AI is producing first drafts that humans publish without enrichment
+- Pipeline currently has no detector for slop signals (generic openings, unsourced claims)
+- An owner exists and can be named on every artefact
+- Output will be consumed by downstream automation or a human reviewer
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-pass throwaway content (one-off announcement) — overhead exceeds value
+- Regulated content (medical/legal/financial) — defer to compliance review, not this rubric
+- Brand voice not yet codified — rubric amplifies the gap, fix voice first
 
 ## Prerequisites
 
-- recent context for the role-growth-marketing/Content Engine Build from Zero (12 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| AI draft pipeline definition | Markdown / YAML | team runbook |
+| Brand voice guide with examples | Markdown | marketing repo |
+| Owner directory (handles / emails) | YAML or CSV | team wiki |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/marketing/marketing-manager` | parent role skill — provides the operating context for this methodology |
+| `geek/marketing/marketing-manager` | parent role context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-detector-first, r5-conversion-window | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
+| `draft_inputs_summary` | haiku | Mechanical template fill |
+| `synthesize_decision` | sonnet | Per-instance judgement with bounded inputs |
 | `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-slop-rubric.json` | JSON schema for the Anti Slop Rubric output contract |
-| `templates/anti-slop-rubric.md` | Markdown skeleton with the required fields |
+| `templates/anti-slop-rubric.json` | JSON schema for the anti-slop rubric output contract |
+| `templates/anti-slop-rubric.md` | Markdown skeleton with all required fields |
+| `templates/_smoke-test.json` | Minimum-viable filled example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-anti-slop-rubric.py` | Enforce Anti Slop Rubric output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-anti-slop-rubric.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
 - parent skill: `geek/marketing/`
-- upstream playbook: `role-growth-marketing/Content Engine Build from Zero (12 weeks)`
+- [[content-attribution-model]]
+- [[ai-content-strategy]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether anti-slop-rubric applies: root question — "Is the content artefact produced by AI drafting AND consumed downstream by automation or a human reviewer?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-detector-first, r6-conversion-window.

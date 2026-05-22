@@ -4,71 +4,95 @@ tier: geek
 group: marketing
 domain: marketing
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A workflow where AI handles research, outlines, and first drafts while humans add first-hand experience, proprietary data, expert quotes, and opinionated takes — producing content that passes Google's E-E-A-T criteria and stands out from generic AI-only output.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Spec for an AI+human content pipeline where AI handles research, outlines, and drafts while humans add experience, proprietary data, and opinions — gated by E-E-A-T checks and a hard human approval before publish."
 content_id: "229fb56365f49efa"
-tags: [content-marketing, ai-writing, seo, eeat, multi-channel]
+complexity: deep
+produces: spec
+est_tokens: 2900
+tags: [ai-content, content-strategy, eeat, multi-channel, marketing, geek]
 ---
+
 # AI Content Strategy
 
 ## Summary
 
-**One-sentence:** A workflow where AI handles research, outlines, and first drafts while humans add first-hand experience, proprietary data, expert quotes, and opinionated takes — producing content that passes Google's E-E-A-T criteria and stands out from generic AI-only output.
+**One-sentence:** Spec for an AI+human content pipeline where AI handles research, outlines, and drafts while humans add experience, proprietary data, and opinions — gated by E-E-A-T checks and a hard human approval before publish.
 
-**One-paragraph:** A workflow where AI handles research, outlines, and first drafts while humans add first-hand experience, proprietary data, expert quotes, and opinionated takes — producing content that passes Google's E-E-A-T criteria and stands out from generic AI-only output. Never "prompt and publish."
+**One-paragraph:** AI-only content aggregates the top 10 search results without new insight; Google's Helpful Content Updates actively deprioritise it. This methodology specifies the six-stage workflow (AI research → human enrichment → AI draft → human voice/opinion → AI SEO → human approval), the mandatory human-approval gate before publish, and the E-E-A-T signal floor every piece must clear. Output is a published spec the content team and the agentic pipeline both read from.
+
+**Ефективно для:** B2B content teams shipping >10 pieces/week with AI drafts; solo founders running an editorial cadence; agencies needing a repeatable AI+human gate.
 
 ## Applies If (ALL must hold)
 
-- Building a multi-channel content pipeline where AI handles drafts and humans approve before publishing.
-- Planning a content calendar requiring 10+ pieces per week — AI handles volume, human handles quality gate.
-- Implementing systematic content repurposing: one long-form piece → social posts + email + newsletter.
-- Setting up SEO-optimized content production with AI-generated keyword-targeted outlines and first drafts.
+- Building or running a multi-channel content pipeline with AI drafts
+- Editorial cadence ≥10 pieces/week and human review capacity is the bottleneck
+- Brand voice guide exists with concrete examples
+- Conversion / ranking is a goal, not just volume
 
 ## Skip If (ANY kills it)
 
-- Breaking news or time-sensitive reactive commentary — AI drafting delay and review cycles are too slow.
-- Highly regulated content (medical, legal, financial advice) where AI hallucinations carry compliance risk.
-- Personal brand content requiring authentic lived experience — AI cannot generate genuine first-person insight.
-- When brand voice is still undefined — AI amplifies generic "marketing voice" rather than a distinct personality.
+- Breaking news / time-sensitive commentary — AI draft + review cycle is too slow
+- Highly regulated content (medical / legal / financial) — compliance risk overrides
+- Personal brand content needing genuine first-person voice — AI cannot generate it
+- Brand voice still undefined — AI amplifies generic 'marketing voice'
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Brand voice guide with examples | Markdown | marketing repo |
+| Topic brief with target ICP | Markdown | editorial planner |
+| Asset library: expert quotes, proprietary data, case studies | YAML / wiki | content ops |
+| Approval-gate workflow (n8n / approval queue) | Workflow file | automation stack |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/marketing/content-marketer` | parent role skill |
+| [[anti-slop-rubric]] | rubric for every published piece |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `research_outline_draft` | sonnet | Bounded synthesis from research notes |
+| `seo_optimisation_pass` | haiku | Mechanical: apply Surfer/MarketMuse suggestions |
+| `brand_voice_review` | opus | Cross-section synthesis; high-stakes voice check |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/content-brief.md` | AI content prompt template with role/constraints/context/task/output |
+| `templates/differentiation-checklist.md` | Pre-publish checklist: generic signals out, differentiation signals in |
+| `templates/eeat-enhancement.md` | Template for adding Experience / Expertise / Authoritativeness / Trust signals |
+| `templates/_smoke-test.md` | Minimum-viable filled brief |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ai-content-strategy.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/marketing/content-marketer/`
+- parent skill: `geek/marketing/`
+- [[ai-marketing-tools-stack-2026]]
+- [[anti-slop-rubric]]
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether ai-content-strategy applies: root question — "Is the editorial cadence ≥10 pieces/week with AI drafting AND brand voice codified?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-role-division, r2-no-prompt-and-publish, r3-differentiation-signal-floor, r4-brand-voice-pinned, r5-channel-native-repurposing, r6-claim-verification.

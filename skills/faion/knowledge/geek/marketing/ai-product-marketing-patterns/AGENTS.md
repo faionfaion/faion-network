@@ -3,69 +3,95 @@ slug: ai-product-marketing-patterns
 tier: geek
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Marketing patterns specific to AI products: demo variance, prompt-driven value, workflow-not-feature, dangerous comparison pages, amplified trust signals.
-content_id: "d35864ec209df08b"
-tags: [ai-product-marketing-patterns, marketing, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "AI-product marketing pattern library: model-claim discipline, demo→spec gap, trust-and-safety messaging, pricing narrative, evals-as-marketing-asset."
+content_id: "69da1449d254c5be"
+complexity: medium
+produces: playbook-step
+est_tokens: 3800
+tags: [ai, marketing, positioning, demo, trust-safety, evals, geek]
 ---
 
 # AI Product Marketing Patterns
 
 ## Summary
 
-**One-sentence:** Marketing patterns specific to AI products: demo variance, prompt-driven value, workflow-not-feature, dangerous comparison pages, amplified trust signals.
+**One-sentence:** AI-product marketing pattern library: model-claim discipline, demo→spec gap, trust-and-safety messaging, pricing narrative, evals-as-marketing-asset.
 
-**One-paragraph:** Marketing an AI product is structurally different: demos vary, output depends on prompt, value is in workflow not feature, comparison pages expose LLM lottery, trust signals matter 10×. faion has zero coverage. Half of faion's ICP builds AI products. Output: pattern audit with one decision per pattern.
+**One-paragraph:** AI-product marketing pattern library: model-claim discipline, demo→spec gap, trust-and-safety messaging, pricing narrative, evals-as-marketing-asset. This methodology converts the inputs in Prerequisites into the artefact described in Output Contract, gated by the rules in 01-core-rules.xml and the decision tree in 06-decision-tree.xml.
+
+**Ефективно для:** the kinds of tasks listed in 'Applies If' — primary use cases are teams shipping the artefact (`playbook-step`) at a medium complexity level, where the failure modes in 03-failure-modes.xml are realistic risks worth the methodology's overhead.
 
 ## Applies If (ALL must hold)
 
-- product wraps or extends LLMs (≥1 model API call in core loop)
-- buyer-facing demo is part of funnel
-- comparison or 'vs.' content is considered or live
-- trust signals are weak or non-existent
+- Product has a user-facing AI feature (LLM, vision, agent).
+- Marketing copy or launch is being written / rewritten.
+- Org has appetite to differentiate from generic 'AI-powered' positioning.
 
 ## Skip If (ANY kills it)
 
-- AI purely internal tooling — defer to standard marketing
-- deterministic AI (classifiers with fixed thresholds)
-- marketplace AI tools (model APIs themselves) — different category
+- AI is incidental to the product (back-office only); marketing surface doesn't depend on it.
+- Pre-revenue tinker product — positioning is premature.
+- Generic 'AI-powered' tagline is the explicit strategy (mass-market commodity play).
 
 ## Prerequisites
 
-- live demo or sandbox URL
-- list of current comparison/vs-competitor pages
-- list of trust signals currently displayed
+| Input artifact | Format | Source |
+|---|---|---|
+| Positioning canvas | Markdown | positioning-canvas |
+| Model + eval data | Spreadsheet / report | ML team |
+| Pricing model | Markdown | finance |
+| Trust + safety policy | Markdown | compliance |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent skill — provides operating context for this methodology |
-| `pro/marketing/gtm-strategist` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/ai-product-positioning` | peer methodology — produces inputs or consumes outputs |
+| `pro/marketing/gtm-strategist/positioning-canvas` | Underlying positioning framework. |
+| `pro/marketing/growth-marketer/launch-playbook` | Launch cadence that consumes these patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `pattern_pick` | sonnet | Match pattern to product context. |
+| `claim_discipline_review` | opus | Audit copy for unverifiable claims. |
+| `eval_to_asset` | sonnet | Turn eval results into marketing asset. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/pattern-library.md` | Inventory of patterns with examples. |
+| `templates/claim-discipline-checklist.md` | Copy review checklist. |
+| `templates/eval-asset.md` | Eval-as-marketing-asset template. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-ai-product-marketing-patterns.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `pro/marketing/gtm-strategist`
-- peer methodology: `geek/ai/ai-product-positioning`
-- external: https://review.firstround.com/marketing-ai-products
+- parent skill: `geek/marketing/`
+- `[[positioning-canvas]]`
+- `[[launch-playbook]]`
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` filters whether ai-product-marketing-patterns applies: root question — "Is the product user-facing AI with a marketing surface AND a non-commodity positioning intent?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.

@@ -1,38 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Multi-Region Active-Active Pattern Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Multi-Region Active-Active Pattern application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-
+<text id="01-core-rules" title="Multi-Region Active-Active Pattern Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every application of multi-region-active-active-pattern enforces. Each rule has a statement, a rationale anchored to industry practice, and a source citation.</summary>
   <section title="Rule set">
-
-    <rule id="r1-residency-first" testable="true" depth="essential">
-      <statement>Map data residency requirements per dataset BEFORE topology design. EU PII may NOT replicate to US-east; financial data may require home-region only.</statement>
-      <rationale source="Industry consensus + practitioner experience">Topology designed without residency analysis is rebuilt at audit; residency-first prevents.</rationale>
+    <rule id="r1" testable="true" depth="essential">
+      <statement>Every writable data class has an explicit conflict policy (last-writer-wins, vector-clock CRDT, leader-per-key, custom merge) — defaults are forbidden.</statement>
+      <rationale source="DynamoDB Global Tables design guide">Without an explicit policy, conflicts get resolved silently and surprise users.</rationale>
     </rule>
-
-    <rule id="r2-rto-rpo-explicit-per-service" testable="true" depth="essential">
-      <statement>Each service has explicit RTO (Recovery Time) + RPO (Recovery Point) target. Active-active = RTO seconds + RPO seconds; active-passive = RTO minutes + RPO minutes; backup-only = RTO hours + RPO ≥ 1h.</statement>
-      <rationale source="Industry consensus + practitioner experience">Without per-service targets, every service gets gold-plated; cost balloons.</rationale>
+    <rule id="r2" testable="true" depth="essential">
+      <statement>Cross-region replication latency is monitored and treated as an SLI; breach triggers a degraded mode, not silent stale reads.</statement>
+      <rationale source="Vogels — Eventual Consistency">Stale reads in active-active are the silent-corruption vector.</rationale>
     </rule>
-
-    <rule id="r3-conflict-resolution-deterministic" testable="true" depth="essential">
-      <statement>Active-active requires conflict resolution: last-write-wins, vector clocks, CRDT, or app-level merge. Choice documented per data type.</statement>
-      <rationale source="Industry consensus + practitioner experience">Conflicts are inevitable in active-active; undefined resolution = silent data loss.</rationale>
+    <rule id="r3" testable="true" depth="essential">
+      <statement>Failover drills run quarterly at minimum, with both regions exercised; the drill produces a runbook update.</statement>
+      <rationale source="AWS Multi-Region Reference Architecture 2026">Untested failover = no failover; quarterly cadence keeps muscle memory.</rationale>
     </rule>
-
-    <rule id="r4-failover-drill-quarterly" testable="true" depth="essential">
-      <statement>Quarterly failover drill: actually fail a region in production (or staging-with-prod-traffic). Drills that don't fail are theater.</statement>
-      <rationale source="Industry consensus + practitioner experience">Untested failover is broken failover; quarterly cadence catches drift before real incident.</rationale>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>Traffic steering at the edge respects residency constraints — e.g. EU users never routed to a non-EU region even on failover.</statement>
+      <rationale source="Banking-core data residency rules">Failover that violates residency is a regulatory incident.</rationale>
     </rule>
-
-    <rule id="r5-traffic-steering-explicit" testable="true" depth="essential">
-      <statement>Traffic steering policy explicit: geo-DNS, latency-based, weighted, or sticky. Mix of policies = unpredictable behavior.</statement>
-      <rationale source="Industry consensus + practitioner experience">Steering policy is the user-visible behavior; ad-hoc mix creates support nightmares.</rationale>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Region partition is a tested mode; the system has a defined behaviour for 'lost peer region' (degraded, read-only, paused).</statement>
+      <rationale source="Jepsen — distributed consistency reports">Untested partition = the system improvises during the actual partition.</rationale>
     </rule>
-
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in `Applies If` are not all true, skip this methodology and route to the adjacent one referenced in Related.</statement>
+      <rationale source="F-066 skill-authoring conventions">A skip rule keeps the decision tree closed: every branch ends at a real rule id.</rationale>
+    </rule>
   </section>
-
   <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
+    <link path="content/02-output-contract.xml" />
+    <link path="content/03-failure-modes.xml" />
+    <link path="content/06-decision-tree.xml" />
   </see-also>
 </text>
