@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="video-gen-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Video Gen Basics — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON shape returned by generate(). Carries local_path, provider, seed, duration, aspect_ratio, prompt_hash, cached flag, and the ffprobe-verified file metadata.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://video-gen-basics/output.schema.json",
+  "type": "object",
+  "required": ["status", "local_path", "provider", "duration_s", "aspect_ratio",
+               "seed", "prompt_hash", "cached"],
+  "properties": {
+    "status":       {"type": "string", "enum": ["ok", "failed", "timeout", "policy_violation"]},
+    "local_path":   {"type": "string", "minLength": 1},
+    "provider":     {"type": "string", "enum": ["runway", "luma", "replicate", "pika"]},
+    "duration_s":   {"type": "number", "minimum": 0.0, "maximum": 10.0},
+    "aspect_ratio": {"type": "string", "enum": ["16:9", "9:16", "1:1", "4:3", "21:9"]},
+    "seed":         {"type": "integer", "minimum": 0},
+    "prompt_hash":  {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "cached":       {"type": "boolean"},
+    "task_id":      {"type": "string", "description": "provider task/generation id; required when cached==false"},
+    "video_url":    {"type": "string", "description": "provider pre-signed URL; downloaded already, kept for replay"},
+    "ffprobe":      {"type": "object", "description": "ffprobe-emitted file metadata"},
+    "error":        {"type": "string"}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>status — "ok" only after ffprobe validation passes (file size &gt; 0, duration &gt; 0, video stream present).</item>
+      <item>local_path — non-empty filesystem path; pre-signed URLs MUST be downloaded before this field is populated.</item>
+      <item>seed — caller can re-submit with the same seed for near-identical regeneration.</item>
+      <item>prompt_hash — sha256 of (prompt_text + provider + seed + duration + aspect_ratio).</item>
+      <item>task_id — present whenever cached==false; required for retry / re-query against the provider.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>status "ok" with local_path empty or pointing to a 0-byte file.</description>
+      <reason>Either ffprobe was skipped or the provider returned an empty SUCCEEDED — downstream pipelines will fail later with cryptic ffmpeg errors.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Returning video_url without local_path.</description>
+      <reason>Pre-signed URLs expire in 30-60 minutes. A bare URL leaks state; callers must download immediately.</reason>
+    </antipattern>
+    <antipattern>
+      <description>duration_s &gt; 10.</description>
+      <reason>Exceeds rule r5-clip-cap-5s. Multi-clip sequences must be concatenated via ffmpeg, not generated as one long call.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "local_path": "out/video/abc123.mp4",
+  "provider": "runway",
+  "duration_s": 5.0,
+  "aspect_ratio": "16:9",
+  "seed": 42,
+  "prompt_hash": "9f4a7c3e8d2b1a5f6e9c0d3b2a1f4e8d7c9b6a5d4e3c2b1a0f9e8d7c6b5a4f3e",
+  "cached": false,
+  "task_id": "task_01HXYZ",
+  "video_url": "https://runway-bucket.s3.amazonaws.com/abc.mp4?Expires=...",
+  "ffprobe": {"size": 4521230, "duration": 5.04, "streams": 1, "width": 1920, "height": 1080}
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "local_path": "",
+  "provider": "runway",
+  "duration_s": 12.0,
+  "aspect_ratio": "16:9",
+  "seed": -1,
+  "prompt_hash": "abc",
+  "cached": false
+}
+]]></code>
+      <note>Invalid: empty local_path, duration &gt; 10s, negative seed, prompt_hash not sha256.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>local_path exists on disk and file size &gt; 100 KB (rough lower bound for 1s 720p mp4).</item>
+      <item>ffprobe shows at least one video stream and duration_s within [0.5, 10.0].</item>
+      <item>If cached==false, task_id is non-empty.</item>
+      <item>prompt_hash passes sha256 regex.</item>
+      <item>seed is a non-negative integer.</item>
     </list>
   </section>
 </text>

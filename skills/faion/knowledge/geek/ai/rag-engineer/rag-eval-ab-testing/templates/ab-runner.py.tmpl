@@ -1,0 +1,59 @@
+# purpose: interleaved A/B runner for RAG config comparison
+# consumes: pipeline_a, pipeline_b, judge, question list
+# produces: per-question scores + aggregate stats matching 02-output-contract
+# depends-on: content/01-core-rules.xml r1, r2, r4
+# token-budget-impact: zero at runtime; orchestration only
+
+from statistics import mean
+from typing import Callable, List, Dict
+
+
+def run_ab(
+    pipeline_a: Callable[[str], Dict],
+    pipeline_b: Callable[[str], Dict],
+    judge: Callable[[str, Dict], float],
+    questions: List[Dict],
+) -> Dict:
+    assert len(questions) >= 20, "need >=20 questions"
+    per_q = []
+    for q in questions:
+        ra = pipeline_a(q["query"])
+        rb = pipeline_b(q["query"])
+        a_score = judge(q["query"], ra)
+        b_score = judge(q["query"], rb)
+        per_q.append({"query": q["query"], "a_score": a_score, "b_score": b_score, "delta": b_score - a_score,
+                      "a_latency_ms": ra.get("latency_ms", 0.0), "b_latency_ms": rb.get("latency_ms", 0.0)})
+    a_lat = sorted(p["a_latency_ms"] for p in per_q)
+    b_lat = sorted(p["b_latency_ms"] for p in per_q)
+    p95 = lambda xs: xs[int(0.95 * (len(xs) - 1))] if xs else 0.0
+    p_value = _paired_p([p["a_score"] for p in per_q], [p["b_score"] for p in per_q])
+    a_mean = mean(p["a_score"] for p in per_q)
+    b_mean = mean(p["b_score"] for p in per_q)
+    if p_value < 0.05 and b_mean > a_mean and p95(b_lat) <= p95(a_lat) * 1.2:
+        rec = "promote-b"
+    elif p_value < 0.05 and b_mean < a_mean:
+        rec = "keep-a"
+    elif p_value >= 0.05 and len(questions) < 100:
+        rec = "run-more"
+    else:
+        rec = "keep-a"
+    return {"n_questions": len(questions), "per_question": per_q,
+            "aggregate": {"a_mean": a_mean, "b_mean": b_mean, "p_value": p_value,
+                          "a_latency_p95_ms": p95(a_lat), "b_latency_p95_ms": p95(b_lat)},
+            "recommendation": rec}
+
+
+def _paired_p(a, b):
+    diffs = [bi - ai for ai, bi in zip(a, b)]
+    n = len(diffs)
+    if n < 2:
+        return 1.0
+    mu = sum(diffs) / n
+    var = sum((d - mu) ** 2 for d in diffs) / (n - 1)
+    if var == 0:
+        return 0.0 if mu != 0 else 1.0
+    se = (var / n) ** 0.5
+    z = mu / se
+    # Rough two-sided normal approximation; for production use scipy.stats.ttest_rel
+    from math import erf, sqrt
+    return 2 * (1 - 0.5 * (1 + erf(abs(z) / sqrt(2))))

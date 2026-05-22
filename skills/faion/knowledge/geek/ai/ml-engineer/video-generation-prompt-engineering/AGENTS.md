@@ -4,69 +4,97 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Effective video generation prompts follow the formula: Subject + Action + Setting + Style + Camera + Lighting.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "3ecba486ab73383b"
+summary: Composes effective video generation prompts using the Subject + Action + Setting + Style + Camera + Lighting formula, with provider-specific quirks (Runway, Luma, Veo, Sora) and a per-prompt eval gate before scaling.
+complexity: medium
+produces: spec
+est_tokens: 3400
 tags: [video-generation, prompt-engineering, runway, luma, veo]
 ---
+
 # AI Video Generation Prompt Engineering
 
 ## Summary
 
-**One-sentence:** Effective video generation prompts follow the formula: Subject + Action + Setting + Style + Camera + Lighting.
+**One-sentence:** Composes video gen prompts with the SASSCL formula (Subject + Action + Setting + Style + Camera + Lighting) and gates promotion behind a per-prompt human-rated eval on 5 generations.
 
-**One-paragraph:** Effective video generation prompts follow the formula: Subject + Action + Setting + Style + Camera + Lighting. Each provider processes prompts differently — Runway prefers cinematic camera directions while Luma prefers descriptive scene prose. Provider-specific prompt patterns yield significantly better results than generic descriptions.
+**One-paragraph:** Naive prompts ("a dog running") produce wobbly, off-model output. SASSCL gives consistent results: Subject (precisely described), Action (concrete verb + manner), Setting (location + time of day), Style (cinematic / anime / hyperreal / etc.), Camera (POV / dolly / static / handheld), Lighting (golden hour / overcast / neon). Provider quirks matter: Runway loves detailed camera moves; Luma wants prose; Veo handles longer prompts; Sora needs structured. Output: a `prompt-template.yaml` + a 5-gen eval that gates promotion.
+
+**Ефективно для:**
+
+- Media pipelines що автоматично генерують роліки — стандартизована prompt structure дає predictable якість.
+- A/B prompt iteration — формула + eval гейт показує, який варіант кращий.
+- Multi-provider strategy — той самий SASSCL шаблон з провайдер-специфічними corner adjustments.
+- Brand consistency — Style + Camera + Lighting залишаються фіксованими, лише Subject + Action міняються.
 
 ## Applies If (ALL must hold)
 
-- Writing prompts for any video generation provider (Runway, Luma, Sora 2, Veo 3, Replicate).
-- Creating prompt templates for automated content pipelines (news B-roll, social media, product videos).
-- Optimizing existing prompts that produce inconsistent or low-quality output.
-- Building a prompt library for reuse across agent workflows.
+- Using AI video gen in production OR running &gt;100 generations
+- Have a way to rate output (human OR LLM-judge)
+- Goal is consistent quality across many generations
 
 ## Skip If (ANY kills it)
 
-- Prompting for precise multi-shot character consistency — current models drift across clips regardless of prompt quality; use image seeding as a supplement.
-- Controlling native audio content in Sora 2 or Veo 3 — audio is non-deterministic and cannot be controlled via prompt.
+- One-off creative exploration — formula constrains creativity
+- &lt;10 generations total — investment not paid back
+- Single-shot use, no iteration — eval gate has no purpose
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| `brand-style.yaml` | YAML | brand / style guide |
+| `eval-rubric.yaml` | YAML | per-prompt rating criteria |
+| `provider-quirks.md` | Markdown | provider-specific notes |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `video-generation-async-api` | Underlying primitive |
+| `video-generation-production-service` | Where prompts are consumed |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: SASSCL formula, provider-quirk overlay, 5-gen eval gate, max-prompt-length per provider, brand style locked | 1100 |
+| `content/02-output-contract.xml` | essential | prompt-template.yaml schema | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: terse prompt, generic style, no eval, no provider quirks, brand drift | 900 |
+| `content/04-procedure.xml` | essential | 5 steps: draft prompt with SASSCL → apply provider quirks → 5-gen eval → promote OR iterate → audit | 700 |
+| `content/05-examples.xml` | essential | Worked example: 30s cinematic walk-cycle prompt for Runway | 500 |
+| `content/06-decision-tree.xml` | essential | Routes by provider to prompt-style adjustments | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `prompt_drafting` | sonnet | Creative + structured |
+| `eval_judgement` | sonnet | Cross-shot consistency |
+| `prompt_template_lint` | haiku | Schema check |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/sasscl-template.md` | Filled-in SASSCL example |
+| `templates/prompt-template.schema.yaml` | Schema |
+| `templates/_smoke-test.yaml` | Minimum-viable spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-video-generation-prompt-engineering.py` | Lint prompt-template.yaml | Pre-commit |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[video-generation-async-api]] · [[video-generation-production-service]]
+- external: [Runway prompt guide](https://help.runwayml.com/) · [Luma prompts](https://lumalabs.ai/learn) · [Sora system card](https://openai.com/sora)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes prompt-style adjustments by chosen provider (Runway / Luma / Veo / Sora).

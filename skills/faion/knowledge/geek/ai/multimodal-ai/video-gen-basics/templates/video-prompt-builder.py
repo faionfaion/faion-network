@@ -1,4 +1,9 @@
-"""VideoPromptBuilder fluent API with subject/action/camera/style/lighting fields."""
+# purpose: Fluent VideoPromptBuilder enforcing explicit camera + style + lighting per rule r1.
+# consumes: brief fields (subject, action, setting, camera, style, lighting, details).
+# produces: structured comma-joined prompt string ready for provider submission.
+# depends-on: nothing (pure Python); used by generate() in video-gen-basics + video-gen-tools.
+# token-budget-impact: zero (no LLM call); ~30-60 prompt tokens depending on detail count.
+"""VideoPromptBuilder fluent API enforcing closed camera vocabulary."""
 
 
 class VideoPromptBuilder:

@@ -1,22 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rag-architecture Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="rag-architecture Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for one architecture decision record: chunking, embeddings, vector DB, retrieval, context, metrics, sign-off.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rag-architecture-decision-record",
+  "type": "object",
+  "required": ["chunking", "embeddings", "vector_db", "retrieval", "context", "metrics", "signoff"],
+  "properties": {
+    "chunking": {"type": "object", "required": ["strategy", "size", "overlap"], "properties": {"strategy": {"type": "string", "enum": ["fixed", "sentence", "paragraph", "semantic", "header"]}, "size": {"type": "integer"}, "overlap": {"type": "integer"}}},
+    "embeddings": {"type": "object", "required": ["model", "dim"], "properties": {"model": {"type": "string"}, "dim": {"type": "integer"}}},
+    "vector_db": {"type": "string", "enum": ["qdrant", "weaviate", "chroma", "pgvector", "pinecone", "milvus"]},
+    "retrieval": {"type": "object", "required": ["mode", "top_k_pool", "top_k_rerank"], "properties": {"mode": {"type": "string", "enum": ["vector", "hybrid"]}, "top_k_pool": {"type": "integer"}, "top_k_rerank": {"type": "integer"}, "reranker": {"type": "string"}}},
+    "context": {"type": "object", "required": ["budget_tokens", "ordering"], "properties": {"budget_tokens": {"type": "integer"}, "ordering": {"type": "string", "enum": ["relevance", "recency", "source"]}}},
+    "metrics": {"type": "object", "required": ["mrr_target", "faithfulness_target", "latency_p95_ms", "cost_per_query_usd"], "properties": {"mrr_target": {"type": "number"}, "faithfulness_target": {"type": "number"}, "latency_p95_ms": {"type": "number"}, "cost_per_query_usd": {"type": "number"}}},
+    "signoff": {"type": "object", "required": ["owner", "date"], "properties": {"owner": {"type": "string"}, "date": {"type": "string"}}}
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "chunking": {"strategy": "header", "size": 1024, "overlap": 200},
+  "embeddings": {"model": "text-embedding-3-large", "dim": 3072},
+  "vector_db": "qdrant",
+  "retrieval": {"mode": "hybrid", "top_k_pool": 20, "top_k_rerank": 5, "reranker": "cohere-rerank-3"},
+  "context": {"budget_tokens": 5000, "ordering": "relevance"},
+  "metrics": {"mrr_target": 0.75, "faithfulness_target": 0.92, "latency_p95_ms": 1500, "cost_per_query_usd": 0.012},
+  "signoff": {"owner": "alice", "date": "2026-05-22"}
+}
+    ]]></code>
+    <note>Valid: all required sections; numeric gates; signed off.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{
+  "chunking": {"strategy": "fixed"},
+  "vector_db": "qdrant"
+}
+    ]]></code>
+    <note>Invalid: missing embeddings, retrieval, context, metrics, signoff; chunking incomplete.</note>
+  </example>
+
+  <reference path="scripts/validate-rag-architecture.py"/>
 </text>

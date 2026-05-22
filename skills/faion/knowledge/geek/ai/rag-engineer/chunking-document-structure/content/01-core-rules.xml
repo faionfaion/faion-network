@@ -1,15 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="chunking-document-structure Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for chunking-document-structure. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Chunking Document Structure — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 rules for Markdown / HTML chunking: header_path propagation, min_chunk_size guard, BeautifulSoup for HTML, oversized-block subdivision, version on strategy change.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>MarkdownChunker MUST set include_header_in_chunk=True by default. Every produced chunk MUST carry a header_path field that is the concatenation of all ancestor header titles joined by " &gt; ". When a content block exceeds max_chunk_size, MarkdownChunker MUST split it and carry the same header_path into each sub-chunk.</statement>
-      <rationale source="v1-source">Embedding the header path inside the chunk text improves retrieval recall for queries that reference section context. Without header_path propagation, sub-chunks of large sections lose their navigational anchor and become indistinguishable from each other in embedding space.</rationale>
+    <rule id="r1-header-path-propagate" testable="true" depth="essential">
+      <statement>Every Markdown chunk MUST carry header_path = ancestor titles joined by " &gt; ". When a section exceeds max_chunk_size and is sub-split, every sub-chunk MUST inherit the same header_path.</statement>
+      <rationale source="Documentation-RAG retrieval benchmarks">Header_path preserves the navigational anchor inside the embedding; recall on "what does the auth section say about tokens" rises markedly when section title is present in the chunk text.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>HTMLChunker MUST use BeautifulSoup with find_all(['section', 'article', 'div']) as the primary splitting surface. For each element, it MUST extract the nearest heading (h1-h6) as the chunk header. Elements exceeding max_chunk_size MUST be word-split into numbered parts carrying the same header. The caller MUST pass well-formed HTML; malformed input behavior is undefined.</statement>
-      <rationale source="v1-source">Flat text splitting of HTML includes tag noise and misses structural boundaries. BeautifulSoup's DOM walk respects nesting and script/style tags. Numbered parts preserve source traceability when a large section splits into multiple chunks.</rationale>
+
+    <rule id="r2-min-size-guard" testable="true" depth="essential">
+      <statement>Chunks below min_chunk_size (default 100 tokens) MUST be merged with the prior chunk under the same header_path, or dropped if at section boundary.</statement>
+      <rationale source="K-NN noise analysis on shallow docs">Single-line list items embed as near-zero vectors that pollute nearest-neighbour results without contributing useful signal.</rationale>
+    </rule>
+
+    <rule id="r3-beautifulsoup-for-html" testable="true" depth="essential">
+      <statement>HTML chunking MUST use BeautifulSoup (or a DOM parser); regex over HTML is forbidden for production indexing.</statement>
+      <rationale source="HTML edge-case catalog (attributes, nesting, scripts)">Regex over HTML mis-handles nested tags, attribute quoting, script/style blocks. DOM walk is the only safe path.</rationale>
+    </rule>
+
+    <rule id="r4-oversize-subdivide" testable="true" depth="essential">
+      <statement>When a single section/block exceeds max_chunk_size, it MUST be sub-split via the recursive splitter from chunking-basics, with each sub-chunk carrying the same header_path and an additional part_index field.</statement>
+      <rationale source="Embedding-cap incident log">Single huge sections (e.g. 8k-token API reference) silently truncate in the embedding call; sub-splitting prevents loss.</rationale>
+    </rule>
+
+    <rule id="r5-version-on-change" testable="true" depth="essential">
+      <statement>Changing header-depth policy or min_chunk_size MUST bump strategy_version and write to a versioned collection.</statement>
+      <rationale source="Mixed-index incident analysis">Policy changes invalidate existing chunk distributions; mixing breaks A/B comparisons.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -3,78 +3,96 @@ slug: tool-trust-boundary-model
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "df5297fbe58c2cbd"
-summary: "Tool Trust Boundary Model: produces a versioned, owner-signed artefact that closes the gap 'p7-llm-agent-developer/Harden an agent against prompt injection and jailbreak across tool boundaries'."
-tags: [tool-trust-boundary-model, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a trust-boundary spec for an agent / tool surface: hard-wall sensitive ops, soft-wall confirmable ops, observable ops; with prompt-injection + jailbreak defences per boundary."
+content_id: "19093b71b6008c59"
+complexity: deep
+produces: spec
+est_tokens: 4500
+tags: [security, prompt-injection, trust-boundary, agent, ai, geek]
 ---
+
 # Tool Trust Boundary Model
 
 ## Summary
 
-**One-sentence:** Tool Trust Boundary Model: produces a versioned, owner-signed artefact that closes the gap 'p7-llm-agent-developer/Harden an agent against prompt injection and jailbreak across tool boundaries'.
+**One-sentence:** Produces a trust-boundary spec for an agent / tool surface: hard-wall sensitive ops, soft-wall confirmable ops, observable ops; with prompt-injection + jailbreak defences per boundary.
 
-**One-paragraph:** Addresses the gap surfaced by 'p7-llm-agent-developer/Harden an agent against prompt injection and jailbreak across tool boundaries': Companion to IPI defense. Defines primary-trust vs tainted-trust tools, forbidden cross-flows (web→write tool with file contents), and rendered as a YAML policy the agent runtime can enforce. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a tool trust boundary model artefact (decision record, checklist, score sheet, or report).
+**Ефективно для:** platform security owners gating LLM-agent tool launches; LLM-agent developers hardening a multi-tool agent; CISOs reviewing AI-tool exposure to prompt injection and jailbreak.
+
+**One-paragraph:** This methodology pins the recurring decision around "tool-trust-boundary-model" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p7-llm-agent-developer/Harden an agent against prompt injection and jailbreak across tool boundaries' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Agent has ≥2 tools with differing blast radii (read / write / external).
+- Inputs include untrusted content (user text / web pages / retrieved docs).
+- Owner exists for the boundary spec.
+- Compliance regime touches the surface (SOC2 / HIPAA / GDPR / EU AI Act).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working tool trust boundary model artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Single read-only tool with no write paths — overhead unjustified.
+- Agent runs on fully trusted internal corpus only — air-gapped.
+- Prototype with no production users yet.
 
 ## Prerequisites
 
-- recent context for the 'p7-llm-agent-developer/Harden an agent against prompt injection and jailbreak across tool boundaries' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Tool inventory + cards | directory | platform repo |
+| Input source taxonomy (trust levels) | JSON / Markdown | security lead |
+| Compliance regime list | Markdown | legal / compliance |
+| Owner for boundary spec | handle / email | team roster |
+| Existing incident corpus | logs | incident db |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai` | parent domain group — provides operating context for Tool Trust Boundary Model |
+| `[[tool-card-template]]` | tool card carries the boundary class |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `classify_tools` | sonnet | Per-tool classification needs judgment on blast radius. |
+| `draft_defences` | sonnet | Defence selection per boundary. |
+| `escalate_high_risk` | opus | Cross-tool composition risk. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/tool-trust-boundary-model.json` | JSON schema for the Tool Trust Boundary Model output contract |
+| `templates/tool-trust-boundary-model.json` | JSON Schema for the Tool Trust Boundary Model output contract |
 | `templates/tool-trust-boundary-model.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a tool-trust-boundary-model record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-tool-trust-boundary-model.py` | Enforce Tool Trust Boundary Model output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-tool-trust-boundary-model.py` | Enforce the Tool Trust Boundary Model output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `p7-llm-agent-developer/Harden an agent against prompt injection and jailbreak across tool boundaries`
-- geek/ai/p7-llm-agent-developer
+- [[tool-card-template]] — boundary class lives on the card.
+- [[tool-call-schema-design-checklist]] — gates each tool through this model.
+- [[tool-deprecation-lifecycle]] — boundary refresh on tool swap.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Video Gen Basics — Worked Example" version="1.1.0" est_tokens="500" depth="medium">
+  <summary>End-to-end Runway Gen-3 5s cinematic clip with VideoPromptBuilder, polling, download, and ffprobe.</summary>
+
+  <section title="Worked clip — golden retriever tracking shot">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import hashlib, json, subprocess, time
+from pathlib import Path
+import requests, runwayml
+
+def build_prompt(brief: dict) -> str:
+    assert brief.get("camera"), "camera required (rule r1)"
+    parts = [brief["subject"], brief["action"], f"in {brief['setting']}",
+             f"{brief['camera']} shot", brief.get("style", "cinematic"),
+             f"{brief.get('lighting', 'natural')} lighting"]
+    return ", ".join(parts)
+
+def ffprobe(path):
+    out = subprocess.check_output(["ffprobe", "-v", "error", "-show_streams",
+                                   "-show_format", "-of", "json", path]).decode()
+    data = json.loads(out)
+    streams = data.get("streams", [])
+    dur = float(data.get("format", {}).get("duration", 0))
+    size = int(data.get("format", {}).get("size", 0))
+    width = next((s.get("width") for s in streams if s.get("codec_type") == "video"), 0)
+    height = next((s.get("height") for s in streams if s.get("codec_type") == "video"), 0)
+    return {"size": size, "duration": dur, "streams": len(streams),
+            "width": width, "height": height}
+
+def generate_clip(brief, provider="runway", duration_s=5, aspect_ratio="16:9",
+                  seed=42, output_dir="out/video"):
+    prompt = build_prompt(brief)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    prompt_hash = hashlib.sha256(
+        f"{prompt}|{provider}|{seed}|{duration_s}|{aspect_ratio}".encode()).hexdigest()
+    local_path = Path(output_dir) / f"{prompt_hash}.mp4"
+    if local_path.exists():
+        meta = ffprobe(str(local_path))
+        if meta["duration"] > 0:
+            return {"status": "ok", "local_path": str(local_path), "provider": provider,
+                    "duration_s": meta["duration"], "aspect_ratio": aspect_ratio,
+                    "seed": seed, "prompt_hash": prompt_hash, "cached": True,
+                    "ffprobe": meta}
+
+    client = runwayml.RunwayML()
+    task = client.image_to_video.create(model="gen3a_turbo", prompt_text=prompt,
+                                        duration=duration_s, ratio=aspect_ratio, seed=seed)
+    started = time.time()
+    while time.time() - started < 300:
+        t = client.tasks.retrieve(task.id)
+        if t.status == "SUCCEEDED":
+            video_url = t.output[0]
+            with requests.get(video_url, stream=True) as r:
+                with open(local_path, "wb") as f:
+                    for chunk in r.iter_content(1024 * 1024):
+                        f.write(chunk)
+            meta = ffprobe(str(local_path))
+            if meta["duration"] <= 0 or meta["streams"] < 1:
+                return {"status": "failed", "error": "ffprobe validation",
+                        "local_path": str(local_path), "task_id": task.id,
+                        "provider": provider, "duration_s": 0, "aspect_ratio": aspect_ratio,
+                        "seed": seed, "prompt_hash": prompt_hash, "cached": False}
+            return {"status": "ok", "local_path": str(local_path), "task_id": task.id,
+                    "video_url": video_url, "provider": provider, "duration_s": meta["duration"],
+                    "aspect_ratio": aspect_ratio, "seed": seed, "prompt_hash": prompt_hash,
+                    "cached": False, "ffprobe": meta}
+        if t.status == "FAILED":
+            return {"status": "failed", "error": getattr(t, "failure", "unknown"),
+                    "task_id": task.id, "provider": provider, "local_path": "",
+                    "duration_s": 0, "aspect_ratio": aspect_ratio, "seed": seed,
+                    "prompt_hash": prompt_hash, "cached": False}
+        time.sleep(5)
+    return {"status": "timeout", "task_id": task.id, "provider": provider,
+            "local_path": "", "duration_s": 0, "aspect_ratio": aspect_ratio,
+            "seed": seed, "prompt_hash": prompt_hash, "cached": False}
+
+brief = {"subject": "a golden retriever",
+         "action": "running through a field of sunflowers",
+         "setting": "sunny countryside", "camera": "tracking",
+         "style": "cinematic", "lighting": "golden_hour",
+         "subject_consistency_required": False}
+print(json.dumps(generate_clip(brief), indent=2, default=str))
+]]></code>
+    </example>
+  </section>
+</text>

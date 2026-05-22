@@ -1,7 +1,10 @@
 #!/bin/bash
-# concat-clips.sh — concatenate clips listed in clips.txt
-# Usage: bash concat-clips.sh output.mp4
-# clips.txt format: one absolute file path per line
+# purpose: ffmpeg concat helper — assemble clips.txt entries into a single mp4.
+# consumes: clips.txt with one absolute mp4 path per line.
+# produces: assembled mp4 at the path given as $1 (default output.mp4).
+# depends-on: ffmpeg with concat demuxer support (any modern build).
+# token-budget-impact: zero.
+# Usage: bash concat-clips.sh output.mp4 [clips.txt]
 set -euo pipefail
 
 INPUT_LIST="${2:-clips.txt}"

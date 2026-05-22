@@ -1,22 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="rag-eval-ab-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="rag-eval-ab-testing Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for one A/B report: configs, per-question results, aggregate metrics, p-value, recommendation.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rag-ab-report",
+  "type": "object",
+  "required": ["config_a", "config_b", "n_questions", "per_question", "aggregate", "recommendation"],
+  "properties": {
+    "config_a": {"type": "string"},
+    "config_b": {"type": "string"},
+    "n_questions": {"type": "integer", "minimum": 20},
+    "per_question": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query", "a_score", "b_score", "delta"],
+        "properties": {
+          "query": {"type": "string"},
+          "a_score": {"type": "number"},
+          "b_score": {"type": "number"},
+          "delta": {"type": "number"}
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "required": ["metric", "a_mean", "b_mean", "p_value", "a_latency_p95_ms", "b_latency_p95_ms"],
+      "properties": {
+        "metric": {"type": "string"},
+        "a_mean": {"type": "number"},
+        "b_mean": {"type": "number"},
+        "p_value": {"type": "number"},
+        "a_latency_p95_ms": {"type": "number"},
+        "b_latency_p95_ms": {"type": "number"}
+      }
+    },
+    "recommendation": {"type": "string", "enum": ["promote-b", "keep-a", "run-more"]}
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "config_a": "chunk512", "config_b": "chunk1024", "n_questions": 50,
+  "per_question": [{"query": "q1", "a_score": 0.7, "b_score": 0.85, "delta": 0.15}],
+  "aggregate": {"metric": "faithfulness", "a_mean": 0.78, "b_mean": 0.87, "p_value": 0.012, "a_latency_p95_ms": 1100, "b_latency_p95_ms": 1250},
+  "recommendation": "promote-b"
+}
+    ]]></code>
+    <note>Valid: paired stats, significant p, latency within +20%.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{"config_a": "a", "config_b": "b", "n_questions": 10}
+    ]]></code>
+    <note>Invalid: n &lt; 20, missing per_question, aggregate, recommendation.</note>
+  </example>
+
+  <reference path="scripts/validate-rag-eval-ab-testing.py"/>
 </text>

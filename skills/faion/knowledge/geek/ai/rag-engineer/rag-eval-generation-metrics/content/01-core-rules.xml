@@ -1,15 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rag-eval-generation-metrics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rag-eval-generation-metrics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="rag-eval-generation-metrics Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of rag-eval-generation-metrics enforces.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always score all three RAG Triad dimensions together. A high Faithfulness score with low Context Relevance means the answer is faithful to irrelevant context — the system is confidently wrong. A high Answer Relevance with low Faithfulness means the answer sounds correct but is not grounded.</statement>
-      <rationale source="v1-source">Single-dimension scoring produces misleading conclusions. The three dimensions are designed to catch different failure modes in the same pipeline; all three must pass before a deployment quality gate can be considered passed.</rationale>
+    <rule id="r1-rag-triad" testable="true" depth="essential">
+      <statement>Compute all three RAG Triad metrics together (faithfulness, answer_relevance, context_relevance); never ship faithfulness in isolation.</statement>
+      <rationale source="v1-source">Together they localise where the failure is; isolation hides the cause.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>RAGAS context_precision requires ground_truth in the dataset even though it measures retrieval quality (not generation). Always include ground_truth when constructing the RAGAS Dataset, even for retrieval-side metric computation.</statement>
-      <rationale source="v1-source">RAGAS naming is confusing: context_precision is a retrieval metric (how much of the retrieved context is relevant) but it is part of the RAGAS dataset contract that requires ground_truth. Missing this causes a silent failure or incorrect metric values.</rationale>
+    <rule id="r2-fixed-judge-model" testable="true" depth="essential">
+      <statement>Fix a single judge model for the entire evaluation campaign (e.g., gpt-4o or claude-sonnet-4); document its identifier in the report.</statement>
+      <rationale source="v1-source">Switching judge mid-campaign invalidates cross-run comparison.</rationale>
+    </rule>
+    <rule id="r3-no-cross-judge-comparison" testable="true" depth="essential">
+      <statement>Never compare metric values produced by different judges as if they were on the same scale.</statement>
+      <rationale source="v1-source">Different judges produce systematically different scores; comparison is meaningless.</rationale>
+    </rule>
+    <rule id="r4-sample-not-all" testable="true" depth="essential">
+      <statement>For production monitoring sample 10-20% of queries; do not score every query online.</statement>
+      <rationale source="v1-source">LLM-judge cost and latency forbid online evaluation at full traffic.</rationale>
+    </rule>
+    <rule id="r5-export-jsonl" testable="true" depth="essential">
+      <statement>Export per-query scores as JSONL with query_id, faithfulness, answer_relevance, context_relevance, judge_model; aggregate downstream.</statement>
+      <rationale source="v1-source">Append-only JSONL is the canonical format for batch eval; aggregations stay reproducible.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip when ground truth is missing for context_recall variants, or when judge LLM is unavailable.</statement>
+      <rationale source="phase-d">Stub rule referenced from 06-decision-tree.xml when none of the qualifying branches fire.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

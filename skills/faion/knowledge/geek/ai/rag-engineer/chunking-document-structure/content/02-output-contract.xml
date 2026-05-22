@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="chunking-document-structure Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Chunking Document Structure — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for a document-structure chunk: id, text, header_path, section_id, token_count, source, strategy, version.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-document-structure/chunk.schema.json",
+  "type": "object",
+  "required": ["id", "text", "header_path", "token_count", "source", "strategy", "version"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+    "text": {"type": "string", "minLength": 1},
+    "header_path": {"type": "string"},
+    "section_id": {"type": "string"},
+    "token_count": {"type": "integer", "minimum": 1, "maximum": 4000},
+    "source": {"type": "string", "minLength": 1},
+    "strategy": {"type": "string", "enum": ["markdown", "html"]},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "part_index": {"type": ["integer", "null"], "minimum": 0}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>id — md5(source + section_id + part_index + strategy@version).</item>
+      <item>header_path — joined ancestor titles or empty string if root-level.</item>
+      <item>strategy ∈ {markdown, html}.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>header_path missing on sub-chunks of a long section.</description>
+      <reason>Violates r1-header-path-propagate; sub-chunks lose navigational anchor.</reason>
+    </antipattern>
+    <antipattern>
+      <description>strategy==html with chunks containing un-decoded HTML entities.</description>
+      <reason>BeautifulSoup was not used to extract text; downstream embeddings see raw &amp;amp;.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "id": "b1c2d3e4f5a6978800112233445566aa",
+  "text": "# Authentication > Tokens\nRefresh tokens are short-lived JWTs signed by HS256.",
+  "header_path": "Authentication > Tokens",
+  "section_id": "authentication-tokens",
+  "token_count": 28,
+  "source": "docs/auth.md",
+  "strategy": "markdown",
+  "version": "1.0.0",
+  "part_index": null
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "text": "the answer is 42",
+  "strategy": "regex"
+}
+]]></code>
+      <note>Invalid: strategy not in enum; missing id/header_path/source/version/token_count.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>header_path present (may be empty string for root).</item>
+      <item>strategy ∈ {markdown, html}.</item>
+      <item>token_count under 4000.</item>
+      <item>If part_index set, it is 0-indexed.</item>
     </list>
   </section>
 </text>

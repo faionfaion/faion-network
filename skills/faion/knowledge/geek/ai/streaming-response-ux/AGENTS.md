@@ -3,78 +3,96 @@ slug: streaming-response-ux
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "35902451b40c9661"
-summary: "UX patterns for token-by-token LLM streaming: partial-result rendering, mid-stream cancel, edit-during-stream, and trust-preserving fallbacks."
-tags: [streaming-response-ux, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a streaming-UX spec for one feature surface (chat / inline-AI / copilot): cursor, cancel, partial-state, error recovery, edit-during-stream, scroll lock, plus TTFT + abort-rate telemetry thresholds."
+content_id: "be6372b3ce87be0a"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [streaming, sse, websocket, chat-ux, copilot, ai, geek]
 ---
-# Streaming Response Ux
+
+# Streaming Response UX
 
 ## Summary
 
-**One-sentence:** UX patterns for token-by-token LLM streaming: partial-result rendering, mid-stream cancel, edit-during-stream, and trust-preserving fallbacks.
+**One-sentence:** Produces a streaming-UX spec for one feature surface (chat / inline-AI / copilot): cursor, cancel, partial-state, error recovery, edit-during-stream, scroll lock, plus TTFT + abort-rate telemetry thresholds.
 
-**One-paragraph:** Solves the gap between 'streaming feels alive' and 'streaming feels broken when network jitters'. Mechanism: a checklist of seven UX rules (cursor, cancel button, partial-state indicators, error recovery, edit-during-stream, copy-during-stream, scroll lock) plus telemetry for time-to-first-token and stream-abort-rate. Primary output: a streaming-UX spec for one feature surface (chat, inline-AI, copilot) with measurable thresholds.
+**Ефективно для:** front-end engineers shipping LLM chat / copilot UX where token-by-token streaming feels broken on jitter; PMs writing acceptance criteria for streaming UX; SREs adding TTFT / abort-rate telemetry to a streaming surface.
+
+**One-paragraph:** This methodology pins the recurring decision around "streaming-response-ux" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- feature uses LLM streaming (SSE / WebSocket / chunked HTTP)
-- users see model output as it generates, not after completion
-- expected stream length > 500ms (otherwise streaming is theatre, ship batched)
+- Feature uses LLM streaming (SSE / WebSocket / chunked HTTP).
+- Users see model output as it generates, not after completion.
+- Expected stream length > 500ms median.
+- Owner exists for the streaming surface after ship.
 
 ## Skip If (ANY kills it)
 
-- stream completes in <500ms median — batched UX is simpler and cheaper
-- users are agents/bots, not humans — telemetry-only is sufficient
-- model already returns structured JSON only — streaming text rules don't apply
+- Stream completes in <500ms median — batched UX is simpler and cheaper.
+- Users are agents/bots, not humans — telemetry-only is sufficient.
+- Model already returns structured JSON only — streaming text rules don't apply.
 
 ## Prerequisites
 
-- wire-protocol decided (SSE vs WebSocket vs HTTP chunked transfer)
-- client framework supports streaming primitives (React 18+ Suspense, Svelte transitions, etc.)
-- telemetry pipeline ready to capture TTFT (time-to-first-token) and abort events
+| Input artifact | Format | Source |
+|---|---|---|
+| Wire-protocol decision | ADR | tech lead |
+| Client framework version | string | frontend lead |
+| Telemetry pipeline endpoint | URL | SRE |
+| Surface owner | handle / email | team roster |
+| Latency budget | ms (target + p95) | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai` | parent domain group — provides operating context for Streaming Response Ux |
+| `[[llm-integration]]` | provider SDK streaming primitives |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_ux_rules` | haiku | Bounded template fill from prereqs. |
+| `synthesize_surface_spec` | sonnet | Per-surface judgment with bounded inputs. |
+| `review_for_trust_collapse` | opus | Cross-input synthesis when failures cascade. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/streaming-response-ux.json` | JSON schema for the Streaming Response Ux output contract |
+| `templates/streaming-response-ux.json` | JSON Schema for the Streaming Response UX output contract |
 | `templates/streaming-response-ux.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a streaming-response-ux record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-streaming-response-ux.py` | Enforce Streaming Response Ux output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-streaming-response-ux.py` | Enforce the Streaming Response UX output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `role-ux-ui-designer/AI-feature UX pattern playbook: shipping copilot / chat / inline-AI without trust collapse`
-- geek/ai/llm-integration/streaming-protocols
-- pro/ux/ux-ui-designer/ai-feature-ux-patterns
+- [[llm-integration]] — provider streaming primitives.
+- [[ai-feature-ux-patterns]] — adjacent UX-pattern catalogue.
+- [[telemetry-spec-template]] — TTFT / abort-rate sink contract.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="video-gen-tools Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for video-gen-tools. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Video Gen Tools — Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every production VideoGenerationService must enforce: immediate download, streaming I/O, pinned model hashes, provider-id isolation, audit log, validate output.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-immediate-download" testable="true" depth="essential">
+      <statement>Download the video_url within the same SUCCEEDED handler call, BEFORE returning from generate(). Never store a pre-signed URL as a persistent artifact.</statement>
+      <rationale source="Runway/Luma pre-signed URL expiry: 30-60 minutes per provider docs">Archival sweepers running on a delayed cron find every cached URL returns HTTP 403. Permanent storage MUST happen inside the generation call window.</rationale>
+    </rule>
+
+    <rule id="r2-streaming-download" testable="true" depth="essential">
+      <statement>Download with streaming I/O: `requests.get(url, stream=True)` + `r.iter_content(chunk_size=1_048_576)` OR `httpx.stream("GET", url)`. Never use `response.content` for video bodies.</statement>
+      <rationale source="OOM kills on 100MB+ generated videos on 1GB-RAM containers">`response.content` buffers the entire body in memory before write. A 100 MB clip on a constrained host triggers OOM mid-pipeline.</rationale>
+    </rule>
+
+    <rule id="r3-pin-model-hashes" testable="true" depth="essential">
+      <statement>Replicate model versions MUST be pinned to a known-good sha hash in config, never the bare model name. Promote pin updates via PR with a smoke test.</statement>
+      <rationale source="Replicate model rebuilds change output behaviour silently">A model name without a hash resolves to "current latest" — silently drift across vendor pushes invalidate downstream prompts, seeds, and cached comparisons.</rationale>
+    </rule>
+
+    <rule id="r4-provider-id-isolation" testable="true" depth="essential">
+      <statement>task_id (Runway), generation_id (Luma), prediction_id (Replicate) MUST carry a `provider` prefix in the output dict. Never pass a Runway task_id to Luma poll or vice versa.</statement>
+      <rationale source="Cross-provider id collisions / silent 404 polling traces">Provider ids are provider-scoped and non-portable. Mixing them returns 404 with no useful error; the agent loops on a non-existent task.</rationale>
+    </rule>
+
+    <rule id="r5-audit-log" testable="true" depth="essential">
+      <statement>Log `{prompt, provider, model_hash, task_id, seed, duration_s, aspect_ratio, status, retries, local_path}` per generation. Persist the log in a structured store (JSONL, ClickHouse, or BigQuery).</statement>
+      <rationale source="Quality regression debugging requires full provenance">Without a structured log, regressions ("why is this clip blurry now?") cannot be traced to the specific model version + seed + retry attempt that produced it.</rationale>
+    </rule>
+
+    <rule id="r6-validate-after-download" testable="true" depth="essential">
+      <statement>Run ffprobe on the downloaded file before returning success. Apply the same checks as `video-gen-basics`: duration &gt; 0, at least one video stream, size &gt; 100 KB. A failed ffprobe routes the call to the fallback chain, not success.</statement>
+      <rationale source="Empty SUCCEEDED responses observed on Runway and Replicate">Provider returning SUCCEEDED does not guarantee a valid file. Without ffprobe, downstream concat / archive fails hours later with cryptic ffmpeg errors.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

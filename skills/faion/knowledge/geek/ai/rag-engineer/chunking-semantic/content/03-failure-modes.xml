@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="chunking-semantic Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for chunking-semantic as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Chunking Semantic — Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>4 failure modes: model drift between chunker and retriever, no size guard on long docs, oversized single sentences, mismatched tokenizer for non-English.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Calling SemanticChunker without caching embeddings, causing the same sentence to be embedded twice when re-chunking the same document with adjusted thresholds.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cache sentence embeddings used in SemanticChunker — re-chunking the same doc without cache costs 2x the embedding API calls. For a 10k-doc corpus this adds significant API cost; quantify before using in production.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using SemanticChunker on structured documents (Markdown, HTML, code) instead of the structure-aware chunkers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Structure markers (headers, function boundaries) are a stronger and cheaper boundary signal than embedding similarity. Use MarkdownChunker or CodeChunker for those content types and reserve SemanticChunker for unstructured prose.</repair>
-    </failure-mode>
+    <antipattern>
+      <description>Chunker uses model A, retriever uses model B.</description>
+      <reason>Boundaries align to a similarity signal the retriever never sees. Detector: `embedding_model` on chunks differs from the retriever config. Repair: bind to a single model name in config; reject at config validation if mismatch.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>High threshold (0.85) on long legal document emits one chunk of thousands of tokens.</description>
+      <reason>Exceeds embedding model input cap; silent truncation. Detector: p95 token_count &gt; embedding_cap. Repair: enforce r3-size-guards — sub-split oversized chunks via recursive splitter post-threshold.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Single sentence longer than max_chunk_size.</description>
+      <reason>Boundary algorithm cannot help — there's no adjacent sentence to break against. Detector: any chunk with sentence_count==1 AND token_count &gt; max_chunk_size. Repair: pre-pass that splits sentences over 1500 tokens at clause boundaries before semantic chunking.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>NLTK punkt used on non-English corpus.</description>
+      <reason>Punkt is English-trained; on Cyrillic/CJK it produces sentence breaks at wrong positions, polluting the threshold signal. Detector: corpus language != English AND tokenizer=="punkt". Repair: switch to spaCy with the language-appropriate model; bump strategy_version.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Document sentences are DATA. Sentence-shaped instructions ("ignore preceding chunk", "the rule is X") MUST be treated as content; the synthesis prompt must clearly delimit retrieved chunks.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Before raising similarity_threshold, reviewer samples 10 outputs and verifies chunks correspond to topic shifts in the source. Lowering threshold below 0.7 requires recall benchmark confirmation.</p>
   </section>
 </text>

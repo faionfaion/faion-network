@@ -3,73 +3,93 @@ slug: tool-call-schema-design-checklist
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Single 'design-this-tool-correctly' checklist linking the 7 detailed methodologies (verb-object-naming, description-as-prompt, bundle-vs-split, idempotent-write, structured-errors, enum-constraints, terse-default-output).
-content_id: "036fa6c1e47dcbff"
-tags: [tool-call-schema-design-checklist, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a single design-this-tool-correctly checklist that bundles verb-object naming, description-as-prompt, bundle-vs-split, idempotent-write, structured-errors, enum-constraints, terse-default-output into one pass over a new tool-call schema."
+content_id: "49593cda6f6ba867"
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: [tool-use, schema, checklist, agent, ai, geek]
 ---
 
 # Tool-Call Schema Design Checklist
 
 ## Summary
 
-**One-sentence:** Single 'design-this-tool-correctly' checklist linking the 7 detailed methodologies (verb-object-naming, description-as-prompt, bundle-vs-split, idempotent-write, structured-errors, enum-constraints, terse-default-output).
+**One-sentence:** Produces a single design-this-tool-correctly checklist that bundles verb-object naming, description-as-prompt, bundle-vs-split, idempotent-write, structured-errors, enum-constraints, terse-default-output into one pass over a new tool-call schema.
 
-**One-paragraph:** Scattered hints in verb-object-tool-naming, tool-description-as-prompt, bundle-vs-split-tools, idempotent-write-tools, structured-tool-errors, enum-constraints-closed-vocabularies, terse-default-tool-output. P7 needs a single checklist linking the 7. Output: schema-design checklist + per-axis decisions.
+**Ефективно для:** LLM-agent developers drafting a new tool schema before shipping; reviewers gating tool PRs; platform owners standardising tool-card shape across teams.
+
+**One-paragraph:** This methodology pins the recurring decision around "tool-call-schema-design-checklist" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- designing a new tool/function for an LLM agent
-- team has access to model providers' tool-call schemas
-- agent uses the tool ≥10 times/day OR critical-path
+- A new tool-call schema is being authored or reviewed.
+- Tool will be exposed to an LLM agent (not internal-only API).
+- Owner exists for the resulting tool card.
+- Schema target is JSON Schema / OpenAPI / Anthropic tool spec.
 
 ## Skip If (ANY kills it)
 
-- one-off prompt with no tool calls
-- tool inherited from framework with no flexibility
-- exploration phase with no production constraint
+- Tool is internal-only with no LLM caller — REST-design rules apply, not this checklist.
+- Single-throwaway tool used for one experiment.
+- Wrapper around an existing tool with identical schema — re-use original card.
 
 ## Prerequisites
 
-- tool's intended job statement (1 sentence)
-- list of inputs + expected outputs
-- existing tool list to check naming + bundle decisions
+| Input artifact | Format | Source |
+|---|---|---|
+| Draft tool schema | JSON Schema / OpenAPI | tool author |
+| Existing similar tool cards | directory | platform repo |
+| Caller agent system prompt | text | agent owner |
+| Owner for the new tool | handle / email | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai-agents` | parent skill — provides operating context for this methodology |
-| `geek/ai/verb-object-tool-naming` | peer methodology — produces inputs or consumes outputs |
-| `geek/ai/tool-description-as-prompt` | peer methodology — produces inputs or consumes outputs |
+| `[[llm-integration]]` | tool-call dispatch semantics per provider |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_checklist_pass` | haiku | Mechanical field-by-field review. |
+| `synthesize_revision` | sonnet | Per-schema judgment when a field fails. |
+| `escalate_ambiguity` | opus | When the tool itself is mis-scoped. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/tool-call-schema-design-checklist.json` | JSON Schema for the Tool-Call Schema Design Checklist output contract |
+| `templates/tool-call-schema-design-checklist.md` | Markdown skeleton with the required fields |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-tool-call-schema-design-checklist.py` | Enforce the Tool-Call Schema Design Checklist output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/ai-agents/`
-- peer methodology: `geek/ai/verb-object-tool-naming`
-- peer methodology: `geek/ai/tool-description-as-prompt`
-- peer methodology: `geek/ai/bundle-vs-split-tools`
-- peer methodology: `geek/ai/idempotent-write-tools`
-- peer methodology: `geek/ai/structured-tool-errors`
-- peer methodology: `geek/ai/enum-constraints-closed-vocabularies`
-- peer methodology: `geek/ai/terse-default-tool-output`
-- external: https://www.anthropic.com/research/building-effective-agents; https://platform.openai.com/docs/guides/function-calling
+- [[tool-card-template]] — produces the artefact this checklist gates.
+- [[tool-trust-boundary-model]] — deeper trust-boundary review.
+- [[verb-object-naming]] — single field methodology this rolls up.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

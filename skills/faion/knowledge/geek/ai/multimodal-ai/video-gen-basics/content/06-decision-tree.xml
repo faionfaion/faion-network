@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Video Gen Basics — Provider Routing Decision Tree" version="1.1.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-camera-set">Is `camera` explicitly set in the brief?</root-question>
+    <branch when="camera == null OR camera == ''">
+      <conclusion ref="r1-explicit-camera">Reject the brief. Return error "camera required". Force the planner to choose from the closed vocabulary.</conclusion>
+    </branch>
+    <branch when="camera != null">
+      <question id="q-subject-consistency">Does the brief require subject consistency across multiple shots (subject_consistency_required == true)?</question>
+      <branch when="subject_consistency_required == true">
+        <conclusion ref="r2-image-to-video-default">Use image-to-video. Require anchor_image_url; generate one canonical still via img-gen-basics if missing. Route to Runway image_to_video or Luma keyframes.frame0.</conclusion>
+      </branch>
+      <branch when="subject_consistency_required == false">
+        <question id="q-style-tag">What is the style_tag in the brief?</question>
+        <branch when="style_tag == 'photorealistic'">
+          <conclusion ref="r3-ffprobe-validate">Provider = Luma Dream Machine. 5s default, 720p, REST API. Apply ffprobe validation step.</conclusion>
+        </branch>
+        <branch when="style_tag == 'cinematic'">
+          <conclusion ref="r3-ffprobe-validate">Provider = Runway Gen-3 Alpha Turbo. 5-10s, 1080p, official Python SDK. Apply ffprobe validation step.</conclusion>
+        </branch>
+        <branch when="style_tag == 'animated'">
+          <conclusion ref="r4-cache-seed">Provider = Replicate AnimateDiff. Pin model hash in config. Cache by seed for deterministic regen.</conclusion>
+        </branch>
+        <branch when="style_tag == 'prototype'">
+          <conclusion ref="r4-cache-seed">Provider = Replicate SVD (Stable Video Diffusion). Cheapest; iterate cheap; promote to Runway/Luma for final.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+    <example trace="golden-retriever-tracking">
+      <p>Input: brief with subject="golden retriever", camera="tracking", style="cinematic", subject_consistency_required=false. → camera set → consistency false → style_tag cinematic → conclusion r3-ffprobe-validate: route to Runway Gen-3, run ffprobe after download.</p>
+    </example>
+  </decision-tree>
+</text>

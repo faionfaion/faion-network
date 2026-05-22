@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="video-gen-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for video-gen-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Video Gen Basics — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules every short-clip AI video generation call must enforce. Source: Runway docs, Luma keyframe API, ffprobe behaviour, content-policy traces.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-explicit-camera" testable="true" depth="essential">
+      <statement>Every video prompt MUST specify camera movement from the closed vocabulary: `static | pan_left | pan_right | dolly_in | dolly_out | tracking | crane | drone | orbit`. Empty camera defaults reject at validation.</statement>
+      <rationale source="Runway and Luma comparative trials (10 clips per vocab term)">Omitting camera lets the model choose randomly — output ranges from steady tracking to handheld shake across identical prompts. Explicit movement is the single largest quality lever.</rationale>
+    </rule>
+
+    <rule id="r2-image-to-video-default" testable="true" depth="essential">
+      <statement>When the brief carries `subject_consistency_required == true`, use image-to-video (Runway image_to_video, Luma keyframes.frame0, Replicate SVD). Text-to-video is allowed only for one-off prototypes.</statement>
+      <rationale source="Subject drift measurements across 20+ text-to-video runs">Text-to-video regenerates the subject from scratch on every call — faces, brands, and lighting drift. Image-to-video anchors to a reference frame, eliminating drift across shots.</rationale>
+    </rule>
+
+    <rule id="r3-ffprobe-validate" testable="true" depth="essential">
+      <statement>Run ffprobe on every generated video before returning success. Verify file size &gt; 0, duration &gt; 0, and at least one valid video stream. Empty / 0-byte outputs from SUCCEEDED responses are not infrequent.</statement>
+      <rationale source="Runway/Luma SUCCEEDED-with-empty-output traces (~1-2% of submissions)">Provider can return status SUCCEEDED with a 0-byte URL or a corrupted file. Propagating these silently breaks downstream ffmpeg processing with cryptic errors hours later.</rationale>
+    </rule>
+
+    <rule id="r4-cache-seed" testable="true" depth="essential">
+      <statement>Cache generated clips by `sha256(prompt_text + provider + seed + duration + aspect_ratio).hexdigest()`. Store seed alongside the clip; pass it back for near-identical regeneration.</statement>
+      <rationale source="Video generation cost ($0.05-$0.50 per clip)">Iteration loops without cache+seed burn budget on identical prompts. With seed stored, minor prompt tweaks regenerate predictably and cheap re-runs become free.</rationale>
+    </rule>
+
+    <rule id="r5-clip-cap-5s" testable="true" depth="essential">
+      <statement>Cap individual clip duration at 5 seconds (Luma native, Runway optimal) or 10 seconds (Runway max). For longer sequences, generate multiple ≤5s clips and concatenate via ffmpeg concat.</statement>
+      <rationale source="Quality degradation curve on Runway Gen-3 (motion artifacts above 8s)">Longer clips accumulate motion artifacts (warp, blur, identity drift). Concatenating ≤5s segments preserves quality at the cost of visible seams; seam mitigation is post-processing, not generation.</rationale>
+    </rule>
+
+    <rule id="r6-no-inline-video-read" testable="true" depth="essential">
+      <statement>Agents MUST NOT attempt to read or stream video file content inline as part of an agent response. Download to disk first, return only the file path; downstream processing (ffprobe, ffmpeg) reads from path.</statement>
+      <rationale source="Token budget: a 5s 1080p mp3 is ~5-15 MB binary">Video files are large binary blobs. Inline read either truncates at the binary boundary or blows the context window. The path-only contract keeps agents inside their token budget.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

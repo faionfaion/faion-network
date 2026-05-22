@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="local-llm-ollama Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for local-llm-ollama as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Local LLM Ollama Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five recurring production failures with local-LLM Ollama deployments.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Hardcoding the model name in agent code (e.g., always using "llama3.1:8b").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Different machines have different VRAM. A hardcoded model that exceeds available VRAM will fail or run on CPU. Model name must be configurable via environment or config file.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="fm-01" severity="high">
+      <symptom>Agent code raises ConnectionRefusedError at request time; on-call paged.</symptom>
+      <root-cause>No /api/tags health check at startup; Ollama service was down.</root-cause>
+      <fix>Call GET /api/tags at agent startup; raise "Ollama not running" with start command (rule r2).</fix>
+    </antipattern>
+    <antipattern id="fm-02" severity="high">
+      <symptom>Throughput 0.5 tok/s instead of 60 tok/s; host swap usage spikes.</symptom>
+      <root-cause>70B model on 16 GB host — pages to disk continuously.</root-cause>
+      <fix>Verify ram_floor_gb &gt;= 48 for 70B; switch to 13B or upgrade host (rule r3).</fix>
+    </antipattern>
+    <antipattern id="fm-03" severity="high">
+      <symptom>Production quality regressions appear in complex-reasoning tasks after Ollama adoption.</symptom>
+      <root-cause>Local 7B used for tasks requiring Opus / GPT-4o-level reasoning; no gold-eval pre-check.</root-cause>
+      <fix>Run 30-item gold eval; if local model fails, route hard tasks back to cloud (rule r5).</fix>
+    </antipattern>
+    <antipattern id="fm-04" severity="medium">
+      <symptom>Codebase has two HTTP client paths (one for cloud, one for Ollama); cloud bugs don't show in tests.</symptom>
+      <root-cause>Direct /api/generate calls instead of /v1 OpenAI-compatible endpoint.</root-cause>
+      <fix>Refactor to OpenAI SDK with base_url switch; delete the Ollama-only code path (rule r4).</fix>
+    </antipattern>
+    <antipattern id="fm-05" severity="medium">
+      <symptom>First request after deploy times out; 4 GB model downloads inline.</symptom>
+      <root-cause>ollama pull was not part of deploy; first-call pulled the model on demand.</root-cause>
+      <fix>Pre-pull models in deploy script or systemd ExecStartPre. Block service start until model is on disk.</fix>
+    </antipattern>
   </section>
 </text>

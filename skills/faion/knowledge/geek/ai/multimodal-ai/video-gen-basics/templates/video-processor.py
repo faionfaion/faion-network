@@ -1,4 +1,9 @@
-"""VideoProcessor: ffmpeg utilities for frame extraction, concat, resize, audio."""
+# purpose: VideoProcessor — ffmpeg/ffprobe wrapper for validation, concat, resize, audio merge.
+# consumes: local mp4 paths; ffmpeg + ffprobe binaries on host.
+# produces: validated mp4 outputs; ffprobe metadata JSON.
+# depends-on: ffmpeg (apt install ffmpeg); subprocess module from stdlib.
+# token-budget-impact: zero.
+"""VideoProcessor: ffmpeg utilities + ffprobe validation per rule r3."""
 import subprocess
 import json
 from pathlib import Path

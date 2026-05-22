@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="rag-eval-ab-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rag-eval-ab-testing. Verify and refine before relying on for production.</summary>
+  <summary>Five testable rules for A/B testing RAG configurations.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="r1-interleave-ab" testable="true" depth="essential">
+      <statement>Interleave A and B per question (A on q1, B on q1, A on q2, B on q2, ...). Never run all A then all B in two separate batches.</statement>
+      <rationale source="v1-source">LLM API performance and index state drift between batches; non-interleaved A/B confounds config differences with temporal effects.</rationale>
+    </rule>
+    <rule id="r2-isolate-state" testable="true" depth="essential">
+      <statement>Use separate indexes, separate caches, separate logging streams per config. Do not share state.</statement>
+      <rationale source="v1-source">Shared state leaks between A and B — second-runner sees first-runner's cache hits, producing artificially low latency on B.</rationale>
+    </rule>
+    <rule id="r3-min-20-questions" testable="true" depth="essential">
+      <statement>Require at least 20 questions in the shared test set; warn if &lt;50.</statement>
+      <rationale source="v1-source">Below 20, observed differences are within statistical noise; results are not actionable.</rationale>
+    </rule>
+    <rule id="r4-paired-stats" testable="true" depth="essential">
+      <statement>Report paired metrics per question (A_score, B_score, delta) plus aggregate paired-test p-value (Wilcoxon or paired t-test).</statement>
+      <rationale source="v1-source">Unpaired comparisons throw away question-level variance and inflate significance claims.</rationale>
+    </rule>
+    <rule id="r5-quality-over-latency" testable="true" depth="essential">
+      <statement>Promotion decision requires both: B's quality metric is significantly better AND latency is within +20% of A. A faster B that retrieves less relevant sources must not promote.</statement>
+      <rationale source="v1-source">Baseline RAGABTest only measures latency + source count; faster ≠ better.</rationale>
+    </rule>
+    <rule id="skip-methodology" testable="true" depth="essential">
+      <statement>Skip when the configurations are not isolated, the test set is &lt;20 questions, or only latency matters.</statement>
+      <rationale source="phase-d">Non-isolated runs are unreliable; small N is noise; latency-only needs no A/B.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

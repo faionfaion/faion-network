@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Chunking Production Service — Decision Tree" version="1.0.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-config-valid">Does ChunkingConfig validate?</root-question>
+    <branch when="config_valid == false">
+      <conclusion ref="r1-fail-fast-config">Raise ValueError at __init__. Do not allow service instantiation.</conclusion>
+    </branch>
+    <branch when="config_valid == true">
+      <question id="q-chunk-result">Did the dispatched sub-chunker succeed?</question>
+      <branch when="sub_chunker_status == 'ok'">
+        <conclusion ref="r3-metadata-propagation">Merge caller metadata onto every chunk. Stamp strategy_used == requested_strategy. Return envelope with warnings=[].</conclusion>
+      </branch>
+      <branch when="sub_chunker_status == 'exception'">
+        <conclusion ref="r4-logged-fallback">Run word-split fallback. Stamp strategy_used="fallback". Emit warnings entry with source + exception. Apply r5-strategy-used-in-output.</conclusion>
+      </branch>
+    </branch>
+    <example trace="markdown-batch">
+      <p>Batch ingest of docs/*.md with Strategy.MARKDOWN. One malformed file triggers fallback → warning logged → operator triages → re-ingest after fix.</p>
+    </example>
+  </decision-tree>
+</text>

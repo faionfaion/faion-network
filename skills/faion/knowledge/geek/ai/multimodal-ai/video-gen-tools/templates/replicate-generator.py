@@ -1,4 +1,9 @@
-"""ReplicateVideoGenerator: SVD, AnimateDiff, Zeroscope."""
+# purpose: Replicate adapter with pinned sha hashes for SVD / AnimateDiff / Zeroscope (rule r3).
+# consumes: image_path or prompt, motion_bucket_id, fps, num_frames, pinned model hash.
+# produces: dict {status, video_url or list[url], prediction_id, error}.
+# depends-on: replicate SDK; env REPLICATE_API_TOKEN; never use name-only resolution.
+# token-budget-impact: zero LLM tokens.
+"""ReplicateVideoGenerator: SVD / AnimateDiff / Zeroscope with pinned hashes."""
 import replicate
 
 

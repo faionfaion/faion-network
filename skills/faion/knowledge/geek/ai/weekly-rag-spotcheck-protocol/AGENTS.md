@@ -3,78 +3,94 @@ slug: weekly-rag-spotcheck-protocol
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3cd46423d403e0f1"
-summary: "Weekly Rag Spotcheck Protocol: produces a versioned, owner-signed artefact that closes the gap 'role-ml-engineer/Weekly RAG retrieval quality spot-check'."
-tags: [weekly-rag-spotcheck-protocol, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a weekly checklist + report for RAG retrieval quality: 20-row sample, judge-score deltas, top regressions, action items routed to indexer / embedder / prompt owners."
+content_id: "64d8b5e3836232c0"
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: [rag, weekly, spotcheck, retrieval-quality, checklist, ai, geek]
 ---
-# Weekly Rag Spotcheck Protocol
+
+# Weekly RAG Spotcheck Protocol
 
 ## Summary
 
-**One-sentence:** Weekly Rag Spotcheck Protocol: produces a versioned, owner-signed artefact that closes the gap 'role-ml-engineer/Weekly RAG retrieval quality spot-check'.
+**One-sentence:** Produces a weekly checklist + report for RAG retrieval quality: 20-row sample, judge-score deltas, top regressions, action items routed to indexer / embedder / prompt owners.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-ml-engineer/Weekly RAG retrieval quality spot-check': rag-eval-* methodologies cover metrics but not the weekly cadence: sample size, stratification, label rubric, time-boxing. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a weekly rag spotcheck protocol artefact (decision record, checklist, score sheet, or report).
+**Ефективно для:** RAG owners running a weekly retrieval-quality cadence; PMs tracking recall regression as a leading indicator of churn; SREs gating index refresh on stable retrieval health.
+
+**One-paragraph:** This methodology pins the recurring decision around "weekly-rag-spotcheck-protocol" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-ml-engineer/Weekly RAG retrieval quality spot-check' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- RAG surface in production with ≥1k retrievals per week.
+- Eval / judge harness exists OR can be set up.
+- Owner exists for retrieval quality.
+- Cadence is weekly or being introduced.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working weekly rag spotcheck protocol artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- RAG traffic <100 retrievals/week — sample size is unreliable.
+- Surface has no eval / judge harness AND no plan to add one.
+- Static FAQ surface with no embedding drift.
 
 ## Prerequisites
 
-- recent context for the 'role-ml-engineer/Weekly RAG retrieval quality spot-check' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Last week's retrieval logs | JSONL | RAG telemetry |
+| Stratified 20-row sample | JSONL | spotcheck owner |
+| Judge scoring rubric | Markdown | eval owner |
+| Previous week's report | Markdown | spotcheck owner |
+| Owner for the protocol | handle / email | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai` | parent domain group — provides operating context for Weekly Rag Spotcheck Protocol |
+| `[[agent-eval-harness-bootstrap-recipe]]` | judge harness exists and is stable |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_sample` | haiku | Mechanical sample from stratified pool. |
+| `synthesize_regression` | sonnet | Per-row regression assessment. |
+| `escalate_blocker` | opus | Cross-row pattern when multiple surfaces regress. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-rag-spotcheck-protocol.json` | JSON schema for the Weekly Rag Spotcheck Protocol output contract |
+| `templates/weekly-rag-spotcheck-protocol.json` | JSON Schema for the Weekly RAG Spotcheck Protocol output contract |
 | `templates/weekly-rag-spotcheck-protocol.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-weekly-rag-spotcheck-protocol.py` | Enforce Weekly Rag Spotcheck Protocol output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-weekly-rag-spotcheck-protocol.py` | Enforce the Weekly RAG Spotcheck Protocol output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `role-ml-engineer/Weekly RAG retrieval quality spot-check`
-- geek/ai/role-ml-engineer
+- [[vector-db-tuning-runbook]] — adjacent when recall drops.
+- [[verbatim-to-eval-row-recipe]] — feeds new rows into the spotcheck pool.
+- [[agent-eval-harness-bootstrap-recipe]] — upstream harness setup.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

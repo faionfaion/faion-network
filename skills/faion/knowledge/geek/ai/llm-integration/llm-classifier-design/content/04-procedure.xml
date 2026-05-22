@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LLM Classifier Design Procedure" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Six-step procedure to ship a cost-minimised LLM classifier.</summary>
+
+  <section title="Steps">
+    <step n="1" name="define-schema">
+      <input>Use-case + label set.</input>
+      <action>Author the output schema with strict types (enum / number / fixed JSON object). No nullable fields.</action>
+      <output>tool_schema in classifier-config.json.</output>
+      <decision-gate>If label set &gt; 5, split into multiple binary classifiers.</decision-gate>
+    </step>
+    <step n="2" name="pick-model">
+      <input>Cost-per-1k-tokens table + sample inputs.</input>
+      <action>Start with the smallest model in the candidate family. Calibrate.</action>
+      <output>model field in config.</output>
+      <decision-gate>Only escalate if κ &lt; 0.7 on calibration.</decision-gate>
+    </step>
+    <step n="3" name="wire-tool">
+      <input>SDK + tool_schema.</input>
+      <action>tool_choice = single-tool forced. Verify the response contains exactly one tool_use block.</action>
+      <output>classifier-runner.py.</output>
+      <decision-gate>Smoke-test: 5 items return 5 verdicts in one call.</decision-gate>
+    </step>
+    <step n="4" name="batch">
+      <input>Item pipeline.</input>
+      <action>Group items into batches of N (default 50). Each item gets a numeric id 1..N inside the user message; verdicts indexed by id.</action>
+      <output>Batching code.</output>
+      <decision-gate>If output verdicts count != batch size, abort batch + alert.</decision-gate>
+    </step>
+    <step n="5" name="calibrate">
+      <input>30-case holdout + judge-calibration-protocol.</input>
+      <action>Run calibration; record κ. If κ &lt; 0.7, escalate model or revise prompt.</action>
+      <output>calibration-report.json.</output>
+      <decision-gate>κ ≥ 0.7 to ship.</decision-gate>
+    </step>
+    <step n="6" name="ship">
+      <input>Validated config + runner.</input>
+      <action>Roll out behind feature flag at 10% → 50% → 100%. Watch quality + cost dashboards.</action>
+      <output>Production runner.</output>
+      <decision-gate>Revert on quality regression &gt;3pp.</decision-gate>
+    </step>
+  </section>
+</text>

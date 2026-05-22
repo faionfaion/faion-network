@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Video Gen Basics — Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>6-step procedure for a single-clip AI video generation: build prompt → cache probe → submit → poll → download → ffprobe.</summary>
+
+  <section title="Steps">
+    <step n="1" name="build-prompt">
+      <input>brief dict (subject, action, setting, camera, style, lighting, duration_s, aspect_ratio, subject_consistency_required)</input>
+      <action>Invoke VideoPromptBuilder; reject if camera is empty (rule r1). If subject_consistency_required, switch input_mode to image-to-video and require anchor_image_url (rule r2).</action>
+      <output>structured prompt text + selected input_mode (text2video | image2video).</output>
+      <decision-gate>if camera empty AND no explicit `static` default → return error "camera required".</decision-gate>
+    </step>
+
+    <step n="2" name="probe-cache">
+      <input>prompt text, provider, seed, duration_s, aspect_ratio</input>
+      <action>Compute prompt_hash = sha256(prompt + provider + str(seed) + str(duration_s) + aspect_ratio); probe `{output_dir}/{prompt_hash}.mp4`. If present, run ffprobe; if valid, return cached=true.</action>
+      <output>prompt_hash; cached path on hit.</output>
+    </step>
+
+    <step n="3" name="submit-job">
+      <input>structured prompt, input_mode, anchor_image (if image2video), duration_s, aspect_ratio, seed</input>
+      <action>Provider-specific submission: Runway `client.image_to_video.create(...)`; Luma `httpx.post("/generations", ...)`; Replicate `replicate.run(version, input)`. Capture task_id.</action>
+      <output>task_id (provider-native string).</output>
+    </step>
+
+    <step n="4" name="poll-status">
+      <input>task_id, provider, timeout_s (default 300)</input>
+      <action>Loop with `sleep(5)`; query provider status endpoint. Terminate on SUCCEEDED / FAILED / timeout. Cap total wall-clock at timeout_s.</action>
+      <output>status enum + video_url on success, error_message on failure.</output>
+      <decision-gate>if FAILED → check for content-policy keywords; do NOT retry without prompt revision.</decision-gate>
+    </step>
+
+    <step n="5" name="download">
+      <input>video_url (pre-signed, expires 30-60min)</input>
+      <action>Stream download via `requests.get(url, stream=True)` writing to `{output_dir}/{prompt_hash}.mp4`. Buffer max 1 MB chunks to avoid OOM on memory-constrained hosts.</action>
+      <output>local_path with downloaded mp4.</output>
+    </step>
+
+    <step n="6" name="ffprobe-validate">
+      <input>local_path</input>
+      <action>Run `ffprobe -v error -show_streams -show_format -of json local_path`. Parse JSON; require duration &gt; 0, at least one video stream, file size &gt; 100 KB.</action>
+      <output>ffprobe object (size, duration, streams, width, height) attached to result.</output>
+      <decision-gate>if ffprobe shows 0-duration or no video stream → return status="failed", error="ffprobe validation".</decision-gate>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>

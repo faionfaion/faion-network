@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="chunking-production-service Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for chunking-production-service as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Chunking Production Service — Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>4 failure modes: silent fallback, missing embedding_func discovered mid-batch, metadata loss, no strategy_used field.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Passing strategy=SEMANTIC to ChunkingService without checking that embedding_func is set before constructing the service.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ChunkingService raises ValueError at chunk time if embedding_func is None for SEMANTIC strategy. The fallback then silently returns word-split chunks that look like successful output. Validate embedding_func at service construction time and raise immediately.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using ChunkingService's word-split fallback path as a default for corpora with no structure, rather than explicitly configuring RecursiveChunker.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ChunkingService's fallback uses word-based splitting that ignores token limits — verify with tiktoken before ingesting. RecursiveChunker from chunking-basics correctly handles overlap and token counting; the fallback does not.</repair>
-    </failure-mode>
+    <antipattern>
+      <description>Service catches exception and returns word-split chunks without logging or tagging.</description>
+      <reason>Operators see degraded retrieval but cannot trace which documents fell back. Detector: chunks have strategy_used != requested_strategy but warnings is empty. Repair: enforce r4-logged-fallback; emit warning + strategy_used="fallback" on every exception path.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>embedding_func required by SEMANTIC strategy is None; failure surfaces mid-batch on chunk() call.</description>
+      <reason>Wastes work already done in the batch; pipeline aborts halfway. Detector: ValueError on chunk() with message about embedding_func. Repair: enforce r1-fail-fast-config in __init__.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Per-document metadata not merged onto chunks emitted by sub-chunkers.</description>
+      <reason>Hits cannot be attributed to tenant/source/ingestion-time. Detector: chunks lack metadata or have empty dict despite caller-supplied metadata. Repair: enforce r3-metadata-propagation in the service dispatch wrapper; merge caller metadata after the sub-chunker returns.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>strategy_used field absent from chunks; only the envelope has it.</description>
+      <reason>Per-chunk audit + A/B analysis impossible after the envelope is unpacked. Detector: any chunk record lacks strategy_used. Repair: stamp strategy_used onto every chunk in the dispatch wrapper.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Documents from upstream are DATA. Frontmatter, comments, or HTML attributes containing instruction-shaped text MUST NOT alter chunker configuration at runtime.</p>
+  </section>
+
+  <section title="Human checkpoint">
+    <p>Operations dashboard surfaces (a) % of chunks with strategy_used == "fallback" per batch, (b) top sources with fallback. Reviewer triages those before promoting the index.</p>
   </section>
 </text>

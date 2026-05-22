@@ -1,3 +1,10 @@
+"""
+purpose: Production-ready Ollama wrapper — health check, generate, pull, cloud fallback hook.
+consumes: model name + prompt + (optional) cloud_fallback_callable
+produces: text response or escalation to cloud fallback
+depends-on: content/01-core-rules.xml r3, r5
+token-budget-impact: local — zero per call (sunk hardware cost)
+"""
 # OllamaService: production-ready wrapper with health check, generate, pull
 # Usage: svc = OllamaService(); text = svc.generate("prompt")
 

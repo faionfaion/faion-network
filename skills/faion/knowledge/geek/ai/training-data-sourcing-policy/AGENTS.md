@@ -3,78 +3,94 @@ slug: training-data-sourcing-policy
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5b3295311af1d1a6"
-summary: "Training Data Sourcing Policy: produces a versioned, owner-signed artefact that closes the gap 'role-ml-engineer/Fine-tune vs prompt-engineer decision flow'."
-tags: [training-data-sourcing-policy, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a versioned training-data-sourcing policy: allowed sources, prohibited classes, licence + consent gating, PII handling, audit trail and approval owners for fine-tuning runs."
+content_id: "fa92913743289a45"
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [fine-tuning, training-data, compliance, pii, consent, ai, geek]
 ---
+
 # Training Data Sourcing Policy
 
 ## Summary
 
-**One-sentence:** Training Data Sourcing Policy: produces a versioned, owner-signed artefact that closes the gap 'role-ml-engineer/Fine-tune vs prompt-engineer decision flow'.
+**One-sentence:** Produces a versioned training-data-sourcing policy: allowed sources, prohibited classes, licence + consent gating, PII handling, audit trail and approval owners for fine-tuning runs.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-ml-engineer/Fine-tune vs prompt-engineer decision flow': Legal, licensing, PII, and consent rules for assembling fine-tune data. Currently treated implicitly inside finetuning-datasets; needs first-class policy doc for production teams. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a training data sourcing policy artefact (decision record, checklist, score sheet, or report).
+**Ефективно для:** ML engineers preparing a fine-tune corpus; data leads gating customer-data usage for training; legal / compliance reviewers on AI training pipelines.
+
+**One-paragraph:** This methodology pins the recurring decision around "training-data-sourcing-policy" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-ml-engineer/Fine-tune vs prompt-engineer decision flow' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team is fine-tuning OR pre-training on data not provided by the foundation-model vendor.
+- Data includes user content (PII or customer corpus).
+- Regulatory regime applies (GDPR / CCPA / HIPAA / EU AI Act).
+- Owner exists to sign the policy.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working training data sourcing policy artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Team is prompt-only (no fine-tuning) — pivot to prompt-data policy.
+- Corpus is fully public-domain with no PII — overhead unjustified.
+- Vendor handles all training; team only operates inference.
 
 ## Prerequisites
 
-- recent context for the 'role-ml-engineer/Fine-tune vs prompt-engineer decision flow' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Corpus inventory | CSV / Parquet manifest | data engineering |
+| Source licence table | CSV / Markdown | legal |
+| Consent register | CSV / DB extract | trust + safety |
+| PII classifier output | JSONL | data engineering |
+| Policy owner + approver | handle / email | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai` | parent domain group — provides operating context for Training Data Sourcing Policy |
+| `[[fine-tune-vs-prompt-decision-tree]]` | team has confirmed fine-tune is the right axis |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `classify_sources` | sonnet | Per-source licence + consent classification. |
+| `draft_policy` | sonnet | Cross-source synthesis. |
+| `escalate_legal` | opus | Cross-regime conflict triage. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/training-data-sourcing-policy.json` | JSON schema for the Training Data Sourcing Policy output contract |
+| `templates/training-data-sourcing-policy.json` | JSON Schema for the Training Data Sourcing Policy output contract |
 | `templates/training-data-sourcing-policy.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-training-data-sourcing-policy.py` | Enforce Training Data Sourcing Policy output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-training-data-sourcing-policy.py` | Enforce the Training Data Sourcing Policy output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `role-ml-engineer/Fine-tune vs prompt-engineer decision flow`
-- geek/ai/role-ml-engineer
+- [[fine-tune-vs-prompt-decision-tree]] — gates whether to fine-tune at all.
+- [[data-exfiltration-canary-tokens]] — adjacent leakage detection.
+- [[ai-trism-compliance]] — broader compliance overlay.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Local LLM Ollama Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Six-step procedure to wire a production Ollama integration.</summary>
+
+  <step n="1" name="install">
+    <input>Linux host</input>
+    <action>curl -fsSL https://ollama.com/install.sh | sh; systemctl enable ollama.</action>
+    <output>ollama binary + systemd unit</output>
+  </step>
+  <step n="2" name="pick-model">
+    <input>host RAM + task quality bar</input>
+    <action>7B for ≤8GB, 13B for 16GB, 70B for 48GB. Run a 30-item gold eval against cloud baseline before locking.</action>
+    <output>model id + eval report</output>
+    <decision-gate>If gold-eval gap &gt; X pp → abort, route to cloud.</decision-gate>
+  </step>
+  <step n="3" name="pre-pull-model">
+    <input>locked model id</input>
+    <action>ollama pull &lt;model&gt; as part of deploy / systemd ExecStartPre. Verify disk file present before service starts.</action>
+    <output>model layers on disk</output>
+  </step>
+  <step n="4" name="wire-health-check">
+    <input>agent startup hook</input>
+    <action>GET /api/tags on http://localhost:11434 at startup. On failure raise "Ollama not running. Start with: systemctl start ollama".</action>
+    <output>health-check function</output>
+  </step>
+  <step n="5" name="wire-openai-client">
+    <input>OpenAI SDK</input>
+    <action>OpenAI(base_url="http://localhost:11434/v1", api_key="ollama"). Use the same call pattern as cloud; swap is config-only.</action>
+    <output>shared client factory</output>
+  </step>
+  <step n="6" name="swap-test">
+    <input>shared client factory</input>
+    <action>Run the test suite against cloud + local; diff outputs on the gold eval. Promote to prod only if both paths green.</action>
+    <output>local-vs-cloud regression report</output>
+    <decision-gate>If local fails on a class of inputs → route that class to cloud only.</decision-gate>
+  </step>
+</text>

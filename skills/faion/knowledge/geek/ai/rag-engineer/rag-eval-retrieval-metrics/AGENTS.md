@@ -4,71 +4,85 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Retrieval metrics measure whether the RAG system fetches the right documents before generation happens.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Computes Precision@K, Recall@K, MRR, NDCG and hit-rate for a RAG retrieval pass and exports a per-query JSONL.
 content_id: "85295da758e470f5"
+complexity: medium
+produces: report
+est_tokens: 3000
 tags: [rag, evaluation, retrieval, metrics, information-retrieval]
 ---
 # RAG Retrieval Quality Metrics
 
 ## Summary
 
-**One-sentence:** Retrieval metrics measure whether the RAG system fetches the right documents before generation happens.
+**One-sentence:** Computes Precision@K, Recall@K, MRR, NDCG and hit-rate for a RAG retrieval pass and exports a per-query JSONL.
 
-**One-paragraph:** Retrieval metrics measure whether the RAG system fetches the right documents before generation happens. The five core metrics — Precision@K, Recall@K, MRR, NDCG@K, and Hit Rate — are pure-Python computations with zero API cost and should run on every test evaluation.
+**One-paragraph:** Retrieval metrics measure whether the RAG system fetches the right documents before generation happens. The standard quartet is Precision@K, Recall@K, MRR, NDCG, plus an end-to-end hit-rate. Ground-truth labels for relevant chunks are required. These metrics are inputs to rag-eval-pipeline; on their own they isolate retrieval from generation failure modes.
+
+**Ефективно для:** інженерів, які діагностують RAG-провали і хочуть локалізувати, чи це retrieval-fail (а не generation).
 
 ## Applies If (ALL must hold)
 
-- Measuring whether the retriever returns relevant documents for a labeled test set (ground-truth relevant doc IDs available).
-- Selecting or tuning the retrieval top-K — Precision@K and Recall@K give direct feedback on the K parameter.
-- Ranking-quality comparison between two retrieval strategies (e.g., dense vs. hybrid) — use NDCG@K for graded relevance.
-- CI quality gate: fail a deployment if Hit Rate drops below 0.90 or Precision@5 drops below 0.70.
-- Diagnosing a generation quality problem: if faithfulness is low but Precision@K is high, the problem is the generator, not the retriever.
+- Diagnosing whether a quality regression is retrieval-side or generation-side.
+- Tuning chunk size, embedding model, or reranker with measurable retrieval signal.
+- Building a baseline before adding a reranker.
+- Ground-truth-labeled test set is available.
 
 ## Skip If (ANY kills it)
 
-- When no ground-truth relevant doc IDs exist — Precision@K, Recall@K, MRR, and NDCG@K all require labeled sets; collect labels via human annotation or synthetic test-set generation before applying these metrics.
-- Real-time per-query scoring in production — these metrics require a labeled test set comparison, not a single live query; for online monitoring use generation-side signals (faithfulness sampling) instead.
-- Replacing generation metrics — high Precision@K says nothing about whether the generator produces faithful, relevant answers; always pair with generation metrics.
+- No labeled relevant chunks — only generation metrics are possible.
+- Only end-to-end answer quality matters — use rag-eval-pipeline directly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Test set with relevant chunk ids | JSONL {query, relevant_chunk_ids[]} | rag-eval-test-set-generation |
+| Retrieval runner | callable | rag-implementation |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `geek/ai/rag-engineer/rag-eval-test-set-generation` | Source of labeled relevant chunks. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
+| `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~700 |
+| `content/06-decision-tree.xml` | essential | Decision tree with rule-id refs | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Compute per-query metrics | haiku | Pure arithmetic. |
+| Aggregate report | sonnet | Per-bucket analysis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/retrieval-metrics.py` | Per-query metric functions: precision_at_k, recall_at_k, mrr, ndcg. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-rag-eval-retrieval-metrics.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[rag-eval-generation-metrics]]
+- [[rag-eval-pipeline]]
+- [[rag-eval-strategy]]
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` picks metric set based on label type (binary vs graded vs missing). Each leaf references a rule id from `01-core-rules.xml`.

@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="chunking-production-service Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for chunking-production-service. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Chunking Production Service — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 rules: fail-fast config validation, dispatch by strategy enum, metadata propagation, logged fallback, strategy_used in output.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>ChunkingService MUST accept ChunkingConfig (strategy, chunk_size, overlap, min_chunk_size) and an optional embedding_func. It MUST raise ValueError immediately when strategy=SEMANTIC and embedding_func is None, rather than deferring the error to chunk time. The fallback path MUST be reached only via the exception handler, never as a default code path, and MUST log the exception before returning fallback chunks.</statement>
-      <rationale source="v1-source">Failing fast on missing embedding_func surfaces configuration errors at service construction time rather than mid-batch. Logging the exception before fallback ensures that silent word-split output is traceable in monitoring; without the log, operators cannot distinguish fallback chunks from successful RecursiveChunker output.</rationale>
+    <rule id="r1-fail-fast-config" testable="true" depth="essential">
+      <statement>ChunkingService MUST validate ChunkingConfig at construction time. If strategy=SEMANTIC and embedding_func is None, raise ValueError immediately, not at chunk() time.</statement>
+      <rationale source="Production fail-fast pattern">Mid-batch failures are expensive; configuration errors must surface before the run starts.</rationale>
+    </rule>
+
+    <rule id="r2-strategy-enum-dispatch" testable="true" depth="essential">
+      <statement>Strategy MUST be a closed enum (FIXED, SENTENCE, PARAGRAPH, SEMANTIC, RECURSIVE, MARKDOWN, HTML, CODE). Free-string strategy values are rejected.</statement>
+      <rationale source="Codebase consistency audit">Open strings drift across call sites; closed enum makes dispatch deterministic and refactor-safe.</rationale>
+    </rule>
+
+    <rule id="r3-metadata-propagation" testable="true" depth="essential">
+      <statement>Every emitted chunk MUST carry the caller-supplied document metadata dict merged with the chunker's own metadata. The caller's keys take precedence on conflict.</statement>
+      <rationale source="Traceability incident log">Lost source/page/tenant metadata makes hits unattributable; merge policy must be explicit.</rationale>
+    </rule>
+
+    <rule id="r4-logged-fallback" testable="true" depth="essential">
+      <statement>The fallback word-split path MUST be reachable only through the exception handler. Every fallback MUST log {source, requested_strategy, exception, traceback} at WARNING level, and emitted chunks MUST carry strategy_used="fallback" with the original requested strategy retained as `requested_strategy`.</statement>
+      <rationale source="Batch-pipeline silent-failure post-mortem">Silent fallback hides parse errors; operators cannot distinguish primary from degraded chunks without explicit tagging.</rationale>
+    </rule>
+
+    <rule id="r5-strategy-used-in-output" testable="true" depth="essential">
+      <statement>Every chunk in the service envelope MUST carry `strategy_used` field (the actual strategy that produced it). For audit, the envelope MUST also carry `requested_strategy`.</statement>
+      <rationale source="A/B-comparison + audit-trail requirement">Without strategy_used, A/B analysis cannot attribute quality changes; without requested_strategy, fallback frequency is invisible.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="rag-eval-ab-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for rag-eval-ab-testing as failure modes. Add detector + repair clauses where missing.</summary>
+  <summary>Three observable antipatterns when running RAG A/B tests.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running all A questions first, then all B questions, without interleaving.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLM API performance, index state, and model weight updates can differ between batch runs. Non-interleaved A/B tests confound configuration differences with temporal effects, producing unreliable comparisons.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Treating compare_results() latency output as a sufficient signal for configuration decisions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The baseline RAGABTest only measures latency and source count. Quality metrics (faithfulness, precision@5, MRR) are not computed. A faster config that returns less relevant sources looks better in compare_results but is worse for users.</repair>
-    </failure-mode>
+    <antipattern id="fm-non-interleaved">
+      <description>Running all A questions first, then all B questions, without interleaving per question.</description>
+      <reason>Temporal drift in LLM API / index / cache state confounds the A/B comparison. Detector: timestamps cluster — A all before B. Fix: enforce r1-interleave-ab.</reason>
+    </antipattern>
+    <antipattern id="fm-latency-only-signal">
+      <description>Promoting config B because its average latency is lower, without quality metrics.</description>
+      <reason>A faster config that returns fewer or less relevant sources is worse for users. Detector: recommendation present without aggregate.metric in {faithfulness, mrr, ndcg}. Fix: enforce r5-quality-over-latency.</reason>
+    </antipattern>
+    <antipattern id="fm-shared-cache-leak">
+      <description>A and B share an embedding cache or vector DB; B benefits from A's warm cache.</description>
+      <reason>B's latency looks artificially low. Detector: B latency lower despite no caching improvement in config. Fix: separate indexes + caches per config (r2-isolate-state).</reason>
+    </antipattern>
   </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

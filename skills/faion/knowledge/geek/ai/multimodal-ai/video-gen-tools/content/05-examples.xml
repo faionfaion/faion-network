@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Video Gen Tools — Worked Example" version="1.1.0" est_tokens="600" depth="medium">
+  <summary>Runway → Luma fallback for a cinematic 5s clip: Runway rejects on policy, Luma succeeds, S3 archival path populated, providers_tried records both attempts.</summary>
+
+  <section title="Runway-fail → Luma-ok with S3 archive">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio, hashlib, json, subprocess, time
+from pathlib import Path
+import requests, boto3
+
+S3 = boto3.client("s3")
+BUCKET = "media-prod"
+
+def ffprobe(path):
+    raw = subprocess.check_output(["ffprobe","-v","error","-show_streams",
+                                   "-show_format","-of","json", path]).decode()
+    data = json.loads(raw)
+    dur = float(data.get("format",{}).get("duration",0))
+    size = int(data.get("format",{}).get("size",0))
+    streams = data.get("streams",[])
+    return {"duration": dur, "size": size, "streams": len(streams)}
+
+def stream_download(url, path):
+    with requests.get(url, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        with open(path, "wb") as f:
+            for chunk in r.iter_content(1_048_576):
+                f.write(chunk)
+
+class Service:
+    def __init__(self, output_dir="out/video"):
+        self.output_dir = Path(output_dir); self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    async def generate(self, prompt, style_tag, duration_s=5, aspect_ratio="16:9", seed=42):
+        prompt_hash = hashlib.sha256(
+            f"{prompt}|{seed}|{duration_s}|{aspect_ratio}".encode()).hexdigest()
+        local = self.output_dir / f"{prompt_hash}.mp4"
+        fallback_chain = self._route(style_tag)        # decision-tree
+        attempts = []
+        for provider in fallback_chain:
+            task_id = await self._dispatch(provider, prompt, duration_s, aspect_ratio, seed)
+            attempts.append({"provider": provider, "task_id": task_id, "status": "submitted"})
+            status, video_url, err = await self._poll(provider, task_id, timeout_s=300)
+            attempts[-1]["status"] = status
+            if status != "ok":
+                attempts[-1]["error"] = err or "unknown"
+                continue
+            stream_download(video_url, str(local))
+            meta = ffprobe(str(local))
+            if meta["duration"] <= 0 or meta["streams"] < 1:
+                attempts[-1]["status"] = "ffprobe_failed"
+                continue
+            archived = f"s3://{BUCKET}/videos/{prompt_hash}.mp4"
+            S3.upload_file(str(local), BUCKET, f"videos/{prompt_hash}.mp4")
+            return {"status": "ok", "local_path": str(local), "archived_path": archived,
+                    "primary_provider": fallback_chain[0], "providers_tried": attempts,
+                    "duration_s": meta["duration"], "aspect_ratio": aspect_ratio,
+                    "seed": seed, "prompt_hash": prompt_hash,
+                    "retries": len(attempts) - 1, "ffprobe": meta}
+        return {"status": "all_providers_failed", "local_path": "",
+                "primary_provider": fallback_chain[0], "providers_tried": attempts,
+                "duration_s": 0, "aspect_ratio": aspect_ratio, "seed": seed,
+                "prompt_hash": prompt_hash, "retries": len(attempts)}
+
+    def _route(self, style_tag):
+        return {"cinematic": ["runway", "luma"],
+                "photorealistic": ["luma", "runway"],
+                "animated": ["replicate", "luma"]}.get(style_tag, ["runway", "luma", "replicate"])
+
+    async def _dispatch(self, provider, prompt, duration_s, aspect_ratio, seed):
+        # adapter dispatch elided — see runway-generator.py etc.
+        return f"{provider}_task_{int(time.time())}"
+
+    async def _poll(self, provider, task_id, timeout_s=300):
+        # mock: runway returns policy failure, luma returns ok
+        if provider == "runway": return ("failed", None, "policy")
+        return ("ok", "https://luma/cdn/video.mp4", None)
+
+result = asyncio.run(Service().generate(
+    "a golden retriever, tracking shot, cinematic", "cinematic"))
+print(json.dumps(result, indent=2))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Expected behaviour">
+    <p>Runway dispatch returns FAILED with terse "policy" error → fallback_chain pops Luma → Luma SUCCEEDED → stream-download → ffprobe valid → S3 upload → audit log entry with retries=1 and providers_tried length=2.</p>
+  </section>
+</text>

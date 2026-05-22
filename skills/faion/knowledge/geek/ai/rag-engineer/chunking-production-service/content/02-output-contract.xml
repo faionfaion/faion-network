@@ -1,22 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="chunking-production-service Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Chunking Production Service — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the service envelope: requested_strategy + strategy_used + chunk_count + chunks[] + warnings[].</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-production-service/output.schema.json",
+  "type": "object",
+  "required": ["requested_strategy", "strategy_used", "chunk_count", "chunks", "warnings"],
+  "properties": {
+    "requested_strategy": {"type": "string", "enum": ["fixed","sentence","paragraph","semantic","recursive","markdown","html","code"]},
+    "strategy_used": {"type": "string", "enum": ["fixed","sentence","paragraph","semantic","recursive","markdown","html","code","fallback"]},
+    "chunk_count": {"type": "integer", "minimum": 0},
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "token_count", "source", "strategy_used", "version"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+          "text": {"type": "string", "minLength": 1},
+          "token_count": {"type": "integer", "minimum": 1, "maximum": 4000},
+          "source": {"type": "string", "minLength": 1},
+          "strategy_used": {"type": "string"},
+          "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+          "metadata": {"type": "object"}
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "requested_strategy", "exception"],
+        "properties": {
+          "source": {"type": "string"},
+          "requested_strategy": {"type": "string"},
+          "exception": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>strategy_used == "fallback" but warnings[] is empty.</description>
+      <reason>Violates r4-logged-fallback; fallback must be paired with a warning entry.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Chunks missing metadata field.</description>
+      <reason>Violates r3-metadata-propagation.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "requested_strategy": "markdown",
+  "strategy_used": "markdown",
+  "chunk_count": 2,
+  "chunks": [
+    {"id": "a1b2c3d4e5f607081912233445566aab", "text": "Auth > Tokens\nJWTs are signed HS256.", "token_count": 8, "source": "docs/auth.md", "strategy_used": "markdown", "version": "1.0.0", "metadata": {"tenant": "acme", "ingested_at": "2026-05-22"}},
+    {"id": "b1b2c3d4e5f607081912233445566aab", "text": "Auth > Refresh\nRefresh tokens rotate every 24h.", "token_count": 9, "source": "docs/auth.md", "strategy_used": "markdown", "version": "1.0.0", "metadata": {"tenant": "acme", "ingested_at": "2026-05-22"}}
+  ],
+  "warnings": []
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"requested_strategy": "semantic", "strategy_used": "fallback", "chunk_count": 1, "chunks": [{"text": "x"}], "warnings": []}
+]]></code>
+      <note>Invalid: fallback with empty warnings; chunk missing id/token_count/source/version; metadata absent.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>requested_strategy ∈ enum.</item>
+      <item>strategy_used ∈ enum (may be "fallback").</item>
+      <item>If strategy_used == "fallback", warnings[] is non-empty.</item>
+      <item>Every chunk has metadata dict.</item>
     </list>
   </section>
 </text>

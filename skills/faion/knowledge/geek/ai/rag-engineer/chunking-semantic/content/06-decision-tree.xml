@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Chunking Semantic — Decision Tree" version="1.0.0" est_tokens="400">
+  <decision-tree>
+    <root-question id="q-high-stakes">Is the retrieval domain high-stakes (legal / medical / scientific) where mid-concept splits degrade answers?</root-question>
+    <branch when="high_stakes == true">
+      <question id="q-budget">Does the embedding budget allow one call per sentence at index time?</question>
+      <branch when="budget_ok == true">
+        <question id="q-tokenizer">Is a reliable sentence tokenizer available for the corpus language?</question>
+        <branch when="tokenizer_reliable == true">
+          <conclusion ref="r1-same-model">Use SemanticChunker with same embedding_model as retriever. Apply r2-threshold-band (default 0.75), r3-size-guards, r5-version-on-threshold-change.</conclusion>
+        </branch>
+        <branch when="tokenizer_reliable == false">
+          <conclusion ref="r4-empty-doc-shortcircuit">Skip semantic chunking — sentence boundaries are noisy. Fall back to chunking-basics recursive splitter; revisit when spaCy model lands.</conclusion>
+        </branch>
+      </branch>
+      <branch when="budget_ok == false">
+        <conclusion ref="r5-version-on-threshold-change">Skip. Use chunking-basics recursive splitter; revisit when index-time embedding cost budget grows.</conclusion>
+      </branch>
+    </branch>
+    <branch when="high_stakes == false">
+      <conclusion ref="r5-version-on-threshold-change">Skip. Use chunking-basics; semantic chunking's index cost is not justified for general prose.</conclusion>
+    </branch>
+    <example trace="legal-rag">
+      <p>Civil case corpus, English, budget OK, NLTK punkt reliable → r1-same-model → SemanticChunker with text-embedding-3-small @ threshold 0.75.</p>
+    </example>
+  </decision-tree>
+</text>

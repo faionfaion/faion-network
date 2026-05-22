@@ -1,4 +1,9 @@
-"""RunwayVideoGenerator: text-to-video and image-to-video via Runway SDK."""
+# purpose: Runway Gen-3 adapter — text-to-video and image-to-video with timeout polling.
+# consumes: prompt text, optional image URL, duration, aspect_ratio, seed.
+# produces: dict {status, video_url, task_id, error}; caller stream-downloads URL.
+# depends-on: runwayml SDK; provider env RUNWAY_API_KEY.
+# token-budget-impact: zero LLM tokens (provider has per-second pricing).
+"""RunwayVideoGenerator: Gen-3 Alpha Turbo via official SDK."""
 import runwayml
 import time
 from typing import Optional

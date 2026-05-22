@@ -3,78 +3,96 @@ slug: weekly-llm-cost-review-template
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6f7427fc866d90ce"
-summary: "Weekly Llm Cost Review Template: produces a versioned, owner-signed artefact that closes the gap 'role-ml-engineer/Weekly model-cost + token-budget review'."
-tags: [weekly-llm-cost-review-template, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a weekly LLM cost + token-budget review report: spend by surface / model / provider, top drivers, deviation from forecast, action items with owners and due-dates."
+content_id: "4bda56ae1b13351d"
+complexity: light
+produces: report
+est_tokens: 3500
+tags: [cost-review, finops, llm-spend, weekly, report, ai, geek]
 ---
-# Weekly Llm Cost Review Template
+
+# Weekly LLM Cost Review Template
 
 ## Summary
 
-**One-sentence:** Weekly Llm Cost Review Template: produces a versioned, owner-signed artefact that closes the gap 'role-ml-engineer/Weekly model-cost + token-budget review'.
+**One-sentence:** Produces a weekly LLM cost + token-budget review report: spend by surface / model / provider, top drivers, deviation from forecast, action items with owners and due-dates.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-ml-engineer/Weekly model-cost + token-budget review': cost-optimization + llm-cost-basics exist but there is no cadence template for the weekly review with concrete pivots and decision log. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a weekly llm cost review template artefact (decision record, checklist, score sheet, or report).
+**Ефективно для:** ML engineers + finance running a weekly LLM spend review; PMs tracking model-cost-to-revenue ratio; FinOps embedding LLM into the cloud-cost cadence.
+
+**One-paragraph:** This methodology pins the recurring decision around "weekly-llm-cost-review-template" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-ml-engineer/Weekly model-cost + token-budget review' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team has ≥3 weeks of LLM cost telemetry segmented by surface + model.
+- Weekly cadence exists or is being introduced.
+- Owner exists for cost decisions.
+- Forecast (target or budget) exists or is being introduced.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working weekly llm cost review template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Team has <2 weeks of telemetry — bootstrap that first.
+- Spend below review-overhead threshold (<$500/mo).
+- Single-tenant prototype with no production traffic.
 
 ## Prerequisites
 
-- recent context for the 'role-ml-engineer/Weekly model-cost + token-budget review' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Weekly cost telemetry (last 4 weeks) | CSV / Parquet | FinOps |
+| Surface / model / provider taxonomy | Markdown | platform |
+| Forecast / budget | spreadsheet | finance |
+| Owner for action items | handle / email | team roster |
+| Previous week's action-item log | Markdown | review owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai` | parent domain group — provides operating context for Weekly Llm Cost Review Template |
+| `[[llm-cost-attribution-model]]` | attribution to surface / model is already in place |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_report_grid` | haiku | Template fill from telemetry. |
+| `synthesize_drivers` | sonnet | Per-surface root-cause for top drivers. |
+| `escalate_runaway` | opus | Cross-surface budget breach decision. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-llm-cost-review-template.json` | JSON schema for the Weekly Llm Cost Review Template output contract |
+| `templates/weekly-llm-cost-review-template.json` | JSON Schema for the Weekly LLM Cost Review Template output contract |
 | `templates/weekly-llm-cost-review-template.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a weekly-llm-cost-review-template record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-weekly-llm-cost-review-template.py` | Enforce Weekly Llm Cost Review Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-weekly-llm-cost-review-template.py` | Enforce the Weekly LLM Cost Review Template output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `role-ml-engineer/Weekly model-cost + token-budget review`
-- geek/ai/role-ml-engineer
+- [[llm-cost-attribution-model]] — upstream attribution method.
+- [[fine-tune-vs-prompt-decision-tree]] — adjacent decision when costs blow.
+- [[vector-db-tuning-runbook]] — adjacent when cost driver is retrieval.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

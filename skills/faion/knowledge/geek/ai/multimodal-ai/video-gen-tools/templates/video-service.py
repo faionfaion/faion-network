@@ -1,4 +1,9 @@
-"""VideoGenerationService: async multi-provider routing with retry and download."""
+# purpose: VideoGenerationService — async multi-provider routing, fallback, stream-download, archive.
+# consumes: VideoGenerationConfig + brief; uses Runway / Luma / Replicate adapters.
+# produces: dict per 02-output-contract: status, local_path, archived_path, providers_tried[], ffprobe.
+# depends-on: adapter modules; httpx (streaming download); S3/GCS SDK for archive.
+# token-budget-impact: zero LLM tokens; sonnet may judge policy-violation vs transient on FAILED.
+"""VideoGenerationService: multi-provider routing + fallback + streaming I/O."""
 import asyncio
 import logging
 import re

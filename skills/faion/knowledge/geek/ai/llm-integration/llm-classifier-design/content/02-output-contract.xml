@@ -1,22 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="llm-classifier-design Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="LLM Classifier Design Output Contract" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>JSON Schema for classifier-config.json + the per-batch verdicts shape.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Config schema">
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/llm-classifier-config",
+  "type": "object",
+  "required": ["model", "batch_size", "tool_schema", "kappa_min", "cache_system_prefix"],
+  "properties": {
+    "model": {"type": "string", "minLength": 1},
+    "batch_size": {"type": "integer", "minimum": 10, "maximum": 200},
+    "tool_schema": {"type": "object", "required": ["name", "input_schema"]},
+    "kappa_min": {"type": "number", "minimum": 0.7, "maximum": 1.0},
+    "cache_system_prefix": {"type": "boolean", "const": true}
+  }
+}]]></code>
+  </section>
+
+  <section title="Verdicts shape">
+    <code lang="json"><![CDATA[{
+  "type": "object",
+  "additionalProperties": {"type": "string", "enum": ["yes", "no"]}
+}]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[{
+  "model": "claude-haiku-4",
+  "batch_size": 50,
+  "tool_schema": {"name": "extract", "input_schema": {"type": "object", "properties": {"verdicts": {"type": "object"}}, "required": ["verdicts"]}},
+  "kappa_min": 0.75,
+  "cache_system_prefix": true
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[{"model": "opus", "batch_size": 1, "kappa_min": 0.5, "cache_system_prefix": false}]]></code>
+      <note>Fails: batch_size below floor, kappa_min &lt;0.7, cache disabled.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>model is pinned to a specific version.</item>
+      <item>batch_size ∈ [10, 200].</item>
+      <item>tool_schema has name + input_schema.</item>
+      <item>kappa_min ≥ 0.7.</item>
+      <item>cache_system_prefix = true.</item>
     </list>
   </section>
 </text>

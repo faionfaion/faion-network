@@ -1,22 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="chunking-semantic Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Chunking Semantic — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for a semantic chunk: id, text, embedding_model, similarity_threshold, token_count, source, strategy=semantic, version.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-semantic/chunk.schema.json",
+  "type": "object",
+  "required": ["id", "text", "embedding_model", "similarity_threshold", "token_count", "source", "strategy", "version"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+    "text": {"type": "string", "minLength": 1},
+    "embedding_model": {"type": "string", "minLength": 1},
+    "similarity_threshold": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "token_count": {"type": "integer", "minimum": 1, "maximum": 4000},
+    "source": {"type": "string", "minLength": 1},
+    "strategy": {"type": "string", "const": "semantic"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "sentence_count": {"type": "integer", "minimum": 1}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>embedding_model absent.</description>
+      <reason>Violates r1-same-model; chunks not attributable to the chunker model.</reason>
+    </antipattern>
+    <antipattern>
+      <description>similarity_threshold outside [0.6, 0.85].</description>
+      <reason>Outside r2-threshold-band; emits either one giant chunk or sentence fragments.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "id": "f1e2d3c4b5a6987800112233445566aa",
+  "text": "The court held that ... opinion concurring.",
+  "embedding_model": "text-embedding-3-small",
+  "similarity_threshold": 0.75,
+  "token_count": 380,
+  "source": "case/2026-civ-001.txt",
+  "strategy": "semantic",
+  "version": "1.0.0",
+  "sentence_count": 9
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"text": "x", "similarity_threshold": 0.4, "strategy": "magic"}
+]]></code>
+      <note>Invalid: threshold below band; strategy not "semantic"; missing required fields.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>embedding_model recorded.</item>
+      <item>similarity_threshold ∈ [0.6, 0.85].</item>
+      <item>token_count within size guards.</item>
+      <item>strategy == "semantic".</item>
     </list>
   </section>
 </text>

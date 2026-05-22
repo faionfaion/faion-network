@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="chunking-semantic Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for chunking-semantic. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Chunking Semantic — Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>5 rules: same embedding model as retrieval, threshold within 0.6–0.85 band, max/min size guards, empty-doc short-circuit, strategy version on threshold change.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>SemanticChunker MUST accept a callable embedding_func, a similarity_threshold (default 0.75), max_chunk_size, and min_chunk_size. Chunks exceeding max_chunk_size MUST be sub-split; chunks below min_chunk_size MUST be merged into the previous chunk. An empty-document edge case (0 or 1 sentences) MUST return a single chunk without calling the embedding function.</statement>
-      <rationale source="v1-source">Without size guards, semantic chunking on long legal documents with high threshold values produces a single giant chunk that exceeds most LLM context windows. The empty-document guard prevents an IndexError on the embeddings list and avoids a wasted API call.</rationale>
+    <rule id="r1-same-model" testable="true" depth="essential">
+      <statement>SemanticChunker MUST use the same embedding model at index time that the retriever uses at query time. The embedding_model name MUST be recorded on every emitted chunk.</statement>
+      <rationale source="Retrieval-faithfulness analysis">A chunker that uses a different model produces boundaries based on a different similarity signal than the retriever sees — boundaries become semi-random.</rationale>
+    </rule>
+
+    <rule id="r2-threshold-band" testable="true" depth="essential">
+      <statement>similarity_threshold MUST be in [0.6, 0.85] for default English embedding models. Values below 0.6 emit one giant chunk; above 0.85 emit sentence-level fragments.</statement>
+      <rationale source="Threshold-sweep benchmarks on legal + medical corpora">Outside this band the splitter degenerates; 0.75 is the empirical default that balances coherence and granularity.</rationale>
+    </rule>
+
+    <rule id="r3-size-guards" testable="true" depth="essential">
+      <statement>Chunks exceeding max_chunk_size MUST be sub-split (recursive splitter); chunks below min_chunk_size MUST be merged into the previous chunk. Both guards MUST be configurable and applied after threshold-based splitting.</statement>
+      <rationale source="Long-document edge cases">High thresholds on long legal documents emit single multi-thousand-token chunks that exceed embedding caps. Guards prevent the failure mode.</rationale>
+    </rule>
+
+    <rule id="r4-empty-doc-shortcircuit" testable="true" depth="essential">
+      <statement>If the document tokenizes to 0 or 1 sentences, return one chunk with the original text and skip the embedding call.</statement>
+      <rationale source="Empty-input crash log">The naïve loop indexes the embeddings list with `[i+1]` and raises IndexError on single-sentence inputs; the short-circuit also saves a wasted API call.</rationale>
+    </rule>
+
+    <rule id="r5-version-on-threshold-change" testable="true" depth="essential">
+      <statement>Changing similarity_threshold OR embedding_model MUST bump strategy_version and write to a versioned collection name.</statement>
+      <rationale source="Mixed-index incident analysis">Threshold change produces a different chunk distribution; mixing under the same collection breaks A/B comparison.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

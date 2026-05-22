@@ -4,70 +4,93 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: ChunkingService is a production-grade orchestration layer over SemanticChunker, MarkdownChunker, CodeChunker, and the basics-tier RecursiveChunker.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Production orchestration layer that routes documents to per-type chunkers (Markdown/HTML/code/recursive), propagates document-level metadata, and falls back to word-split on exception with a logged warning.
 content_id: "660340dd26bfba44"
-tags: [chunking, production, orchestration, rag, chunking-service]
+complexity: deep
+produces: code
+est_tokens: 3800
+tags: [chunking, production, orchestration, rag, service]
 ---
-# Production Chunking Service with Strategy Routing
+# Chunking — Production Service
 
 ## Summary
 
-**One-sentence:** ChunkingService is a production-grade orchestration layer over SemanticChunker, MarkdownChunker, CodeChunker, and the basics-tier RecursiveChunker.
+**One-sentence:** Production orchestration layer that routes documents to per-type chunkers (Markdown/HTML/code/recursive), propagates document-level metadata, and falls back to word-split on exception with a logged warning.
 
-**One-paragraph:** ChunkingService is a production-grade orchestration layer over SemanticChunker, MarkdownChunker, CodeChunker, and the basics-tier RecursiveChunker. It accepts a ChunkingConfig with strategy, chunk_size, overlap, and min_chunk_size; dispatches to the matching chunker; attaches caller-supplied metadata to every output chunk; and falls back to word-split on any exception.
+**One-paragraph:** ChunkingService takes a `ChunkingConfig(strategy, chunk_size, overlap, min_chunk_size, embedding_func?)` and a per-document `metadata` dict. It dispatches to MarkdownChunker, HTMLChunker, CodeChunker, SemanticChunker, or RecursiveChunker; attaches document-level metadata to every output chunk; and on any exception logs the failure then returns a word-split fallback with `strategy_used="fallback"`. Fail-fast on missing embedding_func for SEMANTIC strategy at construction time, not at chunk time.
+
+**Ефективно для:** RAG engineer running batch ingest over mixed content types — closes the gap between per-document chunker wiring and a single service call the pipeline layer can rely on.
 
 ## Applies If (ALL must hold)
 
-- Production ingestion pipelines that process mixed content types (Markdown, code, HTML, prose) in a single run.
-- Any pipeline where chunking strategy should be decided per-document rather than globally for the entire corpus.
-- Batch ingestion jobs that require graceful degradation on parse errors without halting the run.
-- Pipelines that attach document-level metadata (source path, page number, ingestion timestamp) to every chunk for traceability.
+- Pipeline processes mixed content types (markdown, code, html, prose) in one run.
+- Per-document metadata (source path, ingestion timestamp, tenant) must be on every chunk.
+- Batch jobs require graceful degradation rather than total failure on parse errors.
+- Operators need to distinguish fallback chunks from primary chunks for monitoring.
 
 ## Skip If (ANY kills it)
 
-- Quick prototyping with a homogeneous corpus — use RecursiveChunker directly to avoid the orchestration layer overhead.
-- When semantic chunking is the only strategy needed — SemanticChunker can be used directly without ChunkingService.
-- Pipelines that need to audit which strategy was actually used per document — ChunkingService's fallback path does not currently expose a strategy_used field; add it before relying on this for audit trails.
+- Quick prototyping with one homogeneous content type — instantiate the chunker directly.
+- Single-strategy pipelines (only semantic, or only recursive).
+- No need for fallback or strategy-tagged audit trail.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| ChunkingConfig | dataclass | application config |
+| Sub-chunker implementations | classes | [[chunking-basics]], [[chunking-document-structure]], [[chunking-code-ast]], [[chunking-semantic]] |
+| Per-document metadata | dict | upstream ingestion |
+| Structured logger | logging.Logger | application bootstrap |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/rag-engineer/chunking-basics` | Default recursive chunker + token measurement. |
+| `geek/ai/rag-engineer/chunking-document-structure` | Markdown / HTML path. |
+| `geek/ai/rag-engineer/chunking-code-ast` | Code path. |
+| `geek/ai/rag-engineer/chunking-semantic` | Optional semantic path. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: fail-fast config validation, dispatch by strategy enum, metadata propagation, logged fallback, strategy_used in output | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema unioning per-strategy chunk shapes + service envelope | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: silent fallback, missing embedding_func discovered mid-batch, metadata loss, no strategy_used field | ~700 |
+| `content/04-procedure.xml` | deep | 6-step procedure: validate config → dispatch → chunk → tag metadata → catch exceptions → log + fallback | ~700 |
+| `content/05-examples.xml` | medium | ChunkingService class with all dispatch + fallback paths | ~600 |
+| `content/06-decision-tree.xml` | essential | Routes content type and config to strategy or fallback | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `config-validation` | haiku | Schema check, no judgement. |
+| `dispatch` | haiku | Mechanical. |
+| `incident-review` | sonnet | Inspect fallback log entries for re-ingest decisions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/chunking_service.py` | ChunkingService reference with dispatch + fallback + metadata propagation. |
+| `templates/chunking-service-schema.json` | JSON Schema for the service output envelope. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-chunking-production-service.py` | Verify service output envelope, check fallback chunks have a warning, metadata present on every chunk. | After each ingest batch. |
 
 ## Related
 
-- parent skill: `geek/ai/rag-engineer/`
+- [[chunking-basics]] · [[chunking-document-structure]] · [[chunking-code-ast]] · [[chunking-semantic]] — dispatch targets.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` routes based on `config.strategy` (explicit) vs auto-detect (content-type sniff). Fallback is only reachable through the exception handler, never as a default.

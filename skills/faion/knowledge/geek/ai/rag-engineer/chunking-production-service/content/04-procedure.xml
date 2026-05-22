@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Chunking Production Service — Procedure" version="1.0.0" est_tokens="700" depth="deep">
+  <summary>6-step procedure: validate config → dispatch → chunk → tag metadata → catch exceptions → log + fallback.</summary>
+
+  <section title="Step 1 — Validate ChunkingConfig at __init__">
+    <p>Verify strategy ∈ enum. If strategy == SEMANTIC, verify embedding_func is callable. If overlap &gt;= chunk_size, raise. Apply r1-fail-fast-config.</p>
+  </section>
+
+  <section title="Step 2 — Dispatch by strategy">
+    <p>Lookup table maps strategy enum value to the sub-chunker instance. Apply r2-strategy-enum-dispatch — reject free strings.</p>
+  </section>
+
+  <section title="Step 3 — Chunk inside try block">
+    <p>Call sub-chunker `chunk(text, source)`. On success, continue to metadata propagation. On exception, jump to step 5.</p>
+  </section>
+
+  <section title="Step 4 — Propagate metadata onto every chunk">
+    <p>Merge caller metadata into each chunk's `metadata` field with caller-takes-precedence on conflict. Apply r3-metadata-propagation. Stamp `strategy_used` on each chunk per r5.</p>
+  </section>
+
+  <section title="Step 5 — Exception handler: log + fallback">
+    <p>Log {source, requested_strategy, exception, traceback} at WARNING. Run word-split fallback. Stamp strategy_used="fallback" on resulting chunks. Append a `warnings[]` entry per r4-logged-fallback.</p>
+  </section>
+
+  <section title="Step 6 — Emit service envelope">
+    <p>Return {requested_strategy, strategy_used, chunk_count, chunks, warnings} per content/02-output-contract.xml.</p>
+  </section>
+</text>

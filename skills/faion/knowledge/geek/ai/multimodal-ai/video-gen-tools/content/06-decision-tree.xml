@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Video Gen Tools — Provider + Fallback Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-style">What is the style_tag in the brief?</root-question>
+    <branch when="style_tag == 'cinematic'">
+      <question id="q-runway-health">Is Runway in cooldown (last 3 calls returned FAILED)?</question>
+      <branch when="runway_cooldown == false">
+        <conclusion ref="r1-immediate-download">Primary: Runway Gen-3. Fallback: Luma → Replicate. On SUCCEEDED, stream-download immediately and archive to S3 within the same call.</conclusion>
+      </branch>
+      <branch when="runway_cooldown == true">
+        <conclusion ref="r4-provider-id-isolation">Skip Runway. Primary: Luma. Fallback: Replicate AnimateDiff. Keep provider:task_id pairing in providers_tried.</conclusion>
+      </branch>
+    </branch>
+    <branch when="style_tag == 'photorealistic'">
+      <conclusion ref="r1-immediate-download">Primary: Luma. Fallback: Runway → Replicate SVD. Stream-download on SUCCEEDED.</conclusion>
+    </branch>
+    <branch when="style_tag == 'animated'">
+      <conclusion ref="r3-pin-model-hashes">Primary: Replicate AnimateDiff with pinned sha. Fallback: Luma. Replicate latest-resolution is forbidden.</conclusion>
+    </branch>
+    <branch when="style_tag == 'prototype'">
+      <conclusion ref="r3-pin-model-hashes">Primary: Replicate SVD with pinned sha (cheapest). Fallback: Replicate AnimateDiff. Iterate cheap; promote to Runway/Luma only on final pass.</conclusion>
+    </branch>
+    <example trace="runway-policy-fallback">
+      <p>Input: style_tag=cinematic, runway_cooldown=false → primary Runway. Runway returns FAILED policy → fallback Luma. Luma returns SUCCEEDED → stream-download → ffprobe ok → S3 archive → status=ok, providers_tried=[runway:failed, luma:ok].</p>
+    </example>
+  </decision-tree>
+</text>

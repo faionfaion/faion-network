@@ -3,78 +3,96 @@ slug: ai-transcript-to-traceable-requirement
 tier: geek
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Transcript to Traceable Requirement: codified business-analysis practice that turns the recurring 'role-business-analyst/Stakeholder interview: prep + run + capture' decision into a repeatable, auditable artefact.
-content_id: "91e2b9105808d2ad"
-tags: [ai-transcript-to-traceable-requirement, ba, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a traceable requirement record from a stakeholder-interview transcript: requirement statement, source quote, stakeholder owner, ambiguity flag, and link to the verbatim moment in the transcript."
+content_id: "085d7118ec0581cc"
+complexity: medium
+produces: spec
+est_tokens: 4100
+tags: [ba, requirements, interview, transcript, traceability, ai, geek]
 ---
-# Ai Transcript to Traceable Requirement
+
+# AI Transcript to Traceable Requirement
 
 ## Summary
 
-**One-sentence:** Ai Transcript to Traceable Requirement: codified business-analysis practice that turns the recurring 'role-business-analyst/Stakeholder interview: prep + run + capture' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a traceable requirement record from a stakeholder-interview transcript: requirement statement, source quote, stakeholder owner, ambiguity flag, and link to the verbatim moment in the transcript.
 
-**One-paragraph:** Ai Transcript to Traceable Requirement addresses the gap identified by the role-business-analyst/Stakeholder interview: prep + run + capture playbook: Bridge between raw transcripts and a traceable requirement row is the highest-leverage automation point for BAs; no methodology covers it. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**Ефективно для:** BAs running AI-assisted stakeholder interview capture; PMs converting verbatim into traceable backlog items; auditors checking requirement provenance.
+
+**One-paragraph:** This methodology pins the recurring decision around "ai-transcript-to-traceable-requirement" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-business-analyst/Stakeholder interview: prep + run + capture OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Stakeholder interview captured as transcript (recorded + transcribed).
+- Requirements will be extracted and tracked downstream.
+- Owner exists for requirement record after publication.
+- Transcript permissions allow content extraction.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Interview not recorded; only memory notes — provenance impossible.
+- Stakeholder is anonymous / un-attributable.
+- Free brainstorm with no requirement intent.
 
 ## Prerequisites
 
-- recent context for the role-business-analyst/Stakeholder interview: prep + run + capture task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Interview transcript | text / JSON with timestamps | interview capture tool |
+| Stakeholder roster | CSV | PM |
+| Requirement template | Markdown / spec | BA |
+| Owner for resulting record | handle / email | team roster |
+| Ambiguity taxonomy | Markdown | BA lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| `[[ai-enabled-business-analysis]]` | BA workflow with LLM assistance is in place |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding, r5-acceptance-criteria | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_extraction` | sonnet | Per-snippet requirement extraction with judgment. |
+| `synthesize_ambiguity` | sonnet | Ambiguity classification. |
+| `escalate_conflict` | opus | When two stakeholders contradict each other. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-transcript-to-traceable-requirement.json` | JSON schema for the Ai Transcript to Traceable Requirement output contract |
+| `templates/ai-transcript-to-traceable-requirement.json` | JSON Schema for the AI Transcript to Traceable Requirement output contract |
 | `templates/ai-transcript-to-traceable-requirement.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a ai-transcript-to-traceable-requirement record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-transcript-to-traceable-requirement.py` | Enforce Ai Transcript to Traceable Requirement output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-transcript-to-traceable-requirement.py` | Enforce the AI Transcript to Traceable Requirement output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ba/`
-- upstream playbook: `role-business-analyst/Stakeholder interview: prep + run + capture`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[ai-enabled-business-analysis]] — parent methodology.
+- [[ai-ac-hallucination-checklist]] — adjacent acceptance-criteria gate.
+- [[compliance-traceability-pack]] — downstream regulatory pack.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.

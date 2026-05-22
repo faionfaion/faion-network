@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Video Gen Tools — Procedure" version="1.1.0" est_tokens="900" depth="deep">
+  <summary>8-step procedure for VideoGenerationService.generate(): route → dispatch → poll → stream-download → ffprobe → archive → fallback → audit log.</summary>
+
+  <section title="Steps">
+    <step n="1" name="route-provider">
+      <input>brief (style_tag, subject_consistency_required), provider health state</input>
+      <action>Walk `content/06-decision-tree.xml`. Pick primary_provider; build fallback_chain ordered by recent success rate; exclude providers in cooldown.</action>
+      <output>{primary_provider, fallback_chain[]} with at least 2 entries.</output>
+    </step>
+
+    <step n="2" name="dispatch">
+      <input>primary_provider, prompt, seed, duration_s, aspect_ratio</input>
+      <action>Call provider adapter (RunwayVideoGenerator / LumaVideoGenerator / ReplicateVideoGenerator). Append `{provider, task_id, status: "submitted"}` to providers_tried.</action>
+      <output>task_id from active provider.</output>
+    </step>
+
+    <step n="3" name="poll">
+      <input>provider, task_id, timeout_s (default 300)</input>
+      <action>Provider-specific status loop. Sleep 5s between checks. Cap at timeout_s. On FAILED with terse error → call analyze-policy-failure to judge retryable vs policy violation.</action>
+      <output>status (SUCCEEDED/FAILED/TIMEOUT) + video_url on success.</output>
+      <decision-gate>FAILED + policy_violation suspected → skip retries, jump to step 7 fallback.</decision-gate>
+    </step>
+
+    <step n="4" name="stream-download">
+      <input>video_url</input>
+      <action>`requests.get(url, stream=True)` writing in 1 MB chunks to `{output_dir}/{prompt_hash}.mp4`. Apply rule r2-streaming-download.</action>
+      <output>local_path of downloaded mp4.</output>
+    </step>
+
+    <step n="5" name="ffprobe-validate">
+      <input>local_path</input>
+      <action>Run ffprobe; require duration &gt; 0, &gt;= 1 video stream, size &gt; 100 KB. On failure → mark this provider attempt as failed and jump to step 7 fallback.</action>
+      <output>ffprobe metadata or fail signal.</output>
+    </step>
+
+    <step n="6" name="archive">
+      <input>local_path, target storage (S3/GCS)</input>
+      <action>Upload to permanent bucket; emit metadata record (prompt_hash, provider, model_hash, seed, duration, archive ts). Set archived_path.</action>
+      <output>archived_path (s3://... or gs://...) attached to result.</output>
+    </step>
+
+    <step n="7" name="fallback-on-failure">
+      <input>fallback_chain, current attempt count, retries_budget</input>
+      <action>Pop next provider from fallback_chain; re-execute steps 2-5. Append every attempt to providers_tried. Stop when chain empty or retries_budget exhausted.</action>
+      <output>final result OR status="all_providers_failed".</output>
+    </step>
+
+    <step n="8" name="audit-log">
+      <input>final result + providers_tried + per-step latencies</input>
+      <action>Persist a JSON line to the audit log: `{prompt, prompt_hash, providers_tried, retries, total_ms, status, local_path, archived_path}`. Update provider health state (success / failure counters).</action>
+      <output>audit log entry; updated provider health state.</output>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+  </see-also>
+</text>

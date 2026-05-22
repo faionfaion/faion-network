@@ -1,4 +1,9 @@
-"""LumaVideoGenerator: generate, extend, image-to-video via Luma REST API."""
+# purpose: Luma Dream Machine adapter — REST API with custom timeout-protected polling.
+# consumes: prompt, optional keyframes (generation_id for extend), duration, aspect_ratio.
+# produces: dict {status, video_url, generation_id, error}; caller stream-downloads URL.
+# depends-on: requests; env LUMA_API_KEY; Luma has no official Python SDK.
+# token-budget-impact: zero LLM tokens.
+"""LumaVideoGenerator: Dream Machine REST + extend via keyframes.frame0."""
 import requests
 import time
 

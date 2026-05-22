@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Chunking Production Service — Worked Example" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>ChunkingService dispatching MARKDOWN strategy on a docs.md with caller-supplied metadata, falling back gracefully when a malformed file is hit.</summary>
+
+  <section title="ChunkingService reference">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import logging
+from dataclasses import dataclass, field
+from enum import Enum
+
+logger = logging.getLogger("chunking_service")
+
+
+class Strategy(str, Enum):
+    FIXED = "fixed"; SENTENCE = "sentence"; PARAGRAPH = "paragraph"
+    SEMANTIC = "semantic"; RECURSIVE = "recursive"
+    MARKDOWN = "markdown"; HTML = "html"; CODE = "code"
+
+
+@dataclass
+class ChunkingConfig:
+    strategy: Strategy = Strategy.RECURSIVE
+    chunk_size: int = 500
+    overlap: int = 50
+    min_chunk_size: int = 100
+    embedding_func: object | None = None
+
+
+class ChunkingService:
+    def __init__(self, config: ChunkingConfig, sub_chunkers: dict[Strategy, object]) -> None:
+        if not isinstance(config.strategy, Strategy):
+            raise ValueError("strategy must be Strategy enum")
+        if config.strategy == Strategy.SEMANTIC and config.embedding_func is None:
+            raise ValueError("SEMANTIC strategy requires embedding_func")
+        if config.overlap >= config.chunk_size:
+            raise ValueError("overlap must be < chunk_size")
+        self.cfg = config
+        self.sub = sub_chunkers
+
+    def chunk(self, text: str, source: str, metadata: dict) -> dict:
+        warnings: list[dict] = []
+        try:
+            chunker = self.sub[self.cfg.strategy]
+            chunks = chunker.chunk(text, source)
+            strategy_used = self.cfg.strategy.value
+        except Exception as exc:
+            logger.warning("chunker failure -> fallback", extra={
+                "source": source, "requested_strategy": self.cfg.strategy.value,
+                "exception": str(exc),
+            })
+            chunks = self._word_split(text, source)
+            strategy_used = "fallback"
+            warnings.append({"source": source, "requested_strategy": self.cfg.strategy.value, "exception": str(exc)})
+        for c in chunks:
+            c.setdefault("metadata", {}).update(metadata)
+            c["strategy_used"] = strategy_used
+        return {
+            "requested_strategy": self.cfg.strategy.value,
+            "strategy_used": strategy_used,
+            "chunk_count": len(chunks),
+            "chunks": chunks,
+            "warnings": warnings,
+        }
+
+    def _word_split(self, text: str, source: str) -> list[dict]:
+        ...  # word-based fallback splitter; one chunk per `chunk_size` words
+]]></code>
+      <note>Fail-fast in __init__; fallback only reachable via the exception handler; metadata merged + strategy_used stamped before return.</note>
+    </example>
+  </section>
+</text>

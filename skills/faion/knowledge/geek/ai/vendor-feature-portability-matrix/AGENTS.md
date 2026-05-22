@@ -3,78 +3,96 @@ slug: vendor-feature-portability-matrix
 tier: geek
 group: ai
 domain: ai-core
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "0b83d2ec9208c4f4"
-summary: "Vendor Feature Portability Matrix: produces a versioned, owner-signed artefact that closes the gap 'p7-llm-agent-developer/Multi-model gateway migration: lock-in to portability (2 months)'."
-tags: [vendor-feature-portability-matrix, ai, geek]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: "Produces a portability matrix comparing LLM-vendor feature parity (tool use, JSON mode, streaming, vision, batch, caching) with a migration delta + risk per feature for moving from lock-in to a multi-vendor gateway."
+content_id: "6f49f2872ba0ed3a"
+complexity: medium
+produces: report
+est_tokens: 4000
+tags: [vendor-strategy, multi-model, gateway, migration, portability, ai, geek]
 ---
+
 # Vendor Feature Portability Matrix
 
 ## Summary
 
-**One-sentence:** Vendor Feature Portability Matrix: produces a versioned, owner-signed artefact that closes the gap 'p7-llm-agent-developer/Multi-model gateway migration: lock-in to portability (2 months)'.
+**One-sentence:** Produces a portability matrix comparing LLM-vendor feature parity (tool use, JSON mode, streaming, vision, batch, caching) with a migration delta + risk per feature for moving from lock-in to a multi-vendor gateway.
 
-**One-paragraph:** Addresses the gap surfaced by 'p7-llm-agent-developer/Multi-model gateway migration: lock-in to portability (2 months)': When migrating to a multi-model gateway, builders need a per-feature compatibility matrix (prompt caching, tool use, reasoning, files, batch, vision). Authoring this once saves every builder weeks. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a vendor feature portability matrix artefact (decision record, checklist, score sheet, or report).
+**Ефективно для:** platform leads planning a multi-model gateway migration; finance / procurement on vendor concentration risk; PMs scoping a 2-month migration sprint.
+
+**One-paragraph:** This methodology pins the recurring decision around "vendor-feature-portability-matrix" into a typed artefact governed by 5 testable rules. Inputs are typed and sourced; the output is contract-checked; a named accountable owner signs every record. The decision tree at `content/06-decision-tree.xml` routes preconditions and variant signals to a run / skip / variant outcome, with every conclusion referencing a rule id in `content/01-core-rules.xml`.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p7-llm-agent-developer/Multi-model gateway migration: lock-in to portability (2 months)' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == geek or higher (gating enforced by tier-manifest)
+- Team currently single-vendor with material spend (≥$5k/month) on LLM.
+- ≥2 candidate vendors exist with overlapping capability.
+- A migration timeline (≤6 months) is on the table.
+- Owner exists for the matrix after publication.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working vendor feature portability matrix artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Single-vendor lock-in is contractually required (e.g., regulated long-term agreement).
+- Team budget too small to justify the audit overhead (<$500/mo).
+- Roadmap requires a vendor-specific feature with no parity (e.g., specific tool integration).
 
 ## Prerequisites
 
-- recent context for the 'p7-llm-agent-developer/Multi-model gateway migration: lock-in to portability (2 months)' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Input artifact | Format | Source |
+|---|---|---|
+| Current vendor + feature usage report | CSV | platform telemetry |
+| Candidate vendor feature docs | URL list | procurement |
+| Migration timeline | calendar | PM |
+| Owner for the matrix | handle / email | team roster |
+| Eval row set for capability tests | JSONL | RAG / agent owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/ai/ai` | parent domain group — provides operating context for Vendor Feature Portability Matrix |
+| `[[llm-cost-attribution-model]]` | cost per vendor is already known |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/06-decision-tree.xml` | essential | run / skip / variant router referencing rule ids | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft_matrix_grid` | haiku | Feature-grid template fill. |
+| `synthesize_migration_delta` | sonnet | Per-feature delta + risk. |
+| `escalate_blocker` | opus | Cross-feature gating decision. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/vendor-feature-portability-matrix.json` | JSON schema for the Vendor Feature Portability Matrix output contract |
+| `templates/vendor-feature-portability-matrix.json` | JSON Schema for the Vendor Feature Portability Matrix output contract |
 | `templates/vendor-feature-portability-matrix.md` | Markdown skeleton with the required fields |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a vendor-feature-portability-matrix record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-vendor-feature-portability-matrix.py` | Enforce Vendor Feature Portability Matrix output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-vendor-feature-portability-matrix.py` | Enforce the Vendor Feature Portability Matrix output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `geek/ai/`
-- upstream playbook: `p7-llm-agent-developer/Multi-model gateway migration: lock-in to portability (2 months)`
-- geek/ai/p7-llm-agent-developer
+- [[multi-model-router-decision-tree]] — adjacent runtime routing decision.
+- [[llm-cost-attribution-model]] — vendor cost comparison upstream.
+- [[fine-tune-vs-prompt-decision-tree]] — depth axis on vendor lock-in.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) variant detected per the methodology-specific signal? Routes to run / skip / variant. Every conclusion references a rule id from `content/01-core-rules.xml`.
