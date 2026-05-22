@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tts-basics Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="TTS Basics — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON shape returned by a single synthesize() call. Carries the saved audio path, duration estimate, provider, voice, cache-hit flag, and a cache key for downstream replay.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://tts-basics/output.schema.json",
+  "type": "object",
+  "required": ["status", "path", "duration_s", "provider", "voice", "model", "cache_key", "cached"],
+  "properties": {
+    "status":     {"type": "string", "enum": ["ok", "error"]},
+    "path":       {"type": "string", "minLength": 1, "description": "absolute or repo-relative filesystem path"},
+    "duration_s": {"type": "number", "minimum": 0.0},
+    "provider":   {"type": "string", "enum": ["openai", "elevenlabs", "google", "azure"]},
+    "voice":      {"type": "string", "minLength": 1},
+    "model":      {"type": "string", "minLength": 1},
+    "speed":      {"type": "number", "minimum": 0.25, "maximum": 4.0, "default": 1.0},
+    "cache_key":  {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "cached":     {"type": "boolean"},
+    "error":      {"type": "string", "description": "present only when status == 'error'"}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+
+  <section title="Required fields">
+    <list>
+      <item>status — "ok" on saved audio file, "error" on provider failure or invalid input.</item>
+      <item>path — non-empty filesystem path; downstream callers MUST verify it exists before reading.</item>
+      <item>duration_s — measured via pydub or ffprobe; 0.0 is treated as an error by callers.</item>
+      <item>provider — one of openai / elevenlabs / google / azure (no provider-specific synonyms).</item>
+      <item>voice — provider-native voice id (e.g., "nova", "Rachel", "en-US-Neural2-D").</item>
+      <item>model — "tts-1" / "tts-1-hd" / "eleven_multilingual_v2" / "neural2" / "azure-neural".</item>
+      <item>cache_key — sha256 hex of (text|voice|str(speed)|model|provider).</item>
+      <item>cached — true iff the audio file was served from cache and no provider call was made.</item>
+    </list>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>cache_key computed without provider in the input string.</description>
+      <reason>Cross-provider cache collisions return wrong-voice audio for identical text.</reason>
+    </antipattern>
+    <antipattern>
+      <description>status "ok" with duration_s == 0.0.</description>
+      <reason>0-second reported duration is almost always an empty or invalid audio file; treat as error.</reason>
+    </antipattern>
+    <antipattern>
+      <description>voice is a semantic label ("news", "narrator") rather than the provider-native id.</description>
+      <reason>Downstream replay cannot reconstruct the exact synthesis without the native id; semantic labels are router-side only.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "path": "out/audio/welcome-nova.mp3",
+  "duration_s": 3.42,
+  "provider": "openai",
+  "voice": "nova",
+  "model": "tts-1",
+  "speed": 1.0,
+  "cache_key": "9f4a7c3e8d2b1a5f6e9c0d3b2a1f4e8d7c9b6a5d4e3c2b1a0f9e8d7c6b5a4f3e",
+  "cached": false
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "status": "ok",
+  "path": "",
+  "duration_s": 0.0,
+  "provider": "openai",
+  "voice": "news",
+  "model": "tts-1",
+  "cache_key": "abc"
+}
+]]></code>
+      <note>Invalid: empty path, 0.0 duration with status ok, semantic voice label instead of native id, cache_key not sha256.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>path exists on disk and file size &gt; 1024 bytes.</item>
+      <item>duration_s &gt; 0.0 (measure with pydub.AudioSegment.from_file(path).duration_seconds).</item>
+      <item>cache_key length == 64, all lowercase hex.</item>
+      <item>provider value is one of the four enum members.</item>
+      <item>voice value matches the provider's documented voice id (not a semantic label).</item>
     </list>
   </section>
 </text>

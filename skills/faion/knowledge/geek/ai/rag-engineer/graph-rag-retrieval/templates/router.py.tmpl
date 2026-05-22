@@ -1,0 +1,95 @@
+# purpose: skeleton router for Graph-RAG queries dispatching on query_type
+# consumes: classified query_type + graph G + summaries dict + vector_store
+# produces: dict matching 02-output-contract.xml schema
+# depends-on: content/01-core-rules.xml (rules r1-r5), content/04-procedure.xml
+# token-budget-impact: zero at runtime; reference scaffold only
+
+from enum import Enum
+from typing import Dict, List
+import networkx as nx
+
+
+class QueryType(str, Enum):
+    GLOBAL = "GLOBAL"
+    ENTITY = "ENTITY"
+    RELATIONSHIP = "RELATIONSHIP"
+    LOCAL = "LOCAL"
+
+
+def route(
+    query: str,
+    query_type: QueryType,
+    G: nx.Graph,
+    summaries: Dict,
+    vector_store,
+) -> Dict:
+    candidates: List[Dict] = []
+    fallback_used = False
+    path = ""
+
+    if query_type == QueryType.GLOBAL:
+        path = "summary"
+        candidates = [{"chunk_id": "__global__", "score": 1.0, "source": "summary"}]
+        assembled = summaries.get("global", "")
+        return _result(query, query_type, path, candidates, assembled, fallback_used)
+
+    if query_type == QueryType.RELATIONSHIP:
+        entities = _extract_entities(query)
+        if len(entities) >= 2 and entities[0] in G and entities[1] in G:
+            try:
+                p = nx.shortest_path(G, entities[0], entities[1])
+                if len(p) - 1 > 3:
+                    p = p[:4]
+                candidates = [{"chunk_id": n, "score": 1.0, "source": "shortest-path"} for n in p]
+                assembled = " -> ".join(p)
+                return _result(query, query_type, "shortest-path", candidates, assembled, fallback_used)
+            except (nx.NetworkXNoPath, nx.NodeNotFound):
+                pass
+        fallback_used = True
+
+    if query_type == QueryType.ENTITY:
+        entity = _extract_single_entity(query)
+        if entity and entity in G:
+            neighbors = list(G.neighbors(entity))[:3]
+            candidates = [{"chunk_id": n, "score": 0.9, "source": "graph-neighbor"} for n in neighbors]
+            for n in [entity, *neighbors]:
+                for r in vector_store.search(n, k=2):
+                    candidates.append({"chunk_id": r["id"], "score": float(r["score"]), "source": "vector"})
+            seen, deduped = set(), []
+            for c in candidates:
+                if c["chunk_id"] in seen:
+                    continue
+                seen.add(c["chunk_id"])
+                deduped.append(c)
+            return _result(query, query_type, "hybrid", deduped, _assemble(deduped), fallback_used)
+        fallback_used = True
+
+    # LOCAL or fallback
+    results = vector_store.search(query, k=5)
+    candidates = [{"chunk_id": r["id"], "score": float(r["score"]), "source": "vector"} for r in results]
+    return _result(query, QueryType.LOCAL, "vector-search", candidates, _assemble(candidates), fallback_used)
+
+
+def _result(q, qt, path, cands, ctx, fb):
+    return {
+        "query": q,
+        "query_type": qt.value if isinstance(qt, QueryType) else qt,
+        "retrieval_path": path,
+        "candidates": cands,
+        "assembled_context": ctx,
+        "fallback_used": fb,
+    }
+
+
+def _extract_entities(q: str) -> List[str]:
+    # Replace with real NER (spaCy / Claude). Placeholder splits on common conjunctions.
+    return [w.strip() for w in q.replace("?", "").split(" and ") if w.strip()]
+
+
+def _extract_single_entity(q: str) -> str:
+    parts = _extract_entities(q)
+    return parts[0] if parts else ""
+
+
+def _assemble(cands: List[Dict]) -> str:
+    return "\n".join(f"[{c['source']}] {c['chunk_id']} (score={c['score']:.2f})" for c in cands)

@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gemini-multimodal Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gemini-multimodal as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Gemini Multimodal Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Five recurring multimodal failures with symptom / root-cause / fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>File upload is not idempotent — uploading the same file twice creates two separate file objects; cache file names to avoid duplicate uploads</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Re-uploading wastes storage quota and creates orphaned file objects that consume space until expiry.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>The polling loop must have a max-iteration guard — a stuck "PROCESSING" state will loop forever without it</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Video processing can hang indefinitely for corrupted or unsupported files; without a guard, the agent stalls indefinitely.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>model.generate_content() is synchronous; for concurrent agent workers, use asyncio with aiohttp or the async Vertex SDK</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Blocking calls prevent parallel processing; async patterns are necessary for high-throughput pipelines.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Context cache requires a minimum of 32K tokens — if your document is smaller, caching raises an error; check token count before creating</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Attempting to cache small documents wastes a round-trip and surfaces an API error; check first.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Gemini's 2M context window tempts agents to stuff everything in one call — but cost is linear with tokens; use retrieval for large corpora</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Shoving all documents into one call maximizes latency and cost; chunking + retrieval is more efficient.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Code execution results may be truncated for long-running computations; the sandbox has execution time limits (~30s)</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long-running code fails silently with truncated output; break into smaller chunks or use external compute.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Vertex AI auth uses Application Default Credentials (gcloud auth application-default login) — different from GOOGLE_API_KEY used by the Gemini Developer API</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mixing auth methods causes silent 403 errors; keep them separate per environment.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Inline base64 video.</description>
+      <symptom>Request size exceeds limit; 400 errors.</symptom>
+      <root-cause>Default code path inlines bytes instead of using Files API.</root-cause>
+      <fix>Files API for any video / audio / &gt;4MB image total (rule r1).</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Send during PROCESSING — no ACTIVE poll.</description>
+      <symptom>Intermittent 400 with "file not active" depending on file size.</symptom>
+      <root-cause>Single-shot SDK call after upload.</root-cause>
+      <fix>Poll file.state with timeout until ACTIVE; abort on FAILED (rule r2).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Ignore 48h TTL — file id reused indefinitely.</description>
+      <symptom>404 on file id after 2 days; conversation breaks.</symptom>
+      <root-cause>Files API treated as permanent storage.</root-cause>
+      <fix>Track upload_at; re-upload near expiry; cache id ↔ source-path mapping (rule r3).</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>No context cache for a 100K-token PDF reused 50 times.</description>
+      <symptom>Bill 4x what it should be for the analysis pipeline.</symptom>
+      <root-cause>Caching considered optional rather than default for repeat docs.</root-cause>
+      <fix>Cache when ≥3 reuses AND ≥32K tokens (rule r4).</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>BLOCK_REASON on image input silently coerced to empty string.</description>
+      <symptom>"AI returned nothing" support tickets on certain images.</symptom>
+      <root-cause>Caller forgot to surface finish_reason on multimodal calls.</root-cause>
+      <fix>Same handler as text calls; never swallow finish_reason (rule r5).</fix>
+    </antipattern>
   </section>
 </text>
