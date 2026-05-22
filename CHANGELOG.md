@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-065 phase 5: canonical playbook taxonomy + validator.
 - F-065 phase 2: assemble L1 domains.xml (20 domains) + validator.
 - F-065 phase 2: L2 INDEX.xml for ml-engineering/backend/frontend/ba (606 methodologies).
 - F-065 phase 2: L2 INDEX.xml for comms/hr/claude-code/security (51 methodologies).
