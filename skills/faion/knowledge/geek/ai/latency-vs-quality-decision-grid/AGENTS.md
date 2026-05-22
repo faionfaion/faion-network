@@ -4,77 +4,96 @@ tier: geek
 group: ai
 domain: ai-core
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a decision grid mapping each LLM call site to (latency budget, quality floor, model + tactic) — table, per-call SLO, rollout-gate report.
 content_id: "512a0f6aefef04fe"
-summary: "Latency Vs Quality Decision Grid — testable methodology for LLM-agent design, evals, safety, cost. Engineers need an explicit grid (per-candidate latency win × quality risk × cost effect) to pick latency cuts without regressing prod."
-tags: [ai, geek, methodology]
+complexity: medium
+produces: decision-record
+est_tokens: 3300
+tags: [latency, quality, routing, cost, slo]
 ---
-# Latency Vs Quality Decision Grid
+# Latency vs Quality Decision Grid
 
 ## Summary
 
-**One-sentence:** Latency Vs Quality Decision Grid — testable methodology for LLM-agent design, evals, safety, cost. Engineers need an explicit grid (per-candidate latency win × quality risk × cost effect) to pick latency cuts without regressing prod.
+**One-sentence:** Produces a decision grid mapping each LLM call site to (latency budget, quality floor, model + tactic) — table, per-call SLO, rollout-gate report.
 
-**One-paragraph:** Latency Vs Quality Decision Grid closes a known gap in ai practice: Engineers need an explicit grid (per-candidate latency win × quality risk × cost effect) to pick latency cuts without regressing prod. The methodology is anchored to the recurring activity 'Inference latency profiling pass (role: role-ml-engineer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Most LLM apps pick one model and apply it everywhere; the result is either too slow for one route (search-as-you-type) or too low-quality for another (analytical summary). The decision grid forces the team to name, per call site, the latency budget (p50 / p95 ms), the quality floor (eval score), the user-facing impact of breaching either, and the model+tactic chosen (e.g. haiku + caching for autocomplete, opus + structured-output for the audit). The grid becomes the routing config and the SLO doc in one artefact.
+
+**Ефективно для:** multi-route apps (chat + search + summarise), live UI completions, agent backends with mixed-budget calls, cost optimisation passes.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Inference latency profiling pass (role: role-ml-engineer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- App has ≥3 distinct LLM call sites with different user expectations.
+- Latency and quality can each be measured (real-user latency telemetry + an eval set).
+- An owner exists with authority to swap models per site.
+- A rollback path exists if the grid recommendation degrades production.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Single call site, single model — no routing decision to make.
+- Quality is unmeasurable (no eval) — fix that first; this methodology assumes a quality signal.
+- Prototype without users — latency budgets are guesses.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Input artifact | Format | Source |
+|---|---|---|
+| List of LLM call sites | YAML | code search + ops dashboard |
+| User-experience guidelines | doc | product / UX |
+| Eval scores per current model | JSONL | eval harness |
+| Cost-per-1k-tokens per candidate model | table | finance / vendor docs |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `geek/ai/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `geek/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+|---|---|
+| `[[ai-cost-attribution-schema]]` | Cost column comes from the attribution table. |
+| `[[ai-failure-mode-taxonomy]]` | Quality-floor floor uses the failure-mode rubric. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules: per-site SLO, measure-before-choose, two-axis grid, rollback path, dashboard | ~700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for grid.json: sites, slo, model, tactic, owner | ~600 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: one-model-rules-all, guessed budgets, no-rollback, latency-quality-conflation, no-cost-column | ~600 |
+| `content/04-procedure.xml` | medium | 6-step procedure: inventory call sites → measure baseline → propose grid → ABx → wire routing → monitor | ~800 |
+| `content/05-examples.xml` | medium | One full grid for a chat-search-summarise app | ~400 |
+| `content/06-decision-tree.xml` | essential | Root: "are there ≥3 call sites with different latency/quality needs?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| `latency_vs_quality_decision_grid_template_fill` | haiku | Template fill, no judgement |
-| `latency_vs_quality_decision_grid_evidence_check` | sonnet | Bounded comparison + judgement |
-| `latency_vs_quality_decision_grid_synthesis` | opus | Cross-input synthesis + final write-up |
+|---|---|---|
+| Inventory call sites from code | sonnet | Mechanical grep. |
+| Propose grid candidates | opus | Cross-axis judgement. |
+| Run ABx + compute deltas | haiku | Numerical aggregation. |
+| Decide ship/rollback | opus | Cross-metric tradeoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+|---|---|
+| `templates/grid.schema.json` | JSON Schema for the decision grid. |
+| `templates/grid-skeleton.md` | Markdown skeleton listing call sites x columns. |
+| `templates/rollout-report.md` | ABx rollout-gate report template. |
+| `templates/_smoke-test.json` | 3-site smoke grid. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+|---|---|---|
+| `scripts/validate-latency-vs-quality-decision-grid.py` | Validates grid.json against schema; asserts ≥3 sites, every row has SLO + model + owner. | Pre-commit on grid; CI before routing config rolls out. |
 
 ## Related
 
-- parent skill: `geek/ai/` (see neighbouring methodologies)
-- triggering activity: `Inference latency profiling pass (role: role-ml-engineer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `geek/ai/`
+- `[[ai-cost-attribution-schema]]` — cost columns flow from here
+- `[[llm-drift-daily-triage]]` — picks up quality regressions
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` decides if the grid is worth authoring: skip when 1 site or no eval; mandate when multi-route; route to baseline-first when latency or quality is unmeasured.
