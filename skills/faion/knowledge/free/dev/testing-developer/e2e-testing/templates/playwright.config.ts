@@ -1,3 +1,8 @@
+// purpose: working Playwright config emitted from e2e-testing decision-record
+// consumes: ci_shard_count + auth strategy + base URL drivers
+// produces: parseable defineConfig() ready to drop into project root
+// depends-on: @playwright/test installed; tests/e2e/ directory
+// token-budget-impact: ~250 tokens
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({

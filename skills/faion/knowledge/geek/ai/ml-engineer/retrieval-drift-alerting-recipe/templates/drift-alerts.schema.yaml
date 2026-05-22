@@ -1,0 +1,41 @@
+# purpose: schema for drift-alerts.yaml — declarative metric thresholds + routing
+# consumes: baseline parquet + retrieved telemetry
+# produces: validation schema for scripts/validate-retrieval-drift-alerting-recipe.py
+# depends-on: pyyaml + jsonschema at validation time
+# token-budget-impact: 0 at runtime (config, not in LLM context)
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [baseline, metrics, routing, gate]
+properties:
+  baseline:
+    type: object
+    required: [path, window_days, captured_at]
+    properties:
+      path: { type: string }
+      window_days: { type: integer, minimum: 7 }
+      captured_at: { type: string, format: date }
+  metrics:
+    type: array
+    minItems: 4
+    items:
+      type: object
+      required: [name, kind, threshold_sigma]
+      properties:
+        name:
+          type: string
+          enum: [query-embedding-kl, retrieval-set-jaccard, score-histogram-ks, neighbour-recency]
+        kind: { type: string, enum: [distribution, set, histogram, recency] }
+        threshold_sigma: { type: number, minimum: 1 }
+  routing:
+    type: object
+    required: [p1_dual_metric, p3_single_metric_sustained_min]
+    properties:
+      p1_dual_metric: { type: integer, minimum: 2 }
+      p3_single_metric_sustained_min: { type: integer, minimum: 1 }
+  gate:
+    type: object
+    required: [enabled, mode, flag_name]
+    properties:
+      enabled: { type: boolean }
+      mode: { type: string, enum: [citations-only, refuse, fall-through] }
+      flag_name: { type: string }

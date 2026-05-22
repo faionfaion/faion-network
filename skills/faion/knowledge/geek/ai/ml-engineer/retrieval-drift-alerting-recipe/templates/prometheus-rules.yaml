@@ -1,0 +1,33 @@
+# purpose: Prometheus alerting rules for the four retrieval-drift metrics
+# consumes: drift_metric_* gauges emitted by scripts/compute-drift-metrics.py
+# produces: config (loaded by Prometheus server)
+# depends-on: prometheus >= 2.40
+# token-budget-impact: 0 at runtime
+groups:
+  - name: rag-retrieval-drift
+    interval: 5m
+    rules:
+      - alert: RetrievalDriftP1Dual
+        expr: count by (env) (drift_metric_sigma > 1) >= 2
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "RAG retrieval drift: 2+ metrics breach"
+          runbook: "https://runbooks.example.com/rag-drift-p1"
+
+      - alert: RetrievalDriftP1SingleSevere
+        expr: drift_metric_sigma >= 3
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "RAG retrieval drift: single metric 3σ"
+
+      - alert: RetrievalDriftP3Sustained
+        expr: drift_metric_sigma >= 1 and drift_metric_sigma < 3
+        for: 60m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "RAG retrieval drift: sustained low-intensity (recontract candidate)"

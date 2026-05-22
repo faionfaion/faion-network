@@ -1,42 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Context Bleed Detection Recipe Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Context Bleed Detection Recipe output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Context Bleed Detection Recipe Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a valid context-bleed incident record. Subagent must satisfy this contract before paging on-call.</summary>
 
   <output-contract>
     <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      <field name="incident_id" type="string" required="true">unique slug, prefix `cbi-`</field>
+      <field name="owner" type="string" required="true">single named on-call owner (handle / email / pager handle)</field>
+      <field name="bleed_type" type="string" required="true">one of: cross-tenant, prior-turn, system-drift, clean</field>
+      <field name="probe_signal" type="object" required="true">canary hit + embedding-distance + snapshot diff payload</field>
+      <field name="session_hashes" type="list" required="true">list of session_id hashes (SHA-256 truncated to 16 chars)</field>
+      <field name="threshold" type="number" required="true">cosine-distance threshold used for the run</field>
+      <field name="kill_switch" type="object" required="true">scoped action: worker-pool slice / cache key / session range</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="detected_at" type="datetime" required="true">ISO-8601 timestamp</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-      <pattern id="f5">version regressed (lower than previous record)</pattern>
+      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty</pattern>
+      <pattern id="f2">session_hashes contains raw user-id (length over 16 chars OR non-hex)</pattern>
+      <pattern id="f3">kill_switch.scope = 'fleet' OR 'all' without human_approval=true</pattern>
+      <pattern id="f4">bleed_type = 'cross-tenant' but probe_signal.canary_hit = false</pattern>
+      <pattern id="f5">threshold missing OR outside [0.0, 1.0]</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
+      <transformation>Coalesce repeat hits on the same session pair within 60 seconds into one incident with hit_count.</transformation>
+      <transformation>Promote bleed_type='clean' to status='no-action' rather than fabricating a signal.</transformation>
     </allowed-transformations>
 
-    <schema-reference path="templates/context-bleed-detection-recipe.json"/>
+    <schema>
+      <schema-reference path="templates/context-bleed-detection-recipe.json"/>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "incident_id": "cbi-2026-05-22-001",
+  "owner": "sre-oncall@acme.com",
+  "bleed_type": "cross-tenant",
+  "probe_signal": {"canary_hit": true, "embedding_distance": 0.08, "snapshot_diff": "none"},
+  "session_hashes": ["a1b2c3d4e5f60718", "f9e8d7c6b5a40392"],
+  "threshold": 0.15,
+  "kill_switch": {"scope": "worker-pool", "target": "pool-3", "human_approval": false},
+  "version": "1.0.0",
+  "detected_at": "2026-05-22T10:32:11Z"
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "incident_id": "x",
+  "owner": "team",
+  "bleed_type": "cross-tenant",
+  "probe_signal": {"canary_hit": false},
+  "session_hashes": ["user-1234@acme.com"],
+  "threshold": 2.5,
+  "kill_switch": {"scope": "fleet"},
+  "version": "v1",
+  "detected_at": "today"
+}
+]]></example>
   </output-contract>
 
   <section title="Self-check checklist">
     <list>
       <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>session_hashes contain only 16-char hex strings</item>
+      <item>kill_switch scope is bounded unless human_approval=true</item>
       <item>Output validates against templates/context-bleed-detection-recipe.json</item>
-      <item>owner is a named individual or rotating named role — never a plural pronoun</item>
     </list>
   </section>
 </text>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Trajectory Eval Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observed regression class to the eval action to take. Leaves reference rules from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-regression-class">Which axis regressed vs baseline by &gt; 25%?</root-question>
+
+    <branch when="outcome &lt; baseline_outcome">
+      <conclusion ref="three-axis-required" verdict="block PR; investigate LLM-as-judge disagreement; check ground-truth drift"/>
+    </branch>
+
+    <branch when="trajectory &lt; baseline_trajectory">
+      <question id="q-loops">Does the trace contain loops (same tool, same args, ≥3 times)?</question>
+      <branch when="loops == true">
+        <conclusion ref="tool-span-required" verdict="block PR; missing tool description or stale tool response — check tool catalog"/>
+      </branch>
+      <branch when="loops == false">
+        <conclusion ref="three-axis-required" verdict="block PR; investigate added/removed tools that increased path length"/>
+      </branch>
+    </branch>
+
+    <branch when="resources &lt; baseline_resources">
+      <question id="q-cache-hit">Has cache_read_tokens / total_input_tokens dropped &gt; 20%?</question>
+      <branch when="cache_drop == true">
+        <conclusion ref="otel-genai-semconv" verdict="block PR; prompt prefix changed → cache miss; restore stable prefix or accept rebuild"/>
+      </branch>
+      <branch when="cache_drop == false">
+        <conclusion ref="hash-not-paste" verdict="block PR; tool output verbosity grew → terse-default-tool-output methodology required"/>
+      </branch>
+    </branch>
+
+    <branch when="all_axes &gt;= baseline">
+      <conclusion ref="ci-eval-gate" verdict="pass; record new baseline if improvement persists 3 runs"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="cost-spike">
+    resources=0.42 (baseline 0.85) → q-cache-hit: cache_read_ratio dropped from 65% to 30% → otel-genai-semconv; rollback the prompt change that broke cache prefix.
+  </example>
+</text>
