@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="guardrails-implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for guardrails-implementation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Guardrails Implementation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six testable rules for a production guardrails pipeline class.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+      <statement source="config-discipline">Thresholds + toggles live in a GuardrailConfig dataclass loaded at startup. Never hardcode thresholds inside validator functions.</statement>
+      <rationale>Centralised config makes the security posture auditable and tunable without redeploy.</rationale>
+    </rule>
+    <rule id="r2" testable="true" depth="essential">
+      <statement source="latency-discipline">Input pipeline orders checks cheap-first: rule-based regex (µs) → API moderation (~100ms) → optional LLM check (last).</statement>
+      <rationale>Layering by cost stops the slow checks from running on inputs that fast checks already reject.</rationale>
+    </rule>
+    <rule id="r3" testable="true" depth="essential">
+      <statement source="output-discipline">Output pipeline separates validators (boolean accept/block) from filters (transform). Validators run first; filters only apply if output is not blocked.</statement>
+      <rationale>Mixing validation and filtering makes audit impossible: "was it blocked or modified?" must be answerable.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement source="ops-discipline">Guardrail check exceptions fail loudly — never `except Exception: pass`. A failed check returns a violation; a crashing check raises.</statement>
+      <rationale>Silent swallow converts safety failures into invisible pass-throughs.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="ops-discipline">For latency-sensitive deployments, parallel-execute independent input checks via ThreadPoolExecutor / asyncio.gather. Collect all violations before deciding block/pass.</statement>
+      <rationale>Sequential adds latency = sum(checks); parallel = max(check).</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="audit-discipline">Every call emits a structured violation_log: {trace_id, layer, violation_type, severity, decision, latency_ms} to telemetry.</statement>
+      <rationale>Per-layer rates expose silent rot and let SRE tune without guessing.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire the GuardrailsPipeline per procedure.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Internal-only or prototype or sub-500ms budget → skip.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>

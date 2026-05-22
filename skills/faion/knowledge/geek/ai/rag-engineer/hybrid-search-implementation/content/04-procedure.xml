@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="hybrid-search-implementation Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Six-step build procedure for production HybridSearchService.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="pick-backend-path">
+      <input>chosen vector store</input>
+      <action>Native (Weaviate/Qdrant) vs client-fusion (Elasticsearch) vs sparse-dense (Pinecone). Use the decision tree.</action>
+      <output>integration path enum</output>
+    </step>
+    <step n="2" name="pre-compute-sparse">
+      <input>corpus + tokeniser</input>
+      <action>For Qdrant/Pinecone, run BM25Encoder.fit(corpus) and persist; for Weaviate skip (server-side); for ES build/refresh BM25 index.</action>
+      <output>sparse-encoder artefact</output>
+      <decision-gate>If corpus changes &gt;10%, retrain.</decision-gate>
+    </step>
+    <step n="3" name="implement-search-method">
+      <input>backend SDK client + config</input>
+      <action>Implement parallel dense + sparse legs (asyncio.gather), capture per-leg ranks, apply RRF or linear fusion.</action>
+      <output>HybridSearchService.search() callable</output>
+    </step>
+    <step n="4" name="prefetch-2-3x">
+      <input>final top-K</input>
+      <action>Set per-leg k_leg = 2-3 × final_k.</action>
+      <output>candidate pool</output>
+    </step>
+    <step n="5" name="eval-and-tune">
+      <input>labeled query set</input>
+      <action>Run NDCG@10 evaluation; if linear fusion, sweep alpha; ship the winner with eval evidence.</action>
+      <output>verified config</output>
+    </step>
+    <step n="6" name="instrument-and-ship">
+      <input>service + config</input>
+      <action>Log per-leg ranks + latency_ms; gate behind feature flag; ramp gradually.</action>
+      <output>deployed service</output>
+    </step>
+  </section>
+
+  <reference path="templates/hybrid_search_service.py.tmpl">Backend-agnostic service skeleton.</reference>
+</text>

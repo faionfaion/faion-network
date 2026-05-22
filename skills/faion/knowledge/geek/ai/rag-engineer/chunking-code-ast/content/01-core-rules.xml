@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="chunking-code-ast Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for chunking-code-ast. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Chunking Code AST — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules: dispatch by language, AST primary path, dedup overlapping chunks, log on fallback, version on strategy change.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>CodeChunker MUST dispatch on language: python uses ast.parse on the full source and walks FunctionDef/AsyncFunctionDef/ClassDef nodes; javascript/typescript uses regex patterns for function, class, and arrow function definitions. For any language where the primary path fails (SyntaxError for Python, empty match list for JS), CodeChunker MUST fall back to _chunk_generic and MUST log a warning indicating that metadata fields (name, type, docstring) will be absent in the output chunks.</statement>
-      <rationale source="v1-source">Silent fallback without a warning causes the caller to index chunks as if they were named function units, but they are actually anonymous line-based fragments. Surfacing the fallback allows the pipeline to flag these files for manual review or exclusion.</rationale>
+    <rule id="r1-language-dispatch" testable="true" depth="essential">
+      <statement>CodeChunker MUST dispatch on language: Python goes through `ast.parse` + node walk; JS/TS goes through tree-sitter (regex only as last-resort fallback); other languages go to the generic line splitter.</statement>
+      <rationale source="LangChain / LlamaIndex code-splitter design">A single regex path on a multi-language corpus mis-splits decorators, generics, and arrow functions. Language dispatch is the only path that scales.</rationale>
+    </rule>
+
+    <rule id="r2-ast-primary-python" testable="true" depth="essential">
+      <statement>Python files MUST be chunked via `ast.parse` walking FunctionDef, AsyncFunctionDef, ClassDef. Each chunk MUST carry name, type, docstring, start_line, end_line.</statement>
+      <rationale source="Python ast docs + code-search retrieval benchmarks">Decorators, type annotations, and nested definitions are handled correctly only by the AST path. Regex splitters lose nested-class boundaries.</rationale>
+    </rule>
+
+    <rule id="r3-dedup-overlapping" testable="true" depth="essential">
+      <statement>When the AST walk emits both a class chunk and its method chunks, the emitted list MUST be deduplicated by (name, start_line) before indexing, OR the class-level chunk MUST be excluded.</statement>
+      <rationale source="Vector-store nearest-neighbour skew analysis">Overlapping chunks inflate the index and skew k-NN scores toward classes with many methods. Dedup keeps ranking stable.</rationale>
+    </rule>
+
+    <rule id="r4-fallback-warning" testable="true" depth="essential">
+      <statement>Any fallback from AST/tree-sitter to the generic line splitter MUST log a structured warning with file, language, reason so the caller can flag the file for re-ingest after the parse issue is fixed.</statement>
+      <rationale source="Faion-network ingestion incident log">Silent fallback ships chunks without name/type/docstring, breaking name-based retrieval. The warning is the only handle the caller has.</rationale>
+    </rule>
+
+    <rule id="r5-version-on-strategy-change" testable="true" depth="essential">
+      <statement>Changing the chunking strategy (e.g. AST then tree-sitter, or different dedup policy) MUST bump strategy_version and write to a versioned collection name. Mixed-strategy indices MUST NOT exist.</statement>
+      <rationale source="Re-index incident analysis">Mixing strategies under one collection name causes hits from old chunks to surface alongside new ones, with incompatible metadata.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
