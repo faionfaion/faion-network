@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the multi-agent-design-patterns methodology. Sources: Anthropic — Building Effective Agents (engineering blog 2024); OpenAI Agents SDK documentation; LangGraph multi-agent patterns.</summary>
 
   <section title="Rule set">
-    <rule id="r1-supervisor-when-tasks" testable="true" depth="essential">
-      <statement>Use Supervisor when tasks map to distinct worker domains and centralized control is acceptable.</statement>
-      <rationale source="Anthropic — Building Effective Agents (engineering blog 2024)">A single coordinator routes requests to specialized workers via LLM reasoning or rule-based matching. Predictable, debuggable, but creates a single point of failure.</rationale>
+    <rule id="r1-pick-pattern-by-decomposition" testable="true" depth="essential">
+      <statement>Pick the multi-agent pattern based on task decomposability: orchestrator-worker for parallelisable subtasks, hierarchical for tree-shaped projects, sequential for pipeline tasks, debate for consensus problems.</statement>
+      <rationale source="Anthropic — Building Effective Agents (engineering blog 2024)">Mis-picked patterns make the system harder to debug than a single-agent baseline; the decomposition shape is the load-bearing signal.</rationale>
     </rule>
 
-    <rule id="r2-hierarchical-when-problem" testable="true" depth="essential">
-      <statement>Use Hierarchical when the problem requires recursive decomposition across organizational units; limit to 2–3 levels to avoid coordination overhead.</statement>
-      <rationale source="OpenAI Agents SDK documentation">Multi-level tree where higher agents decompose goals into sub-tasks for lower agents. Scales well but each coordination layer adds 500ms+ of LLM call overhead.</rationale>
+    <rule id="r2-ladder-model-tiers" testable="true" depth="essential">
+      <statement>Use a model ladder: orchestrator = Claude Opus / GPT-4o, workers = Sonnet / GPT-4o-mini, classifiers = Haiku / GPT-3.5; never run the entire mesh on the most expensive model.</statement>
+      <rationale source="OpenAI Agents SDK documentation">Naive uniform-Opus deployments cost 5–20× more than tiered ones with no measurable quality lift.</rationale>
     </rule>
 
-    <rule id="r3-sequential-linear-workflows" testable="true" depth="essential">
-      <statement>Use Sequential for linear workflows where stage N depends on stage N-1; use output_key per stage to pass typed state.</statement>
-      <rationale source="LangGraph multi-agent patterns">Assembly-line pipeline: each agent reads the previous stage output from shared state and writes its result under a named key. Deterministic, easy to debug, but no fault isolation — failure at any stage blocks all downstream stages.</rationale>
+    <rule id="r3-explicit-handoff-contract" testable="true" depth="essential">
+      <statement>Define an explicit handoff contract per agent edge: input schema, output schema, error-channel, max-turns; never implicit-pass-through arbitrary chat history.</statement>
+      <rationale source="LangGraph multi-agent patterns">Implicit context-passing causes silent context drift and is the #1 cause of multi-agent quality regressions.</rationale>
     </rule>
 
-    <rule id="r4-peer-peer-only" testable="true" depth="essential">
-      <statement>Use Peer-to-Peer only when resilience and fault tolerance outweigh debugging complexity; enforce DAG structure to prevent circular routing.</statement>
-      <rationale source="AutoGen multi-agent conversation framework">Decentralized architecture where agents communicate directly without a central orchestrator. High fault tolerance but requires distributed tracing to understand message flow.</rationale>
+    <rule id="r4-global-termination" testable="true" depth="essential">
+      <statement>Wire a global termination condition (max steps OR cumulative cost OR done-tool fired) that overrides any individual agent's loop.</statement>
+      <rationale source="AutoGen multi-agent conversation framework">Without a global cap, a single mis-routed handoff can run a workflow into the ground; emergency shutdown must be explicit, not emergent.</rationale>
     </rule>
 
-    <rule id="r5-define-clear-agent" testable="true" depth="essential">
-      <statement>Define clear agent role boundaries and tool access permissions before writing any prompts or code.</statement>
-      <rationale source="CrewAI hierarchical-process docs">Tool access leakage in frameworks like AutoGen lets agents see tool results intended for others; scoping prevents this.</rationale>
+    <rule id="r5-trace-every-edge" testable="true" depth="essential">
+      <statement>Emit a tracing span for every agent invocation and every cross-agent edge (input, output, latency, cost, model id); store traces for replay.</statement>
+      <rationale source="CrewAI hierarchical-process docs">Multi-agent regressions are unreproducible without traces; the replay capability is what distinguishes a system from a demo.</rationale>
     </rule>
   </section>
 

@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the model-evaluation methodology. Sources: Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685); Liang et al. — HELM holistic evaluation (arXiv:2211.09110); Anthropic — model evaluation guidance.</summary>
 
   <section title="Rule set">
-    <rule id="r1-select-2-3" testable="true" depth="essential">
-      <statement>Select 2–3 primary metrics per task type and define success thresholds before running any evaluation.</statement>
-      <rationale source="Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685)">Post-hoc metric selection is p-hacking. Thresholds defined after seeing results are uninformative.</rationale>
+    <rule id="r1-define-thresholds-first" testable="true" depth="essential">
+      <statement>Define 2–3 primary metrics per task type and pass/fail thresholds before running any evaluation; do not chase metrics post-hoc.</statement>
+      <rationale source="Zheng et al. — MT-Bench / LLM-as-judge (arXiv:2306.05685)">Post-hoc threshold setting is p-hacking with steps: every eval will 'pass' on the metric the engineer picked after seeing the result.</rationale>
     </rule>
 
-    <rule id="r2-multiple-judge-models" testable="true" depth="essential">
-      <statement>Use multiple judge models (GPT-4 + Claude) and average scores to reduce evaluator bias; report confidence intervals, not single-point estimates.</statement>
-      <rationale source="Liang et al. — HELM holistic evaluation (arXiv:2211.09110)">GPT-4 prefers GPT-4 outputs; Claude prefers Claude outputs. Multi-judge averaging partially cancels bias. Single-point estimates hide variance that matters for production decisions.</rationale>
+    <rule id="r2-real-production-samples" testable="true" depth="essential">
+      <statement>Build evaluation datasets from real production queries (≥200 samples per task); never rely purely on synthetic data.</statement>
+      <rationale source="Liang et al. — HELM holistic evaluation (arXiv:2211.09110)">Synthetic data understates the long-tail and the adversarial inputs that drive real-world quality regressions.</rationale>
     </rule>
 
-    <rule id="r3-build-your-evaluation" testable="true" depth="essential">
-      <statement>Build your evaluation dataset from real production queries, not synthetic ones; minimum 200 samples; version it alongside model/prompt versions.</statement>
-      <rationale source="Anthropic — model evaluation guidance">Synthetic datasets miss the long tail of real user behavior. Mismatched dataset versions make cross-evaluation comparisons meaningless.</rationale>
+    <rule id="r3-multi-judge-ensemble" testable="true" depth="essential">
+      <statement>Use multiple judge models (e.g. GPT-4 + Claude) and average scores; report inter-judge agreement (Cohen's κ) alongside the score.</statement>
+      <rationale source="Anthropic — model evaluation guidance">LLM-as-judge is biased toward outputs that look like the judge's family; averaging across families is the only correction that survives audit.</rationale>
     </rule>
 
-    <rule id="r4-define-success-metrics" testable="true" depth="essential">
-      <statement>Define success metrics and calculate required sample size before traffic splitting; run until p &lt; 0.05 and check for novelty effects.</statement>
-      <rationale source="OpenAI Evals framework documentation">Underpowered A/B tests produce false positives that lead to wrong model selection decisions.</rationale>
+    <rule id="r4-offline-then-online" testable="true" depth="essential">
+      <statement>Score offline on a frozen suite first; only promote to A/B testing on live traffic after offline pass; never let online traffic be the first eval.</statement>
+      <rationale source="OpenAI Evals framework documentation">Offline catches the structural failures; online catches the distribution-shift failures. Skipping offline burns customer trust for cheap signal.</rationale>
     </rule>
 
-    <rule id="r5-sample-1-10" testable="true" depth="essential">
-      <statement>Sample 1–10% of production traffic for quality evaluation; run LLM-as-judge on 0.1–1%; set cost alerts at 2x baseline and page at 5x.</statement>
-      <rationale source="Stanford HELM leaderboard">Full evaluation on 100% of production traffic is cost-prohibitive; sampling provides sufficient signal. Cost alerts catch runaway agent loops before they drain budget.</rationale>
+    <rule id="r5-monitor-continuously" testable="true" depth="essential">
+      <statement>Sample production output and run lightweight eval continuously (faithfulness + cost + latency); alert on &gt;5% drop from the previous 7-day window.</statement>
+      <rationale source="Stanford HELM leaderboard">Model providers patch their models; without continuous sampling, the first signal of a quality drop is a customer escalation.</rationale>
     </rule>
   </section>
 

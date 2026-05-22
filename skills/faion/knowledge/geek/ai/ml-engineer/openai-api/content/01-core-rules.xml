@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the openai-api methodology. Sources: OpenAI API reference (platform.openai.com/docs/api-reference); OpenAI Structured Outputs guide; OpenAI Batch API documentation.</summary>
 
   <section title="Rule set">
-    <rule id="r1-default-model-gpt" testable="true" depth="essential">
-      <statement>Default model: gpt-4o for quality-sensitive tasks; gpt-4o-mini for classification, routing, and formatting (90% cheaper). Use o3-mini for complex reasoning. Always pin exact version: `gpt-4o-2024-08-06` not `gpt-4o`.</statement>
-      <rationale source="OpenAI API reference (platform.openai.com/docs/api-reference)">Non-pinned model aliases change behavior on OpenAI's update schedule without warning. A silent model upgrade can break prompt-sensitive production systems.</rationale>
+    <rule id="r1-pin-model-version" testable="true" depth="essential">
+      <statement>Pin exact model versions (`gpt-4.1-2025-04-14`, not `gpt-4-turbo` or `gpt-4o`); rotate explicitly in PRs after eval review.</statement>
+      <rationale source="OpenAI API reference (platform.openai.com/docs/api-reference)">Aliases silently roll under you; one Sunday the eval suite regresses 5% and there is no signal until a customer complains.</rationale>
     </rule>
 
-    <rule id="r2-new-projects-responses" testable="true" depth="essential">
-      <statement>For new projects, use the Responses API over Chat Completions. Use `previous_response_id` for multi-turn conversations — it eliminates manual history management and reduces payload size.</statement>
-      <rationale source="OpenAI Structured Outputs guide">Chat Completions requires the developer to send the full conversation history on every call. The Responses API manages history server-side, reducing payload size and developer surface area. OpenAI is actively developing the Responses API; Chat Completions is in maintenance mode.</rationale>
+    <rule id="r2-prefer-responses-api" testable="true" depth="essential">
+      <statement>For new projects, use the Responses API with `previous_response_id` for multi-turn flows; reserve Chat Completions for legacy code that already shipped.</statement>
+      <rationale source="OpenAI Structured Outputs guide">Responses API exposes prompt caching, server-side context, and the new tool-call shape — switching costs grow with code base age.</rationale>
     </rule>
 
-    <rule id="r3-client-beta-chat" testable="true" depth="essential">
-      <statement>Use `client.beta.chat.completions.parse(response_format=MyModel)` instead of JSON mode. Structured Outputs guarantee schema compliance; JSON mode only guarantees valid JSON syntax.</statement>
-      <rationale source="OpenAI Batch API documentation">JSON mode failures are silent: valid JSON with missing or wrong-typed fields passes JSON parsing but fails downstream. Native Structured Outputs enforce the schema at the model level.</rationale>
+    <rule id="r3-structured-output-not-jsonmode" testable="true" depth="essential">
+      <statement>Use `client.beta.chat.completions.parse(response_format=Model)` (Structured Outputs) instead of JSON mode; the schema is enforced server-side.</statement>
+      <rationale source="OpenAI Batch API documentation">JSON mode just promises valid JSON, not your schema; Structured Outputs guarantee the model output matches the Pydantic schema.</rationale>
     </rule>
 
-    <rule id="r4-set-max-tokens" testable="true" depth="essential">
-      <statement>Set `max_tokens` on every API call. Unbounded output generation runs up costs and stalls agents waiting for a response that never completes.</statement>
-      <rationale source="OpenAI prompt caching / Responses API docs">Without max_tokens, a stuck generation can produce thousands of tokens. In agentic loops, this blocks all downstream steps. `finish_reason: "length"` signals truncation — check for it.</rationale>
+    <rule id="r4-set-max-tokens-explicitly" testable="true" depth="essential">
+      <statement>Set `max_tokens` (or `max_output_tokens`) on every call; never rely on the model default.</statement>
+      <rationale source="OpenAI prompt caching / Responses API docs">Default ceilings change between model versions and cost spikes hide behind verbose models that suddenly emit 4k tokens for a yes/no answer.</rationale>
     </rule>
 
-    <rule id="r5-implement-exponential-backoff" testable="true" depth="essential">
-      <statement>Implement exponential backoff for 429 (rate limit) and 5xx errors: start at 1s, cap at 60s, max 6 retries. Use `time.sleep(min(2**attempt, 60))` pattern.</statement>
-      <rationale source="OpenAI API reference (platform.openai.com/docs/api-reference)">Rate limits are transient. Immediate retry hammers the quota further. Exponential backoff distributes retries over time and recovers from temporary limits gracefully.</rationale>
+    <rule id="r5-use-batch-api-for-async" testable="true" depth="essential">
+      <statement>Route all non-interactive workloads through the Batch API (50% discount); reserve real-time endpoints for user-facing latency-critical paths.</statement>
+      <rationale source="OpenAI API reference (platform.openai.com/docs/api-reference)">Batch API is a no-brainer cost reduction for any workload where 24h latency is acceptable; production systems leave money on the table by skipping it.</rationale>
     </rule>
   </section>
 

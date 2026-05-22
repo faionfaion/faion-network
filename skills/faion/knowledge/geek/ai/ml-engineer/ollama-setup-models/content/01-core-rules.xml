@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the ollama-setup-models methodology. Sources: Ollama documentation — install / pull / list; Ollama model library (registry.ollama.ai); GGUF quantisation format spec.</summary>
 
   <section title="Rule set">
-    <rule id="r1-match-model-size" testable="true" depth="essential">
-      <statement>Match model size to available RAM/VRAM before pulling — loading a model that exceeds available memory causes OOM errors or falls back to CPU with unacceptable latency.</statement>
-      <rationale source="Ollama documentation — install / pull / list">A 70B model at Q4 quantization uses ~40GB; exceeding VRAM causes partial offload to RAM which is 5-20x slower.</rationale>
+    <rule id="r1-match-model-to-vram" testable="true" depth="essential">
+      <statement>Pick a quantisation tier whose memory footprint fits in 80% of available VRAM (or RAM if CPU-only); use the published model→memory table.</statement>
+      <rationale source="Ollama documentation — install / pull / list">Models that just barely fit in VRAM thrash; the 80% rule leaves headroom for KV-cache growth on long contexts.</rationale>
     </rule>
 
-    <rule id="r2-quantized-versions-q4" testable="true" depth="essential">
-      <statement>Use quantized versions (Q4_K_M or Q5) for memory-constrained environments; accept the 15-30% quality trade-off consciously.</statement>
-      <rationale source="Ollama model library (registry.ollama.ai)">Q4_K_M cuts memory usage roughly in half compared to full precision, enabling models to run on consumer GPUs.</rationale>
+    <rule id="r2-prefer-instruct-tags" testable="true" depth="essential">
+      <statement>Pull the `:instruct` (or `:chat`) tag, not the base model; never run agent workflows against a base completion model.</statement>
+      <rationale source="Ollama model library (registry.ollama.ai)">Base models complete next-token; instruct models follow instructions. Mixing them up explains many 'model is broken' reports.</rationale>
     </rule>
 
-    <rule id="r3-pin-model-tags" testable="true" depth="essential">
-      <statement>Pin model tags explicitly: use llama3.1:8b not llama3.1 — untagged version may resolve to a different quantization after ollama pull.</statement>
-      <rationale source="GGUF quantisation format spec">Untagged pulls may silently upgrade to a different quantization, changing response quality or failing to load on the same hardware.</rationale>
+    <rule id="r3-verify-via-smoke-curl" testable="true" depth="essential">
+      <statement>Verify install with `curl http://localhost:11434/api/generate -d '{"model":"&lt;m&gt;","prompt":"hello"}'`; only proceed when the smoke returns a coherent response.</statement>
+      <rationale source="GGUF quantisation format spec">Skipping the smoke step lets you debug an agent issue that is actually a model-pull failure.</rationale>
     </rule>
 
-    <rule id="r4-dedicated-embedding-models" testable="true" depth="essential">
-      <statement>Use dedicated embedding models (nomic-embed-text, mxbai-embed-large) for embedding tasks, not generalist chat models.</statement>
-      <rationale source="Apple MLX vs llama.cpp benchmark notes">Chat models produce lower-quality embeddings and use more VRAM than purpose-built embedding models.</rationale>
+    <rule id="r4-document-pulled-tags" testable="true" depth="essential">
+      <statement>Pin pulled model tags in a `models.lock` file (model:tag@digest) checked into the repo; never rely on `latest`.</statement>
+      <rationale source="Apple MLX vs llama.cpp benchmark notes">`latest` rolls under you; a 6-month-old prompt against a refreshed `latest` is a different model.</rationale>
     </rule>
 
-    <rule id="r5-set-ollama-keep" testable="true" depth="essential">
-      <statement>Set OLLAMA_KEEP_ALIVE=1h to avoid 5-30s cold start on each request when models are used frequently.</statement>
-      <rationale source="Ollama documentation — install / pull / list">Without keep-alive, Ollama unloads the model after each session, causing reload overhead on the next call.</rationale>
+    <rule id="r5-budget-disk-space" testable="true" depth="essential">
+      <statement>Allocate ≥ 100 GB free disk for the model cache; clean up unused tags via `ollama rm` weekly.</statement>
+      <rationale source="Ollama documentation — install / pull / list">Model files run 4–80 GB each; an unmanaged cache fills the disk in weeks and silently breaks new pulls.</rationale>
     </rule>
   </section>
 

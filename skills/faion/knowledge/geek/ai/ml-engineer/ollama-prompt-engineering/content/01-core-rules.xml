@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the ollama-prompt-engineering methodology. Sources: Ollama documentation — modelfile / system; Anthropic prompt-engineering guide; OpenAI text-generation guide.</summary>
 
   <section title="Rule set">
-    <rule id="r1-always-add-important" testable="true" depth="essential">
-      <statement>Always add "Important: Output ONLY valid JSON, no additional text" when requesting JSON output without using the format parameter — local models frequently add markdown code fences or explanatory prose.</statement>
-      <rationale source="Ollama documentation — modelfile / system">Local models have weaker instruction-following than cloud models; explicit prohibition of unwanted output reduces parse failures by 30-50%.</rationale>
+    <rule id="r1-respect-model-format" testable="true" depth="essential">
+      <statement>Use the exact chat template the model was trained with (Llama 3, Mistral, Qwen, etc.); never paste an OpenAI-style system prompt into a Llama-3 modelfile.</statement>
+      <rationale source="Ollama documentation — modelfile / system">Quantised models are exquisitely sensitive to formatting; a wrong template can drop benchmark scores 10–30%.</rationale>
     </rule>
 
-    <rule id="r2-delimiters-xml-tags" testable="true" depth="essential">
-      <statement>Use delimiters (---, ###, XML tags) to separate sections in multi-part prompts — local models lose track of structure in long prompts without explicit boundaries.</statement>
-      <rationale source="Anthropic prompt-engineering guide">Section delimiters reduce instruction confusion in models with smaller context windows or lower attention capacity.</rationale>
+    <rule id="r2-system-prompt-via-modelfile" testable="true" depth="essential">
+      <statement>Encode system prompts in the modelfile (`SYSTEM "..."`) rather than re-sending them on every turn; this leverages the runtime cache.</statement>
+      <rationale source="Anthropic prompt-engineering guide">Per-turn system prompts re-pay the context cost; modelfile encoding lets Ollama cache the prefix across requests.</rationale>
     </rule>
 
-    <rule id="r3-local-models-add" testable="true" depth="essential">
-      <statement>For local models, add output validation after structured generation — check for schema compliance, required fields presence, and value range constraints before using results in downstream pipeline steps.</statement>
-      <rationale source="OpenAI text-generation guide">Local models have higher hallucination rates on specialized knowledge; output validation prevents incorrect data from propagating through pipelines.</rationale>
+    <rule id="r3-force-json-via-format" testable="true" depth="essential">
+      <statement>When the output must be JSON, pass `format: json` AND a JSON Schema in the prompt; do not rely on prose-only instructions.</statement>
+      <rationale source="OpenAI text-generation guide">Quantised models ignore prose-only JSON instructions ~10% of the time; the `format` flag is the only reliable enforcement.</rationale>
     </rule>
 
-    <rule id="r4-set-temperature-below" testable="true" depth="essential">
-      <statement>Set temperature below 0.3 for extraction, classification, and code tasks; above 0.8 only for explicitly creative tasks — local models show higher variance than cloud models at the same temperature.</statement>
-      <rationale source="Llama 3 prompt format spec">Local model temperature sensitivity differs from cloud models; the same temperature setting produces more varied outputs locally.</rationale>
+    <rule id="r4-few-shot-with-quantisation-in-mind" testable="true" depth="essential">
+      <statement>Use 2–4 short, diverse few-shot examples for 7B–13B models; do not paste 10+ long examples — context cost dominates quality lift past 4 examples on small models.</statement>
+      <rationale source="Llama 3 prompt format spec">Few-shot returns are concave in shot count for small models; more is not better past 4 examples.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-playbook" testable="true" depth="essential">
-      <statement>Validate that the produced `playbook-step` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Ollama documentation — modelfile / system">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-test-against-quantisation-tiers" testable="true" depth="essential">
+      <statement>Test the prompt against the q4_K_M, q5_K_M, and q8_0 quantisations you ship; behaviour drifts between tiers.</statement>
+      <rationale source="Ollama documentation — modelfile / system">A prompt that works on q8_0 may fail on q4_K_M; you only know by testing every tier you might serve.</rationale>
     </rule>
   </section>
 

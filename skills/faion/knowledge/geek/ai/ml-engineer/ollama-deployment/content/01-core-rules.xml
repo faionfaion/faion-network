@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the ollama-deployment methodology. Sources: Ollama documentation — server / serve flags; NVIDIA CUDA + container-toolkit docs; Nginx reverse proxy guidance for streaming LLM APIs.</summary>
 
   <section title="Rule set">
-    <rule id="r1-container-deployments-pass" testable="true" depth="essential">
-      <statement>Container deployments MUST pass GPU access (--gpus all for Docker run, or deploy.resources.reservations in Compose); without it inference silently falls back to CPU with no warning in logs.</statement>
-      <rationale source="Ollama documentation — server / serve flags">Ollama does not emit a warning when GPU is unavailable — it simply uses CPU at 5-20x slower inference speed, which can go undetected in production.</rationale>
+    <rule id="r1-pin-gpu-allocation" testable="true" depth="essential">
+      <statement>Pin GPU allocation explicitly via OLLAMA_GPU_LAYERS / OLLAMA_NUM_GPU and never share a single device across two Ollama daemons without explicit isolation.</statement>
+      <rationale source="Ollama documentation — server / serve flags">Unpinned GPU allocation causes VRAM thrash and silent fallback to CPU inference, masking 10–100× latency regressions.</rationale>
     </rule>
 
-    <rule id="r2-bind-ollama-127" testable="true" depth="essential">
-      <statement>Bind Ollama to 127.0.0.1:11434 (not 0.0.0.0) in production; expose only through a reverse proxy with authentication and rate limiting.</statement>
-      <rationale source="NVIDIA CUDA + container-toolkit docs">Ollama has no built-in authentication; binding to all interfaces exposes model access to the network without credentials.</rationale>
+    <rule id="r2-bind-localhost-default" testable="true" depth="essential">
+      <statement>Bind Ollama to 127.0.0.1 by default; only expose 0.0.0.0 behind a reverse proxy that enforces auth, TLS, and rate-limiting.</statement>
+      <rationale source="NVIDIA CUDA + container-toolkit docs">An open Ollama endpoint lets anyone enqueue inference jobs, exhausting GPU and burning runtime budget.</rationale>
     </rule>
 
-    <rule id="r3-set-proxy-buffering" testable="true" depth="essential">
-      <statement>Set proxy_buffering off in nginx for all Ollama location blocks; buffering blocks streaming responses and causes long perceived latency.</statement>
-      <rationale source="Nginx reverse proxy guidance for streaming LLM APIs">Without buffering disabled, nginx accumulates the full response before sending, negating the UX benefit of streaming generation.</rationale>
+    <rule id="r3-preload-models" testable="true" depth="essential">
+      <statement>Preload required models on service start (OLLAMA_KEEP_ALIVE=-1 or systemd ExecStartPost: `ollama pull &lt;model&gt;`) so the first user request is not a 30-second cold start.</statement>
+      <rationale source="Nginx reverse proxy guidance for streaming LLM APIs">Cold-start latency dominates p99 for low-traffic deployments and produces unpredictable SLO violations.</rationale>
     </rule>
 
-    <rule id="r4-mount-ollama-data" testable="true" depth="essential">
-      <statement>Mount ollama_data as a named volume for model persistence; do not rely on container-local storage — models are multi-gigabyte and re-pulling on every container restart is unacceptable.</statement>
-      <rationale source="Prometheus textfile-collector patterns">Container restart without volume mount deletes all pulled models; re-pulling a 70B model takes 30+ minutes.</rationale>
+    <rule id="r4-set-resource-limits" testable="true" depth="essential">
+      <statement>Set systemd resource limits (MemoryMax, CPUQuota) and Linux cgroup VRAM caps; document the model→memory footprint table in the runbook.</statement>
+      <rationale source="Prometheus textfile-collector patterns">Without limits a runaway query OOM-kills the host; the footprint table is the only reproducible way to size a new model.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-config" testable="true" depth="essential">
-      <statement>Validate that the produced `config` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Ollama documentation — server / serve flags">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-export-prometheus-metrics" testable="true" depth="essential">
+      <statement>Export Prometheus textfile metrics (queue depth, model load events, tokens/s, GPU utilisation) and wire a Grafana dashboard before going live.</statement>
+      <rationale source="Ollama documentation — server / serve flags">Without metrics, capacity planning is folklore and the first production incident has no signal to diagnose.</rationale>
     </rule>
   </section>
 

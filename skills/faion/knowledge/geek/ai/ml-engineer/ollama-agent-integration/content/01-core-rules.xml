@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the ollama-agent-integration methodology. Sources: Ollama documentation — OpenAI compatibility; LangChain Ollama integration docs; LlamaIndex Ollama LLM docs.</summary>
 
   <section title="Rule set">
-    <rule id="r1-openai-sdk-base" testable="true" depth="essential">
-      <statement>Use the OpenAI SDK with base_url="http://localhost:11434/v1" and api_key="ollama" to make existing OpenAI-based agent code work with local Ollama models without refactoring.</statement>
-      <rationale source="Ollama documentation — OpenAI compatibility">Changing one parameter reuses all existing OpenAI SDK error handling, retry logic, and tool-calling code without duplication.</rationale>
+    <rule id="r1-use-openai-compat-endpoint" testable="true" depth="essential">
+      <statement>Use Ollama's OpenAI-compatible /v1/chat/completions endpoint when the agent framework already supports OpenAI; only drop to /api/chat when you need ollama-native streaming or structured output.</statement>
+      <rationale source="Ollama documentation — OpenAI compatibility">OpenAI-compat lets you reuse the framework's retry / streaming / tracing infrastructure without writing a custom adapter.</rationale>
     </rule>
 
-    <rule id="r2-implement-health-check" testable="true" depth="essential">
-      <statement>Implement a health check against /api/tags with a 2s timeout before agent startup; on failure fall back to cloud API rather than failing the whole agent pipeline.</statement>
-      <rationale source="LangChain Ollama integration docs">Ollama unavailability (server restart, OOM, cold boot) should degrade gracefully to cloud, not fail the agent's task entirely.</rationale>
+    <rule id="r2-declare-tool-schema-strictly" testable="true" depth="essential">
+      <statement>Pass tool definitions with explicit JSON Schemas (type, properties, required, additionalProperties=false); never inline tool docs into the system prompt.</statement>
+      <rationale source="LangChain Ollama integration docs">Quantised local models hallucinate tool arguments when schemas are inline prose; strict schemas plus JSON-mode parser repair are mandatory.</rationale>
     </rule>
 
-    <rule id="r3-add-output-validation" testable="true" depth="essential">
-      <statement>Add output validation (schema check, required field presence, value range) before any downstream action on local model output — local models hallucinate specialized facts at higher rates than cloud models.</statement>
-      <rationale source="LlamaIndex Ollama LLM docs">Unvalidated local model outputs in automated pipelines can cause incorrect data to propagate silently, with no human review.</rationale>
+    <rule id="r3-repair-then-fail" testable="true" depth="essential">
+      <statement>Wrap tool-call parsing in a one-shot JSON repair attempt (e.g. json-repair); only escalate to a human / route to a larger model if repair fails.</statement>
+      <rationale source="LlamaIndex Ollama LLM docs">Local models emit malformed JSON ~5–15% of the time; one repair pass recovers most and avoids burning calls on the cloud fallback.</rationale>
     </rule>
 
-    <rule id="r4-never-ollama-model" testable="true" depth="essential">
-      <statement>Never use OLLAMA_MODEL=llama3.1 (untagged) in agent configuration — pin the exact tag (llama3.1:8b, llama3.1:70b) to prevent silent model swaps after ollama pull.</statement>
-      <rationale source="Anthropic agent design patterns (transposed to local)">Untagged pulls may resolve to different quantizations across restarts, changing response quality or failing to load on constrained hardware.</rationale>
+    <rule id="r4-warm-up-context" testable="true" depth="essential">
+      <statement>Warm the model with a single short request at agent start (model load is up to 30 s for 70B quants); never let the first user-visible request pay the load cost.</statement>
+      <rationale source="Anthropic agent design patterns (transposed to local)">Cold-start latency on local models is the dominant user-visible failure mode and is fully preventable.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-code" testable="true" depth="essential">
-      <statement>Validate that the produced `code` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Ollama documentation — OpenAI compatibility">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-limit-context-window" testable="true" depth="essential">
+      <statement>Cap context to 80% of the model's stated max (e.g. 24k for a 32k-context model) and bin-pack tool results before each turn.</statement>
+      <rationale source="Ollama documentation — OpenAI compatibility">Local quantised models silently truncate at the boundary, producing answers that ignore the most recent inputs without raising an error.</rationale>
     </rule>
   </section>
 

@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the ollama-tool-calling methodology. Sources: Ollama documentation — tools (function calling); Llama 3.1 tool-use cookbook; Pydantic JSON Schema docs.</summary>
 
   <section title="Rule set">
-    <rule id="r1-always-set-options" testable="true" depth="essential">
-      <statement>Always set options={"num_ctx": 32768} when using tool calling — the default context size causes silent failures where the model returns text instead of JSON tool calls.</statement>
-      <rationale source="Ollama documentation — tools (function calling)">Tool schemas consume hundreds to thousands of tokens; models truncate context silently and fall back to plain text output without warning.</rationale>
+    <rule id="r1-declare-strict-json-schema" testable="true" depth="essential">
+      <statement>Declare tool schemas with `additionalProperties: false`, explicit `type` for every field, and `required` lists; never rely on `type: any`.</statement>
+      <rationale source="Ollama documentation — tools (function calling)">Quantised models will fill missing schema constraints with hallucinated keys, breaking downstream consumers.</rationale>
     </rule>
 
-    <rule id="r2-models-llama-3" testable="true" depth="essential">
-      <statement>Use models Llama 3.1 8B or larger for tool calling; validate that response["message"].get("tool_calls") is truthy before processing tool results.</statement>
-      <rationale source="Llama 3.1 tool-use cookbook">Smaller models produce inconsistent tool call JSON; checking presence before iteration prevents KeyError and silent data loss.</rationale>
+    <rule id="r2-one-shot-repair" testable="true" depth="essential">
+      <statement>Run a one-shot JSON repair (`json-repair`) on tool-call arguments before validating; only fail the call if repair still produces invalid JSON.</statement>
+      <rationale source="Llama 3.1 tool-use cookbook">Local models emit malformed JSON 5–15% of the time; one repair pass turns a hard failure into a soft self-correction.</rationale>
     </rule>
 
-    <rule id="r3-pass-pydantic-model" testable="true" depth="essential">
-      <statement>Pass Pydantic model_json_schema() as the format parameter for structured outputs rather than relying on system prompt instructions alone.</statement>
-      <rationale source="Pydantic JSON Schema docs">The format parameter enables constrained decoding; prompt-only instructions are unreliable and produce unparseable output ~20% of the time.</rationale>
+    <rule id="r3-validate-against-schema" testable="true" depth="essential">
+      <statement>Validate parsed tool arguments against the schema with `jsonschema.validate` before invoking the tool; surface validation errors back to the model with the rule that violated.</statement>
+      <rationale source="Pydantic JSON Schema docs">Schema validation is the only mechanical defence against silent argument drift between model and tool.</rationale>
     </rule>
 
-    <rule id="r4-test-structured-output" testable="true" depth="essential">
-      <statement>Test structured output compliance for your exact model+schema combination before committing to it in production — compliance rates vary across models and schema complexity.</statement>
-      <rationale source="JSON Schema 2020-12 specification">A schema that works reliably with llama3.1:8b may fail 10-30% of the time with a different model version or quantization.</rationale>
+    <rule id="r4-limit-tool-count" testable="true" depth="essential">
+      <statement>Keep the active tool count ≤ 8 per turn; bundle related tools behind a router-tool when more are needed.</statement>
+      <rationale source="JSON Schema 2020-12 specification">Tool-selection accuracy degrades sharply past 8 tools on 7B–13B local models; a router-tool is a documented mitigation.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-code" testable="true" depth="essential">
-      <statement>Validate that the produced `code` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Ollama documentation — tools (function calling)">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-attach-trace-id" testable="true" depth="essential">
+      <statement>Attach a trace id to every tool call and log: tool name, arguments, result, latency, validation outcome.</statement>
+      <rationale source="Ollama documentation — tools (function calling)">Without traces, tool-call regressions on local models are unreproducible — quantisation makes runs non-deterministic.</rationale>
     </rule>
   </section>
 

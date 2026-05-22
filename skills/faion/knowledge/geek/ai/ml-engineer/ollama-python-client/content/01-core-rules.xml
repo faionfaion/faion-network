@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the ollama-python-client methodology. Sources: Ollama Python library (PyPI: ollama); Ollama HTTP API reference; OpenTelemetry Python SDK docs.</summary>
 
   <section title="Rule set">
-    <rule id="r1-always-set-explicit" testable="true" depth="essential">
-      <statement>Always set explicit timeout values (120s for generation, 60s for embeddings, 3600s for model pulls) — the default requests timeout of None causes hung processes.</statement>
-      <rationale source="Ollama Python library (PyPI: ollama)">Large models can take 5-30s for first token; without timeout the process hangs indefinitely on server restart or OOM.</rationale>
+    <rule id="r1-retry-with-backoff" testable="true" depth="essential">
+      <statement>Wrap every call in retry-with-exponential-backoff (3 attempts, jitter); Ollama drops connections under load.</statement>
+      <rationale source="Ollama Python library (PyPI: ollama)">Local Ollama under load returns 5xx from the proxy; without retries, agent steps fail randomly and traces look like model regressions.</rationale>
     </rule>
 
-    <rule id="r2-implement-health-check" testable="true" depth="essential">
-      <statement>Implement a health check (GET /api/tags with 5s timeout) before starting any batch workload; fail fast rather than queuing requests to an unavailable server.</statement>
-      <rationale source="Ollama HTTP API reference">Ollama returns connection refused when not running; early detection prevents batches from failing after partial progress.</rationale>
+    <rule id="r2-stream-when-possible" testable="true" depth="essential">
+      <statement>Use streaming (`stream=True`) for any response &gt; 500 tokens; bin-pack non-streaming calls only when the consumer cannot incrementally process.</statement>
+      <rationale source="Ollama HTTP API reference">Streaming reduces p99 latency to first token by 5–10× and lets the agent abort early on detected garbage.</rationale>
     </rule>
 
-    <rule id="r3-set-num-ctx" testable="true" depth="essential">
-      <statement>Set num_ctx explicitly in options or Modelfile — the default context window (2048) is too small for most agent tasks; use 8192-32768 depending on use case.</statement>
-      <rationale source="OpenTelemetry Python SDK docs">Truncated context causes models to ignore early messages or tool definitions, producing silent failures.</rationale>
+    <rule id="r3-typed-response-via-pydantic" testable="true" depth="essential">
+      <statement>Parse JSON-mode responses through a Pydantic model; never trust raw dict access.</statement>
+      <rationale source="OpenTelemetry Python SDK docs">Pydantic catches schema drift the moment Ollama returns a slightly different field name; raw dict access defers the failure to a NoneType.</rationale>
     </rule>
 
-    <rule id="r4-validate-produced-code" testable="true" depth="essential">
-      <statement>Validate that the produced `code` matches the schema in `content/02-output-contract.xml` before handing off (rule r4).</statement>
-      <rationale source="httpx streaming docs">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r4-warmup-on-process-start" testable="true" depth="essential">
+      <statement>Issue a warm-up request when the client process starts (single short prompt, single token); never let the first user request pay the load cost.</statement>
+      <rationale source="httpx streaming docs">Model load is 5–30 s; deferring it to the first user request makes the entire system look broken from outside.</rationale>
     </rule>
 
-    <rule id="r5-validate-produced-code" testable="true" depth="essential">
-      <statement>Validate that the produced `code` matches the schema in `content/02-output-contract.xml` before handing off (rule r5).</statement>
-      <rationale source="Ollama Python library (PyPI: ollama)">Mechanical validation prevents downstream consumers from receiving malformed artefacts; the validator script enforces this at PR time.</rationale>
+    <rule id="r5-trace-with-otel" testable="true" depth="essential">
+      <statement>Emit OpenTelemetry spans for every client call: model id, prompt id, latency, tokens-in, tokens-out, error class.</statement>
+      <rationale source="Ollama Python library (PyPI: ollama)">Without traces, Ollama performance regressions are unreproducible; quantisation makes runs non-deterministic.</rationale>
     </rule>
   </section>
 

@@ -3,29 +3,29 @@
   <summary>Five testable rules that gate any application of the multi-agent-systems methodology. Sources: Anthropic — Building Effective Agents; Park et al. — Generative Agents (arXiv:2304.03442); LangGraph state-machine docs.</summary>
 
   <section title="Rule set">
-    <rule id="r1-select-framework-decision" testable="true" depth="essential">
-      <statement>Select framework by decision tree: need explicit state + complex branching → LangGraph; want role-based teams with minimal setup → CrewAI; need conversational collaboration → AutoGen; prototype only → Swarm. Default: LangGraph.</statement>
-      <rationale source="Anthropic — Building Effective Agents">LangGraph's explicit state machine model is the most debuggable in production. Other frameworks trade flexibility for ease of setup but limit customization for complex workflows.</rationale>
+    <rule id="r1-pick-framework-by-needs" testable="true" depth="essential">
+      <statement>Pick the framework by decision rule: state-machine + branching → LangGraph; role-played agents + comms → CrewAI; conversational mesh → AutoGen; flat pipeline → custom orchestrator with a queue.</statement>
+      <rationale source="Anthropic — Building Effective Agents">Frameworks have different mental models; picking the wrong one produces 2–3× more glue code than the alternative.</rationale>
     </rule>
 
-    <rule id="r2-hierarchical-manager-workers" testable="true" depth="essential">
-      <statement>Hierarchical (Manager → Workers): use for complex projects with clear task decomposition. Collaborative/P2P: use for creative work and iterative refinement. Sequential pipeline: use for linear workflows and content processing.</statement>
-      <rationale source="Park et al. — Generative Agents (arXiv:2304.03442)">Architecture pattern determines coordination overhead, parallelism, and failure isolation. Hierarchical provides the best failure containment — a worker failure doesn't cascade to other workers.</rationale>
+    <rule id="r2-typed-message-contract" testable="true" depth="essential">
+      <statement>Every cross-agent message is a typed object (Pydantic / TypeBox / Zod): sender, recipient, payload-schema-id, payload, trace-id; never raw strings.</statement>
+      <rationale source="Park et al. — Generative Agents (arXiv:2304.03442)">Typed messages are the only mechanical defence against silent context drift, and the only way to replay traces deterministically.</rationale>
     </rule>
 
-    <rule id="r3-separate-model-tiers" testable="true" depth="essential">
-      <statement>Use separate model tiers: orchestrator → Claude Opus; workers → Sonnet; formatters/classifiers → Haiku. Never use Opus for worker tasks.</statement>
-      <rationale source="LangGraph state-machine docs">Orchestrators make routing decisions requiring broad knowledge; workers execute specific, well-defined tasks. Using Opus for formatting wastes $15/M tokens on a task Haiku handles at $0.80/M.</rationale>
+    <rule id="r3-state-machine-first" testable="true" depth="essential">
+      <statement>Express the workflow as an explicit state machine (or LangGraph) before writing agent code; the graph is the contract, the agents are pluggable.</statement>
+      <rationale source="LangGraph state-machine docs">Without a graph, multi-agent debugging degenerates into reading chat logs; with a graph, regressions are localised to one edge.</rationale>
     </rule>
 
-    <rule id="r4-sequential-pipelines-chain" testable="true" depth="essential">
-      <statement>For sequential pipelines, chain outputs as explicit inputs to the next stage. Never rely on shared memory or conversation history between agents — always serialize structured state.</statement>
-      <rationale source="OpenAI Swarm / Agents SDK">Shared memory introduces race conditions and context window fragmentation. Serialized structured state is explicit, auditable, and restartable from any checkpoint.</rationale>
+    <rule id="r4-budget-per-run" testable="true" depth="essential">
+      <statement>Set a per-run cumulative-cost budget (tokens, dollar, wall-clock) and a per-agent step budget; emergency-stop when any budget is exceeded.</statement>
+      <rationale source="OpenAI Swarm / Agents SDK">Multi-agent systems amplify cost; a runaway loop without budgets can spend $100s of dollars in minutes.</rationale>
     </rule>
 
-    <rule id="r5-immutable-state-updates" testable="true" depth="essential">
-      <statement>Use immutable state updates: agents append to state, never overwrite previous stages. Use PostgresSaver for LangGraph in production — never InMemorySaver (lost on restart).</statement>
-      <rationale source="Datadog — harness-first agents">Overwriting state prevents replay and debugging. In-memory state is lost on any crash or restart, which will happen in production.</rationale>
+    <rule id="r5-observability-or-die" testable="true" depth="essential">
+      <statement>Wire OpenTelemetry traces for every agent step + edge before shipping; log model id, prompt id, latency, cost, and outcome; replay must be possible from logs alone.</statement>
+      <rationale source="Datadog — harness-first agents">Without traces, multi-agent systems become unreproducible; production incidents have no signal to diagnose.</rationale>
     </rule>
   </section>
 
