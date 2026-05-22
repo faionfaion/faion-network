@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 phase D: relax decision-tree validator (accept sibling-branch shape).
 - F-066 phase D scaffold: validate-methodology-decision-tree.py + validate-methodology-templates.py + validate-methodology-scripts.py.
 - F-066 phase A: enrich domains.xml with decision-tree + disambiguation + typical-asks (v1.1).
 - F-066 refactor: harvest +296 files (batch 5).

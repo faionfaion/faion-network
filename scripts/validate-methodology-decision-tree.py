@@ -79,9 +79,13 @@ def validate_dir(dir_path: Path, rule_ids_override: set[str] | None = None) -> l
     if rq is None:
         errs.append("<decision-tree> missing <root-question>")
         return errs
-    branches = rq.findall("branch")
+    # Branches may be siblings of root-question (canonical) OR children of it (legacy);
+    # accept both shapes.
+    branches = dtree.findall("branch")
+    if not branches:
+        branches = rq.findall("branch")
     if len(branches) < 2:
-        errs.append(f"<root-question> needs >=2 branches, got {len(branches)}")
+        errs.append(f"<decision-tree> needs >=2 branches, got {len(branches)}")
     for b in branches:
         if not (b.get("when") or "").strip():
             errs.append("<branch> missing when= attr")
