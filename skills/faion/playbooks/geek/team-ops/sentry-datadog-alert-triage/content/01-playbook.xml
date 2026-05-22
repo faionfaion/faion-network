@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="sentry-datadog-alert-triage" goal="TBD" complexity="medium">
+  <intent>Alert fires → on-call triages within minutes → every alert closes with a verdict (noise / known / new incident) + audit log.</intent>
+  <scope>An alert lands in production during business hours. On-call engineer triages within minutes using AI-classified context, decides: noise / known / new incident. Noise → mute with documented reason. Known → cross-link to existing thread + delta. New incident → enter the incident-postmortem-preventive-backlog playbook. Every alert closes with a written verdict + audit log entry.</scope>
+  <success-criteria>
+    <criterion>Every alert reaches a verdict within target SLA</criterion>
+    <criterion>Audit log entry per alert with verdict + reasoning</criterion>
+    <criterion>Noise alerts have a mute justification logged</criterion>
+    <criterion>Known issues cross-linked to canonical thread</criterion>
+    <criterion>New incidents handed off to postmortem flow</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Receive + classify">
+      <intent>AI classifier routes; on-call reads service-ownership map.</intent>
+      <tasks>
+        <task>Read AI triage classification + suggested category</task>
+        <task>Confirm against service ownership</task>
+        <task>Check api-monitoring metrics + logs for context</task>
+        <task>Decide entry path: noise / known / new</task>
+      </tasks>
+      <methodologies>
+        <ref slug="tracker-ai-triage-classify-route" />
+        <ref slug="task-agent-fixable-triage-gate" />
+        <ref slug="api-monitoring-alerting" />
+        <ref slug="api-monitoring-metrics" />
+        <ref slug="api-monitoring-logging" />
+      </methodologies>
+      <outputs>
+        <output>Triage decision (noise / known / new)</output>
+      </outputs>
+      <decision-gate>Advance only with an explicit verdict; "we'll see what it does" is not a verdict.</decision-gate>
+    </stage>
+    <stage n="2" name="Investigate under read-only default">
+      <intent>If 'new', investigate read-only; respect approval-gate boundaries.</intent>
+      <tasks>
+        <task>Enter read-only-investigation default</task>
+        <task>Walk runbook tagged steps for the service</task>
+        <task>Cross-reference past incidents via mistake-memory</task>
+        <task>Apply tool-tier approval gate for any write</task>
+      </tasks>
+      <methodologies>
+        <ref slug="inc-read-only-investigation-default" />
+        <ref slug="inc-runbook-as-markdown-tagged-steps" />
+        <ref slug="inc-tool-tier-approval-gate" />
+        <ref slug="mistake-memory" />
+      </methodologies>
+      <outputs>
+        <output>Investigation trail in tagged runbook</output>
+      </outputs>
+      <decision-gate>If escalation is needed, hand off to incident-postmortem-preventive-backlog cleanly. Don't keep investigating solo past 15 minutes.</decision-gate>
+    </stage>
+    <stage n="3" name="Close with verdict">
+      <intent>Document verdict; trigger postmortem flow if needed.</intent>
+      <tasks>
+        <task>Write verdict + reasoning to audit log</task>
+        <task>For noise → log mute justification</task>
+        <task>For known → cross-link to canonical thread</task>
+        <task>For new → trigger inc-postmortem-auto-draft-no-publish</task>
+      </tasks>
+      <methodologies>
+        <ref slug="inc-postmortem-auto-draft-no-publish" />
+      </methodologies>
+      <outputs>
+        <output>Audit log entry</output>
+        <output>Linked artefacts (mute, thread, or postmortem draft)</output>
+      </outputs>
+      <decision-gate>Required: written verdict. An alert that closes silently is a future trap.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="alert-triage-decision-tree" expected-tier="geek" />
+    <gap slug="service-ownership-map-template" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Out-of-hours paging escalation — runbook handles that, Full postmortem flow — see incident-postmortem-preventive-backlog, Alert engineering / reducing noise upstream — separate workstream]" />
+  <extra key="prerequisites" value="[Sentry / Datadog alerts wired with service-ownership map, AI triage classifier in front of the alert stream, Runbook system (markdown tagged steps)]" />
+  <extra key="common_pitfalls" value="[Muting a 'noise' alert without documenting why — next on-call re-investigates from scratch, Skipping read-only default — accidental writes during investigation, Stretching investigation past 15 min instead of escalating, Closing alerts in chat-only without an audit log]" />
+  <extra key="quality_checklist" value="['Can I point to every alert from yesterday and read its verdict?', 'Did any noise mute carry an explicit reason and expiry?', 'Did the new incidents hand off cleanly to the postmortem flow?']" />
+  <extra key="related_playbooks" value="[incident-postmortem-preventive-backlog, daily-standup-ai-prebrief, rfc-to-production-feature-delivery]" />
+  <extra key="token_budget_estimate" value="12000" />
+  <extra key="cli_invocations" value="{human: faion get-content sentry-datadog-alert-triage --format md, agent: faion get-content sentry-datadog-alert-triage --format context, json: faion get-content sentry-datadog-alert-triage --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P6 product-dev team persona}]" />
+</playbook>

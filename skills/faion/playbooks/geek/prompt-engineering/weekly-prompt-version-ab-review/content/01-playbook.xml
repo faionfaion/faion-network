@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="weekly-prompt-version-ab-review" goal="TBD" complexity="medium">
+  <intent>Last week's prompt-version candidates → one merged, one rolled-back, one parked.</intent>
+  <scope>Decide which of last week's prompt-version candidates graduates to default. Output: one merged PR, one rolled-back PR, one parked. Weekly cadence, ~60-90 min.</scope>
+  <success-criteria>
+    <criterion>Each candidate scored on judge + cost</criterion>
+    <criterion>Decision per candidate (merge/rollback/park)</criterion>
+    <criterion>Pinned prompt version manifest updated</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Pull A/B Results">
+      <intent>Collect last week's A/B traces per candidate.</intent>
+      <tasks>
+        <task>Pull traces grouped by prompt version</task>
+        <task>Confirm prompt-cache prefix order didn't change</task>
+      </tasks>
+      <methodologies>
+        <ref slug="schema-version-pinning" />
+        <ref slug="prompt-cache-prefix-order" />
+        <ref slug="rag-eval-ab-testing" />
+      </methodologies>
+      <outputs>
+        <output>A/B trace bundle</output>
+      </outputs>
+      <decision-gate>Advance when each candidate has enough traces for power.</decision-gate>
+    </stage>
+    <stage n="2" name="Judge &amp; Compare">
+      <intent>Run judges, compare against control.</intent>
+      <tasks>
+        <task>Run rubric judge</task>
+        <task>Two-pass reason-then-extract scoring</task>
+        <task>Score cost + quality delta</task>
+      </tasks>
+      <methodologies>
+        <ref slug="llm-judge-rubric-evidence-first" />
+        <ref slug="two-pass-reason-then-extract" />
+        <ref slug="prompt-engineering-evaluation" />
+        <ref slug="prompt-engineering-production" />
+      </methodologies>
+      <outputs>
+        <output>Comparison table</output>
+      </outputs>
+      <decision-gate>Advance only when delta is statistically credible.</decision-gate>
+    </stage>
+    <stage n="3" name="Land Decisions">
+      <intent>Three PRs: merge, rollback, park.</intent>
+      <tasks>
+        <task>Merge the winner with version pin</task>
+        <task>Rollback the loser</task>
+        <task>Park the inconclusive with calendar reminder</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Merged PR</output>
+        <output>Rollback PR</output>
+        <output>Parked tracking issue</output>
+      </outputs>
+      <decision-gate>Ship only after pin manifest is updated.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="prompt-ab-power-calculator" expected-tier="geek" />
+    <gap slug="prompt-version-pinning-runbook" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Model-version A/Bs — covered by `bench-against-new-sota-model`, End-to-end UX A/Bs]" />
+  <extra key="prerequisites" value="[A/B fixture from eval-harness playbook, ≥2 prompt candidates with at least 100 traces each]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="9000" />
+  <extra key="cli_invocations" value="{human: faion get-content weekly-prompt-version-ab-review --format md, agent: faion get-content weekly-prompt-version-ab-review --format context, json: faion get-content weekly-prompt-version-ab-review --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

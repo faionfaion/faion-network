@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="incident-postmortem-preventive-backlog" goal="TBD" complexity="medium">
+  <intent>Paging alert → contained impact → human-published postmortem → merged preventive PRs in backlog.</intent>
+  <scope>An alert pages. On-call contains customer impact, documents root cause, lets the AI auto-draft a postmortem (no auto-publish), and converts action items into costed preventive PRs slotted into the backlog with named owners. No naming-and-shaming. Every incident raises a guardrail.</scope>
+  <success-criteria>
+    <criterion>Customer impact contained and verifiable</criterion>
+    <criterion>Root cause documented (technical + organisational layers)</criterion>
+    <criterion>Postmortem published (human-edited, not auto)</criterion>
+    <criterion>Action items costed (token + complexity)</criterion>
+    <criterion>Action items slotted into backlog with named owners</criterion>
+    <criterion>Risk register updated with new entry or modified existing</criterion>
+    <criterion>Stakeholder comms loop closed</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Contain + investigate">
+      <intent>Stop the bleeding under read-only-investigation default and approval-gate boundaries.</intent>
+      <tasks>
+        <task>Page on-call, enter read-only-investigation default</task>
+        <task>Use AI triage to classify + route incoming signals</task>
+        <task>Apply tool-tier approval gate for any write action</task>
+        <task>Open circuit breakers / fall back if applicable</task>
+      </tasks>
+      <methodologies>
+        <ref slug="inc-read-only-investigation-default" />
+        <ref slug="inc-tool-tier-approval-gate" />
+        <ref slug="inc-runbook-as-markdown-tagged-steps" />
+        <ref slug="tracker-ai-triage-classify-route" />
+        <ref slug="microservices-circuit-breaker" />
+        <ref slug="lb-high-availability" />
+      </methodologies>
+      <outputs>
+        <output>Containment record</output>
+        <output>Tagged runbook step trail</output>
+      </outputs>
+      <decision-gate>Advance once user-facing impact is contained AND a senior engineer has confirmed read-only default was respected.</decision-gate>
+    </stage>
+    <stage n="2" name="Root cause">
+      <intent>Walk logs, metrics, traces; chaos-eval evidence; reconstruct causal chain.</intent>
+      <tasks>
+        <task>Walk ELK queries + alerting trail</task>
+        <task>Cross-reference Grafana dashboards + Prometheus alerts</task>
+        <task>Apply chaos-eval fault-injection learnings if relevant</task>
+        <task>Write causal chain (5 whys at minimum)</task>
+      </tasks>
+      <methodologies>
+        <ref slug="devops-elk-queries-alerting" />
+        <ref slug="elk-stack-logging" />
+        <ref slug="grafana-basics" />
+        <ref slug="prometheus-monitoring" />
+        <ref slug="aiops" />
+        <ref slug="chaos-eval-fault-injection" />
+      </methodologies>
+      <outputs>
+        <output>Causal chain doc</output>
+        <output>Linked dashboards + queries</output>
+      </outputs>
+      <decision-gate>Advance when the causal chain spans technical + organisational layers (not just 'a config was wrong').</decision-gate>
+    </stage>
+    <stage n="3" name="Postmortem — drafted, human-published">
+      <intent>AI drafts; humans edit + publish. Blameless tone enforced.</intent>
+      <tasks>
+        <task>Run inc-postmortem-auto-draft-no-publish</task>
+        <task>Edit for accuracy + tone (no naming-and-shaming)</task>
+        <task>Publish with explicit timeline + impact + RC + actions</task>
+        <task>Notify stakeholders per comms plan</task>
+      </tasks>
+      <methodologies>
+        <ref slug="inc-postmortem-auto-draft-no-publish" />
+        <ref slug="communications-management" />
+        <ref slug="stakeholder-engagement-advanced" />
+        <ref slug="mistake-memory" />
+      </methodologies>
+      <outputs>
+        <output>Published postmortem</output>
+        <output>Updated mistake-memory entry</output>
+      </outputs>
+      <decision-gate>Required output: published postmortem with timeline + actions. No 'we'll publish later'.</decision-gate>
+    </stage>
+    <stage n="4" name="Preventive backlog">
+      <intent>Action items become costed PRs slotted into the backlog with owners.</intent>
+      <tasks>
+        <task>Cost each action by complexity + token estimate</task>
+        <task>Decide auto-applied vs human-reviewed (CodeQL autofix where safe)</task>
+        <task>Slot into backlog with named owners + risk register link</task>
+        <task>Schedule follow-up review at 30 days</task>
+      </tasks>
+      <methodologies>
+        <ref slug="sec-codeql-autofix-on-pr" />
+        <ref slug="risk-register" />
+        <ref slug="lessons-learned" />
+        <ref slug="security-sast" />
+        <ref slug="security-dast" />
+        <ref slug="gitops-progressive-delivery" />
+      </methodologies>
+      <outputs>
+        <output>Costed action items in backlog</output>
+        <output>Owner + due date per item</output>
+      </outputs>
+      <decision-gate>Required: every action has an owner. Orphaned actions guarantee the next incident repeats.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="incident-comms-templates-internal-external" expected-tier="geek" />
+    <gap slug="postmortem-action-item-slo-tracking" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Routine alert triage — covered by sentry-datadog-alert-triage, Annual audit prep — see soc2-gdpr-audit-prep, Incident comms templating beyond what runbook prescribes]" />
+  <extra key="prerequisites" value="[On-call rotation with documented escalation path, Runbook system (markdown tagged steps), AI postmortem drafter wired (no auto-publish)]" />
+  <extra key="common_pitfalls" value="[AI auto-publishes the postmortem — destroys trust if it includes wrong facts, Action items without owners — the repeat is just a matter of time, Naming-and-shaming language — kills future psychological safety, Skipping stakeholder comms — they hear about it from customers]" />
+  <extra key="quality_checklist" value="['Does the postmortem read as blameless and specific?', 'Can I point to each action item''s owner and due date?', 'Did the risk register actually change as a result?']" />
+  <extra key="related_playbooks" value="[sentry-datadog-alert-triage, rfc-to-production-feature-delivery, biweekly-retro-mistake-memory]" />
+  <extra key="token_budget_estimate" value="18000" />
+  <extra key="cli_invocations" value="{human: faion get-content incident-postmortem-preventive-backlog --format md, agent: faion get-content incident-postmortem-preventive-backlog --format context, json: faion get-content incident-postmortem-preventive-backlog --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P6 product-dev team persona}]" />
+</playbook>

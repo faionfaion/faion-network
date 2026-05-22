@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="sentry-datadog-alert-triage-v2" goal="TBD" complexity="medium">
+  <intent>An alert fires in production. On-call engineer triages within minutes using AI-classified context, decides: noise / known / new incident. New incidents enter a runbook flow; known issues get cross-linked. Outcome: every alert closes with a verdict + audit log.</intent>
+  <scope>An alert fires in production. On-call engineer triages within minutes using AI-classified context, decides: noise / known / new incident. New incidents enter a runbook flow; known issues get cross-linked. Outcome: every alert closes with a verdict + audit log.</scope>
+  <success-criteria>
+    <criterion>All 4 stages have written outputs in the project record</criterion>
+    <criterion>Each stage's decision gate was answered before advancing (yes / no in writing)</criterion>
+    <criterion>Final stage produced the required written decision artifact</criterion>
+    <criterion>Every methodology reference loaded cleanly via `faion get-content`</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Receive &amp; Acknowledge">
+      <intent>Acknowledge inside the SLA window.</intent>
+      <tasks>
+        <task>On-call ack within the SLA (e.g., 5 minutes)</task>
+        <task>Open an incident channel + scratchpad</task>
+        <task>Page secondary if scope is unclear</task>
+      </tasks>
+      <methodologies>
+        <ref slug="inc-postmortem-auto-draft-no-publish" />
+        <ref slug="inc-read-only-investigation-default" />
+      </methodologies>
+      <outputs>
+        <output>ack timestamp</output>
+        <output>incident channel</output>
+        <output>page log if any</output>
+      </outputs>
+      <decision-gate>Advance only when incident channel is live and ack is on the clock.</decision-gate>
+    </stage>
+    <stage n="2" name="Diagnose">
+      <intent>Bound the blast radius before fixing.</intent>
+      <tasks>
+        <task>Pull dashboards (errors, latency, saturation, deploy log)</task>
+        <task>Hypothesize root cause; test cheapest hypothesis first</task>
+        <task>Decide: hotfix, rollback, or feature-flag off</task>
+      </tasks>
+      <methodologies>
+        <ref slug="inc-runbook-as-markdown-tagged-steps" />
+        <ref slug="inc-tool-tier-approval-gate" />
+      </methodologies>
+      <outputs>
+        <output>dashboard snapshots</output>
+        <output>hypothesis log</output>
+        <output>fix-path decision</output>
+      </outputs>
+      <decision-gate>Advance only when the fix path is chosen with evidence.</decision-gate>
+    </stage>
+    <stage n="3" name="Mitigate">
+      <intent>Stop the bleed.</intent>
+      <tasks>
+        <task>Execute the chosen mitigation (rollback / flag / hotfix)</task>
+        <task>Verify error and latency dashboards recover</task>
+        <task>Confirm user-impact has stopped</task>
+      </tasks>
+      <methodologies>
+        <ref slug="task-agent-fixable-triage-gate" />
+        <ref slug="tracker-ai-triage-classify-route" />
+      </methodologies>
+      <outputs>
+        <output>mitigation actions log</output>
+        <output>recovery dashboard</output>
+        <output>impact-end note</output>
+      </outputs>
+      <decision-gate>Advance only when dashboards are green for 15 consecutive minutes.</decision-gate>
+    </stage>
+    <stage n="4" name="Postmortem">
+      <intent>Write the blameless postmortem within 48h.</intent>
+      <tasks>
+        <task>Document timeline, root cause, contributing factors</task>
+        <task>Define action items with owners and dates</task>
+        <task>Share postmortem to engineering at large</task>
+      </tasks>
+      <methodologies>
+        <ref slug="api-monitoring-alerting" />
+        <ref slug="api-monitoring-logging" />
+        <ref slug="api-monitoring-metrics" />
+        <ref slug="mistake-memory" />
+      </methodologies>
+      <outputs>
+        <output>postmortem doc</output>
+        <output>action items with owners</output>
+        <output>share log</output>
+      </outputs>
+      <decision-gate>Required output: a published blameless postmortem.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="alert-triage-decision-tree" expected-tier="geek" />
+    <gap slug="service-ownership-map-template" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="token_budget_estimate" value="18000" />
+</playbook>

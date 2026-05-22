@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="hallucination-incident-triage" goal="TBD" complexity="medium">
+  <intent>Customer-reported fabricated answer → reproduce, attribute, ship fix or guardrail, log to permanent eval-set within the working day.</intent>
+  <scope>Customer reported a fabricated answer. Reproduce, attribute, ship a fix or guardrail, log to permanent eval-set within the working day. Intended as a single-day incident response, not a long investigation.</scope>
+  <success-criteria>
+    <criterion>Failure reproduced from trace</criterion>
+    <criterion>Cause attributed to layer (model / prompt / tool / context)</criterion>
+    <criterion>Fix or guardrail shipped</criterion>
+    <criterion>Regression eval row added</criterion>
+    <criterion>Customer-facing note drafted</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Reproduce">
+      <intent>Replay the bad trace.</intent>
+      <tasks>
+        <task>Pull trace by id</task>
+        <task>Replay with record-replay</task>
+      </tasks>
+      <methodologies>
+        <ref slug="record-replay-debugging" />
+        <ref slug="trajectory-eval-otel" />
+      </methodologies>
+      <outputs>
+        <output>Reproduced failure</output>
+      </outputs>
+      <decision-gate>Advance only when failure reproduces deterministically.</decision-gate>
+    </stage>
+    <stage n="2" name="Attribute">
+      <intent>Layer attribution: model vs prompt vs tool vs context.</intent>
+      <tasks>
+        <task>Inspect rerank order</task>
+        <task>Check refusal-field strictness</task>
+        <task>Audit context compaction</task>
+      </tasks>
+      <methodologies>
+        <ref slug="rerank-before-reasoning" />
+        <ref slug="refusal-field-strict-schema" />
+        <ref slug="compaction-preserve-refs" />
+        <ref slug="rag-eval-retrieval-metrics" />
+      </methodologies>
+      <outputs>
+        <output>Attribution note</output>
+      </outputs>
+      <decision-gate>Advance only when one layer is clearly implicated.</decision-gate>
+    </stage>
+    <stage n="3" name="Mitigate &amp; Log">
+      <intent>Ship guardrail and add regression eval.</intent>
+      <tasks>
+        <task>Wire safety guardrail</task>
+        <task>Check EU AI Act applicability</task>
+        <task>Add row to permanent eval</task>
+        <task>Draft customer-facing note</task>
+      </tasks>
+      <methodologies>
+        <ref slug="agents-safety-guardrails" />
+        <ref slug="eu-ai-act-compliance" />
+        <ref slug="rag-eval-retrieval-metrics" />
+      </methodologies>
+      <outputs>
+        <output>Guardrail PR</output>
+        <output>Eval row added</output>
+        <output>Customer note</output>
+      </outputs>
+      <decision-gate>Close incident only after eval row and guardrail both land.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="hallucination-attribution-checklist" expected-tier="geek" />
+    <gap slug="agent-postmortem-template" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Full root-cause forensic — see blameless postmortem playbook, Pricing/comms response — out of scope]" />
+  <extra key="prerequisites" value="[Trace id from customer report, Eval harness reachable]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="9000" />
+  <extra key="cli_invocations" value="{human: faion get-content hallucination-incident-triage --format md, agent: faion get-content hallucination-incident-triage --format context, json: faion get-content hallucination-incident-triage --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

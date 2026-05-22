@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="daily-eval-set-drift-check" goal="TBD" complexity="light">
+  <intent>Tomorrow's prompt/version bump might regress → today's run confirms last 24h still passes the golden set.</intent>
+  <scope>Confirm last 24h production traffic still passes the golden eval set; flag any regression class before it ships in tomorrow's prompt/version bump. Designed as a daily ritual, 15-30 min.</scope>
+  <success-criteria>
+    <criterion>Last 24h traffic replayed against golden judges</criterion>
+    <criterion>Any regression class identified before today's bump</criterion>
+    <criterion>Decision logged: ship / hold / rollback</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Pull 24h">
+      <intent>Sample last 24h trajectories.</intent>
+      <tasks>
+        <task>Pull stratified sample of traces</task>
+        <task>Confirm schema pin still valid</task>
+      </tasks>
+      <methodologies>
+        <ref slug="trajectory-eval-otel" />
+        <ref slug="schema-version-pinning" />
+        <ref slug="llm-observability-stack" />
+      </methodologies>
+      <outputs>
+        <output>Last-24h sample</output>
+      </outputs>
+      <decision-gate>Advance once sample covers main intent buckets.</decision-gate>
+    </stage>
+    <stage n="2" name="Judge">
+      <intent>Score sample with rubric judge.</intent>
+      <tasks>
+        <task>Run rubric-evidence-first judge</task>
+        <task>Compare scores vs trailing 7-day baseline</task>
+      </tasks>
+      <methodologies>
+        <ref slug="llm-judge-rubric-evidence-first" />
+        <ref slug="model-evaluation" />
+        <ref slug="evaluation-framework" />
+        <ref slug="evaluation-metrics" />
+      </methodologies>
+      <outputs>
+        <output>Daily judge scorecard</output>
+      </outputs>
+      <decision-gate>Advance to Decide whether scores fell outside SLO band.</decision-gate>
+    </stage>
+    <stage n="3" name="Decide">
+      <intent>Ship / hold / rollback for today.</intent>
+      <tasks>
+        <task>Apply SLO thresholds</task>
+        <task>Write one-line daily log entry</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Daily ship/hold decision logged</output>
+      </outputs>
+      <decision-gate>If above SLO, ship; else hold and trigger incident playbook.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="eval-set-stratified-sampling-recipe" expected-tier="geek" />
+    <gap slug="drift-slo-thresholds-cookbook" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Full eval-set authoring — done in playbook 1, Long-term drift research]" />
+  <extra key="prerequisites" value="[Eval harness from `eval-harness-continuous-benchmark-suite`, OTEL traces queryable for last 24h]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="4000" />
+  <extra key="cli_invocations" value="{human: faion get-content daily-eval-set-drift-check --format md, agent: faion get-content daily-eval-set-drift-check --format context, json: faion get-content daily-eval-set-drift-check --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

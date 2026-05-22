@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="token-cost-daily-watch" goal="TBD" complexity="light">
+  <intent>Catch cost spikes within 24h → decide if model-routing, caching, or context-engineering change is needed before billing close.</intent>
+  <scope>Catch cost spikes within 24h. Decide if model-routing, caching, or context-engineering change is needed before billing close. ~15 min daily.</scope>
+  <success-criteria>
+    <criterion>Today's $/success measured</criterion>
+    <criterion>Spike threshold breached → action picked</criterion>
+    <criterion>Daily log line written</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Read">
+      <intent>Pull last 24h cost-per-success.</intent>
+      <tasks>
+        <task>Pull token usage and success counts</task>
+        <task>Compare against trailing 7-day median</task>
+      </tasks>
+      <methodologies>
+        <ref slug="llm-observability" />
+        <ref slug="cost-optimization" />
+        <ref slug="llm-cost-basics" />
+      </methodologies>
+      <outputs>
+        <output>Daily cost line</output>
+      </outputs>
+      <decision-gate>Advance to Decide only when above SLO band.</decision-gate>
+    </stage>
+    <stage n="2" name="Decide Lever">
+      <intent>Pick lever: routing / caching / context.</intent>
+      <tasks>
+        <task>Audit prompt-cache hit rate</task>
+        <task>Inspect cascade for over-spend on weak path</task>
+        <task>Cap max turns</task>
+        <task>Batch cache where applicable</task>
+      </tasks>
+      <methodologies>
+        <ref slug="prompt-cache-prefix-order" />
+        <ref slug="confidence-thresholded-cascade" />
+        <ref slug="weak-model-preselection" />
+        <ref slug="max-turns-circuit-breaker" />
+        <ref slug="batch-cache-stack" />
+      </methodologies>
+      <outputs>
+        <output>Lever decision note</output>
+      </outputs>
+      <decision-gate>Advance only when a single lever is picked.</decision-gate>
+    </stage>
+    <stage n="3" name="Ship Or Log">
+      <intent>Ship the cheapest lever or schedule for tomorrow.</intent>
+      <tasks>
+        <task>Land lever PR or schedule</task>
+        <task>Write one-line daily log</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Daily cost log entry</output>
+      </outputs>
+      <decision-gate>Close ritual only after log entry is written.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="cost-slo-per-task-template" expected-tier="geek" />
+    <gap slug="cache-hit-audit-script" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Long-term cost reforecasting — separate playbook, Vendor contract negotiation]" />
+  <extra key="prerequisites" value="[Per-trajectory cost tagged in OTEL, Cost dashboard reachable]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="4000" />
+  <extra key="cli_invocations" value="{human: faion get-content token-cost-daily-watch --format md, agent: faion get-content token-cost-daily-watch --format context, json: faion get-content token-cost-daily-watch --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

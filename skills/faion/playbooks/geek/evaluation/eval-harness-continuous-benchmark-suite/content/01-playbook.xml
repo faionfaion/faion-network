@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="eval-harness-continuous-benchmark-suite" goal="TBD" complexity="medium">
+  <intent>No eval harness → CI-integrated eval harness gating every prompt/tool/model change with regression score, adversarial pack, cost-per-success budget.</intent>
+  <scope>From zero to a CI-integrated eval harness that gates every prompt/tool/model change with a regression score, an adversarial pack, a cost-per-success budget, and trajectory-level OTEL traces. Output: a green-or-red gate on every PR touching agent behavior.</scope>
+  <success-criteria>
+    <criterion>Golden eval set ≥50 trajectories with judge labels</criterion>
+    <criterion>Adversarial pack ≥20 entries covering injection, refusal, drift</criterion>
+    <criterion>Cost-per-success metric tracked per PR</criterion>
+    <criterion>CI fails the PR on regression</criterion>
+    <criterion>OTEL traces queryable by trajectory id</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Curate Test Set">
+      <intent>Source golden trajectories from production and synthetic seeds.</intent>
+      <tasks>
+        <task>Sample N production trajectories stratified by intent</task>
+        <task>Add synthetic edge cases from rag-eval test-set generator</task>
+        <task>Tag each trajectory with expected behavior</task>
+      </tasks>
+      <methodologies>
+        <ref slug="rag-eval-test-set-generation" />
+        <ref slug="rag-eval-strategy" />
+        <ref slug="record-replay-debugging" />
+        <ref slug="schema-version-pinning" />
+      </methodologies>
+      <outputs>
+        <output>golden-trajectories.jsonl</output>
+        <output>Stratification table</output>
+      </outputs>
+      <decision-gate>Advance when the set covers each intent class ≥5 cases.</decision-gate>
+    </stage>
+    <stage n="2" name="Build Judges">
+      <intent>Calibrate LLM-judge rubrics and property-based invariants.</intent>
+      <tasks>
+        <task>Write rubric-evidence-first judge prompts</task>
+        <task>Add property-based invariants on outputs</task>
+        <task>Sample-check judge against humans</task>
+      </tasks>
+      <methodologies>
+        <ref slug="llm-judge-rubric-evidence-first" />
+        <ref slug="test-property-based-llm-invariants" />
+        <ref slug="model-evaluation" />
+        <ref slug="rag-eval-generation-metrics" />
+        <ref slug="rag-eval-retrieval-metrics" />
+      </methodologies>
+      <outputs>
+        <output>Judge prompt set</output>
+        <output>Judge calibration report</output>
+      </outputs>
+      <decision-gate>Advance when judge κ ≥0.6 against human sample.</decision-gate>
+    </stage>
+    <stage n="3" name="Adversarial Pack">
+      <intent>Stress the agent with fault injection and mutation cases.</intent>
+      <tasks>
+        <task>Inject tool failures and rate limits</task>
+        <task>Mutation-test inputs</task>
+        <task>Add A/B harness for prompt versions</task>
+      </tasks>
+      <methodologies>
+        <ref slug="chaos-eval-fault-injection" />
+        <ref slug="test-mutation-feedback-loop" />
+        <ref slug="rag-eval-ab-testing" />
+      </methodologies>
+      <outputs>
+        <output>adversarial-pack.jsonl</output>
+        <output>A/B fixture</output>
+      </outputs>
+      <decision-gate>Advance when pack covers ≥20 named failure modes.</decision-gate>
+    </stage>
+    <stage n="4" name="CI Wiring">
+      <intent>Make the suite block every PR touching prompts, tools, or models.</intent>
+      <tasks>
+        <task>Add CI job running suite on every PR</task>
+        <task>Tracker draft-PR on judge regression</task>
+        <task>Wire OTEL trace upload per run</task>
+      </tasks>
+      <methodologies>
+        <ref slug="trajectory-eval-otel" />
+        <ref slug="llm-observability" />
+        <ref slug="mr-error-tracker-draft-pr" />
+        <ref slug="test-self-healing-locators-audited" />
+        <ref slug="evaluation-benchmarks" />
+        <ref slug="evaluation-framework" />
+        <ref slug="evaluation-metrics" />
+      </methodologies>
+      <outputs>
+        <output>CI workflow YAML</output>
+        <output>Trace dashboard</output>
+      </outputs>
+      <decision-gate>Advance only when a known regression PR is correctly blocked.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="agent-eval-test-set-curation" expected-tier="geek" />
+    <gap slug="judge-calibration-protocol" expected-tier="geek" />
+    <gap slug="eval-as-ci-gate-thresholds" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Online RLHF/preference training — separate playbook, Human-in-the-loop UX — covered elsewhere]" />
+  <extra key="prerequisites" value="[At least one production agent path with logged traces, CI runner with secrets access]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="9000" />
+  <extra key="cli_invocations" value="{human: faion get-content eval-harness-continuous-benchmark-suite --format md, agent: faion get-content eval-harness-continuous-benchmark-suite --format context, json: faion get-content eval-harness-continuous-benchmark-suite --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="agent-state-debug-cursor-replay-session" goal="TBD" complexity="deep">
+  <intent>Agent ran 40 turns and lost the plot → reconstruct trajectory, find bad transition, ship a guardrail.</intent>
+  <scope>An agent ran 40 turns and lost the plot. Reconstruct the trajectory, find the bad state transition, ship a guardrail. Intended for one focused debug session per incident.</scope>
+  <success-criteria>
+    <criterion>Bad state transition isolated</criterion>
+    <criterion>Cause categorized: context bleed / tool error / planner divergence</criterion>
+    <criterion>Guardrail shipped</criterion>
+    <criterion>Regression eval row added</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Replay">
+      <intent>Reconstruct trajectory locally.</intent>
+      <tasks>
+        <task>Pull trace + OTEL spans</task>
+        <task>Record-replay the full run</task>
+      </tasks>
+      <methodologies>
+        <ref slug="trajectory-eval-otel" />
+        <ref slug="record-replay-debugging" />
+      </methodologies>
+      <outputs>
+        <output>Local replay log</output>
+      </outputs>
+      <decision-gate>Advance only when local run reproduces the failure.</decision-gate>
+    </stage>
+    <stage n="2" name="Inspect">
+      <intent>Find the bad transition.</intent>
+      <tasks>
+        <task>Inspect scratchpad field</task>
+        <task>Inspect filesystem memory state</task>
+        <task>Check auto-eviction history</task>
+        <task>Audit compaction preserve-refs</task>
+      </tasks>
+      <methodologies>
+        <ref slug="embedded-scratchpad-field" />
+        <ref slug="filesystem-as-working-memory" />
+        <ref slug="auto-evict-tool-results" />
+        <ref slug="compaction-preserve-refs" />
+        <ref slug="subagent-as-context-firewall" />
+      </methodologies>
+      <outputs>
+        <output>Annotated trajectory</output>
+      </outputs>
+      <decision-gate>Advance only when a single bad transition is named.</decision-gate>
+    </stage>
+    <stage n="3" name="Categorize">
+      <intent>Layer attribution: planner / executor / memory / tool.</intent>
+      <tasks>
+        <task>Check plan-execute vs ReAct mismatch</task>
+        <task>Inspect generator-critic loop bound</task>
+        <task>Check posttool hook firing</task>
+        <task>Verify max-turns circuit breaker</task>
+      </tasks>
+      <methodologies>
+        <ref slug="plan-execute-vs-react" />
+        <ref slug="generator-critic-bounded-loop" />
+        <ref slug="posttool-hook-self-correction" />
+        <ref slug="max-turns-circuit-breaker" />
+        <ref slug="chaos-eval-fault-injection" />
+      </methodologies>
+      <outputs>
+        <output>Failure category note</output>
+      </outputs>
+      <decision-gate>Advance only when category is decided.</decision-gate>
+    </stage>
+    <stage n="4" name="Guardrail">
+      <intent>Ship guardrail + add regression eval.</intent>
+      <tasks>
+        <task>Ship guardrail PR</task>
+        <task>Add row to permanent eval</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Guardrail PR</output>
+        <output>Eval row</output>
+      </outputs>
+      <decision-gate>Close session only after PR is merged.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="agent-replay-harness-cookbook" expected-tier="geek" />
+    <gap slug="context-bleed-detection-recipe" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Full incident postmortem — see blameless playbook, Cost optimization — see daily watch]" />
+  <extra key="prerequisites" value="[Full trace of the failing run, Local replay environment]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="18000" />
+  <extra key="cli_invocations" value="{human: faion get-content agent-state-debug-cursor-replay-session --format md, agent: faion get-content agent-state-debug-cursor-replay-session --format context, json: faion get-content agent-state-debug-cursor-replay-session --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

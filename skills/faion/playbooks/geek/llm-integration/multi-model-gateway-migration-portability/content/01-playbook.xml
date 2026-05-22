@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="multi-model-gateway-migration-portability" goal="TBD" complexity="deep">
+  <intent>Vendor-locked agent → portable runtime where Anthropic / OpenAI / local LLM swap per-step or per-tenant with fallback, cost-aware routing, unchanged eval bar.</intent>
+  <scope>Move a single-vendor agent (e.g. Anthropic-only) to a portable runtime where Anthropic / OpenAI / local LLM can be swapped per-step or per-tenant, with fallback chain, cost-aware routing, and unchanged eval bar.</scope>
+  <success-criteria>
+    <criterion>All call sites go through gateway adapter</criterion>
+    <criterion>Two vendors live + one local fallback</criterion>
+    <criterion>Router policy documented + tested</criterion>
+    <criterion>Eval suite passes on each backend</criterion>
+    <criterion>Cost-aware routing reduces $/success</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Adapter Layer">
+      <intent>Centralize provider calls behind a single adapter.</intent>
+      <tasks>
+        <task>Wrap Claude API behind adapter</task>
+        <task>Add OpenAI adapter</task>
+        <task>Pick MCP-gateway composition if applicable</task>
+      </tasks>
+      <methodologies>
+        <ref slug="claude-api-integration" />
+        <ref slug="openai-api-integration" />
+        <ref slug="gemini-api-integration" />
+        <ref slug="mcp-gateway-composition" />
+        <ref slug="function-calling-patterns" />
+        <ref slug="tool-use-basics" />
+        <ref slug="structured-output-basics" />
+        <ref slug="structured-output-patterns" />
+        <ref slug="structured-output-mode-picker" />
+        <ref slug="semantic-xml-content" />
+      </methodologies>
+      <outputs>
+        <output>Adapter module</output>
+        <output>Call-site sweep diff</output>
+      </outputs>
+      <decision-gate>Advance only when all call sites route through adapter.</decision-gate>
+    </stage>
+    <stage n="2" name="Local Fallback">
+      <intent>Ollama-backed local LLM as deterministic fallback.</intent>
+      <tasks>
+        <task>Stand up Ollama deployment</task>
+        <task>Pick + tune local model</task>
+        <task>Wire tool calling</task>
+      </tasks>
+      <methodologies>
+        <ref slug="local-llm-ollama" />
+        <ref slug="ollama-setup-models" />
+        <ref slug="ollama-deployment" />
+        <ref slug="ollama-prompt-engineering" />
+        <ref slug="ollama-python-client" />
+        <ref slug="ollama-tool-calling" />
+        <ref slug="ollama-agent-integration" />
+      </methodologies>
+      <outputs>
+        <output>Local LLM endpoint</output>
+        <output>Cost+latency baseline</output>
+      </outputs>
+      <decision-gate>Advance when local backend passes ≥X% of eval set.</decision-gate>
+    </stage>
+    <stage n="3" name="Routing">
+      <intent>Cost-aware + preference-trained routing across backends.</intent>
+      <tasks>
+        <task>Wire gateway fallback chain</task>
+        <task>Add preference-trained router</task>
+        <task>Reuse previous response ids where available</task>
+      </tasks>
+      <methodologies>
+        <ref slug="gateway-fallback-chain" />
+        <ref slug="preference-trained-router" />
+        <ref slug="previous-response-id-reasoning-reuse" />
+        <ref slug="weak-model-preselection" />
+      </methodologies>
+      <outputs>
+        <output>Routing policy doc</output>
+        <output>Shadow A/B fixture</output>
+      </outputs>
+      <decision-gate>Promote routing rule only after shadow A/B beats baseline.</decision-gate>
+    </stage>
+    <stage n="4" name="Eval Parity">
+      <intent>Run eval suite on each backend; lock the bar.</intent>
+      <tasks>
+        <task>Run suite on each backend</task>
+        <task>Replay traces with record-replay</task>
+        <task>Pin output-mode picker per backend</task>
+      </tasks>
+      <methodologies>
+        <ref slug="record-replay-debugging" />
+        <ref slug="structured-output-mode-picker" />
+        <ref slug="model-evaluation" />
+        <ref slug="llm-observability-stack" />
+        <ref slug="rag-eval-ab-testing" />
+      </methodologies>
+      <outputs>
+        <output>Cross-backend eval table</output>
+        <output>Schema pin manifest</output>
+      </outputs>
+      <decision-gate>Promote only when each backend meets minimum bar.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="vendor-feature-portability-matrix" expected-tier="geek" />
+    <gap slug="router-shadow-deploy-protocol" expected-tier="geek" />
+    <gap slug="eu-sovereign-llm-deployment-bundle" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Building a public LLM gateway product — out of scope, Custom inference infra — use Ollama / vendor APIs]" />
+  <extra key="prerequisites" value="[Working vertical agent on one vendor, Eval harness passing the playbook 1 bar]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="18000" />
+  <extra key="cli_invocations" value="{human: faion get-content multi-model-gateway-migration-portability --format md, agent: faion get-content multi-model-gateway-migration-portability --format context, json: faion get-content multi-model-gateway-migration-portability --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>

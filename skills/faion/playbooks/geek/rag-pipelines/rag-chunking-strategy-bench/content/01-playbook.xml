@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="rag-chunking-strategy-bench" goal="TBD" complexity="deep">
+  <intent>Fixed corpus + frozen test queries → decide which chunking + retrieval combo wins this week and ship the winner behind a flag.</intent>
+  <scope>On a fixed corpus + frozen test queries, decide which chunking + retrieval combo wins this week and ship the winner behind a flag. Champion-challenger discipline.</scope>
+  <success-criteria>
+    <criterion>≥3 chunking + retrieval combos run</criterion>
+    <criterion>Champion picked by NDCG + groundedness</criterion>
+    <criterion>Pinned schema + version manifest</criterion>
+    <criterion>Shipped behind flag with rollback</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Setup">
+      <intent>Snapshot corpus + queries + judge.</intent>
+      <tasks>
+        <task>Lock corpus snapshot</task>
+        <task>Freeze query set + judges</task>
+        <task>Pin schema version</task>
+      </tasks>
+      <methodologies>
+        <ref slug="schema-version-pinning" />
+        <ref slug="rag-eval-test-set-generation" />
+      </methodologies>
+      <outputs>
+        <output>Corpus snapshot id</output>
+        <output>Frozen test set</output>
+      </outputs>
+      <decision-gate>Advance only when inputs are frozen.</decision-gate>
+    </stage>
+    <stage n="2" name="Chunk Variants">
+      <intent>Build 3+ chunking variants.</intent>
+      <tasks>
+        <task>Document-structure variant</task>
+        <task>Semantic variant</task>
+        <task>Code-AST variant if applicable</task>
+        <task>Production-service chunking variant</task>
+      </tasks>
+      <methodologies>
+        <ref slug="chunking-document-structure" />
+        <ref slug="chunking-semantic" />
+        <ref slug="chunking-code-ast" />
+        <ref slug="chunking-production-service" />
+      </methodologies>
+      <outputs>
+        <output>Variant index set</output>
+      </outputs>
+      <decision-gate>Advance only when each variant indexed cleanly.</decision-gate>
+    </stage>
+    <stage n="3" name="Retrieve &amp; Rerank">
+      <intent>Hybrid retrieval + rerank for each variant.</intent>
+      <tasks>
+        <task>Run hybrid search</task>
+        <task>Two-stage rerank</task>
+        <task>Diversity rerank with MMR</task>
+      </tasks>
+      <methodologies>
+        <ref slug="hybrid-search-implementation" />
+        <ref slug="reranking-two-stage" />
+        <ref slug="reranking-diversity-mmr" />
+      </methodologies>
+      <outputs>
+        <output>Per-variant retrieval traces</output>
+      </outputs>
+      <decision-gate>Advance only when each variant produces comparable traces.</decision-gate>
+    </stage>
+    <stage n="4" name="Score">
+      <intent>Eval each variant on retrieval + generation metrics.</intent>
+      <tasks>
+        <task>Retrieval metrics (recall, NDCG)</task>
+        <task>Generation metrics (groundedness)</task>
+        <task>A/B significance check</task>
+      </tasks>
+      <methodologies>
+        <ref slug="rag-eval-retrieval-metrics" />
+        <ref slug="rag-eval-generation-metrics" />
+        <ref slug="rag-eval-ab-testing" />
+      </methodologies>
+      <outputs>
+        <output>Scorecard</output>
+      </outputs>
+      <decision-gate>Advance only when one variant clearly wins or is tied.</decision-gate>
+    </stage>
+    <stage n="5" name="Ship Winner">
+      <intent>Promote winner behind feature flag with rollback.</intent>
+      <tasks>
+        <task>Land winner behind flag</task>
+        <task>Document rollback</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Flag-gated rollout</output>
+      </outputs>
+      <decision-gate>Ship only after rollback is exercised.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="rag-bench-harness-template" expected-tier="geek" />
+    <gap slug="champion-challenger-pattern-rag" expected-tier="geek" />
+  </gaps>
+  <extra key="context" value="[team]" />
+  <extra key="non_goals" value="[Building the eval set itself — see playbook 1, Multi-tenant corpus design]" />
+  <extra key="prerequisites" value="[Frozen test set with judge rubrics, Indexable corpus snapshot]" />
+  <extra key="common_pitfalls" value="[Treating eval scores as ground truth without judge calibration, Shipping prompt or model changes without a regression gate]" />
+  <extra key="quality_checklist" value="['Can I roll back this change in one step?', 'Is the regression eval committed BEFORE the fix?']" />
+  <extra key="related_playbooks" value="[eval-harness-continuous-benchmark-suite, agent-observability-drift-detection-rollout]" />
+  <extra key="token_budget_estimate" value="18000" />
+  <extra key="cli_invocations" value="{human: faion get-content rag-chunking-strategy-bench --format md, agent: faion get-content rag-chunking-strategy-bench --format context, json: faion get-content rag-chunking-strategy-bench --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P7 llm-agent-developer persona}]" />
+</playbook>
