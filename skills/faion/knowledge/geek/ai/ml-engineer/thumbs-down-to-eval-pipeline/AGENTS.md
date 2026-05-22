@@ -4,11 +4,14 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
 content_id: "6cc30a59c35ed0b7"
 summary: Closes the loop from a user thumbs-down (or hallucination report) to a row in the regression eval set within 24h, with PII scrubbing, judgment voting, and deterministic eval-set growth caps.
+complexity: deep
+produces: config
+est_tokens: 4200
 tags: [eval, feedback-loop, llm-ops, regression-test, ml-engineer]
 ---
 

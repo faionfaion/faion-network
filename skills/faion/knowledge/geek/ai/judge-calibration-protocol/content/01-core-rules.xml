@@ -1,46 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Judge Calibration Protocol Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Judge Calibration Protocol must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
+<text id="01-core-rules" title="Judge Calibration Protocol Core Rules" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six testable rules for calibrating an LLM-as-judge before it gates downstream actions.</summary>
+
+  <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+      <statement source="cohen-kappa-1960">Calibration runs against ≥30 hand-labelled cases. Below this κ confidence intervals are too wide to act on.</statement>
+      <rationale>For binary labels with 30 cases, the 95% CI on κ is typically ±0.18; below 30 the CI swallows the threshold.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+      <statement source="kappa-folklore">A judge ships only if κ ≥ 0.7 against the holdout. Below that the judge is not better than coarse heuristic baselines.</statement>
+      <rationale>κ ≥ 0.7 corresponds to "substantial agreement" (Landis-Koch 1977); production gates that depend on the judge need at least this floor.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+      <statement source="eval-ops-practice">The calibration report logs full confusion matrix + false-pass rate + false-fail rate, not just the headline κ.</statement>
+      <rationale>κ aggregates errors symmetrically; an asymmetric production cost (false-pass much worse than false-fail) needs the per-cell view to choose a threshold or modify the prompt.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for LLM-agent design, evals, safety, cost">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+      <statement source="eval-ops-practice">Recalibrate on every judge-prompt change, judge-model upgrade, label-policy change, or quarterly — whichever comes first.</statement>
+      <rationale>Judge prompts and models drift; static κ measured once becomes obsolete and the gate quietly degrades.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement source="contamination-control">Holdout cases must not appear (verbatim or as examples) in the judge prompt or training data of the judge model. The fixture is independent of the prompt.</statement>
+      <rationale>Contamination inflates κ to near-1 on the holdout while real-world κ stays low; the gate then trusts a fake measurement.</rationale>
+    </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="multi-rater-practice">When stakes are high (safety, customer-facing) holdout labels come from ≥2 independent raters with disagreements resolved by a third. Single-rater labels are noted as preliminary and re-checked.</statement>
+      <rationale>Single-rater labels carry the rater's bias; multi-rater reveals label disagreements that bound the achievable κ.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → execute content/04-procedure.xml and produce a calibration-report.json passing the validator.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Advisory judge or no labelable cases → skip and use pairwise comparison or human-only review.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Stand up an eval harness + continuous benchmark suite (3 weeks) (role: p7-llm-agent-developer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: LLM-as-judge methodology exists; calibrating that judge against humans (kappa, agreement matrix, recalibration cadence) does not.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Integration Testing Worked Example" version="2.0.0" est_tokens="700" depth="recommended">
+  <summary>End-to-end example: Postgres rollback fixture + FastAPI client + respx external-API mock.</summary>
+
+  <example type="good">
+    <note>Session-scoped Postgres container, function-scoped rollback session (r1, r2).</note>
+    <code lang="python"><![CDATA[
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
+from app.models import Base
+
+
+@pytest.fixture(scope="session")
+def engine():
+    with PostgresContainer("postgres:16-alpine") as pg:
+        e = create_engine(pg.get_connection_url())
+        Base.metadata.create_all(e)
+        yield e
+
+
+@pytest.fixture
+def session(engine):
+    conn = engine.connect()
+    tx = conn.begin()
+    Session = sessionmaker(bind=conn)
+    db = Session()
+    yield db
+    db.close()
+    tx.rollback()
+    conn.close()
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>FastAPI client with dependency override and explicit clear (r3); UUID factory for unique email (r5); respx mock for external API (r4, r-respx-pick).</note>
+    <code lang="python"><![CDATA[
+import uuid
+import pytest
+import respx
+from fastapi.testclient import TestClient
+from httpx import Response
+
+from app.main import app, get_db
+
+
+@pytest.fixture
+def client(session):
+    app.dependency_overrides[get_db] = lambda: session
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def unique_email():
+    return f"test-{uuid.uuid4()}@example.com"
+
+
+@respx.mock
+def test_register_calls_billing(client, unique_email):
+    respx.post("https://billing.example.com/customers").mock(
+        return_value=Response(201, json={"id": "cust_x"})
+    )
+    r = client.post("/api/users", json={"email": unique_email})
+    assert r.status_code == 201
+    assert respx.calls.call_count == 1
+]]></code>
+  </example>
+
+  <example type="bad">
+    <note>Bad — mocks the SQLAlchemy session inside an "integration" test (r7 violation), and never clears dependency overrides (r3 violation).</note>
+    <code lang="python"><![CDATA[
+def test_create_user_BAD(client, mocker):
+    mocker.patch("app.main.Session", return_value=mocker.MagicMock())  # demoted to unit test
+    app.dependency_overrides[get_db] = lambda: mocker.MagicMock()
+    # ... no .clear() — leaks to next test
+]]></code>
+  </example>
+</text>
