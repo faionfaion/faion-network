@@ -1,15 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="multi-agent-production-bus Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for multi-agent-production-bus. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Multi-Agent Production Bus Core Rules" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>6 testable rules every production MessageBus design MUST enforce.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>All inter-agent messages MUST use structured content (JSON-serializable dict or validated schema). Free-form string messages MUST NOT be sent via the bus in production.</statement>
-      <rationale source="v1-source">Free-form text increases parsing failures at the receiving agent. Structured messages allow schema validation before dispatch and make the message_history machine-readable for cost attribution and replay debugging.</rationale>
+
+    <rule id="r1-structured-message" testable="true" depth="essential">
+      <statement>All inter-agent messages MUST carry structured content (JSON-serializable dict or Pydantic schema). Free-form strings are forbidden via the bus.</statement>
+      <rationale source="anthropic.com/research/building-effective-agents">Structured content enables schema validation, machine-readable history, and cost attribution.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every agent handler MUST be wrapped with asyncio.wait_for(handler(message), timeout=X). Never await a handler without a timeout in a production bus.</statement>
-      <rationale source="v1-source">A single slow or hung agent handler blocks the entire send() coroutine. Without a timeout, one agent can deadlock the bus. Set timeouts at the bus level so individual agent failures degrade gracefully.</rationale>
+
+    <rule id="r2-handler-timeout" testable="true" depth="essential">
+      <statement>Every handler invocation MUST be wrapped with asyncio.wait_for(handler(message), timeout=handler_timeout_seconds). Bare await on a handler is forbidden.</statement>
+      <rationale source="python asyncio docs">One slow handler blocks the entire send() coroutine; without a timeout a single agent hangs the bus.</rationale>
     </rule>
+
+    <rule id="r3-broadcast-excludes-sender" testable="true" depth="essential">
+      <statement>BROADCAST dispatch MUST exclude the sender. A sender receiving its own broadcast triggers infinite ping-pong loops.</statement>
+      <rationale source="anti-loop hygiene">Self-receipt creates exponential amplification under broadcast.</rationale>
+    </rule>
+
+    <rule id="r4-no-circular-await" testable="true" depth="essential">
+      <statement>A handler MUST NOT await a response from the message's original sender within the same send() chain. Use a fresh REQUEST cycle with its own timeout.</statement>
+      <rationale source="asyncio docs">Same-loop circular awaits deadlock; the planner blocks on the worker that blocks on the planner.</rationale>
+    </rule>
+
+    <rule id="r5-cost-gate" testable="true" depth="essential">
+      <statement>Each agent MUST carry budget_tokens in the roster. The bus MUST abort the run when an agent crosses its budget; per-run cap MUST also be enforced.</statement>
+      <rationale source="cost-explosion postmortems">N agents × M strategies = N×M LLM calls; a runaway loop drains the bill before humans react.</rationale>
+    </rule>
+
+    <rule id="r6-observability-tags" testable="true" depth="essential">
+      <statement>Every LLM call MUST be tagged with the agent role and the strategy currently executing. agentops / LangSmith integration is mandatory in production.</statement>
+      <rationale source="agentops + langsmith docs">Untagged calls make cost attribution impossible; you can't tell which agent caused the spike.</rationale>
+    </rule>
+
+    <rule id="r-sequential" testable="true" depth="essential">
+      <statement>When chain_shape == 'linear' AND subtasks_independent == false, the spec MUST select sequential dispatch.</statement>
+      <rationale source="pattern-selection guide">Sequential is the cheapest, most predictable choice for linear pipelines.</rationale>
+    </rule>
+
+    <rule id="r-parallel" testable="true" depth="essential">
+      <statement>When subtasks_independent == true, the spec MUST select parallel (asyncio.gather) dispatch — each gathered task wrapped in its own timeout.</statement>
+      <rationale source="asyncio.gather docs">Parallel maximises throughput when tasks share no data dependency.</rationale>
+    </rule>
+
+    <rule id="r-hierarchical" testable="true" depth="essential">
+      <statement>When subtasks_independent == false AND chain_shape != 'linear', the spec MUST select hierarchical (planner + worker dispatch + synthesizer).</statement>
+      <rationale source="anthropic.com/research/building-effective-agents">Hierarchical produces a traceable assignment log for dependent-dag workloads.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
