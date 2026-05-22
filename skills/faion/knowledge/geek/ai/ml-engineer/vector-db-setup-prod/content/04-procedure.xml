@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Vector DB Prod Setup — Procedure" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six steps: pick storage class → size resources → HA strategy → backup + restore → checklist → ship + monitor.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pick-storage-class">
+      <input>cluster storage class catalog + IO requirements</input>
+      <action>Select durable storage class (EBS gp3 / Premium SSD / Ceph RBD). Estimate size at 12mo growth.</action>
+      <output>storage block in prod-deploy.yaml</output>
+      <decision-gate>If only emptyDir available — STOP; switch to a managed-storage K8s (r1-durable-persistence).</decision-gate>
+    </step>
+
+    <step n="2" name="size-resources">
+      <input>working set estimate + indexing model</input>
+      <action>Compute memory = vectors × dim × bytes_per_dim × 1.5 (HNSW overhead). CPU = baseline + concurrent QPS. Set requests + limits.</action>
+      <output>resources block</output>
+      <decision-gate>If limit ≤ request — fix (r2-resource-limits).</decision-gate>
+    </step>
+
+    <step n="3" name="ha-strategy">
+      <input>DB class + SLA</input>
+      <action>Milvus/Weaviate: enable distributed mode + ≥3 replicas. Qdrant: single + snapshot loop. pgvector: PG streaming replication.</action>
+      <output>ha block</output>
+      <decision-gate>If HA mismatched with DB class — fix (r3-ha-per-db-class).</decision-gate>
+    </step>
+
+    <step n="4" name="backup-and-restore-drill">
+      <input>S3 destination + retention policy</input>
+      <action>Schedule daily snapshot via CronJob. Lock retention ≥30d. Run restore in staging from latest snapshot; time it; record `last_restore_drill`.</action>
+      <output>backup live + drill record</output>
+      <decision-gate>If restore drill fails — block ship; backup chain broken (r4-backup-and-restore-drilled).</decision-gate>
+    </step>
+
+    <step n="5" name="pre-deploy-checklist">
+      <input>monitoring + security from siblings</input>
+      <action>Verify monitoring scrapes DB endpoint. Confirm security-config applied. Run dry-run deploy in staging.</action>
+      <output>checklist.pre_deploy_passed: true</output>
+      <decision-gate>If any check fails — fix before continuing.</decision-gate>
+    </step>
+
+    <step n="6" name="ship-and-post-verify">
+      <input>checklist + deploy pipeline</input>
+      <action>Deploy via blue/green. Run post-deploy smoke (ingest + search + delete). Verify p95 within band.</action>
+      <output>checklist.post_deploy_passed: true</output>
+      <decision-gate>If smoke fails — rollback within 15min (fm-05).</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
