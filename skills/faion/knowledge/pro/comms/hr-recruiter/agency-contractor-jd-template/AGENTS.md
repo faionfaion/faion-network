@@ -2,7 +2,7 @@
 slug: agency-contractor-jd-template
 tier: pro
 group: comms
-domain: hr-recruiter
+domain: hr
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

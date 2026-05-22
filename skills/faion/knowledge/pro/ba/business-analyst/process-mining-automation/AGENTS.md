@@ -2,7 +2,7 @@
 slug: process-mining-automation
 tier: pro
 group: ba
-domain: business-analyst
+domain: ba
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
