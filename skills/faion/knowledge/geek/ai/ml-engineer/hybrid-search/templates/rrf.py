@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 Reciprocal Rank Fusion (RRF) implementation.
 Input: list of ranked doc_id lists (one per retriever, best first)

@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces a filled spreadsheet (token spend, tuning cost, latency wins, vendor risk premium, break-even months) that turns the FT vs prompt debate into one number per scenario.
-content_id: "ft-econ-model-2e3f"
+content_id: "cc7e27db9c309a25"
 complexity: medium
 produces: spec
 est_tokens: 3300

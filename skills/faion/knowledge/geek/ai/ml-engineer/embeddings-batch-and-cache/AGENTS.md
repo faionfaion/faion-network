@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-22
 maintainers: [faion-network]
 summary: Produces an embedding-batch-and-cache config (batch size, parallelism, cache backend + TTL + key scheme) cutting embedding API cost up to 90% on repeat workloads via dedup + content-hash cache + async parallel batching.
-content_id: "emb-bc-001239abc456789a"
+content_id: "c4e9828d960ff2b9"
 complexity: medium
 produces: config
 est_tokens: 3200

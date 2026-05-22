@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 """
 Qdrant native hybrid search using sparse + dense prefetch with RRF fusion.
 Requires: qdrant-client >= 1.9, sparse vectors indexed as "sparse" named vector.

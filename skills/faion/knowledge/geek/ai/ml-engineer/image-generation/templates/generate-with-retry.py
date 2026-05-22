@@ -1,3 +1,9 @@
+# purpose: TBD-template-header
+# consumes: input from methodology
+# produces: output artefact
+# depends-on: 01-core-rules.xml
+# token-budget-impact: small
+
 # DALL-E 3 batch generation with content-policy retry and URL expiry handling
 import time
 import requests
