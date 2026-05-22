@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="python-typing Decision Tree" version="1.1.0" est_tokens="500">
+  <decision-tree>
+    <root-question id="q-root">What is the input shape that needs annotating?</root-question>
+    <branch when="input.shape == 'dict-payload-cross-boundary'">
+      <conclusion ref="r4-typed-dict">Define a `TypedDict` with `Required` / `NotRequired` for optional fields. Never `dict[str, Any]` across a boundary.</conclusion>
+    </branch>
+    <branch when="input.shape == 'structural-contract' and runtime_isinstance == false">
+      <conclusion ref="r5-protocol-over-abc">Define a plain `Protocol` (no `@runtime_checkable`).</conclusion>
+    </branch>
+    <branch when="input.shape == 'structural-contract' and runtime_isinstance == true and hot_path == false">
+      <conclusion ref="r5-protocol-over-abc">Define a `Protocol` and decorate with `@runtime_checkable`.</conclusion>
+    </branch>
+    <branch when="input.shape == 'structural-contract' and runtime_isinstance == true and hot_path == true">
+      <conclusion ref="fm-06-runtime-checkable-on-hot-path">Do not use `@runtime_checkable` — accept structural typing without the runtime check or switch to nominal ABC dispatch.</conclusion>
+    </branch>
+    <branch when="input.shape == 'class-hierarchy-with-super-chains'">
+      <conclusion ref="r5-protocol-over-abc">Use ABC inheritance — `super()` chains are the genuine ABC use case.</conclusion>
+    </branch>
+    <branch when="input.shape == 'generic-container-or-function' and python_floor &gt;= '3.12'">
+      <conclusion ref="r3-pep-695">Use PEP 695 type parameter syntax: `class Repo[T]:`, `def first[T](items: list[T]) -&gt; T | None:`, `type JSON = ...`.</conclusion>
+    </branch>
+    <branch when="input.shape == 'generic-container-or-function' and python_floor &gt;= '3.10' and python_floor &lt; '3.12'">
+      <conclusion ref="r1-builtin-generics">Use PEP 585 built-in generics + legacy `TypeVar` / `Generic[T]`. TODO: migrate to PEP 695 when the floor moves.</conclusion>
+    </branch>
+    <branch when="input.shape == 'generic-container-or-function' and python_floor &lt; '3.10'">
+      <conclusion ref="r2-pipe-unions">Skip this methodology — floor too low. Raise the floor first.</conclusion>
+    </branch>
+    <branch when="input.shape == 'mypy-error-i-want-to-silence' and narrowing_guard_possible == true">
+      <conclusion ref="fm-04-cast-as-silencer">Use the narrowing guard. Do not use `cast()` and do not add `# type: ignore`.</conclusion>
+    </branch>
+    <branch when="input.shape == 'mypy-error-i-want-to-silence' and narrowing_guard_possible == false">
+      <conclusion ref="r7-scoped-ignores">Add `# type: ignore[specific-code]` with a justification comment. Bare `# type: ignore` is forbidden.</conclusion>
+    </branch>
+    <example trace="payload-from-django-view">
+      <p>Input is a Django view that returns `JsonResponse` with a dict payload. Shape is "dict-payload-cross-boundary" → conclusion `r4-typed-dict`: define `class UserPayload(TypedDict): ...` with `NotRequired[str]` for optional fields.</p>
+    </example>
+  </decision-tree>
+</text>

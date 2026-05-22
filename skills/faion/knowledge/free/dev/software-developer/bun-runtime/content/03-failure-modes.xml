@@ -1,37 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="bun-runtime Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for bun-runtime as failure modes. Add detector + repair clauses where missing.</summary>
-
+<text id="03-failure-modes" title="bun-runtime Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five Bun-runtime antipatterns observed across 2025-2026 migrations.</summary>
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Running npm install after bun install, creating both package-lock.json and bun.lockb</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>package-lock.json takes precedence in some tools, causing non-deterministic dependency resolution. Pick one package manager and lock to it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Importing node:cluster, node:vm, or process.binding() — these differ or fail under Bun</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bun's Node compat is &gt;95% but not 100%. These specific APIs have known gaps; use Bun.spawn or single-process multi-worker alternatives.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using child_process.exec instead of Bun's $ shell API or Bun.spawn</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bun provides $ (shell) and Bun.spawn as native alternatives with better ergonomics.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using Bun.file() or Bun.serve() in a package consumed by both Bun and Node apps</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Node import crashes with "Bun is not defined". Restrict Bun-native APIs to entry points or dev tooling; use isomorphic alternatives in shared packages.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Writing Bun.serve for a Cloudflare Workers deploy target</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Workers run on V8 isolates, not Bun. Workers expect export default { fetch }. Use bun build --target=browser for Workers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using bun --hot in production</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>--hot persists module state across reloads (DB pools, singletons). After config changes, old instances remain alive. Use --watch for dev; deploy a built bundle for prod.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-bun-latest">
+      <description>Using `"packageManager": "bun@latest"` or `bun-version: latest` in CI.</description>
+      <reason>Reproducibility dies. New Bun releases routinely change defaults; CI green today, red tomorrow.</reason>
+    </antipattern>
+    <antipattern id="fm-02-hot-in-dev">
+      <description>Using `bun --hot` for dev expecting clean reloads.</description>
+      <reason>--hot persists module-level state. Config changes do not take effect until a full restart; developers chase phantom bugs.</reason>
+    </antipattern>
+    <antipattern id="fm-03-node-http-on-bun">
+      <description>Importing `node:http` and `node:https` for the HTTP layer on Bun.</description>
+      <reason>Loses Bun.serve's JavaScriptCore optimisations; the runtime layer becomes a polyfill, not a feature.</reason>
+    </antipattern>
+    <antipattern id="fm-04-fs-readfilesync-everywhere">
+      <description>Using `fs.readFileSync` for every static asset read.</description>
+      <reason>Bun.file is lazy and faster. Repeated synchronous reads block the event loop for no reason.</reason>
+    </antipattern>
+    <antipattern id="fm-05-no-frozen-lockfile">
+      <description>CI installs without `frozen-lockfile = true`.</description>
+      <reason>Lockfile drift goes undetected; dependent CI jobs install slightly different versions per run, producing flaky builds.</reason>
+    </antipattern>
   </section>
 </text>

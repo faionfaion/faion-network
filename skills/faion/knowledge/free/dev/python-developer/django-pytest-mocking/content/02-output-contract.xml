@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-pytest-mocking Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-pytest-mocking Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON schema for the pytest mocking spec.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "boundaries", "anti_mocks", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "boundaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "technique", "patch_target", "asserts"],
+        "properties": {
+          "name": {"type": "string"},
+          "technique": {"type": "string", "enum": ["unittest-mock-patch", "responses", "freezegun", "time-machine", "celery-delay-patch", "celery-eager"]},
+          "patch_target": {"type": "string"},
+          "asserts": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+        }
+      }
+    },
+    "anti_mocks": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["django-orm", "time-sleep", "module-level-datetime-now"]}
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">a boundary with technique=unittest-mock-patch whose patch_target does NOT start with the consumer module's import path (definition-site patching)</pattern>
+      <pattern id="f2">anti_mocks missing "django-orm" or "time-sleep"</pattern>
+      <pattern id="f3">a boundary whose asserts list contains only return-value checks without an assert_called_once_with / assert_called marker</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort boundaries alphabetically by name.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "billing-mocks",
+  "owner": "ruslan@faion.net",
+  "boundaries": [
+    {
+      "name": "stripe-charge-create",
+      "technique": "unittest-mock-patch",
+      "patch_target": "apps.billing.services.stripe.Charge.create",
+      "asserts": ["assert_called_once_with(amount=1000, currency='usd')"]
+    },
+    {
+      "name": "partner-webhook-post",
+      "technique": "responses",
+      "patch_target": "https://partner.example.com/webhook",
+      "asserts": ["responses.calls[0].request.url == 'https://partner.example.com/webhook'", "len(responses.calls) == 1"]
+    },
+    {
+      "name": "coupon-expiry-clock",
+      "technique": "freezegun",
+      "patch_target": "2026-05-22T00:00:00Z",
+      "asserts": ["coupon.is_valid() is False"]
+    },
+    {
+      "name": "invoice-send-task",
+      "technique": "celery-delay-patch",
+      "patch_target": "apps.billing.services.send_invoice_task.delay",
+      "asserts": ["assert_called_once_with(invoice.id)"]
+    }
+  ],
+  "anti_mocks": ["django-orm", "time-sleep", "module-level-datetime-now"],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "boundaries": [
+    {"name": "stripe", "technique": "unittest-mock-patch", "patch_target": "stripe.Charge.create", "asserts": ["return value == something"]}
+  ],
+  "anti_mocks": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

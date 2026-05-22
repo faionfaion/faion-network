@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Sweep the repo and list directories missing CLAUDE.md / AGENTS.md.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Run periodically; add as a CI guard once baseline is clean.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # audit-agents-md.sh — flag dirs where source files are newer than AGENTS.md by >14 days.
 # Usage: bash audit-agents-md.sh [repo-root]
 set -e

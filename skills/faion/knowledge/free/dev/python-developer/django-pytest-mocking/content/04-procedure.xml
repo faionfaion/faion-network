@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-pytest-mocking Procedure" version="1.1.0" est_tokens="600" depth="medium">
+  <summary>Five steps to a validated mocking spec.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="enumerate-boundaries">
+      <input>Service-layer code + external imports.</input>
+      <action>List every external call: HTTP, SDK (Stripe/Twilio), datetime-dependent logic, Celery task triggers.</action>
+      <output>boundaries[].name.</output>
+    </step>
+
+    <step n="2" name="pick-technique">
+      <input>Per boundary: how is the call made?</input>
+      <action>HTTP via requests → "responses". SDK / Python import → "unittest-mock-patch". datetime.now / timezone.now → "freezegun" or "time-machine". Celery .delay() → "celery-delay-patch" (verify trigger) or "celery-eager" (verify side effect).</action>
+      <output>boundaries[].technique.</output>
+    </step>
+
+    <step n="3" name="declare-patch-target">
+      <input>Per unittest-mock-patch boundary: where is the symbol used?</input>
+      <action>patch_target MUST be the CONSUMER's import path (apps.billing.services.stripe.Charge.create), NEVER the definition (stripe.Charge.create).</action>
+      <output>boundaries[].patch_target.</output>
+      <decision-gate>Reject patch_target not starting with the consumer module's import path.</decision-gate>
+    </step>
+
+    <step n="4" name="declare-assertions">
+      <input>The contract the call must satisfy.</input>
+      <action>For each boundary: write at least one assertion that VERIFIES THE CALL happened (assert_called_once_with / assert_called / responses.calls length). Return-value-only checks are insufficient.</action>
+      <output>boundaries[].asserts.</output>
+    </step>
+
+    <step n="5" name="declare-anti-mocks-validate">
+      <input>Anti-mock list.</input>
+      <action>anti_mocks MUST include "django-orm" and "time-sleep". Emit spec; run validator.</action>
+      <output>Validated spec.</output>
+    </step>
+
+  </section>
+</text>

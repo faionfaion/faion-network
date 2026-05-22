@@ -1,3 +1,8 @@
+# purpose: Service-layer module skeleton with @transaction.atomic.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Copy when creating apps/<app>/services/<topic>.py.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 """Service stub template for Django service-layer functions."""
 from django.db import transaction
 

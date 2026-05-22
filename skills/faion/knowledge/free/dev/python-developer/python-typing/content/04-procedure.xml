@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="python-typing Migration Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure to bring an untyped or partially-typed module to mypy strict on Python 3.12+.</summary>
+
+  <section title="Steps">
+    <p>Each step has explicit input, action, and output. Decision gates abort the migration if the floor or budget is wrong.</p>
+
+    <section title="Step 1 — Baseline scan">
+      <list>
+        <item>Input: target module path, `pyproject.toml`, Python floor.</item>
+        <item>Action: run `mypy --strict &lt;module&gt; 2&gt;&amp;1 | tee baseline.txt`. Count errors, count `Any` occurrences via `grep -RnE ': *Any|-&gt; *Any|dict\[str, *Any\]' &lt;module&gt;`.</item>
+        <item>Output: `baseline.txt` plus `before` counts populated in the output contract.</item>
+        <item>Decision gate: if Python floor &lt; 3.10, abort and route to "upgrade interpreter floor first".</item>
+      </list>
+    </section>
+
+    <section title="Step 2 — Mechanical fixes (UP, ANN, TCH)">
+      <list>
+        <item>Input: baseline scan output.</item>
+        <item>Action: `ruff check --select UP,ANN,TCH --fix &lt;module&gt;`. This upgrades `Optional[X]` → `X | None`, `List[X]` → `list[X]`, moves type-only imports under `if TYPE_CHECKING:`, and flags annotation gaps.</item>
+        <item>Output: diff with mechanical migrations applied.</item>
+      </list>
+    </section>
+
+    <section title="Step 3 — Stub wiring and per-module overrides">
+      <list>
+        <item>Input: list of third-party packages flagged by mypy as missing stubs.</item>
+        <item>Action: for Django projects add `django-stubs` + `djangorestframework-stubs` and wire the plugin in `[tool.mypy]`. For other deps, add `[[tool.mypy.overrides]]` with `ignore_missing_imports = true` scoped to the named packages only. Add `tests.*` and `migrations.*` overrides.</item>
+        <item>Output: `pyproject.toml` patched to match `templates/mypy-config.toml`.</item>
+      </list>
+    </section>
+
+    <section title="Step 4 — Strict per-module ramp">
+      <list>
+        <item>Input: module list, ordered by dependency depth (leaf modules first).</item>
+        <item>Action: for each module, add real annotations until `mypy --strict &lt;module&gt;` is clean. Replace `dict[str, Any]` boundaries with `TypedDict`. Replace ABC-style contracts with `Protocol`. Use PEP 695 syntax for generics on 3.12+.</item>
+        <item>Output: annotated module + 0 mypy errors on it.</item>
+        <item>Decision gate: if one module requires &gt; 5 scoped ignores, stop and split — likely a missing model.</item>
+      </list>
+    </section>
+
+    <section title="Step 5 — CI gate">
+      <list>
+        <item>Input: clean repository, mypy strict passing locally.</item>
+        <item>Action: add `mypy --strict` to the CI workflow as a required check. Add `templates/no-new-any.sh` to pre-commit. Enable `warn_unused_ignores = true` so stale ignores fail when their root cause is fixed.</item>
+        <item>Output: CI red on regressions; final report with `errors.after = 0`.</item>
+      </list>
+    </section>
+  </section>
+</text>

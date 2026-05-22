@@ -3,73 +3,94 @@ slug: code-review
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: PRs less than 400 lines; CI green before review; style delegated to formatters.
-content_id: "0a8fa2a38e33f9c5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a code-review pipeline: PR size limit (<400 lines), automated gates (lint/type/test/coverage green before review), agentic pre-review pass, and reviewer focus narrowed to correctness + design.
+content_id: "ee8a70147c263798"
+complexity: medium
+produces: playbook-step
+est_tokens: 3600
 tags: [code-review, pr-process, quality-assurance, team-practices, automation]
 ---
 # Code Review
 
 ## Summary
 
-**One-sentence:** PRs less than 400 lines; CI green before review; style delegated to formatters.
+**One-sentence:** Produces a code-review pipeline: PR size limit (<400 lines), automated gates (lint/type/test/coverage green before review), agentic pre-review pass, and reviewer focus narrowed to correctness + design.
 
-**One-paragraph:** PRs less than 400 lines; CI green before review; style delegated to formatters. Reviewers focus on correctness, design, tests, security, observability. LLM-authored PRs need second review.
+**One-paragraph:** Produces a code-review pipeline: PR size limit (<400 lines), automated gates (lint/type/test/coverage green before review), agentic pre-review pass, and reviewer focus narrowed to correctness + design. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- All PRs in a multi-engineer team — cheapest defect-detection layer.
-- Before merging LLM-authored PRs — agent code requires a second pass.
-- Security-sensitive paths (auth, payment, IAM, crypto) — mandatory dual review.
-- Libraries and SDKs where API surface is sticky and backward compatibility must be enforced.
-- Onboarding ramps where junior code benefits from senior review plus automated reviewer.
+- Repository hosts a CI pipeline that can post status checks (GitHub, GitLab, Bitbucket).
+- The team has agreed on a PR size convention (< 400 lines default).
+- Lint / type / test / coverage gates exist or are about to be added.
+- Reviewers are humans, not just AI bots.
 
 ## Skip If (ANY kills it)
 
-- Trunk-based solo prototypes pre-MVP — review overhead outpaces signal.
-- Mechanical refactors from a codemod with green CI and full test coverage on touched code — skim, do not deep-review.
-- Vendored or generated code (proto stubs, OpenAPI clients) — review the generator config, not the output.
-- Documentation typos — accept fast, do not gate.
+- Solo developer with no review reviewer available (use AI review only as a stopgap; not enough).
+- Codebase auto-merges trusted bot PRs (dependency bumps); manual review not applicable.
+- Repository is read-only (vendored library) — patches happen upstream.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Output target path | string | constitution / SDD spec |
+| Owner (role:person) | string | team roster |
+| Trigger event | event/threshold/schedule | constitution |
+| Evidence anchor (URL / ticket / commit) | string | upstream context |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/software-developer/best-practices-2026` | Constitution rules reviewers enforce. |
+| `free/dev/software-developer/code-coverage` | Coverage gate the review pipeline consumes. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to code-review | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Pre-review pass (lint/types/coverage/security) | sonnet | Mechanical gates, deterministic. |
+| Reviewer-facing summary + risk callout | opus | Cross-file synthesis, design judgement. |
+| Auto-suggest doc/test additions | sonnet | Templated. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pr-balance.sh` | Pre-commit guard: reject PRs over 400 lines unless labeled `large-pr-approved`. |
+| `templates/pr-checks.yml` | Required GitHub Actions checks (lint, types, tests, coverage, oasdiff, security). |
+| `templates/pr-description.md` | PR description template with risk / scope / test sections. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-code-review.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[best-practices-2026]] — see methodology AGENTS.md for context.
+- [[code-coverage]] — see methodology AGENTS.md for context.
+- [[api-testing]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

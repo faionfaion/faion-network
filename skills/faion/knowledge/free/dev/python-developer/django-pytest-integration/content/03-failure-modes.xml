@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-pytest-integration Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-pytest-integration as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-pytest-integration Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four Django integration-test antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>assert response.status_code == 200 without checking the response body.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A 200 response with an empty or malformed body is a bug. Always assert at least one field from response.data to verify the contract: assert response.data["email"] == user.email.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Testing through the view layer to test service logic.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>View tests are slow (HTTP overhead) and test many things at once. Test service methods directly for business logic. Integration tests verify the end-to-end contract; they don't replace unit tests on the service.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-status-only-assert">
+      <symptom>Endpoint returns 200 but with an empty / wrong-shape body. Test passes because it only checks status_code. Bug discovered in production.</symptom>
+      <root-cause>Integration test asserts `response.status_code == 200` without checking response.data fields. Empty body = silent failure.</root-cause>
+      <fix>Always assert at least one body field. Spec endpoints[].asserts_body=true is mandatory. Use schemas in DRF + integration tests asserting the expected fields explicitly.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-view-tests-service-logic">
+      <symptom>Service logic test takes 3-5s per test (HTTP overhead). Coverage on service.py is high but errors only surface at the API layer.</symptom>
+      <root-cause>Business logic is tested only through HTTP integration tests. Service methods have no direct unit tests.</root-cause>
+      <fix>Direct service tests in Test&lt;ServiceName&gt; class (fast, precise). Integration tests verify only the end-to-end contract (auth + serializer + service binding).</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-missing-permission-combo">
+      <symptom>Production incident: user A can read user B's resources. Tests pass.</symptom>
+      <root-cause>Test suite covers anonymous-401, happy-200, validation-400 but not cross-user-403. User-owned resource lacks the ownership check assertion.</root-cause>
+      <fix>For user/org-owned resources, test_cases MUST include cross-user-403. Spec validator enforces "anonymous-401 + happy + cross-user-403 + validation/not-found".</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-sqlite-ci">
+      <symptom>Tests pass on CI (SQLite), production (Postgres) crashes on deploy: case-sensitive uniqueness, JSONField ordering, partial-index behaviour differ.</symptom>
+      <root-cause>CI runs against SQLite (default pytest-django dev DB), but production is PostgreSQL. Engine-specific behaviours diverge.</root-cause>
+      <fix>CI MUST run against PostgreSQL (the production engine). Spec ci.db_engine="postgresql" is required by the validator.</fix>
+    </antipattern>
+
   </section>
 </text>

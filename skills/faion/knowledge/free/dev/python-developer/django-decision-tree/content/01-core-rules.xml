@@ -1,35 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-decision-tree Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-decision-tree. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-decision-tree Core Rules" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>Six testable rules for an architectural decision record at Django bootstrap or refactor checkpoint.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use Django when: building a web application (not CLI-only), needing an ORM, requiring an admin interface, managing user accounts and permissions, handling complex forms, or requiring server-side rendering. Consider FastAPI when: building API-only services, prioritizing async-first design, needing minimal dependencies, or the team prefers the FastAPI ecosystem.</statement>
-      <rationale source="v1-source">Django's batteries-included approach makes full-featured web applications quick to prototype but adds overhead for minimal APIs. FastAPI excels at async-first, type-hinted APIs but requires manual setup for admin, auth, and ORM integration. Decision should be based on specific project requirements rather than general assumptions.</rationale>
+
+    <rule id="r1-pick-framework" testable="true" depth="essential">
+      <statement>Score the project on five signals: needs admin? needs ORM? needs server-rendered pages? needs user accounts? needs server-side forms? Score ≥ 4 → Django. Score 2–3 → consider Django Ninja (Django ORM + FastAPI-like API). Score ≤ 1 → FastAPI or Flask.</statement>
+      <rationale source="django-fastapi market analysis 2024-2026">Django's batteries-included surface is leverage on full web apps; pure overhead on API-only services. The signal score correlates with Django's break-even point empirically.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use DRF when: large existing DRF codebase, needing ViewSets for CRUD, requiring extensive serializer ecosystem, or prioritizing community resources. Use Django Ninja when: starting new project, prioritizing performance and type hints, preferring FastAPI-like DX, or needing auto-generated OpenAPI docs without extra packages.</statement>
-      <rationale source="v1-source">DRF dominates market share and has mature third-party packages (drf-spectacular, rest-framework-simplejwt). Django Ninja is newer and lighter, with faster performance due to reduced serialization overhead and native async support. Choose based on project context, team experience, and specific requirements.</rationale>
+
+    <rule id="r2-pick-api-stack" testable="true" depth="essential">
+      <statement>Pick DRF when: existing DRF code, complex permission hierarchies, drf-spectacular OpenAPI required, team familiarity. Pick Django Ninja when: greenfield, async-first, Pydantic v2 validation desired, FastAPI-like DX. Never mix DRF + Ninja in the same Django app.</statement>
+      <rationale source="drf + django-ninja docs">URL routing, auth context, OpenAPI generation diverge. Mixing produces inconsistent client SDKs and doubles failure surface.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use Simple (Fat Models) for: small projects (less than 5 apps, less than 10 models), MVPs, prototypes, or 1-2 person teams. Use Service Layer for: medium projects (5-15 apps, 10-50 models), growing teams, multiple entry points, and moderate business logic. Use Clean Architecture / DDD for: large enterprise projects (greater than 15 apps, greater than 50 models), long-term maintenance, complex domain logic, or multiple bounded contexts.</statement>
-      <rationale source="v1-source">Simple architecture reduces boilerplate for small projects but becomes unmaintainable as complexity grows. Service Layer keeps business logic testable and reusable. Clean Architecture enforces isolation for large teams. Selection depends on project scope, team size, and maintenance horizon.</rationale>
+
+    <rule id="r3-pick-layering" testable="true" depth="essential">
+      <statement>Pick layering tier from model count and team size: ≤ 10 models + 1–2 devs → "simple" (fat models). 10–50 models + 3–10 devs → "service-layer" (selectors / services / commands). ≥ 50 models + 10+ devs OR multiple bounded contexts → "clean-arch" (DDD + repositories).</statement>
+      <rationale source="cosmic-python + django-styleguide">Simple architecture is the right cost for an MVP; clean-arch is the right cost for an enterprise codebase. Mismatch produces either rewrites or under-architected pain.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use PostgreSQL for: production environments, complex queries (CTEs, window functions), full-text search, JSON/JSONB fields, geographic data (PostGIS), or high write concurrency. Use SQLite for: development/testing, read-heavy workloads, single-server deployment, side projects/prototypes, or simplicity priority. Use MySQL for: existing MySQL infrastructure, team MySQL expertise, simple queries, or AWS RDS MySQL preference.</statement>
-      <rationale source="v1-source">PostgreSQL provides advanced features and strong Django integration ideal for production. SQLite offers development simplicity and zero-configuration deployment. MySQL serves legacy infrastructure. Choose based on production requirements, team expertise, and operational constraints.</rationale>
+
+    <rule id="r4-pick-db" testable="true" depth="essential">
+      <statement>Pick PostgreSQL by default. Pick SQLite for dev/test + truly single-server side projects (no replication, low write concurrency). Pick MySQL only when existing infra forces it. Pick a managed Postgres (RDS / Cloud SQL / Neon) for production whenever possible.</statement>
+      <rationale source="django ORM + production audit">PostgreSQL has the best Django integration (JSONB, full-text search, partial indexes, generated columns). SQLite is fine for dev but cannot scale concurrent writes. MySQL trails on advanced features.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use PaaS (Render, Fly.io, Railway) for: simplicity, managed infrastructure, small teams, and rapid iteration. Use VPS (DigitalOcean, Hetzner) for: full control, cost optimization at scale, custom infrastructure, or team DevOps experience. Use Kubernetes for: horizontal scaling, zero-downtime deployments, high-availability, or microservices. Use Serverless for: highly variable traffic, cost optimization, stateless applications, or event-driven architecture.</statement>
-      <rationale source="v1-source">PaaS trades control for simplicity and speed. VPS provides control and cost efficiency. Kubernetes handles scaling but adds complexity. Serverless optimizes for cost and scaling. Choose based on team expertise, scaling requirements, and operational overhead tolerance.</rationale>
+
+    <rule id="r5-pick-deployment" testable="true" depth="essential">
+      <statement>Pick deployment target from team DevOps maturity + scale: low maturity + low scale → PaaS (Render / Fly.io / Railway). Medium maturity + cost focus → VPS (Hetzner / DigitalOcean) with systemd + nginx. High maturity + need for horizontal scaling → Kubernetes. Highly variable traffic + stateless → Serverless (Lambda / Cloud Run).</statement>
+      <rationale source="ops-maturity surveys 2024-2026">Picking K8s without operators wastes 6+ months of "we'll learn it". Picking PaaS at million-req/s wastes margin. Match deployment to operational capacity, not aspirational.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use this decision tree: (1) Changes database? → services/. (2) External API call? → services/ or integrations/. (3) Pure function? → utils/. (4) HTTP handling? → views/. (5) Data structure? → models/. (6) Input validation? → serializers/. (7) Background task? → tasks/. (8) Reusable? → core/ or common/.</statement>
-      <rationale source="v1-source">This hierarchy enforces testability (pure functions in utils), side effects isolation (services), and dependency direction (views depend on services, not vice versa). Correct dependencies prevent circular imports and improve code reusability.</rationale>
+
+    <rule id="r6-audit-deps" testable="true" depth="essential">
+      <statement>For every candidate third-party package, audit eight signals: commit within 6 months, Django 5.x + Python 3.11+ compat, ≥ 1k stars OR clear maintainer track-record, complete docs, CI green, no known CVEs, licence compatible, cannot-be-done-with-builtins=true. Reject "high-risk" (≤ 1k stars + no recent commits) unless a sunset plan exists.</statement>
+      <rationale source="supply-chain attacks + package abandonment data">Unmaintained packages are the dominant source of long-tail security issues and refactor cost. Eight signals catch most low-effort risks.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Before adding a package, verify: (1) Maintenance — commits within 6 months, (2) Compatibility — Django 5.x + Python 3.11+ support, (3) Community — GitHub stars, PyPI downloads, (4) Documentation — clear and complete, (5) Test coverage — CI passing, good coverage, (6) Security — no known vulnerabilities, (7) License — compatible with your project, (8) Necessity — cannot be done with Django built-ins.</statement>
-      <rationale source="v1-source">Unmaintained, incompatible, or poorly documented packages create maintenance debt. Verify these signals before adding the dependency. Package Risk Assessment: Low (greater than 5k stars, active, documented), Medium (1-5k stars, maintained), High (less than 1k stars, no recent commits), Critical (abandoned, security issues).</rationale>
-    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

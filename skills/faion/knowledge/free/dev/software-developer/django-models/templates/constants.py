@@ -1,3 +1,8 @@
+# purpose: TextChoices skeleton for status / role / kind enums.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Place at apps/<app>/constants.py.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # apps/users/constants.py — TextChoices enums and module-level constants
 from django.db import models
 

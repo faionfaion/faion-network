@@ -1,0 +1,33 @@
+# purpose: GitHub Actions quality job — ruff, mypy strict, manage.py check, migrations check, pip-audit, coverage gate.
+# consumes: a Django project with config/settings/test.py + pytest.
+# produces: a CI job named "quality" that blocks PR merge on any failure.
+# depends-on: actions/checkout, actions/setup-python.
+# token-budget-impact: ~200 tokens.
+
+name: quality
+
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - run: ruff check . --no-fix
+      - run: ruff format --check .
+      - run: mypy --strict apps/
+      - run: python manage.py check --deploy --fail-level WARNING
+      - run: python manage.py makemigrations --check --dry-run
+      - run: pip-audit --strict
+      - run: pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80
+      - uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml

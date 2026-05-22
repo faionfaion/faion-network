@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-project-structure Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-project-structure. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-project-structure Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules for the HackSoft-style Django layout.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Organize code into domain apps under apps/. Each app represents one business domain. Each app MUST contain: models.py, services.py, selectors.py, apis.py, serializers.py, urls.py, constants.py, admin.py, and a tests/ subdirectory with test_models.py, test_services.py, test_selectors.py, and test_apis.py.</statement>
-      <rationale source="v1-source">Domain-driven structure makes it possible to find all code for a concept in one folder. When an agent or developer needs to change how orders work, they look in apps/orders/ — not scattered across global models/, views/, and serializers/ directories.</rationale>
+
+    <rule id="r1-apps-layout" testable="true" depth="essential">
+      <statement>Organise domain code under apps/&lt;domain&gt;/. One business domain per app. Apps live under a single apps/ namespace (`apps.users`, `apps.billing`, …).</statement>
+      <rationale source="hacksoft-styleguide + two-scoops">Domain-named folders let any reader find every file related to one concept in one place. Flat global folders (models/, views/, serializers/) force cross-folder hunts on every change.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Put shared infrastructure (BaseModel, custom exceptions, pagination, permissions) in core/. Put Django configuration (settings split by environment, root urls.py, celery.py, wsgi.py, asgi.py) in config/. Put test factories in tests/factories/ at the project root.</statement>
-      <rationale source="v1-source">core/ holds code that all apps import; it must not import from apps/ to avoid circular dependencies. config/ separates runtime concerns from domain logic. Centralized factories allow all test modules to reference them without duplication.</rationale>
+
+    <rule id="r2-per-app-inventory" testable="true" depth="essential">
+      <statement>Each app has exactly: models.py, services.py, selectors.py, apis.py, serializers.py, urls.py, constants.py, admin.py, and a tests/ subdirectory with test_models.py, test_services.py, test_selectors.py, test_apis.py.</statement>
+      <rationale source="hacksoft-styleguide">A canonical file list means a developer (or codegen agent) knows where to put a new function before they start writing it. selectors.py = reads, services.py = writes — the split is the architecture's core insight.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>App directories use snake_case plural nouns (users, orders, user_profiles). Model classes use PascalCase singular (User, Order, UserProfile). Service functions use entity_action pattern (user_create, order_process). Selector functions use entity_query pattern (user_list, order_get_by_id). Constants use UPPER_SNAKE_CASE. TextChoices classes use PascalCase (OrderStatus).</statement>
-      <rationale source="v1-source">Consistent naming makes code searchable. A grep for user_create finds all create operations for users. Naming patterns signal intent: user_list is a read operation (selector), order_process is a write operation (service).</rationale>
+
+    <rule id="r3-core-no-import-from-apps" testable="true" depth="essential">
+      <statement>core/ provides shared infrastructure (BaseModel, exceptions, pagination, permissions). core/ MUST NOT import from apps/. Apps may import from core/.</statement>
+      <rationale source="dependency-inversion + circular-import audits">A directional dependency graph (apps → core) eliminates whole classes of circular ImportError. Reverse imports (core → apps) recreate them.</rationale>
     </rule>
+
+    <rule id="r4-config-package" testable="true" depth="essential">
+      <statement>Settings + URL conf + ASGI/WSGI + Celery live in config/ (not in the project root and not in an app). Settings split into base.py + dev.py + staging.py + prod.py, each inheriting from base.</statement>
+      <rationale source="12-factor + two-scoops">Settings split keeps secrets out of dev defaults and makes env-specific overrides reviewable. Putting settings inside an app conflates configuration with domain code.</rationale>
+    </rule>
+
+    <rule id="r5-naming-conventions" testable="true" depth="essential">
+      <statement>App folders: snake_case plural nouns (users, orders, user_profiles). Model classes: PascalCase singular (User, Order). Service functions: entity_action (user_create, order_process). Selector functions: entity_query (user_list, order_get_by_id). Constants: UPPER_SNAKE_CASE. Choices classes: PascalCase (OrderStatus).</statement>
+      <rationale source="readability + grep-ability">A consistent naming convention makes the codebase grep-able: `grep -r "user_create"` finds every write to a User. Mixed conventions force every reader to translate.</rationale>
+    </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

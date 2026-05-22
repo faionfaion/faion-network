@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-coding-standards Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-coding-standards. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+<text id="01-core-rules" title="django-coding-standards Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules for Django repo layout and code conventions.</summary>
+  <section title="Rules">
+    <rule id="r1-apps-core-config-layout" testable="true" depth="essential">
+      <statement>Repository tree: `apps/&lt;app&gt;/` for domain apps, `core/` for cross-cutting code (BaseModel, mixins, permissions), `config/` for settings (`base.py`, `development.py`, `production.py`, `test.py`). No code at the repo root.</statement>
+      <rationale source="Two Scoops of Django">Predictable layout enables agents and humans to navigate without grep. Repo-root code resists testing and breaks `python -m` invocations.</rationale>
+    </rule>
+    <rule id="r2-aliased-cross-app-imports" testable="true" depth="essential">
+      <statement>Cross-app imports MUST be aliased: `from apps.users.models import User as users_models_User`. Direct symbol imports (`from apps.users.models import User`) are forbidden — they clash on common names (User, Status).</statement>
+      <rationale source="internal pattern; ruff `no-implicit-reexport`">Multiple apps inevitably define `User` or `Status`. Aliasing prevents shadowing and makes the source app explicit at the import site.</rationale>
+    </rule>
+    <rule id="r3-service-layer-logic" testable="true" depth="essential">
+      <statement>Business logic lives in `apps/&lt;app&gt;/services/&lt;topic&gt;.py`. Views call services. Services orchestrate models, utils, and integrations. Tasks are thin wrappers over services. Utils are pure functions.</statement>
+      <rationale source="Django services pattern">Layering keeps each layer testable in isolation. Logic in views / utils / models defeats testability and concentrates churn in the wrong layer.</rationale>
+    </rule>
+    <rule id="r4-keyword-only-args" testable="true" depth="essential">
+      <statement>Service functions declare keyword-only arguments after `*`. `def create_user(*, email: str, name: str, role: Role) -&gt; User:`.</statement>
+      <rationale source="PEP 3102">Positional args produce silent bugs on signature change (swap two args of the same type). Keyword-only forces every callsite to be explicit.</rationale>
+    </rule>
+    <rule id="r5-text-choices" testable="true" depth="essential">
+      <statement>Use `models.TextChoices` (or `IntegerChoices`) for enums. Centralise in `apps/&lt;app&gt;/constants.py`. Never use plain strings for status / kind / role.</statement>
+      <rationale source="Django 3.0 release notes">TextChoices give a typed enum, a `.choices` form for Django forms, and a translation-ready label. Plain strings drift and produce typos that bypass validation.</rationale>
+    </rule>
+    <rule id="r6-update-fields-on-save" testable="true" depth="essential">
+      <statement>Every `instance.save(update_fields=[...])` lists the changed fields. Bare `instance.save()` is allowed only on creation.</statement>
+      <rationale source="Django ORM perf guide">Bare save() writes all fields; signals fire for unrelated changes; auditing produces noise. `update_fields` makes the write surface explicit and avoids contention.</rationale>
     </rule>
   </section>
 </text>

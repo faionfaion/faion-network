@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Pre-commit guard: reject PRs > 400 lines unless label-approved.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Add to pre-commit hook.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # pr-balance.sh — assign the least-loaded reviewer from CODEOWNERS.
 # Usage: pr-balance.sh <PR_NUMBER>
 # Requires: gh CLI authenticated

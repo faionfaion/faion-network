@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Pre-commit guard: makemigrations --check --dry-run.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Add to pre-commit hook.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # scripts/check-migrations.sh — refuse commit if models changed without a staged migration.
 # Wire as pre-commit hook or in CI.
 set -euo pipefail

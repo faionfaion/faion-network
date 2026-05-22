@@ -1,3 +1,8 @@
+# purpose: Working Django abstract BaseModel: int PK + UUIDField + created_at + updated_at.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Place at apps/core/models/base.py.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 """
 Django BaseModel scaffold.
 

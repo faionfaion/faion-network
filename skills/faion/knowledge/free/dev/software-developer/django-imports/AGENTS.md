@@ -3,73 +3,92 @@ slug: django-imports
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A convention for Django multi-app projects: always import cross-app modules via alias (from apps.
-content_id: "9b3df72f9d943b7e"
-tags: [django, imports, conventions, refactoring, lint]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Django import-discipline ruleset: alias cross-app imports (apps.users.models as users_models), never direct symbol imports; isort first-party config and a lint rule that fails on bare model imports.
+content_id: "5a4b8668595b06eb"
+complexity: light
+produces: config
+est_tokens: 3600
+tags: [django, imports, conventions, isort, lint]
 ---
-# Django Import Patterns
+# Django Imports
 
 ## Summary
 
-**One-sentence:** A convention for Django multi-app projects: always import cross-app modules via alias (from apps.
+**One-sentence:** Produces a Django import-discipline ruleset: alias cross-app imports (apps.users.models as users_models), never direct symbol imports; isort first-party config and a lint rule that fails on bare model imports.
 
-**One-paragraph:** A convention for Django multi-app projects: always import cross-app modules via alias (from apps.orders import models as order_models), never via direct symbol import (from apps.orders.models import Order). Import order: __future__, stdlib, third-party (Django/DRF), cross-app aliased, relative. Type-only cross-app imports go under if TYPE_CHECKING: with from __future__ import annotations at the file top.
+**One-paragraph:** Produces a Django import-discipline ruleset: alias cross-app imports (apps.users.models as users_models), never direct symbol imports; isort first-party config and a lint rule that fails on bare model imports. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- New Django project: lock down import style before apps proliferate.
-- Onboarding multi-app codebases where Order, User, Item collide in serializers.
-- Refactoring legacy code with from app.models import * patterns.
-- Adding type hints to a Django codebase with circular import problems.
-- Authoring pre-commit hooks to enforce the alias rule.
+- Project uses Django 5.x (or 4.2 LTS) with Python 3.12+.
+- Code in question lives under `apps/<app>/` or `core/` per the django-coding-standards layout.
+- A test runner is configured (`pytest + pytest-django`).
+- The team has agreed to enforce service-layer logic separation.
 
 ## Skip If (ANY kills it)
 
-- Single-app Django projects with fewer than 10 models — alias overhead pays nothing.
-- Non-Django Python repos with flat package structure — rule is Django-app-specific.
-- DRF serializers and form classes where direct symbol import is idiomatic (from rest_framework import serializers) — the rule applies to cross-app project imports only.
-- One-shot scripts and Jupyter notebooks where unaliased names are more readable.
+- Project is not on Django (FastAPI, Flask, or other) — load the framework-specific methodology instead.
+- Tiny throwaway tool with no growth horizon — overhead exceeds payoff.
+- Codebase has not adopted the apps/core/config layout and refactoring it is out of scope right now.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `pyproject.toml` | TOML | repo root |
+| `apps/<app>/` layout | directory tree | repo source |
+| Target Django version | string | `pyproject.toml` |
+| Existing test runner config | TOML | `pyproject.toml` `[tool.pytest.ini_options]` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/python-developer/python-typing` | Type-checker baseline for Django code. |
+| `free/dev/software-developer/django-coding-standards` | Layout standard that gates placement of files produced here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to django-imports | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold model/serializer/view/test from spec | sonnet | Mechanical code generation. |
+| Design service-layer boundaries | opus | Needs domain judgement. |
+| Audit existing code for layering violations | sonnet | Pattern matching with deterministic output. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/django_import_lint.py` | Custom lint rule rejecting bare cross-app symbol imports. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-imports.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[django-coding-standards]] — see methodology AGENTS.md for context.
+- [[django-models]] — see methodology AGENTS.md for context.
+- [[django-pytest]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

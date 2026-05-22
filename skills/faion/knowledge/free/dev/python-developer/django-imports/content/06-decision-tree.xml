@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-imports Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per cross-app dependency: which import strategy?</summary>
+
+  <decision-tree>
+    <root-question id="q-usage-context">In what context does this cross-app symbol get used?</root-question>
+
+    <branch when="q-usage-context == 'model-field'">
+      <conclusion ref="r6-string-fk">Use string reference: ForeignKey("users.User", ...). No module-level import needed.</conclusion>
+    </branch>
+
+    <branch when="q-usage-context == 'runtime-service-needs-class'">
+      <conclusion ref="r7-apps-get-model">Use apps.get_model("users", "User") inside the function body. Avoids module-level circular import.</conclusion>
+    </branch>
+
+    <branch when="q-usage-context == 'type-annotation-only'">
+      <conclusion ref="r8-type-checking">Import inside `if TYPE_CHECKING:` block. Pair with `from __future__ import annotations` UNLESS the module is a DRF serializer.</conclusion>
+    </branch>
+
+    <branch when="q-usage-context == 'runtime-attribute-access'">
+      <question id="q-cluster">Are 3+ apps cyclically depending on this symbol?</question>
+
+      <branch when="q-cluster == true">
+        <conclusion ref="r9-core-extraction">Extract the shared type / base class to core/. core/ imports from no other app.</conclusion>
+      </branch>
+
+      <branch when="q-cluster == false">
+        <conclusion ref="r4-alias-convention">Import at module level with mandatory alias: `from apps.users import models as user_models`. Reference as `user_models.User`.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="billing-needs-user-model-field"><![CDATA[
+context: Billing.Invoice has FK to accounts.User
+q-usage-context -> 'model-field'
+=> conclusion r6-string-fk: ForeignKey("accounts.User", on_delete=PROTECT).
+]]></example>
+</text>

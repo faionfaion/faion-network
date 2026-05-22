@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-coding-standards Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-coding-standards as failure modes. Add detector + repair clauses where missing.</summary>
-
+<text id="03-failure-modes" title="django-coding-standards Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six Django coding-standard antipatterns.</summary>
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Bare except: clause on Model.objects.get() calls.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Catches every exception including KeyboardInterrupt and SystemExit. Always catch the specific exception: Model.DoesNotExist. This lets actual errors (OOM, corrupt DB) propagate and fail the task correctly.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Validation in Model.clean() for DRF API flows.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>clean() is called by ModelForms and Django admin, not by DRF serializers. Validation in clean() is silently skipped on API requests, leading to invalid data in the database.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Serializer with password in Meta.fields without write_only: True.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Password hash leaks into API responses. Always add extra_kwargs = {'password': {'write_only': True}} so the field is accepted on write but never returned on read.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-flat-repo">
+      <description>Models / views / settings at repo root with no apps/ partitioning.</description>
+      <reason>Cannot scale beyond ~3 features without import cycles. Code search and CI gates regress to manual.</reason>
+    </antipattern>
+    <antipattern id="fm-02-bare-cross-app-import">
+      <description>`from apps.users.models import User` next to `from apps.organizations.models import User` in the same module.</description>
+      <reason>Second import silently shadows the first. The bug is detectable only via tests that happen to exercise both.</reason>
+    </antipattern>
+    <antipattern id="fm-03-logic-in-views">
+      <description>Multi-step ORM writes inside the view body.</description>
+      <reason>Views become untestable in isolation, business logic locked to HTTP transport, retry / async migration blocked.</reason>
+    </antipattern>
+    <antipattern id="fm-04-positional-service-args">
+      <description>Service called `create_user("alice@x", "Alice", Role.ADMIN)`.</description>
+      <reason>Argument swap goes undetected by type checker; silent data corruption.</reason>
+    </antipattern>
+    <antipattern id="fm-05-string-enums">
+      <description>Status stored as plain string literals scattered across the codebase.</description>
+      <reason>Typos pass validation, refactor cost compounds, translations are impossible.</reason>
+    </antipattern>
+    <antipattern id="fm-06-bare-save">
+      <description>`instance.field = new_value; instance.save()` everywhere.</description>
+      <reason>Writes all fields; signals fire unnecessarily; concurrent writers stomp each other.</reason>
+    </antipattern>
   </section>
 </text>

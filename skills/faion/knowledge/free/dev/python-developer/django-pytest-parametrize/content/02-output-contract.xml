@@ -1,22 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-pytest-parametrize Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-pytest-parametrize Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>JSON schema for the parametrize spec.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "parametrizations", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "parametrizations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["test_function", "argnames", "cases", "ids_descriptive"],
+        "properties": {
+          "test_function": {"type": "string"},
+          "argnames": {"type": "string"},
+          "cases": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "required": ["id", "args"],
+              "properties": {
+                "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+                "args": {"type": "array"}
+              }
+            }
+          },
+          "ids_descriptive": {"const": true},
+          "uses_indirect": {"type": "boolean"}
+        }
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">a parametrization with cases length &gt; 20 (split by category)</pattern>
+      <pattern id="f2">a case.id matching /^\d+$/ (numeric auto-id)</pattern>
+      <pattern id="f3">a case.args entry referencing a Django model instance (use IDs + factory lookup inside the test)</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort cases by id for determinism.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "billing-parametrize",
+  "owner": "ruslan@faion.net",
+  "parametrizations": [
+    {
+      "test_function": "test_create_invoice_validation",
+      "argnames": "field, value, expected_error",
+      "cases": [
+        {"id": "amount-negative",  "args": ["amount", "-5", "must be positive"]},
+        {"id": "amount-non-numeric","args": ["amount", "abc", "must be a number"]},
+        {"id": "due-date-past",    "args": ["due_date", "2020-01-01", "must be in the future"]},
+        {"id": "missing-customer", "args": ["customer_uid", null, "this field is required"]}
+      ],
+      "ids_descriptive": true,
+      "uses_indirect": false
+    },
+    {
+      "test_function": "test_invoice_detail_by_role",
+      "argnames": "client_fixture, expected_status",
+      "cases": [
+        {"id": "anonymous-401",      "args": ["api_client", 401]},
+        {"id": "user-owns-200",      "args": ["authenticated_client", 200]},
+        {"id": "user-cross-403",     "args": ["other_authenticated_client", 403]},
+        {"id": "admin-200",          "args": ["admin_client", 200]}
+      ],
+      "ids_descriptive": true,
+      "uses_indirect": false
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "parametrizations": [
+    {"test_function": "x", "argnames": "v", "cases": [{"id": "0", "args": [1]}, {"id": "1", "args": [2]}, {"id": "2", "args": [3]}], "ids_descriptive": true}
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="api-testing Procedure" version="1.1.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure to bring an API test suite to pyramid shape with schema-validated bodies, oasdiff gate, and nightly fuzzing.</summary>
+
+  <section title="Steps">
+    <section title="Step 1 — Pyramid audit">
+      <list>
+        <item>Input: existing test directory layout.</item>
+        <item>Action: classify every existing test as unit | integration | contract | e2e (look at imports: pure Python = unit, TestClient/httpx = integration, Pact = contract, Playwright/Selenium = e2e).</item>
+        <item>Output: count table; flag inversions where e2e &gt; integration or integration &gt; unit.</item>
+        <item>Decision gate: if inversion is severe, plan a rebalancing PR before adding more E2E.</item>
+      </list>
+    </section>
+
+    <section title="Step 2 — Schema-validate integration bodies">
+      <list>
+        <item>Input: list of integration tests, OpenAPI spec.</item>
+        <item>Action: add a `validate_against_schema(response, operation_id)` helper; replace status-only assertions; remove inline hand-crafted body fixtures in favour of `Schemathesis.from_schema(...)`.</item>
+        <item>Output: schema_coverage_pct &gt;= 90 in the report.</item>
+      </list>
+    </section>
+
+    <section title="Step 3 — Wire oasdiff in CI">
+      <list>
+        <item>Input: CI workflow file.</item>
+        <item>Action: add a job that runs `templates/api-contract-check.sh`. Cache the base-branch `openapi.json`. Post comment with classification on the PR.</item>
+        <item>Output: PRs with breaking changes are blocked unless `breaking-change-approved` label is set.</item>
+      </list>
+    </section>
+
+    <section title="Step 4 — Add Pact at boundaries (if any)">
+      <list>
+        <item>Input: list of cross-team consumers.</item>
+        <item>Action: for each consumer, write a consumer-side Pact test; publish to broker; add provider verification to producer CI.</item>
+        <item>Output: contract test count = number of cross-team consumers (no more, no less).</item>
+        <item>Decision gate: if no cross-team consumers exist, skip; keep contract count at 0.</item>
+      </list>
+    </section>
+
+    <section title="Step 5 — Schemathesis fuzzing">
+      <list>
+        <item>Input: OpenAPI spec.</item>
+        <item>Action: add a nightly job running Schemathesis against staging with assertions (no 5xx, body validates against schema).</item>
+        <item>Output: `fuzzing.ran = true` and `fuzzing.passed = true` in the report.</item>
+      </list>
+    </section>
+  </section>
+</text>

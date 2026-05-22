@@ -1,22 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-quality-linting Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-quality-linting Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON schema for the quality stack spec.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "django_version", "python_version", "ruff", "mypy", "pre_commit_hooks", "ci_gates", "coverage_threshold", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "django_version": {"type": "string"},
+    "python_version": {"type": "string"},
+    "ruff": {
+      "type": "object",
+      "required": ["rule_groups", "line_length", "exclude_migrations"],
+      "properties": {
+        "rule_groups": {"type": "array", "minItems": 5, "items": {"type": "string", "enum": ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "DJ", "T20", "S", "N"]}},
+        "line_length": {"type": "integer", "minimum": 80, "maximum": 120},
+        "exclude_migrations": {"const": true},
+        "per_file_ignores": {"type": "object"}
+      }
+    },
+    "mypy": {
+      "type": "object",
+      "required": ["django_settings_module", "strict_files", "check_untyped_defs", "warn_unused_ignores"],
+      "properties": {
+        "django_settings_module": {"type": "string"},
+        "strict_files": {"type": "array", "items": {"type": "string"}},
+        "check_untyped_defs": {"const": true},
+        "warn_unused_ignores": {"const": true}
+      }
+    },
+    "pre_commit_hooks": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "stage", "fast"],
+        "properties": {
+          "name": {"type": "string"},
+          "stage": {"type": "string", "enum": ["commit", "push"]},
+          "fast": {"type": "boolean"}
+        }
+      }
+    },
+    "ci_gates": {
+      "type": "array",
+      "minItems": 5,
+      "items": {"type": "string"}
+    },
+    "coverage_threshold": {"type": "integer", "minimum": 80},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">ruff.exclude_migrations != true</pattern>
+      <pattern id="f2">mypy.django_settings_module missing or empty</pattern>
+      <pattern id="f3">a pre_commit_hook with stage=="commit" AND fast=false</pattern>
+      <pattern id="f4">ci_gates missing "mypy" or "manage.py check --deploy" or "coverage-gate"</pattern>
+      <pattern id="f5">coverage_threshold &lt; 80</pattern>
+      <pattern id="f6">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort rule_groups alphabetically.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "billing-quality-stack",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "python_version": "3.12",
+  "ruff": {
+    "rule_groups": ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "DJ", "T20"],
+    "line_length": 100,
+    "exclude_migrations": true,
+    "per_file_ignores": {"apps/*/management/commands/*.py": ["T20"]}
+  },
+  "mypy": {
+    "django_settings_module": "config.settings.test",
+    "strict_files": ["apps/billing/services.py", "apps/billing/selectors.py", "apps/accounts/services.py"],
+    "check_untyped_defs": true,
+    "warn_unused_ignores": true
+  },
+  "pre_commit_hooks": [
+    {"name": "ruff",         "stage": "commit", "fast": true},
+    {"name": "ruff-format",  "stage": "commit", "fast": true},
+    {"name": "mypy",         "stage": "commit", "fast": true},
+    {"name": "manage.py check", "stage": "commit", "fast": true},
+    {"name": "pytest",       "stage": "push",   "fast": false}
+  ],
+  "ci_gates": ["ruff check --no-fix", "ruff format --check", "mypy --strict apps/", "manage.py check --deploy --fail-level WARNING", "manage.py makemigrations --check --dry-run", "pip-audit --strict", "coverage-gate"],
+  "coverage_threshold": 80,
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "django_version": "5",
+  "python_version": "3.12",
+  "ruff": {"rule_groups": ["E"], "line_length": 100, "exclude_migrations": false},
+  "mypy": {"django_settings_module": "", "strict_files": [], "check_untyped_defs": false, "warn_unused_ignores": false},
+  "pre_commit_hooks": [{"name": "megalinter", "stage": "commit", "fast": false}],
+  "ci_gates": ["ruff check"],
+  "coverage_threshold": 60,
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

@@ -1,3 +1,8 @@
+// purpose: Drizzle ORM schema template wired to Bun.
+// consumes: project repo; see the methodology AGENTS.md for input contract.
+// produces: the working artifact described above; placement: Place under src/db/schema.ts.
+// depends-on: the tooling pinned in the methodology's AGENTS.md.
+// token-budget-impact: zero — local-only template; build/CI time is the only cost.
 // src/db/schema.ts — Drizzle ORM schema with bun:sqlite
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"

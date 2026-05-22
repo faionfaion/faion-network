@@ -3,74 +3,93 @@ slug: django-testing
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: pytest-based testing patterns for Django projects using model_bakery (or factory_boy) for fixtures, @pytest.
-content_id: "f5886eaa8721df0f"
-tags: [django, pytest, testing, fixtures, model-bakery]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Django test pattern with pytest + model_bakery/factory_boy + APIClient; service-layer tests call real code, mocks live at process boundaries (HTTP, S3, third-party SDKs).
+content_id: "cc5a9d5479701153"
+complexity: medium
+produces: code
+est_tokens: 3600
+tags: [django, pytest, testing, model-bakery, factory-boy, service-tests]
 ---
-# Django Testing Reference
+# Django Testing
 
 ## Summary
 
-**One-sentence:** pytest-based testing patterns for Django projects using model_bakery (or factory_boy) for fixtures, @pytest.
+**One-sentence:** Produces a Django test pattern with pytest + model_bakery/factory_boy + APIClient; service-layer tests call real code, mocks live at process boundaries (HTTP, S3, third-party SDKs).
 
-**One-paragraph:** pytest-based testing patterns for Django projects using model_bakery (or factory_boy) for fixtures, @pytest.mark.django_db for DB access, and APIClient for DRF endpoint tests. The core rule: service-layer tests must call real code, not mocks; mock only at process boundaries (outbound HTTP, S3, third-party SDKs).
+**One-paragraph:** Produces a Django test pattern with pytest + model_bakery/factory_boy + APIClient; service-layer tests call real code, mocks live at process boundaries (HTTP, S3, third-party SDKs). The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- Adding test coverage to a new Django app: pytest-django + model_bakery is the canonical default.
-- Generating or reviewing service-layer tests where the "no mocks for in-app code" rule must be enforced.
-- Migrating from unittest.TestCase to pytest style.
-- Setting up parametrized tests for validation/calculation services.
-- Adding DRF API tests without writing the full request stack manually.
+- Project uses Django 5.x (or 4.2 LTS) with Python 3.12+.
+- Code in question lives under `apps/<app>/` or `core/` per the django-coding-standards layout.
+- A test runner is configured (`pytest + pytest-django`).
+- The team has agreed to enforce service-layer logic separation.
 
 ## Skip If (ANY kills it)
 
-- Non-Django Python projects — patterns assume @pytest.mark.django_db, app fixtures, Django settings.
-- Pure unit tests of pure functions with no DB access — skip model_bakery overhead.
-- Browser / E2E tests — use playwright (pytest-playwright).
-- Performance / load testing — use locust or k6.
-- Codebases standardized on unittest.TestCase where migration is out of scope.
+- Project is not on Django (FastAPI, Flask, or other) — load the framework-specific methodology instead.
+- Tiny throwaway tool with no growth horizon — overhead exceeds payoff.
+- Codebase has not adopted the apps/core/config layout and refactoring it is out of scope right now.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `pyproject.toml` | TOML | repo root |
+| `apps/<app>/` layout | directory tree | repo source |
+| Target Django version | string | `pyproject.toml` |
+| Existing test runner config | TOML | `pyproject.toml` `[tool.pytest.ini_options]` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/python-developer/python-typing` | Type-checker baseline for Django code. |
+| `free/dev/software-developer/django-coding-standards` | Layout standard that gates placement of files produced here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to django-testing | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold model/serializer/view/test from spec | sonnet | Mechanical code generation. |
+| Design service-layer boundaries | opus | Needs domain judgement. |
+| Audit existing code for layering violations | sonnet | Pattern matching with deterministic output. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/conftest.py` | pytest-django conftest with db, factories, APIClient. |
+| `templates/pyproject-pytest.toml` | pyproject.toml [tool.pytest.ini_options] section preset for Django. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-testing.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[django-coding-standards]] — see methodology AGENTS.md for context.
+- [[django-models]] — see methodology AGENTS.md for context.
+- [[django-pytest]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

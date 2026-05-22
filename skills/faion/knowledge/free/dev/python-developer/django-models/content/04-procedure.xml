@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="django-models Procedure" version="1.1.0" est_tokens="700" depth="deep">
+  <summary>Six steps from ERD to validated models spec.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="extend-base">
+      <input>BaseModel decisions from [[django-base-model]].</input>
+      <action>For each domain model: set extends ∈ {BaseModel, SoftDeletableModel, TenantAwareModel}.</action>
+      <output>models[].extends.</output>
+      <decision-gate>Reject extends="models.Model" for domain entities.</decision-gate>
+    </step>
+
+    <step n="2" name="declare-fields">
+      <input>ERD fields + chosen TextChoices/IntegerChoices classes.</input>
+      <action>For each field: name, type, choices_class if applicable. Mark is_pii at the model level.</action>
+      <output>models[].fields.</output>
+    </step>
+
+    <step n="3" name="declare-constraints">
+      <input>Domain invariants from product doc.</input>
+      <action>Add Meta.constraints entries: CheckConstraint for value ranges, UniqueConstraint for conditional uniqueness. Pin PostgreSQL when using partial conditions.</action>
+      <output>models[].constraints.</output>
+    </step>
+
+    <step n="4" name="declare-indexes">
+      <input>Query access patterns + traffic profile.</input>
+      <action>For each field/combination used in filter()/order_by()/distinct() on production traffic: add db_index or a composite Meta.indexes entry. Justify in reason (≥ 10 chars).</action>
+      <output>models[].indexes.</output>
+      <decision-gate>Reject db_index=true with empty or short reason.</decision-gate>
+    </step>
+
+    <step n="5" name="audit-on-delete">
+      <input>ForeignKey relationships.</input>
+      <action>For each FK: choose on_delete explicitly with reason ≥ 10 chars. Default CASCADE on user/account refs is rejected.</action>
+      <output>models[].foreign_keys.</output>
+    </step>
+
+    <step n="6" name="wire-full-clean-and-validate">
+      <input>All outputs.</input>
+      <action>Set full_clean_in_service=true (this is a contract: every service that saves the model calls full_clean first). Emit spec; run scripts/validate-django-models.py.</action>
+      <output>Validated spec.</output>
+    </step>
+
+  </section>
+</text>

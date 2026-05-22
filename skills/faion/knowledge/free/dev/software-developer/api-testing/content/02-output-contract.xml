@@ -1,22 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="api-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="api-testing Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Schema for the test-suite report: counts per pyramid layer, schema-validation coverage, oasdiff classification, fuzzing pass/fail.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://api-testing/output.schema.json",
+  "type": "object",
+  "required": ["counts", "schema_coverage_pct", "oasdiff", "fuzzing"],
+  "properties": {
+    "counts": {
+      "type": "object",
+      "required": ["unit", "integration", "contract", "e2e"],
+      "properties": {
+        "unit": {"type": "integer", "minimum": 0},
+        "integration": {"type": "integer", "minimum": 0},
+        "contract": {"type": "integer", "minimum": 0},
+        "e2e": {"type": "integer", "minimum": 0}
+      }
+    },
+    "schema_coverage_pct": {"type": "number", "minimum": 0, "maximum": 100},
+    "oasdiff": {
+      "type": "object",
+      "required": ["breaking", "non_breaking"],
+      "properties": {
+        "breaking": {"type": "array", "items": {"type": "string"}},
+        "non_breaking": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "fuzzing": {
+      "type": "object",
+      "required": ["ran", "passed"],
+      "properties": {
+        "ran": {"type": "boolean"},
+        "passed": {"type": "boolean"},
+        "findings": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{"counts": {"unit": 220, "integration": 70, "contract": 8, "e2e": 4}, "schema_coverage_pct": 96.4, "oasdiff": {"breaking": [], "non_breaking": ["added optional field tracking_id"]}, "fuzzing": {"ran": true, "passed": true, "findings": []}}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"counts": {"unit": 10, "integration": 80, "contract": 50, "e2e": 200}, "schema_coverage_pct": 12, "oasdiff": {"breaking": ["removed GET /api/v1/user"], "non_breaking": []}, "fuzzing": {"ran": false, "passed": false}}
+]]></code>
+      <note>Invalid: pyramid inverted (e2e &gt; unit), schema_coverage_pct &lt; 90, unapproved breaking change, fuzzing did not run.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>unit/(total) &gt;= 0.7</item>
+      <item>schema_coverage_pct &gt;= 90 — every integration test asserted body against schema.</item>
+      <item>oasdiff.breaking empty OR PR has `breaking-change-approved` label.</item>
+      <item>fuzzing.ran AND fuzzing.passed both true.</item>
     </list>
   </section>
 </text>

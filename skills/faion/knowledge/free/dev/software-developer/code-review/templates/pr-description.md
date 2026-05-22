@@ -1,3 +1,10 @@
+<!--
+purpose: PR description template with risk / scope / test sections.
+consumes: project repo; see methodology AGENTS.md.
+produces: the working artifact; placement: Place under .github/PULL_REQUEST_TEMPLATE.md.
+depends-on: the tooling pinned in the methodology AGENTS.md.
+token-budget-impact: zero — local-only template.
+-->
 ## Description
 
 Brief description of what this PR does and why.

@@ -3,74 +3,96 @@ slug: bun-runtime
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Bun is a JavaScript/TypeScript runtime, bundler, test runner, and package manager in a single binary.
-content_id: "27d7adc2ef318bd1"
-tags: [bun, javascript, typescript, runtime, package-manager, test-runner]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Bun-based JS/TS service scaffold (Bun runtime + bunfig + drizzle + Hono + Bun.test) pinned to a specific Bun version and gated in CI.
+content_id: "07a189e6c4dcfa1a"
+complexity: medium
+produces: code
+est_tokens: 3600
+tags: [bun, javascript, typescript, runtime, package-manager, test-runner, hono]
 ---
 # Bun Runtime
 
 ## Summary
 
-**One-sentence:** Bun is a JavaScript/TypeScript runtime, bundler, test runner, and package manager in a single binary.
+**One-sentence:** Produces a Bun-based JS/TS service scaffold (Bun runtime + bunfig + drizzle + Hono + Bun.test) pinned to a specific Bun version and gated in CI.
 
-**One-paragraph:** Bun is a JavaScript/TypeScript runtime, bundler, test runner, and package manager in a single binary. It runs TypeScript directly without transpilation, provides native HTTP via Bun.serve, and replaces the npm + tsx + jest + esbuild stack. Startup latency, install time, and test speed are all significantly faster than Node equivalents. Default framework pairing is Hono; database ORM is Drizzle with bun:sqlite.
+**One-paragraph:** Produces a Bun-based JS/TS service scaffold (Bun runtime + bunfig + drizzle + Hono + Bun.test) pinned to a specific Bun version and gated in CI. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- Greenfield TypeScript backends where cold-start latency or CI install speed matters.
-- CLI tools and build scripts that need fast execution.
-- Hono / Elysia API servers targeting Bun.serve natively.
-- Replacing npm + tsx + jest stack with a single dependency.
-- Monorepos with frequent install cycles — Bun install is 10-30x faster.
+- JS/TS project on Node-style runtime where Bun is a viable replacement.
+- Single-binary toolchain (bundler + package manager + test runner) is a goal.
+- CI runner supports Bun (oven-sh/setup-bun@v2 available).
+- Team is willing to pin and freeze the Bun version.
 
 ## Skip If (ANY kills it)
 
-- Long-running production Node.js services already battle-tested — Bun's Node compat is strong (>95%) but not 100%; surprising failures in node:cluster, worker_threads, native modules with node-gyp. Don't migrate stable infra without a parallel test rig.
-- Apps depending on niche npm packages with native bindings (some Postgres / image libs) — Bun's NAPI is improving but not flawless.
-- Edge providers (Vercel, Cloudflare Workers) that don't support Bun runtime — your app runs on V8, not Bun.
-- Teams wedded to Jest's ecosystem (snapshot tooling, transformers) — bun test is fast and Jest-compatible-ish, but plugin ecosystem is thin.
-- Windows-first dev teams — Bun on Windows works (since 2024) but lags macOS/Linux.
+- Production target needs npm-only ecosystem (some enterprise registries are not Bun-compatible).
+- Project uses Node-specific native modules without Bun shims.
+- Team has no capacity to maintain a second toolchain (Bun + Node) during migration.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Output target path | string | constitution / SDD spec |
+| Owner (role:person) | string | team roster |
+| Trigger event | event/threshold/schedule | constitution |
+| Evidence anchor (URL / ticket / commit) | string | upstream context |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/software-developer/best-practices-2026` | TS5 strict baseline this scaffold inherits. |
+| `free/dev/software-developer/documentation` | Documents the file table + AGENTS.md pair this methodology depends on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to bun-runtime | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold the output skeleton | sonnet | Mechanical, deterministic. |
+| Refine domain-specific content | opus | Needs judgement. |
+| Validate against output contract | sonnet | Schema check, deterministic. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/bunfig.toml` | Bun runtime config with frozen-lockfile and coverage enabled. |
+| `templates/dockerfile` | Bun production Dockerfile (multi-stage, distroless). |
+| `templates/drizzle-schema.ts` | Drizzle ORM schema template wired to Bun. |
+| `templates/hono-server.ts` | Hono HTTP server template on Bun.serve. |
+| `templates/package.json` | Pinned Bun version + dev/start/test/build scripts. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-bun-runtime.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[best-practices-2026]] — see methodology AGENTS.md for context.
+- [[code-coverage]] — see methodology AGENTS.md for context.
+- [[code-review]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

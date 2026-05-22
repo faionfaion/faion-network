@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-pytest-integration Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per endpoint: required test cases. Per service: db_fixture choice.</summary>
+
+  <decision-tree>
+    <root-question id="q-endpoint-public">Is the endpoint public (no authentication required)?</root-question>
+
+    <branch when="q-endpoint-public == true">
+      <conclusion ref="r1-endpoint-matrix">test_cases excludes "anonymous-401". Must include happy-200, validation-400, not-found-404 where applicable.</conclusion>
+    </branch>
+
+    <branch when="q-endpoint-public == false">
+      <question id="q-resource-ownership">Is the resource user/org-owned?</question>
+
+      <branch when="q-resource-ownership == true">
+        <conclusion ref="r3-permission-combos">test_cases MUST include anonymous-401, wrong-perm-403, cross-user-403, happy-200/201, plus validation-400 and not-found-404 where applicable.</conclusion>
+      </branch>
+
+      <branch when="q-resource-ownership == false">
+        <conclusion ref="r3-permission-combos">test_cases MUST include anonymous-401, wrong-perm-403, happy-200/201, validation-400.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-service">
+      <question id="q-side-effects">Does the service rely on transaction.on_commit / signals / select_for_update?</question>
+
+      <branch when="q-side-effects == true">
+        <conclusion ref="r4-transactional-db">uses_transactional_db=true. Tests assert on post-commit behaviour.</conclusion>
+      </branch>
+
+      <branch when="q-side-effects == false">
+        <conclusion ref="r4-transactional-db">uses_transactional_db=false. Default db fixture is sufficient.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="invoice-detail-get"><![CDATA[
+endpoint=GET /api/v1/invoices/{id}/, non-public, user-owned
+q-endpoint-public -> false
+q-resource-ownership -> true
+=> conclusion r3: test_cases include anonymous-401, cross-user-403, happy-200, not-found-404.
+]]></example>
+</text>

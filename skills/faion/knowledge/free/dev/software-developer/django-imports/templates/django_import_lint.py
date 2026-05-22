@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: Custom lint rule rejecting bare cross-app symbol imports.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Run as a pre-commit hook.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # django_import_lint.py — flag cross-app imports without alias and wildcard imports.
 # Usage: python django_import_lint.py path/to/repo
 # Exits 1 if violations found. Wire into pre-commit and CI.

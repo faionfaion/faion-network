@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-pytest-fixtures Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-pytest-fixtures as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-pytest-fixtures Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five pytest-django fixtures antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>db vs transactional_db confusion: using db for a test that asserts on commit semantics, post-commit hooks, or signals.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The db fixture wraps the test in a savepoint; post-commit hooks and signals that fire on real commits never execute. Use transactional_db for any test involving transaction.on_commit, signals, post_save, or select_for_update.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Session-scoped mutable fixtures: creating a session-scoped factory instance that different tests modify.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Session-scoped fixtures are shared across all tests in the session. Any mutation accumulates and creates order-dependent failures. Session scope is only safe for truly immutable data (read-only reference tables, static config).</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>pytest-xdist + --reuse-db racing on migrations on first run.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Multiple workers try to create the database simultaneously. Use --create-db on cold start (first run or after schema changes), then --reuse-db for subsequent runs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>override_settings inside a fixture without using the pytest-django settings fixture.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>override_settings as a context manager or decorator does not cascade cleanly into session-scoped fixtures. Use the settings fixture from pytest-django; it is properly scoped and cleaned up.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>MEDIA_ROOT not overridden in test settings, causing tests to write files to the real disk.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tests that create uploads pollute the real MEDIA_ROOT and each other. Always override MEDIA_ROOT via an autouse fixture using tmp_path so each test gets a clean directory that is deleted after the test.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-db-vs-transactional">
+      <symptom>Test asserts that a transaction.on_commit callback fired or that a Celery task was enqueued via post_save; assertion fails. The same code works in production.</symptom>
+      <root-cause>Test uses the `db` fixture, which wraps everything in a savepoint that is rolled back after the test. on_commit hooks never fire because no real commit happens; post_save signals fire on save() but the side-effect handler (e.g., transaction.on_commit) doesn't.</root-cause>
+      <fix>Use `transactional_db` for tests asserting on real-commit behaviour. Spec rule rejects db_fixture=db on fixtures whose names suggest signals / on_commit / select_for_update.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-mutable-session-scope">
+      <symptom>Tests pass alone but fail when the suite runs in a different order. Some tests see modified data because an earlier test mutated a session-scoped fixture.</symptom>
+      <root-cause>Session-scoped fixture returns a mutable model instance; tests modify it. The mutations accumulate across the session.</root-cause>
+      <fix>Session scope ONLY for immutable static reference data. Spec rule forbids scope=session with mutable=true.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-xdist-cold-race">
+      <symptom>First CI run with pytest-xdist + --reuse-db fails with "database already exists" errors from multiple workers.</symptom>
+      <root-cause>Multiple xdist workers race to create the test database on cold start. --reuse-db assumes the DB already exists.</root-cause>
+      <fix>Use --create-db on cold start (first run, schema changes); switch to --reuse-db on subsequent runs. The spec's xdist.cold_start_flag and warm_flag document the convention.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-override-settings-drift">
+      <symptom>A setting change in one test leaks into the next test that depends on the default. Tests pass in isolation, fail in the suite.</symptom>
+      <root-cause>`@override_settings` was used as a decorator inside a session-scoped fixture. Its scope doesn't compose cleanly across pytest fixture scopes.</root-cause>
+      <fix>Use pytest-django's built-in `settings` fixture (`settings.FOO = 'bar'`). It is properly scoped per-test and cleaned up automatically.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-media-root-pollution">
+      <symptom>Test upload creates a file in the repo's MEDIA_ROOT. The file persists between runs; next test sees stale data; git status shows new files.</symptom>
+      <root-cause>MEDIA_ROOT in test settings points at the same location as dev/prod. Tests that upload files write to the real disk.</root-cause>
+      <fix>Autouse fixture using tmp_path: `settings.MEDIA_ROOT = str(tmp_path / 'media')`. Spec settings_overrides.MEDIA_ROOT_per_test=true is required.</fix>
+    </antipattern>
+
   </section>
 </text>

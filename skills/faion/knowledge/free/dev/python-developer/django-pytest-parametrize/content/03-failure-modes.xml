@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-pytest-parametrize Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-pytest-parametrize as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-pytest-parametrize Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three parametrize antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Parameter lists so long they become unmaintainable (30+ entries). The test body is lost in the data.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Split large parameter lists into logical groups with separate parametrized functions (test_valid_emails, test_invalid_emails). Each function tests one category of behavior. This keeps the test intent clear and failures easy to understand.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Parametrizing over database objects (model instances) directly in the parameter list.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Model instances cannot exist outside a database transaction. Parametrize over IDs, strings, or dicts and resolve the objects inside the test function using fixtures. Direct model references in parameter lists cause database errors at collection time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using generic ids like test_validation[0], test_validation[1] without meaningful names.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When test_validation[3] fails at 2am in CI, there is no context. Use descriptive tuple comments, the ids= parameter, or pytest.param(value, id="name") to give each case a meaningful name.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-huge-parameter-lists">
+      <symptom>One parametrize block has 47 entries; the test body is 20 lines; reading the test takes longer than running it. Failures are hard to map to intent.</symptom>
+      <root-cause>Author kept adding cases to a single parametrize instead of grouping by category. The test now tests three different concerns at once.</root-cause>
+      <fix>Split by category: test_valid_emails, test_invalid_emails, test_disposable_emails — each with ≤ 20 parametrized cases. Spec rule rejects cases.length &gt; 20 per block.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-model-instance-as-param">
+      <symptom>Test collection fails with "DatabaseError: no such table" before any test runs. Pytest cannot even discover the suite.</symptom>
+      <root-cause>Parametrize argument values include Django model instances (`User.objects.create(...)` evaluated at module import). Model instances cannot exist before pytest sets up the test database.</root-cause>
+      <fix>Parametrize over IDs, slugs, or dicts; resolve to model instances inside the test using a factory fixture. Spec validator rejects args entries that look like model class references.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-generic-ids">
+      <symptom>pytest failure report: `FAILED tests/test_invoice.py::test_validation[3]`. No clue which case failed without opening the source.</symptom>
+      <root-cause>Author relied on auto-generated numeric IDs from pytest because they didn't use `pytest.param(..., id="name")` or `ids=[]`.</root-cause>
+      <fix>Use `pytest.param(value, id="kebab-case-id")` for every row. Spec rule rejects case.id matching `^\d+$`.</fix>
+    </antipattern>
+
   </section>
 </text>

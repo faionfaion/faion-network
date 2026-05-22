@@ -1,47 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-testing as failure modes. Add detector + repair clauses where missing.</summary>
-
+<text id="03-failure-modes" title="django-testing Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five Django testing antipatterns.</summary>
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mocking in-app services with mocker.patch('apps.orders.services.create_order').</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mocking in-process code means the test passes regardless of what the service actually does. Only mock at process boundaries.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Writing assert result (truthy assertion) instead of assert result.status == 'success'.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Truthy assertions pass against any non-None return value. They provide no coverage of actual behavior.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hardcoding URLs: api_client.get('/api/users/1/').</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hardcoded URLs break on URL refactoring. Use reverse() to decouple tests from URL structure.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Pulling the user fixture into tests that don't use it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unused fixtures create unnecessary DB rows and slow the suite without benefit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using baker.make_recipe without registering a recipe first.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Runtime error. Use baker.make() unless a recipe is explicitly defined and registered.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Time-dependent assertions like assert order.created_at &gt; yesterday without time-freezing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Flakes around midnight, across CI regions, and in DST transitions. Freeze time with freezegun or monkeypatch.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Using sync Client or APIClient for async Django views.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Async views require AsyncClient (Django 4.1+). Sync client misses async-only code branches.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Adding tests that import code (raising line coverage) without asserting behavior.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Coverage percentage is signal, not a goal. Tests that don't assert catch no regressions.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-internal-mocks">
+      <description>Service test mocks every dependency it calls.</description>
+      <reason>Tests verify mocks, not behaviour. Refactors that break implementation but keep the mock contract slip through.</reason>
+    </antipattern>
+    <antipattern id="fm-02-plain-client-for-drf">
+      <description>`from django.test import Client` used to test DRF endpoints.</description>
+      <reason>Content negotiation wrong, auth doesn't flow, body parsing inconsistent.</reason>
+    </antipattern>
+    <antipattern id="fm-03-create-instead-of-bakery">
+      <description>`User.objects.create_user(...)` inline in 40 tests.</description>
+      <reason>Field rename breaks 40 tests; defaults duplicated 40 times.</reason>
+    </antipattern>
+    <antipattern id="fm-04-transaction-true-default">
+      <description>Every test marked `@pytest.mark.django_db(transaction=True)`.</description>
+      <reason>Tests 5x slower; suite goes from 3min to 15min for the same coverage.</reason>
+    </antipattern>
+    <antipattern id="fm-05-no-settings-module-pinned">
+      <description>DJANGO_SETTINGS_MODULE inferred from env at test time.</description>
+      <reason>CI uses production settings; tests leak into prod DB. Hard error.</reason>
+    </antipattern>
   </section>
 </text>

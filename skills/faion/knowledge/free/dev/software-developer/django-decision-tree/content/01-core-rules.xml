@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-decision-tree Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-decision-tree. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+<text id="01-core-rules" title="django-decision-tree Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six rules placing every type of Django code in exactly one layer.</summary>
+  <section title="Rules">
+    <rule id="r1-views-http-only" testable="true" depth="essential">
+      <statement>Views parse HTTP, validate via serializer, call ONE service, build the response. Maximum body length: 25 lines. Forbidden: ORM calls, external API calls, business logic.</statement>
+      <rationale source="Hexagonal architecture; Two Scoops of Django">Layer purity makes views trivially testable (mock the service, assert HTTP status). Mixed views are a perpetual refactor target.</rationale>
+    </rule>
+    <rule id="r2-services-do-side-effects" testable="true" depth="essential">
+      <statement>All DB writes, external API calls, email/SMS sends, queue enqueues live in `services/`. Multi-write functions are decorated `@transaction.atomic`.</statement>
+      <rationale source="Django services pattern">Concentrating side effects in one layer makes them auditable (every write is in one folder) and testable (mock the service in views; assert the side effect in service tests).</rationale>
+    </rule>
+    <rule id="r3-utils-pure" testable="true" depth="essential">
+      <statement>Code in `utils/` is pure: same input → same output, no I/O, no DB, no clock, no randomness. Tests use `assert f(x) == y` with zero mocks.</statement>
+      <rationale source="Functional core / imperative shell — Gary Bernhardt">Pure functions can be tested in three lines. Adding any I/O to utils defeats the layer's purpose.</rationale>
+    </rule>
+    <rule id="r4-dependency-direction" testable="true" depth="essential">
+      <statement>Dependency direction: views/ → services/ + serializers/. services/ → models/ + utils/ + integrations/. utils/ → stdlib only. NEVER reverse.</statement>
+      <rationale source="Clean Architecture — Uncle Bob">Reverse deps (services importing views, utils importing services) cause circular imports and make layer isolation impossible. The direction is non-negotiable.</rationale>
+    </rule>
+    <rule id="r5-tasks-thin-wrappers" testable="true" depth="essential">
+      <statement>Celery tasks (`tasks/`) contain exactly one service call. No business logic. `result = service_fn(...); return result`.</statement>
+      <rationale source="Celery best practices">Tasks are an async transport, not a business layer. Logic in the task body cannot be reused synchronously and resists testing.</rationale>
+    </rule>
+    <rule id="r6-integrations-no-domain" testable="true" depth="essential">
+      <statement>Third-party SDK wrappers live in `integrations/&lt;vendor&gt;.py`. Inputs are primitive (str, int, dict). NO domain types (no `User`, no `Order`) crossing into integrations.</statement>
+      <rationale source="Hexagonal architecture">Integrations should be reusable across apps and replaceable with mocks in tests. Domain types in the integration layer create coupling that defeats both.</rationale>
     </rule>
   </section>
 </text>

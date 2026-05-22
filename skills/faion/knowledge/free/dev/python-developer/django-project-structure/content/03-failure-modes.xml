@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-project-structure Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-project-structure as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-project-structure Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Four layout antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-global-views">
+      <symptom>Every change touches 3+ folders (models/, views/, serializers/, tests/). Code review takes hours because the diff is scattered.</symptom>
+      <root-cause>Project uses flat global folders (models/, views/, serializers/) instead of domain apps. The "modify one feature" workflow hits multiple sibling folders.</root-cause>
+      <fix>Migrate to apps/&lt;domain&gt;/ layout. Each domain owns its models.py / services.py / selectors.py / apis.py. Spec rule r1-apps-layout is the target.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-core-imports-apps">
+      <symptom>core/exceptions.py imports apps.users.models.User to raise UserNotFound. Circular ImportError appears on a partial-test run; only some test orderings trigger it.</symptom>
+      <root-cause>Reverse dependency: core/ should be a sink, but it imports from apps/. Now load-order matters.</root-cause>
+      <fix>Refactor so the exception in core/ stays domain-agnostic; the apps/users/services.py raises it with a User reference. Rule r3-core-no-import-from-apps forbids reverse imports.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-services-selectors-merged">
+      <symptom>services.py grows to 1200 lines. Half the functions are reads (user_list, order_get_by_id), half are writes (order_process). It's hard to spot the side-effecting code.</symptom>
+      <root-cause>"services" became a catch-all. The reads/writes split signal is lost.</root-cause>
+      <fix>Split: selectors.py = pure reads (no side effects); services.py = writes (DB mutations, side effects). Function naming preserves the signal (entity_query vs entity_action).</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-app-folder-naming">
+      <symptom>Imports include `apps.User` (singular), `apps.Orders` (PascalCase), and `apps.user_profile` (singular). Cross-app aliasing convention breaks: `user_models` vs `Users_models`.</symptom>
+      <root-cause>App folders were created without naming discipline. Each contributor picks their own style.</root-cause>
+      <fix>Enforce snake_case plural nouns: users, orders, user_profiles. Rule r5-naming-conventions. Lint pass catches violations.</fix>
+    </antipattern>
+
   </section>
 </text>

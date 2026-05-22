@@ -1,37 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-imports Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-imports as failure modes. Add detector + repair clauses where missing.</summary>
-
+<text id="03-failure-modes" title="django-imports Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five Django import antipatterns.</summary>
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Direct cross-app model import: from apps.users.models import User.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>In projects with multiple apps each defining a User model, direct imports create silent name collisions. The alias convention makes the source app explicit at every usage and enables reliable tooling.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Wildcard import: from apps.orders.models import *.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wildcards make namespace scope opaque to tools (mypy, pylint, IDEs), prevent refactoring automation, and collapse the alias convention's disambiguation benefit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Re-exporting models from __init__.py: __all__ = [Order, User, Item].</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Re-exports collapse the app namespace and recreate the original collision problem. Consumers can import from the wrong location silently. Keep __init__.py empty unless explicitly justified.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>DRF serializer Meta.model gated under TYPE_CHECKING.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Serializer Meta.model is resolved at class creation time (import time). A TYPE_CHECKING-gated import makes the symbol undefined at runtime, causing an AttributeError on serializer load. Use apps.get_model() or a runtime import for Meta.model.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Agent rewrites import aliases but misses call sites: User.objects.get() not updated to user_models.User.objects.get().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Partial rewrites leave dangling names that cause NameError at runtime. Alias fixes require AST-based rewrite of both the import and every usage, not just the import line.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Inconsistent alias names across files: user_models in one file, users_models in another.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Inconsistency defeats the readability benefit of the convention. Every new contributor must re-discover the alias for each app. Pin one suffix pattern (_models, _services, _constants) project-wide.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-bare-cross-app-user">
+      <description>`from apps.users.models import User` and `from apps.orgs.models import User` in the same module.</description>
+      <reason>Second import shadows first; bug only fires when both code paths execute.</reason>
+    </antipattern>
+    <antipattern id="fm-02-star-import">
+      <description>`from apps.utils import *` in any module.</description>
+      <reason>Hides scope; defeats IDE introspection; ruff unused-name detection broken.</reason>
+    </antipattern>
+    <antipattern id="fm-03-misconfigured-first-party">
+      <description>isort treats apps/* as third-party; group order wrong; diffs noisy.</description>
+      <reason>Reviewers learn to ignore import diffs; the convention dies.</reason>
+    </antipattern>
+    <antipattern id="fm-04-type-imports-at-runtime">
+      <description>`from apps.x.models import Y` used only in annotations, imported at runtime.</description>
+      <reason>Startup time grows; risk of runtime circular import. TCH catches it.</reason>
+    </antipattern>
+    <antipattern id="fm-05-relative-import-cross-app">
+      <description>`from ...users.models import User`.</description>
+      <reason>Brittle; rename breaks chains. Use absolute aliased imports.</reason>
+    </antipattern>
   </section>
 </text>

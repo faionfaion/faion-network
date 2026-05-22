@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# api-contract-check.sh — validate live responses against OpenAPI snapshot
-# Usage: bash scripts/api-contract-check.sh [openapi.json] [base_url]
-# Fails (exit 1) if any response status or schema does not match.
+# purpose: Validate live responses against the OpenAPI snapshot in CI.
+# consumes: openapi.json (or path arg 1), base URL of the running service (arg 2).
+# produces: exit 0 if all probed endpoints' responses validate against schema, exit 1 otherwise.
+# depends-on: python3 (stdlib) + jsonschema (or schemathesis if available).
+# token-budget-impact: zero — runs in CI; typical project &lt; 30s.
 set -euo pipefail
 
 SPEC=${1:-openapi.json}

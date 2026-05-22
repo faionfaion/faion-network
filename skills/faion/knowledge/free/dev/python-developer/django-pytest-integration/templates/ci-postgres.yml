@@ -1,0 +1,42 @@
+# purpose: GitHub Actions snippet for running pytest against PostgreSQL with coverage gate.
+# consumes: a Django project with config/settings/test.py.
+# produces: a CI job named "test".
+# depends-on: actions/checkout, actions/setup-python, postgres service container.
+# token-budget-impact: ~180 tokens.
+
+name: test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: faion
+          POSTGRES_PASSWORD: faion
+          POSTGRES_DB: faion_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U faion"
+          --health-interval=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgres://faion:faion@localhost:5432/faion_test
+      DJANGO_SETTINGS_MODULE: config.settings.test_postgres
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - run: pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80
+      - uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml

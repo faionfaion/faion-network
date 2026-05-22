@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: Heuristic scanner: detects emotion/styled-components/vanilla-extract.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Run from CI to verify chosen library is the only one used.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # css-in-js-detect.sh — recommend a CSS-in-JS strategy for a JS/TS repo.
 # Usage: css-in-js-detect.sh [path/to/repo]
 # Outputs JSON with recommendations and risks. Use as input for agent lib selection.

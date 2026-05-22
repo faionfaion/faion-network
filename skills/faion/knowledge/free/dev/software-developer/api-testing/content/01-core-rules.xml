@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="api-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for api-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="api-testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules for shaping a REST/JSON API test suite as a pyramid with OpenAPI-validated bodies and oasdiff-gated CI.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Pyramid shape">
+    <rule id="r1-pyramid-shape" testable="true" depth="essential">
+      <statement>Maintain a pyramid: unit tests &gt;= 70% of suite count, integration tests &lt;= 25%, contract (Pact) tests only at cross-team / cross-service boundaries, end-to-end tests &lt;= 5% and only for revenue-critical paths. Fail CI when the shape inverts beyond these ratios.</statement>
+      <rationale source="Mike Cohn — Succeeding with Agile, 2009; updated practice 2020-2025">Inverted pyramids (ice-cream cone) take 10-100x longer to run, are flaky, and obscure root cause. The shape gate forces engineers to push assertions down the stack.</rationale>
+    </rule>
+  </section>
+
+  <section title="Schema-validated bodies">
+    <rule id="r2-validate-body-against-schema" testable="true" depth="essential">
+      <statement>Every integration test that produces a response MUST validate the body against the OpenAPI schema for the called operation (status, headers, content-type, body shape). Status-code-only assertions are forbidden in integration tests.</statement>
+      <rationale source="OpenAPI Initiative; jsonschema-rs / openapi-core practice">Status-code-only assertions miss the most common contract regressions (renamed fields, dropped properties, changed types). Schema validation catches these for free; the author writes one `validate_against_schema(response, op_id)` instead of N field-level asserts.</rationale>
+    </rule>
+    <rule id="r3-response-fixtures-from-schema" testable="true" depth="essential">
+      <statement>Generate response fixtures FROM the OpenAPI schema (Schemathesis, hypothesis-jsonschema). Do not hand-craft response shapes and let them drift from the spec.</statement>
+      <rationale source="https://schemathesis.readthedocs.io/">Schema-derived fixtures stay in sync with the spec automatically; hand-crafted ones rot the moment the spec evolves.</rationale>
+    </rule>
+  </section>
+
+  <section title="Boundary contracts">
+    <rule id="r4-pact-only-at-boundaries" testable="true" depth="essential">
+      <statement>Pact (or equivalent CDC) contract tests fire only at cross-team or cross-service boundaries. Inside a single team's monorepo, prefer in-process integration tests against the schema. Pact has a real maintenance cost and only pays back at organizational seams.</statement>
+      <rationale source="Pact docs; ThoughtWorks Tech Radar 2023+">Pact's value is decoupling deploy cadence between teams. Inside one team, schema-validated integration tests deliver the same regression catch at a tenth of the operational overhead.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI gate">
+    <rule id="r5-oasdiff-in-ci" testable="true" depth="essential">
+      <statement>Each PR snapshots `openapi.json` (or `.yaml`) and runs `oasdiff` against the base branch. Breaking changes block the merge unless the PR carries the `breaking-change-approved` label. Non-breaking changes are listed in the PR description automatically.</statement>
+      <rationale source="https://www.oasdiff.com/">oasdiff classifies changes (path removed, response type narrowed, required field added, etc.) deterministically. A semantic diff gate catches accidents that semver bumps alone don't.</rationale>
+      <reference path="templates/api-contract-check.sh">Working CI step.</reference>
+    </rule>
+  </section>
+
+  <section title="Fuzz coverage">
+    <rule id="r6-schemathesis-fuzzing" testable="true" depth="essential">
+      <statement>Run Schemathesis (or equivalent property-based fuzzer driven from the OpenAPI spec) nightly OR on every PR touching `views/`. The fuzzer must assert (a) no 5xx for any spec-compliant input and (b) every response validates against its schema.</statement>
+      <rationale source="https://schemathesis.readthedocs.io/">Property-based fuzzing finds edge cases hand-written tests miss (boundary values, encoding edge cases, header combinations). Two cheap assertions ("no 5xx" + "response matches schema") cover the most common API regressions.</rationale>
     </rule>
   </section>
 </text>

@@ -3,73 +3,93 @@ slug: django-api
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Thin views plus service layer plus `drf-spectacular` OpenAPI plus `ViewSet` pattern for Django REST Framework.
-content_id: "49b08d0160fba49c"
-tags: [django, drf, rest-api, openapi, architecture]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Django REST API surface: thin views, service layer, drf-spectacular OpenAPI, ViewSet pattern; services accept domain types, not request.user.
+content_id: "155c06b1871f06a9"
+complexity: medium
+produces: code
+est_tokens: 3600
+tags: [django, drf, rest-api, openapi, service-layer]
 ---
-# Django REST Framework API
+# Django Api
 
 ## Summary
 
-**One-sentence:** Thin views plus service layer plus `drf-spectacular` OpenAPI plus `ViewSet` pattern for Django REST Framework.
+**One-sentence:** Produces a Django REST API surface: thin views, service layer, drf-spectacular OpenAPI, ViewSet pattern; services accept domain types, not request.user.
 
-**One-paragraph:** Thin views plus service layer plus `drf-spectacular` OpenAPI plus `ViewSet` pattern for Django REST Framework. Views validate input and call services; services own all business logic and accept domain types (not `request.user`). Every endpoint gets `@extend_schema` with `summary`, `request`, `responses`, and `tags`. Fat views (business logic in `def post`) are untestable from Celery or management commands and resist refactoring. Separating concerns into serializer → thin view → service → repository lets each layer be tested independently and reused across callers. `drf-spectacular` generates accurate OpenAPI from code; `manage.py spectacular --validate` catches schema regressions before deployment.
+**One-paragraph:** Produces a Django REST API surface: thin views, service layer, drf-spectacular OpenAPI, ViewSet pattern; services accept domain types, not request.user. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- New DRF endpoint inside a Django 5 project following apps/(name)/{views,services,serializers,urls}.py
-- Refactoring a fat view (business logic in def post) into thin view plus services.py extraction
-- Adding OpenAPI docs to existing endpoints via `drf-spectacular`
-- Standardizing pagination, permissions, filtering across a `ViewSet`
+- Project uses Django 5.x (or 4.2 LTS) with Python 3.12+.
+- Code in question lives under `apps/<app>/` or `core/` per the django-coding-standards layout.
+- A test runner is configured (`pytest + pytest-django`).
+- The team has agreed to enforce service-layer logic separation.
 
 ## Skip If (ANY kills it)
 
-- FastAPI, Starlette, Flask — different idioms; see python-fastapi instead
-- Internal-only endpoints used by Django admin or management commands — plain Django views suffice
-- Pure GraphQL APIs — `graphene-django` or `strawberry-django` have orthogonal patterns
-- Async-first endpoints with heavy I/O concurrency — use Django Ninja or FastAPI
-- One-off webhooks needing raw JSON in and out — DRF serializer overhead not justified
+- Project is not on Django (FastAPI, Flask, or other) — load the framework-specific methodology instead.
+- Tiny throwaway tool with no growth horizon — overhead exceeds payoff.
+- Codebase has not adopted the apps/core/config layout and refactoring it is out of scope right now.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `pyproject.toml` | TOML | repo root |
+| `apps/<app>/` layout | directory tree | repo source |
+| Target Django version | string | `pyproject.toml` |
+| Existing test runner config | TOML | `pyproject.toml` `[tool.pytest.ini_options]` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/python-developer/python-typing` | Type-checker baseline for Django code. |
+| `free/dev/software-developer/django-coding-standards` | Layout standard that gates placement of files produced here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to django-api | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold model/serializer/view/test from spec | sonnet | Mechanical code generation. |
+| Design service-layer boundaries | opus | Needs domain judgement. |
+| Audit existing code for layering violations | sonnet | Pattern matching with deterministic output. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/check-api-schema.sh` | CI step: validates Django views match drf-spectacular schema. |
+| `templates/prompt-endpoint-scaffold.txt` | Four-part prompt template for scaffolding a new DRF endpoint. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-api.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[django-coding-standards]] — see methodology AGENTS.md for context.
+- [[django-models]] — see methodology AGENTS.md for context.
+- [[django-pytest]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

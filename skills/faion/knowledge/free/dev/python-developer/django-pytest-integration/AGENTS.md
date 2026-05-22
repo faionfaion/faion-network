@@ -2,73 +2,99 @@
 slug: django-pytest-integration
 tier: free
 group: dev
-domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Integration tests for Django projects cover API endpoints, service layer logic, and database transaction behavior.
-content_id: "7b4cf0dd7195bc90"
-tags: [django, pytest, integration-testing, drf, api-testing]
+domain: python-developer
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces an integration-tests spec — per-endpoint 401/403/200/400/404 matrix, service-layer test plan, transactional_db cases, CI Postgres config, ≥80% coverage gate.
+content_id: "1496c4dc5284c887"
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: [django, pytest, integration-testing, drf, ci]
 ---
+
 # Django pytest Integration Tests
 
 ## Summary
 
-**One-sentence:** Integration tests for Django projects cover API endpoints, service layer logic, and database transaction behavior.
+**One-sentence:** Produces an integration-tests spec naming per-endpoint the security matrix (401/403/200/400/404), per-service the happy/error/edge cases, the transactional_db-scoped tests, the CI Postgres config, and the ≥ 80% coverage gate.
 
-**One-paragraph:** Integration tests for Django projects cover API endpoints, service layer logic, and database transaction behavior. Every DRF endpoint needs tests for authentication (401), authorization (403), happy path (200/201), validation errors (400), and not-found (404). Use APIClient.force_authenticate, pytest factories for data, and format='json' on all requests.
+**Ефективно для:** Django/DRF projects where regressions slip through because tests assert only on status code, where SQLite-passing tests fail on Postgres in production, where permission combinations get missed for half the endpoints.
+
+**One-paragraph:** Codifies the integration-test surface into one spec. Output names every endpoint with its 5 required test cases, every service-layer test class (one logical concept per test), every transactional_db case (on_commit, signals, atomic rollback), and the CI configuration (Postgres engine, coverage gate). Forbids: 200-only asserts, testing service logic via the view, missing permission combinations, running CI on SQLite when production is Postgres.
 
 ## Applies If (ALL must hold)
 
-- Testing DRF viewsets, APIView, or Django views end-to-end.
-- Verifying authentication and permission enforcement on each endpoint.
-- Testing transaction rollback and atomic operations in services.
-- Verifying response shape (status code AND payload fields) after a successful call.
-- Testing filtering, pagination, and query parameters.
+- Django ≥ 5.0 + DRF/Ninja + pytest-django installed.
+- Service has ≥ 1 DRF endpoint and ≥ 1 service-layer function.
+- CI runs against the production DB engine (PostgreSQL preferred).
+- Team commits to coverage ≥ 80% gate.
+- Output drives test codegen + CI config.
 
 ## Skip If (ANY kills it)
 
-- Pure business logic with no HTTP layer — use unit tests against the service class directly.
-- End-to-end browser tests — use Playwright or Cypress for UI flows.
-- Performance load tests — use locust or k6 against a real environment.
+- Pure business logic with no HTTP — unit tests against services directly.
+- E2E browser tests — Playwright/Cypress not pytest-django.
+- Performance load tests — locust/k6 against a real env.
+- Endpoint already integration-tested elsewhere — don't duplicate.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| Endpoint list | YAML | [[django-api]] output |
+| Service-layer function list | bullets | [[django-project-structure]] |
+| CI runner config | YAML | .github/workflows/*.yml |
+| Coverage current baseline | percentage | last pytest --cov run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[django-pytest-fixtures]]` | api_client / authenticated_client / admin_client fixtures. |
+| `[[django-pytest-factories]]` | factories used inside the integration tests. |
+| `[[django-api]]` | endpoint matrix consumed here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 testable rules: per-endpoint security matrix, service-layer direct tests, permission combinations, transactional_db cases, Postgres in CI, one concept per test | ~1300 |
+| `content/02-output-contract.xml` | essential | JSON schema for the integration tests spec | ~1000 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: 200-only assert, view-tested service logic, missing permission combo, SQLite CI | ~800 |
+| `content/04-procedure.xml` | deep | 6 steps: matrix → service tests → permission combos → transactional_db → CI → coverage | ~700 |
+| `content/06-decision-tree.xml` | essential | Per endpoint: which fixture + which test cases? | ~200 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `enumerate_test_cases` | haiku | Mechanical fanout: endpoint × {401,403,200,400,404}. |
+| `emit_integration_spec` | sonnet | Bounded transformation. |
+| `audit_for_security` | opus | Permission combos + cross-user access checks. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/integration-spec.json` | Reference output. |
+| `templates/test_endpoint_skeleton.py` | Reference pytest module for one endpoint with all 5 cases. |
+| `templates/ci-postgres.yml` | GitHub Actions snippet with Postgres service. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-django-pytest-integration.py` | Validate the integration spec JSON. | After spec emission. |
 
 ## Related
 
-- parent skill: `free/dev/python-developer/`
+- [[django-pytest-fixtures]] — fixtures consumed by integration tests.
+- [[django-pytest-mocking]] — boundary mocks (Celery, external API).
+- [[django-api]] — endpoint contract under test.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. Per endpoint: write permission? → require force_authenticate per role; assert body. Per service: side effects (Celery, signals)? → transactional_db + mock at boundary. Per CI: production engine Postgres? → CI runs Postgres.

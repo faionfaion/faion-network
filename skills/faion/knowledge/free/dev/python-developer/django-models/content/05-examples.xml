@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-models Worked Example" version="1.1.0" est_tokens="600" depth="deep">
+  <summary>Billing.Invoice end-to-end.</summary>
+
+  <section title="ERD slice">
+    <list>
+      <item>Invoice belongs to Customer (PROTECT — retain history)</item>
+      <item>Invoice has status (TextChoices: pending/paid/cancelled), amount (positive decimal), number (unique among active)</item>
+      <item>Access pattern: list invoices per customer ordered by recency</item>
+    </list>
+  </section>
+
+  <section title="Spec output">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "billing-models",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "db_engine": "postgresql",
+  "app": "billing",
+  "models": [
+    {
+      "name": "Invoice",
+      "extends": "SoftDeletableModel",
+      "fields": [
+        {"name": "number", "type": "CharField"},
+        {"name": "status", "type": "CharField", "choices_class": "InvoiceStatus", "db_index": true, "db_index_reason": "filter+order_by on every list endpoint; cardinality ~5."},
+        {"name": "amount", "type": "DecimalField"}
+      ],
+      "foreign_keys": [
+        {"field": "customer", "to": "accounts.Customer", "on_delete": "PROTECT", "reason": "Preserve invoice history when a customer is soft-deleted; compliance retention."}
+      ],
+      "constraints": [
+        {"name": "invoice_amount_positive",  "kind": "CheckConstraint",  "expression": "amount > 0"},
+        {"name": "unique_active_invoice_number", "kind": "UniqueConstraint", "fields": ["number"], "condition": "deleted_at IS NULL"}
+      ],
+      "indexes": [{"fields": ["customer", "created_at"], "reason": "list-by-customer ordered by recent; primary access pattern."}],
+      "full_clean_in_service": true,
+      "is_pii": false,
+      "soft_delete": true
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></code>
+    </example>
+  </section>
+</text>

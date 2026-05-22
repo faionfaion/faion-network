@@ -1,37 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-typing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-typing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="python-typing Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six recurring antipatterns when adding type hints to Python 3.10+ codebases under mypy strict.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using Any as a shortcut to silence mypy errors on unknown types instead of properly annotating the shape.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every Any annotation is a gap in type coverage. mypy treats Any as compatible with every type, meaning errors flow through silently. A function returning Any propagates the gap to all callers — one Any can suppress errors across an entire call chain.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Importing Any at module level and using it for dict payloads instead of defining TypedDict or Pydantic models.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Dict-typed returns (dict[str, Any]) are the most common Any sink. Replacing them with TypedDict definitions costs little and gives mypy visibility into key access patterns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding # type: ignore without a specific error code, e.g., # type: ignore instead of # type: ignore[attr-defined].</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bare # type: ignore silences all mypy errors on the line, including future ones unrelated to the original issue. A scoped code silences only the specific error class. warn_unused_ignores = true in mypy config flags stale ignores when the underlying issue is fixed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using cast(SomeType, value) to satisfy mypy instead of adding a proper narrowing guard (isinstance, assert, or TypeIs function).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>cast() is a lie to the type checker — it makes no runtime assertion. If the actual type differs, the bug propagates silently. A narrowing guard (if isinstance(x, SomeType): ...) is both a type assertion and a runtime safety check.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Mixing Optional[X] and X | None in the same codebase, or mixing Union[X, Y] and X | Y.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mixed styles produce inconsistent grep results and confuse ruff --fix idempotency. Pick X | None / X | Y for all new code and enforce with ruff UP007. Existing Optional imports can be batch-migrated with ruff check --select UP --fix.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Applying @runtime_checkable to a Protocol that is checked with isinstance() in a tight loop or frequently-called middleware.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>isinstance(obj, SomeProtocol) with @runtime_checkable checks only method presence, not signatures, and does so on every call. The overhead is measurable on hot paths. Use it only when the check is infrequent and the dynamic dispatch is genuinely needed.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-any-as-shortcut">
+      <description>Using `Any` (explicit or via `dict[str, Any]`) to silence mypy on unknown shapes instead of modeling the shape.</description>
+      <reason>`Any` is compatible with every type; errors flow through silently. One `Any` return value propagates the gap to every caller in the chain. The static coverage that mypy claims to enforce is hollowed out.</reason>
+    </antipattern>
+    <antipattern id="fm-02-dict-of-any-payloads">
+      <description>Returning `dict[str, Any]` from a cross-boundary function (HTTP handler, queue producer, config loader) instead of a `TypedDict`.</description>
+      <reason>Dict-typed returns are the most common `Any` sink. The boundary is exactly where shape contracts matter most — once `Any` enters, every key access downstream is also `Any`. Replacing with `TypedDict` costs almost nothing and gives mypy visibility into every `payload["key"]` access.</reason>
+    </antipattern>
+    <antipattern id="fm-03-bare-type-ignore">
+      <description>Adding `# type: ignore` without a rule code, e.g., `result = call()  # type: ignore` instead of `# type: ignore[no-any-return]`.</description>
+      <reason>Bare ignores silence all mypy errors on the line, including future ones unrelated to the original issue. A scoped code (`[attr-defined]`, `[no-any-return]`, `[arg-type]`) silences only the targeted error class. With `warn_unused_ignores = true`, scoped ignores even alert when the underlying bug is fixed; bare ignores never expire.</reason>
+    </antipattern>
+    <antipattern id="fm-04-cast-as-silencer">
+      <description>Using `cast(SomeType, value)` to satisfy mypy instead of an `isinstance` / `assert` / `TypeIs` narrowing guard.</description>
+      <reason>`cast()` is a compile-time lie — zero runtime check. If the actual type diverges, the bug propagates silently and surfaces deep in the stack as `AttributeError`. A narrowing guard combines type evidence with a real runtime check.</reason>
+    </antipattern>
+    <antipattern id="fm-05-mixed-union-styles">
+      <description>Mixing `Optional[X]` with `X | None`, or `Union[X, Y]` with `X | Y`, inside the same codebase.</description>
+      <reason>Mixed styles break grep workflows (you have to search twice), confuse ruff `--fix` idempotency, and obscure intent — readers cannot tell whether a file is "old" or "new" style. Enforce `X | None` everywhere via ruff UP007 and batch-migrate with `ruff check --select UP --fix`.</reason>
+    </antipattern>
+    <antipattern id="fm-06-runtime-checkable-on-hot-path">
+      <description>Applying `@runtime_checkable` to a Protocol that is then used in `isinstance()` inside a tight loop or per-request middleware.</description>
+      <reason>`isinstance(obj, SomeProtocol)` with `@runtime_checkable` performs structural-presence checks for every declared method, per call. It does not check signatures — only attribute existence — yet pays the introspection cost every time. On hot paths this is measurable; reserve it for infrequent dynamic dispatch.</reason>
+    </antipattern>
   </section>
 </text>

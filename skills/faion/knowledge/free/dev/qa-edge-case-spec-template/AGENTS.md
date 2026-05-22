@@ -3,57 +3,67 @@ slug: qa-edge-case-spec-template
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5d7d10916271a84b"
-summary: QA Edge Case Spec Template — pinned template for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so test data setup for tricky scenario stops being folklore and starts being a reviewable operating tool.
-tags: [dev, free, template, edge, case, spec]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Given/When/Then edge-case test-data spec linked to the originating incident, with named owner, evidence anchors, and a next-review date.
+content_id: "6310c6abbd0ea3e9"
+complexity: light
+produces: spec
+est_tokens: 3400
+tags: [qa, edge-case, test-data, given-when-then, regression]
 ---
 # QA Edge Case Spec Template
 
 ## Summary
 
-**One-sentence:** QA Edge Case Spec Template — pinned template for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so test data setup for tricky scenario stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pins a Given/When/Then edge-case spec to a fixed shape so test-data setup for tricky scenarios becomes a reviewable artefact, not folklore.
 
-**One-paragraph:** In software development, the QA engineer runs test data setup for tricky scenario on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. A Given/When/Then template specifically for tricky scenarios that links to the originating incident — closes the loop between bug and pinned test. `qa-edge-case-spec-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the QA engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Produces a versioned, owned, evidence-anchored Given/When/Then spec for a tricky edge case, linked to the originating incident (Sentry issue, customer ticket, post-mortem) and committed to the team's knowledge space. Fixed section list — practitioners fill, never invent. Carries `version`, `owner`, `last_reviewed`, evidence links, and an explicit "decisions / actions / next-review" block.
+
+**Ефективно для:** QA інженера після інциденту — закриває петлю між багом і запіненим регресійним тестом.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-qa-engineer/Test data setup for tricky scenario`
-- the QA engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- An incident, ticket, or post-mortem produced a tricky-scenario edge case worth pinning.
+- The team has a recurring need to reproduce that scenario (≥ 3 expected hits per year).
+- There is a named owner accountable for refreshing the artefact.
+- The team uses a version-controlled or wiki-style space where the artefact will live.
+- The trigger event is observable (Sentry alert, ticket, threshold, schedule).
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-shot work with no recurrence — write a single test, not a versioned artefact.
+- Team has < 3 instances per year — review cadence costs more than it returns.
+- Regulated context that mandates a different spec format (use the regulator's template).
+- No named owner is available — defer until ownership is resolved; anonymous artefacts rot.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the QA engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Input artifact | Format | Source |
+|---|---|---|
+| Originating incident link | URL | Sentry / Jira / GitHub Issue |
+| Reproduction steps | text | post-mortem or QA notes |
+| Test environment fixture set | code | `tests/fixtures/` or factory module |
+| Named owner | role + person | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `free/dev/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
+| `free/dev/regression-test-first-bugfix-workflow` | Defines the bug → test → fix flow this spec slots into. |
 | `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
+| `content/01-core-rules.xml` | essential | 5 rules: fixed shape, evidence anchors, owner+version, fill budget ≤30 min, decisions/actions block | ~1000 |
 | `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/05-examples.xml` | medium | One full filled spec for a real-shaped edge case | ~500 |
+| `content/06-decision-tree.xml` | essential | When to write a full spec vs an inline test comment | ~300 |
 
 ## Task Routing
 
@@ -61,24 +71,27 @@ tags: [dev, free, template, edge, case, spec]
 |----------|-------|-----------|
 | `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
 | `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the pinned spec change downstream behaviour? |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
 | `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root, incident_url. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-qa-edge-case-spec-template.py` | Validate that filled artefact matches the canonical schema, carries evidence links, owner, and not-stale `last_reviewed`. | Pre-merge and weekly staleness scan. |
 
 ## Related
 
-- parent skill: `free/dev/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[regression-test-first-bugfix-workflow]] — outer flow this spec is the inner artefact of.
+- [[django-pytest]] — common runner the resulting test plugs into.
+- [[api-testing]] — sibling spec format for API-shaped edge cases.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` decides whether the case warrants a full pinned spec (≥3 expected hits/year, named owner, evidence ≥1) or a smaller pytest comment + `pytest.mark.regression`. Use it the moment the QA engineer hits a tricky scenario in triage — before they start typing the spec.

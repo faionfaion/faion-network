@@ -1,3 +1,8 @@
+# purpose: factory_boy factories template for BaseModel inheritors.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Place at tests/factories.py.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 """
 factory_boy DjangoModelFactory scaffolds.
 Location: apps/<domain>/tests/factories.py

@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="python-typing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="python-typing Output Contract" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Output schema for the agent applying this methodology: an annotated-module report with before/after counts and a list of remaining intentional ignores.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://python-typing/output.schema.json",
+  "type": "object",
+  "required": ["module", "python_version_floor", "mypy_strict", "errors", "any_count", "ignores"],
+  "additionalProperties": false,
+  "properties": {
+    "module": {"type": "string", "description": "Dotted path of annotated module"},
+    "python_version_floor": {"type": "string", "pattern": "^3\\.(1[0-9]|[2-9][0-9])$"},
+    "mypy_strict": {"type": "boolean", "const": true},
+    "errors": {
+      "type": "object",
+      "required": ["before", "after"],
+      "properties": {
+        "before": {"type": "integer", "minimum": 0},
+        "after":  {"type": "integer", "minimum": 0, "maximum": 0}
+      }
+    },
+    "any_count": {
+      "type": "object",
+      "required": ["before", "after"],
+      "properties": {
+        "before": {"type": "integer", "minimum": 0},
+        "after":  {"type": "integer", "minimum": 0}
+      }
+    },
+    "ignores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "code", "justification"],
+        "properties": {
+          "file": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "code": {"type": "string", "pattern": "^[a-z-]+$"},
+          "justification": {"type": "string", "minLength": 5}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid example">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "module": "myapp.services.billing",
+  "python_version_floor": "3.12",
+  "mypy_strict": true,
+  "errors": {"before": 42, "after": 0},
+  "any_count": {"before": 11, "after": 1},
+  "ignores": [
+    {
+      "file": "myapp/services/billing.py",
+      "line": 87,
+      "code": "no-any-return",
+      "justification": "django-stubs lacks typing for Manager.raw() — wrapped in QuerySet[Invoice] one level above."
+    }
+  ]
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "module": "myapp.services.billing",
+  "errors": {"before": 42, "after": 3},
+  "any_count": {"before": 11, "after": 11},
+  "ignores": [
+    {"file": "x.py", "line": 1, "code": "", "justification": ""}
+  ]
+}
+]]></code>
+      <note>Invalid: `errors.after` ≠ 0, missing `python_version_floor`, missing `mypy_strict`, empty `code` (must match `^[a-z-]+$`), empty `justification`.</note>
+    </example>
+  </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`mypy --strict &lt;module&gt;` exits 0 — no errors, no warnings.</item>
+      <item>No bare `# type: ignore` in the diff (`grep -RnE "# type: ignore($|[^[])" &lt;module&gt;` empty).</item>
+      <item>No `cast(` introduced in the diff unless flagged in `ignores[]` with justification.</item>
+      <item>Every `Any` survivor is documented either in `ignores[]` justification or has a TODO with a tracking ticket.</item>
+      <item>`ruff check --select ANN,UP,TCH &lt;module&gt;` exits 0.</item>
     </list>
   </section>
 </text>

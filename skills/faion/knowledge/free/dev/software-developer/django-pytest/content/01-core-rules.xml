@@ -1,55 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-pytest Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-pytest. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Set DJANGO_SETTINGS_MODULE in pyproject.toml [tool.pytest.ini_options] to a test-specific settings file with DEBUG=False, in-memory cache, fake email backend, and MD5PasswordHasher.</statement>
-      <rationale source="v1-source">Test settings reduce overhead and prevent accidental real email/payment sends. MD5PasswordHasher speeds up tests by 10-100x but must never leak into dev/prod settings.</rationale>
+<text id="01-core-rules" title="django-pytest Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six rules for the modern Django test stack on pytest.</summary>
+  <section title="Rules">
+    <rule id="r1-pytest-django-not-unittest" testable="true" depth="essential">
+      <statement>Use `pytest + pytest-django`. Do not use Django's `unittest`-style `TestCase` for new tests. Existing TestCase classes are migrated incrementally.</statement>
+      <rationale source="pytest-django docs">pytest fixtures compose cleanly; setUp/tearDown chains do not. The ecosystem (factory_boy, hypothesis, syrupy) integrates with pytest, not unittest.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Keep conftest.py close to where fixtures are used. Project-root conftest only for truly global fixtures (api_client, user, auth_client, network-blocking).</statement>
-      <rationale source="v1-source">Auto-discovery cascades — nested conftest fixtures shadow each other silently if not scoped.</rationale>
+    <rule id="r2-fixtures-not-setup" testable="true" depth="essential">
+      <statement>Test data is created in `@pytest.fixture` (in `conftest.py` or per-module). NO `setUp` / `setUpTestData` methods. Composition via fixture parameter lists.</statement>
+      <rationale source="pytest fixtures docs">Fixtures are reusable across tests/modules without inheritance; setUp couples data to one TestCase subtree.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Add an autouse network-blocking fixture in the root conftest that raises on any socket.create_connection call. Tests that need real network must explicitly opt out.</statement>
-      <rationale source="v1-source">Tests that forget to mock external services produce 30s timeouts, not clear failures. A loud guard makes the gap obvious immediately.</rationale>
+    <rule id="r3-factory-boy-or-bakery" testable="true" depth="essential">
+      <statement>Test data is built with `factory_boy` (preferred for explicit factories) or `model_bakery` (preferred for terse one-offs). NO `Model.objects.create()` inline in tests.</statement>
+      <rationale source="factory_boy / model_bakery docs">Factories centralise defaults; bakery generates plausible values. Inline `.create()` produces brittle setup that breaks every model field change.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use factory_boy DjangoModelFactory instead of fixture-as-function for test data. Override fields per test with UserFactory(email='x@y.z').</statement>
-      <rationale source="v1-source">factory_boy handles sequences and related objects; plain fixtures-as-functions require manual wiring for each variant.</rationale>
+    <rule id="r4-db-fixture-for-db" testable="true" depth="essential">
+      <statement>Tests that touch the DB declare `db` (or `django_db`) fixture explicitly OR use `@pytest.mark.django_db`. No accidental DB usage.</statement>
+      <rationale source="pytest-django docs">Explicit DB markers make the slow-tests boundary visible. Without them, fast tests get accidentally promoted to integration-tier latency.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Mark test classes or functions with @pytest.mark.django_db only when DB access is required. Pure logic tests must not touch the DB.</statement>
-      <rationale source="v1-source">DB setup costs time; pure logic tests run much faster without it. --strict-markers makes missing markers a hard error.</rationale>
+    <rule id="r5-apiclient-force-authenticate" testable="true" depth="essential">
+      <statement>DRF tests use `APIClient` + `client.force_authenticate(user=user)`. Do NOT call the login endpoint inside every test setup.</statement>
+      <rationale source="DRF testing docs">force_authenticate skips the auth round-trip; tests run an order of magnitude faster and isolate the unit under test.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Structure each test: Arrange (set up data) → Act (call code under test) → Assert (verify observable outcome). One logical assertion group per test.</statement>
-      <rationale source="v1-source">Tests with multiple unrelated assertions fail for multiple reasons simultaneously, making the root cause ambiguous.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use APIClient.force_authenticate instead of issuing real login requests in integration tests — much faster and tests the endpoint, not the auth flow.</statement>
-      <rationale source="v1-source">Real login calls include password hashing and token generation — 100-1000ms per test. force_authenticate bypasses all of that.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use @pytest.mark.parametrize for boundary and equivalence-class testing where the same logic runs against multiple inputs.</statement>
-      <rationale source="v1-source">Replaces repetitive test functions with a single declaration; failures show exactly which parameter set failed.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Mock at the I/O boundary (HTTP, mail, payment), test the rest with real DB and real serialization. Over-mocking produces tests that prove nothing.</statement>
-      <rationale source="v1-source">Mocking internal methods tests implementation, not behavior. Tests that mock the wrong import path pass silently with zero real coverage.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use transactional_db (not db) when the code under test calls transaction.on_commit — on_commit callbacks never fire inside a rolled-back transaction.</statement>
-      <rationale source="v1-source">db wraps each test in a savepoint that never commits; on_commit handlers that send emails or dispatch tasks are silently skipped.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Require agents to read tests/conftest.py before generating any test. Prompt: "Read tests/conftest.py first. Reuse existing fixtures."</statement>
-      <rationale source="v1-source">LLMs default to inline creation rather than reuse; reading the file first surfaces the available fixture names.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Require --strict-markers and a lint rule that finds DB-touching code in tests without @pytest.mark.django_db.</statement>
-      <rationale source="v1-source">LLMs omit the marker; the resulting error is clear but wastes tokens iterating. Catch it in lint, not at runtime.</rationale>
+    <rule id="r6-mocks-only-at-boundaries" testable="true" depth="essential">
+      <statement>Mocks live ONLY at process boundaries: outbound HTTP, S3, third-party SDKs, email. Internal services / utils are called for real (in-memory DB).</statement>
+      <rationale source="Martin Fowler — Mocks Aren't Stubs">Mocking internal services tests the mocks, not the code. Boundary-only mocking keeps tests honest while staying fast.</rationale>
     </rule>
   </section>
 </text>

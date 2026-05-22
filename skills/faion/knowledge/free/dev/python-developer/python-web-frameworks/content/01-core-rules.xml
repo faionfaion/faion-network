@@ -1,11 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-web-frameworks Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-web-frameworks. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="python-web-frameworks Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Five testable selection rules for picking Django vs FastAPI vs Flask and freezing the decision in constitution.md.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Framework selection">
+    <rule id="r1-django-when-admin" testable="true" depth="essential">
+      <statement>Choose Django when the project needs a built-in admin/CMS, has heavy ORM coverage of a relational schema, requires Django's mature auth and middleware ecosystem, OR ships templated HTML pages alongside APIs.</statement>
+      <rationale source="https://docs.djangoproject.com/en/5.0/intro/whatsnext/">Django's `admin`, `auth`, `migrations`, `forms`, and CSRF/XSS protection are batteries-included. Reproducing them on FastAPI or Flask is typically weeks of work — and the substitutes (SQLAdmin, FastAPI-Users, custom CSRF) cover only fragments of the surface.</rationale>
+    </rule>
+    <rule id="r2-fastapi-when-async" testable="true" depth="essential">
+      <statement>Choose FastAPI when the workload is high-concurrency I/O-bound async (ML model serving, WebSocket fanout, microservices fronting external APIs), OR auto-generated OpenAPI is a hard requirement, OR Pydantic validation is the validation strategy of record.</statement>
+      <rationale source="https://fastapi.tiangolo.com/async/">FastAPI is async-native on Starlette and pairs with SQLAlchemy 2 async drivers. Pydantic v2 validation pipeline produces validated request bodies and OpenAPI schemas from the same source of truth.</rationale>
+    </rule>
+    <rule id="r3-flask-when-small" testable="true" depth="essential">
+      <statement>Choose Flask only when the deliverable is a small internal tool, a throwaway prototype, OR a custom architecture where every Django/FastAPI convention would be discarded anyway. If you find yourself adding Flask-RESTX + Flask-Migrate + Flask-Login + Flask-WTF, stop and switch to Django.</statement>
+      <rationale source="https://flask.palletsprojects.com/en/3.0.x/">Flask is a WSGI micro-framework. Its strength is minimal core surface. The moment the extension list mirrors Django's batteries, Flask becomes pure friction.</rationale>
+    </rule>
+  </section>
+
+  <section title="Async discipline">
+    <rule id="r4-async-correctness" testable="true" depth="essential">
+      <statement>In Django, async views must call ORM exclusively through `async`/`a`-prefixed methods (`User.objects.aall()`, `aget()`, `afirst()`) or wrap sync calls in `sync_to_async`. In Flask, do NOT expect concurrency from `async def` views under WSGI — they run inside a sync wrapper and provide no parallelism. In FastAPI, all I/O on the request path must be `await`ed; never call sync `requests.get()` or sync ORM inside `async def`.</statement>
+      <rationale source="https://docs.djangoproject.com/en/5.0/topics/async/">Calling sync ORM inside a Django async view blocks the event loop thread. Flask's `async def` support exists for ergonomics but provides no real concurrency under WSGI. FastAPI's perf advantage evaporates the moment a sync call lands inside an `async def` handler.</rationale>
+    </rule>
+  </section>
+
+  <section title="Decision lock">
+    <rule id="r5-lock-the-choice" testable="true" depth="essential">
+      <statement>Record the framework choice in `constitution.md` (or equivalent ADR) as a single line of the form `framework = django|fastapi|flask` plus a paragraph naming the trigger rule (r1, r2, or r3). Downstream agents MUST refuse to switch frameworks mid-feature; switching requires a new ADR superseding the previous.</statement>
+      <rationale source="ADR best practice (Michael Nygard)">Mixing framework idioms (`@app.route` in FastAPI, `User.objects` outside a Django process) is a top-3 LLM failure mode. A pinned ADR plus a constitution lock makes the failure detectable in code review.</rationale>
+      <reference path="templates/pick-framework.sh">Interactive picker that produces the ADR line.</reference>
     </rule>
   </section>
 </text>

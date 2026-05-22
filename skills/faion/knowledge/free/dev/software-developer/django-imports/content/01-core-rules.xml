@@ -1,35 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-imports Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-imports. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Import cross-app modules via their module alias: from apps.orders import models as order_models. Never import symbols directly: from apps.orders.models import Order.</statement>
-      <rationale source="v1-source">Django projects with many apps accumulate model name collisions: User, Order, Item appear in multiple apps. Aliases make the source app explicit at every call site and enable reliable automated refactoring.</rationale>
+<text id="01-core-rules" title="django-imports Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five rules for import discipline in multi-app Django repos.</summary>
+  <section title="Rules">
+    <rule id="r1-alias-cross-app" testable="true" depth="essential">
+      <statement>Cross-app imports MUST use module aliases: `from apps.users import models as users_models`, then `users_models.User`. Never `from apps.users.models import User`.</statement>
+      <rationale source="internal lint rule; isort first-party config">Multiple apps inevitably define `User`, `Status`, `Profile`. Module aliasing prevents shadowing and makes the source app explicit at every callsite.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use a consistent alias suffix per module type: _models, _services, _constants. Never mix order_models and orders_models in the same project.</statement>
-      <rationale source="v1-source">Inconsistent alias names cause the same name-collision problem the convention exists to solve. Pin the pattern in pyproject.toml documentation and enforce via AST linter.</rationale>
+    <rule id="r2-no-star-imports" testable="true" depth="essential">
+      <statement>Never `from anywhere import *`. Star imports break IDE introspection and create silent shadows.</statement>
+      <rationale source="PEP 8">Star imports hide which symbols are in scope. They also break ruff/mypy's ability to detect unused names.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Order imports in four tiers: (1) __future__, (2) stdlib, (3) third-party (django, rest_framework, celery), (4) cross-app aliased, (5) relative from . import.</statement>
-      <rationale source="v1-source">PEP 8 / isort canonical order. Consistent ordering eliminates diff noise and makes it trivial to see which tier an import belongs to at a glance.</rationale>
+    <rule id="r3-isort-django-first-party" testable="true" depth="essential">
+      <statement>Configure isort/ruff first-party list to include `apps`, `core`, `config`. Imports group order: stdlib, third-party, django, first-party, local.</statement>
+      <rationale source="isort docs">Consistent grouping aids review by separating ecosystem layers visually. Misconfigured first-party causes apps/* to land in third-party section.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Never use wildcard imports: from apps.orders.models import * is unconditionally banned.</statement>
-      <rationale source="v1-source">Wildcards make it impossible to determine which names are in scope, break tools like mypy and pylint, and re-create the name-collision problem the alias rule solves.</rationale>
+    <rule id="r4-runtime-vs-typing-imports" testable="true" depth="essential">
+      <statement>Imports used only for type hints go under `if TYPE_CHECKING:` (or `from __future__ import annotations` with a TYPE_CHECKING block). Enforced via ruff TCH rules.</statement>
+      <rationale source="ruff TCH rules">Type-only imports slow startup and may create runtime circulars. TCH separates them cleanly.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Gate type-only cross-app imports behind if TYPE_CHECKING: and add from __future__ import annotations at the file top.</statement>
-      <rationale source="v1-source">Cross-app imports between models.py files are the primary source of Django circular imports. TYPE_CHECKING is False at runtime, so the import never executes. __future__ annotations defers annotation evaluation, making the type hint work without the runtime import.</rationale>
-    </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>DRF serializer Meta.model requires a runtime symbol; do not gate it under TYPE_CHECKING. Use apps.get_model("app_label", "ModelName") or a direct runtime import.</statement>
-      <rationale source="v1-source">Serializers introspect Meta.model at class creation time. A TYPE_CHECKING-gated import makes the symbol undefined at runtime, causing an AttributeError on serializer load.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Exclude migrations/ from the alias linter. Django's migration loader parses model references as strings; agent-generated alias rewrites in migrations break the loader.</statement>
-      <rationale source="v1-source">Migration files use "users.User" string references that are resolved by Django's app registry, not Python imports. Rewriting them to use_models.User breaks makemigrations and migrate.</rationale>
+    <rule id="r5-direct-import-models-only-within-app" testable="true" depth="essential">
+      <statement>Inside an app, model imports are direct: `from .models import User`. Cross-app: aliased (rule r1).</statement>
+      <rationale source="internal convention">Inside-app usage is unambiguous (only one User exists in scope). Cross-app introduces ambiguity that aliasing resolves.</rationale>
     </rule>
   </section>
 </text>

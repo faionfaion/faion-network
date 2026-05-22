@@ -1,3 +1,10 @@
+<!--
+purpose: Canonical AGENTS.md skeleton (20-80 lines).
+consumes: project repo; see methodology AGENTS.md.
+produces: the working artifact; placement: Copy to AGENTS.md in any source-bearing dir; fill the file table.
+depends-on: the tooling pinned in the methodology AGENTS.md.
+token-budget-impact: zero — local-only template.
+-->
 # {Directory Name}
 
 {One sentence: what this directory IS and what it does.}

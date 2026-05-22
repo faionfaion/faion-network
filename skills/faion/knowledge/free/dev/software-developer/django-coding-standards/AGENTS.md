@@ -3,73 +3,93 @@ slug: django-coding-standards
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structural and code conventions for Django projects establishing consistent directory layout (apps/ + core/ + config/settings/), aliased cross-app imports to prevent circular dependencies, service-layer architecture isolating business logic from HTTP concerns, keyword-only service arguments for clarity, TextChoices for model constants, and mandatory update_fields on.
-content_id: "a477bf1edebbe194"
-tags: [django, coding-standards, architecture, service-layer]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a Django code-layout standard: apps/ + core/ + config/ tree, aliased cross-app imports, service-layer logic, keyword-only args, TextChoices, update_fields on saves.
+content_id: "c7b08b816e0c02e7"
+complexity: medium
+produces: spec
+est_tokens: 3600
+tags: [django, coding-standards, architecture, service-layer, imports]
 ---
 # Django Coding Standards
 
 ## Summary
 
-**One-sentence:** Structural and code conventions for Django projects establishing consistent directory layout (apps/ + core/ + config/settings/), aliased cross-app imports to prevent circular dependencies, service-layer architecture isolating business logic from HTTP concerns, keyword-only service arguments for clarity, TextChoices for model constants, and mandatory update_fields on.
+**One-sentence:** Produces a Django code-layout standard: apps/ + core/ + config/ tree, aliased cross-app imports, service-layer logic, keyword-only args, TextChoices, update_fields on saves.
 
-**One-paragraph:** Structural and code conventions for Django projects establishing consistent directory layout (apps/ + core/ + config/settings/), aliased cross-app imports to prevent circular dependencies, service-layer architecture isolating business logic from HTTP concerns, keyword-only service arguments for clarity, TextChoices for model constants, and mandatory update_fields on .save() calls to prevent full-row writes. These rules apply equally to new code and refactoring targets, ensuring the codebase is testable by default and reviewable without domain-specific knowledge.
+**One-paragraph:** Produces a Django code-layout standard: apps/ + core/ + config/ tree, aliased cross-app imports, service-layer logic, keyword-only args, TextChoices, update_fields on saves. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new Django app: wiring apps/, core/, config/settings/{base,development,production}.py
-- Refactoring a Django repo where business logic is in views or model save()
-- Code-review pass enforcing "fat services, thin views" on every PR
-- Onboarding a multi-app project where circular imports are a risk
-- Generating service scaffolds and unit tests from a feature spec
+- Project uses Django 5.x (or 4.2 LTS) with Python 3.12+.
+- Code in question lives under `apps/<app>/` or `core/` per the django-coding-standards layout.
+- A test runner is configured (`pytest + pytest-django`).
+- The team has agreed to enforce service-layer logic separation.
 
 ## Skip If (ANY kills it)
 
-- Single-file Django scripts or management commands under ~10 lines
-- Async-first stacks (FastAPI, Litestar) — service pattern needs async adaptation
-- Greenfield prototypes where speed over structure is acceptable for day one
-- Heavy DDD / hexagonal architecture — a richer pattern set is needed beyond this baseline
+- Project is not on Django (FastAPI, Flask, or other) — load the framework-specific methodology instead.
+- Tiny throwaway tool with no growth horizon — overhead exceeds payoff.
+- Codebase has not adopted the apps/core/config layout and refactoring it is out of scope right now.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `pyproject.toml` | TOML | repo root |
+| `apps/<app>/` layout | directory tree | repo source |
+| Target Django version | string | `pyproject.toml` |
+| Existing test runner config | TOML | `pyproject.toml` `[tool.pytest.ini_options]` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/python-developer/python-typing` | Type-checker baseline for Django code. |
+| `free/dev/software-developer/django-coding-standards` | Layout standard that gates placement of files produced here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to django-coding-standards | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold model/serializer/view/test from spec | sonnet | Mechanical code generation. |
+| Design service-layer boundaries | opus | Needs domain judgement. |
+| Audit existing code for layering violations | sonnet | Pattern matching with deterministic output. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ruff-django.toml` | ruff config tuned for Django (DJ + B + E + F + I + UP). |
+| `templates/service-stub.py` | Service-layer module skeleton with @transaction.atomic. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-coding-standards.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[django-models]] — see methodology AGENTS.md for context.
+- [[django-pytest]] — see methodology AGENTS.md for context.
+- [[django-api]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

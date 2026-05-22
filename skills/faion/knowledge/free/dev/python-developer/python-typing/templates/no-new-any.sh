@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# no-new-any.sh — Pre-commit script: fail if a touched .py file introduces a new Any annotation.
-# Usage: add as a pre-commit hook (see pre-commit config below)
-# Requires: mypy installed in the project venv
+# purpose: Pre-commit guard — fail when a staged .py file introduces a new `Any` annotation.
+# consumes: staged python files from `git diff --cached`.
+# produces: exit 0 (clean) or exit 1 (regression with file:line listing).
+# depends-on: bash, git, grep (no python runtime dep).
+# token-budget-impact: zero — pure shell, runs in &lt; 200ms on typical commits.
 
 set -euo pipefail
 

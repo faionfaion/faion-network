@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="code-coverage Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for code-coverage. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use branch coverage (--cov-branch in pytest, --branches in nyc) as the minimum CI gate, not line coverage. Line coverage misses uncovered else branches on covered if lines.</statement>
-      <rationale source="v1-source">A test that exercises the if-True path covers all lines containing the if statement and the if-body, but the else branch is untested. Branch coverage requires both paths to execute.</rationale>
+<text id="01-core-rules" title="code-coverage Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules for coverage as a CI gate.</summary>
+  <section title="Rules">
+    <rule id="r1-branch-not-line" testable="true" depth="essential">
+      <statement>Use branch coverage (`--cov-branch` / `--branches`) as the CI gate metric. Line coverage misses uncovered `else` branches on covered `if` lines.</statement>
+      <rationale source="pytest-cov / nyc docs">A test exercising the if-True path covers all if-line tokens, but the else branch is untested. Branch coverage requires both sides to execute.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Gate diff coverage (new code) at 90% via diff-cover, not repo total. Set repo total as a soft trend target (80%), not a hard gate.</statement>
-      <rationale source="v1-source">Hard gates on repo total block PRs on codebases with legacy untested code. Diff gating locks new code without requiring full uplift in one go.</rationale>
+    <rule id="r2-diff-cover-90-on-new" testable="true" depth="essential">
+      <statement>Gate diff coverage (changed lines) at 90% via `diff-cover --fail-under=90 --compare-branch=origin/main`. Set repo total as a soft trend target (~80%), not a hard gate.</statement>
+      <rationale source="diff-cover docs">Hard gates on repo total block PRs on codebases with legacy untested code. Diff gating locks new code without forcing full uplift at once.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Stop chasing 100% coverage. Set 80–90 as the practical ceiling; remaining 10–20% is defensive guards and error paths better validated by integration tests.</statement>
-      <rationale source="v1-source">Chasing 100% leads to testing trivial getters, mocking everything, and writing assertions that mirror implementation rather than verify behavior.</rationale>
+    <rule id="r3-stop-at-80-90" testable="true" depth="essential">
+      <statement>Do NOT chase 100% repo coverage. Set 80-90% as the practical ceiling. The last 10-20% is defensive guards / error paths better validated by integration tests.</statement>
+      <rationale source="Martin Fowler — TestCoverage; Coplien 2014">Chasing 100% leads to testing trivial getters, mocking everything, and writing assertions that mirror implementation rather than verify behaviour.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Run diff-cover --fail-under=90 --compare-branch=origin/main after generating coverage.xml. This gates only changed lines, not legacy code.</statement>
-      <rationale source="v1-source">diff-cover compares the coverage report against the git diff, reporting coverage only for lines added or changed in the PR. Legacy untested code does not trigger failures.</rationale>
+    <rule id="r4-coverage-xml-artifact" testable="true" depth="essential">
+      <statement>Every CI run publishes `coverage.xml` as a PR artifact. PR comment summarises diff coverage % and the 3 largest uncovered branches.</statement>
+      <rationale source="GitHub Actions docs">Reviewers cannot enforce coverage without seeing it. Artifact + summary comment makes the gate visible in PR review.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Prompt pattern for per-module uplift: "Read coverage report for src/&lt;module&gt;. Identify the largest uncovered branch (use --cov-report=term-missing). Write 2-4 pytest tests that: (1) Cover the missed branches, (2) Assert observable behavior (return value, side effect), not implementation detail, (3) Reuse existing fixtures from tests/conftest.py. Run: pytest tests/test_&lt;module&gt;.py --cov=src.&lt;module&gt; --cov-branch --cov-report=term-missing --cov-fail-under=90."</statement>
-      <rationale source="v1-source">TBD</rationale>
+    <rule id="r5-mutation-on-critical" testable="true" depth="essential">
+      <statement>On modules tagged `critical` (auth, payments, RBAC), run mutation testing (mutmut / Stryker / cosmic-ray) weekly. Surviving mutants fail the job.</statement>
+      <rationale source="mutmut docs; Stryker docs">Coverage % can be high while assertions are weak. Mutation testing kills the tests that pass even when the production code is wrong.</rationale>
     </rule>
   </section>
 </text>

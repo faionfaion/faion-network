@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI step: validates Django views match drf-spectacular schema.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Add to CI workflow.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 # scripts/check-api-schema.sh
 # Export OpenAPI schema and fail if breaking changes are detected vs docs/api/schema.yml.
 # Run in CI or as a pre-commit hook.

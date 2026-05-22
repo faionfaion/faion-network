@@ -1,32 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="python-web-frameworks Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for python-web-frameworks as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="python-web-frameworks Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Five recurring antipatterns when picking and operating Django/FastAPI/Flask.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mixing framework idioms: @app.route in FastAPI, User.objects in FastAPI routes, Flask-Login in FastAPI projects.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each framework has its own routing, ORM, and auth primitives. Mixing causes silent failures (Flask imports in FastAPI are resolved but behave differently) or runtime errors (User.objects requires django.setup()).</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using @app.on_event("startup") / @app.on_event("shutdown") in FastAPI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deprecated in FastAPI 0.93+. Use the lifespan context manager instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Quoting the unsourced RPS benchmark numbers (1,500/3,000+ RPS) as authoritative.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>These numbers are context-dependent and not from a named benchmark. Always run a project-specific load test before citing performance claims.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Starting with Flask for "simplicity" then adding Flask-RESTX, Flask-Migrate, Flask-Login, Flask-WTF until the dep list mirrors Django.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>At that point Flask adds friction without adding features. The decision matrix should have chosen Django upfront.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using Flask async views expecting real concurrency under WSGI.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>WSGI is synchronous. Async views run in a sync wrapper — no concurrency benefit, just added complexity.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-mixed-idioms">
+      <description>Mixing framework idioms across the codebase: `@app.route` decorators inside a FastAPI module, `User.objects.filter()` inside a non-Django process, Flask-Login middleware in a FastAPI app, or `flask.request` imports next to `Depends(...)`.</description>
+      <reason>Each framework defines its own routing, ORM access, session/auth, and middleware contract. Cross-pollination fails silently (Flask's `request` proxy resolves in FastAPI but is empty) or at runtime (`User.objects` requires `django.setup()` and a configured `DJANGO_SETTINGS_MODULE`). The decision-record ADR makes this detectable in review.</reason>
+    </antipattern>
+    <antipattern id="fm-02-deprecated-startup-events">
+      <description>Using `@app.on_event("startup")` / `@app.on_event("shutdown")` in FastAPI projects on FastAPI ≥0.93.</description>
+      <reason>The `on_event` decorators were deprecated in FastAPI 0.93 in favour of the `lifespan` context manager passed to `FastAPI(lifespan=...)`. `on_event` is still accepted but emits a `DeprecationWarning` and may be removed. New code must use `lifespan`.</reason>
+    </antipattern>
+    <antipattern id="fm-03-unsourced-perf-claims">
+      <description>Quoting RPS / throughput numbers ("FastAPI does 3,000 RPS", "Django serves 1,500 RPS") as authoritative without a named benchmark and a workload description.</description>
+      <reason>Web framework RPS depends on the workload (sync vs async I/O, payload size, DB round trips), the worker model (gunicorn sync, uvicorn workers, ASGI mode), and the hardware. Quoting general numbers in an ADR is a maturity smell. Run a representative load test before pinning a perf claim.</reason>
+    </antipattern>
+    <antipattern id="fm-04-flask-bloat">
+      <description>Starting with Flask "for simplicity", then accumulating Flask-RESTX + Flask-Migrate + Flask-Login + Flask-WTF + Flask-Admin until the dependency list rivals Django's batteries.</description>
+      <reason>At that point Flask adds friction (manual wiring of extensions, no unified migrations story) without delivering features Django already includes. The decision matrix should have selected Django upfront. Use this antipattern as the trigger for re-platforming.</reason>
+    </antipattern>
+    <antipattern id="fm-05-flask-async-illusion">
+      <description>Writing `async def` views in Flask and expecting concurrent request handling.</description>
+      <reason>WSGI is synchronous. Flask's `async` view support wraps the coroutine in a sync call via `asgiref.sync.async_to_sync` — there is zero concurrency benefit, only added cognitive overhead. For real async, switch to FastAPI/Starlette or Quart.</reason>
+    </antipattern>
   </section>
 </text>

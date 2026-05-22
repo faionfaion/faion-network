@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-pytest-mocking Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per boundary: pick a mocking technique.</summary>
+
+  <decision-tree>
+    <root-question id="q-boundary-kind">What kind of boundary is this?</root-question>
+
+    <branch when="q-boundary-kind == 'http-via-requests'">
+      <conclusion ref="r2-responses">technique="responses". Use @responses.activate; add expected calls with responses.add(); assert on responses.calls.</conclusion>
+    </branch>
+
+    <branch when="q-boundary-kind == 'sdk-or-python-import'">
+      <conclusion ref="r1-import-site-patch">technique="unittest-mock-patch". Patch at the CONSUMER's import path (apps.billing.services.stripe), not the definition (stripe).</conclusion>
+    </branch>
+
+    <branch when="q-boundary-kind == 'datetime-now-timezone-now'">
+      <conclusion ref="r3-freezegun">technique="freezegun" (or "time-machine" — faster). Decorator or context-manager.</conclusion>
+    </branch>
+
+    <branch when="q-boundary-kind == 'celery-task'">
+      <question id="q-test-aim">Are you testing that the task RAN, or that it was TRIGGERED?</question>
+
+      <branch when="q-test-aim == 'ran-side-effects'">
+        <conclusion ref="r4-celery">technique="celery-eager" (CELERY_TASK_ALWAYS_EAGER=true; assert on side effects).</conclusion>
+      </branch>
+
+      <branch when="q-test-aim == 'triggered-only'">
+        <conclusion ref="r4-celery">technique="celery-delay-patch" (patch send_task.delay; assert_called_once_with on arguments).</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-boundary-kind == 'django-orm-call'">
+      <conclusion ref="r1-import-site-patch">REJECT — never mock the ORM. Use real factories + db fixture.</conclusion>
+    </branch>
+
+    <branch when="q-boundary-kind == 'time-sleep-in-retry'">
+      <conclusion ref="r1-import-site-patch">REJECT — never mock sleep. Patch the rate-limiter or retry decorator directly.</conclusion>
+    </branch>
+  </decision-tree>
+
+  <example trace="stripe-charge-create"><![CDATA[
+boundary: apps.billing.services calls stripe.Charge.create
+q-boundary-kind -> 'sdk-or-python-import'
+=> conclusion r1: patch_target="apps.billing.services.stripe.Charge.create"; assert_called_once_with(amount=..., currency='usd').
+]]></example>
+</text>

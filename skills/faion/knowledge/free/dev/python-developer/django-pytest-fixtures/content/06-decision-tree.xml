@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-pytest-fixtures Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-fixture db_fixture + scope decisions.</summary>
+
+  <decision-tree>
+    <root-question id="q-needs-db">Does the test that consumes this fixture touch the database?</root-question>
+
+    <branch when="q-needs-db == false">
+      <conclusion ref="r1-db-marker">db_fixture="none". Pure pytest fixture, no Django marker.</conclusion>
+    </branch>
+
+    <branch when="q-needs-db == true">
+      <question id="q-needs-real-tx">Does the test assert on transaction.on_commit / signals / select_for_update?</question>
+
+      <branch when="q-needs-real-tx == true">
+        <conclusion ref="r1-db-marker">db_fixture="transactional_db". Slower, but real transaction semantics fire.</conclusion>
+      </branch>
+
+      <branch when="q-needs-real-tx == false">
+        <conclusion ref="r1-db-marker">db_fixture="db". Wraps test in savepoint; rolls back after.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-scope">
+      <question id="q-mutable">Is the fixture data mutable (different tests may modify)?</question>
+
+      <branch when="q-mutable == true">
+        <conclusion ref="r2-scope">scope="function". Each test gets a fresh copy.</conclusion>
+      </branch>
+
+      <branch when="q-mutable == false">
+        <question id="q-shared-where">Where is it shared?</question>
+
+        <branch when="q-shared-where == 'one-file'">
+          <conclusion ref="r2-scope">scope="module".</conclusion>
+        </branch>
+
+        <branch when="q-shared-where == 'all-tests'">
+          <conclusion ref="r2-scope">scope="session". MUST be truly immutable.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="reference-countries"><![CDATA[
+fixture=static_countries, read-only reference list, used by every test
+q-needs-db -> true
+q-needs-real-tx -> false
+=> db_fixture="db"
+q-mutable -> false
+q-shared-where -> 'all-tests'
+=> scope="session"
+]]></example>
+</text>

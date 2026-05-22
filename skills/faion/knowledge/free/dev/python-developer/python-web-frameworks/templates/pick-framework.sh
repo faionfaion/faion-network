@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# pick-framework.sh — keyword-score a project brief and output a framework choice as JSON.
-# Usage: echo "project brief text" | bash scripts/pick-framework.sh
-# Or: bash scripts/pick-framework.sh < brief.txt
+# purpose: Keyword-score a Python web project brief and emit a framework decision-record JSON.
+# consumes: stdin (Markdown / plain-text brief of the project).
+# produces: decision-record JSON conforming to content/02-output-contract.xml.
+# depends-on: bash, python3 (stdlib only).
+# token-budget-impact: zero; pure local keyword count, &lt; 100ms.
 set -euo pipefail
 
 python - <<'PY'

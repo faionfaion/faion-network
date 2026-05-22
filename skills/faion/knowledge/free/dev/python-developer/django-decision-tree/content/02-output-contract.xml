@@ -1,22 +1,127 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-decision-tree Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-decision-tree Output Contract" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>JSON schema for a Django architectural decision-record.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "project", "signals", "decisions", "dependencies", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "project": {"type": "string"},
+    "signals": {
+      "type": "object",
+      "required": ["team_size", "model_count", "traffic_req_s", "needs_admin"],
+      "properties": {
+        "team_size": {"type": "integer", "minimum": 1},
+        "model_count": {"type": "integer", "minimum": 0},
+        "traffic_req_s": {"type": "number", "minimum": 0},
+        "needs_admin": {"type": "boolean"},
+        "needs_async": {"type": "boolean"},
+        "bounded_contexts": {"type": "integer", "minimum": 1}
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "required": ["framework", "api_stack", "layering", "db", "deployment"],
+      "properties": {
+        "framework": {"type": "string", "enum": ["django", "django-ninja-only", "fastapi", "flask"]},
+        "api_stack": {"type": "string", "enum": ["drf", "ninja", "vanilla-django", "n/a"]},
+        "layering": {"type": "string", "enum": ["simple", "service-layer", "clean-arch"]},
+        "db": {"type": "string", "enum": ["postgres", "postgres-managed", "mysql", "sqlite"]},
+        "deployment": {"type": "string", "enum": ["paas", "vps", "kubernetes", "serverless"]},
+        "rationales": {
+          "type": "object",
+          "patternProperties": {
+            "^(framework|api_stack|layering|db|deployment)$": {"type": "string", "minLength": 20}
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "verdict", "audit"],
+        "properties": {
+          "name": {"type": "string"},
+          "verdict": {"type": "string", "enum": ["adopt", "trial", "hold", "sunset"]},
+          "audit": {
+            "type": "object",
+            "required": ["recent_commits", "django_compat", "license_ok", "no_known_cves"],
+            "properties": {
+              "recent_commits": {"type": "boolean"},
+              "django_compat": {"type": "boolean"},
+              "license_ok": {"type": "boolean"},
+              "no_known_cves": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">decisions.framework == "fastapi" while signals.needs_admin == true (mismatch: admin-heavy product picking FastAPI)</pattern>
+      <pattern id="f2">decisions.layering == "clean-arch" while signals.model_count &lt; 10 (over-engineering MVP)</pattern>
+      <pattern id="f3">decisions.layering == "simple" while signals.model_count &gt;= 50 (under-engineered enterprise)</pattern>
+      <pattern id="f4">a dependency with verdict="adopt" but audit.recent_commits=false OR no_known_cves=false</pattern>
+      <pattern id="f5">decisions.rationales[k] shorter than 20 chars for any decision key</pattern>
+      <pattern id="f6">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort dependencies alphabetically by name.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "faion-net-be-arch",
+  "owner": "ruslan@faion.net",
+  "project": "faion-net-be",
+  "signals": {"team_size": 1, "model_count": 12, "traffic_req_s": 5, "needs_admin": true, "needs_async": false, "bounded_contexts": 2},
+  "decisions": {
+    "framework": "django",
+    "api_stack": "drf",
+    "layering": "service-layer",
+    "db": "postgres-managed",
+    "deployment": "vps",
+    "rationales": {
+      "framework": "Solopreneur with admin-heavy product; needs ORM + admin + auth out of the box.",
+      "api_stack": "Team familiarity with DRF + drf-spectacular requirement for the OpenAPI client.",
+      "layering": "12 models with two bounded contexts; service layer keeps logic testable.",
+      "db": "Managed PostgreSQL (Hetzner managed) for JSONB + full-text search.",
+      "deployment": "Hetzner VPS with systemd; team has DevOps muscle, no scale need for K8s."
+    }
+  },
+  "dependencies": [
+    {"name": "djangorestframework", "verdict": "adopt", "audit": {"recent_commits": true, "django_compat": true, "license_ok": true, "no_known_cves": true}},
+    {"name": "djangorestframework-simplejwt", "verdict": "adopt", "audit": {"recent_commits": true, "django_compat": true, "license_ok": true, "no_known_cves": true}},
+    {"name": "drf-spectacular", "verdict": "adopt", "audit": {"recent_commits": true, "django_compat": true, "license_ok": true, "no_known_cves": true}}
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "project": "x",
+  "signals": {"team_size": 1, "model_count": 3, "traffic_req_s": 1, "needs_admin": true},
+  "decisions": {"framework": "fastapi", "api_stack": "n/a", "layering": "clean-arch", "db": "sqlite", "deployment": "kubernetes", "rationales": {"framework": "x"}},
+  "dependencies": [{"name": "old-pkg", "verdict": "adopt", "audit": {"recent_commits": false, "django_compat": true, "license_ok": true, "no_known_cves": true}}],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

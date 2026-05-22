@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-pytest-factories Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-pytest-factories as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-pytest-factories Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four pytest-factoryboy antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Manually writing @pytest.fixture def user(db): return UserFactory() after registering UserFactory with pytest-factoryboy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>pytest-factoryboy already created a 'user' fixture. The manual fixture silently overrides it without warning. All tests using 'user' now get the manual fixture, which may have different behavior (wrong scope, no cleanup). Use only one source per fixture name.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Factory Boy + Faker unique values drift: tests asserting that response.data["email"] equals "user@example.com" fail when Faker generates a different email.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Faker generates random data on every run. Never assert on the literal value Faker will produce. Instead, assert on the factory instance's own attribute: assert response.data["email"] == user.email. Always derive expected values from the object, not from the Faker call.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>bulk_create skipping signals: factories using bulk_create don't trigger post_save, so tests depending on signals see no side effect.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Django's bulk_create bypasses the model save method and all signals. Tests that expect a Celery task to be enqueued or an audit record to be created via post_save will silently not see it when bulk_create is used. Use individual save() or the factory's create() method when signals matter.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>skip_postgeneration_save missing for Django 4.2+ factories with @factory.post_generation methods.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without skip_postgeneration_save=True in Meta, Factory Boy calls save() after every post_generation hook, causing redundant DB writes. Add skip_postgeneration_save=True and manually save inside the post_generation function only when needed.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-manual-override">
+      <symptom>Test using the `user` fixture gets a different shape than expected (no password set, wrong scope); pytest-factoryboy's auto-generated fixture is silently shadowed.</symptom>
+      <root-cause>After `register(UserFactory)`, a parallel `@pytest.fixture def user(db): return UserFactory()` was added in conftest.py. pytest resolves the manual fixture first; the auto-generated one is hidden.</root-cause>
+      <fix>Delete the manual fixture. Use only `register(UserFactory)`. Detector: grep `def user\(` in conftest after a `register(UserFactory)` call.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-faker-literal-assert">
+      <symptom>Test asserts `response.data["email"] == "alice@example.com"` and passes once; on the next run with a different Faker seed it fails — even though the code is unchanged.</symptom>
+      <root-cause>Test hard-coded a literal that Faker happened to generate. Faker generates new random data each run.</root-cause>
+      <fix>Assert on the factory instance's attribute: `assert response.data["email"] == user.email`. Detector: pytest run twice with different `--randomly-seed` should not flip a test.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-bulk-create-skips-signals">
+      <symptom>Test expects a Celery task to be enqueued from post_save handler; assertion fails. With single create() it works.</symptom>
+      <root-cause>Factory used `bulk_create` for speed. bulk_create bypasses Model.save() AND all signals; the post_save handler never runs.</root-cause>
+      <fix>Use the factory's `create()` (one per call) OR `create_batch(n)` (which calls save() per row). Reserve bulk_create only for tests where signals are explicitly NOT under test. Detector: grep `bulk_create` in factories + tests that assert signals.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-missing-skip-postgen-save">
+      <symptom>Each create() of UserFactory hits the DB twice (build + post_generation + save). Test suite slows down; pytest --durations shows fixture setup ~2x normal.</symptom>
+      <root-cause>Django ≥ 4.2 changed Factory Boy's @post_generation default. Without `skip_postgeneration_save = True` in Meta, save() is called after every post_generation hook.</root-cause>
+      <fix>Add `class Meta: skip_postgeneration_save = True`. Inside the hook, save() ONLY when the hook actually mutated the instance. Spec rule rejects post_generation non-empty with skip_postgeneration_save=false.</fix>
+    </antipattern>
+
   </section>
 </text>

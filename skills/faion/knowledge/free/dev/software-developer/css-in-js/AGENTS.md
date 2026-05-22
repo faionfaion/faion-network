@@ -3,74 +3,91 @@ slug: css-in-js
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for applying CSS-in-JS in React projects: use zero-runtime libraries (`vanilla-extract`, `linaria`, `panda-css`) for RSC and SSR builds; runtime libraries (`styled-components` v6, `@emotion/styled`) only for client-only SPAs.
-content_id: "a4a6805a76b3f45d"
-tags: [css-in-js, styling, react, design-system, typescript]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a CSS-in-JS strategy decision: zero-runtime (vanilla-extract / linaria / Panda) for RSC, runtime (emotion / styled-components) only for client SPAs; styled at module scope; transient props; TS theme augmentation.
+content_id: "b9e25aff87c2b6cc"
+complexity: light
+produces: decision-record
+est_tokens: 3600
+tags: [css-in-js, styling, react, design-system, typescript, zero-runtime]
 ---
-# CSS-in-JS
+# Css In Js
 
 ## Summary
 
-**One-sentence:** A methodology for applying CSS-in-JS in React projects: use zero-runtime libraries (`vanilla-extract`, `linaria`, `panda-css`) for RSC and SSR builds; runtime libraries (`styled-components` v6, `@emotion/styled`) only for client-only SPAs.
+**One-sentence:** Produces a CSS-in-JS strategy decision: zero-runtime (vanilla-extract / linaria / Panda) for RSC, runtime (emotion / styled-components) only for client SPAs; styled at module scope; transient props; TS theme augmentation.
 
-**One-paragraph:** A methodology for applying CSS-in-JS in React projects: use zero-runtime libraries (`vanilla-extract`, `linaria`, `panda-css`) for RSC and SSR builds; runtime libraries (`styled-components` v6, `@emotion/styled`) only for client-only SPAs. Define styled components at module scope, never inside the function body. Use transient props (`$variant`, `$size`), co-locate tokens with TypeScript augmentation, and extract critical CSS for SSR to prevent FOUC. Runtime CSS-in-JS is incompatible with React Server Components and adds 10-30 KB of runtime overhead before any component styles. Defining `styled.X` inside render creates a new class on every render, causing class explosion and performance degradation.
+**One-paragraph:** Produces a CSS-in-JS strategy decision: zero-runtime (vanilla-extract / linaria / Panda) for RSC, runtime (emotion / styled-components) only for client SPAs; styled at module scope; transient props; TS theme augmentation. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- React or Vue components with truly dynamic styles computed from runtime props and state.
-- Design systems where tokens need TS-typed access from inside components.
-- A11y-driven theming (dark mode, high-contrast, prefers-reduced-motion).
-- Component libraries shipped to npm expecting zero CSS-import setup.
-- Migrating from inline `style={}` blobs to scoped maintainable styles.
+- A React project (any framework: Next, Remix, vanilla) considering or using a CSS-in-JS library.
+- TypeScript is in use (theme typing is part of the deliverable).
+- Decision is still open OR the team is auditing an existing setup.
 
 ## Skip If (ANY kills it)
 
-- Next.js 15 and App Router with RSC: runtime CSS-in-JS breaks Server Components. Use Tailwind, CSS Modules, or `vanilla-extract`.
-- Static marketing sites where CSS Modules or plain CSS ship less JS.
-- Tailwind-standardized teams. Mixing creates a split design system.
-- Embedded or size-constrained bundles (extension popups, AMP, email).
-- React Native. Use StyleSheet API; CSS-in-JS libs that map onto RN carry maintenance risk.
+- Project uses Tailwind / utility-first CSS exclusively — CSS-in-JS is out of scope.
+- Project is non-React (Vue / Svelte / Solid) — load the framework-specific styling methodology.
+- Project ships zero client JS (pure static site).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Output target path | string | constitution / SDD spec |
+| Owner (role:person) | string | team roster |
+| Trigger event | event/threshold/schedule | constitution |
+| Evidence anchor (URL / ticket / commit) | string | upstream context |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/software-developer/best-practices-2026` | React 19 / Next 15 baseline this decision plugs into. |
+| `free/dev/software-developer/documentation` | Documents the file table + AGENTS.md pair this methodology depends on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to css-in-js | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold the output skeleton | sonnet | Mechanical, deterministic. |
+| Refine domain-specific content | opus | Needs judgement. |
+| Validate against output contract | sonnet | Schema check, deterministic. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/css-in-js-detect.sh` | Heuristic scanner: detects emotion/styled-components/vanilla-extract usage and reports library. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-css-in-js.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[best-practices-2026]] — see methodology AGENTS.md for context.
+- [[code-review]] — see methodology AGENTS.md for context.
+- [[documentation]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

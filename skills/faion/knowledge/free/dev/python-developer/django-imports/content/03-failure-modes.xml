@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-imports Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-imports as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-imports Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five Django import antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Importing model classes directly from other apps without aliases: from apps.users.models import User.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Direct unaliased cross-app imports create circular dependency risks and name collision hazards. When two apps both have a User model, the last import wins — silently. Use from apps.users import models as user_models and reference user_models.User everywhere.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using from app.models import * or from app.views import * anywhere in a Django project.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Wildcard imports make it impossible to determine where a name comes from without running the code. They also import private names (_internal), pollute the module namespace, and confuse both human readers and type checkers. Django's autoloading already handles admin.py, apps.py, etc. — wildcards add no value.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding from __future__ import annotations to DRF serializer or view files that use DRF field introspection or drf-spectacular schema generation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DRF uses get_type_hints() for serializer field resolution. from __future__ import annotations defers all annotations to strings, which breaks DRF's introspection and drf-spectacular's schema generation. The annotations become unparseable strings at the point where DRF expects actual type objects. Verify DRF compatibility before adding __future__ annotations to serializer files.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using lazy from heavy_module import HeavyClass syntax (PEP 810) on Python 3.12 or 3.13 codebases.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>PEP 810 lazy import syntax is not available until Python 3.14+. Using it on 3.12/3.13 causes SyntaxError at import time — not at the usage site. The current alternative (function-scoped import or importlib.import_module()) achieves the same effect without version risk.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using multi-dot relative imports (from ...users.models import User) or other multi-dot relative imports across app boundaries.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Multi-dot relative imports break on any directory restructuring and create fragile coupling to the physical directory layout. They also confuse readers about where the module lives. Replace with absolute cross-app imports: from apps.users import models as user_models.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-unaliased-cross-app">
+      <symptom>ImportError: cannot import name 'User' OR `User` resolves to the wrong app's model. Adding a second app with `User` silently shadows the original.</symptom>
+      <root-cause>Cross-app import without alias: `from apps.users.models import User`. The module-level name `User` is bound to whatever was imported last; two apps with the same name collide.</root-cause>
+      <fix>`from apps.users import models as user_models; user_models.User`. Alias convention is mandatory by rule r4-alias-convention. Detector: grep `from apps\.[a-z_]+\.(models|services) import [A-Z]`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-wildcard-import">
+      <symptom>Code review takes 3x longer because reviewers can't tell where a name came from. mypy reports "Name 'foo' is not defined" intermittently.</symptom>
+      <root-cause>`from apps.foo.models import *` pollutes the importing module with every public name from the source. Private names with no leading underscore leak in too.</root-cause>
+      <fix>Replace wildcard with explicit imports. policies.wildcard_allowed=false is forbidden. Detector: grep `^from .+ import \*`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-future-annotations-in-drf">
+      <symptom>DRF serializer raises TypeError at runtime: "ForwardRef cannot be evaluated." drf-spectacular fails to produce OpenAPI schema.</symptom>
+      <root-cause>`from __future__ import annotations` was added at the top of a serializer file. DRF's get_type_hints() and drf-spectacular's schema generator cannot resolve the stringified ForwardRefs at the time they need real types.</root-cause>
+      <fix>Do NOT add `from __future__ import annotations` to apps/*/serializers.py. The repo ruff config adds a per-file ignore that detects + forbids this in serializer files.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-pep810-lazy-on-313">
+      <symptom>SyntaxError at module import: "lazy import syntax not supported." Build fails on Python 3.12/3.13.</symptom>
+      <root-cause>PEP 810 `lazy from heavy_module import HeavyClass` was used on Python &lt; 3.14, where the syntax does not exist.</root-cause>
+      <fix>Use a function-scoped import or `importlib.import_module()` until Python 3.14 is the project minimum. Spec policies.python_version pins the floor; lint rule blocks `^lazy from `.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-multi-dot-relative">
+      <symptom>Moving `apps/users/` to `apps/accounts/users/` breaks every `from ...users.models import` in a different app. CI fails on every dependent import.</symptom>
+      <root-cause>Multi-dot relative imports (`from ..` / `from ...`) couple modules to the physical directory layout. Any restructuring breaks them.</root-cause>
+      <fix>Replace with absolute cross-app imports: `from apps.users import models as user_models`. policies.multi_dot_relative_allowed=false is forbidden by the spec.</fix>
+    </antipattern>
+
   </section>
 </text>

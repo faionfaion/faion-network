@@ -3,73 +3,94 @@ slug: code-coverage
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Coverage measures which lines and branches execute during tests.
-content_id: "f4cb3e32da517b08"
-tags: [testing, coverage, quality-assurance, ci, metrics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a branch-coverage CI gate scoped to diff (90% on new code) plus mutation testing on critical modules.
+content_id: "b49a1f353bbb2655"
+complexity: medium
+produces: config
+est_tokens: 3600
+tags: [testing, coverage, branch-coverage, diff-cover, mutation-testing]
 ---
 # Code Coverage
 
 ## Summary
 
-**One-sentence:** Coverage measures which lines and branches execute during tests.
+**One-sentence:** Produces a branch-coverage CI gate scoped to diff (90% on new code) plus mutation testing on critical modules.
 
-**One-paragraph:** Coverage measures which lines and branches execute during tests. Use branch coverage (not line-only) as the gate metric, enforce it on diffs (new code), set per-module thresholds via diff-cover, and pair with mutation testing on critical modules to validate assertion quality. High line coverage can coexist with completely missing branches and zero-assertion tests. Branch coverage + diff gating closes the two most common loopholes: the "test exists but asserts nothing" gap and the "legacy code drags total down" excuse.
+**One-paragraph:** Produces a branch-coverage CI gate scoped to diff (90% on new code) plus mutation testing on critical modules. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- Setting a CI gate on new-code diff coverage (not absolute repo total)
-- Identifying critical untested paths in legacy code prior to refactor
-- Pre-release: surface modules below threshold, prioritize test work there
-- Code review: confirm new code is covered without chasing 100% globally
-- Onboarding tests for a third-party library wrapper before upgrading the dep
+- The project has a test runner emitting a coverage report (pytest-cov, c8, vitest --coverage).
+- CI runs the test suite on every PR.
+- The team has agreed branch coverage is the metric, not line.
+- A baseline coverage % is known (run baseline first if not).
 
 ## Skip If (ANY kills it)
 
-- As the primary quality metric — 100% coverage with no assertions is worse than 60% with rich ones
-- Generated code (migrations, OpenAPI clients, protobuf stubs) — exclude in .coveragerc
-- UI / E2E smoke tests where flakiness outweighs coverage signal
-- Single-file scripts or spike code — instrumentation overhead not justified
+- Project is prototype-stage with no stable test suite.
+- Test suite is integration-only (branch coverage uninformative on thin shims).
+- Codebase is mostly framework boilerplate (Django admin pages, generated migrations) where coverage is meaningless.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Output target path | string | constitution / SDD spec |
+| Owner (role:person) | string | team roster |
+| Trigger event | event/threshold/schedule | constitution |
+| Evidence anchor (URL / ticket / commit) | string | upstream context |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/software-developer/api-testing` | Test suite this coverage measures. |
+| `free/dev/software-developer/django-pytest` | Runner pattern this configures. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to code-coverage | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold the output skeleton | sonnet | Mechanical, deterministic. |
+| Refine domain-specific content | opus | Needs judgement. |
+| Validate against output contract | sonnet | Schema check, deterministic. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/coverage.toml` | pytest-cov branch-coverage config with diff-cover gate. |
+| `templates/diff-cover-ci.sh` | CI step: produce coverage.xml then run diff-cover --fail-under=90. |
+| `templates/jest.coverage.js` | Jest/Vitest branch-coverage config for JS/TS suites. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-code-coverage.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[api-testing]] — see methodology AGENTS.md for context.
+- [[code-review]] — see methodology AGENTS.md for context.
+- [[django-pytest]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

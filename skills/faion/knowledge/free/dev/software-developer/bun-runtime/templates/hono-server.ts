@@ -1,3 +1,8 @@
+// purpose: Hono HTTP server template running on Bun.serve.
+// consumes: project repo; see the methodology AGENTS.md for input contract.
+// produces: the working artifact described above; placement: Place under src/server.ts.
+// depends-on: the tooling pinned in the methodology's AGENTS.md.
+// token-budget-impact: zero — local-only template; build/CI time is the only cost.
 // src/index.ts — Hono server with middleware, Zod validation, JWT-protected routes
 import { Hono } from "hono"
 import { cors } from "hono/cors"

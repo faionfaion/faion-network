@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# bp2026-drift.sh — detect drift from the 2026 baseline.
-# Usage: bp2026-drift.sh path/to/repo
+# purpose: Compare a repo's pinned stack versions against the 2026 baseline.
+# consumes: path to repo (arg 1, default cwd); reads package.json, pyproject.toml.
+# produces: stdout listing of (stack -&gt; pinned vs baseline -&gt; drift verdict).
+# depends-on: bash, jq, grep, sed (no python runtime dep).
+# token-budget-impact: zero; pure local CLI work.
 set -euo pipefail
 root="${1:-.}"
 fail=0

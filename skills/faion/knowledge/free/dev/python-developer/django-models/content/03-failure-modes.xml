@@ -1,42 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-models Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-models as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-models Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Seven Django model antipatterns the spec must forbid or detect.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Inheriting from models.Model directly instead of the project BaseModel.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Breaks uid/timestamps consistency across the codebase. All domain models must use BaseModel. Audit with: grep -r "models.Model" apps/*/models.py and flag direct inheritance.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Omitting full_clean() in service functions before save().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>model.save() does not call full_clean(). Validation defined in clean() or field validators is silently skipped.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Exposing id (PK) and uid both in DRF serializers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defeats the purpose of UUID. Serializers must exclude id; use uid only. DRF viewsets need lookup_field = 'uid'.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Using GeneratedField(db_persist=True) or partial indexes on non-PostgreSQL databases.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SQLite and MySQL do not fully support these features. Migrations may succeed but fail at query time. Pin the DB engine in a comment next to the field/index.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Auto-squashing migrations without reviewing the generated migration file.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Squash can drop UUID unique=True constraints and re-add without backfilling, corrupting production data. Every migration file must be reviewed by a human before migrate runs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Adding db_index=True on every field "for performance" without justification.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every index increases write overhead and storage. Only index fields actually used in filter/order_by/distinct on production traffic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Reordering fields in a model "to clean it up".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Django generates spurious AlterField migrations on field reorder. Lock field order via code review.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-direct-models-model">
+      <symptom>New model lacks uid + created_at + updated_at. API responses leak integer id. Audit script flags inconsistency vs sibling models.</symptom>
+      <root-cause>Developer wrote `class Foo(models.Model)` instead of `class Foo(BaseModel)`. The project BaseModel is bypassed; common fields are not inherited.</root-cause>
+      <fix>Replace base to extend BaseModel / SoftDeletableModel. Audit grep -r "models.Model" apps/*/models.py and flag. Spec rule r1-base-inheritance forbids direct inheritance for domain models.</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-no-full-clean">
+      <symptom>Invalid data lands in the DB; clean() validators are documented but never fire. Integrity errors appear hours later in downstream queries.</symptom>
+      <root-cause>Service code calls obj.save() without obj.full_clean(). Django's save() does NOT call full_clean(); only ModelForm and Django Admin do.</root-cause>
+      <fix>Wrap saves in services: obj.full_clean(); obj.save(). Spec field full_clean_in_service=true is the contract.</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-id-and-uid-exposed">
+      <symptom>API response includes both `id` (integer) and `uid` (UUID). External consumers store the integer; an internal table-rebuild changes ids and breaks consumers.</symptom>
+      <root-cause>Serializer's Meta.fields lists both `id` and `uid`. Defeats the purpose of the dual-field pattern.</root-cause>
+      <fix>Exclude `id` from serializers; expose only `uid`. Set lookup_field = 'uid' on viewsets. Spec [[django-api]] enforces this at the API layer.</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-generated-field-on-sqlite">
+      <symptom>Migration applies in dev (SQLite); CI migration on Postgres fails OR vice-versa. Different test environments produce different schema.</symptom>
+      <root-cause>GeneratedField(db_persist=True) or partial-condition UniqueConstraint used without pinning the DB engine. SQLite + MySQL support is partial/different.</root-cause>
+      <fix>Pin db_engine=postgresql when using partial indexes / GeneratedField. Spec rule rejects partial conditions on non-PostgreSQL.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-auto-squash-migrations">
+      <symptom>Squashed migration silently drops a unique=True constraint and re-adds it without backfilling; production rows that violate the constraint cannot be saved after deploy.</symptom>
+      <root-cause>`python manage.py squashmigrations` was run without human review of the output. Squashed file lost a partial-index constraint that the original had.</root-cause>
+      <fix>Every migration file (including squashed) must be reviewed by a human before `migrate`. Lint rule blocks auto-merging migration PRs without an explicit review approval.</fix>
+    </antipattern>
+
+    <antipattern id="fm-6-blanket-db-index">
+      <symptom>Write latency on the orders table doubles. INSERT plans show 14 index updates per row.</symptom>
+      <root-cause>db_index=True was added to every field "for performance". Each index multiplies write cost; many of them are never used in any read query.</root-cause>
+      <fix>Spec rule r8-index-justification: every db_index requires a reason ≥ 10 chars referencing a production filter/order_by/distinct path. Audit existing indexes against pg_stat_user_indexes.</fix>
+    </antipattern>
+
+    <antipattern id="fm-7-field-reorder">
+      <symptom>PR adds a spurious AlterField migration that does nothing semantically; reviewers waste time understanding it.</symptom>
+      <root-cause>Developer reordered model fields "to clean up". Django detects the new order and emits a no-op AlterField migration.</root-cause>
+      <fix>Lock field order via code review. Do not reorder for cosmetic reasons. If field order must change, do it in one focused PR with a hand-edited migration.</fix>
+    </antipattern>
+
   </section>
 </text>

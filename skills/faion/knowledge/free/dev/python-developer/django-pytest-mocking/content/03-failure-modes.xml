@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-pytest-mocking Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-pytest-mocking as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="django-pytest-mocking Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Five mocking antipatterns.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mocking at the definition site instead of the import site: @patch("stripe.Charge.create") when the service uses import stripe.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Python binds names at import time. The service's local name apps.payments.services.stripe is already bound. Patching the original stripe module does not affect the bound name in the service. Always patch at the import site.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Mocking Django ORM methods (objects.filter, objects.create, .save) instead of using real test data.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ORM mocks bypass the database entirely, making tests that assert on "data was saved" meaningless. Use the db fixture and real factories. Real database tests with savepoint rollback are fast enough and catch real bugs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mocking time.sleep to speed up rate-limit tests or retry loops.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mocking sleep changes test behavior: the retry logic no longer sleeps, but the rate-limiter state machine may not work correctly without real delays. Patch the rate-limiter or retry mechanism directly, not the sleep primitive.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Tests computing datetime.now() at module load time for comparison values: EXPIRY = datetime.now() + timedelta(days=7) at module level.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Module-level datetime.now() calls are evaluated once when the module is collected, not per test. The value drifts across long test runs. Move time calculations inside the test function or use freeze_time to pin the clock.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Not verifying that a mock was called, only asserting on the return value it produced.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If the mock is not called but returns a value anyway (because the code path was skipped), the test passes with no real verification. Always use assert_called_once_with (or assert_called) to verify the call happened with the expected arguments.</repair>
-    </failure-mode>
+
+    <antipattern id="fm-1-definition-site-patch">
+      <symptom>Mock is set up; test calls the service; mock.assert_called_once() FAILS with "Expected to be called once. Called 0 times." The real Stripe API is silently hit.</symptom>
+      <root-cause>Patch target is `stripe.Charge.create` (definition site), but the service did `import stripe` and has its own local name `apps.payments.services.stripe`. The patch never affects the service's local binding.</root-cause>
+      <fix>Patch at the consumer's import path: `@patch("apps.payments.services.stripe.Charge.create")`. Detector: validator rejects patch_target not starting with "apps.".</fix>
+    </antipattern>
+
+    <antipattern id="fm-2-orm-mock">
+      <symptom>Test asserts that User was created. The mock returned the expected object. But no row exists in the DB — the service's create() was never tested.</symptom>
+      <root-cause>Test patched `User.objects.create` to return a Mock. The DB layer was bypassed entirely.</root-cause>
+      <fix>Use the real ORM with the db fixture + factories. Mocks belong at external boundaries, not at the ORM. Spec anti_mocks MUST include "django-orm".</fix>
+    </antipattern>
+
+    <antipattern id="fm-3-sleep-mock">
+      <symptom>Rate-limit test passes (sleep is mocked) but the rate-limiter never resets in production. Bug found post-deploy.</symptom>
+      <root-cause>`time.sleep` was patched to a no-op. The retry / rate-limit state machine relies on real time passing.</root-cause>
+      <fix>Mock the rate-limiter or retry decorator directly, NEVER `time.sleep`. Spec anti_mocks MUST include "time-sleep".</fix>
+    </antipattern>
+
+    <antipattern id="fm-4-module-level-datetime-now">
+      <symptom>First few hundred tests pass; tests deeper in the run fail because the cached EXPIRY is now in the past relative to the test's frozen clock.</symptom>
+      <root-cause>Module-level `EXPIRY = datetime.now() + timedelta(days=7)` is evaluated once at import; subsequent tests see the same stale value.</root-cause>
+      <fix>Move time-relative calculations inside the test function. Use freezegun if a fixed clock is needed. Detector: grep `^[A-Z_]+ = datetime\.now\(` in test modules.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-no-call-assert">
+      <symptom>Test "passes" but the assertion is meaningless — the code path that should have called the mock was actually skipped (early return) and the mock's return_value was used by some unrelated default.</symptom>
+      <root-cause>Test asserted only on the mock's return value or downstream effects, never on whether the mock was actually invoked.</root-cause>
+      <fix>Always use `mock.assert_called_once_with(...)` or `mock.assert_called()`. Spec rule rejects asserts that lack a call-verification keyword.</fix>
+    </antipattern>
+
   </section>
 </text>

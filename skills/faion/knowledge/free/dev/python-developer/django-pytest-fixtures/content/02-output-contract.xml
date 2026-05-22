@@ -1,22 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-pytest-fixtures Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="django-pytest-fixtures Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON schema for the pytest-django fixtures spec.</summary>
 
   <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
+    <schema format="json-schema"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["artefact_id", "owner", "django_version", "fixtures", "settings_overrides", "xdist", "tests_layout", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "django_version": {"type": "string"},
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "scope", "db_fixture", "conftest_path"],
+        "properties": {
+          "name": {"type": "string"},
+          "scope": {"type": "string", "enum": ["function", "class", "module", "package", "session"]},
+          "db_fixture": {"type": "string", "enum": ["none", "db", "transactional_db", "django_db_reset_sequences"]},
+          "conftest_path": {"type": "string"},
+          "mutable": {"type": "boolean"}
+        }
+      }
+    },
+    "settings_overrides": {
+      "type": "object",
+      "required": ["DATABASES", "PASSWORD_HASHERS", "EMAIL_BACKEND", "CELERY_TASK_ALWAYS_EAGER", "MEDIA_ROOT_per_test"],
+      "properties": {
+        "DATABASES": {"type": "string"},
+        "PASSWORD_HASHERS": {"type": "string"},
+        "EMAIL_BACKEND": {"type": "string"},
+        "CELERY_TASK_ALWAYS_EAGER": {"const": true},
+        "MEDIA_ROOT_per_test": {"const": true}
+      }
+    },
+    "xdist": {
+      "type": "object",
+      "required": ["enabled", "cold_start_flag", "warm_flag"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "cold_start_flag": {"const": "--create-db"},
+        "warm_flag": {"const": "--reuse-db"}
+      }
+    },
+    "tests_layout": {"type": "array", "minItems": 3, "items": {"type": "string"}},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></schema>
+
     <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
+      <pattern id="f1">a fixture with scope=session AND mutable=true</pattern>
+      <pattern id="f2">a fixture with db_fixture=db whose name contains "signals", "on_commit", or "select_for_update"</pattern>
+      <pattern id="f3">settings_overrides.MEDIA_ROOT_per_test != true</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
     </forbidden>
+
     <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
+      <transformation>Sort fixtures alphabetically.</transformation>
     </allowed-transformations>
   </output-contract>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
-  </section>
+  <example valid="true"><![CDATA[
+{
+  "artefact_id": "billing-fixtures",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "fixtures": [
+    {"name": "api_client",           "scope": "function", "db_fixture": "none", "conftest_path": "tests/conftest.py", "mutable": false},
+    {"name": "authenticated_client", "scope": "function", "db_fixture": "db",   "conftest_path": "tests/conftest.py", "mutable": false},
+    {"name": "static_countries",     "scope": "session",  "db_fixture": "db",   "conftest_path": "tests/conftest.py", "mutable": false}
+  ],
+  "settings_overrides": {
+    "DATABASES": "sqlite in-memory",
+    "PASSWORD_HASHERS": "MD5PasswordHasher",
+    "EMAIL_BACKEND": "locmem",
+    "CELERY_TASK_ALWAYS_EAGER": true,
+    "MEDIA_ROOT_per_test": true
+  },
+  "xdist": {"enabled": true, "cold_start_flag": "--create-db", "warm_flag": "--reuse-db"},
+  "tests_layout": ["tests/unit/", "tests/integration/", "tests/e2e/", "tests/factories/"],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
+
+  <example valid="false"><![CDATA[
+{
+  "artefact_id": "bad",
+  "owner": "team",
+  "django_version": "5",
+  "fixtures": [{"name": "signals_fired_user", "scope": "session", "db_fixture": "db", "conftest_path": "tests/conftest.py", "mutable": true}],
+  "settings_overrides": {"DATABASES": "x", "PASSWORD_HASHERS": "MD5PasswordHasher", "EMAIL_BACKEND": "locmem", "CELERY_TASK_ALWAYS_EAGER": true, "MEDIA_ROOT_per_test": false},
+  "xdist": {"enabled": true, "cold_start_flag": "--create-db", "warm_flag": "--reuse-db"},
+  "tests_layout": ["tests/"],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+]]></example>
 </text>

@@ -1,32 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-decision-tree Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for django-decision-tree as failure modes. Add detector + repair clauses where missing.</summary>
-
+<text id="03-failure-modes" title="django-decision-tree Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six layering antipatterns in Django.</summary>
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Database query in utils/ (e.g., User.objects.filter() inside a utils function).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>utils/ functions have no DB dependency by convention. Adding ORM calls makes them non-pure, breaks unit testability (now you need a test DB), and blurs the service/util boundary. Any code needing a DB query belongs in services/, not utils/. Move the logic to services and have utils handle the pure transformation parts.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Business logic in views/ (conditional rules, calculations, multi-step DB operations directly in the view method).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Business logic in views is untestable without an HTTP context. The view becomes a 200-line method that is impossible to reuse or test in isolation. Agents writing new features will duplicate the logic in another view, creating inconsistency. Always delegate to services/.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Circular imports between apps (apps/orders/services.py importing from apps/users/services.py when users already imports orders).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Circular imports cause ImportError at startup, breaking the entire application. Root cause: tight coupling through direct imports. Solutions: break the import cycle by restructuring (extract shared code to core/), use Django signals for async notifications, or pass data by value instead of importing. Never accept circular imports; they're always a design smell.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Service importing a view (to call view methods or access view constants).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A service should not know about HTTP. If you need to import a view in a service, that's a sign the code should be in utils or the view should delegate to the service instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Util importing a service (for convenience, to avoid passing parameters).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Utils are pure helpers. If a util imports a service, it's no longer pure and loses testability. Break the util into smaller pure functions and have the service call them.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-orm-in-view">
+      <description>`.objects.filter()` / `.save()` inside a view body.</description>
+      <reason>View becomes untestable in isolation; business logic locked to HTTP.</reason>
+    </antipattern>
+    <antipattern id="fm-02-orm-in-utils">
+      <description>`Model.objects.get(...)` inside a `utils/` function.</description>
+      <reason>Utils stops being pure; tests now require the DB.</reason>
+    </antipattern>
+    <antipattern id="fm-03-business-logic-in-task">
+      <description>Celery task body computes pricing, sends emails, writes DB rows directly.</description>
+      <reason>Same logic cannot run synchronously (from a view or REPL). Tasks become hidden services.</reason>
+    </antipattern>
+    <antipattern id="fm-04-circular-import">
+      <description>Services imports from views OR utils imports from services.</description>
+      <reason>Circular import errors at startup; layer isolation broken.</reason>
+    </antipattern>
+    <antipattern id="fm-05-domain-in-integration">
+      <description>`integrations/stripe.py` imports `apps.billing.models.Order`.</description>
+      <reason>Stripe wrapper now app-specific; replacing/upgrading the wrapper risks the entire billing app.</reason>
+    </antipattern>
+    <antipattern id="fm-06-multi-write-no-atomic">
+      <description>Service performs two `.save()` calls without `@transaction.atomic`.</description>
+      <reason>Partial-write left after exception; data integrity violated.</reason>
+    </antipattern>
   </section>
 </text>

@@ -3,73 +3,91 @@ slug: documentation
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Convention for writing AI-readable directory context files: CLAUDE.
-content_id: "8932853683be833c"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces the CLAUDE.md (@AGENTS.md) + AGENTS.md (20-80 lines) pair in every source-bearing directory: purpose, file table, key types, commands, gotchas. Required at every source-bearing dir.
+content_id: "410690a54da729ca"
+complexity: light
+produces: spec
+est_tokens: 3600
 tags: [documentation, claude-md, agents-md, convention, routing]
 ---
-# CLAUDE.md / AGENTS.md Documentation
+# Documentation
 
 ## Summary
 
-**One-sentence:** Convention for writing AI-readable directory context files: CLAUDE.
+**One-sentence:** Produces the CLAUDE.md (@AGENTS.md) + AGENTS.md (20-80 lines) pair in every source-bearing directory: purpose, file table, key types, commands, gotchas. Required at every source-bearing dir.
 
-**One-paragraph:** Convention for writing AI-readable directory context files: CLAUDE.md (single line: @AGENTS.md) and AGENTS.md (20-80 lines covering purpose, file table, key types, commands, gotchas). Required in every directory with source code — not just repo roots but also subpackages, module folders, test dirs.
+**One-paragraph:** Produces the CLAUDE.md (@AGENTS.md) + AGENTS.md (20-80 lines) pair in every source-bearing directory: purpose, file table, key types, commands, gotchas. Required at every source-bearing dir. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- Creating a new directory with code: add CLAUDE.md + AGENTS.md before any other file.
-- Onboarding an agent to an unfamiliar module — agent reads AGENTS.md to route, then loads specific files.
-- After a significant refactor: regenerate AGENTS.md so future context loads stay accurate.
-- Multi-agent workspaces where each tool reads a different filename.
-- Repos with many sub-packages where loading the whole tree blows context budget.
+- Project contains directories with source code that lack `CLAUDE.md` / `AGENTS.md`.
+- The team has agreed to the convention `CLAUDE.md = @AGENTS.md`.
+- AI agents (Claude Code, Codex, Cursor) read these files during sessions.
 
 ## Skip If (ANY kills it)
 
-- Tiny one-file scripts — a README is sufficient.
-- Generated / vendored code (node_modules/, dist/) — never document these.
-- Highly volatile prototypes where structure changes daily — document after dust settles.
-- Directories that are pure data (assets, fixtures) without logic.
+- Single-file scripts with no surrounding directory.
+- Vendored / generated code directories where edits would be overwritten.
+- Empty `__init__.py`-only dirs with no logic.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Output target path | string | constitution / SDD spec |
+| Owner (role:person) | string | team roster |
+| Trigger event | event/threshold/schedule | constitution |
+| Evidence anchor (URL / ticket / commit) | string | upstream context |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/software-developer/best-practices-2026` | Repo-wide convention surface this implements. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to documentation | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold the output skeleton | sonnet | Mechanical, deterministic. |
+| Refine domain-specific content | opus | Needs judgement. |
+| Validate against output contract | sonnet | Schema check, deterministic. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/AGENTS-universal.md` | Canonical AGENTS.md skeleton (20-80 lines, file table, key types, commands, gotchas). |
+| `templates/audit-agents-md.sh` | Sweep the repo and report directories missing CLAUDE.md / AGENTS.md. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-documentation.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[best-practices-2026]] — see methodology AGENTS.md for context.
+- [[code-review]] — see methodology AGENTS.md for context.
+- [[django-coding-standards]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

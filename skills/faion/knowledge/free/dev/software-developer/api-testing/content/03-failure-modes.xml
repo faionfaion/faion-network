@@ -1,37 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="api-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for api-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="api-testing Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Six recurring antipatterns when shaping API test suites.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Asserting only on status_code without validating the response body.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A 200 with a missing required field is a schema regression. Always validate body against the OpenAPI spec.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Weakening assertions to fix a failing test (assert r.status_code in (200, 201, 204)).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Loosened assertions hide real regressions. Failures must be fixed in production code or the spec, not in the test assertion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Sharing test fixtures across parallel test runs with pytest-xdist without isolation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Shared DB state causes non-deterministic failures. Use pytest.mark.serial or --dist=loadgroup for stateful tests.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Hardcoding auth tokens or credentials in test fixtures and committing to git.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Leaked tokens are a security incident. Run a scrubber pass before every commit.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Calling the live external service (Stripe, SendGrid) in tests because it works locally.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CI environments lack external credentials; tests become flaky. Mock at the HTTP boundary with respx/WireMock.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Importing pactman on the provider side.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>pactman is unmaintained. Use pact-python&gt;=2 for all provider verification.</repair>
-    </failure-mode>
+    <antipattern id="fm-01-status-code-only">
+      <description>Integration test asserts only `response.status_code == 200` and the response body shape is never checked.</description>
+      <reason>Status-code-only assertions miss renamed fields, dropped properties, and changed types — the most common contract regressions. A schema-validated assertion costs the same to write and catches all of them.</reason>
+    </antipattern>
+    <antipattern id="fm-02-schema-drift">
+      <description>Test fixtures define response shapes inline; the OpenAPI spec evolves; fixtures keep passing with the old shape.</description>
+      <reason>Hand-crafted fixtures rot. Schema-derived fixtures (Schemathesis, hypothesis-jsonschema) stay in sync automatically. Drift produces false-positive green tests.</reason>
+    </antipattern>
+    <antipattern id="fm-03-e2e-inversion">
+      <description>E2E test count exceeds integration count; the suite is mostly Playwright/Cypress runs that exercise the whole stack.</description>
+      <reason>Ice-cream-cone shape: tests take 10-100x longer, flake under network jitter, and obscure root cause. Push assertions down to integration with schema validation; reserve E2E for revenue-critical journeys (≤5%).</reason>
+    </antipattern>
+    <antipattern id="fm-04-pact-inside-team">
+      <description>Pact contracts wired between modules inside a single team's monorepo where deploys are atomic.</description>
+      <reason>Pact's value is decoupling deploy cadence between teams. Inside one team, schema-validated integration tests deliver the same regression catch with a tenth of the operational overhead (broker setup, provider verification job, version negotiation).</reason>
+    </antipattern>
+    <antipattern id="fm-05-snapshot-only">
+      <description>Tests rely on snapshot/diff assertions of entire response payloads instead of schema validation.</description>
+      <reason>Snapshots break on every benign change (new optional field, reordered keys), pushing teams to mass `--update-snapshots` runs that bypass the original assertion intent. Schema validation only fails on real contract drift.</reason>
+    </antipattern>
+    <antipattern id="fm-06-only-happy-paths">
+      <description>Suite covers 2xx paths only; 4xx error-handling paths (validation, auth, rate limit) are not asserted.</description>
+      <reason>The 4xx surface is where API contracts most often regress (error code renames, body shape changes). Add an integration test per documented 4xx response in the OpenAPI spec and validate body shape just as for 2xx.</reason>
+    </antipattern>
   </section>
 </text>

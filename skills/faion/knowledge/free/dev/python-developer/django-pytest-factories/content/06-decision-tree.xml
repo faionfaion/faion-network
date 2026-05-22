@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-pytest-factories Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-model factory routing.</summary>
+
+  <decision-tree>
+    <root-question id="q-side-effects">Does the model have post_save signals that trigger emails, Celery tasks, or audit writes?</root-question>
+
+    <branch when="q-side-effects == true">
+      <conclusion ref="r3-mute-signals">mute_signals=true on the factory. Test the signal handler in a separate dedicated test that exercises the live save() path.</conclusion>
+    </branch>
+
+    <branch when="q-side-effects == false">
+      <question id="q-has-post-gen">Does the factory have any @post_generation hook (M2M, password, file)?</question>
+
+      <branch when="q-has-post-gen == true">
+        <conclusion ref="r1-djangomodelfactory">skip_postgeneration_save=true (required for Django ≥ 4.2). Inside the hook, save explicitly only when needed.</conclusion>
+      </branch>
+
+      <branch when="q-has-post-gen == false">
+        <conclusion ref="r2-register-in-conftest">Standard DjangoModelFactory + SubFactory. register() in root conftest.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="user-with-password"><![CDATA[
+factory=UserFactory, has @post_generation set_password, no external signals
+q-side-effects -> false
+q-has-post-gen -> true
+=> conclusion r1: skip_postgeneration_save=true.
+]]></example>
+</text>

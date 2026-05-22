@@ -3,73 +3,94 @@ slug: django-models
 tier: free
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Django model design following the BaseModel abstract pattern (integer PK + UUID field + timestamps), with explicit on_delete on every ForeignKey, TextChoices enums in per-app constants.
-content_id: "6aae71cded2ec2b2"
-tags: [django, models, database, design, architecture]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces Django model files: integer PK + UUID via BaseModel, explicit on_delete, TextChoices enums, composite Meta.indexes, no business logic on models.
+content_id: "0700366d46fa49cb"
+complexity: medium
+produces: code
+est_tokens: 3600
+tags: [django, models, database, design, textchoices]
 ---
 # Django Models
 
 ## Summary
 
-**One-sentence:** Django model design following the BaseModel abstract pattern (integer PK + UUID field + timestamps), with explicit on_delete on every ForeignKey, TextChoices enums in per-app constants.
+**One-sentence:** Produces Django model files: integer PK + UUID via BaseModel, explicit on_delete, TextChoices enums, composite Meta.indexes, no business logic on models.
 
-**One-paragraph:** Django model design following the BaseModel abstract pattern (integer PK + UUID field + timestamps), with explicit on_delete on every ForeignKey, TextChoices enums in per-app constants.py, and composite Meta.indexes for query-driven indexing. Django 5 db_default is supported for database-computed defaults.
+**One-paragraph:** Produces Django model files: integer PK + UUID via BaseModel, explicit on_delete, TextChoices enums, composite Meta.indexes, no business logic on models. The methodology fires on a named trigger, produces a fixed-shape artifact with evidence anchors and a named owner, and is reviewed against outcomes at a published cadence so it stops being folklore.
+
+**Ефективно для:** команд, що оперують цим артефактом регулярно і потребують детермінованого формату плюс перевірюваного результату.
 
 ## Applies If (ALL must hold)
 
-- Creating a new Django app's models/ package.
-- Refactoring ad-hoc models to the canonical BaseModel + Meta.indexes shape.
-- Adding ForeignKey relations and choosing on_delete policy.
-- Introducing per-app constants.py with TextChoices enums.
-- Adding Django 5 db_default / computed fields.
+- Project uses Django 5.x (or 4.2 LTS) with Python 3.12+.
+- Code in question lives under `apps/<app>/` or `core/` per the django-coding-standards layout.
+- A test runner is configured (`pytest + pytest-django`).
+- The team has agreed to enforce service-layer logic separation.
 
 ## Skip If (ANY kills it)
 
-- Async ORM workflows (.asave(), .aget()) — async manager patterns are not covered here.
-- Multi-database routing, sharding, or replicas — out of scope.
-- Heavy JSONField / ArrayField document-style data — methodology assumes relational schema.
-- Tenant isolation (django-tenants, schema-per-tenant) — needs additional methodology.
+- Project is not on Django (FastAPI, Flask, or other) — load the framework-specific methodology instead.
+- Tiny throwaway tool with no growth horizon — overhead exceeds payoff.
+- Codebase has not adopted the apps/core/config layout and refactoring it is out of scope right now.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| `pyproject.toml` | TOML | repo root |
+| `apps/<app>/` layout | directory tree | repo source |
+| Target Django version | string | `pyproject.toml` |
+| Existing test runner config | TOML | `pyproject.toml` `[tool.pytest.ini_options]` |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `free/dev/python-developer/python-typing` | Type-checker baseline for Django code. |
+| `free/dev/software-developer/django-coding-standards` | Layout standard that gates placement of files produced here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to django-models | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
+| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| Scaffold model/serializer/view/test from spec | sonnet | Mechanical code generation. |
+| Design service-layer boundaries | opus | Needs domain judgement. |
+| Audit existing code for layering violations | sonnet | Pattern matching with deterministic output. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/base-model.py` | Working Django abstract BaseModel with id + uid + created_at + updated_at. |
+| `templates/check-migrations.sh` | Pre-commit guard: makemigrations --check --dry-run. |
+| `templates/constants.py` | TextChoices skeleton for status / role / kind enums. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-django-models.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
 
-- parent skill: `free/dev/software-developer/`
+- [[django-coding-standards]] — see methodology AGENTS.md for context.
+- [[django-pytest]] — see methodology AGENTS.md for context.
+- [[django-api]] — see methodology AGENTS.md for context.
+
+## Decision tree
+
+The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.

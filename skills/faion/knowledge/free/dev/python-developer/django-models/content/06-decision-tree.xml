@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="django-models Decision Tree" version="1.1.0" est_tokens="250">
+  <summary>Per-FK on_delete + per-field index decisions.</summary>
+
+  <decision-tree>
+    <root-question id="q-fk-target">What does this FK point to?</root-question>
+
+    <branch when="q-fk-target == 'user-or-account'">
+      <conclusion ref="r5-on-delete">on_delete=PROTECT (delete is an event, not silent cascade). Or SET_NULL if the relationship is genuinely optional.</conclusion>
+    </branch>
+
+    <branch when="q-fk-target == 'child-row-meaningless-without-parent'">
+      <conclusion ref="r5-on-delete">on_delete=CASCADE. Reason must explicitly state "child row meaningless without parent" or equivalent.</conclusion>
+    </branch>
+
+    <branch when="q-fk-target == 'optional-assignee-or-tag'">
+      <conclusion ref="r5-on-delete">on_delete=SET_NULL (the value becomes null, the row survives).</conclusion>
+    </branch>
+
+    <branch when="q-fk-target == 'reference-data-immutable'">
+      <conclusion ref="r5-on-delete">on_delete=PROTECT or DO_NOTHING. Reference data should not be deleted while in use.</conclusion>
+    </branch>
+
+    <branch when="q-field-used-in-filter-or-order-by">
+      <question id="q-cardinality">Is this combination (a) used on every list endpoint OR (b) on a hot path?</question>
+
+      <branch when="q-cardinality == true">
+        <conclusion ref="r8-index-justification">Add db_index=true (single field) OR Meta.indexes composite Index. Justify in reason ≥ 10 chars.</conclusion>
+      </branch>
+
+      <branch when="q-cardinality == false">
+        <conclusion ref="r8-index-justification">Do NOT add an index. Every index costs write amplification; only add when query traffic demands it.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="invoice-customer-fk"><![CDATA[
+fk=Invoice.customer -> Customer
+q-fk-target -> 'user-or-account'
+=> conclusion r5: on_delete=PROTECT; reason="Preserve invoice history when Customer is soft-deleted."
+]]></example>
+</text>

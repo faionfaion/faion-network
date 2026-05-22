@@ -1,11 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="python-typing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for python-typing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="python-typing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Seven testable rules for adding type annotations on Python 3.10+ (preferably 3.12+) with mypy strict + pyright + ruff UP/ANN/TCH.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+  <section title="Built-in generics and unions (PEP 585 + PEP 604)">
+    <rule id="r1-builtin-generics" testable="true" depth="essential">
+      <statement>Use built-in generic forms (`list[int]`, `dict[str, int]`, `set[str]`, `tuple[int, ...]`, `type[T]`). Never import `List`, `Dict`, `Set`, `Tuple`, `Type` from `typing`.</statement>
+      <rationale source="PEP 585 (Python 3.9+) made built-in containers subscriptable; the typing-module aliases are deprecation candidates. ruff UP006 auto-fixes them.">PEP 585.</rationale>
+    </rule>
+    <rule id="r2-pipe-unions" testable="true" depth="essential">
+      <statement>Use `X | None` for nullable types and `X | Y` for unions. Never use `Optional[X]` or `Union[X, Y]` in new code on Python 3.10+. Enforce via ruff UP007.</statement>
+      <rationale source="PEP 604">PEP 604 pipe syntax reads as English "X or None"; `Optional[X]` hides nullability behind a name.</rationale>
+    </rule>
+  </section>
+
+  <section title="PEP 695 type parameter syntax (Python 3.12+)">
+    <rule id="r3-pep-695" testable="true" depth="essential">
+      <statement>On Python 3.12+ floors, declare generics with PEP 695 type parameter syntax: `class Repo[T]:`, `def first[T](items: list[T]) -> T | None:`, `type JSON = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None`. Drop the `TypeVar = TypeVar('T')` line and `Generic[T]` base class unless a non-trivial bound or constraint is reused across modules.</statement>
+      <rationale source="https://peps.python.org/pep-0695/">PEP 695 declares type parameters at their natural location and removes the redundant `TypeVar` / `Generic[T]` boilerplate. Variance is inferred. Both syntaxes coexist for backwards compatibility, but PEP 695 is the documented default in mypy from 1.11 onward.</rationale>
+    </rule>
+  </section>
+
+  <section title="Structural contracts and payload shapes">
+    <rule id="r4-typed-dict" testable="true" depth="essential">
+      <statement>At every cross-boundary point that returns a dict (API response, queue payload, config dict), define a `TypedDict` with `Required` / `NotRequired` for optional fields. Never let `dict[str, Any]` cross a public boundary.</statement>
+      <rationale source="PEP 655 (Required/NotRequired)">TypedDict has zero runtime cost and makes shape contracts explicit. Replacing `dict[str, Any]` returns is the single biggest gain in static coverage in most Django/FastAPI codebases.</rationale>
+    </rule>
+    <rule id="r5-protocol-over-abc" testable="true" depth="essential">
+      <statement>Use `Protocol` (PEP 544) for structural duck-typing contracts. Reserve ABC inheritance for class hierarchies that genuinely need `super()` call chains. Add `@runtime_checkable` only when the Protocol is used in `isinstance()` at runtime — never on hot paths.</statement>
+      <rationale source="PEP 544">Protocol obeys the Open/Closed principle without import coupling. `@runtime_checkable` performs structural-presence checks per call; the overhead is measurable on middleware-tight loops.</rationale>
+    </rule>
+  </section>
+
+  <section title="Type-checker discipline">
+    <rule id="r6-strict-mypy" testable="true" depth="essential">
+      <statement>Set `strict = true` under `[tool.mypy]`. Use `[[tool.mypy.overrides]]` for `tests.*` (relax `disallow_untyped_defs`), `migrations.*` (`ignore_errors = true`), and stub-less third-party packages (`ignore_missing_imports = true`). Never reduce strictness repo-wide to lower an error count.</statement>
+      <rationale source="https://mypy.readthedocs.io/en/stable/config_file.html">`strict = true` is the union of nine separate flags. Reducing it repo-wide re-hides exactly the bugs the checker exists to surface. Scoped overrides keep signal high.</rationale>
+      <reference path="templates/mypy-config.toml">Working strict config with `django-stubs` plugin and override sections for tests and migrations.</reference>
+    </rule>
+    <rule id="r7-scoped-ignores" testable="true" depth="essential">
+      <statement>Never write a bare `# type: ignore`. Always pin a rule code: `# type: ignore[attr-defined]`. Always add a justification comment after it. Enable `warn_unused_ignores = true` so stale ignores fail CI when their underlying issue is fixed. Never use `cast(T, x)` to silence a checker when an `isinstance` / `assert` narrowing guard would work — `cast()` makes no runtime assertion.</statement>
+      <rationale source="mypy 1.x release notes">Bare ignores silence all errors on the line, including future unrelated ones. `cast()` is a lie to the checker — if the actual type differs, the bug propagates silently. Narrowing guards are both a type assertion and a runtime safety check.</rationale>
+    </rule>
+  </section>
+
+  <section title="Django and ruff wiring">
+    <rule id="r8-django-stubs" testable="true" depth="essential">
+      <statement>In any Django project, install `django-stubs` + `djangorestframework-stubs` and wire `plugins = ["mypy_django_plugin.main"]` in `[tool.mypy]`. Without the plugin, every `Model.objects.filter()` is `Any` and mypy loses coverage of the entire data layer.</statement>
+      <rationale source="https://github.com/typeddjango/django-stubs">The django-stubs mypy plugin replaces Django's dynamic ORM resolution with statically-typed equivalents (`QuerySet[Model]`, manager generics, DRF serializer field resolution).</rationale>
+    </rule>
+    <rule id="r9-ruff-annotations" testable="true" depth="essential">
+      <statement>Enable ruff rule groups `ANN` (annotation coverage), `TCH` (move runtime-unused imports under `if TYPE_CHECKING:`), and `UP` (auto-upgrade deprecated typing syntax) in CI. Run `ruff check --select UP --fix` in pre-commit to keep `Optional` / `List` / `Dict` from creeping back in.</statement>
+      <rationale source="https://docs.astral.sh/ruff/rules/">UP auto-converts `Optional[X]` → `X | None`, `List[X]` → `list[X]`. TCH cuts import-time work. ANN closes annotation-coverage gaps without manual auditing.</rationale>
     </rule>
   </section>
 </text>

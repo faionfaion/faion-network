@@ -1,3 +1,8 @@
+# purpose: pytest-django conftest with db + factories + APIClient.
+# consumes: project repo; see the methodology AGENTS.md for input contract.
+# produces: the working artifact described above; placement: Place at tests/conftest.py.
+# depends-on: the tooling pinned in the methodology's AGENTS.md.
+# token-budget-impact: zero — local-only template; build/CI time is the only cost.
 """
 Minimal root conftest.py for Django + pytest projects.
 Copy to tests/conftest.py, add project-specific fixtures as needed.

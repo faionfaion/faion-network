@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-api Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-api. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+<text id="01-core-rules" title="django-api Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules for Django REST API surface.</summary>
+  <section title="Rules">
+    <rule id="r1-thin-views" testable="true" depth="essential">
+      <statement>Views contain no business logic. Body limited to: (1) serializer validation, (2) ONE service call, (3) Response construction. Body length &lt;= 25 lines.</statement>
+      <rationale source="Two Scoops of Django, Ch. 9">Thin views keep the HTTP layer testable in isolation and route all writes through one place (services). Business logic in views resists testing and migration to async / different transport.</rationale>
+    </rule>
+    <rule id="r2-service-takes-domain-types" testable="true" depth="essential">
+      <statement>Service functions accept domain types (User instance, Decimal amount), NEVER `request.user`, `request.POST`, or raw dicts.</statement>
+      <rationale source="Hexagonal architecture; Django services pattern">Services should be callable from views, tasks, and management commands with identical signatures. Coupling them to HTTP request objects locks them to the view layer.</rationale>
+    </rule>
+    <rule id="r3-drf-spectacular" testable="true" depth="essential">
+      <statement>Use `drf-spectacular` for OpenAPI generation. Decorate each ViewSet/action with `@extend_schema`. Validate that `openapi.json` parses with `oasdiff` in CI.</statement>
+      <rationale source="drf-spectacular docs">drf-spectacular keeps the schema in lockstep with code. Manual schema files drift the first sprint after they ship.</rationale>
+    </rule>
+    <rule id="r4-viewset-over-apiview" testable="true" depth="essential">
+      <statement>Use `ViewSet` (and `ModelViewSet` for CRUD) over flat `APIView` for resources following REST conventions. Stick to `APIView` for genuinely non-RESTful endpoints (custom RPC, webhooks).</statement>
+      <rationale source="DRF docs">ViewSets generate consistent URL patterns and play well with `drf-spectacular`. APIView is escape hatch only.</rationale>
+    </rule>
+    <rule id="r5-pagination-by-default" testable="true" depth="essential">
+      <statement>Every list endpoint MUST be paginated. Use cursor pagination for large or append-only datasets; page-number pagination otherwise. Default `page_size = 20`, max `page_size = 100`.</statement>
+      <rationale source="DRF pagination docs">Unpaginated lists DoS production the first time a customer accumulates 10k rows. Page-number pagination is fine for small sets; cursor pagination is required for streams where rows shift.</rationale>
+    </rule>
+    <rule id="r6-error-shape-rfc7807" testable="true" depth="essential">
+      <statement>Error responses follow RFC 7807 problem-detail shape: `{type, title, status, detail, instance}`. Wire via `drf-spectacular`'s exception handler integration.</statement>
+      <rationale source="RFC 7807">Consistent error shape makes consumer code uniform across endpoints. Mixed error shapes (DRF default vs custom JSON) cost consumer teams real hours.</rationale>
     </rule>
   </section>
 </text>
