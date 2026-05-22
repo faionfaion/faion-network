@@ -1,51 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gemini-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gemini-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Gemini Basics Core Rules" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Five testable rules for starter Gemini text + chat integrations.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>For new projects, default to Gemini 2.0 Flash unless explicit requirements force a different choice. Use Gemini 1.5 Pro only for complex reasoning or contexts &gt;500K tokens. Use Gemini 2.0 Flash Thinking for math, logic puzzles, and complex multi-step reasoning.</statement>
-      <rationale source="v1-source">Flash is 10x cheaper than Pro and fast enough for most agent pipeline steps. The cost difference justifies the minor quality trade-off for bounded tasks. Pro is necessary only for long-context analysis or open-ended reasoning. Thinking models expose reasoning steps explicitly, beneficial for debugging complex logic but not needed for simple tasks.</rationale>
+      <statement source="google-ai-docs-2026">Model is pinned to a specific version (e.g. gemini-2.5-flash-preview-04). Never use "gemini-pro" without a version suffix.</statement>
+      <rationale>Vendor aliases shift; pinning protects against silent behaviour drift.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Install the official google-generativeai SDK via pip. For authentication, use environment variable GOOGLE_API_KEY when working with Google AI Studio (free tier or development). For production, use Google Cloud and Vertex AI with gcloud application-default login (no API key in code).</statement>
-      <rationale source="v1-source">Environment variables prevent credentials from being checked into git. For production, Vertex AI with workload identity is the secure path; it avoids API keys entirely.</rationale>
+      <statement source="security-folklore">API key comes from an env var or secret manager. Never hard-coded into source; never committed.</statement>
+      <rationale>Hard-coded keys leak via git history; standardised env keeps secrets out of code.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Always set max_output_tokens in generation_config. Omitting it allows the model to generate arbitrarily long responses, multiplying cost unexpectedly. Choose 1024–8192 depending on task.</statement>
-      <rationale source="v1-source">Output token count directly determines cost. Unlimited output has caused budget blowouts in production; it is a common oversight with high consequence.</rationale>
+      <statement source="api-discipline">Commit to streaming or non-streaming per call site. Do not toggle inside one application path.</statement>
+      <rationale>Mixing modes leaks half-streamed tokens to UIs that expect a single response and vice versa.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Use model.start_chat() to initialize a session. Persist the chat object across turns; do not create a new chat for each message. The history is automatically maintained by the model.</statement>
-      <rationale source="v1-source">Chat history enables context-aware follow-ups. Creating new chats for each turn loses all prior context, forcing repetition in prompts and wasting tokens.</rationale>
+      <statement source="google-ai-docs-2026">For typed JSON output, set generation_config.response_mime_type="application/json" and response_schema; do not rely on prompt-only JSON instructions.</statement>
+      <rationale>SDK-level mime_type pathway is more reliable than prompt engineering.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Always check response.prompt_feedback.block_reason before accessing response.text. If the prompt is blocked, response.candidates will be empty and indexing response.candidates[0] will raise IndexError. Wrap text access in a helper that returns None on block, then log the block reason for audit.</statement>
-      <rationale source="v1-source">Safety blocks occur on the prompt, not the output; blocked responses have no candidates. Accessing .text on a blocked response raises ValueError. Logging block reasons helps identify if a class of inputs is systematically blocked.</rationale>
+      <statement source="chat-folklore">Chat history is capped by token budget (target ≤ half the model's context) and trimmed FIFO. Unbounded history hits context limits.</statement>
+      <rationale>Unbounded sessions are the leading "AI suddenly fails after 20 turns" support ticket.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use Gemini 2.0 Flash by default for cost optimization; it is 10-40x cheaper than Pro depending on context size. Enable context caching only when the same large prompt prefix (system prompt + document) appears in &gt;5 requests per session; below that, the overhead is not worth it. Set max_output_tokens explicitly to avoid runaway cost.</statement>
-      <rationale source="v1-source">Flash pricing is ~$0.10 per 1M input tokens; Pro is $1.25+. Context caching saves 75% on cached tokens but only amortizes if the same prefix is reused many times. Most sessions are one-off questions; caching helps only in high-volume document analysis scenarios.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement source="self">Preconditions hold → wire client per templates/gemini-basic-client.py.</statement>
+      <rationale>Aggregate positive-branch conclusion target.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use gemini-2.0-flash as the default for agent pipeline steps; only escalate to Pro when context &gt;128K tokens or quality is clearly insufficient for the task.</statement>
-      <rationale source="v1-source">Flash is fast and cheap; reserving it for 80% of tasks keeps costs down while maintaining quality for the 20% that need Pro's reasoning.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Do not mix -latest model aliases (e.g., gemini-1.5-pro-latest) in production. Pin specific model versions (e.g., gemini-1.5-pro-002) so version upgrades are intentional and tested.</statement>
-      <rationale source="v1-source">-latest aliases silently upgrade the model on Google's schedule; production pipelines should control upgrade timing and test before rolling out.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Persist chat.history across turns; validate the last response before appending to history to prevent inconsistency after blocked responses.</statement>
-      <rationale source="v1-source">Chat history is mutable; if you append to it after a blocked response, the history becomes inconsistent and subsequent messages lose context.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Store API keys in environment variables or managed vaults (1Password, Google Cloud Secret Manager); never check them into git. For Vertex AI in production, use workload identity federation instead of service account JSON files.</statement>
-      <rationale source="v1-source">Credentials in git are compromised immediately; service account files are difficult to rotate. Workload identity is the secure production pattern.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>A subagent setting up Gemini basics should configure API key from env, select the model based on task complexity (Flash for speed, Pro for long context, Thinking for math), set generation_config with explicit max_output_tokens and temperature, and wrap the call with safety check + retry logic.</statement>
-      <rationale source="v1-source">This workflow ensures credentials are secure, cost is bounded, safety is checked, and transient errors are retried.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement source="self">Function calling, multimodal, or Vertex enterprise → use sibling methodology.</statement>
+      <rationale>Aggregate negative-branch conclusion target.</rationale>
     </rule>
   </section>
 </text>
