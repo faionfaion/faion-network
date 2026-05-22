@@ -3,7 +3,7 @@ slug: scope-change-conversation
 tier: solo
 group: comms-stakeholder
 persona: P3
-goal: TBD
+goal: govern-decide
 complexity: light
 version: 0.1.0
 status: draft

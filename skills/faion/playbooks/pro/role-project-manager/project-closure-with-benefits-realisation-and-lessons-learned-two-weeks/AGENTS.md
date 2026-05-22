@@ -3,7 +3,7 @@ slug: project-closure-with-benefits-realisation-and-lessons-learned-two-weeks
 tier: pro
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

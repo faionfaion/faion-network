@@ -3,7 +3,7 @@ slug: run-a-30-minute-resource-allocation-review
 tier: pro
 group: role-project-manager
 persona: PM running P4 multi-engagement or P6 multi-stream squads
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

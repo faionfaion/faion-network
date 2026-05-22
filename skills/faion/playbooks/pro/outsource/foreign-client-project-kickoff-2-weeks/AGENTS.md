@@ -3,7 +3,7 @@ slug: foreign-client-project-kickoff-2-weeks
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

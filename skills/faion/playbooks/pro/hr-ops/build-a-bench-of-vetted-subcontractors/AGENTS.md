@@ -3,7 +3,7 @@ slug: build-a-bench-of-vetted-subcontractors
 tier: pro
 group: hr-ops
 persona: P5
-goal: TBD
+goal: hire-onboard
 complexity: deep
 version: 0.1.0
 status: draft

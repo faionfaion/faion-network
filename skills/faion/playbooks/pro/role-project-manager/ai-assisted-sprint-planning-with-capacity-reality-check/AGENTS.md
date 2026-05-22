@@ -3,7 +3,7 @@ slug: ai-assisted-sprint-planning-with-capacity-reality-check
 tier: pro
 group: role-project-manager
 persona: PM/Scrum Master running sprint planning with AI assistance
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

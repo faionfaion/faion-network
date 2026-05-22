@@ -3,7 +3,7 @@ slug: user-research-sprint-discovery-to-recommendations-4-weeks
 tier: pro
 group: role-ux-ui-designer
 persona: UX researcher / designer-researcher running a 4-week discovery cycle
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: secret-rotation-execution
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

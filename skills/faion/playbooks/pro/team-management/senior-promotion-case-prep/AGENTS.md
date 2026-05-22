@@ -3,7 +3,7 @@ slug: senior-promotion-case-prep
 tier: pro
 group: team-management
 persona: P4
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: newsletter-to-paid-funnel-1k-to-200
 tier: solo
 group: content-marketing
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 0.1.0
 status: draft

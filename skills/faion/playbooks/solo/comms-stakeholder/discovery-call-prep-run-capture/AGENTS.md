@@ -3,7 +3,7 @@ slug: discovery-call-prep-run-capture
 tier: solo
 group: comms-stakeholder
 persona: P3
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 0.1.0
 status: draft

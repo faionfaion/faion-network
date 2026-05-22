@@ -3,7 +3,7 @@ slug: monolith-to-services-migration-architecture-3-months
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

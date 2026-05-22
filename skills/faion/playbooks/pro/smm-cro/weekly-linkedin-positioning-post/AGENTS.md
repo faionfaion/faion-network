@@ -3,7 +3,7 @@ slug: weekly-linkedin-positioning-post
 tier: pro
 group: smm-cro
 persona: P5
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 0.1.0
 status: draft

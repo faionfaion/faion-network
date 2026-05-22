@@ -3,7 +3,7 @@ slug: hire-and-onboard-a-new-contractor-v2
 tier: pro
 group: micro-agency
 persona: p5-micro-agency-founder
-goal: TBD
+goal: hire-onboard
 complexity: medium
 version: 1.0.0
 status: draft

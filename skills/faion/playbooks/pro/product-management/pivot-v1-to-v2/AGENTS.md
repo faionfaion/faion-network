@@ -3,7 +3,7 @@ slug: pivot-v1-to-v2
 tier: pro
 group: product-management
 persona: P1
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

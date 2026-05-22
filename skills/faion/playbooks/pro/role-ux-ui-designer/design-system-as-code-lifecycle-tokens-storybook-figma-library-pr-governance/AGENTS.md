@@ -3,7 +3,7 @@ slug: design-system-as-code-lifecycle-tokens-storybook-figma-library-pr-governan
 tier: pro
 group: role-ux-ui-designer
 persona: DS lead operating a system across Figma + Storybook + code with PR governance
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

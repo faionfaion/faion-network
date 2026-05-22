@@ -3,7 +3,7 @@ slug: daily-build-in-public-tweet
 tier: solo
 group: content-marketing
 persona: P2
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

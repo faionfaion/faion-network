@@ -3,7 +3,7 @@ slug: project-initiation-to-first-delivery-kickoff-to-week-4
 tier: pro
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

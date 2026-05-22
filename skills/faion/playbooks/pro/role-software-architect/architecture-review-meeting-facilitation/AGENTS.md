@@ -3,7 +3,7 @@ slug: architecture-review-meeting-facilitation
 tier: pro
 group: role-software-architect
 persona: role-software-architect
-goal: TBD
+goal: govern-decide
 complexity: light
 version: 1.0.0
 status: draft

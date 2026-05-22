@@ -3,7 +3,7 @@ slug: adr-write-up-for-client-architecture-decision
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

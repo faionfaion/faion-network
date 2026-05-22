@@ -3,7 +3,7 @@ slug: pr-review-for-iac-helm-gha-change
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

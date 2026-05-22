@@ -3,7 +3,7 @@ slug: a11y-audit-on-one-screen-1hr
 tier: pro
 group: role-ux-ui-designer
 persona: Designer or a11y specialist auditing a single screen
-goal: TBD
+goal: audit-comply
 complexity: medium
 version: 1.0.0
 status: draft

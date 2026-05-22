@@ -3,7 +3,7 @@ slug: bootstrap-to-4k-mrr
 tier: pro
 group: growth-marketing
 persona: P1
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 0.1.0
 status: draft

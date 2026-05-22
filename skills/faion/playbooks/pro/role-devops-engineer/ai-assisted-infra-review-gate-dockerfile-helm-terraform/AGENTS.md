@@ -3,7 +3,7 @@ slug: ai-assisted-infra-review-gate-dockerfile-helm-terraform
 tier: pro
 group: role-devops-engineer
 persona: DevOps engineer owning Docker / IaC / Helm for a small product team.
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: run-2-3-person-team-comms
 tier: pro
 group: micro-agency
 persona: p5-micro-agency-founder
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: compliance-grade-feature-delivery-fintech-hipaa-pci
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

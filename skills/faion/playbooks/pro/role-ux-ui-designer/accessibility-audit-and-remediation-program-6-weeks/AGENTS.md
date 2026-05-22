@@ -3,7 +3,7 @@ slug: accessibility-audit-and-remediation-program-6-weeks
 tier: pro
 group: role-ux-ui-designer
 persona: Accessibility lead or product designer running an a11y program
-goal: TBD
+goal: audit-comply
 complexity: medium
 version: 1.0.0
 status: draft

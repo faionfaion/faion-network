@@ -3,7 +3,7 @@ slug: portfolio-site-update-with-new-case-study
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

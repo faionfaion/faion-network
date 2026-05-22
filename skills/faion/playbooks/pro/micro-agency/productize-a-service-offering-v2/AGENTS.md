@@ -3,7 +3,7 @@ slug: productize-a-service-offering-v2
 tier: pro
 group: micro-agency
 persona: p5-micro-agency-founder
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

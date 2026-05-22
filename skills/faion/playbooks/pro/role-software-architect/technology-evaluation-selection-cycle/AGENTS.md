@@ -3,7 +3,7 @@ slug: technology-evaluation-selection-cycle
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

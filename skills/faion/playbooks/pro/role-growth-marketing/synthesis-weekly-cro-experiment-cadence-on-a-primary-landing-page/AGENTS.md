@@ -3,7 +3,7 @@ slug: synthesis-weekly-cro-experiment-cadence-on-a-primary-landing-page
 tier: pro
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

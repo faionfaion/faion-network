@@ -3,7 +3,7 @@ slug: security-scan-triage-weekly
 tier: pro
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

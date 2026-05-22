@@ -3,7 +3,7 @@ slug: production-readiness-hardening-sweep-6-weeks
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 1.0.0
 status: draft

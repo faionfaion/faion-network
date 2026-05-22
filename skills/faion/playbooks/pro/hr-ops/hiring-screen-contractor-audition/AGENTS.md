@@ -3,7 +3,7 @@ slug: hiring-screen-contractor-audition
 tier: pro
 group: hr-ops
 persona: P5
-goal: TBD
+goal: hire-onboard
 complexity: medium
 version: 0.1.0
 status: draft

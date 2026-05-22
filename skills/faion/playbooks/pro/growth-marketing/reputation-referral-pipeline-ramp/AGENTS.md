@@ -3,7 +3,7 @@ slug: reputation-referral-pipeline-ramp
 tier: pro
 group: growth-marketing
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 0.1.0
 status: draft

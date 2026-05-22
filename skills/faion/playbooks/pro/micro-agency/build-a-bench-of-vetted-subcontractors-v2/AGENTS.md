@@ -3,7 +3,7 @@ slug: build-a-bench-of-vetted-subcontractors-v2
 tier: pro
 group: micro-agency
 persona: p5-micro-agency-founder
-goal: TBD
+goal: hire-onboard
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: run-a-quarterly-journey-bottleneck-attack
 tier: pro
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: optimize-tune
 complexity: medium
 version: 1.0.0
 status: draft

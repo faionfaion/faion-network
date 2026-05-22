@@ -3,7 +3,7 @@ slug: design-system-component-update-single-component
 tier: pro
 group: role-ux-ui-designer
 persona: Designer or DS engineer shipping an update to one component
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

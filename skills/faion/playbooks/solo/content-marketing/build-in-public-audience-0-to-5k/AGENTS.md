@@ -3,7 +3,7 @@ slug: build-in-public-audience-0-to-5k
 tier: solo
 group: content-marketing
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 0.1.0
 status: draft

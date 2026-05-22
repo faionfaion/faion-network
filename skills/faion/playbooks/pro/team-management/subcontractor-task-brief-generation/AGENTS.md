@@ -3,7 +3,7 @@ slug: subcontractor-task-brief-generation
 tier: pro
 group: team-management
 persona: P5
-goal: TBD
+goal: hire-onboard
 complexity: light
 version: 0.1.0
 status: draft

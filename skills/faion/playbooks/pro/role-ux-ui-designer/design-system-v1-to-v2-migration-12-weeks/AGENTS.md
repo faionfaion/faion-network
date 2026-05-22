@@ -3,7 +3,7 @@ slug: design-system-v1-to-v2-migration-12-weeks
 tier: pro
 group: role-ux-ui-designer
 persona: Design-system lead in a P6 product team
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

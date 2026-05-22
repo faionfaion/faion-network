@@ -3,7 +3,7 @@ slug: pricing-experiment-hypothesis-to-result
 tier: pro
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 1.0.0
 status: draft

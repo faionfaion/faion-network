@@ -3,7 +3,7 @@ slug: build-a-defensible-kpi-tree-from-a-fuzzy-company-okr
 tier: pro
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: pmf-hunt-post-mvp
 tier: pro
 group: product-management
 persona: P1
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 0.1.0
 status: draft

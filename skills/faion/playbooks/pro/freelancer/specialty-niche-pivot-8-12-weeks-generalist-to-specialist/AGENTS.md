@@ -3,7 +3,7 @@ slug: specialty-niche-pivot-8-12-weeks-generalist-to-specialist
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: cross-team-architecture-sync-weekly
 tier: pro
 group: role-software-architect
 persona: role-software-architect
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: disaster-recovery-plan-live-drill
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

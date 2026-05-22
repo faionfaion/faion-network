@@ -3,7 +3,7 @@ slug: freelance-to-saas-transition-6-month-side-build
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

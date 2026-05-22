@@ -3,7 +3,7 @@ slug: greenfield-infra-bootstrap-k8s-cicd-observability-secrets-4-weeks
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

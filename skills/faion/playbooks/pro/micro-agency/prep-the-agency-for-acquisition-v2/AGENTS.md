@@ -3,7 +3,7 @@ slug: prep-the-agency-for-acquisition-v2
 tier: pro
 group: micro-agency
 persona: p5-micro-agency-founder
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

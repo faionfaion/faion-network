@@ -3,7 +3,7 @@ slug: customer-ai-feedback-triage-weekly
 tier: pro
 group: role-ml-engineer
 persona: geek-ai-engineer
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

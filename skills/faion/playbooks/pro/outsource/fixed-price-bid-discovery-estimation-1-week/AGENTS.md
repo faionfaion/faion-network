@@ -3,7 +3,7 @@ slug: fixed-price-bid-discovery-estimation-1-week
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

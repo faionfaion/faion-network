@@ -3,7 +3,7 @@ slug: cold-lead-to-signed-contract-3-week-acquisition-flow
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 1.0.0
 status: draft

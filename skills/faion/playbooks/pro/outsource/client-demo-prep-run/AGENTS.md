@@ -3,7 +3,7 @@ slug: client-demo-prep-run
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

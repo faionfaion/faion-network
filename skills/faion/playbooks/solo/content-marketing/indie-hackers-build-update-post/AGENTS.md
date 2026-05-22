@@ -3,7 +3,7 @@ slug: indie-hackers-build-update-post
 tier: solo
 group: content-marketing
 persona: P2
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 0.1.0
 status: draft

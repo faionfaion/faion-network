@@ -3,7 +3,7 @@ slug: make-faion-a-programmatic-context-source-for-an-agent
 tier: pro
 group: llm-agent
 persona: P7
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

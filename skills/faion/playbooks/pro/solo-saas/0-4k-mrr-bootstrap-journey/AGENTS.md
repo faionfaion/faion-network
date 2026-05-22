@@ -3,7 +3,7 @@ slug: 0-4k-mrr-bootstrap-journey
 tier: pro
 group: solo-saas
 persona: P1
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: product-launch-campaign-product-hunt-multi-channel-8-weeks-prep-launch-wee
 tier: pro
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

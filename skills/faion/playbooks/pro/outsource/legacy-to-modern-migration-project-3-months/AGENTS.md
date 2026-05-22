@@ -3,7 +3,7 @@ slug: legacy-to-modern-migration-project-3-months
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

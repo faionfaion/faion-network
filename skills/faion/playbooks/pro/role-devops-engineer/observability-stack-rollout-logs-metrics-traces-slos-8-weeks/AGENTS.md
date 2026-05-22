@@ -3,7 +3,7 @@ slug: observability-stack-rollout-logs-metrics-traces-slos-8-weeks
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

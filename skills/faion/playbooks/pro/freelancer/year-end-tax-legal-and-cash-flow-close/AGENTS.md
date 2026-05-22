@@ -3,7 +3,7 @@ slug: year-end-tax-legal-and-cash-flow-close
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

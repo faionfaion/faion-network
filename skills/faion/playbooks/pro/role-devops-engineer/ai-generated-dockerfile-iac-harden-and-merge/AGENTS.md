@@ -3,7 +3,7 @@ slug: ai-generated-dockerfile-iac-harden-and-merge
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

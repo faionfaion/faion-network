@@ -3,7 +3,7 @@ slug: year-end-tax-legal-cashflow-close
 tier: pro
 group: delivery-ops
 persona: P3
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 0.1.0
 status: draft

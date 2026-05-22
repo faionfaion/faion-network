@@ -3,7 +3,7 @@ slug: design-slos-error-budgets-before-first-deploy
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

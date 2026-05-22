@@ -3,7 +3,7 @@ slug: refresh-the-risk-register-in-30-minutes
 tier: pro
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: daily-paid-ads-spend-cpa-check-15-min
 tier: pro
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: inbound-lead-to-signed-retainer-46-weeks
 tier: pro
 group: micro-agency
 persona: P5
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 1.0.0
 status: draft

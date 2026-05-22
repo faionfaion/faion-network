@@ -3,7 +3,7 @@ slug: distressed-project-rescue-90-day-turnaround
 tier: pro
 group: role-project-manager
 persona: PM stepping into a flagged-red engagement, P4 outsource or P6 internal
-goal: TBD
+goal: fix-incident
 complexity: deep
 version: 1.0.0
 status: draft

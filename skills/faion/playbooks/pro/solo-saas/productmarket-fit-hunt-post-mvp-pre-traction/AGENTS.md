@@ -3,7 +3,7 @@ slug: productmarket-fit-hunt-post-mvp-pre-traction
 tier: pro
 group: solo-saas
 persona: P1
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 1.0.0
 status: draft

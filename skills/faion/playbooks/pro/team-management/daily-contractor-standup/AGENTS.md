@@ -3,7 +3,7 @@ slug: daily-contractor-standup
 tier: pro
 group: team-management
 persona: P5
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

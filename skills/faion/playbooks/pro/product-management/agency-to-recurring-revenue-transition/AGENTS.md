@@ -3,7 +3,7 @@ slug: agency-to-recurring-revenue-transition
 tier: pro
 group: product-management
 persona: P5
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

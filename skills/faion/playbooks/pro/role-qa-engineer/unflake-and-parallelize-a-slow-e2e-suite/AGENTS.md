@@ -3,7 +3,7 @@ slug: unflake-and-parallelize-a-slow-e2e-suite
 tier: pro
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: optimize-tune
 complexity: deep
 version: 1.0.0
 status: draft

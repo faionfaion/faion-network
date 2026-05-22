@@ -3,7 +3,7 @@ slug: greenfield-architecture-proposal-concept-to-signed-off-design-pack
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

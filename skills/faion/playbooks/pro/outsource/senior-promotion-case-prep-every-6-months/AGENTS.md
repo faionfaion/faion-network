@@ -3,7 +3,7 @@ slug: senior-promotion-case-prep-every-6-months
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

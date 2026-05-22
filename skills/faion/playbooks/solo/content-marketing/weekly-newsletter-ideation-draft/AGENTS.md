@@ -3,7 +3,7 @@ slug: weekly-newsletter-ideation-draft
 tier: solo
 group: content-marketing
 persona: P2
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: new-project-machine-setup-laptop-desktop
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

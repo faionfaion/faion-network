@@ -3,7 +3,7 @@ slug: weekly-ab-campaign-experiment-review-45-min
 tier: pro
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

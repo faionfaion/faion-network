@@ -3,7 +3,7 @@ slug: compliance-grade-feature-delivery
 tier: pro
 group: devops-cicd
 persona: P4
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 0.1.0
 status: draft

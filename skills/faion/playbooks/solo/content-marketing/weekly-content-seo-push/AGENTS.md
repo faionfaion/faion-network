@@ -3,7 +3,7 @@ slug: weekly-content-seo-push
 tier: solo
 group: content-marketing
 persona: P1
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

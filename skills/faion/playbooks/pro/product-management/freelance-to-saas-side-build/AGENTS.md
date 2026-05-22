@@ -3,7 +3,7 @@ slug: freelance-to-saas-side-build
 tier: pro
 group: product-management
 persona: P3
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

@@ -3,7 +3,7 @@ slug: inbound-to-signed-retainer-in-one-client-cycle
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: project-closure-debrief-retrospective
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: feature-flag-rollout-decision
 tier: pro
 group: devops-cicd
 persona: P6
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 0.1.0
 status: draft

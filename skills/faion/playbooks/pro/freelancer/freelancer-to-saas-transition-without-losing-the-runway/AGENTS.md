@@ -3,7 +3,7 @@ slug: freelancer-to-saas-transition-without-losing-the-runway
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

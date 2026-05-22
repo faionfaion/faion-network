@@ -3,7 +3,7 @@ slug: ai-assisted-research-synthesis-interview-transcripts-tagged-insights-desig
 tier: pro
 group: role-ux-ui-designer
 persona: Designer/researcher synthesizing N interviews into a tagged insight bank
-goal: TBD
+goal: discover-validate
 complexity: medium
 version: 1.0.0
 status: draft

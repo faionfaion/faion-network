@@ -3,7 +3,7 @@ slug: quarterly-architecture-review-cycle
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: operate-ritual
 complexity: medium
 version: 1.0.0
 status: draft

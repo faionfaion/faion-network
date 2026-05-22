@@ -3,7 +3,7 @@ slug: security-by-design-audit-threat-modelling-cycle
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: audit-comply
 complexity: medium
 version: 1.0.0
 status: draft

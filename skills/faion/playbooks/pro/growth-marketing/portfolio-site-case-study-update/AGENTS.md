@@ -3,7 +3,7 @@ slug: portfolio-site-case-study-update
 tier: pro
 group: growth-marketing
 persona: P3
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 0.1.0
 status: draft

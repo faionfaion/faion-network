@@ -3,7 +3,7 @@ slug: reputation-referral-pipeline-ramp-90-day-flywheel
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: medium
 version: 1.0.0
 status: draft

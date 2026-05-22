@@ -3,7 +3,7 @@ slug: pivot-from-failed-v1-to-v2
 tier: pro
 group: solo-saas
 persona: P1
-goal: TBD
+goal: discover-validate
 complexity: deep
 version: 1.0.0
 status: draft

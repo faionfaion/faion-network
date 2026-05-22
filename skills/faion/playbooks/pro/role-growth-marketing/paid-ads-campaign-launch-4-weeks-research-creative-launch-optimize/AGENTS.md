@@ -3,7 +3,7 @@ slug: paid-ads-campaign-launch-4-weeks-research-creative-launch-optimize
 tier: pro
 group: role-growth-marketing
 persona: solo-founder, growth-marketer
-goal: TBD
+goal: acquire-grow
 complexity: deep
 version: 1.0.0
 status: draft

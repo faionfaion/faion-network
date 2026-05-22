@@ -3,7 +3,7 @@ slug: proposal-draft-from-discovery-notes
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: build-ship
 complexity: medium
 version: 1.0.0
 status: draft

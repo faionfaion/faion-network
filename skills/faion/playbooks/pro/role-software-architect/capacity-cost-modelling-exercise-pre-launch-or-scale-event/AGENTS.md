@@ -3,7 +3,7 @@ slug: capacity-cost-modelling-exercise-pre-launch-or-scale-event
 tier: pro
 group: role-software-architect
 persona: software architect
-goal: TBD
+goal: plan-design
 complexity: medium
 version: 1.0.0
 status: draft

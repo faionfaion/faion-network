@@ -3,7 +3,7 @@ slug: container-vs-serverless-vs-vm-decision-tree-at-architecture-time
 tier: pro
 group: role-devops-engineer
 persona: DevOps engineer owning Docker / IaC / Helm for a small product team.
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

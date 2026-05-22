@@ -3,7 +3,7 @@ slug: fixed-price-vs-tm-estimation-with-ai-risk-buffer
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: govern-decide
 complexity: medium
 version: 1.0.0
 status: draft

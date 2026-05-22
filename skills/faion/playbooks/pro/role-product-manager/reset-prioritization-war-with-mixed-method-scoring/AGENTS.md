@@ -3,7 +3,7 @@ slug: reset-prioritization-war-with-mixed-method-scoring
 tier: pro
 group: role-product-manager
 persona: role-product-manager
-goal: TBD
+goal: govern-decide
 complexity: deep
 version: 1.0.0
 status: draft

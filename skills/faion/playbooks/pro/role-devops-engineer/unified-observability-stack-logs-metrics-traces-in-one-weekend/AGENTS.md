@@ -3,7 +3,7 @@ slug: unified-observability-stack-logs-metrics-traces-in-one-weekend
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

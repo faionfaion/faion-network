@@ -3,7 +3,7 @@ slug: productize-a-service-offering
 tier: pro
 group: product-management
 persona: P5
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 0.1.0
 status: draft

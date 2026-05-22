@@ -3,7 +3,7 @@ slug: productize-a-recurring-engagement-into-a-fixed-scope-offer
 tier: pro
 group: freelancer
 persona: P3
-goal: TBD
+goal: build-ship
 complexity: deep
 version: 1.0.0
 status: draft

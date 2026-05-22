@@ -3,7 +3,7 @@ slug: accessibility-scan-on-new-screen
 tier: pro
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: audit-comply
 complexity: light
 version: 1.0.0
 status: draft

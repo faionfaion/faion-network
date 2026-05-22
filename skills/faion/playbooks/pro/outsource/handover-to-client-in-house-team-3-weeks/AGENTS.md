@@ -3,7 +3,7 @@ slug: handover-to-client-in-house-team-3-weeks
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

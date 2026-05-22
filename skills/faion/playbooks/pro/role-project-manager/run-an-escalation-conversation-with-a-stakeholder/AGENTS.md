@@ -3,7 +3,7 @@ slug: run-an-escalation-conversation-with-a-stakeholder
 tier: pro
 group: role-project-manager
 persona: PM (project manager) handling P4 outsource and P6 product-team engagements
-goal: TBD
+goal: govern-decide
 complexity: deep
 version: 1.0.0
 status: draft

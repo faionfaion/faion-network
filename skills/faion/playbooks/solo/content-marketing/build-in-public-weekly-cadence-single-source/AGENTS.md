@@ -3,7 +3,7 @@ slug: build-in-public-weekly-cadence-single-source
 tier: solo
 group: content-marketing
 persona: P2
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 0.1.0
 status: draft

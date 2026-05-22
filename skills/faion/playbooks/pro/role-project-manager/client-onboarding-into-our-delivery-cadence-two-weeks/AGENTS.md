@@ -3,7 +3,7 @@ slug: client-onboarding-into-our-delivery-cadence-two-weeks
 tier: pro
 group: role-project-manager
 persona: role-project-manager
-goal: TBD
+goal: hire-onboard
 complexity: medium
 version: 1.0.0
 status: draft

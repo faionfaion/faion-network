@@ -3,7 +3,7 @@ slug: zero-to-one-product-design-brief-to-dev-handoff-8-weeks
 tier: pro
 group: role-ux-ui-designer
 persona: Product designer leading a greenfield product or major new module
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft

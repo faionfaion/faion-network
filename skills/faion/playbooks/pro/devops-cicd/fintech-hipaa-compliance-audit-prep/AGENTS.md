@@ -3,7 +3,7 @@ slug: fintech-hipaa-compliance-audit-prep
 tier: pro
 group: devops-cicd
 persona: P4
-goal: TBD
+goal: audit-comply
 complexity: deep
 version: 0.1.0
 status: draft

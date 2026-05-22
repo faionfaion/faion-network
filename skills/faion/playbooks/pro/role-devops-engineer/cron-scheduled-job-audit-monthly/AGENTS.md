@@ -3,7 +3,7 @@ slug: cron-scheduled-job-audit-monthly
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

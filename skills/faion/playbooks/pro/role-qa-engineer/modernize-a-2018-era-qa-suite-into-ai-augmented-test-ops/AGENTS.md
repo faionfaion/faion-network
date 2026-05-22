@@ -3,7 +3,7 @@ slug: modernize-a-2018-era-qa-suite-into-ai-augmented-test-ops
 tier: pro
 group: role-qa-engineer
 persona: QA engineer / test lead in an indie or small-team product context.
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

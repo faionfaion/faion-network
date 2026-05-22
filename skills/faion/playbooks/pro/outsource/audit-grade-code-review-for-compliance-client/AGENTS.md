@@ -3,7 +3,7 @@ slug: audit-grade-code-review-for-compliance-client
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: audit-comply
 complexity: medium
 version: 1.0.0
 status: draft

@@ -3,7 +3,7 @@ slug: specialty-niche-pivot
 tier: pro
 group: market-research
 persona: P3
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 0.1.0
 status: draft

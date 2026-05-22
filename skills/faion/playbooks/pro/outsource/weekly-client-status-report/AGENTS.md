@@ -3,7 +3,7 @@ slug: weekly-client-status-report
 tier: pro
 group: outsource
 persona: P4
-goal: TBD
+goal: operate-ritual
 complexity: light
 version: 1.0.0
 status: draft

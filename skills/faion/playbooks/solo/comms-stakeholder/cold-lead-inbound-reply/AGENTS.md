@@ -3,7 +3,7 @@ slug: cold-lead-inbound-reply
 tier: solo
 group: comms-stakeholder
 persona: P3
-goal: TBD
+goal: acquire-grow
 complexity: light
 version: 0.1.0
 status: draft

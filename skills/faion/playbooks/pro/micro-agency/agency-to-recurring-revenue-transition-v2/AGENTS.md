@@ -3,7 +3,7 @@ slug: agency-to-recurring-revenue-transition-v2
 tier: pro
 group: micro-agency
 persona: p5-micro-agency-founder
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

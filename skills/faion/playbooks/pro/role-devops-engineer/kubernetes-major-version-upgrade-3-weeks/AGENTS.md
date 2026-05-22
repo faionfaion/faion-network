@@ -3,7 +3,7 @@ slug: kubernetes-major-version-upgrade-3-weeks
 tier: pro
 group: role-devops-engineer
 persona: role-devops-engineer
-goal: TBD
+goal: migrate-rebuild
 complexity: deep
 version: 1.0.0
 status: draft

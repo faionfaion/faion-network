@@ -3,7 +3,7 @@ slug: cost-latency-budget-before-design-freeze
 tier: pro
 group: role-software-architect
 persona: role-software-architect
-goal: TBD
+goal: plan-design
 complexity: deep
 version: 1.0.0
 status: draft
