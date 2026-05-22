@@ -32,7 +32,7 @@ REQUIRED = ["status", "path", "duration_s", "provider", "voice", "model",
 VALID_FIXTURE = {
     "status": "ok",
     "path": "out/audio/cache/abc/assembled.mp3",
-    "duration_s": 312.7,
+    "duration_s": 126.6,
     "provider": "openai",
     "voice": "onyx",
     "model": "tts-1-hd",

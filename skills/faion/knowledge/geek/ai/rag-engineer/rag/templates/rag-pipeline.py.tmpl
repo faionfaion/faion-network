@@ -1,0 +1,68 @@
+# purpose: end-to-end RAG pipeline skeleton (ingest → retrieve → rerank → generate → validate)
+# consumes: corpus path, vector_store client, reranker client, llm client
+# produces: dict matching 02-output-contract.xml schema
+# depends-on: content/01-core-rules.xml r1-r6; content/04-procedure.xml
+# token-budget-impact: zero at runtime; scaffold only
+
+from typing import List, Dict
+
+
+def ingest(corpus_path: str, chunk_size: int = 1024, overlap: int = 200) -> List[Dict]:
+    # TODO replace with unstructured or llama-index loader
+    chunks: List[Dict] = []
+    return chunks
+
+
+def embed_and_store(chunks: List[Dict], vector_store) -> None:
+    for batch in _batched(chunks, 256):
+        vector_store.upsert(batch)
+
+
+def retrieve_hybrid(query: str, vector_store, k: int = 20) -> List[Dict]:
+    return vector_store.hybrid_search(query, k=k)
+
+
+def rerank(query: str, candidates: List[Dict], reranker, top_k: int = 5) -> List[Dict]:
+    return reranker.rerank(query, candidates, top_k=top_k)
+
+
+def generate(query: str, chunks: List[Dict], llm, prompt_template: str) -> Dict:
+    # Highest-score-first ordering enforced (rule r4)
+    context = "\n\n".join(
+        f"[{c['chunk_id']} | {c['source']} p.{c.get('page', '?')}]\n{c['text']}" for c in chunks
+    )
+    out = llm.complete(prompt_template.format(query=query, context=context))
+    return {"answer": out["text"], "raw_citations": out.get("citations", [])}
+
+
+def validate_citations(raw_citations: List[Dict], chunks: List[Dict]) -> List[Dict]:
+    valid_ids = {c["chunk_id"] for c in chunks}
+    validated = []
+    for c in raw_citations:
+        validated.append({**c, "validated": c.get("chunk_id") in valid_ids})
+    return validated
+
+
+def faithfulness(answer: str, chunks: List[Dict], judge) -> float:
+    return float(judge.faithfulness(answer, chunks))
+
+
+def run(query: str, vector_store, reranker, llm, judge, prompt_template: str) -> Dict:
+    cands = retrieve_hybrid(query, vector_store, k=20)
+    top = rerank(query, cands, reranker, top_k=5)
+    g = generate(query, top, llm, prompt_template)
+    cits = validate_citations(g["raw_citations"], top)
+    score = faithfulness(g["answer"], top, judge)
+    return {
+        "query": query,
+        "answer": g["answer"],
+        "citations": cits,
+        "retrieval": {"top_k": 20, "rerank_top_k": 5, "latency_ms": 0.0},
+        "faithfulness": score,
+        "fallback_to_no_answer": score < 0.5,
+    }
+
+
+def _batched(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i : i + n]
