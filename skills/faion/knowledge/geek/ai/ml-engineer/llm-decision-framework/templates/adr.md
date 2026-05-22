@@ -1,3 +1,11 @@
+<!--
+purpose: ADR skeleton with score sheet + alternatives + consequences.
+consumes: see AGENTS.md ## Prerequisites
+produces: decision-record
+depends-on: content/02-output-contract.xml schema for llm-decision-framework
+token-budget-impact: ≤500 tokens to fill
+-->
+
 # ADR-XXX: LLM Architecture Decision — [Feature Name]
 
 ## Status

@@ -1,31 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="llm-observability-stack Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for llm-observability-stack. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LLM Observability Stack — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `llm-observability-stack` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Choose Langfuse for self-hosted production; Helicone for cost-first optimization; LangSmith only if already on LangChain.</statement>
-      <rationale source="v1-source">Langfuse is MIT-licensed, actively maintained, and covers tracing + evals in one tool. Helicone adds a proxy layer that tracks costs without code changes. LangSmith's value is its deep LangGraph integration; outside that stack it adds a vendor dependency for little gain.</rationale>
+  <section title="Rules">
+    <rule id="r1-otel-native" testable="true" depth="essential">
+      <statement>Use OTel-native instrumentation (openllmetry / openinference) as the wire format; vendors are downstream consumers.</statement>
+      <rationale source="OTel GenAI semantic conventions 2026">Vendor-specific SDKs lock you in; OTel native lets you swap viewers.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Instrument via OpenTelemetry and route to any backend — never use vendor SDKs as the primary tracing layer.</statement>
-      <rationale source="v1-source">OTEL gives vendor portability. Switching from Langfuse to Datadog requires only a config change when using OTEL exporters; it requires a full re-instrument when using vendor-specific SDKs.</rationale>
+
+    <rule id="r2-version-pin" testable="true" depth="essential">
+      <statement>Pin every stack component version (langfuse@3.x, otel-collector@0.95, prom@2.5).</statement>
+      <rationale source="Twelve-Factor App config; semver">Floating versions cause silent breakage on upgrades.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Attach user_id, session_id, and feature_flag to every LLM span at call time — not post-hoc.</statement>
-      <rationale source="v1-source">Post-hoc enrichment requires a join on a secondary store. Inline attribution enables per-user cost breakdown, session replay, and A/B comparison directly in the tracing UI.</rationale>
+
+    <rule id="r3-pii-at-collector" testable="true" depth="essential">
+      <statement>Redact PII at the OTel collector with the attribute processor, not in app code only.</statement>
+      <rationale source="OTel attribute processor docs">Collector-side redaction is auditable and survives app-code regressions.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Log both input and output token counts per call; never derive cost from character count alone.</statement>
-      <rationale source="v1-source">Character count diverges from token count for non-ASCII content, code, and structured JSON. Token counts are available directly from provider responses and are the only reliable cost signal.</rationale>
+
+    <rule id="r4-pricing-yaml-versioned" testable="true" depth="essential">
+      <statement>Price book lives in version-controlled pricing.yaml; updated on every provider price change.</statement>
+      <rationale source="FinOps practice">Inline prices in code drift; central yaml is one place to fix.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Alert on these baselines: error rate &gt;5%, P99 latency &gt;10s, TTFT P95 &gt;2s, hallucination rate &gt;10%, daily spend &gt;80% of budget.</statement>
-      <rationale source="v1-source">These thresholds represent practical production baselines. Lower thresholds create alert fatigue; higher thresholds miss meaningful degradation. Tune to your SLA after establishing a 2-week baseline.</rationale>
+
+    <rule id="r5-alert-budget-tiered" testable="true" depth="essential">
+      <statement>Alert tiers: page (cost 5x / quality 10pp / p95 5x), warn (cost 2x / quality 5pp / p95 2x).</statement>
+      <rationale source="SRE alerting on signals">Single-tier alerts either spam or miss; tiered alerts match severity to response.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Create a parent trace per agent invocation and nest all tool calls as child spans — never emit flat independent spans.</statement>
-      <rationale source="v1-source">Flat spans make it impossible to reconstruct reasoning chains or correlate tool results with the LLM decision that triggered them. Hierarchical spans enable full session replay.</rationale>
+
+    <rule id="r6-self-host-eu" testable="true" depth="essential">
+      <statement>When EU customer data flows, observability stack is self-hosted in an EU region with documented data-residency.</statement>
+      <rationale source="GDPR Article 44; vendor compliance">Cross-region trace storage may breach GDPR.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,3 +1,11 @@
+"""
+purpose: Settings: embed model, chunk_size, top_k.
+consumes: see AGENTS.md ## Prerequisites
+produces: code
+depends-on: content/02-output-contract.xml schema for llamaindex
+token-budget-impact: ≤500 tokens to fill
+"""
+
 """LlamaIndex storage and service context configuration."""
 import os
 from llama_index.core import Settings, StorageContext, load_index_from_storage

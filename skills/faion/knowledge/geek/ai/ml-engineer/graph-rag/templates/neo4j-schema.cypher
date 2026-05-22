@@ -1,3 +1,9 @@
+# purpose: Constraints + indexes for the entity graph.
+# consumes: see AGENTS.md ## Prerequisites
+# produces: spec
+# depends-on: content/02-output-contract.xml schema for graph-rag
+# token-budget-impact: ≤500 tokens to fill
+
 // Neo4j GraphRAG schema setup
 // Run once during initial setup
 

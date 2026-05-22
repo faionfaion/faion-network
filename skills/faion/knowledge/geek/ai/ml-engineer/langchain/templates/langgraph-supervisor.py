@@ -1,3 +1,11 @@
+"""
+purpose: Multi-agent supervisor pattern.
+consumes: see AGENTS.md ## Prerequisites
+produces: code
+depends-on: content/02-output-contract.xml schema for langchain
+token-budget-impact: ≤500 tokens to fill
+"""
+
 # LangGraph Supervisor pattern with state accumulation
 from langgraph.graph import StateGraph, END
 from typing import TypedDict, Annotated

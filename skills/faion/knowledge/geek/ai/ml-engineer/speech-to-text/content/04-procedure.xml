@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Speech-to-Text — Procedure" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Five-step procedure: scope use case → bench providers on representative clip → pick by SLO + cost → wire fallback → ship + monitor WER.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scope-use-case">
+      <input>product spec + latency / WER targets</input>
+      <action>Declare mode (batch vs streaming), max latency, target WER per language, diarization need, custom vocab list.</action>
+      <output>`use-case-constraints.yaml`</output>
+      <decision-gate>If both real-time AND privacy-critical AND no GPU available — re-scope; constraints unsolvable (r1-default-provider).</decision-gate>
+    </step>
+
+    <step n="2" name="bench-providers">
+      <input>30-min representative clip per language + 3 candidate providers</input>
+      <action>Run each provider; compute WER, latency, cost-per-minute, diarization quality. Score each on the constraint vector.</action>
+      <output>`stt-bench-report.yaml`</output>
+      <decision-gate>If best WER &gt; target by &gt;20% — fix audio quality first; provider switch alone won't close gap (r3-input-validation).</decision-gate>
+    </step>
+
+    <step n="3" name="pick-provider">
+      <input>bench report + monthly volume + privacy constraint</input>
+      <action>Apply decision tree. Pin provider + model + mode. Set chunk + overlap from r4.</action>
+      <output>`stt-config.yaml` first draft</output>
+      <decision-gate>If volume &gt;500h/month and not on GPU — flag for self-host migration (r2-self-host-break-even).</decision-gate>
+    </step>
+
+    <step n="4" name="wire-fallback">
+      <input>secondary provider OR local faster-whisper container</input>
+      <action>Implement: trigger fallback on consecutive 5xx OR timeout &gt; threshold. Mark Transcript.degraded=true when fallback engaged. Test with synthetic outage.</action>
+      <output>fallback path verified</output>
+      <decision-gate>If fallback also fails in synthetic test — escalate; cannot ship without verified fallback (r5-mandatory-fallback).</decision-gate>
+    </step>
+
+    <step n="5" name="ship-and-monitor">
+      <input>tuned config + monitoring stack</input>
+      <action>Roll out at 5% → 25% → 100%. Log per-request: provider, latency, WER on monitor-set, fallback flag. Alert on WER drift.</action>
+      <output>Production STT live with dashboard</output>
+      <decision-gate>If WER drifts &gt;10% over baseline — investigate audio quality OR provider regression.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

@@ -1,3 +1,11 @@
+"""
+purpose: Score → recommendation calculator.
+consumes: see AGENTS.md ## Prerequisites
+produces: decision-record
+depends-on: content/02-output-contract.xml schema for llm-decision-framework
+token-budget-impact: ≤500 tokens to fill
+"""
+
 """LLM architecture decision scoring matrix."""
 from dataclasses import dataclass
 from typing import Literal

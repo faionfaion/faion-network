@@ -1,19 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="graph-rag Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for graph-rag. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="GraphRAG — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `graph-rag` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>After graph construction: entity extraction F1 must exceed 0.75; relationship accuracy must exceed 0.70; zero duplicate entities.</statement>
-      <rationale source="v1-source">Below these thresholds, community detection produces semantically incoherent clusters that degrade global search quality.</rationale>
+  <section title="Rules">
+    <rule id="r1-multi-hop-justified" testable="true" depth="essential">
+      <statement>Adopt GraphRAG only if multi-hop or global questions are ≥20% of the workload.</statement>
+      <rationale source="Microsoft GraphRAG paper 2024; Neo4j RAG benchmarks">Below 20% the graph cost (build + maintain + query latency) exceeds the benefit.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>After community detection: communities must be semantically coherent; hierarchical levels must be meaningful; summaries must capture key themes.</statement>
-      <rationale source="v1-source">Incoherent communities cause global queries to return irrelevant summaries; the LLM synthesizes from noise.</rationale>
+
+    <rule id="r2-schema-first" testable="true" depth="essential">
+      <statement>Define entity-type + relation-type schema BEFORE extracting; never let extraction invent types.</statement>
+      <rationale source="Knowledge-graph engineering practice">Open-schema extraction yields fragmented, un-mergeable graphs.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Production readiness: P95 query latency under 3s, error rate under 1%, hallucination rate under 10%.</statement>
-      <rationale source="v1-source">GraphRAG is inherently slower than vector RAG; 3s is the practical ceiling for interactive use cases.</rationale>
+
+    <rule id="r3-extraction-prompt-stable" testable="true" depth="essential">
+      <statement>Pin the extraction prompt + model + schema version; re-extract on any change.</statement>
+      <rationale source="Microsoft GraphRAG reproducibility notes">Drift in prompt or model yields incompatible graph slices.</rationale>
+    </rule>
+
+    <rule id="r4-community-detection" testable="true" depth="essential">
+      <statement>Run Leiden or Louvain community detection on the entity graph; cache communities.</statement>
+      <rationale source="Traag et al. 2019 Leiden algorithm">Communities partition the graph into theme-clusters that ground global queries.</rationale>
+    </rule>
+
+    <rule id="r5-hierarchical-summaries" testable="true" depth="essential">
+      <statement>Build summaries per community at ≥2 levels of granularity (community + super-community).</statement>
+      <rationale source="Microsoft GraphRAG 2024">Hierarchical summaries answer global questions without scanning the whole graph.</rationale>
+    </rule>
+
+    <rule id="r6-query-routing" testable="true" depth="essential">
+      <statement>Classify each query as local (entity-subgraph), global (community-summary), or hybrid; route accordingly.</statement>
+      <rationale source="GraphRAG query routing literature">Routing keeps local queries fast (vector RAG path) and reserves graph traversal for the cases that need it.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

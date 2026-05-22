@@ -1,3 +1,11 @@
+"""
+purpose: Pydantic models for Entity + Relation.
+consumes: see AGENTS.md ## Prerequisites
+produces: spec
+depends-on: content/02-output-contract.xml schema for graph-rag
+token-budget-impact: ≤500 tokens to fill
+"""
+
 # Generic entity/relationship schema for GraphRAG pipelines
 
 GENERIC_SCHEMA = {

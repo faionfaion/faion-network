@@ -3,75 +3,100 @@ slug: graph-rag
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GraphRAG combines knowledge graph construction with vector retrieval to answer multi-hop and global questions.
-content_id: "4dffbca6150f8053"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a GraphRAG pipeline spec: entity extraction → knowledge graph → community detection → hierarchical summaries → query-routing for multi-hop and global questions.
+content_id: "1651e64180c786c1"
+complexity: deep
+produces: spec
+est_tokens: 4500
 tags: [graph-rag, knowledge-graph, entity-extraction, neo4j, multi-hop]
 ---
 # GraphRAG
 
 ## Summary
 
-**One-sentence:** GraphRAG combines knowledge graph construction with vector retrieval to answer multi-hop and global questions.
+**One-sentence:** Produces a GraphRAG pipeline spec: entity extraction → knowledge graph → community detection → hierarchical summaries → query-routing for multi-hop and global questions.
 
-**One-paragraph:** GraphRAG combines knowledge graph construction with vector retrieval to answer multi-hop and global questions. It extracts entity-relationship graphs from documents, runs community detection (Leiden algorithm), and builds hierarchical summaries — enabling local (entity-subgraph) and global (theme-overview) search strategies that standard vector RAG cannot perform.
+**One-paragraph:** Produces a GraphRAG pipeline spec. GraphRAG combines knowledge-graph construction with vector retrieval to answer multi-hop and global questions standard vector RAG cannot. Pipeline: extract entity-relationship graphs from documents, run community detection (Leiden algorithm), build hierarchical summaries — enabling local (entity-subgraph) and global (theme-overview) search strategies. Use only when (multi-hop questions are common) AND (entity vocabulary is closed enough to extract reliably).
+
+**Ефективно для:** Дата-інженер для multi-hop QA — fixed spec з extraction prompt, Neo4j schema, query routing.
 
 ## Applies If (ALL must hold)
 
-- Questions require multi-hop entity reasoning (A relates to B, B relates to C)
-- Need global "theme overview" answers across a large corpus
-- Knowledge base has structured relationships: org charts, legal hierarchies, medical ontologies
-- Users ask cross-document questions where the answer spans sources connected by shared entities
-- Entity co-occurrence and relationship strength matter for answers
+- Question pattern includes multi-hop ('what links X to Y through Z') or global ('summarise themes across N docs').
+- Domain has clear entity types (people, orgs, products, concepts) and relation types.
+- Corpus stable enough to justify the graph build cost (≥10k docs reused ≥3 months).
+- Vector RAG baseline tried and failed on multi-hop / global queries.
+- Have or can stand up a graph store (Neo4j, ArangoDB, or graph extension to PG).
 
 ## Skip If (ANY kills it)
 
-- Simple factual lookup — standard vector RAG is 5-10x cheaper and faster
-- Single-document Q&A — no graph structure to exploit
-- Real-time queries under 500ms required — global search runs map-reduce over all community summaries
-- Corpus under ~500 documents — graph construction cost (5-10x tokens vs standard RAG) outweighs gain
-- Frequently updated corpora — incremental graph updates require re-running entity resolution and community detection
-- Teams without Neo4j/NetworkX operational experience
+- Pure semantic search on documents — vector RAG suffices.
+- Corpus changes daily — graph maintenance cost dominates.
+- Entity vocabulary open-ended / fuzzy — extraction will be noisy.
+- Single-hop questions dominate the workload — graph adds latency without benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Source corpus | directory or db dump | data team |
+| Entity / relation schema | yaml | domain SME + ML |
+| Graph store | service URL + creds | infra |
+| Sample multi-hop questions | jsonl | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ml-engineer/llm-decision-framework` | Confirms GraphRAG vs vector RAG choice. |
+| `geek/ai/ml-engineer/llm-observability-stack` | Traces extraction + query latency. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules each with rationale + source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check. | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure: schema-design → extract → graph-build → community-detect → summarise → wire-query-router. | ~800 |
+| `content/05-examples.xml` | medium | Worked example: legal-document corpus → entity graph → Leiden communities → global QA. | ~700 |
+| `content/06-decision-tree.xml` | essential | Branch by question pattern + corpus stability. | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-schema` | opus | Cross-cutting: entity types + relation types from domain SME. |
+| `run-extraction` | sonnet | Per-document entity + relation extraction with stable prompt. |
+| `query-routing` | sonnet | Classify incoming question as local / global / multi-hop. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/entity-schema.py` | Pydantic models for Entity + Relation. |
+| `templates/neo4j-schema.cypher` | Constraints + indexes for the entity graph. |
+| `templates/cypher-queries.cypher` | Library of multi-hop / community-traversal queries. |
+| `templates/graphrag-settings.yaml` | Pipeline config: model, chunk_size, community params. |
+| `templates/prompt-entity-extraction.txt` | Stable extraction prompt with schema. |
+| `templates/prompt-query-classification.txt` | Local / global / multi-hop classifier. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-graph-rag.py` | Validate pipeline spec (schema, extraction prompt, community params, routing). | Pre-merge of every GraphRAG pipeline PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[llm-decision-framework]] — parent decision; GraphRAG branch elaborated here.
+- [[llm-observability-stack]] — traces extraction + retrieval.
+- [[llamaindex]] — alternative implementation with PropertyGraphIndex.
+
+## Decision tree
+
+Decision tree at `content/06-decision-tree.xml` decides if GraphRAG is justified given (multi-hop %, corpus stability, entity-vocab closedness). Use BEFORE building the graph.

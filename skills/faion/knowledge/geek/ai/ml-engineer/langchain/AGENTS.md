@@ -3,75 +3,96 @@ slug: langchain
 tier: geek
 group: ai
 domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: LangChain (LCEL pipe syntax) and LangGraph (state machine framework) for building production AI chains and agents.
-content_id: "5a194fbbcfde4010"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a production agent built on LangChain (LCEL pipe syntax) for chains and LangGraph (state-machine framework) for durable multi-step orchestration with checkpoints and human-in-the-loop interrupts.
+content_id: "6abd12981e618446"
+complexity: deep
+produces: code
+est_tokens: 3700
 tags: [langchain, langgraph, agents, lcel, chains]
 ---
 # LangChain and LangGraph: Building Production AI Agents
 
 ## Summary
 
-**One-sentence:** LangChain (LCEL pipe syntax) and LangGraph (state machine framework) for building production AI chains and agents.
+**One-sentence:** Produces a production agent built on LangChain (LCEL pipe syntax) for chains and LangGraph (state-machine framework) for durable multi-step orchestration with checkpoints and human-in-the-loop interrupts.
 
-**One-paragraph:** LangChain (LCEL pipe syntax) and LangGraph (state machine framework) for building production AI chains and agents. LangChain handles standard tool-calling agents via `create_react_agent()` and composable pipelines via `prompt | model | parser`. LangGraph adds durable state, checkpointing, human-in-the-loop interrupts, and multi-agent Supervisor patterns for complex control flow.
+**One-paragraph:** Produces a production agent built on LangChain + LangGraph. LangChain handles standard tool-calling agents (`create_react_agent`) and composable pipelines via LCEL (`prompt | model | parser`). LangGraph adds durable state, checkpointing, human-in-the-loop interrupts, and Supervisor multi-agent patterns. Choose LangGraph when the workflow has loops, retries, human approval steps, or independent agent nodes; choose LangChain LCEL when it is a linear pipeline.
+
+**Ефективно для:** Бекенд-розробник для agent з human-approval — fixed graph з durable state + interrupt + supervisor.
 
 ## Applies If (ALL must hold)
 
-- Building multi-step AI workflows where each step's output feeds the next (LCEL pipe chains)
-- Standard ReAct tool-calling agent with 3-10 tools — `create_react_agent()` covers 80% of use cases
-- Complex control flow requiring state machines: human-in-the-loop approval, conditional branching, retry logic (LangGraph)
-- Long-running workflows that must survive process restarts — LangGraph checkpointing persists state to disk/DB
-- Multi-agent orchestration: Supervisor → Worker patterns with role specialization
-- RAG pipelines requiring custom retrieval → reranking → synthesis chains
+- Multi-step LLM workflow with tools, retries, branches, or human approval steps.
+- Python stack — LangChain is Python (and JS, but Python is canonical).
+- Need durable state across long-running sessions (checkpointing).
+- Have or can stand up a checkpoint backend (PostgreSQL, Redis, SQLite for dev).
+- Familiar with the LangChain/LangGraph paradigm or willing to learn it.
 
 ## Skip If (ANY kills it)
 
-- Single LLM call — use the provider SDK directly (anthropic, openai); LangChain adds 50-200ms overhead
-- Document-centric RAG with complex index types — LlamaIndex has better RAG abstractions
-- Browser or desktop agents — LangChain's tools don't wrap browser automation well; use Playwright directly
-- Simple prompt templates — Python f-strings or Jinja2 avoid the dependency
-- High-throughput inference (greater than 100 RPS) — LangChain's Python overhead becomes measurable; use vLLM or direct SDK
+- Single-turn LLM call with no tools / state — use the provider SDK directly.
+- Workflow has no branching, retries, or human steps — LCEL chain is sufficient.
+- Team rejects the framework lock-in — consider a thinner agent loop.
+- Performance budget cannot absorb LangGraph state overhead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Workflow diagram (nodes + edges) | markdown / mermaid | ML lead |
+| Tool specifications | py functions / json | ML team |
+| Checkpoint backend | url + creds | infra |
+| Provider choice | string | decision record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `geek/ai/ml-engineer/llm-decision-framework` | Provider + agent-pattern choice. |
+| `geek/ai/ml-engineer/llm-observability-stack` | LangSmith / OTel integration. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules each with rationale + source. | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check. | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: model-workflow → declare-nodes → wire-edges → add-checkpoint → wire-interrupt. | ~800 |
+| `content/06-decision-tree.xml` | essential | Branch: LCEL vs LangGraph + supervisor vs router. | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-graph` | haiku | Fill langgraph-supervisor.py / router-node.py from workflow diagram. |
+| `design-state-schema` | sonnet | Declare State TypedDict with reducers. |
+| `debug-non-terminating` | opus | Trace loops that fail to terminate; cross-node debug. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/langgraph-supervisor.py` | Multi-agent supervisor pattern. |
+| `templates/langgraph-router-node.py` | Router-node template for branching. |
+| `templates/lcel-chain.py` | LCEL pipe-syntax chain skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-langchain.py` | Validate the graph config (nodes, edges, checkpointer, interrupts). | Pre-merge of every agent PR. |
 
 ## Related
 
-- parent skill: `geek/ai/ml-engineer/`
+- [[llamaindex]] — alternative agent framework.
+- [[llm-decision-framework]] — provider/framework choice.
+- [[llm-observability-stack]] — LangSmith tracing.
+
+## Decision tree
+
+Decision tree at `content/06-decision-tree.xml` decides LCEL vs LangGraph and within LangGraph: supervisor vs router vs single-agent.

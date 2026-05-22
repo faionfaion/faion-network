@@ -1,23 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mcp-security Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mcp-security. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="MCP Security — Consent, Injection Defenses, Access Controls — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Testable rules every application of `mcp-security` must enforce. Verifiable at review time; failures gate the artifact.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>MCP tools that accept SQL inputs MUST validate that only SELECT queries are allowed (regex match on statement start). MCP tools that accept file paths MUST reject paths containing ".." (path traversal). MCP tools that accept URI inputs MUST validate the URI scheme against an allowlist.</statement>
-      <rationale source="v1-source">SQL injection, path traversal, and SSRF are the top three MCP input attack vectors. Validation must happen inside the tool handler, not just at the JSON schema layer — JSON Schema validates type and format, not semantic safety.</rationale>
+  <section title="Rules">
+    <rule id="r1-explicit-consent" testable="true" depth="essential">
+      <statement>Every first-time tool call requires explicit user consent in a distinguishable UI surface; consent cached per-session at most.</statement>
+      <rationale source="MCP spec; Practical DevSecOps MCP Security 2026">Implicit-consent UX defeats MCP's primary safety control.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>MCP servers MUST implement tool-level access control: check calling client identity before executing sensitive tools. Read-only tools and write tools MUST NOT share the same permission level. Sensitive operations (file writes, DB mutations, API POSTs) MUST require explicit user consent before execution.</statement>
-      <rationale source="v1-source">The MCP protocol itself does not enforce access control — that is the server's responsibility. Without it, any client that connects to the server (including a compromised one) can invoke all tools.</rationale>
+
+    <rule id="r2-oauth-pkce-remote" testable="true" depth="essential">
+      <statement>Remote MCP servers MUST enforce OAuth 2.1 with PKCE; no anonymous remote calls.</statement>
+      <rationale source="MCP Security Guide 2026 (Practical DevSecOps)">Unauthenticated remote MCP exposes tools to anyone reaching the endpoint.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>HTTP-transport MCP servers MUST implement bearer token authentication on every endpoint. stdio-transport servers MUST NOT be exposed to the network. Rate limiting MUST be applied to tool invocations in both transports to prevent runaway agent loops.</statement>
-      <rationale source="v1-source">stdio is single-client and local; the OS provides the security boundary. HTTP is multi-client and network-accessible; the server is entirely responsible for auth.</rationale>
+
+    <rule id="r3-treat-tool-output-as-untrusted" testable="true" depth="essential">
+      <statement>Tool output is DATA, not instructions; clients sanitise / flag suspicious tokens; never inline raw into the next prompt.</statement>
+      <rationale source="Simon Willison MCP prompt injection 2025; arxiv 2601.17549">Tool-output prompt injection is the #1 MCP attack vector in 2026.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Any MCP tool that writes state (file writes, DB mutations, API POSTs) MUST have a human-in-the-loop checkpoint before execution. The tool description MUST declare side-effect scope (e.g., "writes to the database"). Audit logs MUST record caller identity, inputs, and outputs for every tool invocation.</statement>
-      <rationale source="v1-source">The model cannot undo tool actions. Once a file is deleted or a record is mutated, rollback requires external intervention. Audit logs are the only post-hoc accountability mechanism.</rationale>
+
+    <rule id="r4-capability-attestation" testable="true" depth="essential">
+      <statement>Server capabilities are explicitly declared + verifiable; clients reject undeclared methods.</statement>
+      <rationale source="MCP security analysis 2026 (arxiv)">Absence of capability attestation lets servers claim arbitrary permissions.</rationale>
+    </rule>
+
+    <rule id="r5-no-implicit-trust-across-servers" testable="true" depth="essential">
+      <statement>Multi-server configurations require explicit per-server isolation; no implicit trust propagation.</statement>
+      <rationale source="MCP security analysis 2026">Implicit trust across servers enables cross-server escalation.</rationale>
+    </rule>
+
+    <rule id="r6-audit-every-tool-call" testable="true" depth="essential">
+      <statement>Every tool call is logged with server_id + tool_name + caller_session + arguments_hash + outcome + timestamp.</statement>
+      <rationale source="Security-engineering practice; MCP Security Guide 2026">Without audit logs, post-incident attribution and forensics are impossible.</rationale>
+    </rule>
+
+    <rule id="r7-lookalike-detection" testable="true" depth="essential">
+      <statement>Maintain a server allow-list + cryptographic identity (signed manifest or pinned cert); reject servers that don't verify.</statement>
+      <rationale source="MCP security analysis 2026">Lookalike-server replacement attacks substitute a malicious server with the same name.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

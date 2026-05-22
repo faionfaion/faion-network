@@ -1,3 +1,9 @@
+# purpose: Library of multi-hop / community-traversal queries.
+# consumes: see AGENTS.md ## Prerequisites
+# produces: spec
+# depends-on: content/02-output-contract.xml schema for graph-rag
+# token-budget-impact: ≤500 tokens to fill
+
 // GraphRAG Cypher traversal patterns
 
 // 1-hop neighborhood
