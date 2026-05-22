@@ -2,7 +2,7 @@
 slug: competitor-analysis
 tier: pro
 group: research
-domain: market-researcher
+domain: research
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20

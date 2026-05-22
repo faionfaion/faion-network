@@ -2,7 +2,7 @@
 slug: definition-of-ready-template
 tier: pro
 group: sdd
-domain: sdd-planning
+domain: sdd
 version: 1.0.0
 status: draft
 last_reviewed: 2026-05-20
