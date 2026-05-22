@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Company Prompt Library Pattern Procedure" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6-step procedure to convert an ad-hoc prompt mess into a versioned, evaluated, owned library spec.</summary>
+
+  <step n="1" name="inventory">
+    <input>30-day chat-history dump + git log + manual sweep of repos</input>
+    <action>Catalogue every prompt currently sent to an LLM by anyone in the org. Bucket by role (PM / dev / QA) and task (review / spec / code). Note frequency.</action>
+    <output>inventory.csv with columns: prompt-text, source, frequency, role, task</output>
+  </step>
+
+  <step n="2" name="namespace">
+    <input>inventory.csv</input>
+    <action>Group prompts into namespaces: `prompts/role/<role>/` for role-pack and `prompts/task/<task>/` for task-pack. Anything with frequency &lt;3 in 30 days goes into archive, not the library.</action>
+    <output>namespace_map.json + role_pack list</output>
+    <decision-gate>If a role-pack has fewer than 3 prompts, collapse into company-override layer (per allowed-transformations in 02-output-contract.xml).</decision-gate>
+  </step>
+
+  <step n="3" name="override-layers">
+    <input>namespace_map.json + faion-defaults catalogue</input>
+    <action>For each prompt, declare which layer wins: faion-defaults, role-pack, company-override, repo-override. Resolution order is fixed; only the declaration changes.</action>
+    <output>per-prompt frontmatter with `layer: <layer>` and `inherits_from: <upstream>`</output>
+  </step>
+
+  <step n="4" name="eval-gate">
+    <input>role-pack list + golden-set seed (20 rows per pack)</input>
+    <action>Wire the CI gate: deterministic check (JSON-Schema OR regex) + rubric-based LLM-as-judge scorer. Block-on-fail = true. Schedule nightly drift check too.</action>
+    <output>.github/workflows/prompt-eval.yml + golden/role-pack-name.jsonl per pack</output>
+  </step>
+
+  <step n="5" name="owner-assignment">
+    <input>team roster + role-pack list</input>
+    <action>Assign a single named owner per role-pack and one overall library owner. No 'team' / 'we'. Record in `prompts/OWNERS.yaml`.</action>
+    <output>OWNERS.yaml, with CI failing when a pack has no owner</output>
+    <decision-gate>If a pack has no owner candidate, archive the pack and reroute consumers to faion-defaults.</decision-gate>
+  </step>
+
+  <step n="6" name="rollout">
+    <input>full spec from steps 1-5</input>
+    <action>Merge the spec to repo. Announce 2-week migration window. Add `pre-commit` hook that rejects inline prompt strings &gt;200 chars containing 'you are' / 'assistant'.</action>
+    <output>spec_id, version=1.0.0, last_reviewed=today, status=active</output>
+  </step>
+
+  <section title="Exit criteria">
+    <list>
+      <item>All steps produced their declared output</item>
+      <item>Spec validates against templates/company-prompt-library-pattern.json</item>
+      <item>Owner has signed off (named human, not 'team')</item>
+      <item>Eval gate is green on main</item>
+    </list>
+  </section>
+</text>

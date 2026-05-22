@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Tool Description Rewrite Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to audit a tool catalog, identify rewrite candidates, and validate the new descriptions cut tool-selection errors.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="ingest-catalog">
+      <input>Tool catalog (JSON / Python dict / MCP server list)</input>
+      <action>Enumerate every tool with `name`, `description`, `input_schema`. Compute token-count per description.</action>
+      <output>Catalog table: name → description → tokens</output>
+    </step>
+
+    <step n="2" name="score-each-tool">
+      <input>Catalog table + 5-axis rubric (use-when, not-use-when, input, output, side-effects)</input>
+      <action>For each tool, score 0/1 per axis. Verdict = `ok` (5/5), `rewrite` (≤3/5), `split` (one tool tries to cover &gt;1 task).</action>
+      <output>Audit JSON matching the schema in 02-output-contract.xml</output>
+    </step>
+
+    <step n="3" name="detect-overlap-pairs">
+      <input>Catalog descriptions</input>
+      <action>Cluster by lexical similarity + verb-class. Any pair with cosine &gt; 0.8 on description is flagged as overlap; both need mutual anti-triggers.</action>
+      <output>List of overlap pairs needing anti-trigger lines</output>
+      <decision-gate>If overlap rate &gt; 20% of catalog, the catalog has a naming problem — escalate to verb-object-tool-naming methodology first.</decision-gate>
+    </step>
+
+    <step n="4" name="rewrite-and-fit-budget">
+      <input>Audit JSON + overlap list + original signatures</input>
+      <action>Rewrite each `rewrite`-verdict tool using the 5-part structure. Cap each at 200 tokens. For each overlap pair add the partner's name in "do NOT use this when".</action>
+      <output>New description set ready to deploy</output>
+    </step>
+
+    <step n="5" name="measure-pre-post">
+      <input>Eval set of 50 representative tasks + agent trace store</input>
+      <action>Run the eval with the OLD catalog, then deploy NEW descriptions, re-run. Count tool-selection errors and argument-fill errors per run.</action>
+      <output>Delta table — both error rates should drop measurably (per Anthropic SWE-bench reports).</output>
+      <decision-gate>If neither rate drops, the rewrite missed the actual confusion signal — capture failed traces and iterate.</decision-gate>
+    </step>
+
+  </section>
+</text>
