@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 phase D: extend validate-methodology-v2.py with B1 keys (complexity, produces, est_tokens, tags) for status=active.
 - F-066 refactor: harvest +18 files (batch 0).
 - F-066 refactor: harvest +70 files (batch 0).
 - F-066 phase D: relax decision-tree validator (accept sibling-branch shape).

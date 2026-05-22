@@ -49,6 +49,20 @@ REQUIRED_FRONTMATTER_KEYS = (
     "content_id",
 )
 
+# F-066 B1 keys are required for refactored methodologies (status=active).
+F066_FRONTMATTER_KEYS = (
+    "complexity",
+    "produces",
+    "est_tokens",
+    "tags",
+)
+
+VALID_COMPLEXITY = {"light", "medium", "deep"}
+VALID_PRODUCES = {
+    "checklist", "rubric", "spec", "report",
+    "code", "config", "playbook-step", "decision-record",
+}
+
 REQUIRED_SECTIONS = (
     "Summary",
     "Applies If",
@@ -151,6 +165,22 @@ def validate_agents_md(agents_path: Path, report: Report) -> None:
         if cid and not CONTENT_ID_RE.fullmatch(cid):
             report.fail(agents_path, "CONTENT_ID_FORMAT",
                         f"content_id='{cid}' must be 16 lowercase hex chars")
+
+        # F-066 B1 additional keys — required only when status=active (refactored).
+        status = fm.get("status", "").strip().strip('"').strip("'")
+        if status == "active":
+            for key in F066_FRONTMATTER_KEYS:
+                if key not in fm or not fm[key]:
+                    report.fail(agents_path, "F066_FRONTMATTER_KEY",
+                                f"F-066 required key missing or empty: '{key}'")
+            cx = fm.get("complexity", "").strip().strip('"').strip("'")
+            if cx and cx not in VALID_COMPLEXITY:
+                report.fail(agents_path, "F066_COMPLEXITY",
+                            f"complexity must be one of {sorted(VALID_COMPLEXITY)}, got '{cx}'")
+            pr = fm.get("produces", "").strip().strip('"').strip("'")
+            if pr and pr not in VALID_PRODUCES:
+                report.fail(agents_path, "F066_PRODUCES",
+                            f"produces must be one of {sorted(VALID_PRODUCES)}, got '{pr}'")
 
     body = frontmatter_body(text)
     headings = {h.strip() for h in HEADING_RE.findall(body)}
