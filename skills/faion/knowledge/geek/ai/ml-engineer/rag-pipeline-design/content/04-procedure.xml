@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="RAG Pipeline Design — Procedure" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six-step procedure: pick tier from query analysis → choose vector DB + embedding model → ingest + chunk → wire hybrid retrieval + reranker → install eval gate → ship.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pick-tier">
+      <input>≥100 labelled query sample + latency / cost budgets</input>
+      <action>Cluster queries by complexity. Naive if single-intent FAQ; Advanced if ambiguous + needs rerank; Modular if ≥2 data sources; Agentic if multi-step reasoning required.</action>
+      <output>`tier` decision recorded in `rag-pipeline.yaml`</output>
+      <decision-gate>If reaching for Agentic on a single-intent FAQ — STOP; tier overshoot inflates cost without quality gain (r1-tier-selection).</decision-gate>
+    </step>
+
+    <step n="2" name="choose-db-and-embedding">
+      <input>Operational profile (managed vs self-host, existing Postgres, scale, multi-tenant)</input>
+      <action>Pick vector DB: Qdrant (self-hosted default), pgvector (Postgres exists), Pinecone (managed serverless), Chroma (dev only). Pick embedding: Voyage-3-large (quality), text-embedding-3-small (cost), local BGE (privacy).</action>
+      <output>vector_db + embedding blocks committed</output>
+      <decision-gate>If embedding model could change in next 90 days — pin a version in spec; switching forces re-index.</decision-gate>
+    </step>
+
+    <step n="3" name="ingest-and-chunk">
+      <input>corpus-inventory.yaml + document samples</input>
+      <action>Default RecursiveCharacterTextSplitter 400-512 / 50 overlap. Override only with document-type rationale (paragraph for legal, header-based for code, hierarchical for manuals). Compute content hashes; skip re-embed on unchanged docs.</action>
+      <output>Indexed collection + ingest report (chunks per doc, hash log)</output>
+      <decision-gate>If chunk size out of [100, 1500] band — require explicit comment in spec (r3-chunk-default).</decision-gate>
+    </step>
+
+    <step n="4" name="wire-hybrid-and-rerank">
+      <input>Indexed collection + reranker choice</input>
+      <action>Configure hybrid retrieval (vector + BM25 + RRF fusion). On tier ≠ naive add reranker (Cohere Rerank or BGE Reranker). Retrieve top-20, rerank to top-5.</action>
+      <output>retrieval + reranker blocks committed; p95 latency benchmarked</output>
+      <decision-gate>If p95 budget breached — drop reranker.top_n to 3 OR move to faster reranker; do not skip reranker (r4-reranker-after-retrieval).</decision-gate>
+    </step>
+
+    <step n="5" name="install-eval-gate">
+      <input>≥50 labelled QA pairs + chosen framework (Ragas / TruLens)</input>
+      <action>Add CI job that runs eval on every PR touching prompts / chunks / retrieval. Gate: faithfulness ≥ 0.9, context_recall ≥ 0.85. Block merge on regression.</action>
+      <output>CI job live; first eval-gate run report archived</output>
+      <decision-gate>If labelled set &lt;50 pairs — STOP; expand the eval set before shipping (r6-eval-gate).</decision-gate>
+    </step>
+
+    <step n="6" name="ship-and-instrument">
+      <input>All previous outputs + telemetry plan</input>
+      <action>Log query_embedding + retrieved_ids + scores per request. Wire telemetry to `retrieval-drift-alerting-recipe` for runtime monitoring. Roll out at 1% → 10% → 50% → 100% if no acceptance-contract breach.</action>
+      <output>Production pipeline live with telemetry feeding drift monitor</output>
+      <decision-gate>If telemetry missing query embedding logging — block production; drift detector is blind without it.</decision-gate>
+    </step>
+
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
