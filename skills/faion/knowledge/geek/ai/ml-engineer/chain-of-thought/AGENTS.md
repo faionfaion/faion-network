@@ -1,75 +1,101 @@
----
-slug: chain-of-thought
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: CoT prompting elicits intermediate reasoning steps before final answers, improving accuracy on multi-step problems by up to 18% (GSM8K) or 70% (with Tree-of-Thoughts).
-content_id: "0e37f56d7df41e44"
-tags: [chain-of-thought, prompting, reasoning, extended-thinking, llm]
----
-# Chain-of-Thought Prompting
+        ---
+        slug: chain-of-thought
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Chain-of-Thought prompting + extended thinking + self-consistency: when to use each, how to wire them, and how to keep CoT from leaking to the user.
+        content_id: "a41ea113e3499359"
+        complexity: medium
+        produces: code
+        est_tokens: 4200
+        tags: [chain-of-thought, prompting, reasoning, extended-thinking, llm]
+        ---
+        # Chain of Thought
 
-## Summary
+        ## Summary
 
-**One-sentence:** CoT prompting elicits intermediate reasoning steps before final answers, improving accuracy on multi-step problems by up to 18% (GSM8K) or 70% (with Tree-of-Thoughts).
+        **One-sentence:** Chain-of-Thought prompting + extended thinking + self-consistency: when to use each, how to wire them, and how to keep CoT from leaking to the user.
 
-**One-paragraph:** CoT prompting elicits intermediate reasoning steps before final answers, improving accuracy on multi-step problems by up to 18% (GSM8K) or 70% (with Tree-of-Thoughts). For modern models, use zero-shot CoT. Use few-shot only for format enforcement, not reasoning quality. For Claude, use `<thinking>` XML tags or Extended Thinking (Opus). Do NOT add explicit CoT to reasoning models (o1, o3, DeepSeek-R1) as they have it built in. Research shows for strong models, zero-shot CoT matches few-shot CoT — few-shot examples primarily enforce output format rather than improving reasoning quality.
+        **One-paragraph:** CoT elicits intermediate reasoning steps before final answers, improving multi-step accuracy. This methodology covers zero-shot CoT (prompt-only), few-shot CoT (with worked examples), extended-thinking modes (Claude / OpenAI o-series), and self-consistency sampling (vote across N reasonings). Includes practical guardrails: hide CoT from end-user, cap reasoning length, prevent the model leaking the system prompt as part of its «thinking».
 
-## Applies If (ALL must hold)
+        **Ефективно для:** ML eng + prompt engineers, що бачать «модель дає поверхневі відповіді на 5-step problems» і потребують структурованого CoT-апгрейду.
 
-- Task requires multi-step reasoning: math, logic puzzles, code debugging, complex decisions
-- LLM makes errors on a task it should theoretically solve — CoT surfaces where reasoning breaks
-- Output needs to be auditable: visible steps allow reviewers to verify the reasoning path
-- Agent must plan a sequence of actions before executing — CoT as a scratchpad before tool calls
-- High-stakes single response where Self-Consistency (5 samples + majority vote) is justified
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - task requires multi-step reasoning (math, planning, logic)
+- single-shot accuracy is the bottleneck
+- you can afford 2-3x more output tokens
+- you can hide CoT from end-user
+- extended-thinking mode is available on the chosen model
 
-- Simple classification, extraction, or translation — CoT adds tokens with no quality gain
-- Latency is critical (<1s) — CoT adds tokens and turns
-- Using o1/o3/o4-mini/DeepSeek-R1 — built-in reasoning; explicit CoT interferes
-- High-volume, low-complexity pipelines — 2-5x token overhead multiplies at scale
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - task is single-step (lookup, simple classification)
+- latency / cost budget can't afford the extra tokens
+- you need raw answer only and can't filter CoT
+- model doesn't support CoT well (some sub-3B local models)
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-chain-of-thought.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/prompt-zero-shot.txt` | Zero-shot CoT prompt template |
+| `templates/self-consistency.py` | Sample N + majority-vote helper |
+| `templates/extended-thinking.py` | Claude / o-series extended-thinking call helper |
+| `templates/strip-cot.py` | CoT-stripping helper for output filtering |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-chain-of-thought.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-hide-cot`, `r2-bounded-thinking`, `r3-self-consistency-for-stakes`, `r4-cot-validated`, `r5-prompt-versioned` from `content/01-core-rules.xml`.

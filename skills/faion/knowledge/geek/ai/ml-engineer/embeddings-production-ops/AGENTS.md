@@ -1,72 +1,101 @@
----
-slug: embeddings-production-ops
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Running embedding systems in production requires attention to latency SLOs, rate limit handling, cost tracking, fault tolerance, and model migration.
-content_id: "1cbcd8c94076aef9"
-tags: [embeddings, production, monitoring, debugging, cost-optimization]
----
-# Embedding System Production Operations
+        ---
+        slug: embeddings-production-ops
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Production embeddings operations: latency SLO, rate-limit handling, cost tracking, fault tolerance, model migration playbook.
+        content_id: "0532c5515c1bdfd6"
+        complexity: deep
+        produces: config
+        est_tokens: 4200
+        tags: [embeddings, production, monitoring, debugging, cost-optimization]
+        ---
+        # Embeddings Production Ops
 
-## Summary
+        ## Summary
 
-**One-sentence:** Running embedding systems in production requires attention to latency SLOs, rate limit handling, cost tracking, fault tolerance, and model migration.
+        **One-sentence:** Production embeddings operations: latency SLO, rate-limit handling, cost tracking, fault tolerance, model migration playbook.
 
-**One-paragraph:** Running embedding systems in production requires attention to latency SLOs, rate limit handling, cost tracking, fault tolerance, and model migration. The most common production failure modes are embedding drift (model version mismatch), silent token truncation, and missing monitoring until costs spike. Set up monitoring before launch, not after.
+        **One-paragraph:** Running embedding systems in production beyond «it works in dev» requires latency SLOs, exponential-backoff rate-limit handling, per-tenant cost accounting, fault tolerance for provider outages, and a model-migration playbook (reindex without downtime). This methodology produces an `embeddings-ops.yaml` config + a runbook covering the five operational gates.
 
-## Applies If (ALL must hold)
+        **Ефективно для:** ML eng, що вже зловили 429 / outage / cost-spike і хочуть закрити цикл за один artefact.
 
-- Setting up monitoring and alerting for a new embedding pipeline.
-- Debugging poor retrieval quality in production.
-- Planning a model migration or version update.
-- Optimizing costs as embedding volume grows.
-- Hardening a prototype for production deployment.
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - embeddings power production retrieval
+- monthly query volume > 100k
+- you have an SLO (latency_p95, success_rate) defined
+- cost tracking is required (per tenant or per use case)
+- provider outage has happened or is plausible
 
-- Early prototype with under 1000 documents — apply basic patterns from embeddings-provider-apis first.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - prototype or internal-only — gates are overkill
+- single-tenant + low volume
+- embedding is computed offline only — no real-time ops
+- you use a fully-managed search-as-a-service — vendor handles ops
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=config + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=config`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-embeddings-production-ops.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/embeddings-ops.yaml` | Production ops config skeleton |
+| `templates/rate-limit-handler.py` | Exponential-backoff + jitter wrapper |
+| `templates/cost-attribution.py` | Per-call (tenant, use case, tokens, $) logger |
+| `templates/migration-playbook.md` | Dual-index migration runbook |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-embeddings-production-ops.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-slo-defined`, `r2-rate-limit-handling`, `r3-cost-attribution`, `r4-fault-tolerance`, `r5-migration-playbook` from `content/01-core-rules.xml`.

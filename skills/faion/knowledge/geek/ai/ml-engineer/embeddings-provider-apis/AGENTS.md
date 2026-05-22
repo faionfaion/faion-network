@@ -1,72 +1,102 @@
----
-slug: embeddings-provider-apis
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-ready integration patterns for the four main embedding provider categories: OpenAI (symmetric, Matryoshka dims), Voyage AI (asymmetric, quantization), Cohere (multimodal, input types, multilingual), and local sentence-transformers (GPU, BGE-M3 dense+sparse).
-content_id: "74d57f10ce7119b1"
-tags: [embeddings, openai, voyage-ai, cohere, sentence-transformers]
----
-# Embedding Provider API Integration
+        ---
+        slug: embeddings-provider-apis
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Production patterns for the four main embedding providers (OpenAI, Voyage AI, Cohere, sentence-transformers local) with a unified client abstraction.
+        content_id: "7b31837cfe879021"
+        complexity: medium
+        produces: code
+        est_tokens: 4200
+        tags: [embeddings, openai, voyage-ai, cohere, sentence-transformers]
+        ---
+        # Embeddings Provider APIs
 
-## Summary
+        ## Summary
 
-**One-sentence:** Production-ready integration patterns for the four main embedding provider categories: OpenAI (symmetric, Matryoshka dims), Voyage AI (asymmetric, quantization), Cohere (multimodal, input types, multilingual), and local sentence-transformers (GPU, BGE-M3 dense+sparse).
+        **One-sentence:** Production patterns for the four main embedding providers (OpenAI, Voyage AI, Cohere, sentence-transformers local) with a unified client abstraction.
 
-**One-paragraph:** Production-ready integration patterns for the four main embedding provider categories: OpenAI (symmetric, Matryoshka dims), Voyage AI (asymmetric, quantization), Cohere (multimodal, input types, multilingual), and local sentence-transformers (GPU, BGE-M3 dense+sparse). Each provider requires a different client setup and has distinct capabilities.
+        **One-paragraph:** Each major embedding provider exposes different knobs — OpenAI offers symmetric + Matryoshka dimensions; Voyage AI offers asymmetric input types + quantization; Cohere offers multimodal + multilingual + input types; sentence-transformers offers full local control + BGE-M3 dense+sparse. This methodology provides a unified Python client wrapping all four, plus per-provider integration patterns (batching, retries, dim truncation, input-type signalling).
 
-## Applies If (ALL must hold)
+        **Ефективно для:** ML eng, що мають кілька embedding-провайдерів і хочуть один client замість 4 ad-hoc сценаріїв з різним батчингом.
 
-- Building a new embedding pipeline and need provider-specific client code.
-- Implementing asymmetric search (different representation for query vs document).
-- Adding GPU acceleration for local models or quantized output for storage savings.
-- Integrating multimodal embeddings (text + image in the same vector space).
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - you call ≥1 embedding provider in production
+- you anticipate switching or A/B-testing providers
+- batch size + dim truncation are tuning knobs in scope
+- asymmetric vs symmetric input types matter
+- Python is the runtime
 
-- When you need a unified multi-provider abstraction — use litellm instead of implementing per-provider wrappers.
-- When you have not yet selected a model — see embeddings-model-selection first.
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - single provider, no switch planned
+- embedding is computed once offline and never refreshed
+- you use a vector-DB-bundled embedding (Pinecone hosted) — vendor handles APIs
+- Node / Go runtime — port the patterns rather than reuse the code
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=code + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=code`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-embeddings-provider-apis.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/embeddings-client.py` | Unified EmbeddingsClient skeleton |
+| `templates/openai-adapter.py` | OpenAI provider adapter |
+| `templates/voyage-adapter.py` | Voyage AI provider adapter |
+| `templates/cohere-adapter.py` | Cohere provider adapter |
+| `templates/local-adapter.py` | sentence-transformers local adapter |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-embeddings-provider-apis.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-unified-client`, `r2-input-type-explicit`, `r3-batched-calls`, `r4-dim-truncation-supported`, `r5-fallback-chain` from `content/01-core-rules.xml`.

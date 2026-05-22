@@ -1,75 +1,101 @@
----
-slug: chunking-strategies
-tier: geek
-group: ai
-domain: ml-engineering
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Chunking splits documents into semantically meaningful pieces for embedding and retrieval.
-content_id: "017c45a13b6b1ab9"
-tags: [chunking, rag, embeddings, retrieval, ingestion]
----
-# Chunking Strategies for RAG
+        ---
+        slug: chunking-strategies
+        tier: geek
+        group: ai
+        domain: ml-engineering
+        version: 1.1.0
+        status: active
+        last_reviewed: 2026-05-22
+        maintainers: [faion-network]
+        summary: Document chunking decision rubric: fixed-size, recursive-character, semantic, structure-aware (markdown/HTML/code). Output is a chunking config + dispatcher.
+        content_id: "e8418304d2b24197"
+        complexity: medium
+        produces: config
+        est_tokens: 4200
+        tags: [chunking, rag, embeddings, retrieval, ingestion]
+        ---
+        # Chunking Strategies
 
-## Summary
+        ## Summary
 
-**One-sentence:** Chunking splits documents into semantically meaningful pieces for embedding and retrieval.
+        **One-sentence:** Document chunking decision rubric: fixed-size, recursive-character, semantic, structure-aware (markdown/HTML/code). Output is a chunking config + dispatcher.
 
-**One-paragraph:** Chunking splits documents into semantically meaningful pieces for embedding and retrieval. The right strategy improves retrieval precision by 30-40%. Decision rule: if short (<1000 tokens) → no chunking; if code → code-aware (AST); if structured (MD/HTML) → structure-based; if context-critical (legal/medical) → semantic; default → recursive with 15% overlap.
+        **One-paragraph:** Splits documents into retrieval-friendly chunks. Five strategies (fixed-size, recursive-character, semantic-similarity, structure-aware, hybrid) each fit different document types. Methodology output: a `chunking-config.yaml` per corpus + a dispatcher that picks the right strategy per document type. Includes evaluation rubric (chunk-faithfulness, retrieval-recall at top-k).
 
-## Applies If (ALL must hold)
+        **Ефективно для:** RAG-інженер, який ставить «fixed-size 1000 chars» скрізь і бачить, що retrieval-recall топчеться на ~70%.
 
-- Building or improving a RAG ingestion pipeline where retrieval recall or precision is suboptimal
-- Corpus contains mixed document types (code, markdown, PDFs, legal text) that need different splitting logic
-- Current chunking causes hallucinations because LLM receives incomplete context at chunk boundaries
-- Scaling to a large corpus where embedding cost per chunk matters
-- Migrating from document-level embedding to chunk-level retrieval
+        ## Applies If (ALL must hold)
 
-## Skip If (ANY kills it)
+        - RAG pipeline is in scope
+- corpus has > 1 document type (markdown + code + HTML)
+- retrieval-recall is the bottleneck
+- you have an eval suite with retrieval ground truth
+- vector store is configured
 
-- Documents are short (<500 tokens each) — embed at document level, no chunking needed
-- Prototype with <100 documents — use RecursiveCharacterTextSplitter defaults; optimize later
-- Cost is the primary constraint and documents are uniform — fixed-size is fastest and cheapest
-- Late chunking (Jina embeddings) is available and documents fit in the model's context window — late chunking outperforms all others for contextual coherence
+        ## Skip If (ANY kills it)
 
-## Prerequisites
+        - single-document type with stable structure — pick once, move on
+- corpus is tiny (< 100 docs) — chunking is not the bottleneck
+- no eval suite — build the eval first, then optimise chunking
+- downstream is full-document QA (no chunking needed)
 
-- TBD — list concrete input artifacts and where they come from
+        ## Prerequisites
 
-## Assumes Loaded
+        | Input artifact | Format | Source |
+        |---|---|---|
+        | Use-case brief | text | Author / owner |
+        | Tier-manifest entry | JSON | `skills/tier-manifest.json` |
+        | Eval / fixture data (when applicable) | jsonl | Repo `tests/fixtures/` |
+        | Named approver | role:person | Org RACI |
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+        ## Assumes Loaded
 
-## Content (load on demand)
+        | Methodology | Why |
+        |-------------|-----|
+        | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
+        | `geek/ai/ml-engineer/ai-agent-patterns` | Pattern catalogue for agent loops referenced from this methodology. |
 
-| File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+        ## Content (load on demand)
 
-## Task Routing
+        | File | Depth | What's inside | Est. tokens |
+        |------|-------|---------------|-------------|
+        | `content/01-core-rules.xml` | essential | 5 testable rules with statement + rationale + source | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for produces=config + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | medium | 5-step procedure with input / action / output / decision-gate | ~700 |
+| `content/05-examples.xml` | medium | End-to-end worked example | ~500 |
+| `content/06-decision-tree.xml` | essential | Root question + branches with `when` observables → conclusion(ref=rule-id) | ~400 |
 
-| Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+        ## Task Routing
 
-## Templates
+        | Sub-task | Model | Rationale |
+        |----------|-------|-----------|
+        | `plan-step` | sonnet | Standard reasoning over the procedure / scoring axes. |
+| `author-output` | sonnet | Produces the artefact in the shape `produces=config`. |
+| `audit-validate` | haiku | Mechanical schema check via `scripts/validate-chunking-strategies.py`. |
+| `senior-review` | opus | Cross-artefact judgement on rejection / approval. |
 
-| File | Purpose |
-|------|---------|
-| TBD | TBD |
+        ## Templates
 
-## Scripts
+        | File | Purpose |
+        |------|---------|
+        | `templates/chunker-dispatcher.py` | Per-type dispatcher skeleton |
+| `templates/chunking-config.yaml` | YAML config with per-type chunker + parameters |
+| `templates/markdown-chunker.py` | Markdown heading-aware chunker |
+| `templates/code-chunker.py` | AST-based code chunker |
 
-| File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+        ## Scripts
 
-## Related
+        | File | Purpose | When to call |
+        |------|---------|--------------|
+        | `scripts/validate-chunking-strategies.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
-- parent skill: `geek/ai/ml-engineer/`
+        ## Related
+
+        - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
+        - [[agents-production-deployment]] — production gates this methodology feeds into.
+        - external: rule rationales cite the sources in `content/01-core-rules.xml`.
+
+        ## Decision tree
+
+        The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-eval-driven`, `r2-structure-aware-when-possible`, `r3-overlap-bounded`, `r4-per-type-dispatcher`, `r5-chunk-size-by-model` from `content/01-core-rules.xml`.
