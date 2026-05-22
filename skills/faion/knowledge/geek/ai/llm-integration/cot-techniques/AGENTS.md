@@ -4,72 +4,96 @@ tier: geek
 group: ai
 domain: ml-engineering
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Advanced reasoning patterns beyond zero-shot CoT: Tree of Thoughts (ToT) for branching decisions, Least-to-Most for sequential sub-dependencies, and Self-Consistency for high-stakes answers.
+status: active
+last_reviewed: 2026-05-22
+maintainers: [faion-network]
+summary: Produces a selected advanced-CoT pattern (few-shot CoT, self-consistency, least-to-most, tree-of-thoughts) — config, runner, eval-lift report, cost guard.
 content_id: "d5b52e4f362adf19"
-tags: [chain-of-thought, tree-of-thoughts, least-to-most, self-consistency, advanced-prompting]
+complexity: medium
+produces: code
+est_tokens: 3400
+tags: [cot, self-consistency, tot, least-to-most, advanced-prompting]
 ---
-# Chain-of-Thought Advanced Techniques
+# Chain-of-Thought (CoT) Techniques
 
 ## Summary
 
-**One-sentence:** Advanced reasoning patterns beyond zero-shot CoT: Tree of Thoughts (ToT) for branching decisions, Least-to-Most for sequential sub-dependencies, and Self-Consistency for high-stakes answers.
+**One-sentence:** Produces a selected advanced-CoT pattern (few-shot CoT, self-consistency, least-to-most, tree-of-thoughts) — config, runner, eval-lift report, cost guard.
 
-**One-paragraph:** Advanced reasoning patterns beyond zero-shot CoT: Tree of Thoughts (ToT) for branching decisions, Least-to-Most for sequential sub-dependencies, and Self-Consistency for high-stakes answers. Always start with zero-shot CoT ("Think step by step.") — it solves 70–80% of cases. Escalate to advanced techniques only when zero-shot fails.
+**One-paragraph:** Zero-shot CoT solves the majority of multi-step tasks; the rest need a heavier pattern. Few-shot CoT (2-3 worked examples) anchors the model to the right reasoning shape. Self-consistency runs N=3-7 parallel paths and majority-votes the answer — increases accuracy on math/logic at NxCost. Least-to-most decomposes the problem into a strict chain of sub-questions where each answer feeds the next. Tree-of-thoughts explores branching solution paths and prunes with a value heuristic. Pick exactly one technique per call site and measure lift vs zero-shot CoT before keeping it.
+
+**Ефективно для:** advanced math problem-solving, multi-hop logic, plan-decomposition, code-design exploration with multiple candidate paths.
 
 ## Applies If (ALL must hold)
 
-- Multi-step reasoning where zero-shot CoT still produces wrong answers.
-- Branching solution paths (architecture choices, algorithm selection) — use Tree of Thoughts.
-- Sequential sub-dependencies (build order, migration path) — use Least-to-Most decomposition.
-- Verification pipelines where the model must self-check before returning.
-- Agent planning steps requiring reasoning about which tool to call next.
+- Zero-shot CoT measurable failure rate >10% on the task.
+- Latency / cost budget tolerates Nx multiplier (self-consistency) or branching (ToT).
+- An eval set exists to compare baseline CoT vs advanced CoT.
+- Caller has the engineering capacity to wire branching / parallel runners.
 
 ## Skip If (ANY kills it)
 
-- Simple factual lookups — CoT inflates token usage without improving accuracy.
-- Classification tasks with 3–5 clear categories — few-shot without CoT is cheaper.
-- High-throughput pipelines where latency matters — each ToT branch is a separate API call.
-- When self-consistency requires 5–10 samples — cost multiplies linearly; benchmark gain vs. cost first.
+- Zero-shot CoT already at target accuracy — overhead not justified.
+- Reasoning model in use (Extended Thinking, o-series) — internal reasoning already covers most advanced patterns.
+- High-throughput pipeline (>10 req/s per worker) — Nx cost compounds.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Baseline CoT accuracy | number | eval harness |
+| Eval set | JSONL | eval harness |
+| Cost / latency budget | doc | finops / SLO |
+| Sample worked-reasoning examples | text | domain expert |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `[[cot-basics]]` | Baseline zero-shot CoT must be in place first. |
+| `[[latency-vs-quality-decision-grid]]` | Picks the right pattern given the call-site SLO. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 6 rules: pick-one, baseline-first, eval-lift gate, cost-guard, voting-rule for self-consistency, branch-pruning for ToT | ~800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for cot-config.json + lift-report.json | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: cargo-cult ToT, no voting rule, leaked branches, no cost guard, no baseline | ~600 |
+| `content/04-procedure.xml` | medium | 6-step: measure baseline → pick pattern → wire runner → run A/B → decide → log | ~900 |
+| `content/06-decision-tree.xml` | essential | Root: "zero-shot CoT failure rate &gt;10% AND budget allows Nx?" | ~400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| Pick pattern | opus | Multi-axis tradeoff. |
+| Author few-shot examples | opus | Quality-sensitive. |
+| Run N-sample voting | runtime | Mechanical. |
+| Report lift | haiku | Numerical. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/cot-config.schema.json` | JSON Schema for cot-config.json. |
+| `templates/self-consistency-runner.py` | Reference parallel runner with majority vote. |
+| `templates/few-shot-cot.md` | Prompt skeleton with 2 worked examples. |
+| `templates/lift-report.md` | A/B lift report template. |
+| `templates/_smoke-test.json` | Minimum valid cot-config. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-cot-techniques.py` | Validates cot-config.json against schema; asserts pattern + voting rule (if self-consistency) + cost guard set. | Pre-commit on config. |
 
 ## Related
 
 - parent skill: `geek/ai/llm-integration/`
+- `[[cot-basics]]`
+- `[[judge-calibration-protocol]]` — calibrates the verifier when self-consistency uses LLM judge
+
+## Decision tree
+
+The decision tree at `content/06-decision-tree.xml` selects the pattern: low baseline-failure → skip; high failure + branching paths → ToT; high failure + sequential subproblems → least-to-most; high failure + math/logic + budget OK → self-consistency.

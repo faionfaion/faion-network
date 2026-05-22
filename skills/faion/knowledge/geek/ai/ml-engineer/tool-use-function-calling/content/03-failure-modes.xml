@@ -1,27 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="tool-use-function-calling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for tool-use-function-calling as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Tool Use — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns in tool-use deployments.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Passing all 50+ available tools to every LLM call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Token cost grows linearly with tool count. At 50 tools, selection accuracy drops significantly. Use RAG-over-tools: embed all tool descriptions, retrieve the top 5–10 by cosine similarity to the user query.</repair>
+
+    <failure-mode id="fm-01" severity="high">
+      <description>Free-form args — tool defined with `args: object` and no schema; model emits anything; dispatcher crashes downstream.</description>
+      <detector>tools[].args_schema missing OR schema is `additionalProperties: true` with no `properties`</detector>
+      <repair>Define proper JSON Schema per tool. Constrain types, enums, min/max where applicable.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Accepting free-text from LLM for parameters that should be typed (e.g., user_id as unvalidated string).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LLMs hallucinate IDs and enum values. Always validate against a known set or fetch from a prior tool call result; never trust a naked identifier generated from thin air.</repair>
+
+    <failure-mode id="fm-02" severity="high">
+      <description>No sandbox — model emits a `delete_account` call with hallucinated user_id; dispatcher executes without check; data loss.</description>
+      <detector>tool with safety_class==destructive AND no human_gate OR no scoped permission</detector>
+      <repair>Gate destructive tools behind explicit human approval. Add CAPABILITIES check before dispatch.</repair>
     </failure-mode>
+
     <failure-mode id="fm-03" severity="medium">
-      <description>Silent success on tool failure — returning {} or None instead of an error object.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The LLM interprets an empty result as success and continues reasoning on missing data, producing confident but wrong answers. Explicit error codes allow the model to stop and report the problem.</repair>
+      <description>Hallucinated tool name — model emits `lookupCustomer` when dispatcher registers `lookup_customer`. Dispatcher 500s.</description>
+      <detector>tool_name not in dispatcher registry; common in cross-provider migrations</detector>
+      <repair>Dispatcher MUST return explicit error message naming available tools; model corrects on next turn. Lint tool names for case consistency in tools.yaml.</repair>
     </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agentic loop without max_iterations guard.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A tool returning unexpected output or an LLM stuck in a reasoning loop causes unbounded API calls and cost. Cap at 10–20 iterations and surface a max-iterations error.</repair>
+
+    <failure-mode id="fm-04" severity="high">
+      <description>Infinite tool loop — agent calls `search`, finds nothing, calls `search` again with same args, indefinitely.</description>
+      <detector>same (tool_name, args) called &gt;3 times in same conversation</detector>
+      <repair>Enforce max tool calls per conversation (10-20); on repeated identical call, return to user with summary of state. Track via conversation-id key.</repair>
     </failure-mode>
+
+    <failure-mode id="fm-05" severity="high">
+      <description>No audit trail — agent did something; nobody can reconstruct what or why; post-incident review impossible.</description>
+      <detector>audit_sink missing OR no record of last 24h tool calls</detector>
+      <repair>Wire audit sink (S3, BigQuery, ClickHouse). Log every dispatch with timestamp + caller + args + result. Retain ≥30 days.</repair>
+    </failure-mode>
+
   </section>
 </text>
