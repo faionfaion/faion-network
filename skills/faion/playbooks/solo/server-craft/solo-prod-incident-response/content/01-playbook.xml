@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="solo-prod-incident-response" goal="TBD" complexity="deep">
+  <intent>Alert at 3am → root-caused, mitigated, postmortem-documented incident for one person without SRE rotation.</intent>
+  <scope>Solo founder runs incident response designed for one person: alert to mitigation to postmortem, without an SRE rotation. Exit artifact is a green prod + blameless postmortem + followup backlog entry.</scope>
+  <success-criteria>
+    <criterion>Alert acknowledged within 5 minutes</criterion>
+    <criterion>Stop-the-bleed action shipped (rollback or flag-off)</criterion>
+    <criterion>Root cause identified and documented</criterion>
+    <criterion>Postmortem written within 48h</criterion>
+    <criterion>Followup action added to backlog</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="Triage">
+      <intent>Acknowledge, scope impact, decide stop-the-bleed action.</intent>
+      <tasks>
+        <task>Acknowledge alert</task>
+        <task>Open incident channel / note</task>
+        <task>Decide: rollback / flag-off / patch</task>
+      </tasks>
+      <methodologies>
+        <ref slug="monitoring-logging" />
+        <ref slug="health-checks-autoheal" />
+      </methodologies>
+      <outputs>
+        <output>Triage note with decision</output>
+      </outputs>
+      <decision-gate>Advance when stop-the-bleed action is chosen. Refuse to investigate before bleeding stops.</decision-gate>
+    </stage>
+    <stage n="2" name="Mitigate">
+      <intent>Stop the bleed. Diagnosis comes later.</intent>
+      <tasks>
+        <task>Execute rollback / flag-off / hot-patch</task>
+        <task>Verify mitigation via health checks</task>
+        <task>Communicate ETA to customers if needed</task>
+      </tasks>
+      <methodologies>
+        <ref slug="cd-pipelines" />
+        <ref slug="feature-flags-rollout-targeting" />
+      </methodologies>
+      <outputs>
+        <output>Mitigated prod</output>
+      </outputs>
+      <decision-gate>Advance when monitoring is green again. Stay if mitigation incomplete.</decision-gate>
+    </stage>
+    <stage n="3" name="Investigate">
+      <intent>Find root cause. Don't guess.</intent>
+      <tasks>
+        <task>Pull logs around incident window</task>
+        <task>Identify trigger + contributing factors</task>
+        <task>Document timeline</task>
+      </tasks>
+      <methodologies>
+      </methodologies>
+      <outputs>
+        <output>Root-cause notes</output>
+      </outputs>
+      <decision-gate>Advance when root cause is named. Refuse to write postmortem with 'cause unknown'.</decision-gate>
+    </stage>
+    <stage n="4" name="Postmortem">
+      <intent>Blameless. What happened, why, what changes.</intent>
+      <tasks>
+        <task>Write blameless postmortem</task>
+        <task>List followup actions</task>
+        <task>Update mistake-memory</task>
+      </tasks>
+      <methodologies>
+        <ref slug="mistake-memory" />
+        <ref slug="reflexion-learning" />
+      </methodologies>
+      <outputs>
+        <output>Postmortem doc</output>
+        <output>Mistake-memory entry</output>
+      </outputs>
+      <decision-gate>Required output: postmortem within 48h. Without it, the same incident recurs.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+    <gap slug="solo-alerting-noise-budget" expected-tier="solo" />
+    <gap slug="sentry-supabase-vercel-wiring" expected-tier="solo" />
+    <gap slug="solo-incident-triage-checklist" expected-tier="solo" />
+    <gap slug="stop-the-bleed-playbook" expected-tier="solo" />
+    <gap slug="solo-blameless-postmortem-template" expected-tier="solo" />
+    <gap slug="incident-followup-backlog-policy" expected-tier="solo" />
+  </gaps>
+  <extra key="context" value="[solo]" />
+  <extra key="non_goals" value="[Multi-team incident command — single operator only, PR / public status comms — separate stakeholder-communication playbook]" />
+  <extra key="prerequisites" value="[Monitoring + alerting configured (monitoring-logging complete), Sentry / equivalent error tracking live, Deploy + rollback path proven (deploy-day playbook done)]" />
+  <extra key="common_pitfalls" value="[Investigating before mitigating — extends bleeding for diagnosis purity, Skipping postmortem because incident felt small — small ones recur fastest]" />
+  <extra key="quality_checklist" value="['If I get paged for the same root cause next month, will I find this postmortem?', 'Is the followup actually in the backlog, or only mentioned in the postmortem?']" />
+  <extra key="related_playbooks" value="[deploy-day-staging-to-prod, pre-launch-hardening-mvp]" />
+  <extra key="token_budget_estimate" value="12000" />
+  <extra key="cli_invocations" value="{human: faion get-content solo-prod-incident-response --format md, agent: faion get-content solo-prod-incident-response --format context, json: faion get-content solo-prod-incident-response --format json}" />
+  <extra key="changelog" value="[{version: 0.1.0, date: 2026-05-20, note: Initial draft for F-064 P1 solo SaaS builder persona}]" />
+</playbook>

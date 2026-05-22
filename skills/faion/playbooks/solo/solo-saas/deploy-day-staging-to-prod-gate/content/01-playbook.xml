@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playbook id="01-playbook" slug="deploy-day-staging-to-prod-gate" goal="TBD" complexity="medium">
+  <intent>Safe push to prod with rollback ready: CI green, smoke pass on staging, feature-flagged where risky, deploy script run, post-deploy health verified, rollback path proven.</intent>
+  <scope>Safe push to prod with rollback ready: CI green, smoke pass on staging, feature-flagged where risky, deploy script run, post-deploy health verified, rollback path proven.</scope>
+  <success-criteria>
+    <criterion>Final stage decision-gate is met and committed in writing</criterion>
+    <criterion>Every stage produces its named outputs</criterion>
+    <criterion>Cycle closes only when a written commitment exists for the next step</criterion>
+  </success-criteria>
+  <stages>
+    <stage n="1" name="CI green check">
+      <intent>No deploy without green main.</intent>
+      <tasks>
+        <task>Verify CI green on the target SHA</task>
+        <task>Re-run flakies if needed</task>
+        <task>Block if any required check fails</task>
+      </tasks>
+      <methodologies>
+        <ref slug="e2e-testing" />
+        <ref slug="health-checks-autoheal" />
+      </methodologies>
+      <outputs>
+        <output>CI status snapshot</output>
+        <output>Re-run log</output>
+        <output>Block/proceed call</output>
+      </outputs>
+      <decision-gate>Advance only with a fully green CI.</decision-gate>
+    </stage>
+    <stage n="2" name="Staging smoke">
+      <intent>Smoke-test the slice end-to-end on staging.</intent>
+      <tasks>
+        <task>Deploy to staging</task>
+        <task>Run smoke pack (auth, payment, primary AC)</task>
+        <task>Verify integrations (Stripe / email) are wired</task>
+      </tasks>
+      <methodologies>
+        <ref slug="cd-basics" />
+        <ref slug="monitoring-logging" />
+      </methodologies>
+      <outputs>
+        <output>Staging deploy URL</output>
+        <output>Smoke results</output>
+        <output>Integration check log</output>
+      </outputs>
+      <decision-gate>Advance only when every smoke step passes.</decision-gate>
+    </stage>
+    <stage n="3" name="Flag decision">
+      <intent>Risky changes go behind a flag.</intent>
+      <tasks>
+        <task>Decide flag posture (off / canary / all-users)</task>
+        <task>Pre-write the canary cohort + kill criteria</task>
+        <task>Confirm the rollback path is automated</task>
+      </tasks>
+      <methodologies>
+        <ref slug="cd-pipelines" />
+        <ref slug="release-planning" />
+      </methodologies>
+      <outputs>
+        <output>Flag config</output>
+        <output>Canary cohort</output>
+        <output>Rollback verification</output>
+      </outputs>
+      <decision-gate>Advance only when flag config is committed.</decision-gate>
+    </stage>
+    <stage n="4" name="Deploy to prod">
+      <intent>Run the script with eyes on health.</intent>
+      <tasks>
+        <task>Trigger production deploy</task>
+        <task>Watch logs and metrics during the deploy</task>
+        <task>Confirm health checks turn green</task>
+      </tasks>
+      <methodologies>
+        <ref slug="feature-flags-rollout-targeting" />
+        <ref slug="quality-gates-confidence" />
+      </methodologies>
+      <outputs>
+        <output>Deploy receipt</output>
+        <output>Live health snapshot</output>
+        <output>Error budget delta</output>
+      </outputs>
+      <decision-gate>Advance only when health checks stay green for 15 minutes.</decision-gate>
+    </stage>
+    <stage n="5" name="Verify in production">
+      <intent>Walk the AC against production.</intent>
+      <tasks>
+        <task>Run a manual pass of the acceptance criteria on prod</task>
+        <task>Verify analytics + logs receive the new events</task>
+        <task>Notify channels (TG / status page)</task>
+      </tasks>
+      <methodologies>
+        <ref slug="logging-patterns" />
+      </methodologies>
+      <outputs>
+        <output>AC verification on prod</output>
+        <output>Analytics check</output>
+        <output>Notification posted</output>
+      </outputs>
+      <decision-gate>Advance only when every AC passes on prod.</decision-gate>
+    </stage>
+    <stage n="6" name="Rollback drill">
+      <intent>Prove the rollback path actually works.</intent>
+      <tasks>
+        <task>Run a synthetic rollback in staging</task>
+        <task>Verify the rollback returns prod-equivalent state</task>
+        <task>Time the rollback (should be &lt;=15 minutes)</task>
+      </tasks>
+      <methodologies>
+        <ref slug="feature-flags" />
+      </methodologies>
+      <outputs>
+        <output>Drill log</output>
+        <output>Rollback timing</output>
+        <output>Updated rollback runbook</output>
+      </outputs>
+      <decision-gate>Advance only when rollback completes &lt;=15 minutes.</decision-gate>
+    </stage>
+    <stage n="7" name="Close the deploy">
+      <intent>Write the deploy ticket and move on.</intent>
+      <tasks>
+        <task>Close the deploy ticket with notes</task>
+        <task>Update the changelog and release-planning doc</task>
+        <task>Stamp the runbook with todays lessons</task>
+      </tasks>
+      <methodologies>
+        <ref slug="deploy-scripts" />
+      </methodologies>
+      <outputs>
+        <output>Deploy ticket closed</output>
+        <output>Changelog entry</output>
+        <output>Runbook delta</output>
+      </outputs>
+      <decision-gate>Cycle closes when ticket is closed and changelog is committed.</decision-gate>
+    </stage>
+  </stages>
+  <gaps>
+  </gaps>
+  <extra key="context" value="[solo]" />
+  <extra key="token_budget_estimate" value="12000" />
+  <extra key="cli_invocations" value="{human: faion get-content deploy-day-staging-to-prod-gate --format md, agent: faion get-content deploy-day-staging-to-prod-gate --format context, json: faion get-content deploy-day-staging-to-prod-gate --format json}" />
+  <extra key="changelog" value="[{version: 1.0.0, date: 2026-05-20, note: Initial v2 draft generated from F-059..063 backlog}]" />
+</playbook>
