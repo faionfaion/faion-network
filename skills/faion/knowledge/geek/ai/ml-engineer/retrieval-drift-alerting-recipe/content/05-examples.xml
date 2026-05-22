@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Retrieval Drift Alerting — Worked Example" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>End-to-end example: corpus update without re-embed → Jaccard drift fires → P1 page → safer-mode gate engages.</summary>
+
+  <example title="Corpus rot detection">
+    <code lang="yaml"><![CDATA[
+# 2026-05-14: docs team uploaded new policy/refunds-v3.md but did not trigger re-embed job.
+# 2026-05-15 03:00 UTC: nightly drift compute runs against frozen baseline_2026_05_01.parquet
+
+drift-metrics-2026-05-15.json:
+  query-embedding-kl:       0.12   # within ±0.15 baseline = no drift
+  retrieval-set-jaccard:    0.42   # baseline 0.78, breach magnitude = 3.6σ
+  score-histogram-ks:       0.21   # baseline 0.08, breach magnitude = 2.1σ
+  neighbour-recency-days:   142    # baseline 21, breach magnitude = 4.8σ
+
+alert-fired: P1 (≥2 metrics breach + neighbour-recency >3σ)
+gate-engaged: rag.safer_mode = true   # citations only, no synthesis
+on-call-paged: ml-platform@example.com  2026-05-15 03:04 UTC
+
+runbook-action:
+  - check embedding-job dashboard         → finds 12 documents stale
+  - trigger re-embed for stale docs        → 18 min job
+  - verify retrieval-set-jaccard recovers  → 0.81 next compute window
+  - flip gate off                          → rag.safer_mode = false
+  - file incident postmortem               → root cause: missing trigger on docs CMS
+]]></code>
+    <note>Demonstrates: neighbour-recency catches corpus rot that quality metrics miss (faithfulness still passes because cited docs exist); retrieval Jaccard catches the structural shift; P1 routing matches the dual-metric breach rule.</note>
+  </example>
+
+  <example title="Query distribution shift (new product launch)">
+    <code lang="yaml"><![CDATA[
+# Day 0: ProductX launches; new query class "ProductX integration" appears.
+# Day 3: query-embedding KL = 0.31 vs baseline 0.10 → 2.5σ breach, sustained 72h
+
+alert-fired: P3 ticket (single metric breach, sustained > 60min)
+gate-engaged: false (single-metric breach below P1 dual-rule threshold)
+ticket-content: "Query KL divergence sustained > 3 days — recontract candidate. Owner: ML."
+
+decision-path:
+  intent-distribution-chi2-p: 0.003   # significant shift
+  → recontract trigger fires per acceptance-contract.yaml
+  → ML team adds new intent class "productx-integration"
+  → re-runs acceptance-contract step 3 (set thresholds for new intent)
+  → captures new baseline window once recontract signed
+]]></code>
+    <note>Single-metric drift is P3 not P1 — sustained low-intensity shift is a recontract trigger, not an incident.</note>
+  </example>
+
+  <see-also>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>
