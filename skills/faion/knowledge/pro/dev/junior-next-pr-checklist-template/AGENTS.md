@@ -3,78 +3,95 @@ slug: junior-next-pr-checklist-template
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "abc440e782bd7599"
-summary: "Junior Next Pr Checklist Template — testable methodology for code, architecture, release, performance. Concrete output of a mentoring review: a portable checklist the junior carries to their next PR. No methodology exists for this artifact."
-tags: [dev, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Mentor-emitted PR checklist a junior carries to their next review: bounded, traceable items.
+content_id: "fd3dcbdfe7e4ba62"
+complexity: light
+produces: checklist
+est_tokens: 3100
+tags: [mentoring, pr, checklist, junior, code-review]
 ---
+
 # Junior Next Pr Checklist Template
 
 ## Summary
 
-**One-sentence:** Junior Next Pr Checklist Template — testable methodology for code, architecture, release, performance. Concrete output of a mentoring review: a portable checklist the junior carries to their next PR. No methodology exists for this artifact.
+**One-sentence:** Mentor-emitted PR checklist a junior carries to their next review: bounded, traceable items.
 
-**One-paragraph:** Junior Next Pr Checklist Template closes a known gap in dev practice: Concrete output of a mentoring review: a portable checklist the junior carries to their next PR. No methodology exists for this artifact. The methodology is anchored to the recurring activity 'PR review with junior present (mentoring loop) (role: p6-product-dev-team)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Mentor-emitted PR checklist a junior carries to their next review: bounded, traceable items. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Pro-tier dev workflow, де потрібен auditable artefact замість ad-hoc decision.
+- Команди, де ≥2 stakeholders читають один артефакт і повинні дійти однакового висновку.
+- Cases where input must be cited (no fabrication) і decision-trail зберігається для review.
+- Recurring trigger, що з'являється ≥1 раз на cycle і виправдовує methodology overhead.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'PR review with junior present (mentoring loop) (role: p6-product-dev-team)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- The triggering case shows up in the user's workload at least once per cycle.
+- A named consumer (human reviewer or downstream agent) exists for the output.
 - An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator has authority to act on the artefact (write access, sign-off rights).
 
 ## Skip If (ANY kills it)
 
 - One-off, never-to-repeat work — methodology overhead does not pay back.
 - No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger event / brief | markdown / ticket | team owner |
+| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
+| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `junior_next_pr_checklist_template_template_fill` | haiku | Template fill, no judgement |
-| `junior_next_pr_checklist_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `junior_next_pr_checklist_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output.md` | Checklist skeleton matching the schema in 02-output-contract.xml |
+| `templates/_smoke-test.md` | Filled-in canonical example for calibration |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-junior-next-pr-checklist-template.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/` (see neighbouring methodologies)
-- triggering activity: `PR review with junior present (mentoring loop) (role: p6-product-dev-team)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[audit-grade-code-review-checklist]]
+- [[architect-mentoring-curriculum]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

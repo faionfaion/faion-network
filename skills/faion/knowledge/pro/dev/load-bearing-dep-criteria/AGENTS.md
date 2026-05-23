@@ -3,77 +3,96 @@ slug: load-bearing-dep-criteria
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Load Bearing Dep Criteria: codified dev practice that turns the recurring 'p6-product-dev-team/Security review for new dependency' decision into a repeatable, auditable artefact.
-content_id: "f382401cc9121e12"
-tags: [load-bearing-dep-criteria, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Scores a candidate dependency as load-bearing (auth, payments, DB driver, runtime) — gates ADR vs one-line approval.
+content_id: "a254326b4cfc1f19"
+complexity: medium
+produces: rubric
+est_tokens: 4100
+tags: [dependency, rubric, security, adr, load-bearing]
 ---
+
 # Load Bearing Dep Criteria
 
 ## Summary
 
-**One-sentence:** Load Bearing Dep Criteria: codified dev practice that turns the recurring 'p6-product-dev-team/Security review for new dependency' decision into a repeatable, auditable artefact.
+**One-sentence:** Scores a candidate dependency as load-bearing (auth, payments, DB driver, runtime) — gates ADR vs one-line approval.
 
-**One-paragraph:** Load Bearing Dep Criteria addresses the gap identified by the p6-product-dev-team/Security review for new dependency playbook: When does a dep deserve an ADR vs a one-line approval? No methodology defines load-bearing thresholds (auth, payments, DB driver, runtime). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Scores a candidate dependency as load-bearing (auth, payments, DB driver, runtime) — gates ADR vs one-line approval. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Pro-tier dev workflow, де потрібен auditable artefact замість ad-hoc decision.
+- Команди, де ≥2 stakeholders читають один артефакт і повинні дійти однакового висновку.
+- Cases where input must be cited (no fabrication) і decision-trail зберігається для review.
+- Recurring trigger, що з'являється ≥1 раз на cycle і виправдовує methodology overhead.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p6-product-dev-team/Security review for new dependency OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The triggering case shows up in the user's workload at least once per cycle.
+- A named consumer (human reviewer or downstream agent) exists for the output.
+- An auditable source-of-truth is available for the inputs this methodology requires.
+- Operator has authority to act on the artefact (write access, sign-off rights).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer — the artefact will be orphaned regardless of quality.
+- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
 
 ## Prerequisites
 
-- recent context for the p6-product-dev-team/Security review for new dependency task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger event / brief | markdown / ticket | team owner |
+| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
+| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/load-bearing-dep-criteria.json` | JSON schema for the Load Bearing Dep Criteria output contract |
-| `templates/load-bearing-dep-criteria.md` | Markdown skeleton with the required fields |
+| `templates/output.md` | Rubric skeleton matching the schema in 02-output-contract.xml |
+| `templates/_smoke-test.md` | Filled-in canonical example for calibration |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-load-bearing-dep-criteria.py` | Enforce Load Bearing Dep Criteria output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-load-bearing-dep-criteria.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- upstream playbook: `p6-product-dev-team/Security review for new dependency`
+- [[dependency-adoption-checklist]]
+- [[lock-in-risk-scoring-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.
