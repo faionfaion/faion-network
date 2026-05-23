@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-xunit-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="xUnit Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a test class spec — naming, scope, fixture, mocks, assertions.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/csharp-xunit-testing.json",
+  "type": "object",
+  "required": ["test_class", "scope", "all_async_return_task", "uses_fluent_assertions", "methods"],
+  "properties": {
+    "test_class": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Tests$"},
+    "scope": {"enum": ["unit", "slice", "integration"]},
+    "fixture": {"enum": ["none", "class", "collection", "async-lifetime"]},
+    "all_async_return_task": {"type": "boolean", "const": true},
+    "uses_fluent_assertions": {"type": "boolean", "const": true},
+    "uses_moq": {"type": "boolean"},
+    "methods": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "kind"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+_[A-Z][A-Za-z0-9]+_[A-Z][A-Za-z0-9]+$"},
+          "kind": {"enum": ["Fact", "Theory"]},
+          "returns": {"const": "Task"}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "test_class": "OrdersControllerTests",
+  "scope": "integration",
+  "fixture": "class",
+  "all_async_return_task": true,
+  "uses_fluent_assertions": true,
+  "uses_moq": false,
+  "methods": [
+    {"name": "Get_ExistingId_Returns200", "kind": "Fact", "returns": "Task"},
+    {"name": "Get_MissingId_Returns404", "kind": "Fact", "returns": "Task"},
+    {"name": "Get_VariousIds_ReturnsExpected", "kind": "Theory", "returns": "Task"}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "test_class": "OrdersTests",
+  "scope": "integration",
+  "fixture": "none",
+  "all_async_return_task": false,
+  "uses_fluent_assertions": false,
+  "uses_moq": true,
+  "methods": [
+    {"name": "test1", "kind": "Fact", "returns": "void"}
+  ]
+}
+]]></code>
+    <note>method name not Method_Input_Expected; returns void; no fluent assertions; no class fixture for integration scope.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`scope == "integration"` AND `fixture == "none"`.</description>
+      <reason>Violates `class-fixture-required` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Any method with `returns == "void"`.</description>
+      <reason>Violates `async-task-return` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`uses_fluent_assertions == false` while methods assert non-primitives.</description>
+      <reason>Violates `fluent-assertions-required` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-csharp-xunit-testing.py">Validator script</reference>
 </text>

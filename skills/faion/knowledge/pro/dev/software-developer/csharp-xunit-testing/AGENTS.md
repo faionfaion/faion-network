@@ -3,74 +3,100 @@ slug: csharp-xunit-testing
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: xUnit is the de facto standard test framework for modern.
-content_id: "5d14054eaeb54db5"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: xUnit + Moq + WebApplicationFactory test conventions for .NET 8 — AAA layout, IClassFixture, async Task return, FluentAssertions diffs, deterministic isolation.
+content_id: "b1115b58588e56dd"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [csharp, xunit, testing, moq, unit-testing]
 ---
 # xUnit Testing for .NET
 
 ## Summary
 
-**One-sentence:** xUnit is the de facto standard test framework for modern.
+**One-sentence:** xUnit + Moq + WebApplicationFactory test conventions for .NET 8 — AAA layout, IClassFixture, async Task return, FluentAssertions diffs, deterministic isolation.
 
-**One-paragraph:** xUnit is the de facto standard test framework for modern .NET applications. Write controller tests via WebApplicationFactory, service unit tests using Moq, and integration tests with AAA (Arrange-Act-Assert) layout. Parameterize tests with [Theory] and [InlineData], and enforce test isolation via IClassFixture for shared resources. Measure coverage with coverlet.collector and use FluentAssertions for readable diffs.
+**One-paragraph:** xUnit misuse — async void test methods, `WebApplicationFactory<Program>` without `public partial class Program`, shared mutable state across parallel tests, lazy `It.IsAny<T>()` mock setups, missing FluentAssertions — produces flaky CI and unreadable failure output. This methodology pins five rules: every async test returns `Task`; controller tests use `IClassFixture<WebApplicationFactory<Program>>`; `[Theory]` + `[InlineData]` for parametric tests; mocks use precise `It.Is<T>(...)` matchers; assertions use `FluentAssertions`. Output: test class conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- xUnit + Moq + FluentAssertions stacks on .NET 6+.
+- Controller integration tests via `WebApplicationFactory<Program>`.
+- Service unit tests with constructor-injected collaborators.
+- Repository slice tests with SQLite-in-memory or Testcontainers.
+- Coverage thresholds enforced in CI via Coverlet.
 
 ## Applies If (ALL must hold)
 
-- ASP.NET Core / .NET class library projects — xUnit is the de facto default in modern templates.
-- Controller / minimal-API tests via WebApplicationFactory for in-process integration.
-- Service / domain unit tests using Moq, NSubstitute, or FakeItEasy.
-- Property-based tests (FsCheck.Xunit) and theory-based parametric tests with [Theory] + [InlineData].
-- CI gates with coverage thresholds via coverlet.collector + ReportGenerator.
+- xUnit is the chosen test framework (not MSTest / NUnit).
+- The project targets .NET 6+ (top-level `Program.cs`).
+- Tests run in CI with parallelization enabled by default.
+- Reviewers expect AAA layout + FluentAssertions diffs.
 
 ## Skip If (ANY kills it)
 
-- BDD-flavored prose specs preferred — SpecFlow / Reqnroll integrate but xUnit isn't the showcase format.
-- Browser end-to-end — use Playwright .NET / Selenium harnesses instead.
-- Performance benchmarks — use BenchmarkDotNet, not xUnit timing assertions.
-- Microbenchmarks of allocations / GC behavior — use BenchmarkDotNet.
-- Tests that need a shared mutable singleton across the entire run — xUnit isolates classes by default; use IClassFixture / ICollectionFixture deliberately.
+- MSTest / NUnit is mandated by the org — apply the relevant methodology.
+- BDD-style tests via SpecFlow drive the test plan — different conventions.
+- Manual QA only; automated tests are not the source of truth.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Unit-under-test | C# class | repo |
+| Test plan | Markdown | spec |
+| `Program.cs` (for integration tests) | top-level | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[csharp-dotnet]] | Controller + service patterns the tests exercise. |
+| [[csharp-entity-framework]] | EF patterns repository tests target. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: async-task-return, class-fixture-required, theory-for-params, precise-mock-matchers, fluent-assertions-required | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for test class spec + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: async-void-test, parallel-state-collision, web-factory-program-not-public, im-memory-vs-relational | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: classify → fixture → test → mock → assert | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on test scope → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-test-scope` | sonnet | Unit / slice / integration judgment. |
+| `write-test-class` | haiku | Mechanical AAA scaffolding. |
+| `audit-flaky-test` | sonnet | Look for shared state + non-deterministic setup. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ControllerTests.cs` | WebApplicationFactory integration test |
+| `templates/ServiceTests.cs` | Service unit test with Moq |
+| `templates/ProgramPartial.cs` | `public partial class Program {}` shim |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-csharp-xunit-testing.py` | Validate test-class spec against schema | Pre-commit on spec artefact |
 
 ## Related
 
+- [[csharp-dotnet]]
+- [[csharp-entity-framework]]
+- [[csharp-background-services]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps test scope (unit / slice / integration) to a rule from `01-core-rules.xml`. Use it whenever choosing between mocking a collaborator vs spinning up `WebApplicationFactory` vs using Testcontainers for a real database.

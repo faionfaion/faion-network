@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="ES Fundamentals Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Worked example deciding ES vs state-stored for an Order aggregate.</summary>
+
+  <example type="good" title="Order: ES chosen with full audit trail">
+    <code lang="text"><![CDATA[
+Aggregate: Order
+
+Step 1 — audit need:
+  Regulator (payment processor) requires full history of every order modification.
+  Customer support frequently needs "what did this order look like before refund".
+  → audit_required = true
+
+Step 2 — schema stability:
+  Last 6 months: 2 entity changes (added carrier field; added discount).
+  → schema_stable = true
+
+Step 3 — event catalog:
+  OrderPlaced, ItemAdded, ItemRemoved, DiscountApplied, OrderShipped, OrderCancelled.
+  All past-tense business facts.
+
+Step 4 — stream strategy:
+  stream_id = order UUID.
+  One stream per Order instance.
+
+Step 5 — decision record:
+  Decision: use_event_sourcing.
+  Rationale: regulator + customer-support replay need; schema stable enough.
+  Projections planned: OrdersListReadModel, OrderDetailsReadModel.
+  Snapshot policy: every 100 events (see event-sourcing-snapshots).
+    ]]></code>
+    <note>All five rules satisfied; decision is "use_event_sourcing".</note>
+  </example>
+
+  <example type="bad" title="UserProfile: ES rejected (schema thrashes)">
+    <code lang="text"><![CDATA[
+Aggregate: UserProfile
+
+Step 1 — audit need:
+  Minimal. Profile changes are routine; no regulatory replay required.
+
+Step 2 — schema stability:
+  Last 6 months: 7 breaking changes (preferences refactored 3 times, address split into 4 fields, ...).
+  → schema_stable = false
+
+Step 3-5:
+  STOP per decision-gate. Use state-stored UserProfile with ddd-domain-events for notifications.
+    ]]></code>
+  </example>
+</text>

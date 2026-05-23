@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-projections Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-projections as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ES Projections Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed in projection implementations. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Writing business logic inside projection handlers: if order.total &gt; 1000: send_email(...).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Projections are replayed from offset 0 for rebuilds. Side effects fire on every rebuild, sending duplicate emails or charging payments. Business logic belongs in command handlers; emit a domain event for "high-value order" and handle it separately.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Projection with no checkpoint tracking — processing every event from the beginning on every application start.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without a checkpoint, every restart replays the entire event history. On a long-running system this takes minutes and produces duplicate writes for non-idempotent operations.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Non-idempotent projection writes: INSERT without ON CONFLICT handling.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>At-least-once delivery guarantees an event will eventually be delivered more than once (after a restart or retry). A plain INSERT fails or inserts duplicates; UPSERT keyed on (stream_id, position) absorbs duplicates safely.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="non-idempotent-insert" severity="high">
+      <symptom>Subscription redelivers an event after reconnect; handler does `INSERT` and trips a unique-key violation OR creates a duplicate row.</symptom>
+      <root-cause source="At-least-once delivery semantics">Handler assumed exactly-once delivery; used raw INSERT.</root-cause>
+      <fix>Convert to UPSERT (`INSERT ... ON CONFLICT DO UPDATE` / `MERGE`) keyed by event identity or stream position. Add a contract test redelivering the same event twice.</fix>
+    </antipattern>
+
+    <antipattern id="business-logic-in-projection" severity="high">
+      <symptom>Projection handler `if order.total &gt; 1000: send_high_value_alert(order)`. After a quarterly rebuild from offset 0, the alert fires for every historical high-value order.</symptom>
+      <root-cause source="ES projections discipline">Author conflated projection with workflow.</root-cause>
+      <fix>Move side effect to a process manager / saga subscribed to events. Projection only writes to its read store.</fix>
+    </antipattern>
+
+    <antipattern id="missing-checkpoint" severity="high">
+      <symptom>Service restart processes all events again. Read model is fine due to UPSERT, but startup takes hours; downstream lag alerts fire.</symptom>
+      <root-cause source="Operational maturity">Author skipped the checkpoint table.</root-cause>
+      <fix>Add `projection_checkpoint(name, stream_position)` table. Record after each successful batch. Resume from it on startup.</fix>
+    </antipattern>
+
+    <antipattern id="no-rebuild-path" severity="medium">
+      <symptom>Projection schema changes; team can't rebuild from log because there's no rebuild script. Read model carries stale data forever.</symptom>
+      <root-cause source="Rebuild-discipline gap">No `rebuild-&lt;name&gt;` CLI command; rebuild never exercised.</root-cause>
+      <fix>Write `rebuild-&lt;name&gt;` script: truncate read table + checkpoint, replay events from offset 0. Add quarterly CI job that runs rebuild and diffs the result.</fix>
+    </antipattern>
+
   </section>
 </text>

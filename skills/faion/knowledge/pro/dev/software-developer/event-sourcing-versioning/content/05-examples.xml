@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="ES Versioning Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Worked example: upcasting OrderPlaced v1 → v2 (rename customer_id → buyer_id).</summary>
+
+  <example type="good" title="OrderPlaced v1 → v2">
+    <code lang="text"><![CDATA[
+v1 fields:
+  - order_id: UUID
+  - customer_id: UUID
+  - total_cents: int
+
+v2 fields (rename customer_id to buyer_id; same semantic):
+  - order_id: UUID
+  - buyer_id: UUID
+  - total_cents: int
+
+Upcaster (faion/events/upcasters/order_placed_v1_to_v2.py):
+
+  def upcast(v1: dict) -> dict:
+      return {
+          "order_id": v1["order_id"],
+          "buyer_id": v1["customer_id"],
+          "total_cents": v1["total_cents"],
+          "event_version": 2,
+      }
+
+Catalog entry:
+  OrderPlaced:
+    versions:
+      - version: 1
+        deprecated: true
+        fields: [order_id, customer_id, total_cents]
+      - version: 2
+        upcaster_from: 1
+        upcaster_module: faion.events.upcasters.order_placed_v1_to_v2
+        fields: [order_id, buyer_id, total_cents]
+    ]]></code>
+    <note>Reader receives `OrderPlaced` always at the latest version; v1 events are upcast on the fly.</note>
+  </example>
+
+  <example type="bad" title="Rename without upcaster">
+    <code lang="text"><![CDATA[
+Engineer renames customer_id to buyer_id directly in the v1 class.
+No version bump. No upcaster.
+Deploy reads a stream with mix of pre- and post-rename events.
+Deserializer raises KeyError on either old or new field name.
+    ]]></code>
+    <note>Production outage. Roll back, then follow the good-path procedure.</note>
+  </example>
+</text>

@@ -3,69 +3,105 @@ slug: event-sourcing-agentic
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Drive event-sourcing scaffolding as a five-stage agentic pipeline: aggregate design → code-gen → projection → tests → anti-pattern review.
-content_id: "a6bd6549e60887c6"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Agentic workflow for event-sourcing scaffolding — 5-stage pipeline (design → code-gen → projection → tests → review) with model-specific gotchas, prompt patterns, and rejection criteria.
+content_id: "f5c1e6b6ca6612af"
+complexity: deep
+produces: spec
+est_tokens: 4600
 tags: [event-sourcing, agentic-workflow, ai-agents, code-generation, event-store]
 ---
 # Event Sourcing — Agentic Workflow and Tooling
 
 ## Summary
 
-**One-sentence:** Drive event-sourcing scaffolding as a five-stage agentic pipeline: aggregate design → code-gen → projection → tests → anti-pattern review.
+**One-sentence:** Agentic workflow for event-sourcing scaffolding — 5-stage pipeline (design → code-gen → projection → tests → review) with model-specific gotchas, prompt patterns, and rejection criteria.
 
-**One-paragraph:** Drive event-sourcing scaffolding as a five-stage agentic pipeline: aggregate design → code-gen → projection → tests → anti-pattern review. Key gotchas: agents emit CRUD-style events, mutate state outside apply, and forget expected_version. Prompt patterns and CLI tools listed.
+**One-paragraph:** When AI agents (Claude, GPT, Cursor) scaffold event-sourcing code unguided, they regress to CRUD-shaped events, mutate state outside `apply()`, omit `expected_version`, and invent event-store APIs. This methodology pins a 5-stage pipeline that constrains the agent at each step (aggregate design → event-class generation → projection → tests → antipattern review) and lists rejection criteria the reviewer must apply. Output: a spec describing the pipeline run, agent prompts used, and the rejected/accepted artefacts conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Scaffolding new event-sourced aggregates with AI assistance.
+- Reviewing AI-generated ES code in PR review.
+- Coaching teams adopting ES who use AI agents heavily.
+- Catching the canonical regressions: CRUD events, lost expected_version, hallucinated APIs.
+- SDD tasks where ES scaffolding is delegated to subagents.
 
 ## Applies If (ALL must hold)
 
-- Scaffolding a new event-sourced aggregate from a bounded context spec.
-- Reviewing a PR adding event-sourcing code against the anti-pattern checklist.
-- Generating projection, repository, and test scaffolding for an existing aggregate design.
+- Event sourcing is the chosen persistence pattern for at least one aggregate.
+- AI agents (LLM-driven) are scaffolding or modifying ES code.
+- A reviewer (human or peer agent) gates the output before merge.
+- The team has read `[[event-sourcing-fundamentals]]` and `[[event-sourcing-aggregate]]`.
 
 ## Skip If (ANY kills it)
 
-- Designing event boundaries for an unfamiliar domain — DDD aggregate design requires human domain expertise; the agent assists but cannot own the decisions.
-- Deleting or renaming published event classes — always human-reviewed, never auto-merged.
+- ES not yet adopted — start with the fundamentals methodology first.
+- No AI involvement — apply the underlying ES methodologies directly.
+- Hand-built ES kernel with custom DSL — review tools must be adapted; this pipeline assumes a standard event-store library.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Aggregate spec | Markdown | spec |
+| Event-store library docs | URL | infra |
+| Glossary (Ubiquitous Language) | Markdown | domain owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[event-sourcing-fundamentals]] | Core invariants this pipeline must protect. |
+| [[event-sourcing-aggregate]] | Aggregate replay + apply rules. |
+| [[event-sourcing-projections]] | Projection responsibilities the pipeline scaffolds. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: past-tense-event-names, apply-only-mutation, expected-version-enforced, no-invented-apis, projection-no-side-effects | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for pipeline-run spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: crud-events, mutate-in-command, hallucinated-event-store-api, projection-business-logic | ~900 |
+| `content/04-procedure.xml` | essential | 5-stage agentic procedure | ~800 |
+| `content/05-examples.xml` | essential | Worked example of a pipeline run for OrderPlaced + items projection | ~600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on agent-task shape → rule | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `aggregate-design` | sonnet | Domain judgment + small output. |
+| `event-class-codegen` | sonnet | Constrained scaffold, easy to verify. |
+| `projection-codegen` | sonnet | Same. |
+| `tests-codegen` | haiku | Mechanical fixture generation. |
+| `antipattern-review` | sonnet | Pattern-match against failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/agent-prompts.md` | Prompt fragments per stage |
+| `templates/review-checklist.md` | Reviewer rejection criteria |
+| `templates/pipeline-run.json` | Empty pipeline-run record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-event-sourcing-agentic.py` | Validate pipeline-run record against schema | Pre-commit on artefact |
 
 ## Related
 
+- [[event-sourcing-fundamentals]]
+- [[event-sourcing-aggregate]]
+- [[event-sourcing-projections]]
+- [[event-sourcing-versioning]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps the current pipeline stage + observed agent output to a rule from `01-core-rules.xml` that either accepts or rejects the artefact. Use it whenever reviewing an AI-generated ES PR.

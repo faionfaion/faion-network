@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="ES Versioning Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to evolve an event class safely.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="classify-change">
+      <input>Proposed change description</input>
+      <action>Decide: additive (new optional field) / breaking (rename/remove/semantic change). Additive may keep current version with default value; breaking requires version bump.</action>
+      <output>Change classification</output>
+      <decision-gate>If breaking + no version bump planned, STOP.</decision-gate>
+    </step>
+
+    <step n="2" name="bump-and-author-upcaster">
+      <input>Old event class + new shape</input>
+      <action>Define `OrderPlacedV2` (or bump `event_version` on the same class). Write `upcaster_v1_to_v2(old_event) -&gt; new_event` mapping every field; default missing fields with explicit sentinels.</action>
+      <output>New event class + upcaster function</output>
+    </step>
+
+    <step n="3" name="update-catalog">
+      <input>New event class</input>
+      <action>Edit `event-catalog.yml`: add new version entry with `upcaster_from: 1`, list current fields, mark old version as `deprecated`.</action>
+      <output>Updated catalog</output>
+    </step>
+
+    <step n="4" name="snapshot-and-projection-impact">
+      <input>Aggregate + projections that consume the event</input>
+      <action>Invalidate snapshots for affected aggregate type per `[[event-sourcing-snapshots]]`. Update projections to accept the new shape (or rely on upcaster). Run rebuild rehearsal.</action>
+      <output>Invalidation + projection update record</output>
+    </step>
+
+    <step n="5" name="ci-gate-and-deploy">
+      <input>Catalog + code change</input>
+      <action>CI runs `validate-event-sourcing-versioning.py` against the catalog file; must pass before merge. Deploy with feature flag if needed; monitor projection lag.</action>
+      <output>Deploy + monitoring</output>
+    </step>
+
+  </section>
+</text>

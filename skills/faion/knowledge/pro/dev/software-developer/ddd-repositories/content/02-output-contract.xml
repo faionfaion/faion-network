@@ -1,22 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ddd-repositories Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="DDD Repositories Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a repository spec — interface, methods, implementation, in-memory test double.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ddd-repositories.json",
+  "type": "object",
+  "required": ["aggregate", "interface", "methods", "implementation", "in_memory_double"],
+  "properties": {
+    "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "interface": {
+      "type": "object",
+      "required": ["name", "layer", "imports_orm"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Repository$"},
+        "layer": {"const": "domain"},
+        "imports_orm": {"type": "boolean", "const": false}
+      }
+    },
+    "methods": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["name", "kind"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^(find_by_[a-z_]+|save|delete)$"},
+          "kind": {"enum": ["identity_lookup", "save", "delete"]}
+        }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "required": ["name", "layer", "returns_aggregates"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Repository$"},
+        "layer": {"const": "infrastructure"},
+        "returns_aggregates": {"type": "boolean", "const": true}
+      }
+    },
+    "in_memory_double": {
+      "type": "object",
+      "required": ["name", "layer"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^InMemory[A-Z][A-Za-z0-9]+Repository$"},
+        "layer": {"const": "tests"}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Order",
+  "interface": {"name": "OrderRepository", "layer": "domain", "imports_orm": false},
+  "methods": [
+    {"name": "find_by_id", "kind": "identity_lookup"},
+    {"name": "find_by_external_key", "kind": "identity_lookup"},
+    {"name": "save", "kind": "save"},
+    {"name": "delete", "kind": "delete"}
+  ],
+  "implementation": {"name": "SqlAlchemyOrderRepository", "layer": "infrastructure", "returns_aggregates": true},
+  "in_memory_double": {"name": "InMemoryOrderRepository", "layer": "tests"}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Order",
+  "interface": {"name": "OrderRepo", "layer": "infrastructure", "imports_orm": true},
+  "methods": [
+    {"name": "find_orders_for_customer", "kind": "identity_lookup"}
+  ],
+  "implementation": {"name": "OrderRepo", "layer": "domain", "returns_aggregates": false},
+  "in_memory_double": {"name": "FakeRepo", "layer": "tests"}
+}
+]]></code>
+    <note>interface in infra + imports ORM; arbitrary query method; impl in domain returns ORM models; in-memory name lacks 'InMemory' prefix.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`interface.imports_orm == true`.</description>
+      <reason>Violates `domain-owns-interface` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`implementation.returns_aggregates == false`.</description>
+      <reason>Violates `return-aggregates` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Any method whose name doesn't start with `find_by_` / `save` / `delete`.</description>
+      <reason>Violates `identity-only-queries` rule — move to Query Service.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-ddd-repositories.py">Validator script</reference>
 </text>

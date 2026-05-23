@@ -3,70 +3,100 @@ slug: event-sourcing-snapshots
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Snapshots periodically save the derived aggregate state so that reconstruction skips replaying the entire event history.
-content_id: "317c31a1167e0d2b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: ES snapshot strategy — cache-only acceleration of replay (every N events), always rebuildable from offset 0, mandatory invalidation on event schema bump.
+content_id: "ba0ffe42530f0986"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [event-sourcing, snapshots, performance, aggregate]
 ---
 # Event Sourcing — Snapshot Strategy
 
 ## Summary
 
-**One-sentence:** Snapshots periodically save the derived aggregate state so that reconstruction skips replaying the entire event history.
+**One-sentence:** ES snapshot strategy — cache-only acceleration of replay (every N events), always rebuildable from offset 0, mandatory invalidation on event schema bump.
 
-**One-paragraph:** Snapshots periodically save the derived aggregate state so that reconstruction skips replaying the entire event history. Snapshots are a performance cache ONLY — the system MUST be able to reconstruct correct state from event offset 0 at any time. Snapshots must be invalidated and rebuilt whenever the event schema changes.
+**One-paragraph:** Snapshots accelerate aggregate load by persisting derived state at version V; subsequent loads replay only events with version > V. They are a performance cache ONLY — correctness must be unaffected if every snapshot is dropped. When an event class is added, removed, or renamed (schema bump), ALL snapshots for that aggregate type MUST be invalidated and rebuilt before deploying the new event version. This methodology pins five rules: cache-only, every-N-events policy, schema-bump invalidation, fall-back to log-replay, version-aware storage. Output: snapshot policy + storage schema + rebuild script conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Long-lived aggregates with thousands of events (wallets, subscriptions).
+- Cold-load performance budgets.
+- Reducing replay CPU during projection rebuild.
+- Bounded snapshot growth (one row per (stream_id, snapshot_version)).
+- Migration plans tied to event-schema versioning.
 
 ## Applies If (ALL must hold)
 
-- Aggregate streams with more than 50–100 events per instance where command latency is measurably impacted by replay.
-- Long-running aggregates (multi-year accounts, high-frequency order streams) where the event count grows unbounded.
-- After profiling confirms that aggregate reconstruction is the bottleneck — do not add snapshots speculatively.
+- An ES aggregate has noticeable load latency (> 100ms cold replay).
+- Event stream length per aggregate is > ~200 events.
+- The team can commit to schema-bump invalidation discipline.
+- Storage for snapshots exists (DB table, Redis, blob store).
 
 ## Skip If (ANY kills it)
 
-- Short-lived aggregates with small event counts — replay is cheap, snapshot overhead (storage, invalidation) costs more than it saves.
-- Systems without a tested "rebuild snapshot from events" path — stale snapshots + schema-changed events produce silently wrong state.
-- Treating snapshots as the truth to skip event replay entirely — this breaks event-versioning and schema migration.
+- Aggregate has < ~200 events on average — replay is fast enough.
+- Team cannot enforce schema-bump invalidation — snapshots will silently corrupt.
+- Snapshots would have to be "smart" (apply business logic at restore) — that's the antipattern.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Aggregate type + replay benchmarks | spec / measurements | repo |
+| Event-schema version | catalog | repo |
+| Snapshot storage | DDL / config | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[event-sourcing-aggregate]] | Aggregate must support `from_events` reconstruction. |
+| [[event-sourcing-versioning]] | Schema-bump triggers snapshot invalidation. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: cache-only, every-n-events, schema-bump-invalidation, fall-back-replay, version-aware-storage | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for snapshot policy spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: snapshot-as-truth, no-invalidation, smart-snapshot | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on aggregate size + cost → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-snapshot-policy` | sonnet | Cost/benefit judgment. |
+| `write-snapshot-storage` | sonnet | DDL + (de)serializer mapping. |
+| `wire-invalidation-on-version-bump` | sonnet | CI guard on schema-version + snapshots. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/snapshot.sql` | Snapshot table DDL |
+| `templates/SnapshotStore.py` | Snapshot store with version + payload |
+| `templates/invalidate.py` | Schema-bump invalidation script |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-event-sourcing-snapshots.py` | Validate snapshot policy spec | Pre-commit on spec artefact |
 
 ## Related
 
+- [[event-sourcing-aggregate]]
+- [[event-sourcing-versioning]]
+- [[event-sourcing-projections]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (aggregate-length, replay cost, schema cadence) to a rule from `01-core-rules.xml`. Use it whenever introducing snapshots or revisiting the every-N policy.

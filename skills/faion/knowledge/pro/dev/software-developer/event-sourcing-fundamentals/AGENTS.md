@@ -3,77 +3,101 @@ slug: event-sourcing-fundamentals
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Event Sourcing persists the state of an entity as a sequence of state-changing events.
-content_id: "e623d220b6ed6a5a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Event Sourcing core invariants — immutable events as source of truth, replay derives state, past-tense business names, append-only log, stream + version.
+content_id: "a72a2b31e92b3af1"
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [event-sourcing, domain-events, immutability, audit-trail, cqrs]
 ---
 # Event Sourcing — Fundamentals
 
 ## Summary
 
-**One-sentence:** Event Sourcing persists the state of an entity as a sequence of state-changing events.
+**One-sentence:** Event Sourcing core invariants — immutable events as source of truth, replay derives state, past-tense business names, append-only log, stream + version.
 
-**One-paragraph:** Event Sourcing persists the state of an entity as a sequence of state-changing events. Instead of storing current state, you store all events that led to it. The current state is derived by replaying events.
+**One-paragraph:** Event Sourcing persists the state of an entity as an ordered sequence of immutable events; current state is derived by replaying the sequence. Events MUST be immutable, past-tense business facts, ordered by stream version, and append-only. This methodology pins five rules: events immutable + append-only, events as source of truth, ordered replay, past-tense business names, one stream per aggregate. Output: a decision-record spec (use ES or not) + event catalog conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Teams adopting ES for the first time — establish invariants before writing code.
+- Audit + compliance: full history of every state change.
+- Time-travel debugging — reproduce past state by replaying to a version.
+- CQRS systems where projections rebuild from the event log.
+- Distributed systems where eventual consistency between contexts is acceptable.
 
 ## Applies If (ALL must hold)
 
-- Complete audit trail required — banking, ledger, healthcare records, compliance-heavy SaaS.
-- Aggregates where temporal queries are needed: "what was the state on date X", "who changed Y when".
-- Systems where business rules evolve and you need to replay history through new logic (recompute royalties, retry failed reconciliations).
-- Front-end of a CQRS system with multiple read models that must stay in sync from one truth — events are that truth.
-- Domain-event-driven microservices where downstream consumers (search, analytics, ML feature store) subscribe to a published event log.
-- Workflows requiring undo / what-if analysis (engineering simulators, financial projections).
-- Complex domain with temporal queries and event-driven architectures.
+- The domain genuinely benefits from full audit history.
+- The team has read DDD aggregates + can design past-tense events.
+- An event store (or plan to build one) exists.
+- Read-side latency tolerates async projection updates.
 
 ## Skip If (ANY kills it)
 
-- CRUD-shaped data with no audit need — events double the storage and triple the complexity for no payoff.
-- Reporting-first products where the dominant access pattern is aggregate analytics — keep a relational warehouse, not an event store.
-- Strong real-time consistency UX (banking transfer that must instantly show the new balance to the same user) without a careful read-your-writes strategy.
-- Tiny solo apps and pre-PMF MVPs — the event/projection plumbing dwarfs the feature.
-- Teams without DDD experience — without aggregate boundaries, the event log degenerates into a CDC log of CRUD updates.
-- Domains where regulatory rules require destruction (GDPR right to erasure) and crypto-shredding is not acceptable.
+- Simple CRUD with no audit requirement — overhead exceeds benefit.
+- Sub-millisecond write + read latency requirement on the same model.
+- Team unfamiliar with eventual consistency.
+- Schema thrashes weekly — versioning cost dominates.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Domain glossary | Markdown | domain owner |
+| Aggregate boundary | spec | spec |
+| Audit + compliance needs | requirements | stakeholder |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ddd-aggregates]] | ES aggregates inherit aggregate rules. |
+| [[ddd-domain-events]] | Sibling pattern — events as notifications. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: events-immutable-append-only, events-source-of-truth, ordered-replay, past-tense-business-names, one-stream-per-aggregate | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for ES-decision spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: mutate-event, state-stored-alongside, crud-event-names | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked example: deciding ES vs CRUD for an Order entity | ~600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on audit/read-pattern → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-es-or-not` | sonnet | Cost/benefit judgment. |
+| `name-events` | sonnet | Past-tense naming requires domain judgment. |
+| `draft-event-catalog` | haiku | Mechanical formatting once names exist. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/event-catalog.yml` | Event catalog seed file |
+| `templates/decision-record.md` | ES vs CRUD decision record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-event-sourcing-fundamentals.py` | Validate ES-decision spec | Pre-commit on spec artefact |
 
 ## Related
 
+- [[event-sourcing-aggregate]]
+- [[event-sourcing-projections]]
+- [[event-sourcing-versioning]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (audit-need, read-pattern, schema stability) to a rule from `01-core-rules.xml` and either approves ES or redirects to a state-stored aggregate with domain events.

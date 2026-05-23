@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="ES Aggregate Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping aggregate workload to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-needs-es">Does the aggregate need event sourcing (full audit + replay) or just events for notification?</root-question>
+
+    <branch when="needs_es == false">
+      <conclusion ref="apply-only-mutation" verdict="skip-this-methodology: use ddd-domain-events on a state-stored aggregate"/>
+    </branch>
+
+    <branch when="needs_es == true">
+      <question id="q-conflict-rate">Concurrent writes to the same stream expected?</question>
+      <branch when="concurrency == high">
+        <conclusion ref="expected-version-on-save" verdict="ES aggregate with mandatory expected_version + retry strategy in command handler"/>
+      </branch>
+      <branch when="concurrency == low">
+        <question id="q-replay-cost">Replay cost &gt; 100ms per load?</question>
+        <branch when="replay_slow == true">
+          <conclusion ref="from-events-reconstruction" verdict="ES aggregate + snapshots per event-sourcing-snapshots"/>
+        </branch>
+        <branch when="replay_slow == false">
+          <conclusion ref="command-emits-returns" verdict="straight ES aggregate per 01-core-rules"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="order-es-aggregate">
+    needs_es=true → concurrency=low → replay_slow=false → ES aggregate with apply-only mutation, expected_version on save, collect_pending after save.
+  </example>
+</text>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="ES Projections Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping view shape + consistency need to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-view-need">Is a separate read-model view actually needed (distinct from aggregate state)?</root-question>
+
+    <branch when="view_needed == false">
+      <conclusion ref="idempotent-upsert" verdict="skip-this-methodology: query the aggregate via from_events"/>
+    </branch>
+
+    <branch when="view_needed == true">
+      <question id="q-consistency">Does the view tolerate eventual consistency (subsecond → minutes of lag)?</question>
+      <branch when="tolerates_eventual == false">
+        <conclusion ref="checkpointed-position" verdict="skip-this-methodology: projections lag; use a read-through cache or synchronous read of the aggregate"/>
+      </branch>
+      <branch when="tolerates_eventual == true">
+        <question id="q-rebuild">Will the schema/logic change over time (requiring rebuild)?</question>
+        <branch when="schema_evolves == true">
+          <conclusion ref="rebuildable-from-zero" verdict="full projection with checkpoint + rebuild script + quarterly rehearsal"/>
+        </branch>
+        <branch when="schema_evolves == false">
+          <conclusion ref="idempotent-upsert" verdict="projection with idempotent UPSERTs + checkpoint; rebuild script still required for DR"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="orders-list-projection">
+    view_needed=true → tolerates_eventual=true → schema_evolves=true → full projection with checkpoint + rebuild + quarterly rehearsal.
+  </example>
+</text>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="ES Projections Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to introduce a new projection.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="design-read-model">
+      <input>Query patterns + UI need</input>
+      <action>Design a denormalized table optimized for the query (one row per visible item; precomputed joins; sorted by the natural ordering).</action>
+      <output>Read-model DDL</output>
+    </step>
+
+    <step n="2" name="map-events-to-operations">
+      <input>Event catalog</input>
+      <action>For each event the projection cares about, map to UPSERT or DELETE on the read model. No INSERT-without-conflict, no complex computation.</action>
+      <output>Handler list</output>
+      <decision-gate>If any handler contains business logic, FAIL.</decision-gate>
+    </step>
+
+    <step n="3" name="add-checkpoint">
+      <input>Read store</input>
+      <action>Create `projection_checkpoint(name, stream_position)` (or per-projection table). Update inside the same transaction as the read-model write.</action>
+      <output>Checkpoint table</output>
+    </step>
+
+    <step n="4" name="write-rebuild-script">
+      <input>Projection + checkpoint</input>
+      <action>Implement `rebuild-&lt;name&gt;` CLI: TRUNCATE read table + checkpoint, then `for each event in stream from 0: handler(event); update_checkpoint(position)`.</action>
+      <output>Rebuild script</output>
+    </step>
+
+    <step n="5" name="rebuild-rehearsal">
+      <input>Live read model + rebuild script</input>
+      <action>Run incremental + rebuild side by side; diff the resulting tables. Any divergence is a bug. Schedule quarterly CI run.</action>
+      <output>DR rehearsal record</output>
+      <decision-gate>If diff is non-empty, refuse to merge — the projection is non-deterministic.</decision-gate>
+    </step>
+
+  </section>
+</text>

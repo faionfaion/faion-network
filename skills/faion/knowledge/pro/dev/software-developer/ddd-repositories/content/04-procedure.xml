@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="DDD Repositories Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to introduce a Repository for a new aggregate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="define-interface">
+      <input>Aggregate root</input>
+      <action>Create `&lt;Aggregate&gt;Repository` abstract class/interface in `domain/&lt;context&gt;/repository.py`. Methods: `find_by_id`, `save`, `delete`, optional `find_by_external_key`. No ORM imports.</action>
+      <output>Domain-layer interface</output>
+      <decision-gate>If the interface imports any ORM type, FAIL.</decision-gate>
+    </step>
+
+    <step n="2" name="write-mapper">
+      <input>Aggregate + ORM model</input>
+      <action>Define `&lt;Aggregate&gt;Mapper` in infrastructure with `to_aggregate(model) -&gt; Aggregate` and `to_model(aggregate, existing=None) -&gt; OrmModel`. Handle nested entities + value objects.</action>
+      <output>Mapper class</output>
+    </step>
+
+    <step n="3" name="implement-adapter">
+      <input>Interface + mapper + DB session</input>
+      <action>Implement `SqlAlchemy&lt;Aggregate&gt;Repository` (or framework equivalent). Eager-load relations; return aggregates; on save, merge mapper output into the session and `flush()` (commit handled by app service).</action>
+      <output>Infra adapter</output>
+    </step>
+
+    <step n="4" name="in-memory-double">
+      <input>Interface</input>
+      <action>Write `InMemory&lt;Aggregate&gt;Repository` implementing the same port. Used by domain unit tests + integration tests that don't need DB fidelity.</action>
+      <output>Test double</output>
+    </step>
+
+    <step n="5" name="wire-and-test">
+      <input>Adapter + double</input>
+      <action>Bind interface → adapter in DI container. Write a contract test asserting both implementations satisfy the same invariants (`save then find_by_id returns equal aggregate`).</action>
+      <output>DI binding + contract test</output>
+      <decision-gate>If domain tests need the DB adapter, the interface is being misused — refactor.</decision-gate>
+    </step>
+
+  </section>
+</text>

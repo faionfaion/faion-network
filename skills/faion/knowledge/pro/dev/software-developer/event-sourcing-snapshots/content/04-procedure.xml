@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="ES Snapshots Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to introduce snapshots for an existing ES aggregate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="benchmark-replay">
+      <input>Existing aggregate + production stream lengths</input>
+      <action>Measure cold-load latency at p50/p99. If &lt; 100ms and stream length &lt; 200 events, skip snapshots. Otherwise proceed.</action>
+      <output>Benchmark report</output>
+      <decision-gate>If load is fast enough, STOP — snapshots are not needed.</decision-gate>
+    </step>
+
+    <step n="2" name="pick-interval">
+      <input>Stream length distribution + storage budget</input>
+      <action>Pick N ∈ [50, 100]. Smaller N for high-write/short-tail aggregates; larger N for long-lived aggregates with bursty access patterns.</action>
+      <output>Interval policy</output>
+    </step>
+
+    <step n="3" name="snapshot-storage">
+      <input>Aggregate type + schema version</input>
+      <action>Create snapshot table `(stream_id, snapshot_version, schema_version, payload, created_at)`. Index on (stream_id, snapshot_version DESC).</action>
+      <output>Snapshot DDL</output>
+    </step>
+
+    <step n="4" name="loader-and-writer">
+      <input>Aggregate + repository</input>
+      <action>Loader: read latest snapshot for stream; if schema_version matches current, deserialize + replay events &gt; snapshot_version; if not, fall back to replay-from-zero. Writer: after every N events, persist snapshot.</action>
+      <output>Loader + writer code</output>
+    </step>
+
+    <step n="5" name="invalidation-script">
+      <input>Schema-version bump policy</input>
+      <action>Implement `invalidate &lt;Aggregate&gt;` CLI that DELETES from snapshot table where aggregate_type=&lt;X&gt;. Add CI step that runs invalidate before deploying a new schema version.</action>
+      <output>Invalidation script + CI gate</output>
+      <decision-gate>If CI cannot run invalidate before deploy, FAIL the release.</decision-gate>
+    </step>
+
+  </section>
+</text>

@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="event-sourcing-projections Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for event-sourcing-projections. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ES Projections Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding event-sourced projection design.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="idempotent-upsert" testable="true" depth="essential">
+      <statement>Projection handlers MUST be idempotent. Apply the same event twice MUST produce the same read-model state. Use UPSERT keyed by `(stream_id, position)` or `event_id`, never raw INSERT.</statement>
+      <rationale source="At-least-once delivery semantics">Event subscriptions can redeliver on restart/reconnect; non-idempotent inserts produce duplicate rows or constraint failures.</rationale>
     </rule>
+
+    <rule id="checkpointed-position" testable="true" depth="essential">
+      <statement>Every projection MUST track its last processed `(stream_id, position)` (or global sequence number) in a `projection_checkpoint` table. On startup it MUST resume from that checkpoint.</statement>
+      <rationale source="Read-model recovery patterns">Without a checkpoint, restart replays from offset 0 every time, or skips events; neither is acceptable in production.</rationale>
+    </rule>
+
+    <rule id="no-side-effects" testable="true" depth="essential">
+      <statement>Projection handlers MUST only write to the read store (UPSERT / INSERT / DELETE). They MUST NOT send email, call other services, trigger workflows, or emit domain events. Side effects belong in process managers / sagas subscribed to the same events.</statement>
+      <rationale source="Rebuild safety + idempotency">Rebuilds replay every event from offset 0; side effects would fire each rebuild (duplicate emails, duplicate charges).</rationale>
+    </rule>
+
+    <rule id="rebuildable-from-zero" testable="true" depth="essential">
+      <statement>Every projection MUST be rebuildable by truncating its read table + checkpoint, then replaying events from offset 0. A `rebuild-&lt;name&gt;` command MUST exist and produce a read model byte-for-byte equivalent to the incrementally-built one.</statement>
+      <rationale source="Disaster recovery + schema-version migrations">Without a rebuild path, the read model is permanently coupled to its history; bug fixes can't be back-applied.</rationale>
+    </rule>
+
+    <rule id="rebuild-test-quarterly" testable="true" depth="essential">
+      <statement>The rebuild path MUST be exercised at least quarterly (CI job or manual rehearsal). Drift between incremental + rebuild output MUST fail the rehearsal.</statement>
+      <rationale source="Operational continuity / DR drills">Unexercised rebuild paths rot — schema changes break them silently. Periodic test is the only reliable detector.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

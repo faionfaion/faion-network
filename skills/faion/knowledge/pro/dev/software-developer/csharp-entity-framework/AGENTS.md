@@ -3,74 +3,101 @@ slug: csharp-entity-framework
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Entity Framework Core patterns for ASP.
-content_id: "cf3c9b41f6805e01"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: EF Core 8 patterns — fluent `IEntityTypeConfiguration`, `AsNoTracking` reads, `AsSplitQuery` on multi-collection includes, repository paged results, and ordered migrations.
+content_id: "dec775197d9ee814"
+complexity: medium
+produces: code
+est_tokens: 4400
 tags: [entity-framework, orm, csharp, database, migrations]
 ---
 # Entity Framework Patterns
 
 ## Summary
 
-**One-sentence:** Entity Framework Core patterns for ASP.
+**One-sentence:** EF Core 8 patterns — fluent `IEntityTypeConfiguration`, `AsNoTracking` reads, `AsSplitQuery` on multi-collection includes, repository paged results, and ordered migrations.
 
-**One-paragraph:** Entity Framework Core patterns for ASP.NET Core backends: entity definition, IEntityTypeConfiguration, repository interface and implementation, AsNoTracking() for reads, paged queries, migrations, and change tracking management. Covers configuration best practices, N+1 prevention, and concurrency handling.
+**One-paragraph:** EF Core misuse — data annotations on entities, lazy-loading proxies, `IQueryable` returned from repositories, Cartesian explosions from multi-Include — produces the classic "EF Core is slow" complaint. This methodology pins five rules: entities are POCOs with private setters initialized in constructors; mapping lives in `IEntityTypeConfiguration<T>` via fluent API; read paths use `.AsNoTracking()` + DTO projection; multi-collection queries use `.AsSplitQuery()`; migrations are append-only and named with verbs. Output: entity + configuration + repository + migration scaffold per `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Production EF Core 8 apps with non-trivial domain.
+- Read paths under throughput pressure (AsNoTracking + projection).
+- Multi-collection queries causing Cartesian explosion.
+- Repositories that must hide `IQueryable` from upper layers.
+- Teams co-versioning migrations with entity changes.
 
 ## Applies If (ALL must hold)
 
-- ASP.NET Core / .NET worker services that need an ORM with LINQ, change tracking, migrations, and provider portability
-- Domain models with rich relationships (one-to-many, many-to-many, owned types, TPH/TPT inheritance)
-- Read paths that benefit from compiled queries and EF 8+ JSON column support
-- CQRS-flavored apps where commands use the tracked context and queries use AsNoTracking() projections
-- Greenfield work that needs first-class migration tooling (dotnet ef migrations add)
+- EF Core 6+ (Code-First) inside an ASP.NET Core or worker project.
+- Migrations are the schema-of-record (not a hand-maintained SQL script).
+- The team agrees DTOs separate from entities for transport.
+- Read/write paths can be distinguished at the repository boundary.
 
 ## Skip If (ANY kills it)
 
-- High-throughput analytical workloads — Dapper, plain ADO.NET, or Microsoft.Data.SqlClient outperform EF for read-heavy hot paths
-- Stored-procedure-heavy systems where the DBA owns all SQL — EF mapping fights the existing model
-- Streaming / bulk inserts of millions of rows — use SqlBulkCopy, Npgsql COPY, or EFCore.BulkExtensions
-- DBs without a strong EF provider (some NoSQL, niche RDBMSes) — pick a native client
-- Tight memory environments (AOT trimming) where EF reflection footprint matters; consider Dapper + manual mapping
+- Database-First / `EDMX` legacy project — start with a migration plan first.
+- Dapper / micro-ORM is already in place and adequate.
+- Trivial CRUD with single-table reads — overhead exceeds benefit.
+- Stored-procedure-heavy enterprise app — EF Core sits on top of SP-only contract.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Entity sketch | C# class or ERD | team |
+| DbContext + connection | existing csproj | repo |
+| Migration history | `Migrations/` folder | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[csharp-dotnet]] | ASP.NET Core layout that wires EF in. |
+| [[ddd-repositories]] | Repository pattern abstracting EF behind a domain interface. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: fluent-config-only, asnotracking-reads, no-iqueryable-return, splitquery-multi-include, append-only-migrations | ~1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for entity+config+repo+migration spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: cartesian-explosion, tracking-on-reads, lazy-loading-proxies, edited-migration | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on workload + Include shape → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-entity-and-config` | sonnet | Layered judgment on relationships + indexes. |
+| `write-repository-paged` | sonnet | Paged read scaffolding. |
+| `audit-existing-queries` | sonnet | Look for AsNoTracking + Include violations. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Entity.cs` | POCO entity with private setters |
+| `templates/EntityConfiguration.cs` | Fluent mapping skeleton |
+| `templates/Repository.cs` | Repository with PagedResult + AsNoTracking |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-csharp-entity-framework.py` | Validate entity+config+repo spec against schema | Pre-commit on spec artefact |
 
 ## Related
 
+- [[csharp-dotnet]]
+- [[ddd-repositories]]
+- [[csharp-dotnet-patterns]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (workload — read-heavy vs write-heavy, Include shape) to a rule from `01-core-rules.xml`, either approving the EF Core pattern or routing to Dapper / raw SQL. Use it whenever adding a new entity, a new query, or refactoring a slow page.

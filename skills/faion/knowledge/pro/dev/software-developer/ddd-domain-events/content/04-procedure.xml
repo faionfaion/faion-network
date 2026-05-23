@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="DDD Domain Events Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to introduce a new domain event end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="name-the-event">
+      <input>Aggregate command + observable fact</input>
+      <action>Name the event as past-tense fact (`OrderPlaced`, `PaymentCaptured`, `SubscriptionRenewed`). Avoid procedural names (`PlaceOrderEvent`, `OnOrderPlaced`).</action>
+      <output>Event class name</output>
+    </step>
+
+    <step n="2" name="define-record">
+      <input>Event name + needed payload</input>
+      <action>Define frozen record with `event_id`, `occurred_at`, aggregate identity, and only the payload downstream consumers need. Avoid leaking the full aggregate state.</action>
+      <output>Frozen event class</output>
+    </step>
+
+    <step n="3" name="raise-in-command">
+      <input>Aggregate command method</input>
+      <action>Append the event to `self._events` inside the command method, after invariants pass. Add a unit test asserting the event is raised exactly once per successful command.</action>
+      <output>Aggregate updated</output>
+    </step>
+
+    <step n="4" name="collect-after-commit">
+      <input>Application service</input>
+      <action>In the application service: open transaction → call aggregate command → commit → `events = aggregate.collect_events()` → dispatch. If exception before commit, events are discarded automatically.</action>
+      <output>Application service code path</output>
+      <decision-gate>If events are dispatched before commit, FAIL the review.</decision-gate>
+    </step>
+
+    <step n="5" name="outbox-or-in-process">
+      <input>Delivery target</input>
+      <action>In-process: pass events to in-memory dispatcher. Broker: insert into `outbox` table inside the transaction; relay process picks up unprocessed rows and publishes with dedup by `event_id`. Add a contract test against the outbox shape.</action>
+      <output>Outbox row + relay configured</output>
+    </step>
+
+  </section>
+</text>

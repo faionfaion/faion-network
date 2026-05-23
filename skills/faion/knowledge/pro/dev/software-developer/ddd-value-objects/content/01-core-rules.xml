@@ -1,19 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ddd-value-objects Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ddd-value-objects. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="DDD Value Objects Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Five testable rules grounding the Value Object pattern.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Value Objects MUST be immutable. In Python use @dataclass(frozen=True). In Java/Kotlin use records or final fields with no setters. In C# use readonly structs or record types. Mutation must be impossible by the type system, not by convention.</statement>
-      <rationale source="v1-source">Mutable Value Objects create aliasing bugs: two callers share the same instance and one mutates it, silently affecting the other. Immutability makes Value Objects safe to pass, store, and compare by value.</rationale>
+
+    <rule id="immutability" testable="true" depth="essential">
+      <statement>Value Objects MUST be immutable by the type system. Python: `@dataclass(frozen=True)`. Java/Kotlin: `record`/`data class` with `val` only. C#: `record` or `readonly record struct`. Mutation via attribute assignment MUST throw at runtime.</statement>
+      <rationale source="DDD Reference — Value Objects">Conventional immutability fails under careless refactor; type-level immutability is enforced by the compiler/runtime.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Value Objects MUST validate their invariants in __post_init__ (Python) or the constructor (Java/C#/TS). An invalid Value Object MUST NOT be constructible — it must raise/throw immediately.</statement>
-      <rationale source="v1-source">Deferred validation (checking after construction) allows invalid objects to propagate through the system. Fail-fast construction makes illegal states unrepresentable.</rationale>
+
+    <rule id="constructor-validation" testable="true" depth="essential">
+      <statement>Validation MUST happen in the constructor (`__post_init__` for `@dataclass`, constructor body for Java/C#). An invalid Value Object MUST NOT be constructible — invalid input raises/throws immediately.</statement>
+      <rationale source="DDD Reference — Make invalid states unrepresentable">Validating after construction allows callers to hold invalid instances; constructor validation pushes the error to the boundary.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Value Object operations that produce a new value MUST return a new instance, never mutate the existing one. Example: Money.add(other) returns Money(self.amount + other.amount, self.currency).</statement>
-      <rationale source="v1-source">Mutation methods on a supposedly immutable object are a trap: frozen dataclasses prevent this in Python, but in Java/C# the invariant must be enforced by code review or tests.</rationale>
+
+    <rule id="value-equality" testable="true" depth="essential">
+      <statement>Equality MUST be by attributes, not by identity. Two Value Objects with the same field values MUST compare equal (`__eq__` / `equals` / `record` default).</statement>
+      <rationale source="DDD Reference — Value Object equality">Identity equality on Value Objects breaks set/dict semantics and confuses domain reasoning ("two Money(10, USD) should be the same Money").</rationale>
     </rule>
+
+    <rule id="ops-return-new" testable="true" depth="essential">
+      <statement>Operations that produce a new value MUST return a new instance. `Money.add(other)` returns `Money(self.amount + other.amount, self.currency)`. Mutating `self.amount` is forbidden by rule #1; even constructing in place is forbidden.</statement>
+      <rationale source="Functional value semantics">Returning new instances makes Value Objects safe to share across threads + caches; mutation breaks both.</rationale>
+    </rule>
+
+    <rule id="no-identity" testable="true" depth="essential">
+      <statement>Value Objects MUST NOT carry an identity field (`id`, `uuid`). If a concept needs identity, it's an Entity, not a Value Object — use `[[ddd-aggregates]]` instead.</statement>
+      <rationale source="DDD Reference — Entities vs Value Objects">Mixing identity into a value type produces equality bugs: two "same" addresses with different IDs compare unequal; collections deduplicate incorrectly.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

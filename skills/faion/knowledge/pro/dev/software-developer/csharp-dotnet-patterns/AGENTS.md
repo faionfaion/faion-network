@@ -3,84 +3,102 @@ slug: csharp-dotnet-patterns
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: TBD — fill from v1 source
-content_id: "21bcf93d3bf9d36d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Clean architecture + CQRS-with-MediatR + rich domain model patterns for .NET 8 services; rejects anaemic models, public setters, and entity leakage.
+content_id: "73b8c7ec8b066933"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [csharp, dotnet, aspnet-core, clean-architecture, domain-driven-design]
 ---
 # C# .NET Patterns
 
 ## Summary
 
-**One-sentence:** TBD
+**One-sentence:** Clean architecture + CQRS-with-MediatR + rich domain model patterns for .NET 8 services; rejects anaemic models, public setters, and entity leakage.
 
-**One-paragraph:** .NET is a modern, cross-platform framework for building web APIs, microservices, and enterprise applications. This methodology covers ASP.NET Core patterns, clean architecture, domain-driven design, and best practices for C# development including dependency injection, middleware pipelines, configuration management, and async-first design.
+**One-paragraph:** Layered .NET solutions slip into anaemic-domain + service-locator + entity-leak antipatterns when scaling beyond one team. This methodology pins clean-architecture boundaries (Domain — Application — Infrastructure — Web), CQRS via MediatR (one handler per command/query, no service classes), and Bean Validation at the API edge. Public setters on entities are forbidden; behaviour lives on aggregates per `[[ddd-aggregates]]`. Output: a feature folder structured per the contract in `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Multi-team .NET solutions where layer boundaries decay over time.
+- CQRS-style services with explicit command/query split.
+- Codebases adopting MediatR/FastEndpoints for handler dispatch.
+- Domain-rich projects where invariants must live on the entity.
+- AI-generated code review — antipatterns catch agent regressions.
 
 ## Applies If (ALL must hold)
 
-- Enterprise web applications requiring high performance and scalability.
-- Microservices architecture with event-driven communication.
-- REST and gRPC APIs with complex business logic.
-- Cloud-native applications (Azure, AWS) with tight integration requirements.
-- Applications requiring strong typing and compile-time error detection.
-- Teams familiar with C# and wanting to leverage the .NET ecosystem.
-- Greenfield ASP.NET Core service where Clean Architecture is mandated and scaffolding is needed fast.
-- Brownfield migration from legacy .NET Framework or classic Web API to .NET 8/9 minimal APIs with MediatR.
-- Cross-cutting addition of MediatR pipelines (validation, logging, transactions, caching) to existing ASP.NET Core.
-- Enforcing DTO boundaries when a codebase has leaked EF Core entities through controllers.
-- Refactoring anemic services into rich aggregates with private setters, factory methods, and domain events.
+- .NET 8+ project with clean-architecture intent (separate Domain/Application/Infrastructure projects).
+- MediatR (or equivalent) installed for CQRS dispatch.
+- DDD vocabulary already shared across the team.
+- Reviewers willing to enforce no-public-setter discipline.
 
 ## Skip If (ANY kills it)
 
-- Greenfield projects with no prior .NET experience and tight delivery timelines.
-- JavaScript-only teams with no C# expertise.
-- Applications locked into specific language ecosystems (Java-only, Python-only).
-- Simple CRUD applications where Django or Rails may be more lightweight.
-- Console apps, single-file utilities, Azure Functions with one HTTP trigger. Clean Architecture's four-project split is overkill.
-- Razor Pages or MVC monoliths where teams have no MediatR experience. Adding the bus creates a parallel architecture nobody owns.
-- Game or Unity C# work. DI container, MediatR, and EF Core are wrong tools; prefer ECS patterns.
-- Lambda or serverless functions with cold-start budgets under 300ms. MediatR and AutoMapper add startup overhead that breaks SLOs.
-- Teams without DDD literacy. Rich-domain-model rules degrade into "private setters with no behavior," which is anemic with ceremony.
+- CRUD prototype with no behaviour worth encapsulating.
+- Single-developer hobby project — overhead exceeds benefit.
+- Team rejects MediatR; route to bare ASP.NET Core feature folder per `[[csharp-dotnet]]`.
+- Legacy .NET Framework codebase — migrate to .NET 8 first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature spec | Markdown | ticket / SDD task |
+| Existing solution layout | .sln + project graph | repo |
+| Ubiquitous language glossary | Markdown | domain owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[csharp-dotnet]] | Base ASP.NET Core conventions this layers on. |
+| [[ddd-aggregates]] | Aggregate root + invariant rules referenced by the patterns. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: clean-arch-layers, cqrs-handler-per-message, rich-domain-no-setters, edge-validation, no-entity-in-api | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for feature folder + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: anaemic-domain, controller-with-logic, entity-as-dto, mediatr-hallucination | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: split layers → command + handler → aggregate behaviour → DTOs → tests | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on team-size + behaviour-richness → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `partition-into-layers` | sonnet | Judgment on boundaries. |
+| `write-handler-and-aggregate` | sonnet | C# scaffolding. |
+| `review-for-antipatterns` | sonnet | Pattern-match against failure modes. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Handler.cs` | MediatR `IRequestHandler` skeleton |
+| `templates/Aggregate.cs` | Aggregate root with no public setters |
+| `templates/feature-folder.md` | Folder layout reference |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-csharp-dotnet-patterns.py` | Validate feature-folder spec against schema | Pre-commit on spec artefact |
 
 ## Related
 
+- [[csharp-dotnet]]
+- [[ddd-aggregates]]
+- [[ddd-value-objects]]
+- [[cqrs-pattern]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (team size, behaviour richness, CQRS adoption) to a rule from `01-core-rules.xml`. Use it whenever a new feature joins the .NET solution to decide whether clean-architecture + CQRS layering is justified or whether a flat feature folder per `[[csharp-dotnet]]` is enough.

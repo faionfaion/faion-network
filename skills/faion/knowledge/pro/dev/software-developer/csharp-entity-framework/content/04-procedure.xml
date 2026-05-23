@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="EF Core Patterns Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to produce entity + configuration + repository + migration.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="design-entity">
+      <input>Entity sketch or ERD</input>
+      <action>Define POCO entity with private setters and a parameterless protected constructor (for EF materialization). Initialize collection properties in constructor.</action>
+      <output>Entity.cs</output>
+      <decision-gate>If the entity carries data annotations, FAIL and move them to configuration.</decision-gate>
+    </step>
+
+    <step n="2" name="fluent-configuration">
+      <input>Entity + table conventions</input>
+      <action>Write `IEntityTypeConfiguration&lt;T&gt;` with `ToTable`, `HasKey`, `Property(...).IsRequired().HasMaxLength`, `HasIndex`, foreign-key cascade. Register via `modelBuilder.ApplyConfigurationsFromAssembly` in DbContext.</action>
+      <output>EntityConfiguration.cs</output>
+    </step>
+
+    <step n="3" name="repository">
+      <input>Entity + read/write requirements</input>
+      <action>Define `I&lt;Entity&gt;Repository` returning `PagedResult&lt;TDto&gt;` for list queries (with `.AsNoTracking()` + projection + `Skip/Take`). Implementation calls `SaveChangesAsync(ct)` on writes; does NOT return `IQueryable`.</action>
+      <output>Repository.cs + PagedResult&lt;T&gt;.cs</output>
+    </step>
+
+    <step n="4" name="migration">
+      <input>Entity change</input>
+      <action>Run `dotnet ef migrations add &lt;VerbPrefix&gt;` (e.g. `AddOrdersTable`, `AlterOrderAddCarrier`). Inspect generated `Up()`. Pair with a CI step `dotnet ef migrations script` and diff against last release.</action>
+      <output>Migration class + designer file</output>
+    </step>
+
+    <step n="5" name="multi-collection-audit">
+      <input>Repository read paths</input>
+      <action>For each query with `≥ 2` collection `Include`, append `.AsSplitQuery()`. Add a unit-test query plan check (`db.Database.SqlQueryRaw("SET STATISTICS ...")`).</action>
+      <output>Audited query set</output>
+      <decision-gate>If query still produces Cartesian counts in plan, refactor to projection.</decision-gate>
+    </step>
+
+  </section>
+</text>

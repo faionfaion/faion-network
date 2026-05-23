@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-aggregate Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ES Aggregate Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for an ES aggregate spec — apply handlers, command methods, repository contract.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-aggregate.json",
+  "type": "object",
+  "required": ["aggregate", "events", "apply_handlers", "commands", "repository"],
+  "properties": {
+    "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"}
+    },
+    "apply_handlers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^_apply_[A-Z][A-Za-z0-9]+$"}
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["name", "mutates_state_in_body"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+          "mutates_state_in_body": {"type": "boolean", "const": false}
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "required": ["load_signature", "save_signature", "save_uses_expected_version"],
+      "properties": {
+        "load_signature": {"type": "string"},
+        "save_signature": {"type": "string"},
+        "save_uses_expected_version": {"type": "boolean", "const": true}
+      }
+    },
+    "has_collect_pending_events": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Order",
+  "events": ["OrderPlaced", "ItemAdded", "OrderShipped", "OrderCancelled"],
+  "apply_handlers": ["_apply_OrderPlaced", "_apply_ItemAdded", "_apply_OrderShipped", "_apply_OrderCancelled"],
+  "commands": [
+    {"name": "place", "mutates_state_in_body": false},
+    {"name": "add_item", "mutates_state_in_body": false},
+    {"name": "ship", "mutates_state_in_body": false},
+    {"name": "cancel", "mutates_state_in_body": false}
+  ],
+  "repository": {
+    "load_signature": "load(stream_id: UUID) -> tuple[Order, int]",
+    "save_signature": "save(stream_id: UUID, events: list, expected_version: int) -> int",
+    "save_uses_expected_version": true
+  },
+  "has_collect_pending_events": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "order",
+  "events": [],
+  "apply_handlers": ["update_state"],
+  "commands": [{"name": "Place", "mutates_state_in_body": true}],
+  "repository": {"load_signature": "", "save_signature": "save(events)", "save_uses_expected_version": false},
+  "has_collect_pending_events": false
+}
+]]></code>
+    <note>aggregate lower-case; no events; non-conforming handler name; command mutates body; save lacks expected_version.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Any command with `mutates_state_in_body == true`.</description>
+      <reason>Violates `apply-only-mutation` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`repository.save_uses_expected_version == false`.</description>
+      <reason>Violates `expected-version-on-save` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`has_collect_pending_events == false`.</description>
+      <reason>Violates `collect-pending-boundary` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-aggregate.py">Validator script</reference>
 </text>

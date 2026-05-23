@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="ES Agentic Pipeline Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping the current stage + observed artefact to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-stage">Which pipeline stage is being reviewed?</root-question>
+
+    <branch when="stage == aggregate_design">
+      <question id="q-event-names">All event names past-tense facts?</question>
+      <branch when="past_tense == false">
+        <conclusion ref="past-tense-event-names" verdict="REJECT: re-prompt with past-tense examples"/>
+      </branch>
+      <branch when="past_tense == true">
+        <conclusion ref="past-tense-event-names" verdict="ACCEPT: advance to stage 2"/>
+      </branch>
+    </branch>
+
+    <branch when="stage == event_class_codegen">
+      <question id="q-mutation">Any state mutation outside apply handlers?</question>
+      <branch when="mutates_in_command == true">
+        <conclusion ref="apply-only-mutation" verdict="REJECT: mutation must live in apply"/>
+      </branch>
+      <branch when="mutates_in_command == false">
+        <question id="q-expected-version">Repository.save passes expected_version?</question>
+        <branch when="expected_version == false">
+          <conclusion ref="expected-version-enforced" verdict="REJECT: add expected_version"/>
+        </branch>
+        <branch when="expected_version == true">
+          <conclusion ref="no-invented-apis" verdict="ACCEPT pending import-resolution check"/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="stage == projection_codegen">
+      <question id="q-side-effects">Any side effect beyond read-store writes?</question>
+      <branch when="has_side_effects == true">
+        <conclusion ref="projection-no-side-effects" verdict="REJECT: move to process manager"/>
+      </branch>
+      <branch when="has_side_effects == false">
+        <conclusion ref="projection-no-side-effects" verdict="ACCEPT"/>
+      </branch>
+    </branch>
+
+    <branch when="stage == tests_codegen">
+      <conclusion ref="apply-only-mutation" verdict="ACCEPT if tests assert event emission, REJECT if tests only assert getter equality"/>
+    </branch>
+
+    <branch when="stage == antipattern_review">
+      <conclusion ref="no-invented-apis" verdict="run all 5 rules; merge only if all pass"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="rejected-stage-2">
+    stage=event_class_codegen → mutates_in_command=true → REJECT against `apply-only-mutation` rule.
+  </example>
+</text>

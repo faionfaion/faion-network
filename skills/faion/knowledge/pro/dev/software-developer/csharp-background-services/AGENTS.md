@@ -3,72 +3,101 @@ slug: csharp-background-services
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Long-running in-process background workers in ASP.
-content_id: "ec2c09f61ce1154b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Long-running in-process workers in ASP.NET Core via BackgroundService + Channels with bounded back-pressure, scoped DI, graceful shutdown, and health checks.
+content_id: "f5279dc4c64dcab9"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [csharp, background-services, async, channels, aspnet-core]
 ---
 # C# Background Services
 
 ## Summary
 
-**One-sentence:** Long-running in-process background workers in ASP.
+**One-sentence:** Long-running in-process workers in ASP.NET Core via BackgroundService + Channels with bounded back-pressure, scoped DI, graceful shutdown, and health checks.
 
-**One-paragraph:** Long-running in-process background workers in ASP.NET Core using BackgroundService + System.Threading.Channels for queue consumers, periodic cleanup, and cache warming with bounded channels for back-pressure, scoped DI via CreateScope(), graceful shutdown via CancellationToken, and IHealthCheck integration.
+**One-paragraph:** Ad-hoc Task.Run loops bypass IHost lifecycle, ignore CancellationToken, and capture scoped DI as singletons. BackgroundService extends IHostedService and integrates with graceful shutdown, IHealthCheck, and System.Threading.Channels for in-memory queues with back-pressure. This methodology pins five testable rules: extend BackgroundService (never Task.Run), pass stoppingToken everywhere, catch per-item inside ExecuteAsync, CreateScope() for DbContext access, and Channel.CreateBounded with FullMode.Wait. Output: a worker class + DI registration + xUnit test conforming to the contract in `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- Queue consumers, periodic cleanup, cache warming inside the API host.
+- In-memory back-pressure between HTTP and background workers.
+- Graceful shutdown coordination via CancellationToken propagation.
+- IHealthCheck wiring for Kubernetes liveness/readiness probes.
+- Moderate-throughput scheduled tasks where Hangfire/Quartz is overkill.
 
 ## Applies If (ALL must hold)
 
-- Long-running in-process workers: queue consumers, periodic cleanup, cache warmers, file watchers
-- In-memory work queues with back-pressure between HTTP requests and a background worker
-- Scheduled tasks at moderate throughput where a separate process (Hangfire, Quartz) is overkill
-- Graceful-shutdown requirements via IHostedService
+- The work must run inside the API host process (no separate Worker host).
+- Jobs may be lost on shutdown — at-least-once with restart-tolerance is the goal.
+- Throughput fits on a single replica or leader-elected replica.
+- Graceful shutdown must drain in-flight work before stopping.
 
 ## Skip If (ANY kills it)
 
-- Jobs that must survive app restarts — use Hangfire, Quartz.NET with persistence, or a real broker
-- Heavy CPU work — runs in the host process and can starve the HTTP thread pool; use a Worker host
-- Distributed scheduling across replicas — BackgroundService runs on every instance; add leader election first
-- Exactly-once semantics — in-memory channels are lost on shutdown
+- Jobs MUST survive restarts — use Hangfire, Quartz.NET, or a durable broker.
+- Heavy CPU work — would starve the HTTP thread pool; isolate to a Worker host.
+- Distributed scheduling across replicas without leader election.
+- Exactly-once semantics — in-memory channels lose state on shutdown.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Job spec | Markdown | team / ticket |
+| ASP.NET Core 6+ project | csproj | repo |
+| DbContext or downstream service contract | C# interface | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[csharp-dotnet]] | Base .NET wiring, DI, hosting model. |
+| [[csharp-entity-framework]] | Scoped DbContext lifecycle the worker depends on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: extend-backgroundservice, pass-stoppingtoken, per-item-trycatch, scope-per-item, bounded-channel | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for worker spec + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: task-run-loop, unbounded-channel, captive-dbcontext, no-stoppingtoken | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: classify → design channel → write worker → register + health → test | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on durability/throughput → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-job-shape` | sonnet | Apply decision tree on durability/throughput/cpu. |
+| `write-worker-class` | sonnet | C# scaffolding with the 5 rules. |
+| `write-xunit-test` | haiku | Mechanical AAA test against IHostedService API. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Worker.cs` | BackgroundService + Channel reader skeleton |
+| `templates/ProgramRegistration.cs` | Channel + worker + health check DI registration |
+| `templates/prompt-worker.txt` | Subagent prompt for generating worker + test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-csharp-background-services.py` | Validate worker spec JSON against the schema | Pre-commit on the spec artefact |
 
 ## Related
 
+- [[csharp-dotnet]]
+- [[csharp-entity-framework]]
+- [[csharp-xunit-testing]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (job durability requirement, throughput, CPU profile, distribution) to a rule from `01-core-rules.xml` and either approves BackgroundService or redirects to a durable broker / Worker host. Use it whenever an engineer reaches for `Task.Run` or considers a hosted-service for periodic work.

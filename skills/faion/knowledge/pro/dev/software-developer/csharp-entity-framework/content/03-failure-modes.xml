@@ -1,42 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="csharp-entity-framework Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for csharp-entity-framework as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="EF Core Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four EF Core antipatterns. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Lazy loading via UseLazyLoadingProxies() enabled globally, followed by accessing navigation properties in loops.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lazy loading silently adds a query whenever a navigation property is accessed, causing N+1 queries. Agents enable it because tutorials do, then performance collapses.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>DbContextOptions mis-registration: agents register Singleton or Transient — Scoped is the correct lifetime, AddDbContextPool is the right factory.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Non-scoped contexts are shared across requests or not reused, causing concurrency bugs or allocation overhead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>New entity but no DbSet&lt;&gt; on the context — code compiles, runtime LINQ throws "entity not part of model".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>EF Core tracks entities by DbSet. Missing the DbSet entry breaks runtime LINQ queries.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Modifying a deployed migration: agents "fix" a generated migration file rather than adding a new one, breaking environments that already applied it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deployed migrations are immutable contracts. Editing breaks idempotency and produces inconsistent schemas across environments.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Update() marks every property as modified, including null nav-props; partial updates need attaching + setting EntityState.Modified on specific properties.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Update() is for full replacements, not patches. Partial updates overwrite unmodified properties with defaults.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Connection pooling (AddDbContextPool) caches contexts; mutating ChangeTracker.Tracked settings on one request leaks to the next.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pooled contexts are reused across requests. State set on one request carries over to the next unless explicitly reset.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>EnableSensitiveDataLogging() enabled without gating on IsDevelopment(), leaking PII to prod logs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Sensitive data logging is a security regression. It must be development-only.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="cartesian-explosion" severity="high">
+      <symptom>List query with `Include(o =&gt; o.Items).Include(o =&gt; o.Discounts)` produces a JOIN over two collections. Page load returns 50k rows for 100 orders × 10 items × 50 discounts.</symptom>
+      <root-cause source="EF Core docs — Single vs split queries">Default single-query Include over multiple collections produces Cartesian product.</root-cause>
+      <fix>Append `.AsSplitQuery()`. EF emits separate SELECTs and merges client-side. Document in code why it's split (link to this rule).</fix>
+    </antipattern>
+
+    <antipattern id="tracking-on-reads" severity="medium">
+      <symptom>List endpoint loads 1000 entities, materializes change-tracker entries, and serialises them. Each request leaks ~20MB before GC. Throughput collapses.</symptom>
+      <root-cause source="EF Core docs — Query tracking">Read path didn't use `.AsNoTracking()` + projection.</root-cause>
+      <fix>Add `.AsNoTracking().Select(o =&gt; new OrderDto(o.Id, o.Total))` to the query. Materialize via `ToListAsync(ct)`.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-loading-proxies" severity="high">
+      <symptom>`UseLazyLoadingProxies()` enabled; controller returns entities; serializer touches navigation, EF fires N+1 SQL after the DbContext has been disposed. `ObjectDisposedException` mid-response.</symptom>
+      <root-cause source="EF Core docs — Lazy loading">Lazy loading + entity-in-response forces a hidden runtime contract that breaks when DbContext is request-scoped.</root-cause>
+      <fix>Disable `UseLazyLoadingProxies`. Use explicit `Include` or projection. Make navigations require an explicit eager-load path.</fix>
+    </antipattern>
+
+    <antipattern id="edited-migration" severity="high">
+      <symptom>Engineer renames a migration file or edits its `Up()` after merge to fix a typo. Deployed environments diverge: prod has applied old version, staging has new.</symptom>
+      <root-cause source="EF Core docs — Migrations workflow">Migration treated as code instead of as an immutable schema-history record.</root-cause>
+      <fix>Revert the edit. Add a new migration `FixTypoInOrdersTable` that applies the correction. Pin policy in CONTRIBUTING.</fix>
+    </antipattern>
+
   </section>
 </text>

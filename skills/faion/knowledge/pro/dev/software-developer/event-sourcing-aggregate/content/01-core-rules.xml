@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="event-sourcing-aggregate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for event-sourcing-aggregate. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ES Aggregate Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding the event-sourced aggregate pattern.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="apply-only-mutation" testable="true" depth="essential">
+      <statement>Aggregate state MUST be mutated only inside `apply` / `_apply_&lt;EventName&gt;` event-handler methods. Command methods MUST validate invariants, append events to a pending list, and return. Direct field assignment in command methods is forbidden.</statement>
+      <rationale source="Greg Young — Event Sourcing primer">Mutation in command methods makes replay diverge from live execution; rebuilding state from events would produce a different result.</rationale>
     </rule>
+
+    <rule id="command-emits-returns" testable="true" depth="essential">
+      <statement>Each command method MUST emit zero or more events and return (no value). It MUST NOT call the event store directly. Persistence is the repository's responsibility, called after the command returns.</statement>
+      <rationale source="CQRS + event-sourcing separation">Calling the store from inside the aggregate couples domain logic to infrastructure and prevents pure unit tests.</rationale>
+    </rule>
+
+    <rule id="expected-version-on-save" testable="true" depth="essential">
+      <statement>Repository `save(stream_id, events, expected_version)` MUST always pass the version loaded at command start. The store MUST raise `ConcurrencyError` (or equivalent) when versions disagree.</statement>
+      <rationale source="Optimistic concurrency in event stores">Omitting expected_version silently overwrites concurrent commits; data corruption is invisible until replay diverges.</rationale>
+    </rule>
+
+    <rule id="from-events-reconstruction" testable="true" depth="essential">
+      <statement>The aggregate MUST expose a class method `from_events(stream_id, events) -&gt; Aggregate` (or constructor accepting `events`) that replays through `apply` handlers in order. Live execution and replay MUST produce identical state.</statement>
+      <rationale source="Event Sourcing fundamentals">Without a single reconstruction path, projections and snapshots cannot trust the aggregate's state derivation.</rationale>
+    </rule>
+
+    <rule id="collect-pending-boundary" testable="true" depth="essential">
+      <statement>The aggregate MUST expose `collect_pending_events()` that returns and clears new events. The repository calls this AFTER `save(...)` succeeds; if save raises, pending events MUST remain on the aggregate for retry.</statement>
+      <rationale source="Outbox + retry semantics">Collecting before save risks losing events on transient store failures; collecting after save preserves at-least-once semantics.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-fundamentals Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-fundamentals as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ES Fundamentals Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Three foundational antipatterns when adopting ES. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mutable event objects — setting fields after instantiation.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mutable events allow post-hoc tampering with history. Use frozen dataclasses / records so mutation is a compile-time error.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Large catch-all events: OrderUpdated(entire_order_data: dict) carrying the full state snapshot.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Snapshot-style events destroy the audit trail — you can no longer answer "what specific business action triggered this change". Use fine-grained events: OrderItemAdded, ShippingAddressChanged, etc.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mutate-event" severity="high">
+      <symptom>Developer "fixes a typo" in a stored event row directly in the DB. Downstream projections rebuilt from the log produce different state than the live projection that processed the pre-fix event.</symptom>
+      <root-cause source="ES fundamentals — events immutable">Author treated events as editable data rather than append-only history.</root-cause>
+      <fix>Revert the edit. Append a corrective event (`OrderPriceCorrected`) that downstream projections can apply. Restore from backup if the stream is already corrupted.</fix>
+    </antipattern>
+
+    <antipattern id="state-stored-alongside" severity="high">
+      <symptom>Aggregate state stored as a DB row alongside the event log. App reads state from the row, ignoring the log. Bugs in apply handlers go undetected because state was never actually computed from events.</symptom>
+      <root-cause source="ES fundamentals — events as source of truth">Author added a "fast path" + forgot the log is the contract.</root-cause>
+      <fix>Remove the state table. Use the log as source of truth. Add snapshots (per `[[event-sourcing-snapshots]]`) as a perf cache that is provably rebuildable.</fix>
+    </antipattern>
+
+    <antipattern id="crud-event-names" severity="high">
+      <symptom>Event log contains `OrderUpdated_v1`, `OrderUpdated_v2`, `OrderUpdated_v3`. Each event is a flat snapshot; downstream projections cannot tell what changed.</symptom>
+      <root-cause source="EventStorming guidance">Author treated event sourcing as a state log; missed the business-intent dimension.</root-cause>
+      <fix>Refactor: replace generic Updated events with named business facts (`OrderShipped`, `OrderAddressChanged`, `OrderDiscountApplied`). For existing data, write upcasters that translate old events into new business-fact events on read.</fix>
+    </antipattern>
+
   </section>
 </text>

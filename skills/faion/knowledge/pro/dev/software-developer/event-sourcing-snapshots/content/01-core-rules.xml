@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="event-sourcing-snapshots Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for event-sourcing-snapshots. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ES Snapshots Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding ES snapshot policy + storage.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="cache-only" testable="true" depth="essential">
+      <statement>Snapshots MUST be treated as a performance cache only. The system MUST reconstruct correct aggregate state from offset 0 without any snapshot present. Tests MUST cover the "snapshot deleted" path.</statement>
+      <rationale source="Event Sourcing fundamentals + DR drills">Snapshot rot is silent; treating snapshots as truth means a bug in `apply` produces wrong state forever.</rationale>
     </rule>
+
+    <rule id="every-n-events" testable="true" depth="essential">
+      <statement>Snapshots MUST be taken every N events (recommended N ∈ [50, 100]). Store `(stream_id, snapshot_version, serialized_state)`. Loader fetches latest snapshot, then replays only events with version &gt; snapshot_version.</statement>
+      <rationale source="Empirical replay cost analysis">N too small thrashes storage; N too large erases the latency win. The 50–100 band is the empirical sweet spot.</rationale>
+    </rule>
+
+    <rule id="schema-bump-invalidation" testable="true" depth="essential">
+      <statement>When event-schema version bumps (a field rename, removal, or semantic change), ALL snapshots for affected aggregate types MUST be invalidated before the new code deploys. An invalidation script MUST exist and be runnable in CI.</statement>
+      <rationale source="event-sourcing-versioning methodology">Stale snapshots restore old state shape; new `apply` handlers expect new shape; mismatch causes runtime errors or silent data loss.</rationale>
+    </rule>
+
+    <rule id="fall-back-replay" testable="true" depth="essential">
+      <statement>Snapshot deserialization errors (corruption, version mismatch) MUST NOT crash the load path. The loader MUST fall back to replay-from-offset-0 and log the snapshot failure for repair.</statement>
+      <rationale source="Robustness + at-least-once recovery">Production cannot afford a snapshot rot to take down aggregate loading; log-replay is the always-available fall-back.</rationale>
+    </rule>
+
+    <rule id="version-aware-storage" testable="true" depth="essential">
+      <statement>Snapshot rows MUST carry the event-schema version they were built against. Loader MUST compare schema version to current; on mismatch, treat the snapshot as missing.</statement>
+      <rationale source="event-sourcing-versioning methodology">Without version awareness, the loader cannot distinguish a fresh snapshot from a stale one across schema migrations.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ddd-domain-events Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ddd-domain-events as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="DDD Domain Events Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed when wiring domain events. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mutable-event" severity="high">
+      <symptom>Handler chain mutates `event.payload`; downstream consumers receive different payload than producer raised.</symptom>
+      <root-cause source="DDD Reference — Domain Events">Event class uses regular `class` with public attributes instead of frozen record.</root-cause>
+      <fix>Convert to `@dataclass(frozen=True)` / `record`. Adjust handlers to compute new events for derived facts.</fix>
+    </antipattern>
+
+    <antipattern id="dispatch-before-commit" severity="high">
+      <symptom>Application service dispatches `OrderPlaced` before `session.commit()`. Transaction rolls back; downstream system has acted on a non-existent order.</symptom>
+      <root-cause source="Transaction-rollback failure mode">Dispatcher called inside the aggregate command or directly after `session.flush()` but before commit.</root-cause>
+      <fix>Defer collection to after `session.commit()`. In SQLAlchemy use `after_commit` event hook; in EF Core call `_db.SaveChangesAsync(ct)` then `aggregate.CollectEvents()`.</fix>
+    </antipattern>
+
+    <antipattern id="dual-write" severity="high">
+      <symptom>App writes to DB then publishes to Kafka. DB commits, Kafka publish fails (network blip) — event lost. Or Kafka publishes, DB rolls back — phantom event consumed.</symptom>
+      <root-cause source="Microservices.io — Transactional Outbox">Direct broker publish from the application service.</root-cause>
+      <fix>Insert event into `outbox` table in the same transaction as the state change. Separate relay (Debezium / poll loop) reads unprocessed rows and publishes to broker with at-least-once + dedup by `event_id`.</fix>
+    </antipattern>
+
+    <antipattern id="missing-event-id" severity="medium">
+      <symptom>Consumer re-processes the same event on broker redelivery. Side effects fire twice (duplicate email, duplicate charge).</symptom>
+      <root-cause source="Idempotent-consumer pattern">Event has no `event_id`; consumer cannot dedup.</root-cause>
+      <fix>Add UUID `event_id` to event constructor; consumer stores processed IDs in a `processed_events` table (or Redis set) and skips duplicates.</fix>
+    </antipattern>
+
   </section>
 </text>

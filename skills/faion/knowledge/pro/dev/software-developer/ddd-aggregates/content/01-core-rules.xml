@@ -1,23 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ddd-aggregates Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ddd-aggregates. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="DDD Aggregates Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding the Aggregate Root pattern.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The Aggregate Root MUST be the only entry point for mutations: external code MUST NOT reach into child Entities or Value Objects and mutate them directly. All state changes happen through named command methods on the root.</statement>
-      <rationale source="v1-source">Direct mutation bypasses invariant checks. Intention-revealing methods (place, cancel, ship) document the domain vocabulary and enforce pre-conditions before mutating state.</rationale>
+
+    <rule id="root-only-mutation" testable="true" depth="essential">
+      <statement>The Aggregate Root MUST be the only entry point for mutation. External code MUST NOT reach into child Entities or Value Objects and mutate them. All state changes go through named command methods on the root (`order.add_item(...)`, never `order.items.append(...)`).</statement>
+      <rationale source="DDD Reference (Vaughn Vernon) — Aggregates">Without single-root entry, invariants spanning the aggregate cannot be enforced consistently; callers can leave the aggregate in an inconsistent state.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Each Aggregate Root method that changes state MUST raise a Domain Event (appended to an internal _events list) describing what happened. The application layer collects and dispatches events after the DB transaction commits.</statement>
-      <rationale source="v1-source">Events decouple downstream reactions (email, inventory reserve, billing) from the Aggregate. Collecting before dispatch ensures events are only raised when the transaction succeeds.</rationale>
+
+    <rule id="raise-event-on-mutation" testable="true" depth="essential">
+      <statement>Each command method that changes aggregate state MUST raise a Domain Event (appended to an internal `_events` list). The application layer collects events via `aggregate.collect_events()` only after the DB transaction commits.</statement>
+      <rationale source="DDD Reference + ddd-domain-events methodology">Events make state changes observable to other bounded contexts without coupling. Collection-after-commit prevents publishing events for transactions that roll back.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Aggregates MUST NOT hold direct object references to other Aggregate Roots. Reference by identity (UUID) only. Cross-Aggregate state access goes through Repositories or Domain Services.</statement>
-      <rationale source="v1-source">Object references create implicit coupling and allow bypass of the other Aggregate's invariants. Identity references keep transaction boundaries clean and enable eventual consistency across Aggregates.</rationale>
+
+    <rule id="identity-only-refs" testable="true" depth="essential">
+      <statement>Aggregates MUST NOT hold direct object references to other Aggregate Roots. Reference by identity (UUID, opaque ID) only. Cross-aggregate access goes through Repositories or Domain Services in the application layer.</statement>
+      <rationale source="DDD Reference — Aggregate design rules">Object refs across aggregates blur transaction boundaries, force eager loading, and create cycles that break repository design.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Aggregate invariants MUST be expressed as failing unit tests before implementation. Each invariant becomes a test: test_cannot_place_empty_order, test_cannot_ship_unpaid_order, test_cannot_modify_placed_order.</statement>
-      <rationale source="v1-source">Tests pin the invariants as living documentation and catch regressions. Writing tests first forces explicit invariant identification before coding begins.</rationale>
+
+    <rule id="invariant-as-test" testable="true" depth="essential">
+      <statement>Each invariant MUST exist as a failing test before the implementation. Test names match the invariant: `test_cannot_place_empty_order`, `test_cannot_ship_unpaid_order`, `test_cannot_modify_placed_order`.</statement>
+      <rationale source="TDD + DDD invariant discipline">Invariants written only as code drift with refactors; expressed as tests they become regression gates.</rationale>
     </rule>
+
+    <rule id="small-aggregate" testable="true" depth="essential">
+      <statement>An Aggregate SHOULD encompass at most ~5 child entities and load in a single DB transaction. If a candidate aggregate grows beyond this, split it along a sub-invariant boundary.</statement>
+      <rationale source="Vaughn Vernon — Effective Aggregate Design">Large aggregates cause lock contention, slow load, and weak invariant boundaries; small aggregates are the empirical sweet spot.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

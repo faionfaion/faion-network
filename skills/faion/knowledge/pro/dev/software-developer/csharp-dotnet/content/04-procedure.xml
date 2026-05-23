@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="C# ASP.NET Core + EF Core Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to produce a feature-folder artefact (Controller + Service + DTO + EntityConfig + test).</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="classify-feature">
+      <input>Feature spec (Markdown)</input>
+      <action>Apply decision tree on stack/runtime. If target is edge function, BFF, or non-CRUD, route to appropriate methodology and STOP.</action>
+      <output>Feature category</output>
+      <decision-gate>If decision != ASP.NET Core CRUD/RPC feature, STOP.</decision-gate>
+    </step>
+
+    <step n="2" name="entity-and-config">
+      <input>Feature spec + existing DbContext</input>
+      <action>Define entity in `Domain/` (sealed, parameterless protected ctor for EF). Write `IEntityTypeConfiguration&lt;T&gt;` with HasKey + property-level constraints + indexes. Register via `modelBuilder.ApplyConfigurationsFromAssembly`.</action>
+      <output>Entity.cs + EntityConfiguration.cs</output>
+    </step>
+
+    <step n="3" name="service-layer">
+      <input>Entity + business rules</input>
+      <action>Define `I&lt;Feature&gt;Service` in `Services/`. Implementation takes scoped `DbContext` + dependencies via constructor. Each method accepts `CancellationToken ct`. Read paths use `.AsNoTracking().Select(dto)`.</action>
+      <output>IFeatureService.cs + FeatureService.cs</output>
+    </step>
+
+    <step n="4" name="controller-and-dto">
+      <input>Service + transport shape</input>
+      <action>Define request/response `record` DTOs in `Dtos/`. Controller carries `[ApiController]` + `[Route("api/[controller]")]`, inherits `ControllerBase`, accepts `CancellationToken`, returns `ActionResult&lt;TResponse&gt;` with appropriate `[ProducesResponseType]`.</action>
+      <output>FeatureController.cs + DTO records</output>
+    </step>
+
+    <step n="5" name="xunit-slice-test">
+      <input>Controller + service interface</input>
+      <action>Write xUnit `WebApplicationFactory&lt;Program&gt;`-based slice test or pure unit test mocking `I&lt;Feature&gt;Service`. Assert HTTP status + JSON shape.</action>
+      <output>FeatureControllerTests.cs</output>
+      <decision-gate>If the test requires real DB to pass, the service layer is not properly isolated — refactor before merging.</decision-gate>
+    </step>
+
+  </section>
+</text>

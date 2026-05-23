@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-versioning Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-versioning as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ES Versioning Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Four antipatterns when evolving event schemas + handling PII. Each pairs symptom + root cause + fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Copying command payload directly into event fields without a PII audit step — e.g. OrderPlaced(shipping_address={"name": "Alice", "email": "alice@example.com", ...}).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Shipping addresses and emails are personal data. Once in the immutable event log without crypto-shredding, they cannot be erased. A future GDPR erasure request becomes technically impossible to satisfy without corrupting the event store.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Adding a field to a published event class "just to make a query easier" without bumping event_version and registering an upcaster.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Consumers reading historical events receive old-shape events. If they expect the new field, they get AttributeError or None silently. The version bump + upcaster is the contract that allows consumers to upgrade independently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Deleting or renaming a published event class without a coordinated multi-consumer deprecation and replacement plan.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Consumers depend on the event class name for routing and deserialization. Silent removal breaks all consumers simultaneously. Human review is required — never auto-merge event class deletions.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="silent-rename" severity="high">
+      <symptom>Developer renames `customer_id` to `buyer_id` in an event class without bumping version. New deploy hits a stream containing both old + new shapes; deserializer fails on the old events.</symptom>
+      <root-cause source="event-sourcing-versioning rule set">No version bump + no upcaster.</root-cause>
+      <fix>Revert the rename. Add new version with old field name preserved in payload schema; ship an upcaster that maps old → new. Update catalog.</fix>
+    </antipattern>
+
+    <antipattern id="no-upcaster" severity="high">
+      <symptom>Event class is bumped to `event_version=2`, but no upcaster is registered. Aggregate load reads v1 event, encounters unknown field, raises.</symptom>
+      <root-cause source="event-sourcing-versioning rule set">Engineer bumped version without writing the upcaster.</root-cause>
+      <fix>Add `upcaster_v1_to_v2(event_v1) -> event_v2` and register it. Add test that loads a v1 fixture and asserts upcast to v2.</fix>
+    </antipattern>
+
+    <antipattern id="pii-in-payload" severity="high">
+      <symptom>Event payload contains `email`, `phone`, `card_token` directly. GDPR erasure request arrives; team cannot satisfy it without rewriting the immutable event log.</symptom>
+      <root-cause source="GDPR Art. 17 + immutable event log">PII written to event log without crypto-shredding or externalization.</root-cause>
+      <fix>Choose policy: (a) encrypt PII per-subject; store key in mutable keystore; drop key on erasure (crypto-shredding); OR (b) replace PII fields with opaque IDs and keep PII in a mutable side table. Migrate existing events via an upcaster that masks PII.</fix>
+    </antipattern>
+
+    <antipattern id="missing-ci-gate" severity="medium">
+      <symptom>Reviewer misses a silent event change in a 1000-line PR. Production deploys; downstream consumers fail; rollback triggered.</symptom>
+      <root-cause source="Operational continuity discipline">No CI gate enforcing catalog + code agreement.</root-cause>
+      <fix>Add CI step: parse event-catalog.yml + introspect event classes; fail if any field set differs from the catalog without a corresponding version bump + upcaster.</fix>
+    </antipattern>
+
   </section>
 </text>

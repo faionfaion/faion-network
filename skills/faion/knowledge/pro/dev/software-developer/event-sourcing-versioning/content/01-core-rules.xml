@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="event-sourcing-versioning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for event-sourcing-versioning. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ES Versioning Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Five testable rules grounding event-schema evolution + GDPR PII handling.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="immutable-after-publish" testable="true" depth="essential">
+      <statement>Once an event class has been published (consumed by any downstream system, or persisted in any production stream), its field contract is immutable. Field renames, removals, or semantic changes are forbidden without a version bump.</statement>
+      <rationale source="Event Sourcing fundamentals + consumer-driven contracts">Silent edits break every consumer that decoded the old shape; outages are deterministic and embarrassing.</rationale>
     </rule>
+
+    <rule id="version-and-upcaster" testable="true" depth="essential">
+      <statement>Every published event class MUST have an `event_version` integer field (default 1). Any field rename, removal, or semantic change MUST bump `event_version` AND register an upcaster transforming old-shape into new-shape on read.</statement>
+      <rationale source="Greg Young — Versioning in Event-Sourced Systems">Upcasters allow consumers to receive the latest shape transparently; without them every consumer needs version-aware decoders forever.</rationale>
+    </rule>
+
+    <rule id="committed-catalog" testable="true" depth="essential">
+      <statement>A committed `event-catalog.yml` (or equivalent schema-registry export) MUST live in the repository. Each event class has an entry: `{name, version, fields[], upcaster_from?}`. CI MUST verify the catalog matches the code.</statement>
+      <rationale source="Schema registry / Pact patterns">The committed catalog is the auditable contract; without it, version history is lost.</rationale>
+    </rule>
+
+    <rule id="breaking-change-ci-gate" testable="true" depth="essential">
+      <statement>CI MUST fail when a published event class changes without (a) a version bump and (b) an upcaster from the previous version. The catalog file MUST be edited in the same PR as the event class change.</statement>
+      <rationale source="Operational continuity">CI gate is the only reliable enforcer; reviewers miss silent renames in busy PRs.</rationale>
+    </rule>
+
+    <rule id="gdpr-pii-policy" testable="true" depth="essential">
+      <statement>PII (names, addresses, emails, card tokens) MUST NOT appear in event payloads unless one of: (a) per-subject crypto-shredding key stored in a mutable keystore (drop key on erasure request), (b) opaque ID in the event with PII kept in a mutable GDPR-compliant side table.</statement>
+      <rationale source="GDPR Art. 17 — Right to erasure">Immutable event log cannot satisfy erasure directly; crypto-shredding or externalization is the only compliant pattern.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

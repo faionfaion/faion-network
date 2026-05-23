@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-projections Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ES Projections Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a projection spec — name, handlers, checkpoint, rebuild path, side-effects audit.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-projections.json",
+  "type": "object",
+  "required": ["name", "handlers", "checkpoint", "rebuild_command", "has_side_effects"],
+  "properties": {
+    "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Projection$"},
+    "read_model_table": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+    "handlers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["event_name", "operation", "idempotent"],
+        "properties": {
+          "event_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+          "operation": {"enum": ["UPSERT", "DELETE"]},
+          "idempotent": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "required": ["table", "tracks"],
+      "properties": {
+        "table": {"type": "string"},
+        "tracks": {"enum": ["stream_position", "global_sequence"]}
+      }
+    },
+    "rebuild_command": {"type": "string", "minLength": 1},
+    "has_side_effects": {"type": "boolean", "const": false}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "name": "OrdersListProjection",
+  "read_model_table": "orders_list",
+  "handlers": [
+    {"event_name": "OrderPlaced", "operation": "UPSERT", "idempotent": true},
+    {"event_name": "OrderShipped", "operation": "UPSERT", "idempotent": true},
+    {"event_name": "OrderCancelled", "operation": "DELETE", "idempotent": true}
+  ],
+  "checkpoint": {"table": "projection_checkpoint", "tracks": "stream_position"},
+  "rebuild_command": "python -m projections.orders_list rebuild",
+  "has_side_effects": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "name": "orders_proj",
+  "handlers": [
+    {"event_name": "OrderPlaced", "operation": "INSERT", "idempotent": false}
+  ],
+  "checkpoint": {"table": "", "tracks": "stream_position"},
+  "rebuild_command": "",
+  "has_side_effects": true
+}
+]]></code>
+    <note>name lacks suffix; raw INSERT; non-idempotent; no checkpoint table; no rebuild command; side effects present.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Any handler with `idempotent == false` OR `operation == "INSERT"`.</description>
+      <reason>Violates `idempotent-upsert` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`has_side_effects == true`.</description>
+      <reason>Violates `no-side-effects` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Empty `rebuild_command`.</description>
+      <reason>Violates `rebuildable-from-zero` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-projections.py">Validator script</reference>
 </text>

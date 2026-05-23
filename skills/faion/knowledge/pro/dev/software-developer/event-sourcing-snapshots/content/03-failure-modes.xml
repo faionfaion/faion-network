@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-snapshots Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-snapshots as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ES Snapshots Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Three antipatterns observed when adopting snapshots. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Persisting a snapshot and then skipping event replay entirely when loading — "if snapshot exists, return snapshot state directly".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This makes the snapshot the source of truth. When event schema changes, the snapshot encodes old field semantics. The system silently returns wrong aggregate state for any aggregate whose last snapshot predates the schema bump.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Taking a snapshot on every save instead of every N events.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A snapshot per event doubles the write load and provides no replay benefit — you still load one snapshot and zero events. Snapshot at N=50–100 to amortize the overhead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Deploying a new event class version (renamed/removed fields) without first invalidating existing snapshots.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Old snapshots encode state built from old event semantics. Applying new events on top produces wrong state. Always invalidate snapshots as part of the schema-bump migration and rebuild before going live.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="snapshot-as-truth" severity="high">
+      <symptom>Loader reads snapshot and skips replay entirely. A bug in `_apply_OrderPlaced` produced wrong state in the snapshot. Production runs on the wrong state until snapshots are manually deleted.</symptom>
+      <root-cause source="ES fundamentals — events as source of truth">Author skipped replay-from-zero on snapshot rot.</root-cause>
+      <fix>Always replay events with version &gt; snapshot_version on top of the snapshot. Add a periodic CI job that diffs snapshot-loaded vs replay-from-zero state and alerts on divergence.</fix>
+    </antipattern>
+
+    <antipattern id="no-invalidation" severity="high">
+      <symptom>Event class `OrderPlaced` renamed `customer_id` to `buyer_id`. Snapshots still encode old field. New `apply` handler reads `buyer_id` and gets `None`. Aggregate state corrupted at load.</symptom>
+      <root-cause source="event-sourcing-versioning methodology">Schema bumped without snapshot invalidation.</root-cause>
+      <fix>CI gate: snapshot invalidation script MUST run before the new event version deploys. Lock the deploy until invalidation completes.</fix>
+    </antipattern>
+
+    <antipattern id="smart-snapshot" severity="medium">
+      <symptom>Snapshot deserialization runs domain logic to "fix up" old shapes. Logic drifts; produces different state than replay. The "smart" snapshot diverges from the log.</symptom>
+      <root-cause source="Snapshot-as-cache discipline">Author added correction logic instead of relying on log replay.</root-cause>
+      <fix>Remove correction logic from snapshot deserializer. On version mismatch, fall back to replay-from-zero (which will write a fresh snapshot at next interval).</fix>
+    </antipattern>
+
   </section>
 </text>

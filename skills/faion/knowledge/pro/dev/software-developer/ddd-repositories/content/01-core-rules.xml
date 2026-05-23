@@ -1,19 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ddd-repositories Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ddd-repositories. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="DDD Repositories Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding the DDD Repository pattern.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The Repository interface MUST live in the domain layer and MUST NOT import any ORM or infrastructure types (no SQLAlchemy, Django ORM, JPA, EF). It MUST declare methods using only domain types: find_by_id(UUID) -&gt; Optional[Aggregate], save(Aggregate) -&gt; None, delete(Aggregate) -&gt; None.</statement>
-      <rationale source="v1-source">ORM types in the domain interface couple the domain to the infrastructure. Swapping the ORM then requires changing domain code, which is the dependency inversion violation the Repository is designed to prevent.</rationale>
+
+    <rule id="domain-owns-interface" testable="true" depth="essential">
+      <statement>The Repository interface MUST live in the Domain layer and MUST NOT import any ORM/infrastructure type (no SQLAlchemy, no Django ORM, no JPA/Hibernate, no EF Core). It declares methods using only domain types: `find_by_id(UUID) -&gt; Optional[Aggregate]`, `save(Aggregate) -&gt; None`, `delete(Aggregate) -&gt; None`.</statement>
+      <rationale source="DDD Reference — Repositories">Domain-owned port keeps the domain testable in isolation; tests substitute an in-memory repository without spinning up any persistence layer.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The Repository MUST return fully reconstituted Aggregate objects, never ORM model instances. The infrastructure implementation is responsible for translating between persistence models and domain objects via _to_entity() / _to_model() methods.</statement>
-      <rationale source="v1-source">Returning ORM models leaks persistence metadata (lazy-loading proxies, change-tracking) into the domain. Domain code then depends on ORM lifecycle semantics instead of domain semantics.</rationale>
+
+    <rule id="return-aggregates" testable="true" depth="essential">
+      <statement>The Repository MUST return fully reconstituted Aggregate objects, never ORM model instances. Infrastructure implementation translates `_to_entity()` / `_to_model()` through a mapper.</statement>
+      <rationale source="DDD Reference — Repositories return aggregates">Returning ORM models leaks persistence shape into domain code; lazy-loaded relations become hidden runtime dependencies.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Repositories MUST load Aggregates by identity only (find_by_id). Collection queries by arbitrary criteria MUST go in a separate Read Model or Query Service, never in the Repository interface.</statement>
-      <rationale source="v1-source">Adding rich query methods to the Repository blurs the boundary between the write model (Aggregates) and the read model (projections). It also encourages bypassing Aggregate invariants by loading partial state.</rationale>
+
+    <rule id="identity-only-queries" testable="true" depth="essential">
+      <statement>Repositories MUST expose only identity-based lookups (`find_by_id`, `find_by_external_key`). Arbitrary-criteria queries (`find_orders_for_customer_in_date_range`) MUST live in a separate Read Model / Query Service, not in the repository interface.</statement>
+      <rationale source="CQRS + Vaughn Vernon — Effective Aggregate Design">Mixing identity load + arbitrary query inflates the interface and tempts callers to bypass the aggregate boundary.</rationale>
     </rule>
+
+    <rule id="infra-translates" testable="true" depth="essential">
+      <statement>The Infrastructure implementation MUST own the persistence ↔ domain mapping. It deserializes ORM rows into aggregates and serializes aggregate state back. Domain code MUST NOT contain any ORM-aware field.</statement>
+      <rationale source="Hexagonal architecture — Adapters">The adapter contains all framework knowledge; swapping ORMs touches only this file.</rationale>
+    </rule>
+
+    <rule id="ports-and-adapters" testable="true" depth="essential">
+      <statement>Tests MUST be able to substitute an in-memory repository implementing the same interface. The repository interface is a port; SQL/Mongo implementations are adapters.</statement>
+      <rationale source="Hexagonal architecture — Ports + Adapters">Without a swappable port, domain tests pay the cost of spinning up a database; testing speed degrades and CI flakiness rises.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

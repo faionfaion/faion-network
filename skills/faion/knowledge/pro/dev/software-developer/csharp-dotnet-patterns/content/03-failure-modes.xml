@@ -1,52 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="csharp-dotnet-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for csharp-dotnet-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="C# .NET Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed when scaling .NET clean-architecture solutions. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Anemic domain model: entities are data containers; logic lives in services</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Logic scatters across services, making invariants hard to reason about. Multiple services may mutate the same entity inconsistently. Domain rules leak into application and presentation layers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Exposing domain entities directly in API responses</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>API becomes tightly coupled to the domain schema. Changing the domain (adding a field, renaming a property) breaks all clients. It also exposes internal state that shouldn't be visible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Synchronous request/response for all operations</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Long-running operations block the request thread. Use async/await and consider background jobs for heavy work.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>No validation at the boundary</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Invalid data reaches the domain, requiring defensive coding everywhere. Validators in handlers catch invalid requests early and return 400 Bad Request.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>MediatR and AutoMapper hallucinations: agents emit code against old API versions</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents use APIs from MediatR v9, AutoMapper v10. Both are now commercial. Pin versions in the prompt and reject IRequestPostProcessor. Better: specify which library (MediatR vs Mediator vs Wolverine)—they have incompatible APIs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Anemic-domain regression when asked to add behavior</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents produce UserService.Promote(user) instead of user.Promote(). Constrain with structured output: where_does_this_live: aggregate|service|handler and reject service for state-transition logic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Public setters return despite CQRS patterns</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Code-gen agents emit `public string Name { get; set; }` because that's the training-data norm. Force `private set;` via prompt example; lint catches the rest.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Controllers with business logic inline</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents inline auth checks, mapping, and calls into controller actions. Always require: action signature → mediator.Send → return. Nothing else.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>EF Core entities leak into API responses</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents return entities to skip the DTO step. Always pair the controller change with Dto, AutoMapper Profile, and Query handler; reject PRs without them.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="anaemic-domain" severity="high">
+      <symptom>Entities are bags of public-getters/public-setters; all business logic lives in `OrderService.Ship(order, ...)`. Invariants enforced inconsistently or not at all.</symptom>
+      <root-cause source="Martin Fowler — AnemicDomainModel">Authors treated entities as DTOs and put behaviour in services. Aggregate gives no protection.</root-cause>
+      <fix>Move `Ship`, `Cancel`, etc. onto the aggregate. Remove public setters. Service layer becomes coordination only (transactions, MediatR dispatch).</fix>
+    </antipattern>
+
+    <antipattern id="controller-with-logic" severity="high">
+      <symptom>Controller action method spans 50+ lines: validation, EF queries, aggregate construction, mapping. Tests require full integration host.</symptom>
+      <root-cause source="ASP.NET Core API design guide">Controller skipped MediatR; persistence + business logic leaked into the transport layer.</root-cause>
+      <fix>Replace with a single `await _mediator.Send(new ShipOrderCommand(...))`. Controller becomes a thin dispatcher.</fix>
+    </antipattern>
+
+    <antipattern id="entity-as-dto" severity="high">
+      <symptom>`public Task&lt;Order&gt; Get(int id)` returns the EF entity. Swagger exposes `Discriminator`, `RowVersion`, navigation collections.</symptom>
+      <root-cause source="Hexagonal architecture + REST contract stability">Entity reused as DTO; persistence shape leaked into public contract.</root-cause>
+      <fix>Project to `OrderResponse` record inside the query. Add explicit mapping in the handler or via Mapster/AutoMapper profile.</fix>
+    </antipattern>
+
+    <antipattern id="mediatr-hallucination" severity="medium">
+      <symptom>AI-generated handler imports `MediatR.IRequestHandler&lt;TRequest, TResponse&gt;` from a non-existent namespace, or uses MediatR v9 API on a v12 project (`Handle(req, _) =&gt; ...` instead of `Handle(req, ct)`).</symptom>
+      <root-cause source="LLM training corpus — outdated MediatR samples">Model regurgitated a mix of v9 + v12 API shapes.</root-cause>
+      <fix>Reject any handler that doesn't accept `CancellationToken`. Run `dotnet build` in CI to catch missing types. Pin MediatR major version in `Directory.Packages.props`.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,39 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-xunit-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-xunit-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="xUnit Testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding xUnit + Moq + WebApplicationFactory conventions on .NET 8.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every controller test class MUST use IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt; and override ConfigureWebHost to substitute the DbContext with SQLite-in-memory. Never use the production database or real external APIs in controller tests.</statement>
-      <rationale source="v1-source">Tests must be deterministic and fast. Production databases are off-limits; external APIs are blocked by the network in CI. SQLite-in-memory gives you a real relational database without persistence.</rationale>
+
+    <rule id="async-task-return" testable="true" depth="essential">
+      <statement>Every async test method MUST return `Task` (or `ValueTask`). `async void` is forbidden except for legacy event-handler tests.</statement>
+      <rationale source="xUnit docs — async tests">`async void` exceptions are unobserved by the xUnit runner; failures pass silently or crash the runner.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Controller tests MUST follow AAA (Arrange-Act-Assert) layout with blank-line separators between phases. Assertions MUST use FluentAssertions (.Should().BeEquivalentTo(...)) for readable diffs on failure.</statement>
-      <rationale source="v1-source">AAA layout is scannable by both humans and agents. FluentAssertions produces multiline diffs that pinpoint which field failed, vs. xUnit's Assert.Equal which shows the entire object stringified.</rationale>
+
+    <rule id="class-fixture-required" testable="true" depth="essential">
+      <statement>Controller integration tests MUST use `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;` (or a derived test factory) and override `ConfigureWebHost` to substitute `DbContext` with SQLite-in-memory or Testcontainers. Production database/external APIs MUST NOT be touched.</statement>
+      <rationale source="ASP.NET Core docs — integration tests">`IClassFixture` shares the factory across tests in the class, amortizing host-startup cost. Substituting DbContext keeps tests deterministic.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Service unit tests MUST use [Fact] for single-input tests and [Theory] + [InlineData] for parametric boundary tests. Each test class MUST mock collaborators (repository, external service) via constructor injection or Moq.Of&lt;T&gt;().</statement>
-      <rationale source="v1-source">[Fact] is simpler for single cases; [Theory] avoids copy-paste of similar test logic. Mocking isolates the class-under-test from its dependencies.</rationale>
+
+    <rule id="theory-for-params" testable="true" depth="essential">
+      <statement>Parametric tests MUST use `[Theory]` + `[InlineData(...)]` (or `[MemberData]`/`[ClassData]` for complex types), not duplicated `[Fact]` methods. Test name MUST include the input/expected output: `Add_TwoPositives_ReturnsSum`.</statement>
+      <rationale source="xUnit docs — Theories">`[Theory]` reports each case as a separate test result; duplicated `[Fact]`s hide which case failed.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every mocked Setup MUST use argument matchers precisely (It.Is&lt;T&gt;(...) rather than It.IsAny&lt;T&gt;()) to catch accidental divergence between test setup and test code.</statement>
-      <rationale source="v1-source">Loose It.IsAny matchers hide bugs: a test passes even if the code calls the method with different arguments than expected. Precise matchers fail fast.</rationale>
+
+    <rule id="precise-mock-matchers" testable="true" depth="essential">
+      <statement>Moq `Setup` arguments MUST use precise matchers (`It.Is&lt;T&gt;(x =&gt; x.Id == 1)`) by default. `It.IsAny&lt;T&gt;()` is allowed only when the test explicitly does not care about the argument.</statement>
+      <rationale source="Moq docs + test-quality reviews">`It.IsAny&lt;T&gt;()` masks divergence between setup and test code; tests pass even when the code calls the mock with wrong args.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Never use static fields or caches in test code. If tests must be serialized (e.g., all use the same port), mark the class with [CollectionDefinition(DisableParallelization = true)].</statement>
-      <rationale source="v1-source">Static state persists across tests and causes flakes in parallel runs. Serialization is the hammer; use sparingly and document why.</rationale>
+
+    <rule id="fluent-assertions-required" testable="true" depth="essential">
+      <statement>All assertions on non-primitive types (objects, collections, JSON responses) MUST use `FluentAssertions` (`.Should().BeEquivalentTo(...)`). `Assert.Equal` on objects is forbidden.</statement>
+      <rationale source="FluentAssertions docs + observability of failures">`Assert.Equal` produces a single-line `Expected: X; Actual: Y` dump; `Should().BeEquivalentTo` produces a multiline structural diff.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>For tests that share a WebApplicationFactory, use ICollectionFixture&lt;TestAppFactory&gt; and decorate the class with [Collection("Integration")]. This creates a single factory for all tests in the collection and runs them serially.</statement>
-      <rationale source="v1-source">Each WebApplicationFactory is a separate port and database. Sharing saves startup cost; serialization prevents port collisions.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>For test fixture data, create a builder class or use AutoFixture to generate realistic default values. Never hardcode data literals inline unless the test is about that specific value.</statement>
-      <rationale source="v1-source">Builders are DRY and document the minimal required fields for a test case. AutoFixture generates plausible defaults (unique emails, valid UUIDs) that prevent false positives.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>All assertions MUST use FluentAssertions (.Should().xxx) rather than xUnit's Assert.xxx. Assert.Equal on objects produces a single stringified line; Should().BeEquivalentTo produces a multiline diff.</statement>
-      <rationale source="v1-source">Multiline diffs pinpoint which field failed. Single-line stringified output is hard to debug for agents and humans.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

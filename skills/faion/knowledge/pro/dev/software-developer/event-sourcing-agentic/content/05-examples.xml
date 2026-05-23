@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="ES Agentic Pipeline Worked Example" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Worked example of one full pipeline run for the Order aggregate + items projection.</summary>
+
+  <example type="good" title="Order aggregate pipeline run">
+    <code lang="text"><![CDATA[
+Aggregate: Order
+
+Stage 1 (aggregate-design / sonnet):
+  Events: OrderPlaced, ItemAdded, ItemRemoved, OrderShipped, OrderCancelled
+  Commands: place(), add_item(sku, qty), remove_item(sku), ship(carrier), cancel()
+  Invariants: cannot place empty order; cannot ship cancelled order; cannot modify shipped order
+  ACCEPTED — all event names past-tense.
+
+Stage 2 (event-class-codegen / sonnet):
+  domain/order_events.py: @dataclass(frozen=True) per event with event_id + occurred_at + order_id
+  domain/order.py: command methods validate + emit; _apply_OrderPlaced / _apply_ItemAdded etc. mutate state
+  infra/repository.py: load(stream_id) -> Order; save(stream_id, events, expected_version)
+  ACCEPTED — apply-only mutation + expected_version passed.
+
+Stage 3 (projection-codegen / sonnet):
+  projections/orders.py: handle_OrderPlaced -> UPSERT order_summary row;
+                        handle_ItemAdded -> UPDATE total
+  ACCEPTED — no business logic, no side effects.
+
+Stage 4 (tests-codegen / haiku):
+  test_place_emits_OrderPlaced
+  test_replay_from_events_matches_live_state
+  test_save_with_stale_expected_version_raises_ConcurrencyError
+  ACCEPTED — tests assert event emission, not getter equality.
+
+Stage 5 (antipattern-review / sonnet):
+  All 5 rules from 01-core-rules.xml verified.
+  ACCEPTED — PR may merge.
+    ]]></code>
+    <note>Each stage's output is gated against the relevant rule before advancing.</note>
+  </example>
+
+  <example type="bad" title="Stage 2 rejection: CRUD events + mutate-in-command">
+    <code lang="text"><![CDATA[
+Stage 2 output (FIRST ATTEMPT):
+  - Event name "UpdateOrder" emitted.
+  - Order.place() sets self.status = "placed" directly.
+REVIEW: REJECTED
+  - rule past-tense-event-names: UpdateOrder is procedural, not past-tense.
+  - rule apply-only-mutation: status set in command, not in _apply.
+Re-prompt with examples; re-generate.
+    ]]></code>
+  </example>
+</text>

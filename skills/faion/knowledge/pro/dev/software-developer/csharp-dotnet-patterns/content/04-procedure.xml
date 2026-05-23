@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="C# .NET Patterns Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to produce a clean-arch + CQRS feature folder.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="verify-layer-graph">
+      <input>.sln + csproj references</input>
+      <action>Confirm Domain → no deps; Application → Domain; Infrastructure → Application; Web → Application + Infrastructure. Add `&lt;ProjectReference&gt;` analyzers to enforce.</action>
+      <output>Layer graph validated</output>
+      <decision-gate>If Domain references EF or ASP.NET Core, FAIL and remove the reference first.</decision-gate>
+    </step>
+
+    <step n="2" name="define-command-and-handler">
+      <input>Feature spec</input>
+      <action>Write `record ShipOrderCommand(int OrderId, ...) : IRequest&lt;ShipOrderResponse&gt;` in `Application/Orders/`. Write `ShipOrderHandler : IRequestHandler&lt;ShipOrderCommand, ShipOrderResponse&gt;` next to it. Constructor takes repository + unit of work.</action>
+      <output>Command + handler scaffolded</output>
+    </step>
+
+    <step n="3" name="aggregate-behaviour">
+      <input>Existing aggregate</input>
+      <action>Add intention-revealing method to the aggregate (`order.Ship(carrier, when)`). Method enforces invariants (status transitions, required fields) and raises a domain event. No public setters introduced.</action>
+      <output>Aggregate method + domain event</output>
+    </step>
+
+    <step n="4" name="validator-and-dto">
+      <input>Command shape</input>
+      <action>Write `ShipOrderValidator : AbstractValidator&lt;ShipOrderCommand&gt;` with `RuleFor(...).NotEmpty().MaximumLength(...)`. Define `ShipOrderResponse` record. Register validator in DI via `AddValidatorsFromAssembly`.</action>
+      <output>Validator + response DTO</output>
+    </step>
+
+    <step n="5" name="controller-and-test">
+      <input>Handler + DTOs</input>
+      <action>Web controller becomes one line: `await _mediator.Send(req, ct)`. Write xUnit handler test that mocks repository + asserts response. Reject the PR if controller has any business logic.</action>
+      <output>Controller + handler test</output>
+      <decision-gate>If the test asserts EF behaviour rather than handler logic, the handler is not isolated — refactor.</decision-gate>
+    </step>
+
+  </section>
+</text>

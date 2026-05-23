@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-background-services Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="C# Background Services Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the worker-spec artefact. Validator enforces required fields + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/csharp-background-services.json",
+  "type": "object",
+  "required": ["worker_class", "channel", "scope_strategy", "stopping_token_propagated", "exception_handling", "health_check"],
+  "properties": {
+    "worker_class": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Service$"},
+    "base_class": {"type": "string", "const": "BackgroundService"},
+    "channel": {
+      "type": "object",
+      "required": ["mode", "capacity", "full_mode"],
+      "properties": {
+        "mode": {"enum": ["bounded", "none"]},
+        "capacity": {"type": "integer", "minimum": 1},
+        "full_mode": {"enum": ["Wait", "DropOldest", "DropNewest"]}
+      }
+    },
+    "scope_strategy": {"enum": ["create-scope-per-item", "no-scoped-deps"]},
+    "stopping_token_propagated": {"type": "boolean", "const": true},
+    "exception_handling": {"enum": ["try-catch-per-item"]},
+    "health_check": {
+      "type": "object",
+      "required": ["registered"],
+      "properties": {
+        "registered": {"type": "boolean"},
+        "stale_after_seconds": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "worker_class": "OrderProcessorService",
+  "base_class": "BackgroundService",
+  "channel": {"mode": "bounded", "capacity": 1000, "full_mode": "Wait"},
+  "scope_strategy": "create-scope-per-item",
+  "stopping_token_propagated": true,
+  "exception_handling": "try-catch-per-item",
+  "health_check": {"registered": true, "stale_after_seconds": 300}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "worker_class": "orderWorker",
+  "base_class": "IHostedService",
+  "channel": {"mode": "none", "capacity": 0, "full_mode": "Wait"},
+  "scope_strategy": "no-scoped-deps",
+  "stopping_token_propagated": false,
+  "exception_handling": "try-catch-per-item",
+  "health_check": {"registered": false}
+}
+]]></code>
+    <note>worker_class violates PascalCase + Service suffix; base_class is the raw interface; stopping_token_propagated=false.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`channel.mode == "none"` AND `scope_strategy == "no-scoped-deps"` AND worker uses `Task.Run` loop.</description>
+      <reason>Bypasses BackgroundService entirely. Reject.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`channel.mode == "bounded"` AND `channel.full_mode` absent.</description>
+      <reason>Bounded channel without back-pressure mode is meaningless.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`scope_strategy == "no-scoped-deps"` while constructor lists `DbContext` or `[Scoped]` services.</description>
+      <reason>Captive-dependency violation of `scope-per-item` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-csharp-background-services.py">Validator script</reference>
 </text>

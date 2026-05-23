@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-versioning Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ES Versioning Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for an event-catalog entry + upcaster spec.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-versioning.json",
+  "type": "object",
+  "required": ["event_name", "event_version", "fields", "pii_handling", "ci_gate_enabled"],
+  "properties": {
+    "event_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "event_version": {"type": "integer", "minimum": 1},
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["name", "type"],
+        "properties": {"name": {"type": "string"}, "type": {"type": "string"}}
+      }
+    },
+    "upcaster_from": {"type": "integer", "minimum": 1},
+    "upcaster_module": {"type": "string"},
+    "pii_handling": {"enum": ["none", "crypto_shredding", "externalized_side_table"]},
+    "ci_gate_enabled": {"type": "boolean", "const": true}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event_version": {"minimum": 2}}, "required": ["event_version"]},
+      "then": {"required": ["upcaster_from", "upcaster_module"]}
+    }
+  ]
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "event_name": "OrderPlaced",
+  "event_version": 2,
+  "fields": [
+    {"name": "order_id", "type": "UUID"},
+    {"name": "buyer_id", "type": "UUID"},
+    {"name": "total_cents", "type": "int"}
+  ],
+  "upcaster_from": 1,
+  "upcaster_module": "faion.events.upcasters.order_placed_v1_to_v2",
+  "pii_handling": "externalized_side_table",
+  "ci_gate_enabled": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "event_name": "orderPlaced",
+  "event_version": 3,
+  "fields": [{"name": "email", "type": "str"}],
+  "pii_handling": "none",
+  "ci_gate_enabled": false
+}
+]]></code>
+    <note>name camelCase; version 3 without upcaster_from; PII in payload without handling; no CI gate.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`event_version &gt;= 2` AND `upcaster_from` absent.</description>
+      <reason>Violates `version-and-upcaster` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Field shape changes without `event_version` bump.</description>
+      <reason>Violates `immutable-after-publish` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`pii_handling == "none"` AND any field name in `{email, phone, name, address, ssn, card_number}`.</description>
+      <reason>Violates `gdpr-pii-policy` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`ci_gate_enabled == false`.</description>
+      <reason>Violates `breaking-change-ci-gate` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-versioning.py">Validator script</reference>
 </text>

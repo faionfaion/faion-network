@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-dotnet-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="C# .NET Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a clean-arch + CQRS feature folder. Validator enforces layer separation + handler/aggregate presence.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/csharp-dotnet-patterns.json",
+  "type": "object",
+  "required": ["feature", "command", "handler", "aggregate", "validator", "response_dto"],
+  "properties": {
+    "feature": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "command": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Command$"},
+    "handler": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Handler$"},
+    "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "aggregate_has_public_setters": {"type": "boolean", "const": false},
+    "validator": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Validator$"},
+    "response_dto": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+(Response|Dto)$"},
+    "layer_refs": {
+      "type": "object",
+      "required": ["domain_has_ef_ref", "domain_has_aspnet_ref"],
+      "properties": {
+        "domain_has_ef_ref": {"type": "boolean", "const": false},
+        "domain_has_aspnet_ref": {"type": "boolean", "const": false}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feature": "ShipOrder",
+  "command": "ShipOrderCommand",
+  "handler": "ShipOrderHandler",
+  "aggregate": "Order",
+  "aggregate_has_public_setters": false,
+  "validator": "ShipOrderValidator",
+  "response_dto": "ShipOrderResponse",
+  "layer_refs": {"domain_has_ef_ref": false, "domain_has_aspnet_ref": false}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feature": "ShipOrder",
+  "command": "ShipOrderRequest",
+  "handler": "OrderService",
+  "aggregate": "OrderDto",
+  "aggregate_has_public_setters": true,
+  "validator": "manual-ifs",
+  "response_dto": "OrderEntity",
+  "layer_refs": {"domain_has_ef_ref": true, "domain_has_aspnet_ref": true}
+}
+]]></code>
+    <note>command not ending Command; handler is generic Service; aggregate has public setters; entity used as DTO; domain leaks framework refs.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`aggregate_has_public_setters == true`.</description>
+      <reason>Violates `rich-domain-no-setters` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`layer_refs.domain_has_ef_ref == true` or `domain_has_aspnet_ref == true`.</description>
+      <reason>Violates `clean-arch-layers` rule — Domain leaked framework deps.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`response_dto` ends with `Entity` or matches `aggregate` name.</description>
+      <reason>Violates `no-entity-in-api` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`handler` name lacks `Handler` suffix or matches a generic `Service` class.</description>
+      <reason>Violates `cqrs-handler-per-message` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-csharp-dotnet-patterns.py">Validator script</reference>
 </text>

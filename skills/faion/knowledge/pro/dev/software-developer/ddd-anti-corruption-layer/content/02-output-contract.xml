@@ -1,22 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ddd-anti-corruption-layer Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="DDD ACL Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for an ACL spec — domain interface, adapter, error map, fail-safe, contract test.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ddd-anti-corruption-layer.json",
+  "type": "object",
+  "required": ["domain_interface", "acl_implementation", "external_dependency", "error_translations", "fail_safe", "contract_tests"],
+  "properties": {
+    "domain_interface": {
+      "type": "object",
+      "required": ["name", "imports_vendor_sdk"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+        "imports_vendor_sdk": {"type": "boolean", "const": false}
+      }
+    },
+    "acl_implementation": {
+      "type": "object",
+      "required": ["name", "layer", "is_only_sdk_importer"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Adapter$"},
+        "layer": {"const": "infrastructure"},
+        "is_only_sdk_importer": {"type": "boolean", "const": true}
+      }
+    },
+    "external_dependency": {"type": "string", "minLength": 1},
+    "error_translations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["vendor_error", "domain_error"],
+        "properties": {
+          "vendor_error": {"type": "string"},
+          "domain_error": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Error$"}
+        }
+      }
+    },
+    "fail_safe": {
+      "type": "object",
+      "required": ["documented", "default_behaviour"],
+      "properties": {
+        "documented": {"type": "boolean", "const": true},
+        "default_behaviour": {"type": "string", "minLength": 5}
+      }
+    },
+    "contract_tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "domain_interface": {"name": "InventoryChecker", "imports_vendor_sdk": false},
+  "acl_implementation": {"name": "ShopifyInventoryAdapter", "layer": "infrastructure", "is_only_sdk_importer": true},
+  "external_dependency": "shopify-python-sdk",
+  "error_translations": [
+    {"vendor_error": "ShopifyAPIError.NotFound", "domain_error": "ItemNotFoundError"},
+    {"vendor_error": "ShopifyAPIError.RateLimit", "domain_error": "InventoryUnavailableError"}
+  ],
+  "fail_safe": {"documented": true, "default_behaviour": "assume available + log + retry after 60s"},
+  "contract_tests": ["test_acl_translates_404_to_item_not_found"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "domain_interface": {"name": "shopify_client", "imports_vendor_sdk": true},
+  "acl_implementation": {"name": "Helper", "layer": "domain", "is_only_sdk_importer": false},
+  "external_dependency": "shopify-python-sdk",
+  "error_translations": [],
+  "fail_safe": {"documented": false, "default_behaviour": ""},
+  "contract_tests": []
+}
+]]></code>
+    <note>interface lower-case + imports SDK; adapter in domain layer; no error map; no fail-safe; no contract tests.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`domain_interface.imports_vendor_sdk == true`.</description>
+      <reason>Violates `domain-owns-interface` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`acl_implementation.layer != "infrastructure"`.</description>
+      <reason>Violates `acl-only-sdk-importer` rule — adapter must live in infrastructure.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`error_translations.length == 0`.</description>
+      <reason>Violates `error-translation` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-ddd-anti-corruption-layer.py">Validator script</reference>
 </text>

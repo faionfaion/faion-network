@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="ES Agentic Pipeline Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-stage agentic pipeline. Each stage carries a fixed prompt template + acceptance criteria.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="aggregate-design">
+      <input>Aggregate spec + glossary</input>
+      <action>Sonnet drafts: aggregate name, list of past-tense events, command method signatures, invariants. Reviewer rejects CRUD-shaped events at this stage (not after codegen).</action>
+      <output>design/&lt;aggregate&gt;.md</output>
+      <decision-gate>If any event name is non-past-tense, STOP and re-prompt.</decision-gate>
+    </step>
+
+    <step n="2" name="event-class-codegen">
+      <input>Design doc + event-store library docs (inline)</input>
+      <action>Sonnet generates event classes (frozen records with event_id + occurred_at + aggregate identity). Aggregate command + apply handlers. Repository scaffold using the real library API.</action>
+      <output>domain/&lt;aggregate&gt;_events.py + aggregate class</output>
+    </step>
+
+    <step n="3" name="projection-codegen">
+      <input>Read-model spec + events</input>
+      <action>Sonnet generates projection handlers writing to read store. Reviewer rejects any handler with non-storage side effects.</action>
+      <output>projections/&lt;readmodel&gt;.py</output>
+    </step>
+
+    <step n="4" name="tests-codegen">
+      <input>Aggregate + events</input>
+      <action>Haiku generates xUnit-style tests: command → expected events, replay → expected state, optimistic-concurrency clash. Test names assert event emission, not getter equality.</action>
+      <output>tests/test_&lt;aggregate&gt;_es.py</output>
+    </step>
+
+    <step n="5" name="antipattern-review">
+      <input>All previous artefacts</input>
+      <action>Sonnet (or human) runs rules from `01-core-rules.xml` against every file. Output: rejection list with rule_id + offending line. PR blocked until all rules pass.</action>
+      <output>Review record</output>
+      <decision-gate>If any rule fails, FAIL pipeline; do not advance to merge.</decision-gate>
+    </step>
+
+  </section>
+</text>

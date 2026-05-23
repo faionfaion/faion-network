@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="event-sourcing-fundamentals Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for event-sourcing-fundamentals. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ES Fundamentals Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules establishing the invariants of an Event-Sourced system.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="events-immutable-append-only" testable="true" depth="essential">
+      <statement>Events MUST be immutable once stored. The event log MUST be append-only: no UPDATE, no DELETE on event rows. Correction events (`OrderPriceCorrected`) replace destructive edits.</statement>
+      <rationale source="Greg Young — Event Sourcing primer">Mutable events corrupt every downstream projection + snapshot derived from them; rebuilds become non-deterministic.</rationale>
     </rule>
+
+    <rule id="events-source-of-truth" testable="true" depth="essential">
+      <statement>Current state MUST NOT be stored directly. State MUST be derived by replaying the event sequence. Snapshots are caches per `[[event-sourcing-snapshots]]` — they MUST always be rebuildable from offset 0.</statement>
+      <rationale source="Event Sourcing fundamentals">Storing current state alongside events creates two sources of truth that drift; bugs become unfixable when they disagree.</rationale>
+    </rule>
+
+    <rule id="ordered-replay" testable="true" depth="essential">
+      <statement>Events MUST be applied in stream order (by version number). Concurrent commands MUST go through `expected_version`-guarded append. Reordered replay is forbidden.</statement>
+      <rationale source="Optimistic concurrency in event stores">Out-of-order replay produces invalid state; expected_version guards optimistic writes against concurrent commits.</rationale>
+    </rule>
+
+    <rule id="past-tense-business-names" testable="true" depth="essential">
+      <statement>Event class names MUST be past-tense business facts (`OrderPlaced`, `PaymentCaptured`, `ItemAdded`). Names like `UpdateOrder`, `SetStatus`, `OrderStateChanged` are forbidden — they erase business intent.</statement>
+      <rationale source="EventStorming / Vaughn Vernon">Past-tense names communicate "what happened" and survive refactors; procedural names rot when state shapes evolve.</rationale>
+    </rule>
+
+    <rule id="one-stream-per-aggregate" testable="true" depth="essential">
+      <statement>Each aggregate instance MUST have its own event stream keyed by aggregate identity. Cross-aggregate streams (e.g., one stream for all orders) are forbidden — they break the consistency boundary.</statement>
+      <rationale source="DDD + ES guidance">Shared streams force lock contention and prevent independent replay; aggregate-scoped streams keep load O(events per aggregate).</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

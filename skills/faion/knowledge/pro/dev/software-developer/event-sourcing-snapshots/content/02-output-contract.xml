@@ -1,22 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-snapshots Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ES Snapshots Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a snapshot-policy spec — interval, invalidation, fall-back, version-awareness.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-snapshots.json",
+  "type": "object",
+  "required": ["aggregate", "interval_events", "storage_table", "version_aware", "invalidation_on_schema_bump", "loader_fallback"],
+  "properties": {
+    "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "interval_events": {"type": "integer", "minimum": 50, "maximum": 100},
+    "storage_table": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+    "version_aware": {"type": "boolean", "const": true},
+    "invalidation_on_schema_bump": {"type": "boolean", "const": true},
+    "loader_fallback": {"const": "replay_from_zero"},
+    "invalidation_script": {"type": "string", "minLength": 1},
+    "treated_as_truth": {"type": "boolean", "const": false}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Wallet",
+  "interval_events": 100,
+  "storage_table": "wallet_snapshots",
+  "version_aware": true,
+  "invalidation_on_schema_bump": true,
+  "loader_fallback": "replay_from_zero",
+  "invalidation_script": "python -m snapshots.invalidate Wallet",
+  "treated_as_truth": false
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Wallet",
+  "interval_events": 5,
+  "storage_table": "snapshots",
+  "version_aware": false,
+  "invalidation_on_schema_bump": false,
+  "loader_fallback": "crash",
+  "invalidation_script": "",
+  "treated_as_truth": true
+}
+]]></code>
+    <note>interval too small; not version-aware; no invalidation; loader crashes on bad snapshot; treated as truth.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`treated_as_truth == true`.</description>
+      <reason>Violates `cache-only` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`interval_events &lt; 50` or `&gt; 100`.</description>
+      <reason>Violates `every-n-events` recommended band; document deviation explicitly.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`invalidation_on_schema_bump == false`.</description>
+      <reason>Violates `schema-bump-invalidation` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`loader_fallback != "replay_from_zero"`.</description>
+      <reason>Violates `fall-back-replay` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-snapshots.py">Validator script</reference>
 </text>

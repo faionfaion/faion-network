@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ddd-repositories Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ddd-repositories as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="DDD Repositories Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed when implementing repositories. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="orm-types-in-domain" severity="high">
+      <symptom>`from sqlalchemy.orm import Session` inside `domain/orders/repository.py`. Domain test suite needs DB to run.</symptom>
+      <root-cause source="DDD Reference">Interface declared in domain but referenced ORM types in signatures.</root-cause>
+      <fix>Replace `Session` with the domain port + use DI to inject the session into the adapter only. Domain interface methods take pure domain types.</fix>
+    </antipattern>
+
+    <antipattern id="arbitrary-query-method" severity="medium">
+      <symptom>`OrderRepository.find_orders_for_customer_in_date_range(...)` proliferates: 30 different finder methods cluttered with optional filters.</symptom>
+      <root-cause source="CQRS guidance">Repository absorbed query responsibilities.</root-cause>
+      <fix>Move to `OrderQueryService` (or a Read Model). Repository keeps only `find_by_id` + `save` + `delete`.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-load-leak" severity="high">
+      <symptom>Repository returns an ORM model (or aggregate holding ORM relationships). Caller iterates `order.items` outside the session; lazy loader throws `DetachedInstanceError`.</symptom>
+      <root-cause source="ORM lazy loading + DDD return contract">Repository didn't materialize relationships; ORM model exposed across boundary.</root-cause>
+      <fix>Inside the adapter, eager-load relations + map to a domain aggregate. Return the aggregate. ORM model never crosses the boundary.</fix>
+    </antipattern>
+
+    <antipattern id="fat-repository" severity="medium">
+      <symptom>`OrderRepository` contains 800 LOC of mapping logic, includes business rules ("only return orders newer than 90 days"). Hard to test or replace.</symptom>
+      <root-cause source="Ports + Adapters discipline">Author dumped both mapping and policy into the adapter.</root-cause>
+      <fix>Extract mapping into a `OrderMapper`. Move policies onto the aggregate (`Order.is_archived`) or into a Domain Service. Adapter becomes a thin shell.</fix>
+    </antipattern>
+
   </section>
 </text>

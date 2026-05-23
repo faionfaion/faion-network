@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-fundamentals Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ES Fundamentals Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for an ES-decision spec — should this aggregate be event-sourced + which events.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-fundamentals.json",
+  "type": "object",
+  "required": ["aggregate", "decision", "rationale", "event_catalog"],
+  "properties": {
+    "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "decision": {"enum": ["use_event_sourcing", "use_state_stored", "defer"]},
+    "rationale": {"type": "string", "minLength": 20},
+    "audit_required": {"type": "boolean"},
+    "replay_required": {"type": "boolean"},
+    "schema_stable": {"type": "boolean"},
+    "stream_strategy": {"const": "one_per_aggregate_instance"},
+    "event_catalog": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "object", "required": ["name", "past_tense"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+          "past_tense": {"type": "boolean", "const": true}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Order",
+  "decision": "use_event_sourcing",
+  "rationale": "regulatory audit required; replay supports refunds + dispute investigation",
+  "audit_required": true,
+  "replay_required": true,
+  "schema_stable": true,
+  "stream_strategy": "one_per_aggregate_instance",
+  "event_catalog": [
+    {"name": "OrderPlaced", "past_tense": true},
+    {"name": "ItemAdded", "past_tense": true},
+    {"name": "OrderShipped", "past_tense": true}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Order",
+  "decision": "use_event_sourcing",
+  "rationale": "we like it",
+  "schema_stable": false,
+  "stream_strategy": "one_per_aggregate_instance",
+  "event_catalog": [
+    {"name": "UpdateOrder", "past_tense": false},
+    {"name": "SetStatus", "past_tense": false}
+  ]
+}
+]]></code>
+    <note>weak rationale; schema thrashes; CRUD-shaped event names.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>Any `event_catalog[i].past_tense == false`.</description>
+      <reason>Violates `past-tense-business-names` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`decision == "use_event_sourcing"` AND `schema_stable == false`.</description>
+      <reason>Versioning cost dominates; rule recommendation is to defer ES until schema stabilises.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`stream_strategy != "one_per_aggregate_instance"`.</description>
+      <reason>Violates `one-stream-per-aggregate` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-fundamentals.py">Validator script</reference>
 </text>

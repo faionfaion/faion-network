@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="C# Background Services Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to produce a worker spec + worker class + DI registration + xUnit test.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="classify-job-shape">
+      <input>Job spec (Markdown)</input>
+      <action>Apply decision tree: durability needed? throughput? CPU-heavy? distributed? If durability=must-survive OR CPU=heavy → STOP and route to Hangfire / Worker host.</action>
+      <output>Decision: in-process BackgroundService / out-of-process / leader-elected</output>
+      <decision-gate>If decision != in-process BackgroundService, STOP and apply the right component's methodology.</decision-gate>
+    </step>
+
+    <step n="2" name="design-channel">
+      <input>Producer rate + worker drain rate</input>
+      <action>If queue is needed: `Channel.CreateBounded&lt;T&gt;(capacity, FullMode=Wait)`. Otherwise `PeriodicTimer` for periodic work or direct EF query loop for poll-based.</action>
+      <output>Channel + capacity OR PeriodicTimer period</output>
+    </step>
+
+    <step n="3" name="write-worker-class">
+      <input>Channel spec, scope strategy</input>
+      <action>Class extends `BackgroundService`. Constructor: `IServiceProvider`, channel, `ILogger&lt;T&gt;`. `ExecuteAsync` loops `await foreach (var item in channel.Reader.ReadAllAsync(stoppingToken))` with `try/catch` and `CreateScope` per item.</action>
+      <output>Worker.cs</output>
+    </step>
+
+    <step n="4" name="register-and-healthcheck">
+      <input>Worker class</input>
+      <action>In `Program.cs`: register channel as singleton, register `IHealthCheck` tracking last-success timestamp, `builder.Services.AddHostedService&lt;T&gt;()`, `AddHealthChecks().AddCheck&lt;Health&gt;("worker-name")`.</action>
+      <output>ProgramRegistration.cs</output>
+    </step>
+
+    <step n="5" name="xunit-test">
+      <input>Worker class</input>
+      <action>xUnit test: instantiate `Worker`, write to channel, call `StartAsync`, wait for handler, `StopAsync`. Assert stoppingToken triggers loop exit.</action>
+      <output>WorkerTests.cs with `Should_Process_Items + Should_Drain_On_Cancel`</output>
+      <decision-gate>If worker doesn't exit within 1s of `StopAsync`, the stoppingToken propagation rule is violated.</decision-gate>
+    </step>
+
+  </section>
+</text>

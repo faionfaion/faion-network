@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-entity-framework Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-entity-framework. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="EF Core Patterns Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Five testable rules grounding production EF Core 8 patterns.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="fluent-config-only" testable="true" depth="essential">
+      <statement>Entity mapping (table names, keys, indexes, max-lengths, default-value SQL, cascade behaviour) MUST live in `IEntityTypeConfiguration&lt;T&gt;` classes applied via `modelBuilder.ApplyConfigurationsFromAssembly(...)`. Data annotations (`[Required]`, `[MaxLength]`) on entities are forbidden.</statement>
+      <rationale source="EF Core docs — Configuring entity types">Fluent API supports the full feature surface (HasDefaultValueSql, owned types, shadow properties); annotations cover only a subset and split mapping across attribute/class.</rationale>
     </rule>
+
+    <rule id="asnotracking-reads" testable="true" depth="essential">
+      <statement>All read-only queries MUST use `.AsNoTracking()` (or `.AsNoTrackingWithIdentityResolution()` when navigation identity matters) and project to a DTO/anonymous type before materialization.</statement>
+      <rationale source="EF Core docs — Query tracking">Tracked entities consume change-tracker memory and CPU; projection short-circuits unnecessary entity hydration.</rationale>
+    </rule>
+
+    <rule id="no-iqueryable-return" testable="true" depth="essential">
+      <statement>Repository methods MUST NOT return `IQueryable&lt;T&gt;`. They MUST materialize (`ToListAsync`, `FirstOrDefaultAsync`) and return `PagedResult&lt;TDto&gt;` for list queries: `{Items, TotalCount, Page, PageSize}`.</statement>
+      <rationale source="DDD repository pattern + ddd-repositories methodology">Returning `IQueryable` leaks query execution outside the persistence boundary — callers can extend the query, breaking encapsulation and forcing DbContext to outlive the repository.</rationale>
+    </rule>
+
+    <rule id="splitquery-multi-include" testable="true" depth="essential">
+      <statement>Any query whose `.Include()` chain includes ≥ 2 collection navigations MUST add `.AsSplitQuery()`. Single-collection or scalar-only Include chains MAY keep the default single-query mode.</statement>
+      <rationale source="EF Core docs — Single vs split queries">Joining over two collection navigations produces a Cartesian explosion (rows × rows). `AsSplitQuery` issues separate SELECTs and merges client-side.</rationale>
+    </rule>
+
+    <rule id="append-only-migrations" testable="true" depth="essential">
+      <statement>Migrations are append-only. After a migration is merged to the deploy branch, its `*.cs` file MUST NOT be edited. Fixes go in a new migration with a verb-prefixed name (`AlterUserAddIsActive`, `BackfillOrderNumber`).</statement>
+      <rationale source="EF Core docs — Migrations + team workflow">Editing a deployed migration produces drift between environments; rerun-safety depends on the migration sequence matching `__EFMigrationsHistory` on every database.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

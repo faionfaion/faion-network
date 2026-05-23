@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="ES Versioning Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping change type + PII presence to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-change-type">Change is additive (new optional field) or breaking (rename/remove/semantic)?</root-question>
+
+    <branch when="change == additive">
+      <conclusion ref="immutable-after-publish" verdict="add field with default; keep version unchanged; consumers ignore extra field"/>
+    </branch>
+
+    <branch when="change == breaking">
+      <question id="q-pii">Does the new shape involve PII?</question>
+      <branch when="contains_pii == true">
+        <question id="q-policy">Crypto-shredding or external side table chosen?</question>
+        <branch when="policy_chosen == false">
+          <conclusion ref="gdpr-pii-policy" verdict="STOP: choose a PII policy before bumping the version"/>
+        </branch>
+        <branch when="policy_chosen == true">
+          <conclusion ref="version-and-upcaster" verdict="bump version + write upcaster + update catalog + invalidate snapshots; PII policy applied"/>
+        </branch>
+      </branch>
+      <branch when="contains_pii == false">
+        <conclusion ref="version-and-upcaster" verdict="bump version + write upcaster + update catalog + invalidate snapshots"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="rename-customer-id-to-buyer-id">
+    change=breaking → contains_pii=false → bump to v2 + upcaster_v1_to_v2 + catalog update + snapshot invalidation + CI gate run.
+  </example>
+</text>

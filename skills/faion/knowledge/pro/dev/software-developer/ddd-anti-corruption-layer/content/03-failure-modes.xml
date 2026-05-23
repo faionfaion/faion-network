@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ddd-anti-corruption-layer Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ddd-anti-corruption-layer as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="DDD ACL Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed when integrating external systems without a proper ACL. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="leaked-sdk-types" severity="high">
+      <symptom>Multiple files import `from stripe import StripeClient` directly. Stripe v8 -&gt; v9 SDK change requires touching 23 files; tests need a Stripe instance to spin up.</symptom>
+      <root-cause source="DDD ACL guidance">Author treated ACL as optional; SDK imported wherever convenient.</root-cause>
+      <fix>Define a `PaymentGateway` interface in domain. Add a single `StripeGateway` adapter in infrastructure. Replace each direct import with the domain interface via DI.</fix>
+    </antipattern>
+
+    <antipattern id="raw-exceptions" severity="high">
+      <symptom>`stripe.error.CardError` thrown by SDK propagates into the application-service handler. Handler catches `Exception`; vendor-specific message ends up in the user-visible error.</symptom>
+      <root-cause source="Clean-architecture error policy">ACL didn't translate; raw vendor exception escaped the boundary.</root-cause>
+      <fix>Inside the adapter, `try`/`except` the vendor exceptions and `raise PaymentDeclined(reason=...)` (or whatever the domain models). Test the translation.</fix>
+    </antipattern>
+
+    <antipattern id="no-failsafe" severity="medium">
+      <symptom>Inventory API outage → entire order flow returns 500. Sales paused for the duration of the partner outage.</symptom>
+      <root-cause source="SRE error-budget thinking">ACL doesn't define behaviour when the dependency is unreachable.</root-cause>
+      <fix>Pick + document a fail-safe: assume-available with retry, deny-by-default with explicit error message, or circuit-breaker with cached last-known-state. Add a unit test exercising the fail-safe path.</fix>
+    </antipattern>
+
+    <antipattern id="no-contract-test" severity="medium">
+      <symptom>SDK upgrade silently changes the `available_quantity` field to `available_count`. ACL returns `None` for every product; orders fail with no clear error.</symptom>
+      <root-cause source="Pact / consumer-driven contracts">ACL had no pinned contract test against the external system's response shape.</root-cause>
+      <fix>Add a contract test using a mock HTTP server (`responses` / `pytest-httpx`) replaying the expected JSON. Fail CI if the actual response shape diverges. Re-record the mock when intentional.</fix>
+    </antipattern>
+
   </section>
 </text>

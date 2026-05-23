@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-background-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-background-services. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="C# Background Services Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding ASP.NET Core BackgroundService + Channels patterns. Each rule pairs binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="extend-backgroundservice" testable="true" depth="essential">
+      <statement>Long-running in-process work MUST extend `BackgroundService` (never `Task.Run(async () =&gt; while(true) ...)` and never implement `IHostedService` directly).</statement>
+      <rationale source="Microsoft Learn — Background tasks with hosted services">`BackgroundService` plumbs `ExecuteAsync`, `StartAsync`, `StopAsync`, and `stoppingToken`. `Task.Run` bypasses `IHost` lifecycle, cancellation, and DI scoping.</rationale>
     </rule>
+
+    <rule id="pass-stoppingtoken" testable="true" depth="essential">
+      <statement>Every `await` inside `ExecuteAsync` MUST receive `stoppingToken` (or a linked token). No `await Task.Delay(ms)` without the token; no `await channel.Reader.ReadAllAsync()` without the token.</statement>
+      <rationale source="ASP.NET Core graceful-shutdown docs">Without `stoppingToken`, shutdown blocks for the default 30s `ShutdownTimeout` before SIGKILL; in-flight work is force-killed.</rationale>
+    </rule>
+
+    <rule id="per-item-trycatch" testable="true" depth="essential">
+      <statement>The per-item handler inside `ExecuteAsync` MUST be wrapped in `try/catch`. Unhandled exceptions MUST NOT bubble to `ExecuteAsync`'s outer loop.</statement>
+      <rationale source=".NET 6 release notes — BackgroundServiceExceptionBehavior">Default `BackgroundServiceExceptionBehavior.StopHost` brings down the whole process on an unhandled `ExecuteAsync` exception.</rationale>
+    </rule>
+
+    <rule id="scope-per-item" testable="true" depth="essential">
+      <statement>Scoped services (`DbContext`, scoped repositories) MUST be resolved via `IServiceProvider.CreateScope()` inside the per-item loop. Scoped types MUST NOT appear in the `BackgroundService` constructor.</statement>
+      <rationale source="EF Core docs — DbContext lifetime + .NET DI captive-dependency warnings">`BackgroundService` is a singleton; injecting `DbContext` directly creates a captive dependency reused across items, causing concurrency bugs and connection leaks.</rationale>
+    </rule>
+
+    <rule id="bounded-channel" testable="true" depth="essential">
+      <statement>In-memory work queues MUST use `Channel.CreateBounded&lt;T&gt;(new BoundedChannelOptions(capacity) { FullMode = BoundedChannelFullMode.Wait })` (or `DropOldest` when lossy is acceptable). `Channel.CreateUnbounded` is forbidden.</statement>
+      <rationale source="System.Threading.Channels API docs">Unbounded channels under producer spikes exhaust memory. Bounded + Wait propagates back-pressure to the producer.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

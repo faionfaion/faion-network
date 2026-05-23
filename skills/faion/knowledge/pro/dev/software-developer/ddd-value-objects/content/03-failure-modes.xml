@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ddd-value-objects Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ddd-value-objects as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="DDD Value Objects Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Three antipatterns observed when implementing value objects. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mutable-vo" severity="high">
+      <symptom>Caller does `money.amount = 100`. Cached `Money(10, USD)` mutates everywhere it was referenced; aggregates store stale state.</symptom>
+      <root-cause source="DDD Reference — Value Object semantics">Class uses regular `class` instead of `@dataclass(frozen=True)` / `record`.</root-cause>
+      <fix>Convert to frozen record. Replace mutators with `with_amount(new_amount)` returning a new instance.</fix>
+    </antipattern>
+
+    <antipattern id="post-construction-validation" severity="medium">
+      <symptom>`Money(10, "")` constructs successfully; later `is_valid()` returns false and a service catches it. Callers forget to call `is_valid()`; invalid `Money` flows through the system.</symptom>
+      <root-cause source="Make-invalid-states-unrepresentable principle">Validation deferred to a separate method instead of the constructor.</root-cause>
+      <fix>Move validation into `__post_init__` / constructor body. Raise `ValueError` on empty currency. Delete `is_valid()`.</fix>
+    </antipattern>
+
+    <antipattern id="hidden-identity" severity="medium">
+      <symptom>`Address` carries a `uuid: UUID` field. Two addresses with the same street/city/zip compare unequal because their UUIDs differ. Deduplication breaks.</symptom>
+      <root-cause source="DDD Reference — Entity vs Value Object">Author confused Address with an Entity (which would have identity).</root-cause>
+      <fix>Remove the `uuid` field. If addresses need identity for storage, the surrounding Entity (`Customer`) owns the link, not the Address itself.</fix>
+    </antipattern>
+
   </section>
 </text>

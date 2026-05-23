@@ -1,22 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-entity-framework Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="EF Core Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for entity+config+repository+migration spec produced by this methodology.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/csharp-entity-framework.json",
+  "type": "object",
+  "required": ["entity", "configuration", "repository", "migration"],
+  "properties": {
+    "entity": {
+      "type": "object",
+      "required": ["class_name", "has_public_setters", "data_annotations_present"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+        "has_public_setters": {"type": "boolean", "const": false},
+        "data_annotations_present": {"type": "boolean", "const": false}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "required": ["class_name", "configures_keys", "configures_indexes"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Configuration$"},
+        "configures_keys": {"type": "boolean", "const": true},
+        "configures_indexes": {"type": "boolean"}
+      }
+    },
+    "repository": {
+      "type": "object",
+      "required": ["class_name", "list_uses_asnotracking", "returns_iqueryable"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Repository$"},
+        "list_uses_asnotracking": {"type": "boolean", "const": true},
+        "returns_iqueryable": {"type": "boolean", "const": false},
+        "multi_collection_split_query": {"type": "boolean"}
+      }
+    },
+    "migration": {
+      "type": "object",
+      "required": ["name", "appended"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+        "appended": {"type": "boolean", "const": true}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "entity": {"class_name": "Order", "has_public_setters": false, "data_annotations_present": false},
+  "configuration": {"class_name": "OrderConfiguration", "configures_keys": true, "configures_indexes": true},
+  "repository": {"class_name": "OrderRepository", "list_uses_asnotracking": true, "returns_iqueryable": false, "multi_collection_split_query": true},
+  "migration": {"name": "AddOrdersTable", "appended": true}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "entity": {"class_name": "order", "has_public_setters": true, "data_annotations_present": true},
+  "configuration": {"class_name": "OrderConfig", "configures_keys": false, "configures_indexes": false},
+  "repository": {"class_name": "OrderRepo", "list_uses_asnotracking": false, "returns_iqueryable": true},
+  "migration": {"name": "fix_typo", "appended": false}
+}
+]]></code>
+    <note>entity camelCase + public setters + annotations; repository returns IQueryable; migration edits old file; configuration class name lacks suffix.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`entity.data_annotations_present == true`.</description>
+      <reason>Violates `fluent-config-only` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`repository.returns_iqueryable == true`.</description>
+      <reason>Violates `no-iqueryable-return` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`migration.appended == false`.</description>
+      <reason>Violates `append-only-migrations` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-csharp-entity-framework.py">Validator script</reference>
 </text>

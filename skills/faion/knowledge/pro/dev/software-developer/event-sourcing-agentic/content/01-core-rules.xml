@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="event-sourcing-agentic Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for event-sourcing-agentic. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ES Agentic Pipeline Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Five testable rules an AI agent (and its reviewer) MUST satisfy when scaffolding event-sourced code.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="past-tense-event-names" testable="true" depth="essential">
+      <statement>Event names MUST be past-tense facts (`OrderPlaced`, `PaymentCaptured`, `ItemAdded`). Names like `UpdateOrder`, `OrderUpdate`, `OrderUpdated_v2` are forbidden — they encode CRUD shape, not business intent.</statement>
+      <rationale source="EventStorming / Greg Young — Event Sourcing primer">CRUD-shaped events erase intent and break downstream projections that depend on specific business meanings.</rationale>
     </rule>
+
+    <rule id="apply-only-mutation" testable="true" depth="essential">
+      <statement>Aggregate state MUST be mutated only inside `apply` / `_apply` event-handlers. Command methods (`place`, `cancel`) MUST validate, emit events, and return — they MUST NOT touch `self.status` or any state field directly.</statement>
+      <rationale source="event-sourcing-aggregate methodology">Mutation in command methods makes replay diverge from live execution; rebuilding state from events produces a different result.</rationale>
+    </rule>
+
+    <rule id="expected-version-enforced" testable="true" depth="essential">
+      <statement>Repository `save(stream_id, events, expected_version)` MUST always pass the version loaded at command start. The event store MUST raise `ConcurrencyError` when versions disagree. Omitting `expected_version` is a P0 review reject.</statement>
+      <rationale source="Optimistic concurrency in event stores">Without expected_version, concurrent commands silently clobber each other; reconstructed state is wrong.</rationale>
+    </rule>
+
+    <rule id="no-invented-apis" testable="true" depth="essential">
+      <statement>Generated code MUST call APIs that exist in the target event-store library (verified by import-resolution). Agents hallucinating `event_store.append_one(...)`, `repo.put_events(...)`, `bus.fire(...)` MUST be rejected.</statement>
+      <rationale source="LLM hallucination patterns + CI build failures">Hallucinated APIs compile-fail or runtime-fail; even if both happen, downstream cost dominates.</rationale>
+    </rule>
+
+    <rule id="projection-no-side-effects" testable="true" depth="essential">
+      <statement>Projection handlers MUST only write to the read store (UPSERT / INSERT / DELETE). They MUST NOT send email, call other services, raise domain events, or run business logic. Side effects belong in process managers / sagas.</statement>
+      <rationale source="event-sourcing-projections methodology">Projections rebuild from offset 0 periodically; side effects would fire each rebuild, producing duplicate emails / charges / events.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

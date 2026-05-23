@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="ES Aggregate Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to introduce a new event-sourced aggregate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="list-events-and-commands">
+      <input>Aggregate spec + glossary</input>
+      <action>Enumerate past-tense events (`OrderPlaced`, `ItemAdded`, ...) and command methods (`place`, `add_item`, ...). Map each command to the events it can emit.</action>
+      <output>Event + command list</output>
+    </step>
+
+    <step n="2" name="write-aggregate">
+      <input>Event + command list</input>
+      <action>Implement the aggregate: command methods validate + append to `self._pending`; for each event, write `_apply_&lt;EventName&gt;(self, event)` that mutates state. No direct field assignment in commands.</action>
+      <output>Aggregate class with apply handlers</output>
+      <decision-gate>If any command mutates state outside an apply handler, FAIL.</decision-gate>
+    </step>
+
+    <step n="3" name="write-from-events">
+      <input>Aggregate + apply handlers</input>
+      <action>Add `from_events(stream_id, events)` class method that constructs an empty aggregate and replays through apply handlers. Property-based test: live execution and replay produce equal state.</action>
+      <output>Reconstruction path</output>
+    </step>
+
+    <step n="4" name="repository-with-version">
+      <input>Aggregate + event store API</input>
+      <action>Implement `load(stream_id) -&gt; (Aggregate, version)` and `save(stream_id, events, expected_version) -&gt; new_version`. Save calls `aggregate.collect_pending_events()` AFTER successful append.</action>
+      <output>Repository class</output>
+    </step>
+
+    <step n="5" name="concurrency-test">
+      <input>Repository + aggregate</input>
+      <action>Test: two transactions load the same stream, both append events, second save raises `ConcurrencyError`. Assert no events appended for the loser.</action>
+      <output>Optimistic-concurrency test</output>
+      <decision-gate>If the test passes without raising, expected_version is not enforced; fix before merging.</decision-gate>
+    </step>
+
+  </section>
+</text>

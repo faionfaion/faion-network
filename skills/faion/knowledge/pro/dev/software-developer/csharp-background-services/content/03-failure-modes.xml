@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="csharp-background-services Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for csharp-background-services as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="C# Background Services Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed in production .NET deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Task.Run(async () =&gt; { while (true) { ... await Task.Delay(5000); } }) in Program.cs instead of BackgroundService.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bypasses IHost lifecycle, cancellation, DI scoping, and health check integration.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Channel.CreateUnbounded&lt;T&gt;() with unbounded capacity.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>No back-pressure; producer can enqueue faster than the worker consumes, exhausting memory under load.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>DbContext injected into BackgroundService constructor (captive dependency).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Singleton BackgroundService holds a scoped DbContext for the process lifetime, breaking EF Core's connection management.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="task-run-loop" severity="high">
+      <symptom>`Task.Run(async () =&gt; { while (true) { ...; await Task.Delay(5000); } })` started from `Program.cs`. On graceful shutdown the loop never exits and the host hangs for 30s before SIGKILL.</symptom>
+      <root-cause source="Microsoft Learn — Hosted services">Bypasses `IHost` lifecycle. There is no `stoppingToken`, no DI scope, no health-check hook.</root-cause>
+      <fix>Replace with a class extending `BackgroundService`. Inject `IServiceProvider` + channel; resolve scoped deps via `CreateScope()`; propagate `stoppingToken`.</fix>
+    </antipattern>
+
+    <antipattern id="unbounded-channel" severity="high">
+      <symptom>`Channel.CreateUnbounded&lt;T&gt;()` queue grows without bound under producer spikes; container OOM-killed.</symptom>
+      <root-cause source="System.Threading.Channels docs">Unbounded queues offer no back-pressure; producers run unchecked.</root-cause>
+      <fix>Switch to `Channel.CreateBounded&lt;T&gt;(new BoundedChannelOptions(capacity) { FullMode = BoundedChannelFullMode.Wait })`. Pick a capacity tied to the worker's drain rate.</fix>
+    </antipattern>
+
+    <antipattern id="captive-dbcontext" severity="high">
+      <symptom>`DbContext` (or `IDbContextFactory&lt;TContext&gt;`) injected in the worker constructor. EF Core throws `InvalidOperationException: A second operation was started on this context` under load.</symptom>
+      <root-cause source="EF Core docs — DbContext lifetime">`BackgroundService` is a singleton; the captured `DbContext` is reused across items, breaking EF's per-request session model.</root-cause>
+      <fix>Constructor takes `IServiceProvider`. Inside the loop: `using var scope = _sp.CreateScope(); var db = scope.ServiceProvider.GetRequiredService&lt;TContext&gt;();`.</fix>
+    </antipattern>
+
+    <antipattern id="no-stoppingtoken" severity="medium">
+      <symptom>`await Task.Delay(5000)` without `stoppingToken`. Pod takes 30s to terminate during rolling deploys; readiness probe failures cascade.</symptom>
+      <root-cause source="ASP.NET Core graceful-shutdown docs">Missing token = nothing to observe cancellation = `ExecuteAsync` only exits on `ShutdownTimeout`.</root-cause>
+      <fix>Pass `stoppingToken` to every async API: `await Task.Delay(period, stoppingToken)`, `await channel.Reader.ReadAllAsync(stoppingToken)`, scope-resolved service calls.</fix>
+    </antipattern>
+
   </section>
 </text>

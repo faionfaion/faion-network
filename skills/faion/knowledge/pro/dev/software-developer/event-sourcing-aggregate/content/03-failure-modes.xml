@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-aggregate Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for event-sourcing-aggregate as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="ES Aggregate Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed in ES aggregate implementations. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mutating aggregate state directly inside command methods instead of inside apply handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents commonly write self.status = "placed" in command methods because it feels natural. This breaks replay: replaying events skips the command path but must reproduce the same state. State mutation belongs in _on_* handlers only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Loading multiple aggregates (Customer, Inventory, Payment) in a single command handler and mutating all of them.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cross-aggregate mutations are not atomic across event streams. This creates ghost states and eventual consistency violations. Use a saga or process manager to coordinate across aggregates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Calling repository.save(stream_id, events) without expected_version.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without optimistic concurrency, concurrent commands at the same version both succeed. The second write silently overwrites the first, producing incorrect state with no detectable error.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mutate-in-command" severity="high">
+      <symptom>Command body: `self.status = "placed"; self._pending.append(OrderPlaced(...))`. Replay through `apply` doesn't touch `status`; reconstructed state diverges from live state.</symptom>
+      <root-cause source="OO-CRUD muscle memory">Author treated command as setter + side-effect.</root-cause>
+      <fix>Remove the direct assignment. The `_apply_OrderPlaced` handler is solely responsible for setting `self.status`. Command only emits the event.</fix>
+    </antipattern>
+
+    <antipattern id="save-without-version" severity="high">
+      <symptom>`repo.save(stream_id, events)` is called without `expected_version`. Two concurrent commands both append events; second one clobbers ordering; replay produces invalid state.</symptom>
+      <root-cause source="Optimistic concurrency in event stores">Repository didn't enforce or call site didn't pass version.</root-cause>
+      <fix>Update repository signature to require `expected_version`. Pass the version captured at `load()` time. Tests cover the clash path.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-apply" severity="medium">
+      <symptom>Aggregate has `apply_OrderPlaced` but `_apply_ItemAdded` not implemented. Replay raises `AttributeError`. Production stream containing both events cannot be loaded.</symptom>
+      <root-cause source="Developer added a new event without its apply handler">No safety check between event class and apply method.</root-cause>
+      <fix>Add a unit test enumerating all event classes and asserting `hasattr(Aggregate, f"_apply_{name}")`. Catch the gap in CI.</fix>
+    </antipattern>
+
+    <antipattern id="leaked-events" severity="medium">
+      <symptom>Aggregate exposes `self._pending` directly; caller iterates + dispatches before `save()` runs. Persistence failure leaves consumers having processed events that never durably happened.</symptom>
+      <root-cause source="Missing collect-after-save discipline">No formal boundary between pending events and dispatched events.</root-cause>
+      <fix>Hide `_pending`. Provide `collect_pending_events()` that returns + clears. Repository calls it after `save()` succeeds; on failure, events remain on the aggregate for retry.</fix>
+    </antipattern>
+
   </section>
 </text>

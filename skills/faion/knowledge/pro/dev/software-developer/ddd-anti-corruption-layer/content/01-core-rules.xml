@@ -1,19 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ddd-anti-corruption-layer Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ddd-anti-corruption-layer. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="DDD ACL Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding the Anti-Corruption Layer pattern.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The domain layer MUST define an interface for the external dependency (e.g., InventoryChecker, PaymentGateway) using only domain types and domain terminology. The ACL implementation in the infrastructure layer MUST implement this interface and be the ONLY place that imports the external client SDK or legacy API types.</statement>
-      <rationale source="v1-source">Domain code importing external SDK types is a direct coupling: SDK upgrades, API changes, and provider swaps require domain code changes. The interface + ACL pattern confines that coupling to the infrastructure layer.</rationale>
+
+    <rule id="domain-owns-interface" testable="true" depth="essential">
+      <statement>The Domain layer MUST define the interface (`InventoryChecker`, `PaymentGateway`) using domain types and Ubiquitous Language only. The interface MUST NOT import the external client SDK or any infrastructure type.</statement>
+      <rationale source="Domain-Driven Design — Anti-Corruption Layer">Domain-owned interface prevents the external model from leaking; tests can stub the domain interface without spinning up SDK dependencies.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The ACL MUST translate external error types into domain exceptions. An ExternalApiError from the inventory service MUST become InventoryUnavailableError (a domain concept) before it crosses the ACL boundary. Raw external exceptions MUST NOT propagate into domain or application layer code.</statement>
-      <rationale source="v1-source">External error types leak external semantics into domain error handling. Domain code should reason about domain outcomes (inventory unavailable) not external infrastructure outcomes (HTTP 503).</rationale>
+
+    <rule id="acl-only-sdk-importer" testable="true" depth="essential">
+      <statement>The ACL implementation in the Infrastructure layer MUST be the ONLY file that imports the external SDK / client / vendor types. Domain and Application layers MUST NOT reference vendor SDKs.</statement>
+      <rationale source="DDD Reference — Anti-Corruption Layer">Multiple SDK importers fan out vendor coupling; swapping vendors requires touching every importer. One ACL = one swap point.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>The ACL MUST define a fail-safe default for non-critical integrations (e.g., if the inventory API is unreachable, assume available rather than crashing the order flow). Document the failure mode explicitly in the ACL implementation.</statement>
-      <rationale source="v1-source">External services are unreliable. Domain flows should degrade gracefully rather than propagate transient infrastructure errors as hard domain failures.</rationale>
+
+    <rule id="error-translation" testable="true" depth="essential">
+      <statement>The ACL MUST translate external error types into domain exceptions (`InventoryUnavailableError`, `PaymentDeclined`). Raw vendor exceptions (`StripeError`, `requests.HTTPError`) MUST NOT propagate past the ACL boundary.</statement>
+      <rationale source="DDD + clean-architecture error policy">Domain code reacts to domain errors; leaking vendor exceptions couples error handlers to vendor versioning and obscures the actual domain meaning.</rationale>
     </rule>
+
+    <rule id="fail-safe-documented" testable="true" depth="essential">
+      <statement>For non-critical integrations the ACL MUST define a fail-safe default (e.g. "if inventory API unreachable, assume available with a retry-after-N-minutes log entry"). The chosen default MUST be documented in code and in the runbook.</statement>
+      <rationale source="SRE error-budget + operational continuity">Without a documented fail-safe, every outage in the dependency becomes an outage in the caller; explicit policy makes the trade-off visible.</rationale>
+    </rule>
+
+    <rule id="contract-tests" testable="true" depth="essential">
+      <statement>The ACL MUST have at least one contract test pinning the external system's response shape (mocked HTTP server / cassette). Domain code MUST have unit tests against the domain interface (mocked).</statement>
+      <rationale source="Pact / consumer-driven contracts">SDK upgrades silently change response shapes; pinned contract tests fail fast when the upstream contract drifts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

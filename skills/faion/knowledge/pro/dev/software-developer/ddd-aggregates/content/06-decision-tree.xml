@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="DDD Aggregates Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping invariant scope + aggregate size to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-invariants">Does the entity cluster have non-trivial invariants?</root-question>
+
+    <branch when="invariants == none">
+      <conclusion ref="root-only-mutation" verdict="skip-this-methodology: CRUD entity without invariants does not need aggregate discipline"/>
+    </branch>
+
+    <branch when="invariants == present">
+      <question id="q-boundary">Do invariants span more than one candidate root?</question>
+      <branch when="cross_root_invariants == true">
+        <conclusion ref="identity-only-refs" verdict="redesign: each root owns its invariants; cross-root consistency becomes eventual via domain events"/>
+      </branch>
+      <branch when="cross_root_invariants == false">
+        <question id="q-size">Child entity count &gt; 5?</question>
+        <branch when="too_big == true">
+          <conclusion ref="small-aggregate" verdict="split the aggregate along a sub-invariant boundary before proceeding"/>
+        </branch>
+        <branch when="too_big == false">
+          <conclusion ref="root-only-mutation" verdict="proceed: root + command methods + invariant tests per 01-core-rules"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="order-aggregate">
+    invariants=present → cross_root_invariants=false (order invariants live within Order) → too_big=false (Order + OrderItem = 2 entities) → proceed; Order.place(), Order.cancel() with invariants; raise OrderPlaced + OrderCancelled.
+  </example>
+</text>

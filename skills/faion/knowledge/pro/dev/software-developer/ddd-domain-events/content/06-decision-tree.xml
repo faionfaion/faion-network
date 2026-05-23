@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="DDD Domain Events Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping delivery target + atomicity needs to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-needed">Are there downstream consumers (other contexts / async workflows)?</root-question>
+
+    <branch when="downstream == none">
+      <conclusion ref="raise-on-aggregate" verdict="skip-this-methodology: no consumers means no event needed yet"/>
+    </branch>
+
+    <branch when="downstream == present">
+      <question id="q-target">Delivery target?</question>
+      <branch when="target == in_process">
+        <conclusion ref="collect-after-commit" verdict="in-process dispatcher; collect events after commit; no outbox needed"/>
+      </branch>
+      <branch when="target == broker">
+        <question id="q-loss">Can the system tolerate event loss?</question>
+        <branch when="tolerate_loss == true">
+          <conclusion ref="raise-on-aggregate" verdict="best-effort broker publish; document the loss tolerance"/>
+        </branch>
+        <branch when="tolerate_loss == false">
+          <conclusion ref="outbox-on-broker" verdict="full Outbox: outbox table in same transaction + relay process + dedup by event_id"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="order-placed-to-kafka">
+    downstream=present → target=broker → tolerate_loss=false → Outbox pattern with relay; OrderPlaced has event_id + order_id; relay publishes with at-least-once.
+  </example>
+</text>

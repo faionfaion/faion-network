@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-dotnet-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-dotnet-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="C# .NET Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding clean-architecture + CQRS + rich-domain patterns on .NET 8.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="clean-arch-layers" testable="true" depth="essential">
+      <statement>Solution MUST have four projects with one-way reference flow: `Domain` (no deps) ← `Application` ← `Infrastructure` ← `Web`. `Domain` MUST NOT reference `Microsoft.EntityFrameworkCore`, `Microsoft.AspNetCore.*`, or any external SDK.</statement>
+      <rationale source="Clean Architecture (Robert C. Martin) + Jason Taylor .NET template">One-way dependency keeps Domain pure and testable. Project-reference graph validates at csproj parse — no runtime cost.</rationale>
     </rule>
+
+    <rule id="cqrs-handler-per-message" testable="true" depth="essential">
+      <statement>Each command/query MUST be a `record` implementing `IRequest&lt;TResponse&gt;` with exactly one `IRequestHandler` in `Application/`. No generic `IService` classes that mix multiple operations.</statement>
+      <rationale source="MediatR docs + Jimmy Bogard CQRS posts">One-handler-per-message preserves CQRS read/write separation and makes pipeline behaviours (logging, validation, transactions) attachable in one place.</rationale>
+    </rule>
+
+    <rule id="rich-domain-no-setters" testable="true" depth="essential">
+      <statement>Entities/aggregates MUST have no public setters. Behaviour MUST live on the aggregate as intention-revealing methods (`order.Ship()`, not `order.Status = "shipped"`). State changes go through methods that enforce invariants.</statement>
+      <rationale source="DDD Reference (Vaughn Vernon) + ddd-aggregates methodology">Public setters allow callers to bypass invariants; the aggregate cannot enforce business rules consistently.</rationale>
+    </rule>
+
+    <rule id="edge-validation" testable="true" depth="essential">
+      <statement>Request DTOs MUST carry FluentValidation `AbstractValidator&lt;T&gt;` registered in DI; the MediatR validation pipeline behaviour MUST run before the handler. No `if (req.Foo == null) throw...` scattered in handlers.</statement>
+      <rationale source="FluentValidation docs + ASP.NET Core ModelState">Edge-validated requests fail fast with `ValidationException` mapped to 400 `ProblemDetails`. Centralized rules are reusable and testable in isolation.</rationale>
+    </rule>
+
+    <rule id="no-entity-in-api" testable="true" depth="essential">
+      <statement>Web layer MUST NOT return Domain entities. Responses MUST be `record` DTOs defined in `Application/` (or `Web/Contracts/`). Entities never appear in controller method signatures, MediatR responses, or Swagger schemas.</statement>
+      <rationale source="Hexagonal architecture + REST contract stability">Returning entities couples persistence shape to the public contract; adding a column or navigation breaks every client.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

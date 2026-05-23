@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-dotnet Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="C# ASP.NET Core + EF Core Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the feature-folder artefact. Validator enforces required files + naming + per-file constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/csharp-dotnet.json",
+  "type": "object",
+  "required": ["feature", "controller", "service", "dto", "entity_config", "test"],
+  "properties": {
+    "feature": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "controller": {
+      "type": "object",
+      "required": ["class_name", "attributes", "base_class"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Controller$"},
+        "attributes": {"type": "array", "items": {"type": "string"}, "contains": {"const": "ApiController"}},
+        "base_class": {"const": "ControllerBase"}
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["interface", "implementation", "lifetime"],
+      "properties": {
+        "interface": {"type": "string", "pattern": "^I[A-Z][A-Za-z0-9]+Service$"},
+        "implementation": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Service$"},
+        "lifetime": {"enum": ["scoped", "transient"]}
+      }
+    },
+    "dto": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+(Request|Response|Dto)$"},
+    "entity_config": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Configuration$"},
+    "nullable_enabled": {"type": "boolean", "const": true},
+    "test": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Tests$"},
+    "read_path_uses_asnotracking": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "feature": "Orders",
+  "controller": {"class_name": "OrdersController", "attributes": ["ApiController", "Route(\"api/[controller]\")"], "base_class": "ControllerBase"},
+  "service": {"interface": "IOrdersService", "implementation": "OrdersService", "lifetime": "scoped"},
+  "dto": "CreateOrderRequest",
+  "entity_config": "OrderConfiguration",
+  "nullable_enabled": true,
+  "test": "OrdersControllerTests",
+  "read_path_uses_asnotracking": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "feature": "orders",
+  "controller": {"class_name": "OrderCtrl", "attributes": [], "base_class": "Controller"},
+  "service": {"interface": "OrdersService", "implementation": "OrdersService", "lifetime": "singleton"},
+  "dto": "OrderEntity",
+  "entity_config": "OrderConfig",
+  "nullable_enabled": false,
+  "test": "Tests",
+  "read_path_uses_asnotracking": false
+}
+]]></code>
+    <note>feature lower-case; controller missing [ApiController]; service singleton; DTO is entity name; nullable off.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`service.lifetime == "singleton"` while consuming `DbContext`.</description>
+      <reason>Captive DbContext violation of `scoped-dbcontext`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Controller method signature returns `IQueryable&lt;T&gt;` or domain entity.</description>
+      <reason>Leaks persistence layer; violates `record-dtos` + `asnotracking-reads`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`nullable_enabled == false` in any project csproj.</description>
+      <reason>Violates `nullable-refs-on` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-csharp-dotnet.py">Validator script</reference>
 </text>

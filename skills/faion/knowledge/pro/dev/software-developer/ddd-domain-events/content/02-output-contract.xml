@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ddd-domain-events Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="DDD Domain Events Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for an event-and-outbox spec produced by this methodology.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ddd-domain-events.json",
+  "type": "object",
+  "required": ["event_name", "frozen", "raised_in", "metadata", "delivery"],
+  "properties": {
+    "event_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "frozen": {"type": "boolean", "const": true},
+    "raised_in": {
+      "type": "object",
+      "required": ["aggregate", "command_method"],
+      "properties": {
+        "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+        "command_method": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"}
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "occurred_at", "aggregate_identity"],
+      "properties": {
+        "event_id": {"const": "UUID"},
+        "occurred_at": {"const": "datetime"},
+        "aggregate_identity": {"type": "string", "minLength": 2}
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["target", "uses_outbox", "collect_after_commit"],
+      "properties": {
+        "target": {"enum": ["in-process", "broker"]},
+        "uses_outbox": {"type": "boolean"},
+        "collect_after_commit": {"type": "boolean", "const": true}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "event_name": "OrderPlaced",
+  "frozen": true,
+  "raised_in": {"aggregate": "Order", "command_method": "place"},
+  "metadata": {"event_id": "UUID", "occurred_at": "datetime", "aggregate_identity": "order_id"},
+  "delivery": {"target": "broker", "uses_outbox": true, "collect_after_commit": true}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "event_name": "orderPlaced",
+  "frozen": false,
+  "raised_in": {"aggregate": "Order", "command_method": "Place"},
+  "metadata": {"aggregate_identity": ""},
+  "delivery": {"target": "broker", "uses_outbox": false, "collect_after_commit": false}
+}
+]]></code>
+    <note>event name camelCase; mutable; PascalCase method; missing event_id + occurred_at; broker target without outbox; dispatch before commit.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`frozen == false`.</description>
+      <reason>Violates `frozen-events` rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`delivery.target == "broker"` AND `delivery.uses_outbox == false`.</description>
+      <reason>Violates `outbox-on-broker` rule — dual-write.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`delivery.collect_after_commit == false`.</description>
+      <reason>Violates `collect-after-commit` rule.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-ddd-domain-events.py">Validator script</reference>
 </text>

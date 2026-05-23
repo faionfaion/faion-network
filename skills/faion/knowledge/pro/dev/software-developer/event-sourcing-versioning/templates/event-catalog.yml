@@ -1,0 +1,31 @@
+# purpose: versioned event catalog with upcasters + PII handling
+# consumes: event class declarations
+# produces: committed schema-registry export validated in CI
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200 tokens when loaded as reference
+events:
+  OrderPlaced:
+    versions:
+      - version: 1
+        deprecated: true
+        fields:
+          - {name: order_id, type: UUID}
+          - {name: customer_id, type: UUID}
+          - {name: total_cents, type: int}
+      - version: 2
+        upcaster_from: 1
+        upcaster_module: faion.events.upcasters.order_placed_v1_to_v2
+        fields:
+          - {name: order_id, type: UUID}
+          - {name: buyer_id, type: UUID}
+          - {name: total_cents, type: int}
+    pii_handling: externalized_side_table
+  PaymentCaptured:
+    versions:
+      - version: 1
+        fields:
+          - {name: order_id, type: UUID}
+          - {name: amount_cents, type: int}
+          - {name: card_token_id, type: UUID}    # opaque ID — PII lives in mutable side table
+    pii_handling: externalized_side_table
+ci_gate_enabled: true

@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-dotnet Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-dotnet. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="C# ASP.NET Core + EF Core Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding production ASP.NET Core + EF Core feature folders.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="apicontroller-required" testable="true" depth="essential">
+      <statement>Every HTTP controller MUST carry `[ApiController]` + `[Route("api/[controller]")]` and inherit `ControllerBase` (not `Controller`). Route parameters MUST be typed (`int id`, `Guid orderId`), not `string`.</statement>
+      <rationale source="Microsoft Learn — Create web APIs with ASP.NET Core">`[ApiController]` auto-validates `ModelState`, infers binding sources, and produces RFC 7807 `ProblemDetails` on 400/500. `Controller` brings View support not needed for APIs.</rationale>
     </rule>
+
+    <rule id="scoped-dbcontext" testable="true" depth="essential">
+      <statement>`DbContext` MUST be registered scoped (`AddDbContext` or `AddDbContextPool`). Services that need it MUST be scoped or transient — never singleton.</statement>
+      <rationale source="EF Core docs — DbContext lifetime">`DbContext` is not thread-safe; singleton capture leaks connections and corrupts change-tracking across requests.</rationale>
+    </rule>
+
+    <rule id="nullable-refs-on" testable="true" depth="essential">
+      <statement>Every csproj MUST set `&lt;Nullable&gt;enable&lt;/Nullable&gt;` and `&lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;` for CS86xx nullable warnings. Public APIs MUST annotate nullability.</statement>
+      <rationale source="Microsoft Learn — Nullable reference types">Disabled nullable refs cause silent `NullReferenceException`. CI must fail on `CS8600/CS8601/CS8602/CS8603/CS8604`.</rationale>
+    </rule>
+
+    <rule id="record-dtos" testable="true" depth="essential">
+      <statement>Transport DTOs (request/response models) MUST be `record` (or `record struct` for small immutable shapes) — never mutable `class`. Domain entities live in a separate namespace and MUST NOT be returned by controllers.</statement>
+      <rationale source="C# 9+ records spec + DDD layering">`record` gives value equality, `with`-expressions, and immutability for free; using entities as DTOs leaks persistence concerns into the public API.</rationale>
+    </rule>
+
+    <rule id="asnotracking-reads" testable="true" depth="essential">
+      <statement>Read-only queries that project to DTO/anonymous types MUST use `.AsNoTracking()`. `IQueryable&lt;Entity&gt;` returned to controllers is forbidden.</statement>
+      <rationale source="EF Core docs — Query tracking">Tracking adds memory + CPU overhead and risks lazy-loaded properties firing inside JSON serialisation; returning `IQueryable` leaks query execution to the response pipeline.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

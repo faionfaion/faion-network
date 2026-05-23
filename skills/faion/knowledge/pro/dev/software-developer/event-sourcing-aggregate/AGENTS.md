@@ -3,69 +3,101 @@ slug: event-sourcing-aggregate
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The event-sourced aggregate root reconstructs its state by replaying a list of past events and emits new events (never mutating state directly) when commands succeed.
-content_id: "013b5c3c1e3ae0db"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Event-sourced aggregate root pattern — replay events to rebuild state, mutate only in apply handlers, command methods emit, repository.save with expected_version.
+content_id: "7fa8d12d9d29ae0a"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [event-sourcing, aggregate, domain-driven-design, command-handler, optimistic-concurrency]
 ---
 # Event Sourcing — Aggregate Root Pattern
 
 ## Summary
 
-**One-sentence:** The event-sourced aggregate root reconstructs its state by replaying a list of past events and emits new events (never mutating state directly) when commands succeed.
+**One-sentence:** Event-sourced aggregate root pattern — replay events to rebuild state, mutate only in apply handlers, command methods emit, repository.save with expected_version.
 
-**One-paragraph:** The event-sourced aggregate root reconstructs its state by replaying a list of past events and emits new events (never mutating state directly) when commands succeed. State MUST be mutated only inside apply() handlers, never inside command methods.
+**One-paragraph:** An event-sourced aggregate reconstructs state by replaying events through `apply()` handlers; it emits new events from command methods but NEVER mutates state directly there. The repository loads `(events, version)`, the command runs, and `save(stream_id, new_events, expected_version)` enforces optimistic concurrency. This methodology pins five rules: apply-only mutation, command methods emit + return, expected_version on save, `from_events` reconstruction, `collect_pending_events` boundary. Output: aggregate + event classes + repository scaffold conforming to `02-output-contract.xml`.
+
+**Ефективно для:**
+
+- New event-sourced aggregates (Order, Subscription, Wallet).
+- Migrating CRUD entity to ES while preserving domain logic.
+- Codifying invariants as event-emission patterns.
+- Concurrency-safe writes via expected_version.
+- Pair-trained AI agent runs per `[[event-sourcing-agentic]]`.
 
 ## Applies If (ALL must hold)
 
-- Implementing an event-sourced domain model that has business invariants to enforce.
-- Any aggregate root in a CQRS system where commands are handled and events are persisted.
-- When you need to reconstruct aggregate state from a repository (load events, replay, then execute command).
+- Event sourcing is the persistence pattern (not just notifications).
+- An event-store library (or hand-rolled equivalent) is in place.
+- Aggregates per `[[ddd-aggregates]]` are the unit of consistency.
+- The team understands optimistic concurrency + version semantics.
 
 ## Skip If (ANY kills it)
 
-- Simple CRUD entities with no invariants — the apply/replay overhead adds zero value.
-- Cross-aggregate operations — never load two aggregates and mutate both in one command handler; use sagas/process managers instead.
+- CRUD app pretending to use ES — overhead exceeds benefit.
+- Aggregate has no invariants — events without invariants are just an audit log; use `[[ddd-domain-events]]` instead.
+- Sub-millisecond write latency requirement — replay overhead dominates.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Event catalog | YAML/Markdown | repo |
+| Aggregate boundary | spec | spec |
+| Event-store API docs | URL | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[event-sourcing-fundamentals]] | Core invariants the aggregate must protect. |
+| [[ddd-aggregates]] | Aggregate-root rules (no public setters etc.). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: apply-only-mutation, command-emits-returns, expected-version-on-save, from-events-reconstruction, collect-pending-boundary | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for aggregate spec | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: mutate-in-command, save-without-version, lazy-apply, leaked-events | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on aggregate workload → rule | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-event-list` | sonnet | Domain judgment. |
+| `write-apply-handlers` | sonnet | Mechanical mapping per event. |
+| `write-concurrency-test` | haiku | Generate expected_version clash test. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Aggregate.py` | Event-sourced aggregate skeleton |
+| `templates/Repository.py` | Repository with expected_version semantics |
+| `templates/ConcurrencyTest.py` | Optimistic-concurrency clash test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-event-sourcing-aggregate.py` | Validate aggregate spec | Pre-commit on spec artefact |
 
 ## Related
 
+- [[event-sourcing-fundamentals]]
+- [[event-sourcing-projections]]
+- [[event-sourcing-snapshots]]
+- [[event-sourcing-versioning]]
 - parent skill: `pro/dev/software-developer/`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (write rate, concurrency, replay cost) to a rule from `01-core-rules.xml` and either approves ES-aggregate scaffolding or redirects to a CRUD aggregate / read-model-only design.

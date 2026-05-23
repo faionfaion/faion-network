@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="event-sourcing-agentic Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ES Agentic Pipeline Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for a pipeline-run spec — stages, accepted/rejected artefacts, review notes.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/event-sourcing-agentic.json",
+  "type": "object",
+  "required": ["aggregate", "stages", "review_outcome"],
+  "properties": {
+    "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "stages": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "model", "accepted"],
+        "properties": {
+          "name": {"enum": ["aggregate-design", "event-class-codegen", "projection-codegen", "tests-codegen", "antipattern-review"]},
+          "model": {"enum": ["opus", "sonnet", "haiku"]},
+          "accepted": {"type": "boolean"},
+          "rejection_reason": {"type": "string"},
+          "artefact_path": {"type": "string"}
+        }
+      }
+    },
+    "review_outcome": {
+      "type": "object",
+      "required": ["all_rules_passed", "rejected_rule_ids"],
+      "properties": {
+        "all_rules_passed": {"type": "boolean"},
+        "rejected_rule_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "Order",
+  "stages": [
+    {"name": "aggregate-design", "model": "sonnet", "accepted": true, "artefact_path": "design/order.md"},
+    {"name": "event-class-codegen", "model": "sonnet", "accepted": true, "artefact_path": "domain/order_events.py"},
+    {"name": "projection-codegen", "model": "sonnet", "accepted": true, "artefact_path": "projections/orders.py"},
+    {"name": "tests-codegen", "model": "haiku", "accepted": true, "artefact_path": "tests/test_order_es.py"},
+    {"name": "antipattern-review", "model": "sonnet", "accepted": true}
+  ],
+  "review_outcome": {"all_rules_passed": true, "rejected_rule_ids": []}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "aggregate": "order",
+  "stages": [
+    {"name": "aggregate-design", "model": "sonnet", "accepted": true},
+    {"name": "event-class-codegen", "model": "haiku", "accepted": false, "rejection_reason": "CRUD events"}
+  ],
+  "review_outcome": {"all_rules_passed": true, "rejected_rule_ids": []}
+}
+]]></code>
+    <note>aggregate lower-case; only 2 stages; rejection flagged but review claims all passed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>`stages.length &lt; 5`.</description>
+      <reason>Pipeline must run all 5 stages even if some are no-ops.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Stage `accepted == false` AND `review_outcome.all_rules_passed == true`.</description>
+      <reason>Internal inconsistency — review summary contradicts stage status.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Any stage with `model == "opus"`.</description>
+      <reason>Pipeline reserves opus for upstream design; per-stage codegen uses sonnet/haiku to keep cost bounded.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-event-sourcing-agentic.py">Validator script</reference>
 </text>

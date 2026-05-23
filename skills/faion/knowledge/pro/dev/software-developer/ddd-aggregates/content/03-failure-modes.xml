@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ddd-aggregates Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ddd-aggregates as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="DDD Aggregates Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns observed when implementing aggregates. Symptom + root cause + fix per item.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="bypass-root" severity="high">
+      <symptom>Caller does `order.items.append(new_item)` directly. Aggregate cannot enforce invariants (`max items`, `total recalculation`, `event raising`).</symptom>
+      <root-cause source="DDD Reference — Aggregate design">Child collection exposed as mutable; root command method missing.</root-cause>
+      <fix>Expose `items` as read-only (`@property` returning a tuple/frozenset). Add `order.add_item(...)` on the root that mutates the list, recalculates totals, and raises `OrderItemAdded`.</fix>
+    </antipattern>
+
+    <antipattern id="god-aggregate" severity="high">
+      <symptom>`Customer` aggregate owns orders, addresses, payments, subscriptions. Loading a customer pulls thousands of rows; updates lock everything.</symptom>
+      <root-cause source="Vaughn Vernon — Effective Aggregate Design">Author packed everything into one aggregate to "be safe".</root-cause>
+      <fix>Split along invariant boundaries: `Customer` (identity + profile), `Order` (its own aggregate referencing customer by ID), `Subscription`. Cross-aggregate consistency becomes eventual via domain events.</fix>
+    </antipattern>
+
+    <antipattern id="object-ref-across-aggregates" severity="high">
+      <symptom>`Order` has `self.customer = Customer(...)`. Loading an order eager-loads the full customer; saving touches both rows; merge conflicts when two transactions touch different aggregates.</symptom>
+      <root-cause source="DDD Reference — Aggregate design rules">Author preferred object reference to UUID, treating aggregates like in-memory graphs.</root-cause>
+      <fix>Replace with `self.customer_id: UUID`. If the application needs both, the application service loads them separately and coordinates.</fix>
+    </antipattern>
+
+    <antipattern id="invariant-in-service" severity="medium">
+      <symptom>`OrderService.place_order(order)` validates `order.total &gt; 0` before persisting. Same invariant duplicated in multiple services; one service forgets it; bad data reaches the DB.</symptom>
+      <root-cause source="Anemic Domain Model antipattern (Fowler)">Invariants placed in service layer; aggregate became a data bag.</root-cause>
+      <fix>Move the invariant onto the aggregate's command method (`order.place(...)`). Service becomes a thin coordinator dispatching the command.</fix>
+    </antipattern>
+
   </section>
 </text>
