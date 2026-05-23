@@ -3,71 +3,99 @@ slug: vui-privacy-security
 tier: pro
 group: ux
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Five privacy principles (transparency, control, minimization, security, deletion) and a split-agent architecture for sensitive VUI operations: a policy classifier decides "is this turn sensitive?" and an executor crafts the response — the executor never sees raw sensitive values.
-content_id: "1aad2fef0065bca2"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Privacy- and security-hardened VUI architecture: five privacy principles, split classifier/executor agents for PII, redaction policy and audit trail emitted as a privacy spec.
+content_id: "7aa876f1c10417ea"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [voice, privacy, security, vui, pii]
 ---
 # VUI Privacy and Security
 
 ## Summary
 
-**One-sentence:** Five privacy principles (transparency, control, minimization, security, deletion) and a split-agent architecture for sensitive VUI operations: a policy classifier decides "is this turn sensitive?" and an executor crafts the response — the executor never sees raw sensitive values.
+**One-sentence:** Privacy- and security-hardened VUI architecture: five privacy principles, split classifier/executor agents for PII, redaction policy and audit trail emitted as a privacy spec.
 
-**One-paragraph:** Five privacy principles (transparency, control, minimization, security, deletion) and a split-agent architecture for sensitive VUI operations: a policy classifier decides "is this turn sensitive?" and an executor crafts the response — the executor never sees raw sensitive values. Redaction must happen pre-storage and pre-LLM-context, not post-hoc. Two-channel confirmation (voice initiates, SMS/push confirms) prevents voice-spoofing attacks on destructive operations.
+**One-paragraph:** Privacy- and security-hardened VUI architecture: five privacy principles, split classifier/executor agents for PII, redaction policy and audit trail emitted as a privacy spec. The methodology pins inputs to citable sources, runs >=5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- The triggering activity for vui-privacy-security recurs in the operator's workload at least once per cycle.
+- A named downstream consumer exists (human reviewer or downstream agent) for the produced artefact.
+- Inputs come from a citable source-of-truth, not paraphrase.
+- Result will drive a binding action (commit, ship, ramp, freeze) that justifies the methodology overhead.
+- The operator has write or sign-off authority over the artefact this methodology produces.
 
 ## Applies If (ALL must hold)
 
-- Designing voice features that handle PII, health, financial, or auth-sensitive data.
-- Drafting privacy disclosures, consent flows, and data-retention copy for voice products.
-- Auditing existing VUI for missing trust indicators (listening indicator, stop command, history access).
-- Building agentic pipelines where ASR transcripts feed LLM calls and require redaction first.
+- The triggering activity for vui-privacy-security appears in the user's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Pure text chatbots — covered by general data-privacy methodologies, not VUI specifics.
-- One-off internal tools with no user voice capture (agent-only TTS announcements).
-- Formal compliance scoping (GDPR DPIA, HIPAA controls) — VUI principles inform but do not replace formal assessment.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/ui-designer/` parent skill context | vocabulary, neighbouring methodologies |
+| [[vui-conversation-design]] | upstream context this methodology builds on |
+| [[vui-iot-integration]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-vui-privacy-security-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-vui-privacy-security.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `pro/ux/ui-designer/`
+- [[vui-conversation-design]]
+- [[vui-iot-integration]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

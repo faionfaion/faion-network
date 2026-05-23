@@ -3,72 +3,102 @@ slug: cross-platform-token-distribution
 tier: pro
 group: ux
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A pipeline pattern for distributing design tokens from a single source (Tokens Studio / Figma) to multiple platform outputs — CSS variables, SCSS maps, iOS Swift, Android XML, React Native — using Style Dictionary as the transform engine.
-content_id: "56e9659da11bd971"
-tags: [design-tokens, style-dictionary, multi-platform, ci-drift-detection, design-systems]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pipeline spec for distributing design tokens from a single source (Tokens Studio / Figma) to CSS / SCSS / iOS Swift / Android XML / React Native using Style Dictionary, with CI-time drift detection.
+content_id: "dc38b103b3233fdb"
+complexity: deep
+produces: spec
+est_tokens: 5100
+tags: [design-tokens, style-dictionary, multi-platform, ci-drift, design-systems]
 ---
 # Cross-Platform Token Distribution
 
 ## Summary
 
-**One-sentence:** A pipeline pattern for distributing design tokens from a single source (Tokens Studio / Figma) to multiple platform outputs — CSS variables, SCSS maps, iOS Swift, Android XML, React Native — using Style Dictionary as the transform engine.
+**One-sentence:** Pipeline spec for distributing design tokens from a single source (Tokens Studio / Figma) to CSS / SCSS / iOS Swift / Android XML / React Native using Style Dictionary, with CI-time drift detection.
 
-**One-paragraph:** A pipeline pattern for distributing design tokens from a single source (Tokens Studio / Figma) to multiple platform outputs — CSS variables, SCSS maps, iOS Swift, Android XML, React Native — using Style Dictionary as the transform engine. Tokens are authored once and emitted per-platform via config-driven transforms; CI blocks merges when outputs drift from source.
+**One-paragraph:** Pipeline spec for distributing design tokens from a single source (Tokens Studio / Figma) to CSS / SCSS / iOS Swift / Android XML / React Native using Style Dictionary, with CI-time drift detection. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Standing up a tokens pipeline before component code is written.
+- Eliminating hand-copied colour values from native repos.
+- Wiring CI to fail the build if the platform outputs drift from the source.
+- Adding a new platform output (React Native, Compose) to an existing pipeline.
+- Auditing why a token rename never reached the Android repo.
 
 ## Applies If (ALL must hold)
 
-- Setting up a multi-platform product (web + iOS + Android) with shared brand tokens.
-- Migrating a web-only token set to cover native platforms.
-- Adding CI gates that fail when generated platform outputs are stale relative to source.
-- Auditing drift between Figma token export and shipped artifacts.
+- The triggering activity for cross-platform-token-distribution appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- Single-platform web-only products — Style Dictionary adds pipeline complexity with no payoff.
-- Pre-design-system phase where the token contract is still unstable; pipeline churn exceeds value.
-- Brand assets that change every campaign — distribution overhead exceeds reuse benefit.
-- Closed mobile apps with a single developer who hand-edits XML — overhead exceeds saved minutes.
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/` parent skill context | vocabulary, neighbouring methodologies |
+| [[token-organization]] | upstream context this methodology builds on |
+| [[semantic-tokens-and-modes]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-cross-platform-token-distribution-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cross-platform-token-distribution.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/ux/ui-designer/`
+- [[token-organization]]
+- [[semantic-tokens-and-modes]]
+- [[multi-platform-design-parity]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.

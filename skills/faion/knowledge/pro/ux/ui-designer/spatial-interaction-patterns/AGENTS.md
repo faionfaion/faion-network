@@ -3,71 +3,102 @@ slug: spatial-interaction-patterns
 tier: pro
 group: ux
 domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Reference for the five input modalities in spatial/XR interfaces (hand tracking, controllers, gaze, voice, gesture) and the three primary interaction patterns (direct manipulation, ray-casting, gaze+dwell) with their respective use cases, strengths, and accessibility implications.
-content_id: "aba67744189197d0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for the five spatial input modalities (hand tracking / controllers / gaze / voice / gesture) × three interaction patterns (direct manipulation / ray-casting / gaze-and-dwell) with use cases, strengths, and accessibility implications.
+content_id: "41a2567dc1bc3588"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [spatial-interaction, xr, input-modality, accessibility, gesture]
 ---
 # Spatial Interaction Patterns
 
 ## Summary
 
-**One-sentence:** Reference for the five input modalities in spatial/XR interfaces (hand tracking, controllers, gaze, voice, gesture) and the three primary interaction patterns (direct manipulation, ray-casting, gaze+dwell) with their respective use cases, strengths, and accessibility implications.
+**One-sentence:** Spec for the five spatial input modalities (hand tracking / controllers / gaze / voice / gesture) × three interaction patterns (direct manipulation / ray-casting / gaze-and-dwell) with use cases, strengths, and accessibility implications.
 
-**One-paragraph:** Reference for the five input modalities in spatial/XR interfaces (hand tracking, controllers, gaze, voice, gesture) and the three primary interaction patterns (direct manipulation, ray-casting, gaze+dwell) with their respective use cases, strengths, and accessibility implications.
+**One-paragraph:** Spec for the five spatial input modalities (hand tracking / controllers / gaze / voice / gesture) × three interaction patterns (direct manipulation / ray-casting / gaze-and-dwell) with use cases, strengths, and accessibility implications. The methodology pins inputs to citable sources, runs ≥5 testable rules to reject fabricated or un-anchored outputs, and emits an artefact that a downstream agent or named human reviewer can sign off without re-deriving the reasoning. Decision tree in `content/06-decision-tree.xml` routes the caller to apply-or-skip based on observable signals.
+
+**Ефективно для:**
+
+- Choosing the primary modality for a new XR feature.
+- Designing a fallback path when hand tracking is unreliable.
+- Auditing accessibility coverage across modalities (e.g., gaze-only path exists).
+- Resolving conflicts between two simultaneous active modalities.
+- Mapping the modality choice to the device-target's hardware constraints.
 
 ## Applies If (ALL must hold)
 
-- Designing interaction flows for an XR application
-- Selecting primary and fallback input modalities for a spatial feature
-- Evaluating an existing XR interaction for accessibility (gaze+dwell as motor-impairment fallback)
-- Writing interaction specifications for XR developers
+- The triggering activity for spatial-interaction-patterns appears in the operator's workload at least once per cycle.
+- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
+- A named consumer exists for the output — either a human reviewer or a downstream agent.
+- An auditable source-of-truth is available for the inputs this methodology requires.
 
 ## Skip If (ANY kills it)
 
-- 2D touch or mouse-based interfaces — different interaction model
-- Voice-only VUI design — use error-handling-in-vui or vui-accessibility-inclusivity instead
-- Platform selection decisions — use spatial-computing-overview instead
+- One-off, never-to-repeat work — methodology overhead does not pay back.
+- No named consumer for the artefact — output will be orphaned regardless of quality.
+- Inputs are not available from a citable source-of-truth (paraphrased substitutes are worse than skipping).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Input brief | Markdown or ticket | operator / upstream methodology |
+| Source-of-truth refs | URLs, transcript ids, dashboard snapshots | external systems |
+| Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/ux/` parent skill context | vocabulary, neighbouring methodologies |
+| [[spatial-ui-patterns]] | upstream context this methodology builds on |
+| [[spatial-computing-overview]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `fill-spatial-interaction-patterns-artefact` | sonnet | Bounded template fill with citation discipline. |
+| `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-interaction-patterns.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+
 
 ## Related
 
-- parent skill: `pro/ux/ui-designer/`
+- [[spatial-ui-patterns]]
+- [[spatial-computing-overview]]
+- [[enterprise-xr-applications]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
