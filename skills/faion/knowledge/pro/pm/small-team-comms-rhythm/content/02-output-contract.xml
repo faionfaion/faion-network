@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Small Team Comms Rhythm Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `CommsRhythmConfig` — exactly-three-rituals + duration caps + roster + per-cycle log.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/comms-rhythm-config.json",
+  "type": "object",
+  "required": ["team_id", "header", "team_size", "rituals", "cycle_log"],
+  "properties": {
+    "team_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "team_size": {"type": "integer", "minimum": 2, "maximum": 3},
+    "rituals": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["ritual_id", "name", "mode", "duration_minutes_cap"],
+        "properties": {
+          "ritual_id": {"enum": ["daily_pulse", "weekly_sync", "monthly_direction"]},
+          "name": {"type": "string"},
+          "mode": {"enum": ["async", "sync"]},
+          "duration_minutes_cap": {"type": "integer", "minimum": 0, "maximum": 60}
+        }
+      }
+    },
+    "cycle_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cycle_iso", "ritual_id", "founder_only", "agenda_published_24h"],
+        "properties": {
+          "cycle_iso": {"type": "string"},
+          "ritual_id": {"type": "string"},
+          "founder_only": {"type": "boolean"},
+          "agenda_published_24h": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>`team_size` &gt;= 4 — violates `r5-graduation-trigger`; retire methodology.</item>
+      <item>`rituals.length` != 3 — violates `r1-three-rituals-only`.</item>
+      <item>Any ritual with `ritual_id == "daily_pulse"` AND `mode == "sync"` — violates `r3-async-by-default`.</item>
+      <item>Any weekly_sync `duration_minutes_cap` &gt; 30 — violates `r4-weekly-30-min-cap`.</item>
+      <item>`cycle_log[*].founder_only == true` — violates `r2-founder-not-presenter`.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "team_id": "indie-2",
+  "header": {"owner": {"role": "founder", "person": "founder-handle"}, "last_reviewed": "2026-05-10", "version": "1.4"},
+  "team_size": 2,
+  "rituals": [
+    {"ritual_id": "daily_pulse", "name": "Async daily pulse", "mode": "async", "duration_minutes_cap": 5},
+    {"ritual_id": "weekly_sync", "name": "Weekly 30-min sync", "mode": "sync", "duration_minutes_cap": 30},
+    {"ritual_id": "monthly_direction", "name": "Monthly direction check", "mode": "sync", "duration_minutes_cap": 45}
+  ],
+  "cycle_log": [
+    {"cycle_iso": "2026-W20", "ritual_id": "weekly_sync", "founder_only": false, "agenda_published_24h": true}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "team_id": "x",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "team_size": 5,
+  "rituals": [
+    {"ritual_id": "daily_pulse", "name": "Daily standup zoom", "mode": "sync", "duration_minutes_cap": 15},
+    {"ritual_id": "weekly_sync", "name": "Weekly", "mode": "sync", "duration_minutes_cap": 60},
+    {"ritual_id": "monthly_direction", "name": "Monthly", "mode": "sync", "duration_minutes_cap": 45},
+    {"ritual_id": "extra", "name": "Extra", "mode": "sync", "duration_minutes_cap": 30}
+  ],
+  "cycle_log": [{"cycle_iso": "2026-W20", "ritual_id": "weekly_sync", "founder_only": true, "agenda_published_24h": false}]
+}
+]]></code>
+    <note>team_size 5 (graduation trigger); 4 rituals; daily pulse is sync zoom; weekly 60min; founder_only true.</note>
+  </example>
+
+  <reference path="scripts/validate-small-team-comms-rhythm.py">Validator script</reference>
+</text>

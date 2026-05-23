@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="SaaS Stack Audit Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Per-tool tree mapping (last_login_days, tied_to_revenue, duplicate_of, seat_utilisation) to one of 5 buckets.</summary>
+
+  <decision-tree>
+    <root-question id="q-inventory-size">inventory.length &gt;= 5?</root-question>
+
+    <branch when="inventory_small == true">
+      <conclusion ref="r1-full-stack-inventory" verdict="skip-this-methodology — stack too small; overhead exceeds value"/>
+    </branch>
+
+    <branch when="inventory_small == false">
+      <question id="q-duplicate">tool.duplicate_of != null?</question>
+
+      <branch when="duplicate == true">
+        <conclusion ref="r2-classification-bucket" verdict="consolidate or cancel: keep the one tied_to_revenue; reject parallel tools"/>
+      </branch>
+
+      <branch when="duplicate == false">
+        <question id="q-revenue">tied_to_revenue == true?</question>
+
+        <branch when="revenue_tied == false">
+          <question id="q-login">last_login_days &gt; 90?</question>
+          <branch when="dormant == true">
+            <conclusion ref="r3-evidence-required-to-keep" verdict="cancel: no revenue tie + no recent login = no defensible reason to keep"/>
+          </branch>
+          <branch when="dormant == false">
+            <conclusion ref="r3-evidence-required-to-keep" verdict="suspend: no revenue tie but recent use; pause until next quarter; force re-justification"/>
+          </branch>
+        </branch>
+
+        <branch when="revenue_tied == true">
+          <question id="q-seat-util">seat_utilisation &lt; 60%?</question>
+          <branch when="seat_underused == true">
+            <conclusion ref="r4-kill-list-signed" verdict="downgrade_seat: tied to revenue but over-provisioned; downgrade to lower tier"/>
+          </branch>
+          <branch when="seat_underused == false">
+            <conclusion ref="r4-kill-list-signed" verdict="keep: revenue tie + active utilisation; document evidence + signed by founder"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="jira-tool">
+    inventory=5+ → duplicate_of=linear → consolidate/cancel → cancel (linear is primary).
+  </example>
+</text>

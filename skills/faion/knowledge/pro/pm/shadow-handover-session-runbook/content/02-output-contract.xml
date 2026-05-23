@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Shadow Handover Session Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `HandoverSessionRecord` — pre-agreed task list + per-task receiver-driven verdict + gap log + two-party sign-off.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/handover-session-record.json",
+  "type": "object",
+  "required": ["session_id", "header", "task_list", "gap_log", "sign_off"],
+  "properties": {
+    "session_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version", "outgoing_engineer", "receiver"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"},
+        "outgoing_engineer": {"type": "string", "minLength": 2},
+        "receiver": {"type": "string", "minLength": 2}
+      }
+    },
+    "task_list": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["task_id", "description", "receiver_drove", "verdict"],
+        "properties": {
+          "task_id": {"type": "string"},
+          "description": {"type": "string", "minLength": 10},
+          "receiver_drove": {"type": "boolean"},
+          "verdict": {"enum": ["unaided", "needs_second_session", "deferred", "spf_undocumented"]}
+        }
+      }
+    },
+    "gap_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["question", "answer", "doc_link"],
+        "properties": {
+          "question": {"type": "string"},
+          "answer": {"type": "string"},
+          "doc_link": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "sign_off": {
+      "type": "object",
+      "required": ["outgoing_signed_by", "receiver_signed_by", "signed_at"],
+      "properties": {
+        "outgoing_signed_by": {"type": "string", "minLength": 2},
+        "receiver_signed_by": {"type": "string", "minLength": 2},
+        "signed_at": {"type": "string", "format": "date"}
+      }
+    }
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>Any `task_list[*].receiver_drove == false` AND `verdict != "deferred"` — violates `r1-receiver-drives` + `r5-no-skipped-tasks`.</item>
+      <item>`gap_log[*].doc_link == null` AND no open action item recorded — violates `r3-written-gap-log`.</item>
+      <item>`sign_off.outgoing_signed_by` or `receiver_signed_by` empty — violates `r4-sign-off-gate`.</item>
+      <item>`task_list` empty — violates `r5-no-skipped-tasks`.</item>
+      <item>`header.last_reviewed` &gt; 90 days — staleness.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "session_id": "hand-2026-05-20",
+  "header": {"owner": {"role": "PM", "person": "pm-handle"}, "last_reviewed": "2026-05-20", "version": "1.0", "outgoing_engineer": "outgoing-handle", "receiver": "receiver-handle"},
+  "task_list": [
+    {"task_id": "T1", "description": "Restart worker pool with no user impact", "receiver_drove": true, "verdict": "unaided"},
+    {"task_id": "T2", "description": "Restore prod DB from yesterday backup", "receiver_drove": true, "verdict": "needs_second_session"},
+    {"task_id": "T3", "description": "Run nightly batch reconciliation", "receiver_drove": false, "verdict": "deferred"}
+  ],
+  "gap_log": [
+    {"question": "Where does the prod DB password live?", "answer": "1Password vault 'prod-db'", "doc_link": "wiki/secrets#prod-db"},
+    {"question": "How do I restart the worker pool?", "answer": "systemctl restart worker@*", "doc_link": null}
+  ],
+  "sign_off": {"outgoing_signed_by": "outgoing-handle", "receiver_signed_by": "receiver-handle", "signed_at": "2026-05-20"}
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "session_id": "x",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0", "outgoing_engineer": "", "receiver": ""},
+  "task_list": [{"task_id": "T1", "description": "x", "receiver_drove": false, "verdict": "unaided"}],
+  "gap_log": [{"question": "where?", "answer": "ask", "doc_link": null}],
+  "sign_off": {"outgoing_signed_by": "", "receiver_signed_by": "", "signed_at": "2026-05-20"}
+}
+]]></code>
+    <note>receiver_drove=false but verdict=unaided (impossible); engineers empty; sign-off unsigned; gap log no doc link without action.</note>
+  </example>
+
+  <reference path="scripts/validate-shadow-handover-session-runbook.py">Validator script</reference>
+</text>

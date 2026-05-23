@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Change Order Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `ChangeOrder` — master SOW anchor + four deltas + reply-YES acceptance + immutable artefact + invoice line link.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/change-order.json",
+  "type": "object",
+  "required": ["co_id", "master_sow", "header", "scope_delta", "price_delta", "schedule_delta", "payment_terms_delta", "acceptance", "artefact"],
+  "properties": {
+    "co_id": {"type": "string"},
+    "master_sow": {
+      "type": "object",
+      "required": ["name", "date", "identifier"],
+      "properties": {
+        "name": {"type": "string", "minLength": 2},
+        "date": {"type": "string", "format": "date"},
+        "identifier": {"type": "string", "minLength": 2}
+      }
+    },
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "scope_delta": {"type": "string", "minLength": 10},
+    "price_delta": {"type": "string", "minLength": 3},
+    "schedule_delta": {"type": "string", "minLength": 3},
+    "payment_terms_delta": {"type": "string", "minLength": 3},
+    "acceptance": {
+      "type": "object",
+      "required": ["reply_yes_captured", "captured_at", "channel"],
+      "properties": {
+        "reply_yes_captured": {"type": "boolean"},
+        "captured_at": {"type": ["string", "null"]},
+        "channel": {"enum": ["email", "chat", "signed_doc"]}
+      }
+    },
+    "artefact": {
+      "type": "object",
+      "required": ["immutable_link", "invoice_line_ref"],
+      "properties": {
+        "immutable_link": {"type": "string", "minLength": 5},
+        "invoice_line_ref": {"type": "string", "minLength": 2}
+      }
+    },
+    "verbal_authorization_hours": {"type": "number", "minimum": 0, "maximum": 8}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>`master_sow.identifier` empty — violates `r1` (anchor to MSA).</item>
+      <item>Any of `{scope_delta, price_delta, schedule_delta, payment_terms_delta}` empty or "TBD" — violates `r2` (four explicit deltas).</item>
+      <item>`acceptance.reply_yes_captured == false` AND `verbal_authorization_hours &gt; 8` — violates `r4` verbal cap.</item>
+      <item>`artefact.immutable_link` empty — violates `r5` (immutable storage).</item>
+      <item>`artefact.invoice_line_ref` empty AND `acceptance.reply_yes_captured == true` — invoice must reference CO.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "co_id": "CO-002",
+  "master_sow": {"name": "Acme Web Portal SOW", "date": "2026-04-12", "identifier": "acme-2026-q2-001"},
+  "header": {"owner": {"role": "freelancer", "person": "alex"}, "last_reviewed": "2026-05-10", "version": "1.0"},
+  "scope_delta": "Add CSV export endpoint + UI button on /clients page.",
+  "price_delta": "+$1,200 flat (fixed)",
+  "schedule_delta": "New end date 2026-05-29 (+5 business days)",
+  "payment_terms_delta": "Net-14, same as SOW",
+  "acceptance": {"reply_yes_captured": true, "captured_at": "2026-05-10T14:00:00Z", "channel": "email"},
+  "artefact": {"immutable_link": "drive://co/CO-002.pdf", "invoice_line_ref": "INV-2026-05-12-L3"},
+  "verbal_authorization_hours": 0
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "co_id": "x",
+  "master_sow": {"name": "", "date": "2026-04-12", "identifier": ""},
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "scope_delta": "sure can add the export thing",
+  "price_delta": "TBD",
+  "schedule_delta": "",
+  "payment_terms_delta": "later",
+  "acceptance": {"reply_yes_captured": false, "captured_at": null, "channel": "email"},
+  "artefact": {"immutable_link": "", "invoice_line_ref": ""},
+  "verbal_authorization_hours": 24
+}
+]]></code>
+    <note>Unanchored MSA; TBD deltas; no YES; 24h verbal authorization > 8h cap; no immutable storage.</note>
+  </example>
+
+  <reference path="scripts/validate-solo-change-order-mini-contract.py">Validator script</reference>
+</text>

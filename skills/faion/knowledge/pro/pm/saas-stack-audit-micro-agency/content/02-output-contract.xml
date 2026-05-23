@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="SaaS Stack Audit Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `SaaSAuditReport` — full-stack inventory + 5-bucket classification + signed kill-list + before/after spend.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/saas-audit-report.json",
+  "type": "object",
+  "required": ["audit_id", "quarter", "header", "inventory", "kill_list", "spend_before", "spend_forecast_after", "review_log"],
+  "properties": {
+    "audit_id": {"type": "string"},
+    "quarter": {"type": "string", "pattern": "^[0-9]{4}-Q[1-4]$"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "inventory": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["tool_id", "vendor", "monthly_cost_usd", "last_login_days", "tied_to_revenue", "duplicate_of", "bucket", "evidence"],
+        "properties": {
+          "tool_id": {"type": "string"},
+          "vendor": {"type": "string"},
+          "monthly_cost_usd": {"type": "number", "minimum": 0},
+          "last_login_days": {"type": ["integer", "null"]},
+          "tied_to_revenue": {"type": "boolean"},
+          "duplicate_of": {"type": ["string", "null"]},
+          "bucket": {"enum": ["keep", "consolidate", "downgrade_seat", "suspend", "cancel"]},
+          "evidence": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "kill_list": {
+      "type": "object",
+      "required": ["items", "signed_by", "signed_at"],
+      "properties": {
+        "items": {"type": "array", "items": {"type": "string"}},
+        "signed_by": {"type": "string", "minLength": 2},
+        "signed_at": {"type": "string", "format": "date"}
+      }
+    },
+    "spend_before": {"type": "number"},
+    "spend_forecast_after": {"type": "number"},
+    "review_log": {"type": "array", "items": {"type": "object", "required": ["reviewed_at"]}}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>`inventory` length &lt; 5 — violates `r1-full-stack-inventory`.</item>
+      <item>`inventory[*].bucket == "keep"` AND `tied_to_revenue == false` AND `evidence` empty — violates `r3-evidence-required-to-keep`.</item>
+      <item>`kill_list.signed_by` empty — violates `r4-kill-list-signed`.</item>
+      <item>`spend_forecast_after` &gt;= `spend_before` while kill_list non-empty — math inconsistent.</item>
+      <item>`header.last_reviewed` &gt; 90 days — violates `r5-savings-tracked-next-quarter`.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "audit_id": "audit-2026-Q2",
+  "quarter": "2026-Q2",
+  "header": {"owner": {"role": "founder", "person": "founder-handle"}, "last_reviewed": "2026-05-10", "version": "3.1"},
+  "inventory": [
+    {"tool_id": "linear", "vendor": "Linear", "monthly_cost_usd": 60, "last_login_days": 1, "tied_to_revenue": true, "duplicate_of": null, "bucket": "keep", "evidence": ["primary issue tracker for acme + bigco"]},
+    {"tool_id": "jira", "vendor": "Atlassian", "monthly_cost_usd": 35, "last_login_days": 64, "tied_to_revenue": false, "duplicate_of": "linear", "bucket": "cancel", "evidence": ["duplicate of linear; last login 64d"]},
+    {"tool_id": "loom-pro", "vendor": "Loom", "monthly_cost_usd": 16, "last_login_days": 130, "tied_to_revenue": false, "duplicate_of": null, "bucket": "suspend", "evidence": ["last login 130d; free tier sufficient"]},
+    {"tool_id": "harvest", "vendor": "Harvest", "monthly_cost_usd": 24, "last_login_days": 3, "tied_to_revenue": true, "duplicate_of": null, "bucket": "keep", "evidence": ["primary time tracker; feeds vendor-margin-defense"]},
+    {"tool_id": "notion", "vendor": "Notion", "monthly_cost_usd": 40, "last_login_days": 1, "tied_to_revenue": true, "duplicate_of": null, "bucket": "downgrade_seat", "evidence": ["5 seats but 3 active; downgrade to team plan"]}
+  ],
+  "kill_list": {"items": ["jira", "loom-pro"], "signed_by": "founder-handle", "signed_at": "2026-05-10"},
+  "spend_before": 175,
+  "spend_forecast_after": 124,
+  "review_log": [{"reviewed_at": "2026-05-10"}]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "audit_id": "x", "quarter": "2026-Q2",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "inventory": [{"tool_id": "x", "vendor": "x", "monthly_cost_usd": 100, "last_login_days": 200, "tied_to_revenue": false, "duplicate_of": null, "bucket": "keep", "evidence": []}],
+  "kill_list": {"items": [], "signed_by": "", "signed_at": "2026-05-10"},
+  "spend_before": 100, "spend_forecast_after": 100, "review_log": []
+}
+]]></code>
+    <note>Inventory &lt; 5; keep without revenue tie or evidence; kill_list unsigned; stale review.</note>
+  </example>
+
+  <reference path="scripts/validate-saas-stack-audit-micro-agency.py">Validator script</reference>
+</text>

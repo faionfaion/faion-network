@@ -3,13 +3,16 @@ slug: small-team-comms-rhythm
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Small Team Comms Rhythm — a 2-to-3-person comms cadence (founder + 1-2 ICs, no scrum master) sized for micro-agencies and indie teams where formal PM artefacts are overkill.
-content_id: "ce1dbfb37afd533a"
-tags: [small-team-comms-rhythm, pm, pro]
+summary: 2-3 person founder-led comms cadence — async daily pulse + ≤30-min weekly sync + monthly direction check — with hard 3-person size cap; graduates to formal PM/agile methodology at team-size 4+.
+content_id: "9c60e9b8e254309b"
+complexity: medium
+produces: playbook-step
+est_tokens: 3300
+tags: [pm, pro, comms, micro-agency, indie, founder]
 ---
 # Small Team Comms Rhythm
 
@@ -17,29 +20,85 @@ tags: [small-team-comms-rhythm, pm, pro]
 
 **One-sentence:** A minimal 2-to-3-person comms cadence — async daily pulse + weekly 30-minute sync + monthly direction check — sized for a founder-as-PM team with no scrum master, no formal stakeholder matrix, and no patience for ceremony.
 
-**One-paragraph:** Existing PM content assumes either a formal communications-management plan with stakeholders and a comms matrix (overkill for 2-3 people) or a scrum team with ceremonies (assumes a scrum master). Nothing in the corpus is designed for "the founder is the PM and the second person is the senior IC and there is no scrum master." That is the most common micro-agency reality and it has zero methodology coverage. This rhythm names the three load-bearing rituals, what each must produce, and the absolute size cap (3 people) past which the team graduates to a different methodology.
+**One-paragraph:** Existing PM content assumes either a formal communications-management plan (overkill for 2-3 people) or a scrum team with ceremonies (assumes a scrum master). The corpus has nothing for "the founder is the PM and the second person is the senior IC and there is no scrum master." That is the most common micro-agency reality. This methodology names the three load-bearing rituals (async daily pulse, ≤30-min weekly sync, ≤45-min monthly direction check), what each must produce, the founder-not-presenter rule (founder is one voice among 2-3, not moderator), and the absolute graduation trigger at team-size ≥ 4.
+
+**Ефективно для:**
+
+- Founder + 1-2 ICs, no scrum master, continuous client shipping.
+- Resisting scope-bloat of comms ceremony at micro-agency scale.
+- Explicit graduation trigger: 4+ people → adopt formal PM/agile methodology.
+- Async pulses preserve working hours; sync slots stay surgical.
 
 ## Applies If (ALL must hold)
 
-- team is 2 or 3 people total (counting founder)
-- no dedicated PM or scrum master exists or is planned
-- the team needs to ship continuously with clients or users counting on them
-- tier == pro or higher (gating enforced by tier-manifest)
+- Team is 2 or 3 people total (including founder).
+- No dedicated PM or scrum master exists or is planned.
+- Team ships continuously with clients or users counting on them.
+- Tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- team is ≥4 people — graduate to `pm-agile` or `pro/pm/founder-as-pm-survival-kit`
-- a dedicated PM is in place — use formal comms-management methodology
-- the work is async-only with no real-time overlap — different rhythm needed
+- Team is ≥ 4 people — graduate to `pm-agile` or formal PM methodology.
+- Dedicated PM is in place — use formal comms-management methodology.
+- Work is async-only with no real-time overlap — different rhythm needed.
+- No founder identity — methodology assumes founder-led decisions.
 
-## Content
+## Prerequisites
 
-| File | What's inside |
-|------|---------------|
-| `content/01-core-rules.xml` | 5 testable rules: three rituals, founder-not-presenter, async-by-default, max 30-minute weekly, graduation trigger |
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Team roster (2-3 people) | YAML | founder |
+| Async channel (Slack thread / Notion doc) | tool | platform |
+| Weekly sync calendar slot | calendar | founder |
+| Monthly direction check slot | calendar | founder |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| [[remote-1-1-async-fallback]] | Async pulse pattern reused for cross-tz / leave cases. |
+| [[team-morale-pulse-survey]] | Cannot run at this team size (anonymity broken); use direct 1:1s instead. |
+| [[retro-action-success-criteria-template]] | Direction check feeds into action items with success criteria. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 5 rules: three rituals only, founder-not-presenter, async-by-default, ≤30-min weekly, graduation trigger | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `CommsRhythmConfig` + per-cycle log | ~800 |
+| `content/03-failure-modes.xml` | essential | 6 modes: founder broadcast, ritual creep, daily standup zoom, agenda-less sync, missed graduation, async fatigue | ~900 |
+| `content/04-procedure.xml` | medium | 5-step: declare config → run daily pulse → weekly sync → monthly check → graduation watch | ~600 |
+| `content/06-decision-tree.xml` | essential | Tree: team_size + ritual_count + sync_duration → run / repair / graduate | ~400 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `pulse-compose` | haiku | Fixed text. |
+| `sync-agenda-curate` | sonnet | Light judgment on prioritisation. |
+| `direction-synthesise` | sonnet | Cross-month synthesis. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | CommsRhythmConfig skeleton + cycle log table |
+| `templates/header.yaml` | Frontmatter schema |
+| `templates/_smoke-test.json` | Minimum viable filled `CommsRhythmConfig` |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-small-team-comms-rhythm.py` | Validate: team_size ≤ 3, ritual count == 3, weekly_minutes ≤ 30, founder-not-presenter | Pre-merge |
+| `scripts/staleness-check.py` | Flag configs whose `last_reviewed` > 90 days | Weekly cron |
 
 ## Related
 
-- upstream playbook: `p5-micro-agency-founder/Run 2-3 person team comms without a full-time PM`
-- parent skill: `pro/pm/`
-- related methodology: `pro/pm/founder-as-pm-survival-kit`
+- [[remote-1-1-async-fallback]]
+- [[retro-action-success-criteria-template]]
+- [[team-development]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps team_size + ritual_count + sync_duration to run / repair / graduate. Every leaf references a rule from `01-core-rules.xml`.

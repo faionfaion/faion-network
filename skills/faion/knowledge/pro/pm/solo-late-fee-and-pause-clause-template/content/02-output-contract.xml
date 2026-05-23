@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Late-Fee Clause Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `LateFeeClauseSpec` — late-fee tiered schedule + 14-day pause right + re-engagement fee + jurisdiction review citation.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/late-fee-clause-spec.json",
+  "type": "object",
+  "required": ["spec_id", "jurisdiction", "header", "late_fee_tiers", "pause_days", "re_engagement_fee_usd", "jurisdiction_review", "clause_text"],
+  "properties": {
+    "spec_id": {"type": "string"},
+    "jurisdiction": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "late_fee_tiers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["after_days", "rate_pct_per_month"],
+        "properties": {
+          "after_days": {"type": "integer", "minimum": 1},
+          "rate_pct_per_month": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "pause_days": {"type": "integer", "minimum": 14},
+    "re_engagement_fee_usd": {"type": "number", "minimum": 0},
+    "jurisdiction_review": {
+      "type": "object",
+      "required": ["reviewed_by", "reviewed_at", "memo_link"],
+      "properties": {
+        "reviewed_by": {"type": "string", "minLength": 2},
+        "reviewed_at": {"type": "string", "format": "date"},
+        "memo_link": {"type": "string", "minLength": 5}
+      }
+    },
+    "clause_text": {"type": "string", "minLength": 100}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>`pause_days` &lt; 14 — violates `r3-pause-after-14-days`.</item>
+      <item>`re_engagement_fee_usd == 0` — violates `r4-re-engagement-fee`.</item>
+      <item>`jurisdiction_review.memo_link` empty — violates `r5-jurisdiction-review`.</item>
+      <item>`late_fee_tiers` has flat single-rate without escalation — violates `r2-late-fee-tiered`.</item>
+      <item>`clause_text` shorter than 100 chars OR delivered only via email — violates `r1-clause-in-sow-not-email`.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "us-CA-2026-v3",
+  "jurisdiction": "US-CA",
+  "header": {"owner": {"role": "freelancer", "person": "alex"}, "last_reviewed": "2026-05-10", "version": "3.0"},
+  "late_fee_tiers": [
+    {"after_days": 14, "rate_pct_per_month": 1.5},
+    {"after_days": 30, "rate_pct_per_month": 3.0},
+    {"after_days": 60, "rate_pct_per_month": 5.0}
+  ],
+  "pause_days": 14,
+  "re_engagement_fee_usd": 500,
+  "jurisdiction_review": {"reviewed_by": "counsel-handle", "reviewed_at": "2026-02-10", "memo_link": "drive://legal/us-ca-late-fee-v3.pdf"},
+  "clause_text": "Late payment fees: invoices unpaid beyond 14 days accrue a 1.5%/month fee. After 30 days, 3.0%/month. After 60 days, 5.0%/month. Pause right: Vendor may suspend work after 14 days unpaid with 5-business-day notice. Re-engagement: $500 paid in advance to resume."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spec_id": "x", "jurisdiction": "?",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "late_fee_tiers": [{"after_days": 30, "rate_pct_per_month": 1.5}],
+  "pause_days": 7,
+  "re_engagement_fee_usd": 0,
+  "jurisdiction_review": {"reviewed_by": "", "reviewed_at": "2024-01-01", "memo_link": ""},
+  "clause_text": "see email"
+}
+]]></code>
+    <note>Pause &lt; 14 days; flat single-tier fee; re-engagement fee 0; no jurisdiction review; clause delivered "see email".</note>
+  </example>
+
+  <reference path="scripts/validate-solo-late-fee-and-pause-clause-template.py">Validator script</reference>
+</text>

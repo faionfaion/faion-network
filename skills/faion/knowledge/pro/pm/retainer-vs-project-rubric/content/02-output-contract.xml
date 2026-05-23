@@ -1,43 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retainer Vs Project Rubric — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A scoring artefact: 4–7 named dimensions, each with 1–5 BARS anchors, an explicit aggregation rule, and per-score evidence pointers.</summary>
+<text id="02-output-contract" title="Retainer vs Project Rubric Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `EngagementRubric` — 4-7 named dimensions on 1-5 BARS scales + evidence per score + aggregated recommendation.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>dimension.name + dimension.anchors (5 anchor descriptions)</item>
-      <item>score.value (1–5) + score.evidence (verbatim pointer)</item>
-      <item>aggregation_rule (min | weighted_sum | veto_on_1)</item>
-      <item>calibration.last_run_at + calibration.reviewers (≥ 2)</item>
-      <item>version + owner + last_calibrated_at</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/engagement-rubric.json",
+  "type": "object",
+  "required": ["opportunity_id", "header", "dimensions", "aggregate_score", "recommendation"],
+  "properties": {
+    "opportunity_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version", "reviewers"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"},
+        "reviewers": {"type": "array", "minItems": 2, "items": {"type": "string"}}
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["dimension_id", "name", "score", "anchor_text", "evidence"],
+        "properties": {
+          "dimension_id": {"type": "string"},
+          "name": {"type": "string"},
+          "score": {"type": "integer", "minimum": 1, "maximum": 5},
+          "anchor_text": {"type": "string", "minLength": 10},
+          "evidence": {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "aggregate_score": {"type": "number"},
+    "recommendation": {"enum": ["retainer", "project", "hybrid", "decline"]}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>dimension &apos;subjective overall&apos; or similar</description>
-      <reason>Unanchored dimensions collapse the score.</reason>
-    </antipattern>
-    <antipattern>
-      <description>score without evidence pointer</description>
-      <reason>Opinion-scoring with no defence.</reason>
-    </antipattern>
-    <antipattern>
-      <description>aggregation by &apos;reviewer feeling&apos;</description>
-      <reason>Hides poor dimensions; not reproducible.</reason>
-    </antipattern>
-    <antipattern>
-      <description>calibration &gt; 6 months stale</description>
-      <reason>Anchors drift from current reality.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>4–7 dimensions with 5-point anchored scales.</item>
-      <item>Each score carries verbatim evidence.</item>
-      <item>Aggregation rule is published and applied.</item>
-      <item>Calibration pass run in the last 6 months.</item>
-      <item>Versioned + named owner.</item>
+      <item>`dimensions.length` outside [4, 7] — violates `r1-named-dimensions`.</item>
+      <item>Any dimension with `evidence` empty — violates `r2-evidence-per-score`.</item>
+      <item>Two reviewers reach scores differing by &gt; 1 without calibration log — violates `r4-calibration-pass`.</item>
+      <item>`recommendation` outside enum — violates `r3-aggregation-rule`.</item>
+      <item>`header.last_reviewed` &gt; 90 days — violates `r5-versioned`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "opportunity_id": "acme-inbound-2026-05",
+  "header": {"owner": {"role": "founder", "person": "founder-handle"}, "last_reviewed": "2026-05-10", "version": "2.1", "reviewers": ["founder", "partner"]},
+  "dimensions": [
+    {"dimension_id": "predictability", "name": "Predictability of work", "score": 4, "anchor_text": "Recurring monthly cadence with stable deliverable shape", "evidence": "brief#cadence-section"},
+    {"dimension_id": "churn_risk", "name": "Churn risk", "score": 3, "anchor_text": "Stakeholder change every 12mo; budget renewed annually", "evidence": "brief#stakeholders"},
+    {"dimension_id": "scope_creep_risk", "name": "Scope creep risk", "score": 2, "anchor_text": "History of out-of-SOW requests in prior project", "evidence": "transcript://meet/2026-04-20"},
+    {"dimension_id": "margin_profile", "name": "Margin profile", "score": 4, "anchor_text": "Estimated 28% margin per current rate card", "evidence": "p_and_l-est.pdf"},
+    {"dimension_id": "founder_fatigue", "name": "Founder fatigue impact", "score": 5, "anchor_text": "No personal-time overlap required", "evidence": "calendar-check"}
+  ],
+  "aggregate_score": 18,
+  "recommendation": "retainer"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "opportunity_id": "x",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0", "reviewers": ["one"]},
+  "dimensions": [{"dimension_id": "subj", "name": "subjective overall", "score": 3, "anchor_text": "ok", "evidence": ""}],
+  "aggregate_score": 3,
+  "recommendation": "good"
+}
+]]></code>
+    <note>Only 1 dimension; subjective overall dimension forbidden; evidence empty; reviewers &lt; 2; recommendation outside enum; stale review.</note>
+  </example>
+
+  <reference path="scripts/validate-retainer-vs-project-rubric.py">Validator script</reference>
 </text>

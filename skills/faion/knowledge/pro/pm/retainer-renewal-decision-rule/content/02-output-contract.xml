@@ -1,43 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retainer Renewal Decision Rule — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A decision-rule artefact: named inputs, published thresholds, a default branch, and a per-invocation log.</summary>
+<text id="02-output-contract" title="Retainer Renewal Decision Rule Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `RetainerDecision` — named numeric inputs + thresholds → keep / upsell / renegotiate / kill + signed evidence.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>rule.inputs (name + source per input)</item>
-      <item>rule.thresholds (numeric or boolean)</item>
-      <item>rule.default_branch (the unhappy-path action)</item>
-      <item>invocation.log (timestamp + inputs + branch + decider)</item>
-      <item>owner + version + last_reviewed</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/retainer-decision.json",
+  "type": "object",
+  "required": ["client_id", "quarter", "header", "inputs", "thresholds", "decision", "evidence", "review_log"],
+  "properties": {
+    "client_id": {"type": "string"},
+    "quarter": {"type": "string", "pattern": "^[0-9]{4}-Q[1-4]$"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["realised_margin_pct", "utilisation_pct", "nps", "strategic_fit"],
+      "properties": {
+        "realised_margin_pct": {"type": "number"},
+        "utilisation_pct": {"type": "number", "minimum": 0, "maximum": 200},
+        "nps": {"type": "integer", "minimum": -100, "maximum": 100},
+        "strategic_fit": {"type": "integer", "minimum": 1, "maximum": 5}
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": ["margin_min", "utilisation_max", "nps_min", "strategic_fit_min"],
+      "properties": {
+        "margin_min": {"type": "number"},
+        "utilisation_max": {"type": "number"},
+        "nps_min": {"type": "integer"},
+        "strategic_fit_min": {"type": "integer", "minimum": 1, "maximum": 5}
+      }
+    },
+    "decision": {"enum": ["keep", "upsell", "renegotiate", "kill"]},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "review_log": {"type": "array", "items": {"type": "object", "required": ["reviewed_at"]}}
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>input named &apos;judgment&apos;</description>
-      <reason>Unnamed inputs let bias dominate.</reason>
-    </antipattern>
-    <antipattern>
-      <description>thresholds without numbers</description>
-      <reason>Not reproducible.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no default branch</description>
-      <reason>Edge cases collapse the rule.</reason>
-    </antipattern>
-    <antipattern>
-      <description>invocations not logged</description>
-      <reason>Rule cannot be reviewed against outcomes.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Inputs named with source.</item>
-      <item>Thresholds carry numbers.</item>
-      <item>Default branch documented.</item>
-      <item>Each invocation logged with branch and decider.</item>
-      <item>Owner + last_reviewed populated.</item>
+      <item>`inputs.*` empty or "tbd" — violates `r1-named-inputs`.</item>
+      <item>`thresholds.*` non-numeric ("good") — violates `r2-published-thresholds`.</item>
+      <item>`decision` outside enum — violates `r3-default-action`.</item>
+      <item>`evidence` empty — violates `r4-recorded-call`.</item>
+      <item>`header.last_reviewed` &gt; 90 days — violates `r5-review-on-failure`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "client_id": "acme",
+  "quarter": "2026-Q2",
+  "header": {"owner": {"role": "founder", "person": "founder-handle"}, "last_reviewed": "2026-05-10", "version": "1.4"},
+  "inputs": {"realised_margin_pct": 12, "utilisation_pct": 95, "nps": 40, "strategic_fit": 3},
+  "thresholds": {"margin_min": 25, "utilisation_max": 90, "nps_min": 30, "strategic_fit_min": 3},
+  "decision": "renegotiate",
+  "evidence": ["transcript://meet/q2-review-2026-05-08", "p_and_l-acme-q2.pdf"],
+  "review_log": [{"reviewed_at": "2026-05-10"}]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "client_id": "x", "quarter": "2026-Q2",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "inputs": {"realised_margin_pct": 5, "utilisation_pct": 95, "nps": 10, "strategic_fit": 2},
+  "thresholds": {"margin_min": "good", "utilisation_max": "fine", "nps_min": "ok", "strategic_fit_min": 3},
+  "decision": "keep_because_client_likes_us",
+  "evidence": [],
+  "review_log": []
+}
+]]></code>
+    <note>Non-numeric thresholds; invalid decision; empty evidence; stale review; owner empty.</note>
+  </example>
+
+  <reference path="scripts/validate-retainer-renewal-decision-rule.py">Validator script</reference>
 </text>

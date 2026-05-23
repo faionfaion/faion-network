@@ -3,57 +3,102 @@ slug: rpo-rto-negotiation-guide
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: RPO/RTO Negotiation Guide: structures the product-vs-cost conversation between architect and business stakeholders so DR targets are chosen by the buyer, not invented by engineering.
-content_id: "c6bc454256fe2ef2"
-tags: [rpo-rto-negotiation-guide, pm, pro]
+summary: Four-step negotiation framework (impact-quantification → cost-curve → tier-banding → signed acceptance) that turns RPO/RTO from engineering invention into a stakeholder-owned product-vs-cost decision with typed acceptance record + refresh cadence.
+content_id: "11a07e6d6eb5d3b8"
+complexity: medium
+produces: decision-record
+est_tokens: 3500
+tags: [pm, pro, rpo, rto, dr, negotiation, infrastructure]
 ---
 # RPO/RTO Negotiation Guide
 
 ## Summary
 
-**One-sentence:** A scripted negotiation framework that turns Recovery Point Objective and Recovery Time Objective from an engineering invention into an explicit product-vs-cost trade-off owned by the stakeholder who actually pays for downtime.
+**One-sentence:** A scripted four-step negotiation framework (impact-quantification → cost-curve → tier-banding → signed acceptance) that turns RPO/RTO from engineering invention into an explicit product-vs-cost decision owned by the stakeholder who actually pays for downtime.
 
-**One-paragraph:** RPO/RTO is a business decision dressed up as a technical one. When the architect picks the numbers alone, the team builds expensive infrastructure for a tolerance the business never asked for, or — worse — builds cheap infrastructure for a tolerance the business cannot survive. This methodology gives the architect the conversation: a four-step structure (impact-quantification → cost-curve presentation → tier-banding → signed acceptance) plus the specific questions that force the stakeholder to own the chosen number. Output is a signed RPO/RTO commitment record per system, with the cost-curve evidence attached, that downstream design and procurement decisions can cite as authority.
+**One-paragraph:** RPO/RTO is a business decision dressed up as a technical one. When the architect picks the numbers alone, the team either over-spends on infrastructure or under-protects the business. This methodology forces the conversation: present cost-of-downtime BEFORE infrastructure cost, present ≥3 banded options each with RPO/RTO + cost delta + operational impact, force a signed acceptance record with stakeholder's own words, refresh annually. Output is a typed `AcceptanceRecord` per system carrying system_id, chosen_rpo, chosen_rto, cost_band, stakeholder_handle, evidence_link, refresh_due.
+
+**Ефективно для:**
+
+- New system / major rearchitecture / DR plan refresh needing explicit RPO/RTO numbers.
+- Architect-vs-stakeholder negotiation with budget authority present.
+- Decision audit trail for cost-of-downtime + agreed targets.
+- Annual refresh as customer expectations + infra unit economics change.
 
 ## Applies If (ALL must hold)
 
-- a new system, major rearchitecture, or DR plan refresh is in scope and needs explicit RPO/RTO numbers
-- there is at least one named business stakeholder with budget authority for the system
-- the architect can produce or sketch a cost-curve (cost as a function of RPO/RTO target)
-- tier == pro or higher
+- New system / rearchitecture / DR plan refresh is in scope and needs explicit RPO/RTO numbers.
+- ≥ 1 named business stakeholder with budget authority for the system.
+- Architect can sketch a cost-curve (cost as function of RPO/RTO target).
+- Tier == pro or higher.
 
 ## Skip If (ANY kills it)
 
-- regulated context (banking, healthcare) where regulator-mandated RPO/RTO supersedes any negotiation — adopt the mandate and document
-- the system is a throwaway prototype with no production users
-- there is no budget authority present — defer the conversation; do not negotiate against an empty chair
+- Regulated context (banking, healthcare) with regulator-mandated RPO/RTO — adopt mandate and document.
+- Throwaway prototype with no production users.
+- No budget authority present — defer; do not negotiate against an empty chair.
+- No cost-curve data — instrument first.
 
 ## Prerequisites
 
-- list of systems in scope and their current observed RPO/RTO (if measured)
-- rough cost curve: at least three points (current, +1 tier, +2 tiers) with annual cost delta
-- impact data: revenue/hour-of-downtime estimate or proxy (transactions/hour, support cost, SLA penalty)
-- named stakeholder with budget authority and at least 60 minutes booked
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Systems in scope + current observed RPO/RTO | YAML | architect |
+| Cost-curve ≥ 3 points (current, +1 tier, +2 tier) | YAML | finance + architect |
+| Impact data (revenue/hour, transactions/hour, SLA penalty) | CSV / analytics export | finance |
+| Stakeholder w/ budget authority + 60 min | calendar | sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent role skill |
-| `pro/infra/dr-drill-scenario-library` | the drill mechanics the negotiated numbers will be validated against |
+| [[regulatory-uncertainty-buffer]] | Regulated systems mandate RPO/RTO floor before negotiation. |
+| [[rag-policy-thresholds]] | RPO/RTO breaches feed Red signal in status reporting. |
+| [[saas-stack-audit-micro-agency]] | Cost-band tier choices interact with SaaS spend. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: stakeholder-owns-number, impact-before-cost, tier-banded-options, signed-acceptance-record, refresh-cadence | ~1150 |
+| `content/01-core-rules.xml` | essential | 5 rules: stakeholder-owns-number, impact-before-cost, tier-banded-options, signed-acceptance-record, refresh-cadence | ~1150 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `AcceptanceRecord` + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 6 modes: cargo-cult, ownership ambiguity, drift, leakage, no outcome review, trigger drift | ~900 |
+| `content/04-procedure.xml` | medium | 4-step negotiation + 1-step refresh: impact → cost-curve → options → signed → annual refresh | ~600 |
+| `content/06-decision-tree.xml` | essential | Tree: regulatory mandate? stakeholder present? cost-curve data? → mandate-adopt / negotiate / defer | ~400 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `quantify-impact` | sonnet | Revenue / SLA penalty math + sponsor-facing copy. |
+| `present-tier-bands` | sonnet | 3 banded options synthesis with cost delta + operational impact. |
+| `capture-acceptance` | haiku | Mechanical transcribe of stakeholder's own words + signature. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.md` | AcceptanceRecord skeleton with default tier-bands |
+| `templates/header.yaml` | Frontmatter schema |
+| `templates/_smoke-test.json` | Minimum viable filled `AcceptanceRecord` |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-rpo-rto-negotiation-guide.py` | Validate `AcceptanceRecord`: ≥3 options presented, stakeholder echo, refresh ≤12mo, signed | Pre-merge |
+| `scripts/staleness-check.py` | Flag records whose `refresh_due` passed | Weekly cron |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager`
-- upstream playbook: `role-software-architect/Disaster-recovery plan + live drill`
-- sibling methodology: `pro/infra/rto-rpo-measurement-template`
+- [[regulatory-uncertainty-buffer]]
+- [[rag-policy-thresholds]]
+- [[saas-stack-audit-micro-agency]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps presence of regulator mandate, stakeholder availability, cost-curve data, and refresh status to mandate-adopt / negotiate / defer / refresh. Every leaf references a rule from `01-core-rules.xml`.

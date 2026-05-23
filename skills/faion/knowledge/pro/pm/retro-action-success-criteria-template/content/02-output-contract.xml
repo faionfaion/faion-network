@@ -1,45 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retro Action Success Criteria Template — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A filled `retro-action-success-criteria-template.md` (or equivalent artefact) committed to the repository / knowledge space, following the fixed section list and carrying header metadata (version, owner, last_reviewed).</summary>
+<text id="02-output-contract" title="Retro Action Success Criteria Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `RetroActionItem` — named experiment + measurement source + numeric threshold + sprint deadline + owner role + outcome verdict.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>header.version (semver)</item>
-      <item>header.owner (named role + person)</item>
-      <item>header.last_reviewed (ISO date, ≤ 6 months stale)</item>
-      <item>section list matches the Retro Action Success Criteria Template canonical schema</item>
-      <item>each section either filled or explicitly marked `not_applicable: &lt;reason&gt;`</item>
-      <item>evidence links populated for any claim or recommendation</item>
-      <item>decisions / actions block at the end (≥ 1 next-action)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/retro-action-item.json",
+  "type": "object",
+  "required": ["sprint_id", "header", "actions"],
+  "properties": {
+    "sprint_id": {"type": "string", "pattern": "^S[0-9]+$"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "last_reviewed", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "version": {"type": "string"}
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["action_id", "experiment", "input_signal", "measurement_source", "threshold", "deadline_sprint", "owner_role", "outcome_verdict"],
+        "properties": {
+          "action_id": {"type": "string"},
+          "experiment": {"type": "string", "minLength": 20},
+          "input_signal": {"type": "string"},
+          "measurement_source": {"type": "string"},
+          "threshold": {"type": "string", "minLength": 5},
+          "deadline_sprint": {"type": "string", "pattern": "^S[0-9]+$"},
+          "owner_role": {"type": "string", "minLength": 2},
+          "outcome_verdict": {"enum": ["pending", "met", "missed", "abandoned"]}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>free-form sections invented at fill-time</description>
-      <reason>Breaks comparability and audit.</reason>
-    </antipattern>
-    <antipattern>
-      <description>claims without evidence links</description>
-      <reason>Templates without anchors decay into opinion.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing owner or expired last_reviewed</description>
-      <reason>Anonymous / stale templates lose authority.</reason>
-    </antipattern>
-    <antipattern>
-      <description>sections silently skipped without `not_applicable`</description>
-      <reason>Reviewers cannot tell skipped from forgotten.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
     <list>
-      <item>Header carries version, owner, last_reviewed.</item>
-      <item>All canonical sections present (filled or marked not_applicable).</item>
-      <item>Each claim has an evidence link.</item>
-      <item>Final block lists explicit next-actions with owners.</item>
-      <item>Artefact is committed to the agreed path.</item>
+      <item>Any `actions[*].experiment` shorter than 20 chars or containing "communicate better" / "improve handoffs" without falsifiable threshold — violates `r1-fixed-shape`.</item>
+      <item>`actions[*].threshold` empty or "feels good" — violates `r2-evidence-fields`.</item>
+      <item>`actions[*].owner_role` empty or "team" — violates `r3-version-and-owner`.</item>
+      <item>`actions[*].deadline_sprint` not S-prefixed — violates `r1-fixed-shape`.</item>
+      <item>`header.last_reviewed` &gt; 90 days — violates `r3-version-and-owner`.</item>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "sprint_id": "S14",
+  "header": {"owner": {"role": "team-lead", "person": "tl-handle"}, "last_reviewed": "2026-05-10", "version": "1.3"},
+  "actions": [
+    {"action_id": "S14-1",
+     "experiment": "Rotate PR-review-day owner Fri; cap reviewer WIP at 5",
+     "input_signal": "cycle_time_p95_days",
+     "measurement_source": "Jira filter / GitHub PR API",
+     "threshold": "reduce p95 from 4d to 3d by end S15",
+     "deadline_sprint": "S15",
+     "owner_role": "tech-lead",
+     "outcome_verdict": "pending"}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "sprint_id": "S14",
+  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0"},
+  "actions": [{"action_id": "x", "experiment": "communicate better", "input_signal": "", "measurement_source": "",
+               "threshold": "feels good", "deadline_sprint": "soon", "owner_role": "team", "outcome_verdict": "pending"}]
+}
+]]></code>
+    <note>Experiment too vague; empty input/measurement; non-S-prefixed deadline; owner "team"; threshold vague.</note>
+  </example>
+
+  <reference path="scripts/validate-retro-action-success-criteria-template.py">Validator script</reference>
 </text>

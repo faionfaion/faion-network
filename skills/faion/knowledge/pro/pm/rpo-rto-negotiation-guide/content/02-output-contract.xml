@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="RPO/RTO Negotiation Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) for `AcceptanceRecord` — ≥3 tier-banded options + chosen tier + stakeholder echo + impact basis + refresh_due.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rpo-rto-acceptance.json",
+  "type": "object",
+  "required": ["record_id", "system_id", "header", "options_presented", "chosen", "impact_basis", "stakeholder_handle", "evidence_link", "decided_at", "refresh_due"],
+  "properties": {
+    "record_id": {"type": "string"},
+    "system_id": {"type": "string"},
+    "header": {
+      "type": "object",
+      "required": ["owner", "version"],
+      "properties": {
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
+        "version": {"type": "string"}
+      }
+    },
+    "options_presented": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["tier_name", "rpo", "rto", "annual_cost_delta", "operational_impact"],
+        "properties": {
+          "tier_name": {"type": "string"},
+          "rpo": {"type": "string"},
+          "rto": {"type": "string"},
+          "annual_cost_delta": {"type": "string"},
+          "operational_impact": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "chosen": {
+      "type": "object",
+      "required": ["tier_name", "rpo", "rto", "stakeholder_echo"],
+      "properties": {
+        "tier_name": {"type": "string"},
+        "rpo": {"type": "string"},
+        "rto": {"type": "string"},
+        "stakeholder_echo": {"type": "string", "minLength": 10}
+      }
+    },
+    "impact_basis": {"type": "string", "minLength": 20},
+    "stakeholder_handle": {"type": "string"},
+    "evidence_link": {"type": "string", "minLength": 5},
+    "decided_at": {"type": "string", "format": "date"},
+    "refresh_due": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>`options_presented` length &lt; 3 — violates `r3-tier-banded-options`.</item>
+      <item>`chosen.stakeholder_echo` empty — violates `r1-stakeholder-owns-number`.</item>
+      <item>`impact_basis` empty or shorter than 20 chars — violates `r2-impact-before-cost`.</item>
+      <item>`refresh_due` &gt; 12 months from `decided_at` — violates `r5-refresh-cadence`.</item>
+      <item>`evidence_link` empty — violates `r4-signed-acceptance-record`.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "record_id": "rpo-rto-2026-05-checkout",
+  "system_id": "checkout-prod",
+  "header": {"owner": {"role": "architect", "person": "architect-handle"}, "version": "1.2"},
+  "options_presented": [
+    {"tier_name": "tier-0", "rpo": "24h", "rto": "8h", "annual_cost_delta": "+$0", "operational_impact": "current baseline; recovery from off-site backup"},
+    {"tier_name": "tier-1", "rpo": "1h", "rto": "4h", "annual_cost_delta": "+$11k/yr", "operational_impact": "hourly snapshots; warm standby in different AZ"},
+    {"tier_name": "tier-2", "rpo": "15min", "rto": "1h", "annual_cost_delta": "+$28k/yr", "operational_impact": "streaming replication; cross-region failover playbook"}
+  ],
+  "chosen": {"tier_name": "tier-2", "rpo": "15min", "rto": "1h", "stakeholder_echo": "We accept tier-2: 15-minute RPO, 1-hour RTO at +$28k/yr. Worth it given $9k/hr revenue loss."},
+  "impact_basis": "$9k/hr revenue lost during outage; historical 6h/yr outage = $54k/yr exposure",
+  "stakeholder_handle": "@cfo",
+  "evidence_link": "meet://transcripts/2026-05-20-dr-negotiation",
+  "decided_at": "2026-05-20",
+  "refresh_due": "2027-05-20"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "record_id": "x", "system_id": "x",
+  "header": {"owner": {"role": "team", "person": ""}, "version": "0"},
+  "options_presented": [{"tier_name": "only", "rpo": "1h", "rto": "1h", "annual_cost_delta": "?", "operational_impact": "ok"}],
+  "chosen": {"tier_name": "only", "rpo": "1h", "rto": "1h", "stakeholder_echo": ""},
+  "impact_basis": "tbd",
+  "stakeholder_handle": "",
+  "evidence_link": "",
+  "decided_at": "2026-05-20",
+  "refresh_due": "2030-05-20"
+}
+]]></code>
+    <note>Only 1 option; no stakeholder echo; impact_basis tbd; no evidence; refresh_due > 12 months out.</note>
+  </example>
+
+  <reference path="scripts/validate-rpo-rto-negotiation-guide.py">Validator script</reference>
+</text>
