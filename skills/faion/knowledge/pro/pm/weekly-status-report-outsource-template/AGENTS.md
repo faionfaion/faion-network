@@ -3,12 +3,15 @@ slug: weekly-status-report-outsource-template
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "ea11aa767c56121d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Weekly Status Report Outsource Template: produces a versioned, owner-signed artefact that closes the gap 'p4-outsource-specialist/Weekly client status report'."
+content_id: "6707e8fcd2ea8ac8"
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [weekly-status-report-outsource-template, pm, pro]
 ---
 # Weekly Status Report Outsource Template
@@ -18,6 +21,12 @@ tags: [weekly-status-report-outsource-template, pm, pro]
 **One-sentence:** Weekly Status Report Outsource Template: produces a versioned, owner-signed artefact that closes the gap 'p4-outsource-specialist/Weekly client status report'.
 
 **One-paragraph:** Addresses the gap surfaced by 'p4-outsource-specialist/Weekly client status report': Existing status-report template in project-manager skill is generic PMI. Outsource specialist needs an offshore-shop-to-onshore-client variant that the client PM can forward unchanged. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a weekly status report outsource template artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Outsource-engagement з weekly client status reports як invoice-trigger.
+- Engagement-manager хоче consistent structure через всі клієнти.
+- Client читає звіт за <5 хв і отримує decision-ready summary.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +57,12 @@ tags: [weekly-status-report-outsource-template, pm, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -64,17 +76,22 @@ tags: [weekly-status-report-outsource-template, pm, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-status-report-outsource-template.json` | JSON schema for the Weekly Status Report Outsource Template output contract |
-| `templates/weekly-status-report-outsource-template.md` | Markdown skeleton with the required fields |
+| `templates/weekly-status-report-outsource-template.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/weekly-status-report-outsource-template.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-weekly-status-report-outsource-template.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-weekly-status-report-outsource-template.py` | Enforce Weekly Status Report Outsource Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-weekly-status-report-outsource-template.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/pm/`
 - upstream playbook: `p4-outsource-specialist/Weekly client status report`
 - pro/pm/p4-outsource-specialist
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

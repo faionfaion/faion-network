@@ -3,12 +3,15 @@ slug: customer-journey-bottleneck-attack
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Customer Journey Bottleneck Attack: codified product practice that turns the recurring 'role-product-manager/Run a quarterly journey-bottleneck attack' decision into a repeatable, auditable artefact.
-content_id: "57dc250eb3e7b93d"
+content_id: "2d4578a2e3037a52"
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [customer-journey-bottleneck-attack, product, pro]
 ---
 # Customer Journey Bottleneck Attack
@@ -18,6 +21,12 @@ tags: [customer-journey-bottleneck-attack, product, pro]
 **One-sentence:** Customer Journey Bottleneck Attack: codified product practice that turns the recurring 'role-product-manager/Run a quarterly journey-bottleneck attack' decision into a repeatable, auditable artefact.
 
 **One-paragraph:** Customer Journey Bottleneck Attack addresses the gap surfaced by 'role-product-manager/Run a quarterly journey-bottleneck attack'. Faion has continuous-discovery and OST but no journey-mapping methodology and no bottleneck-prioritization frame. This is the standard quarterly planning move in any mature product team and its absence pushes PMs back to feature-list roadmaps. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Quarterly journey-bottleneck attack — recurring PM ritual з auditable artefact.
+- Команда має friction-map і потребує ranked design-backlog як вихід.
+- PM хоче, щоб attack приймав discrete рішення, не open-ended "ми покращимо UX".
 
 ## Applies If (ALL must hold)
 
@@ -50,9 +59,12 @@ tags: [customer-journey-bottleneck-attack, product, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -66,17 +78,22 @@ tags: [customer-journey-bottleneck-attack, product, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/customer-journey-bottleneck-attack.json` | JSON schema for the Customer Journey Bottleneck Attack output contract |
-| `templates/customer-journey-bottleneck-attack.md` | Markdown skeleton with the required fields |
+| `templates/customer-journey-bottleneck-attack.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/customer-journey-bottleneck-attack.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-customer-journey-bottleneck-attack.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-customer-journey-bottleneck-attack.py` | Enforce Customer Journey Bottleneck Attack output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-customer-journey-bottleneck-attack.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/product/product-manager/`
 - upstream playbook: `role-product-manager/Run a quarterly journey-bottleneck attack`
 - methodology family: `pro/product/` (gap-p2 batch, F-059-063)
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

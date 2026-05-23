@@ -3,15 +3,17 @@ slug: design-ops-foundations
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Rituals, tooling stack, design-team capacity model for the missing 'design-ops' sibling of marketing-ops and dev-ops.
-content_id: "6ffc908737f4d610"
+content_id: "8fe90a978d44d73f"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [design-ops-foundations, product, pro]
 ---
-
 # Design Ops Foundations
 
 ## Summary
@@ -19,6 +21,12 @@ tags: [design-ops-foundations, product, pro]
 **One-sentence:** Rituals, tooling stack, design-team capacity model for the missing 'design-ops' sibling of marketing-ops and dev-ops.
 
 **One-paragraph:** Design Ops is a real industry sub-discipline (NN/g, DesignOps Assembly). Corpus has marketing-ops and dev-ops siblings but no design-ops methodology covering rituals, tooling stack, design-team capacity model. Output: ritual calendar + tool inventory + capacity model + critique cadence.
+
+**Ефективно для:**
+
+- Маленька дизайн-команда створює перший design-ops setup без enterprise overhead.
+- Потрібна capacity model, ritual-stack, tooling-stack як стартова основа.
+- Дизайн-ops як sibling до dev-ops і marketing-ops — без копіювання enterprise шаблонів.
 
 ## Applies If (ALL must hold)
 
@@ -50,9 +58,12 @@ tags: [design-ops-foundations, product, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -62,9 +73,27 @@ tags: [design-ops-foundations, product, pro]
 | `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
 | `review_for_compliance` | opus | cross-input synthesis when stakes are high |
 
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/design-ops-foundations.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/design-ops-foundations.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-design-ops-foundations.py --self-test |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-design-ops-foundations.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
+
 ## Related
 
 - parent skill: `pro/product/product-manager/`
 - peer methodology: `pro/ux/ux-ui-designer`
 - peer methodology: `pro/pm/pm-agile`
 - external: https://www.nngroup.com/articles/design-ops-101/ (NN/g DesignOps 101); https://designopsassembly.com/
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

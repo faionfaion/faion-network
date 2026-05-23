@@ -3,12 +3,15 @@ slug: design-debt-audit
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "b1d75e29b7ee318a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Design Debt Audit delivers a concrete, testable methodology that turns the recurring task of 'Journey-map-driven attack: from friction map to ranked design-backlog' into an auditable artefact, addressing the gap: Recurring audit of accumulated UX shortcuts, deprecated patterns, a
+content_id: "7417f04e80b13717"
+complexity: medium
+produces: report
+est_tokens: 4400
 tags: [product, pro, audit, methodology]
 ---
 # Design Debt Audit
@@ -18,6 +21,12 @@ tags: [product, pro, audit, methodology]
 **One-sentence:** Design Debt Audit delivers a concrete, testable methodology that turns the recurring task of 'Journey-map-driven attack: from friction map to ranked design-backlog' into an auditable artefact, addressing the gap: Recurring audit of accumulated UX shortcuts, deprecated patterns, ad-hoc styles. Sister to design-system-drift-audit but viewed from the user-facing surface.
 
 **One-paragraph:** Recurring audit of accumulated UX shortcuts, deprecated patterns, ad-hoc styles. Sister to design-system-drift-audit but viewed from the user-facing surface. Design Debt Audit closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Journey-map-driven attack: from friction map to ranked design-backlog' (role-ux-ui-designer, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+
+**Ефективно для:**
+
+- Накопичений UX shortcut, deprecated patterns, AI-generated layouts потребують audit.
+- Design Ops веде recurring аудит з ranked design-backlog як output.
+- PM хоче знати carry-over open findings cap і next-cycle review trigger.
 
 ## Applies If (ALL must hold)
 
@@ -49,9 +58,12 @@ tags: [product, pro, audit, methodology]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -65,16 +77,22 @@ tags: [product, pro, audit, methodology]
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/design-debt-audit.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/design-debt-audit.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-design-debt-audit.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-design-debt-audit.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/product/` (see neighbouring methodologies)
 - triggering activity: `role-ux-ui-designer/Journey-map-driven attack: from friction map to ranked design-backlog`
 - external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

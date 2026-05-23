@@ -3,12 +3,15 @@ slug: vendor-management-pm
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5e4810af6af65258"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Vendor Management Pm: produces a versioned, owner-signed artefact that closes the gap 'role-project-manager/Multi-team coordination & dependency-graph reasoning (P6 product)'."
+content_id: "0ed73e74a15c3cd6"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [vendor-management-pm, pm, pro]
 ---
 # Vendor Management Pm
@@ -18,6 +21,12 @@ tags: [vendor-management-pm, pm, pro]
 **One-sentence:** Vendor Management Pm: produces a versioned, owner-signed artefact that closes the gap 'role-project-manager/Multi-team coordination & dependency-graph reasoning (P6 product)'.
 
 **One-paragraph:** Addresses the gap surfaced by 'role-project-manager/Multi-team coordination & dependency-graph reasoning (P6 product)': procurement-management has a vendor_score.py but no ongoing vendor-management methodology: cadence of vendor 1:1s, escalation paths, SLA tracking, vendor-of-record decisions, change-management when vendor team rotates. Critical for P4 PMs managing sub-vendors. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a vendor management pm artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Multi-team coordination з vendor-залежностями і dependency-graph reasoning.
+- PM веде декілька vendor relationships і потребує structured oversight.
+- P6 продукт має vendor SLAs, які треба tracking без full ITIL стека.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +57,12 @@ tags: [vendor-management-pm, pm, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -64,17 +76,22 @@ tags: [vendor-management-pm, pm, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/vendor-management-pm.json` | JSON schema for the Vendor Management Pm output contract |
-| `templates/vendor-management-pm.md` | Markdown skeleton with the required fields |
+| `templates/vendor-management-pm.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/vendor-management-pm.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-vendor-management-pm.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-vendor-management-pm.py` | Enforce Vendor Management Pm output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-vendor-management-pm.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/pm/`
 - upstream playbook: `role-project-manager/Multi-team coordination & dependency-graph reasoning (P6 product)`
 - pro/pm/role-project-manager
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

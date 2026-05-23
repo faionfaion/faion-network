@@ -3,12 +3,15 @@ slug: warranty-period-sop
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "51268dcb2013dd80"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Warranty Period Sop: produces a versioned, owner-signed artefact that closes the gap 'p3-technical-freelancer/Project kickoff to handover (typical 6-12 week engagement)'."
+content_id: "702f9168c23862a8"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [warranty-period-sop, pm, pro]
 ---
 # Warranty Period Sop
@@ -18,6 +21,12 @@ tags: [warranty-period-sop, pm, pro]
 **One-sentence:** Warranty Period Sop: produces a versioned, owner-signed artefact that closes the gap 'p3-technical-freelancer/Project kickoff to handover (typical 6-12 week engagement)'.
 
 **One-paragraph:** Addresses the gap surfaced by 'p3-technical-freelancer/Project kickoff to handover (typical 6-12 week engagement)': Freelancers either swallow free post-launch fixes or fight over them. Need a defined warranty-window SOP: what's in, what's out, how to convert it into a retainer. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a warranty period sop artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Project kickoff to handover (6-12 week engagement) включає post-handover warranty.
+- Технічний фрілансер потребує SOP для warranty-period: scope, SLAs, escalation.
+- Клієнт хоче знати, що буде покрите free vs. чарджнуте після handover.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +57,12 @@ tags: [warranty-period-sop, pm, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | medium | One worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -64,17 +76,22 @@ tags: [warranty-period-sop, pm, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/warranty-period-sop.json` | JSON schema for the Warranty Period Sop output contract |
-| `templates/warranty-period-sop.md` | Markdown skeleton with the required fields |
+| `templates/warranty-period-sop.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/warranty-period-sop.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-warranty-period-sop.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-warranty-period-sop.py` | Enforce Warranty Period Sop output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-warranty-period-sop.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/pm/`
 - upstream playbook: `p3-technical-freelancer/Project kickoff to handover (typical 6-12 week engagement)`
 - pro/pm/p3-technical-freelancer
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

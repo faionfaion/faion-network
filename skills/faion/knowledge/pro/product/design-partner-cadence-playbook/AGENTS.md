@@ -3,12 +3,15 @@ slug: design-partner-cadence-playbook
 tier: pro
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4966a9ca2c4bbcb2"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: Design Partner Cadence Playbook delivers a concrete, testable methodology that turns the recurring task of 'Customer demo / sneak-peek session' into an auditable artefact, addressing the gap: Pro/geek-tier B2B PMs need a methodology for running an ongoing design-partner cohort (c
+content_id: "098ea82966153628"
+complexity: medium
+produces: playbook-step
+est_tokens: 4400
 tags: [product, pro, template, methodology]
 ---
 # Design Partner Cadence Playbook
@@ -18,6 +21,12 @@ tags: [product, pro, template, methodology]
 **One-sentence:** Design Partner Cadence Playbook delivers a concrete, testable methodology that turns the recurring task of 'Customer demo / sneak-peek session' into an auditable artefact, addressing the gap: Pro/geek-tier B2B PMs need a methodology for running an ongoing design-partner cohort (cadence, incentives, NDAs, escalation path).
 
 **One-paragraph:** Pro/geek-tier B2B PMs need a methodology for running an ongoing design-partner cohort (cadence, incentives, NDAs, escalation path). Design Partner Cadence Playbook closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Customer demo / sneak-peek session' (role-product-manager, pro tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+
+**Ефективно для:**
+
+- Pro/geek B2B PM веде design-partner cohort (3-8 customers) з регулярним cadence.
+- Customer demo / sneak-peek session перетворюється на auditable cycle.
+- PM хоче знати, коли promote partner до paying customer чи graduate з програми.
 
 ## Applies If (ALL must hold)
 
@@ -49,9 +58,11 @@ tags: [product, pro, template, methodology]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules grounded in the cited gap | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
@@ -65,16 +76,22 @@ tags: [product, pro, template, methodology]
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/design-partner-cadence-playbook.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/design-partner-cadence-playbook.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-design-partner-cadence-playbook.py --self-test |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-design-partner-cadence-playbook.py` | Validate artefact against 02-output-contract.xml schema. Exit 0/1/2. | After subagent returns; pre-commit on artefact change. |
 
 ## Related
 
 - parent skill: `pro/product/` (see neighbouring methodologies)
 - triggering activity: `role-product-manager/Customer demo / sneak-peek session`
 - external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Solo Utilization And Pipeline Dashboard Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Pins the shape of a valid Solo Utilization And Pipeline Dashboard output. Subagent must satisfy this before returning to the caller.</summary>
+
+  <section title="Required fields">
+    <output-contract>
+      <required>
+        <field name="artefact_id" type="string" required="true">stable kebab-case slug used to reference this artefact downstream</field>
+        <field name="owner" type="string" required="true">single named accountable owner (handle / email / role-with-rotation)</field>
+        <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
+        <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input by name</field>
+        <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
+        <field name="version" type="semver" required="true">e.g., 1.0.0</field>
+        <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
+      </required>
+
+      <forbidden>
+        <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
+        <pattern id="f2">rationale that does not reference any input by name</pattern>
+        <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
+        <pattern id="f4">duplicate artefact_id within the same store</pattern>
+      </forbidden>
+
+      <allowed-transformations>
+        <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
+        <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
+      </allowed-transformations>
+
+      <schema-reference path="templates/solo-utilization-and-pipeline-dashboard.schema.json"/>
+    </output-contract>
+  </section>
+
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/solo-utilization-and-pipeline-dashboard.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "decision", "version", "last_reviewed", "inputs_used"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "owner": {"type": "string", "minLength": 2},
+    "decision": {"type": "string", "minLength": 2},
+    "rationale": {"type": "string"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "inputs_used": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "smoke-solo-utilization-and-pipeline-dashboard",
+  "owner": "Maria Lopes",
+  "decision": "raise floor rate from $125 to $140",
+  "rationale": "Realised $/hr sustained $138 across three months while pipeline coverage held above 1.2x. Cites toggl-export-q1.csv and pipeline-ledger-2026-q1.md.",
+  "inputs_used": ["toggl-export-q1.csv", "pipeline-ledger-2026-q1.md"],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "no-owner",
+  "owner": "team",
+  "decision": "",
+  "inputs_used": []
+}
+]]></code>
+    <note>owner forbidden value; decision empty; inputs_used empty; version + last_reviewed missing.</note>
+  </example>
+
+  <reference path="templates/solo-utilization-and-pipeline-dashboard.md">Filled artefact skeleton</reference>
+  <reference path="scripts/validate-solo-utilization-and-pipeline-dashboard.py">Validator script</reference>
+</text>
