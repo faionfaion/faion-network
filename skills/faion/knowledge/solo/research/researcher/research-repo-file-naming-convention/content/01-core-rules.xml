@@ -1,77 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Research Repo Naming — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules every research-repo filename must satisfy. The rules exist to make artefacts retrievable by both grep and RAG agents without opening the file.</summary>
+<text id="01-core-rules" title="Research Repo File-Naming Convention Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 testable rules every Research Repo File-Naming Convention application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="The five rules">
+  <section title="Rule set">
 
     <rule id="r1-slug-only" testable="true" depth="essential">
-      <statement>Filenames use only lowercase ascii letters, digits, and hyphens. No spaces, no Cyrillic, no apostrophes, no parentheses, no underscores at the boundary segments.</statement>
-      <rationale source="cross-platform filesystem compatibility; OpenAI/Anthropic file-search practice">Mixed-case and special characters break tooling on macOS-vs-Linux casefolding, fail in URL-based stores (S3, Drive sharing), and confuse regex-based RAG ingestion. The slug rule is a pure win.</rationale>
+      <statement>Filenames MUST be lowercase kebab-case slugs with no spaces, accents, or PII.</statement>
+      <rationale source="Filesystem-portability convention">Spaces and accents break grep, S3 sync, and most LLM-tools.</rationale>
     </rule>
-
-    <rule id="r2-iso-date-prefix" testable="true" depth="essential">
-      <statement>Every file starts with ISO date `YYYY-MM-DD-` referring to the study-event date (interview date, survey close, observation date), NOT the file-creation date.</statement>
-      <rationale source="ResearchOps Community pattern; archival best practice">Sort order = chronological by event. File-creation date drifts when files are exported, copied, or re-edited. Study-event date is the only stable anchor and the one synthesis cares about.</rationale>
+    <rule id="r2-date-prefix" testable="true" depth="essential">
+      <statement>Every artefact filename MUST start with ISO date prefix YYYY-MM-DD.</statement>
+      <rationale source="Internal — Faion research-ops audits 2026">Date-prefix makes sort-by-name produce chronological order.</rationale>
     </rule>
-
-    <rule id="r3-participant-anonymised" testable="true" depth="essential">
-      <statement>Filename participant identifier MUST be of the form `P###` (zero-padded) or `P-&lt;hash-8&gt;`. Real names, emails, employer names, or phone numbers in filenames are forbidden.</statement>
-      <rationale source="GDPR Art. 5(1)(c); IRB practice; common sense">Filenames are listed in directory previews, shared in screen captures, and indexed by every backup tool. Real names in filenames are a routine PII leak path. The participant identifier is a foreign key to a separately-stored map.</rationale>
+    <rule id="r3-anonymous-participant" testable="true" depth="essential">
+      <statement>Participant ids MUST be Pnnn (P001..P999); real names are forbidden in filenames.</statement>
+      <rationale source="GDPR + Faion privacy policy">Real names in filenames leak PII into backups, search indexes, and LLM contexts.</rationale>
     </rule>
-
     <rule id="r4-study-type-tag" testable="true" depth="essential">
-      <statement>Filename includes a study-type segment from the closed enum: `int` (interview), `usab` (usability), `surv` (survey), `diary`, `intercept`, `analytics`, `synth` (synthesis output), `cs` (case-study).</statement>
-      <rationale source="Dovetail tagging practice; Atomic Research taxonomy">Closed enums beat free-form because they survive the year. A researcher tagged their own files as "user-talk" / "user-chat" / "convo" in three weeks — the synthesis agent could not group them. The enum is small enough to memorise.</rationale>
+      <statement>Every artefact MUST carry a study-type tag from the closed set {interview, usability, survey, diary, intercept}.</statement>
+      <rationale source="Internal — research taxonomy 2026">Open-set tags break the synthesis manifest.</rationale>
     </rule>
-
-    <rule id="r5-language-suffix" testable="true" depth="essential">
-      <statement>For multi-language repos, filename ends with `.&lt;lang&gt;.&lt;ext&gt;` where `&lt;lang&gt;` is the 2-letter ISO code (`uk`, `en`, `pl`, `pt`). Monolingual repos may omit; mixed repos MUST include.</statement>
-      <rationale source="i18n filename practice; LLM cross-lingual retrieval research (XLM-R, mBERT)">Cross-lingual RAG retrieves better when language is explicit in metadata; LLM judges score quotes correctly when the language is known. Mixed-language transcripts without language tag get translated when nobody asked.</rationale>
+    <rule id="r5-manifest-required" testable="true" depth="essential">
+      <statement>Every research repo MUST carry a manifest.json regenerated on each commit.</statement>
+      <rationale source="RAG-readable repo practice">Without manifest, LLM agents cannot navigate without reading every body.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Filename grammar">
-    <code lang="ebnf"><![CDATA[
-filename     ::= date "-" project "-" type "-" participant ("-" descriptor)? ("." lang)? "." ext
-date         ::= YYYY "-" MM "-" DD
-project      ::= [a-z0-9]+ ("-" [a-z0-9]+)*        -- e.g. nero, faion-cli, podcast
-type         ::= "int" | "usab" | "surv" | "diary" | "intercept" | "analytics" | "synth" | "cs"
-participant  ::= ("p" digit{3}) | ("p-" hex{8}) | "na"     -- "na" for non-participant artefacts
-descriptor   ::= [a-z0-9]+ ("-" [a-z0-9]+)*        -- short slug, optional
-lang         ::= "uk" | "en" | "pl" | "pt" | ...
-ext          ::= "md" | "txt" | "json" | "mp3" | "mp4" | "vtt" | "csv" | "pdf"
-
-example: 2026-05-12-nero-int-p012-onboarding-pain.uk.md
-example: 2026-05-14-podcast-synth-na-3-jobs-clusters.en.md
-    ]]></code>
-  </section>
-
-  <section title="Canonical examples">
-
-    <example type="good" title="Three artefacts, one study">
-      <code lang="text"><![CDATA[
-2026-05-12-nero-int-p012-raw.uk.vtt        -- raw transcript
-2026-05-12-nero-int-p012-tagged.uk.md      -- tagged by researcher
-2026-05-12-nero-int-p012-quotes.en.md      -- quote pack translated for synthesis
-      ]]></code>
-      <note>All three rules: ISO date, participant P012, study type int, language explicit. Grep `p012` → all three; grep `int` → all interviews.</note>
-    </example>
-
-    <example type="bad" title="Old-style chaos">
-      <code lang="text"><![CDATA[
-Maria interview 12 May.docx
-Copy of Maria interview FINAL v3.docx
-Interview May 2026 Maria notes (1).pdf
-maria_chat_recording.mp4
-      ]]></code>
-      <note>Real name in filename (r3 violation), no ISO date (r2), spaces and parentheses (r1), no study-type (r4), no language (r5). Cannot be RAG-indexed sanely.</note>
-    </example>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

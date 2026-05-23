@@ -3,21 +3,27 @@ slug: problem-validation-2026
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An updated problem validation methodology for 2026 emphasizing continuous evidence-based validation over one-time gates.
-content_id: "c9bc1d5454ed7076"
-tags: [problem-validation, continuous-validation, customer-discovery, evidence-hierarchy, market-research]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a quarterly problem-validation report (evidence ledger sorted on 5-level hierarchy + cold-respondent count + validated-or-hypothesis verdict) so problems are pinned to behavioral signals, not stated preferences."
+content_id: "804d7afee4d74ae5"
+complexity: medium
+produces: report
+est_tokens: 4100
+tags: [problem-validation, continuous-validation, customer-discovery, evidence-hierarchy]
 ---
+
 # Problem Validation 2026
 
 ## Summary
 
-**One-sentence:** An updated problem validation methodology for 2026 emphasizing continuous evidence-based validation over one-time gates.
+**One-sentence:** Produces a quarterly problem-validation report (evidence ledger sorted on 5-level hierarchy + cold-respondent count + validated-or-hypothesis verdict) so problems are pinned to behavioral signals, not stated preferences.
 
-**One-paragraph:** An updated problem validation methodology for 2026 emphasizing continuous evidence-based validation over one-time gates. Core rule: rank all evidence on a 5-level hierarchy (paid > committed > engaged with prototype > expressed interest > stated problem); only declare a problem validated when ≥3 tier-1 or tier-2 signals come from cold, non-network respondents. Validation is an ongoing process, not a checklist to pass once.
+**Ефективно для:** Solopreneur researchers who keep declaring problems 'validated' from warm-contact compliments and need a forced evidence-tier discipline.
+
+**One-paragraph:** Survey-only validation and warm-contact interviews systematically over-report demand. This methodology pins all validation evidence onto a 5-level hierarchy (paid > committed > engaged-with-prototype > expressed-interest > stated-problem), requires ≥3 tier-1/tier-2 signals from cold, non-network respondents, and forces quarterly re-validation. Output is consumed by mvp-scoping and value-proposition-design.
 
 ## Applies If (ALL must hold)
 
@@ -35,40 +41,60 @@ tags: [problem-validation, continuous-validation, customer-discovery, evidence-h
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| hypothesis statement | string | founder |
+| interview transcripts (diarized) | files | recording tool |
+| respondent network status | tag/cold|warm | researcher |
+| prior quarter's evidence ledger | json | previous run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/research/researcher/user-interviews` | Upstream — produces the transcripts this methodology scores. |
+| `solo/research/researcher/value-proposition-design` | Downstream — consumes validated problem statements. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 4 failure modes with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 5 step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/problem-validation-2026.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/problem-validation-2026.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-problem-validation-2026.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
+- [[user-interviews]] — related methodology.
+- [[value-proposition-design]] — related methodology.
+- [[single-interview-fast-loop-template]] — related methodology.
+- [[validation-paralysis-breaker]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

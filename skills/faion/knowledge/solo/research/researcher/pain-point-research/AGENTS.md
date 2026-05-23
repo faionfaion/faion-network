@@ -3,72 +3,100 @@ slug: pain-point-research
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A systematic methodology for discovering and scoring customer pain points across public sources (Reddit, G2, App Store, Quora, Upwork).
-content_id: "5753a01fe410ea11"
-tags: [research, pain-points, customer-research, problem-validation, scoring-framework]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Systematically discover and score customer pain points across public sources (Reddit, G2, App Store, Quora, Upwork) — produces a scored pain-point log feeding ideation."
+content_id: "8871eb42f6025bf3"
+complexity: medium
+produces: report
+est_tokens: 4700
+tags: [pain-points, research, scoring, reddit-mining, discovery]
 ---
-# Pain Point Research
+# Pain-Point Research
 
 ## Summary
 
-**One-sentence:** A systematic methodology for discovering and scoring customer pain points across public sources (Reddit, G2, App Store, Quora, Upwork).
+**One-sentence:** Systematically discover and score customer pain points across public sources (Reddit, G2, App Store, Quora, Upwork) — produces a scored pain-point log feeding ideation.
 
-**One-paragraph:** A systematic methodology for discovering and scoring customer pain points across public sources (Reddit, G2, App Store, Quora, Upwork). The rule: define audience + context first, mine at least 3 source tiers, capture verbatim quotes with URLs, score each pain on 5 weighted factors (Frequency 30%, Severity 25%, Reach 20%, Spend 15%, Alternatives 10%), then extract root causes via 5-Whys for the top findings.
+**One-paragraph:** Pain-point intuition is biased toward the operator's own pains. This methodology pins a public-source scan (Reddit search, G2 reviews, App Store reviews, Quora threads, Upwork briefs) with a fixed extraction shape (pain statement + source URL + segment + frequency proxy + workaround). Pains are scored on a 5-criterion rubric (frequency / cost / urgency / workaround quality / monetisability). Output: a pain-point log with the top 10 scored entries and source links, feeding the ideation methodology.
+
+**Ефективно для:**
+
+- Indie operator whose ideation keeps returning the same shapes.
+- Researcher building a pain-point corpus from public signals.
+- PM seeking adjacencies to existing product.
+- Founder needing evidence to argue against a vanity feature.
 
 ## Applies If (ALL must hold)
 
-- Pre-MVP: target audience defined but no validated problem yet.
-- Choosing between 3-5 candidate ideas — score the underlying pains to break ties.
-- Exploring an unfamiliar niche where domain intuition is weak.
-- Repurposing existing research (G2 reviews, Reddit threads) into a structured opportunity backlog.
+- Operator can spend ≥4 hours mining 3+ public sources.
+- Target segment is reachable via at least one public surface.
+- Pains will feed downstream ideation or feature-discovery.
+- Operator accepts that pains lacking workaround data are weak signals.
 
 ## Skip If (ANY kills it)
 
-- You already have paying users — switch to user interviews and cancellation post-mortems; stranger pain points add noise.
-- Highly regulated domains (healthcare, finance) where complaints are NDA'd and public signal is misleading.
-- B2B enterprise where buyers don't post complaints publicly — use expert calls and analyst reports instead.
-- Quantitative effect sizes are required — this methodology yields qualitative signal only.
+- Target segment is private (enterprise CIO) — public mining will miss the signal.
+- Existing pain-point log is fresh (<30 days).
+- Operator already has interview cohort access — skip to JTBD.
+- Operator wants narrative pain stories rather than scored log — different methodology.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source list | Reddit subs / G2 / App Store / Quora / Upwork | operator brief |
+| Extraction template | csv (pain + URL + segment + freq + workaround) | this methodology |
+| Scoring rubric | 5-criterion 1–5 scale | this methodology |
+| Downstream consumer | ideation OR feature-discovery | research plan |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/research/researcher/idea-generation` | downstream ideation consumes the scored log |
+| `solo/research/researcher/jobs-to-be-done` | JTBD interviews can validate top-scored pains |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-pain-point-research` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pain-point-research.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/pain-point-research.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pain-point-research.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
+- `[[idea-generation]]`
+- `[[jobs-to-be-done]]`
+- `[[problem-validation]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

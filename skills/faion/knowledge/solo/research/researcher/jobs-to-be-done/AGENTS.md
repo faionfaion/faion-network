@@ -3,87 +3,100 @@ slug: jobs-to-be-done
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: stable
-last_reviewed: 2026-05-17
-maintainers: [faion-net]
-summary: Framework that maps customer progress by interviewing recent switchers and tagging Push/Pull/Habit/Fear forces.
-content_id: "8ec6f0d653b43606"
-tags: [research, jobs-to-be-done, jtbd, customer-progress, switching-behavior]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Map customer progress via switching interviews and tag Push / Pull / Habit / Fear forces — produces a job-map + force-aggregation report."
+content_id: "416cb552400f6e2f"
+complexity: deep
+produces: report
+est_tokens: 4700
+tags: [research, jobs-to-be-done, jtbd, switching, forces]
 ---
-
-# Jobs To Be Done (improved form)
+# Jobs To Be Done (Researcher)
 
 ## Summary
 
-**One-sentence:** Framework that maps customer progress by interviewing recent switchers and tagging Push/Pull/Habit/Fear forces.
+**One-sentence:** Map customer progress via switching interviews and tag Push / Pull / Habit / Fear forces — produces a job-map + force-aggregation report.
 
-**One-paragraph:** Defines what progress customers are trying to make so products target stable motivations, not shifting feature requests. Mechanism: interview switchers within 60-90 days, tag each statement Push/Pull/Habit/Fear, synthesize 1-3 candidate "When... I want... So I can..." statements backed by ≥3 verbatim quotes each, and always capture functional + emotional + social dimensions. Primary output: validated job statement(s) with competitive set.
+**One-paragraph:** Roadmap decisions based on stated wants drift; decisions based on observed switching survive. This methodology runs JTBD switching interviews (≥10 recent switchers), tags each transcript with the four forces (Push of the situation, Pull of the new, Habit of the present, Fear of the new), and aggregates forces into a job map + force-strength rubric. Output: a JTBD report with job statement, force aggregation, and the resulting hire/fire criteria for the product.
+
+**Ефективно для:**
+
+- PM choosing between two product directions both 'wanted' by users.
+- Indie operator whose retention drops mysteriously despite high NPS.
+- Researcher establishing a JTBD baseline for a niche.
+- Founder whose 'customer wants X' inputs keep producing flat roadmaps.
 
 ## Applies If (ALL must hold)
 
-- task_type ∈ {pre-build_validation, feature_reframing, switcher_diagnosis}
-- target_audience_defined == true
-- ≥5 recent switchers (60-90 days) reachable for interviews
-- product is NOT pure impulse-purchase B2C
+- ≥10 recent switchers (within last 90 days) are reachable.
+- Operator can spend ≥45 minutes per interview.
+- Switching event was observable (signed up / cancelled / changed tools).
+- Downstream consumer reads JTBD output (roadmap / positioning).
 
 ## Skip If (ANY kills it)
 
-- product already validated AND task is optimization — use A/B testing instead
-- B2C impulse (snacks, fashion) — job is "feel good now," JTBD over-engineers
-- pure API/infra tooling — persona/feature thinking is faster
-- < 5 recent switchers reachable — JTBD without switching data is hypothesis-spinning
+- <10 reachable switchers — defer or borrow from upstream cohort.
+- Switching event isn't observable (no event log, no churn signal).
+- Team uses an opportunity-tree methodology that already encodes JTBD.
+- Operator dismisses force aggregation as 'too academic' — change methodology.
 
 ## Prerequisites
 
-- target audience defined precisely (e.g., "solo founders, post-launch, <$10k MRR")
-- recruitment channel ready (User Interviews, Respondent, warm intros)
-- interview transcripts will be stored in a folder consumable by the force-tagger
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Switcher cohort list | csv (handle + switch event + date) | billing + research |
+| JTBD interview guide | md | this methodology |
+| Force-aggregation rubric | csv / md | this methodology |
+| Job-statement template | When [situation] I want to [job] so I can [outcome] | this methodology |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/research/researcher/user-interviews` | This methodology consumes interview transcripts; does not teach interviewing technique |
-| `solo/research/researcher/problem-validation` | Pairs with JTBD for evidence weight when used together |
+| `solo/research/researcher/problem-validation` | validation discipline upstream of switching interview |
+| `solo/research/interview-insight-tagging-schema` | force tags consume controlled vocabulary |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: job-vs-solution, three dimensions, 4 forces, switcher recency, ≥5-interview minimum | ~900 |
-| `content/02-output-contract.xml` | essential | Job-statement schema, evidence requirements, forbidden patterns | ~600 |
-| `content/03-failure-modes.xml` | essential | 8 LLM-specific failure modes with detector + repair | ~1100 |
-| `content/04-switcher-interview-method.xml` | advanced | 5-stage timeline (First Thought → Consumption), questions per stage | ~800 |
-| `content/05-job-map-8-stages.xml` | advanced | Apply only if job has ≥3 distinct steps; pain mapping per stage | ~700 |
-| `content/06-cross-cultural-framing.xml` | edge | When emotional/social dimensions diverge from Christensen examples | ~500 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `screener_outreach_draft` | haiku | Template fill with audience parameters, low cost |
-| `forces_tagging_per_transcript` | sonnet | Per-statement judgment; bounded; high volume |
-| `job_statement_synthesis` | opus | Cross-transcript synthesis; needs deep coherence |
-| `job_map_expansion` (optional) | sonnet | Mechanical expansion of statement into 8 stages |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-jobs-to-be-done` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/job-statement.json` | JSON schema for validated job statement output |
-| `templates/jtbd-interview-guide.md` | Interview guide with timeline questions |
-| `templates/job-map.md` | 8-stage map skeleton (Define → Locate → Prepare → Confirm → Execute → Monitor → Modify → Conclude) |
+| `templates/jobs-to-be-done.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/jobs-to-be-done.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/force-aggregator.py` | Reads tagged transcripts, returns Push/Pull/Habit/Fear severity table | After all transcripts tagged, before synthesis |
-| `scripts/validate-job-statement.py` | Validates output vs output-contract schema | After synthesis, before main agent accepts |
+| `scripts/validate-jobs-to-be-done.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
-- peer methodologies: `problem-validation`, `pricing-research`, `value-proposition-design`
-- external: [HBR JTBD](https://hbr.org/2016/09/know-your-customers-jobs-to-be-done) · [jtbd.info](https://jtbd.info/) · [Strategyn](https://strategyn.com/jobs-to-be-done/)
+- `[[problem-validation]]`
+- `[[affinity-diagramming]]`
+- `[[pain-point-research]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -3,72 +3,100 @@ slug: problem-validation
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A methodology for confirming that a problem is real, painful, and worth solving before writing code.
-content_id: "bbd8dc64e2e0237f"
-tags: [problem-validation, customer-discovery, mom-test, customer-interviews, market-research]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Confirm a problem is real, painful, and worth solving via Mom-Test-style interviews — produces a validation report with GO / PASS / PIVOT verdict before code is written."
+content_id: "117a4c0a41d7feaf"
+complexity: medium
+produces: report
+est_tokens: 4700
+tags: [problem-validation, customer-discovery, mom-test, interviews, market-research]
 ---
 # Problem Validation
 
 ## Summary
 
-**One-sentence:** A methodology for confirming that a problem is real, painful, and worth solving before writing code.
+**One-sentence:** Confirm a problem is real, painful, and worth solving via Mom-Test-style interviews — produces a validation report with GO / PASS / PIVOT verdict before code is written.
 
-**One-paragraph:** A methodology for confirming that a problem is real, painful, and worth solving before writing code. Core rule: use The Mom Test — ask about the user's life and past behavior, never about your idea. Rank evidence on a 5-level hierarchy (payment > commitment > prototype engagement > stated interest > stated problem). Only declare a problem validated when ≥3 tier-1 or tier-2 signals come from non-network respondents.
+**One-paragraph:** Most products fail because the problem wasn't worth solving. This methodology pins the validation step: ≥7 Mom-Test interviews with target segment (questions about past behaviour, not future intent), tagged for evidence of pain (frequency, cost, workaround quality), with a scoring rubric and a single verdict. Output: a validation report ending in GO (build) / PASS (don't build) / PIVOT (adjust the problem) with named evidence per criterion.
+
+**Ефективно для:**
+
+- Solo founder considering committing engineering effort to a new product.
+- PM with a stakeholder asking 'is this worth building'.
+- Indie operator who keeps building before validating.
+- Researcher producing the validation report for a board-level go/no-go.
 
 ## Applies If (ALL must hold)
 
-- After idea-generation, before MVP build — confirm the problem is real and painful.
-- When growth has stalled and product-problem fit is suspect.
-- Before adding a major feature: validate that the underlying job-to-be-done exists.
-- During pivots, to test the new problem hypothesis cheaply before writing code.
+- Candidate problem stated as a sentence.
+- Target segment reachable for ≥7 interviews.
+- Operator can run Mom-Test-style interviews (past-behaviour probes).
+- Decision to build or not is genuinely open.
 
 ## Skip If (ANY kills it)
 
-- Post-launch with strong revenue and retention — switch to feature prioritization frameworks.
-- High-velocity B2C consumer products where behavior trumps stated preference — run a paid-ads landing-page test instead.
-- Regulated or specialized B2B (healthcare, finance) where interviews carry compliance overhead — use expert calls and analyst frameworks.
-- When the purpose is validation theatre to feel safe rather than genuine disproof.
+- Problem is already validated by paying customers.
+- <7 reachable interviewees — defer or borrow upstream cohort.
+- Operator cannot tolerate a PASS verdict — methodology produces no value.
+- Decision is already made and the report is theatre — skip.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Problem statement | 1 sentence (segment + job + trigger) | ideation output |
+| Target segment list | ≥7 named interviewees | recruiting |
+| Mom-Test interview guide | md | this methodology |
+| Scoring rubric | frequency / cost / workaround quality / urgency / segment-fit | this methodology |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/research/researcher/jobs-to-be-done` | JTBD interview canon underpins Mom-Test discipline |
+| `solo/research/researcher/pain-point-research` | pain corpus upstream of problem-statement validation |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-problem-validation` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/problem-validation.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/problem-validation.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-problem-validation.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
+- `[[jobs-to-be-done]]`
+- `[[pain-point-research]]`
+- `[[niche-evaluation]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

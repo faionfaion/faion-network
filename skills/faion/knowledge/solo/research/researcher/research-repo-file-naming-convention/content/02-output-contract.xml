@@ -1,56 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Research Repo Naming — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Folder layout, manifest schema, and the participant-id map. Synthesis agents (LLM tagger, RAG store) consume the manifest, not the raw files.</summary>
+<text id="02-output-contract" title="Research Repo File-Naming Convention Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of a valid Research Repo File-Naming Convention output. Subagent must satisfy this before returning to the caller.</summary>
 
   <output-contract>
     <required>
-      <field name="folder_tree" must_contain="recruit/, run/, tag/, synth/, archive/, participants/"/>
-      <field name="manifest" path="research/manifest.json"
-             required_keys="version,generated_at,files,total_count,language_counts,type_counts"/>
-      <field name="participant_map" path="research/participants/map.json"
-             required_keys="version,entries[participant_id,name_hash,recruited_on,study_ids]"
-             access="restricted (do not commit to public repos; symlink from secret store)"/>
-      <field name="every_artefact.has_filename_matching_grammar" type="bool" must_be="true"/>
-      <field name="every_artefact.has_lang_suffix_if_repo_is_mixed" type="bool" must_be="true"/>
+      <field name="repo_root" type="string" required="true">absolute path to research repo</field>
+      <field name="folder_tree" type="array" required="true">lifecycle folders: recruit/, run/, tag/, synthesise/, archive/</field>
+      <field name="filename_grammar" type="string" required="true">regex for valid filenames</field>
+      <field name="manifest_schema" type="object" required="true">JSON Schema for manifest.json</field>
+      <field name="anonymisation_policy" type="string" required="true">Pnnn rule + scrub regex</field>
+      <field name="owner" type="string" required="true">named researcher</field>
+      <field name="version" type="string" required="true">semver</field>
+      <field name="last_reviewed" type="date" required="true">ISO date</field>
     </required>
 
     <forbidden>
-      <pattern id="f1">filename contains capital letters, spaces, or non-ascii characters</pattern>
-      <pattern id="f2">filename contains the participant's real name, email, phone, or employer</pattern>
-      <pattern id="f3">manifest.json missing OR last_generated &gt; 7 days ago</pattern>
-      <pattern id="f4">participants/map.json committed to a public repo OR to git history of the same repo</pattern>
-      <pattern id="f5">file in `synth/` with no source files cited in its frontmatter</pattern>
+      <pattern id="f1">filename_grammar regex matches names containing real PII</pattern>
+      <pattern id="f2">folder_tree missing any of {recruit, run, tag, synthesise, archive}</pattern>
+      <pattern id="f3">manifest_schema empty</pattern>
     </forbidden>
 
     <allowed-transformations>
-      <transformation>Add a new study-type to the enum requires version bump of manifest schema; do not silently expand.</transformation>
-      <transformation>Renumber participants is forbidden after first publication of synthesis; allocate new P### codes for new participants.</transformation>
-      <transformation>Rename a file requires both the file rename and a manifest rebuild; never one without the other.</transformation>
+      <transformation>Allowed to add per-study sub-folders under run/ when artefact count exceeds 50.</transformation>
+      <transformation>Allowed to localise filename language suffix via ISO-639-1 codes.</transformation>
     </allowed-transformations>
+
+    <schema-reference path="templates/research-repo-file-naming-convention.json"/>
   </output-contract>
 
-  <section title="Canonical folder tree">
-    <code lang="text"><![CDATA[
-research/
-├── recruit/          -- screeners, outreach, scheduling
-├── run/              -- raw artefacts: transcripts, audio, video, exports
-├── tag/              -- per-artefact tagged versions (frontmatter + tags)
-├── synth/            -- synthesis outputs (themes, jobs, jtbd statements, reports)
-├── archive/          -- closed studies, read-only
-├── participants/
-│   └── map.json      -- P### → name_hash + private metadata (NOT committed)
-├── manifest.json     -- generated, RAG-readable index
-└── README.md
-    ]]></code>
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "repo_root": "sample-repo_root",
+  "folder_tree": [
+    {
+      "k": "v"
+    }
+  ],
+  "filename_grammar": "sample-filename_grammar",
+  "manifest_schema": {
+    "k": "v"
+  },
+  "anonymisation_policy": "sample-anonymisation_policy",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "missing": "required fields"
+}
+]]></code>
+      <note>Missing required keys — validator returns non-zero with violation list.</note>
+    </example>
   </section>
 
   <section title="Self-check checklist">
     <list>
-      <item>`scripts/lint-research-repo.py` returns zero violations</item>
-      <item>`scripts/build-manifest.py` produced manifest within the last 7 days</item>
-      <item>No filename contains real names or PII</item>
-      <item>Every synth/ file cites its source artefacts in frontmatter</item>
-      <item>participants/map.json is excluded from public commits (.gitignore + signed verification)</item>
+      <item>Every required field populated with a typed value</item>
+      <item>No forbidden pattern matches the output</item>
+      <item>Transformations applied where applicable</item>
+      <item>Output validates against templates/research-repo-file-naming-convention.json</item>
     </list>
   </section>
 </text>

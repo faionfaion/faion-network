@@ -3,72 +3,97 @@ slug: use-case-mapping
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Products get built without clear understanding of how users will actually use them.
-content_id: "6bb75b23c66cb654"
-tags: [research, use-cases, requirements, user-flows, specifications]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a use-case spec (actor + goal + preconditions + main flow + alternative flows + postcondition per use-case) so engineering and QA share an unambiguous map of what users actually do."
+content_id: "abbe513721c62401"
+complexity: medium
+produces: spec
+est_tokens: 4100
+tags: [use-cases, requirements, user-flows, specifications]
 ---
+
 # Use Case Mapping
 
 ## Summary
 
-**One-sentence:** Products get built without clear understanding of how users will actually use them.
+**One-sentence:** Produces a use-case spec (actor + goal + preconditions + main flow + alternative flows + postcondition per use-case) so engineering and QA share an unambiguous map of what users actually do.
 
-**One-paragraph:** Products get built without clear understanding of how users will actually use them. Features become disconnected from real workflows, critical paths are missed, edge cases overlooked until production, and teams lack shared understanding. Use case mapping documents specific ways users interact with your product to achieve goals. It answers: What exactly will users do with this? By defining actors, goals, preconditions, main flows, alternatives, and postconditions, you create a shared understanding across business, engineering, and QA.
+**Ефективно для:** Solo PMs and BAs who keep shipping features that don't fit any real workflow because nobody mapped the actor's full journey.
+
+**One-paragraph:** Products get built without clear understanding of how users actually use them. This methodology pins each use-case to an explicit actor + goal + precondition + numbered main flow + branching alternative flows + postcondition. The output is consumable by engineering, QA, and writers as the single source of behavioural truth. Output is consumed by spec-writing and test-plan authoring.
 
 ## Applies If (ALL must hold)
 
-- Translating validated user research into specifications engineering can build from.
-- Drafting acceptance criteria when stories are too thin and edge cases are missed in production.
-- Cross-team alignment: business, engineering, and QA need a shared model of what users do and what the system must support.
-- Compliance or regulated domains where alternative flows must be explicit and documented.
+- New feature or product where the flow is non-trivial (>3 user steps).
+- Engineering and QA disagree on what 'happy path' means.
+- Specification will drive test cases or acceptance criteria.
+- Multiple actors interact with the same workflow.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: writing use cases before validating problem produces fiction and wastes effort.
-- For purely internal scripts or dev tooling where the overhead of documentation exceeds the benefit.
-- For exploratory prototyping where requirements are intentionally fuzzy and changing daily.
-- When the team uses Jobs-to-Be-Done plus user-story-mapping already; pick one model, not three competing frameworks.
+- Pure-content changes (copy, image) with no behaviour.
+- Backend-only refactors invisible to users.
+- Single-step workflows where one acceptance criterion suffices.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|---|---|---|
+| actor list with roles | array | researcher |
+| goal statements per actor | string list | researcher |
+| current journey data | transcripts/analytics | research |
+| acceptance criteria draft | list | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `solo/research/researcher/user-interviews` | Upstream — provides actor journey data. |
+| `solo/research/researcher/jobs-to-be-done` | Upstream — provides goal taxonomy. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `draft_artefact` | haiku | Template fill from prereqs. |
+| `audit_against_rules` | sonnet | Bounded judgement: do outputs satisfy 01-core-rules? |
+| `final_sign_off` | opus | Synthesis at the gate before downstream handoff. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/use-case-mapping.json` | JSON Schema for the output contract (machine-validatable). |
+| `templates/use-case-mapping.md` | Markdown skeleton with the required fields. |
+| `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-use-case-mapping.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
+- [[user-interviews]] — related methodology.
+- [[jobs-to-be-done]] — related methodology.
+- [[success-metrics-definition]] — related methodology.
+- [[value-proposition-design]] — related methodology.
+
+## Decision tree
+
+Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).

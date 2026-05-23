@@ -3,86 +3,99 @@ slug: competitor-tracker-template
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Lightweight monthly competitor-matrix tooling plus a stable weekly scan schema (channels watched, last delta, action queued) so competitor signal does not devolve into noise.
-content_id: "f1a84647b4450db5"
-tags: [research, competitor-analysis, market-monitoring, solo, serp, productivity]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Monthly competitor matrix + weekly scan schema (channels watched, last delta, action queued) so competitor signal doesn't devolve into noise."
+content_id: "feaaeaa147e7d509"
+complexity: medium
+produces: spec
+est_tokens: 4700
+tags: [competitor, tracking, research, serp, weekly-scan]
 ---
-
 # Competitor Tracker Template (Solo)
 
 ## Summary
 
-**One-sentence:** A lightweight monthly competitor matrix (5-7 competitors, 6-8 attributes) plus a weekly 45-min scan with a stable schema (channels watched, last delta, action queued) that keeps solo competitor research signal-rich without becoming noise.
+**One-sentence:** Monthly competitor matrix + weekly scan schema (channels watched, last delta, action queued) so competitor signal doesn't devolve into noise.
 
-**One-paragraph:** Solo SaaS builders need awareness of competitive moves but cannot run enterprise-grade analyst processes. Mechanism: pick 5-7 competitors max, define 6-8 attribute columns once (positioning, pricing, target ICP, primary channel, last-shipped-feature, recent-content-themes, customer-evidence), build the matrix once, then run a 45-min weekly scan with a fixed channel checklist that produces a delta-list and action-queue. Primary output: a versioned competitor matrix + a weekly delta journal that feeds product / marketing decisions without becoming busywork.
+**One-paragraph:** Solo operators check competitors reactively, miss launches, then overreact to noise. This methodology pins the cadence: a monthly matrix (positioning + price + segment + last-major-change), and a weekly scan schema with named channels (pricing page diff, release notes feed, X handle, newsletter, SERP) and a triage rule (delta → action: ignore / log / queue / urgent). Output: a versioned spec living in the research repo and refreshed on the cadence.
+
+**Ефективно для:**
+
+- Solo founder reactive about competitors and easily distracted.
+- PM who learns about competitor launches from Reddit two weeks late.
+- Indie operator over-pivoting on a single competitor's launch.
+- Researcher building a weekly market-signal habit.
 
 ## Applies If (ALL must hold)
 
-- founder operates in a market with >= 3 identifiable direct competitors (same ICP + same job-to-be-done)
-- founder is the constraint on competitor research time (solo or 2-person team)
-- competitor moves have influenced at least one product / pricing / positioning decision in the last 6 months
-- founder is willing to commit 45 min/week to the scan (anything more is too much for solo)
+- ≥3 named competitors are pre-identified.
+- Operator can spend ≥30 minutes weekly on the scan.
+- Tracker artefact will be referenced in roadmap conversations.
+- Operator has a triage habit (ignore vs queue) to apply to deltas.
 
 ## Skip If (ANY kills it)
 
-- pre-launch product with no defined ICP — competitor research is premature; do JTBD / problem validation first
-- pure infrastructure / API tool with no consumer-facing competitive landscape
-- founder treats competitor research as procrastination (low-value-but-feels-productive) — break the habit with a hard time-box, not better tooling
-- market is so niche that competitors are non-comparable (custom enterprise) — use win/loss interviews instead
+- Operator has fewer than 3 competitors — collect a competitor list first.
+- Existing competitive-intelligence tool already runs the scan.
+- Operator over-pivots on every competitor delta — fix decision discipline before adding signal.
+- Competitor list is in a regulated space requiring counsel-vetted intel only.
 
 ## Prerequisites
 
-- ICP defined enough to identify "competitors of the SAME ICP" (not generic "everyone with similar product")
-- list of 5-7 named competitors with primary URL + ICP statement per competitor
-- weekly 45-min calendar block agreed (the time itself is the budget)
-- one persistent file location (Notion DB, Airtable, repo /research/competitors) where the matrix lives
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Competitor list | csv (name + URL + segment + notes) | competitor scan |
+| Channel inventory per competitor | list (pricing page + release feed + X + newsletter) | manual setup |
+| Tracker template | md / Notion / spreadsheet | this methodology |
+| Triage rule sheet | ignore / log / queue / urgent | this methodology |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/research/researcher/niche-evaluation` | ICP definition feeds competitor-set scope; competitors must share ICP |
-| `solo/marketing/seo-manager/serp-monitoring` | Weekly scan reuses SERP-monitoring patterns at a lower frequency / scope |
-| `pro/research/market-researcher/competitive-positioning-map` | Pro-tier deep-dive; this methodology is the solo-cadenced subset |
+| `solo/research/market-researcher/niche-evaluation` | niche definition pins which competitors matter |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 5-7-competitor-cap, stable-schema, 45-min-time-box, delta-with-action-or-explicit-noop, monthly-prune | ~900 |
-| `content/02-output-contract.xml` | essential | Matrix schema + weekly delta journal contract + forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (matrix-bloat, scan-skip, delta-without-action, etc.) with detector + repair | ~1000 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `weekly_scan_collation` | sonnet | Aggregate channel signals (changelog, blog, pricing page, social, hiring) per competitor |
-| `delta_categorization` | sonnet | Classify changes (feature shipped, price moved, content theme, ICP shift) |
-| `action_queue_proposal` | sonnet | For each delta, propose a concrete action OR explicit no-op with reason |
-| `monthly_matrix_refresh` | opus | Cross-competitor synthesis; matrix attributes may shift over time |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-competitor-tracker-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/competitor-matrix.csv` | 5-7 competitors x 6-8 attributes matrix |
-| `templates/weekly-delta-journal.md` | Per-week journal entry template |
-| `templates/channel-checklist.md` | Channels to scan per competitor (changelog / blog / pricing / social / hiring / G2 reviews) |
+| `templates/competitor-tracker-template.md` | Markdown skeleton for the spec artefact, matching content/02-output-contract.xml |
+| `templates/competitor-tracker-template.schema.json` | JSON Schema seed + filled fixture for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/fetch-competitor-pages.py` | Pulls public pages (changelog, pricing, blog) with last-modified headers | Weekly scan input |
-| `scripts/audit-action-queue.py` | Counts delta entries with action-queued vs explicit-no-op; flags chronic gap | Monthly |
+| `scripts/validate-competitor-tracker-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
-- peer methodologies: `niche-evaluation`, `customer-evidence-collection`, `pricing-research`
-- external: [Crayon Competitive Intelligence](https://www.crayon.co/playbook) · [Klue CI Methodology](https://klue.com/blog/) · [April Dunford — Obviously Awesome (positioning)](https://www.aprildunford.com/)
+- `[[niche-evaluation]]`
+- `[[pain-point-research]]`
+- `[[problem-validation]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
