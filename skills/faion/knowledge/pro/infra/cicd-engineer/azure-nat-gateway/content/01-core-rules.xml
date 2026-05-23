@@ -1,23 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="azure-nat-gateway Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for azure-nat-gateway. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Azure NAT Gateway for Outbound Connectivity Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Azure NAT Gateway for Outbound Connectivity` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Size NAT Gateway public IP count based on expected peak outbound concurrent connections: each public IP provides ~64,000 SNAT ports. Add one additional public IP per 50,000 expected concurrent outbound connections. For web scrapers, batch HTTP, or connection-heavy workloads exceeding 50,000 concurrent connections, use multiple public IPs (max 16 per NAT Gateway) or a public IP prefix.</statement>
-      <rationale source="v1-source">SNAT port exhaustion silently drops connections — the application sees random timeouts with no Azure error. The default single-IP configuration is sufficient for typical workloads (&lt;10,000 concurrent outbound) but fails for high-fanout patterns.</rationale>
+
+    <rule id="ip-count-sized" testable="true" depth="essential">
+      <statement>Public IP count MUST be sized at ≥ 1 IP per 50,000 expected concurrent outbound connections.</statement>
+      <rationale source="Azure SNAT-port docs">Each IP gives ~64k SNAT ports; under-sizing causes silent connection drops.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use Standard SKU public IP with zone-redundant allocation (zones: ["1", "2", "3"]) for production NAT Gateways. Basic SKU public IPs are not supported with NAT Gateway.</statement>
-      <rationale source="v1-source">Zone-redundant IP ensures NAT Gateway survives an AZ failure. Basic SKU IPs are incompatible with NAT Gateway and cause a deploy-time error that is confusing to diagnose.</rationale>
+
+    <rule id="standard-zonal-ip" testable="true" depth="essential">
+      <statement>Public IPs MUST be Standard SKU with `zones = [&quot;1&quot;,&quot;2&quot;,&quot;3&quot;]` for zone redundancy. Basic SKU is forbidden.</statement>
+      <rationale source="Azure NAT Gateway docs">Zone-redundant IP survives AZ failure; Basic SKU is incompatible with NAT Gateway.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Set `idle_timeout_in_minutes` based on application connection patterns. Default is 4 minutes; increase to 10-15 minutes for applications that keep long-lived TCP connections idle (database connection pools, websockets, gRPC streams). Do NOT set it to 120 minutes (maximum) by default — connections remain in the SNAT table longer, consuming ports.</statement>
-      <rationale source="v1-source">SNAT port exhaustion is exacerbated by long idle timeouts. Each idle connection holds a SNAT port for the duration of the timeout. Connection pools that recycle connections frequently benefit from shorter timeouts (4-10 min); only set higher for genuinely long-lived streams.</rationale>
+
+    <rule id="idle-timeout-tuned" testable="true" depth="essential">
+      <statement>`idle_timeout_in_minutes` MUST be tuned to workload shape (4-15 min). 120-minute default is forbidden.</statement>
+      <rationale source="Azure SNAT port-exhaustion postmortems">Long idle timeouts hold SNAT ports unnecessarily; exhausts capacity at scale.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Configure metric alerts for `SNATConnectionCount` dropping below expected thresholds and for SNAT port utilization approaching 80% of capacity. Enable diagnostic logs on the NAT Gateway to a Log Analytics workspace. Alert on connection drops (`DroppedPackets` metric) as an early warning of SNAT exhaustion.</statement>
-      <rationale source="v1-source">SNAT exhaustion manifests as silent connection drops — no Azure error, no application error code, just timeouts. Without proactive monitoring, high-fanout workloads fail intermittently in production before the issue is identified.</rationale>
+
+    <rule id="snat-monitoring" testable="true" depth="essential">
+      <statement>Diagnostic logs MUST be enabled and `SNATConnectionCount`, `DroppedPackets` alerts MUST fire at ≥ 80% utilisation.</statement>
+      <rationale source="Azure NAT Gateway monitoring docs">SNAT exhaustion presents as silent drops; proactive alerts are the only early warning.</rationale>
     </rule>
+
+    <rule id="public-ip-prefix-large" testable="true" depth="essential">
+      <statement>Workloads requiring &gt; 16 IPs MUST use a Public IP Prefix instead of individual IPs.</statement>
+      <rationale source="Azure Public IP Prefix docs">Above 16 individual IPs the NAT Gateway limit is hit; prefix gives contiguous block.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

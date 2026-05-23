@@ -1,19 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="backup-database-mysql-mongo Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for backup-database-mysql-mongo. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="MySQL + MongoDB Backup Implementation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `MySQL + MongoDB Backup Implementation` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>MySQL backup scripts using mysqldump MUST include `--single-transaction` for InnoDB databases to avoid table locks. Scripts MUST also include `--routines` and `--triggers` to capture stored procedures and triggers that are silently excluded by default.</statement>
-      <rationale source="v1-source">Omitting --single-transaction on a busy InnoDB database causes a full table lock that blocks writes for the duration of the dump. Omitting --routines/--triggers silently produces an incomplete backup that fails application startup after restore.</rationale>
+
+    <rule id="mysqldump-flags" testable="true" depth="essential">
+      <statement>mysqldump scripts MUST include `--single-transaction`, `--routines`, `--triggers`. Other flag combinations are reviewed before use.</statement>
+      <rationale source="MySQL docs + InnoDB locking analysis">Omitting --single-transaction on busy InnoDB locks tables; omitting --routines silently drops stored procedures.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>XtraBackup backups MUST run the `--prepare` phase before uploading to remote storage. An unprepared backup directory contains redo log entries that must be applied before the data is consistent — uploading raw backup files without prepare produces a backup that cannot be directly restored.</statement>
-      <rationale source="v1-source">The --backup phase produces a crash-consistent but not transaction-consistent state. --prepare applies the redo log to make it transaction-consistent. Skipping this step is the most common XtraBackup mistake and produces a "backup" that requires the prepare step at restore time — often under pressure.</rationale>
+
+    <rule id="xtrabackup-for-hot" testable="true" depth="essential">
+      <statement>Hot physical backups on InnoDB MUST use Percona XtraBackup with `--prepare` + apply-log; raw file copy of InnoDB is forbidden.</statement>
+      <rationale source="Percona XtraBackup docs">Raw copy of running InnoDB files is corrupt; XtraBackup uses InnoDB redo log for consistency.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>MongoDB backups MUST use `mongodump --oplog` when targeting a replica set member to produce a consistent cross-collection snapshot. Restoring without `mongorestore --oplogReplay` on an oplog-captured backup produces an incomplete restore — the flag must be used on both sides.</statement>
-      <rationale source="v1-source">Without --oplog, mongodump dumps collections sequentially; a write to collection B after collection A was dumped produces an inconsistent state where A and B are at different points in time. The oplog captures the delta and replays it to bring all collections to the same timestamp.</rationale>
+
+    <rule id="binlog-for-pitr" testable="true" depth="essential">
+      <statement>MySQL PITR MUST preserve binary logs for ≥ the RPO target. Backups + binlog combination MUST be drilled end-to-end.</statement>
+      <rationale source="MySQL PITR docs">Logical or physical backup alone does not give PITR; binlog is the delta layer.</rationale>
     </rule>
+
+    <rule id="mongo-replica-set" testable="true" depth="essential">
+      <statement>Mongo backups MUST use mongodump from a secondary on a replica set; standalone-instance backup is forbidden for production.</statement>
+      <rationale source="MongoDB docs">Standalone-instance backup has no consistent snapshot; replica-set secondary gives a drift-bounded snapshot.</rationale>
+    </rule>
+
+    <rule id="restore-drill-monthly" testable="true" depth="essential">
+      <statement>Restore drills MUST run ≥ monthly for production; drill outcomes feed the RTO published in `backup-basics`.</statement>
+      <rationale source="DBA-team audit 2025">Untested DB backups are folklore; monthly drill keeps the RTO testable.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

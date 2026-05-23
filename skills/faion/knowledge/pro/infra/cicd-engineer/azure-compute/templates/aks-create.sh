@@ -1,3 +1,8 @@
+# purpose: AKS create bash script — Workload Identity + zone redundancy + Spot pool
+# consumes: see content/02-output-contract.xml
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~600-1200 tokens when loaded as context
 #!/bin/bash
 # aks-create.sh
 # Create AKS cluster with Workload Identity, KEDA, OIDC issuer, and spot node pool.

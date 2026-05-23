@@ -1,15 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="azure-front-door Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for azure-front-door. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Azure Front Door Premium (Global LB + WAF + CDN) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Azure Front Door Premium (Global LB + WAF + CDN)` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Front Door Premium origins MUST use Private Link (`private_link` block in `azurerm_cdn_frontdoor_origin`) for production backends. Do NOT mix public and private origins in the same origin group — create separate origin groups for public vs private origins. Private Link connections MUST be approved on the target resource (App Service or App Gateway) before Front Door routes traffic to them.</statement>
-      <rationale source="v1-source">Without Private Link, traffic between Front Door PoP and the backend App Gateway or App Service transits the public internet. The docs imply private chaining but do not enforce it. A public-internet leg defeats the security model of Private Link and means the backend is reachable without Front Door WAF protection.</rationale>
+
+    <rule id="private-link-origins" testable="true" depth="essential">
+      <statement>Production origins MUST use Private Link blocks; public-internet origins in prod are forbidden.</statement>
+      <rationale source="Azure Front Door Premium docs">Public-internet origin leg defeats Private Link security + lets attackers bypass FD WAF.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>When Front Door is in front of Application Gateway, the App Gateway NSG MUST restrict inbound to the `AzureFrontDoor.Backend` service tag on ports 80 and 443. This prevents direct internet access that bypasses Front Door WAF. Add this NSG rule before pointing DNS at Front Door.</statement>
-      <rationale source="v1-source">If the App Gateway public IP is reachable directly from the internet, attackers bypass Front Door's WAF entirely. The `AzureFrontDoor.Backend` service tag covers all Front Door backend IPs and is maintained by Azure automatically.</rationale>
+
+    <rule id="fd-only-nsg" testable="true" depth="essential">
+      <statement>App Gateway / origin NSG MUST restrict inbound to the `AzureFrontDoor.Backend` service tag on 80/443 — direct internet access is forbidden.</statement>
+      <rationale source="Azure security baseline">Direct origin reachability lets attackers route around Front Door entirely.</rationale>
     </rule>
+
+    <rule id="propagation-aware" testable="true" depth="essential">
+      <statement>Deploy pipelines MUST wait ≥ 15 minutes for Front Door config propagation before final health checks.</statement>
+      <rationale source="Azure Front Door config-propagation note">Premature health checks fail because half the PoPs still serve old config.</rationale>
+    </rule>
+
+    <rule id="waf-bot-protection" testable="true" depth="essential">
+      <statement>WAF policy MUST enable both OWASP CRS 3.2 and bot protection ruleset on internet-facing routes.</statement>
+      <rationale source="Azure WAF managed rules">Bot protection drops commodity scraping + credential stuffing at the edge cheaply.</rationale>
+    </rule>
+
+    <rule id="origin-group-split" testable="true" depth="essential">
+      <statement>Separate origin groups MUST be used for public vs private origins. Mixing them in the same origin group is forbidden.</statement>
+      <rationale source="Azure Front Door routing docs">Mixed origin groups cause traffic to randomly hit public endpoints, leaking traffic.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

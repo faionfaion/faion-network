@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="azure-nsg-rules Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for azure-nsg-rules. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Azure NSG Rules and Flow Logs Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Azure NSG Rules and Flow Logs` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every NSG MUST include an explicit DenyAll inbound rule at priority 4096 with source *, destination *, protocol *, port *. The rule MUST be named following the convention `DenyAllInbound`. Do NOT rely on Azure's implicit default deny — it is invisible in the rule list and easily confused by agents reviewing the Terraform plan.</statement>
-      <rationale source="v1-source">Azure's default rules (priority 65000+) allow VNet-to-VNet and outbound internet. Making the deny explicit ensures it appears in audit logs, Terraform plans, and NSG flow logs. It also prevents accidental removal of the invisible default deny by IaC drift correction tools.</rationale>
+
+    <rule id="explicit-deny-all" testable="true" depth="essential">
+      <statement>Every NSG MUST include a named `DenyAllInbound` rule at priority 4096 with source/destination/protocol/port = *. Implicit default deny is forbidden.</statement>
+      <rationale source="Azure NSG default-rules docs">Implicit default deny is invisible in audit logs + Terraform plans; explicit deny is testable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Allow rules MUST specify exact source address prefixes (subnet CIDR or service tag) and exact destination ports. Wildcards (*) in both source and destination on an allow rule are forbidden. The only exception is the AzureLoadBalancer service tag on inbound rules for health probe traffic.</statement>
-      <rationale source="v1-source">NSG rules based on legacy "Allow 80, 443 from 0.0.0.0/0" examples are the most common misconfiguration seen in Azure environments. Exact CIDRs or service tags limit blast radius when a rule is erroneously widened.</rationale>
+
+    <rule id="exact-cidr-allow" testable="true" depth="essential">
+      <statement>Allow rules MUST specify exact source CIDR / service tag and exact destination ports. Wildcard source + destination on allow is forbidden (except `AzureLoadBalancer` health probe).</statement>
+      <rationale source="Azure NSG hardening guide">`Allow 80/443 from 0.0.0.0/0` is the #1 misconfiguration; exact CIDR caps blast radius.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>NSG flow logs MUST be enabled (version 2) on every NSG in production. Logs MUST be sent to a Storage Account AND to Log Analytics via Traffic Analytics. Retention MUST be at least 30 days. Network Watcher MUST be enabled in the same region.</statement>
-      <rationale source="v1-source">Without flow logs, east-west incidents are undiagnosable. Version 2 includes byte and packet counts. Traffic Analytics correlates flows with topology for anomaly detection. Flow logs are the evidence required by SOC2 and PCI-DSS for network traffic logging.</rationale>
+
+    <rule id="flow-logs-v2" testable="true" depth="essential">
+      <statement>NSG flow logs MUST be enabled at version 2 with Traffic Analytics on every production NSG. Retention MUST be ≥ 30 days.</statement>
+      <rationale source="Azure flow logs docs + PCI logging requirements">Without flow logs, east-west incidents are undiagnosable; v2 adds byte/packet counts.</rationale>
     </rule>
+
+    <rule id="network-watcher-on" testable="true" depth="essential">
+      <statement>Network Watcher MUST be enabled in every region that has production NSGs.</statement>
+      <rationale source="Azure Network Watcher docs">Flow logs require Network Watcher; missing means flow logs silently disabled.</rationale>
+    </rule>
+
+    <rule id="audit-cadence" testable="true" depth="essential">
+      <statement>NSG rules MUST be audited quarterly; rules with no recent hits + no owner annotation are removed.</statement>
+      <rationale source="internal — NSG-rot audit">Unused legacy allow rules accumulate; quarterly audit prunes them.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

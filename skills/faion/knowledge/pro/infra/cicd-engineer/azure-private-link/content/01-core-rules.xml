@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="azure-private-link Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for azure-private-link. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Azure Private Link and Private Endpoints Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Azure Private Link and Private Endpoints` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every Private Endpoint MUST have a matching Private DNS zone linked to every VNet that needs to resolve it. The zone name MUST match the service-specific `privatelink.*` zone (see table below). The VNet link MUST have `registration_enabled = false`. Without a valid zone link, DNS from the consumer VNet falls back to the public IP silently.</statement>
-      <rationale source="v1-source">Private Endpoint DNS works by overriding the public CNAME chain. Without the Private DNS zone and VNet link, `nslookup storage.blob.core.windows.net` from inside the VNet returns the public IP — the connection works but goes over the internet, defeating the Private Endpoint entirely.</rationale>
+
+    <rule id="matching-private-dns" testable="true" depth="essential">
+      <statement>Each Private Endpoint MUST have a matching `privatelink.*` Private DNS zone linked to every consumer VNet. Missing link is forbidden.</statement>
+      <rationale source="Azure Private DNS docs">Without DNS zone link, lookups fall back to public IP silently — PE is bypassed.</rationale>
     </rule>
+
+    <rule id="registration-disabled" testable="true" depth="essential">
+      <statement>Private DNS zone VNet link MUST set `registration_enabled = false`. Auto-registration on PE zones causes duplicate records.</statement>
+      <rationale source="Azure Private DNS link docs">Auto-registration leaks workload hostnames into Private DNS, polluting the zone.</rationale>
+    </rule>
+
+    <rule id="public-access-off" testable="true" depth="essential">
+      <statement>Target PaaS resource MUST disable public network access (`public_network_access_enabled = false`).</statement>
+      <rationale source="Azure security baseline">Leaving public endpoint open defeats the Private Link security model.</rationale>
+    </rule>
+
+    <rule id="approved-connection" testable="true" depth="essential">
+      <statement>Private Endpoint connection MUST be approved on the target resource — `Pending` connections do not route traffic.</statement>
+      <rationale source="Azure Private Endpoint provisioning docs">Pending connections silently drop traffic; deploys pass but apps timeout.</rationale>
+    </rule>
+
+    <rule id="dns-zone-per-service" testable="true" depth="essential">
+      <statement>Each Azure service requires its specific privatelink zone (e.g. `privatelink.blob.core.windows.net`, `privatelink.vaultcore.azure.net`). Wrong zone is forbidden.</statement>
+      <rationale source="Azure Private DNS service-mapping table">Wrong zone breaks DNS resolution silently — apps connect to public IPs.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

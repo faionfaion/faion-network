@@ -1,27 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="azure-vnet-hub-spoke Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for azure-vnet-hub-spoke. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Azure VNet Hub-Spoke Topology Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Azure VNet Hub-Spoke Topology` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use /16 for each VNet (hub and per-spoke). Use /24 for each subnet. Reserve /22 per spoke for AKS pod CIDR (AKS needs a large contiguous block for pods — typically /16 within the cluster but the node subnet must be sized accordingly). Leave at least 50% headroom in each VNet for growth.</statement>
-      <rationale source="v1-source">Azure reserves 5 IPs per subnet. AKS with kubenet or Azure CNI requires large pod CIDRs that overflow small subnets. Planning /24 subnets avoids the common /28 or /27 that runs out immediately when adding NAT Gateway, App Gateway, and Bastion reserved IPs.</rationale>
+
+    <rule id="non-overlapping-cidr" testable="true" depth="essential">
+      <statement>Hub + every spoke VNet MUST have non-overlapping CIDRs. CIDR allocation table MUST be a versioned source-of-truth before Terraform writes.</statement>
+      <rationale source="Azure peering docs">Peering fails immediately on overlap; there is no in-place re-IP.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Hub VNet MUST NOT overlap with any spoke VNet or on-premises range. Spoke VNets MUST NOT overlap with each other. Use a CIDR allocation table (Markdown or spreadsheet) as the source of truth before writing any Terraform.</statement>
-      <rationale source="v1-source">Peering fails immediately if CIDRs overlap. On-premises VPN/ER routes are also rejected. There is no in-place re-IP; you must delete and recreate.</rationale>
+
+    <rule id="vnet-16-subnet-24" testable="true" depth="essential">
+      <statement>VNets MUST be /16 and subnets MUST be /24. AKS pod CIDR MUST reserve ≥ /22 per spoke.</statement>
+      <rationale source="Azure networking sizing guide">Smaller subnets run out when NAT Gateway, App Gateway, Bastion all reserve IPs.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Application Gateway subnets MUST include a delegation to `Microsoft.Network/applicationGateways` (required since 2025). AKS node subnets MAY include delegation to `Microsoft.ContainerService/managedClusters`. PostgreSQL Flexible Server subnets MUST include delegation to `Microsoft.DBforPostgreSQL/flexibleServers`. Delegated subnets MUST be dedicated — no other resource types allowed in the same subnet.</statement>
-      <rationale source="v1-source">App Gateway v2 deploy fails without delegation as of 2025. Mixing non-delegated resources in a delegated subnet causes intermittent plan failures or silent drift on re-apply.</rationale>
+
+    <rule id="bidirectional-peering" testable="true" depth="essential">
+      <statement>VNet peering MUST be created in BOTH directions; `allow_forwarded_traffic = true` on both sides. `allow_gateway_transit = true` on hub when a gateway is present.</statement>
+      <rationale source="Azure peering docs">One-directional peerings look connected but traffic fails silently.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>VNet peering MUST be created in BOTH directions (hub→spoke AND spoke→hub). A one-directional peering completes in the portal but traffic fails silently. Set `allow_forwarded_traffic = true` on both sides and `allow_gateway_transit = true` on the hub side when a VPN Gateway or ExpressRoute Gateway is present.</statement>
-      <rationale source="v1-source">Agents routinely create only one peering direction, the plan shows no errors, and connectivity fails. Both directions are required for the peering to be in Connected state.</rationale>
+
+    <rule id="delegated-subnets" testable="true" depth="essential">
+      <statement>Subnets hosting App Gateway, AKS, or Postgres Flexible MUST include the matching `delegation` block. Mixed resource types in delegated subnets are forbidden.</statement>
+      <rationale source="Azure subnet delegation docs">Missing delegation causes deploy failures; mixed types causes silent drift.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Never run `az network vnet create` or `az network vnet peering create` ad-hoc. All VNet changes MUST go through `terraform plan` review before apply.</statement>
-      <rationale source="v1-source">Ad-hoc changes create drift that breaks subsequent Terraform runs and produces stale state files.</rationale>
+
+    <rule id="terraform-only-changes" testable="true" depth="essential">
+      <statement>VNet + peering changes MUST flow through Terraform plan/apply. Ad-hoc `az network vnet ...` is forbidden in shared environments.</statement>
+      <rationale source="Azure IaC governance">Ad-hoc changes create drift that breaks subsequent Terraform runs.</rationale>
     </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

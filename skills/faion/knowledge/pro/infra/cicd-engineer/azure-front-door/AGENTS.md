@@ -3,73 +3,97 @@ slug: azure-front-door
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Azure Front Door Premium is a global Layer 7 load balancer, CDN, and WAF service.
-content_id: "d993764492c14fef"
-tags: [azure, front-door, cdn, global-load-balancing, terraform]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Global L7 LB + CDN + WAF spec: Private Link origins for production, Front-Door-only NSG on App Gateway, propagation-aware deploy pipeline, WAF tuning + bot protection."
+content_id: "a7b3accdeed52fce"
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [azure, front-door, cdn, global-load-balancing, waf, infra]
 ---
-# Azure Front Door Premium (Global LB, CDN, WAF)
+# Azure Front Door Premium (Global LB + WAF + CDN)
 
 ## Summary
 
-**One-sentence:** Azure Front Door Premium is a global Layer 7 load balancer, CDN, and WAF service.
+**One-sentence:** Global L7 LB + CDN + WAF spec: Private Link origins for production, Front-Door-only NSG on App Gateway, propagation-aware deploy pipeline, WAF tuning + bot protection.
 
-**One-paragraph:** Azure Front Door Premium is a global Layer 7 load balancer, CDN, and WAF service. It routes traffic to the nearest healthy origin, caches static content at PoPs, and optionally connects to origins via Private Link over the Azure backbone (no public internet between Front Door and backend). Premium tier is required for Private Link and advanced WAF with bot protection. Config propagation takes 5-15 minutes — plan for this in deployment pipelines.
+**One-paragraph:** Global L7 LB + CDN + WAF spec: Private Link origins for production, Front-Door-only NSG on App Gateway, propagation-aware deploy pipeline, WAF tuning + bot protection. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Global distribution across multiple regions with health-aware failover.
-- CDN caching for static assets at Azure PoPs close to end users.
-- Outer WAF layer in a Front Door + App Gateway two-tier architecture.
-- When origins must remain private — Front Door Premium with Private Link keeps traffic on Azure backbone.
-- DDoS protection at the edge for high-traffic internet-facing applications.
+- Workload serves users in ≥ 2 geographies and needs edge caching / global LB.
+- Origins live in Azure (App Gateway / App Service / VMSS / Container Apps).
+- Premium SKU is acceptable (Private Link requires Premium).
 
 ## Skip If (ANY kills it)
 
-- Single-region applications with no CDN or global routing needs — App Gateway alone is simpler and cheaper.
-- Dev/test environments where Front Door's 5-15 minute config propagation slows iteration cycles.
-- Standard tier if Private Link to origins is needed — Premium is required for Private Link.
-- Cost-sensitive workloads — Front Door Premium combined with App Gateway v2 can cost hundreds USD/month idle.
+- Single-region single-user workload (App Gateway alone suffices).
+- Cloudflare / AWS CloudFront already owns the edge tier.
+- Origins are outside Azure (no Private Link path).
+
+**Ефективно для:**
+
+- Internet-facing global apps з PoP edge caching.
+- Backend через App Gateway / App Service з Private Link.
+- WAF + bot protection на global edge level.
+- Deploy pipelines які чекають Front Door propagation 5-15min.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-azure-front-door.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

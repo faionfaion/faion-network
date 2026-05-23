@@ -3,71 +3,97 @@ slug: azure-private-link
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Private Endpoints inject a NIC with a private IP from your VNet into an Azure PaaS service (Storage, Key Vault, SQL, PostgreSQL, ACR, App Service, etc.
-content_id: "5139f8246867ecad"
-tags: [azure, private-link, private-endpoint, private-dns, terraform]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Private Link spec: per-service Private DNS zones linked to consumer VNets, public access disabled on target resource, registration-disabled VNet links, approved Private Endpoint connections."
+content_id: "34b69e388aeda13f"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [azure, private-link, private-endpoint, private-dns, terraform, infra]
 ---
 # Azure Private Link and Private Endpoints
 
 ## Summary
 
-**One-sentence:** Private Endpoints inject a NIC with a private IP from your VNet into an Azure PaaS service (Storage, Key Vault, SQL, PostgreSQL, ACR, App Service, etc.
+**One-sentence:** Private Link spec: per-service Private DNS zones linked to consumer VNets, public access disabled on target resource, registration-disabled VNet links, approved Private Endpoint connections.
 
-**One-paragraph:** Private Endpoints inject a NIC with a private IP from your VNet into an Azure PaaS service (Storage, Key Vault, SQL, PostgreSQL, ACR, App Service, etc.). Combined with a Private DNS zone and a VNet link, DNS resolution for the service FQDN returns the private IP instead of the public one — all traffic stays on the Azure backbone. Public access on the target resource MUST be disabled to eliminate the public endpoint.
+**One-paragraph:** Private Link spec: per-service Private DNS zones linked to consumer VNets, public access disabled on target resource, registration-disabled VNet links, approved Private Endpoint connections. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- All PaaS services (Storage, Key Vault, SQL, PostgreSQL, ACR, App Service) in production environments.
-- Compliance requirements (HIPAA, PCI-DSS, SOC2) mandating data exfiltration controls and private connectivity.
-- Migrating from Service Endpoints to Private Endpoints for stronger isolation guarantees.
-- Exposing internal services to other VNets or subscriptions via Private Link Service (your own service behind an internal load balancer).
+- PaaS service must be reachable only from a private VNet.
+- Private DNS zone management is delegated to platform team.
+- Public access on the target resource can be disabled.
 
 ## Skip If (ANY kills it)
 
-- Dev/test environments where the Private DNS zone complexity adds debugging overhead for no compliance value.
-- When the platform team cannot reliably operate Private DNS zones — broken DNS makes Private Link a debugging nightmare with no obvious error.
-- Services that have no private endpoint support (some preview services, some third-party Azure Marketplace offerings).
+- Service must remain public (e.g. customer-facing storage).
+- Workload is not in Azure.
+- Private Endpoint pricing exceeds the security benefit (tiny dev).
+
+**Ефективно для:**
+
+- Azure PaaS (Storage / Key Vault / SQL / ACR) які повинні бути private-only.
+- Команди де `nslookup` повертає public IP в обхід Private Endpoint.
+- Compliance regimes що забороняють public PaaS endpoints.
+- Hub-spoke топологія з централізованою Private DNS.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-azure-private-link.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

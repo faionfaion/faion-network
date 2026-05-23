@@ -1,15 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="backup-cloud-aws Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for backup-cloud-aws. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cloud-native Backup with AWS Backup and S3 Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `Cloud-native Backup with AWS Backup and S3` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>S3 backup buckets MUST have versioning enabled, public access blocked on all four dimensions (block_public_acls, block_public_policy, ignore_public_acls, restrict_public_buckets), server-side encryption with KMS, and at least one lifecycle rule transitioning objects to a cheaper storage class after 30 days.</statement>
-      <rationale source="v1-source">A public backup bucket is a data breach. An unencrypted bucket fails most compliance audits. A bucket without lifecycle rules grows unbounded and inflates storage costs. These four settings are the minimum viable backup bucket configuration.</rationale>
+
+    <rule id="s3-versioning-public-off-kms-lifecycle" testable="true" depth="essential">
+      <statement>S3 backup buckets MUST enable versioning, block all public access, server-side KMS encryption, and ≥ 1 lifecycle rule transitioning objects after 30 days.</statement>
+      <rationale source="AWS S3 hardening + CIS Benchmark">These four settings are the minimum viable backup-bucket configuration.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Backup buckets containing critical data MUST enable S3 Object Lock in GOVERNANCE or COMPLIANCE mode with a minimum 30-day retention period. The IAM policy for the daily-runner account MUST NOT include `s3:DeleteObject`, `s3:DeleteObjectVersion`, or `s3:PutBucketObjectLockConfiguration` — only a separate break-glass account may hold those permissions.</statement>
-      <rationale source="v1-source">Immutable object lock prevents ransomware and rogue scripts from deleting backup objects. GOVERNANCE mode allows an account administrator to override (useful for testing); COMPLIANCE mode prevents any override including by root. Air-gapping the delete permission ensures the daily-runner account cannot be used to destroy backups even if compromised.</rationale>
+
+    <rule id="object-lock-critical" testable="true" depth="essential">
+      <statement>Buckets containing critical backups MUST enable Object Lock in GOVERNANCE or COMPLIANCE mode with ≥ 30-day retention.</statement>
+      <rationale source="S3 Object Lock docs">Immutable lock is the only protection against ransomware deletes of backup data.</rationale>
     </rule>
+
+    <rule id="delete-not-in-runner-iam" testable="true" depth="essential">
+      <statement>The daily-runner IAM role MUST NOT include `s3:DeleteObject`, `s3:DeleteObjectVersion`, or `s3:PutBucketObjectLockConfiguration`. A separate break-glass account holds those permissions.</statement>
+      <rationale source="AWS least-privilege guidance">Air-gapping delete permission prevents a compromised runner from destroying backups.</rationale>
+    </rule>
+
+    <rule id="cross-region-copy" testable="true" depth="essential">
+      <statement>AWS Backup plans MUST include a cross-region copy rule for production data.</statement>
+      <rationale source="AWS DR best-practice">Single-region backups die with the region.</rationale>
+    </rule>
+
+    <rule id="kms-cmk-per-vault" testable="true" depth="essential">
+      <statement>Backup vaults MUST use a customer-managed KMS key (CMK), not the AWS-managed alias.</statement>
+      <rationale source="AWS KMS docs">CMK rotation + access control are the audit trail; aws/backup alias lacks per-vault granularity.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -3,71 +3,96 @@ slug: azure-nsg-rules
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: NSGs perform stateful packet inspection using a 5-tuple (source IP, source port, destination IP, destination port, protocol).
-content_id: "cf012d8f32c90760"
-tags: [azure, nsg, network-security, firewall, terraform]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Deny-by-default NSG policy: explicit DenyAll at priority 4096, exact-CIDR allow rules, flow logs v2 to Storage + Log Analytics, 30-day retention floor."
+content_id: "00caddfe2d920092"
+complexity: medium
+produces: config
+est_tokens: 4200
+tags: [azure, nsg, network-security, firewall, flow-logs, infra]
 ---
-# Azure Network Security Groups (NSG)
+# Azure NSG Rules and Flow Logs
 
 ## Summary
 
-**One-sentence:** NSGs perform stateful packet inspection using a 5-tuple (source IP, source port, destination IP, destination port, protocol).
+**One-sentence:** Deny-by-default NSG policy: explicit DenyAll at priority 4096, exact-CIDR allow rules, flow logs v2 to Storage + Log Analytics, 30-day retention floor.
 
-**One-paragraph:** NSGs perform stateful packet inspection using a 5-tuple (source IP, source port, destination IP, destination port, protocol). Rules are evaluated by priority (100–4095); first match wins. The architectural principle is deny-by-default: add explicit allow rules for required traffic and close everything else with a priority-4096 DenyAll rule.
+**One-paragraph:** Deny-by-default NSG policy: explicit DenyAll at priority 4096, exact-CIDR allow rules, flow logs v2 to Storage + Log Analytics, 30-day retention floor. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Every subnet in a production VNet (except GatewaySubnet which cannot have an NSG).
-- Any subnet holding compute (VMs, AKS nodes, App Service Integration) or PaaS endpoints.
-- When implementing zero-trust east-west controls between tiers (web, app, data).
-- Compliance requirements (HIPAA, PCI-DSS, SOC2) mandating network segmentation evidence.
+- Subnets in Azure carry production traffic.
+- Compliance regime (SOC2 / PCI / HIPAA) requires network-traffic logging.
+- Network Watcher is enabled or can be enabled in the region.
 
 ## Skip If (ANY kills it)
 
-- GatewaySubnet — Azure blocks NSG association; use route tables instead.
-- AzureFirewallSubnet — Firewall has its own rule engine; NSG is not supported there.
-- POC environments where full deny-by-default adds friction without security value.
+- Workload uses Azure Firewall as the sole policy enforcement (NSG is optional).
+- Solo project with no compliance surface.
+- Subnet has no inbound from outside the VNet (intra-VNet only).
+
+**Ефективно для:**
+
+- Azure networks де NSGs зростають без owner.
+- SOC2 / PCI-DSS audits з вимогою flow logs.
+- Команди де legacy `0.0.0.0/0` allow rules ще існують.
+- Regular NSG audit + cleanup cadence.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-config` | haiku | Template fill of allow-lists + env-var blocks. |
+| `populate-policy` | sonnet | Per-clause translation into config fields. |
+| `breach-protocol-review` | opus | Cross-engagement risk + breach-response synthesis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/policy.yaml` | YAML config skeleton with allow-list / deny-list / telemetry-overrides / audit-cadence. |
+| `templates/_smoke-test.yaml` | Minimum viable filled policy. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-azure-nsg-rules.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

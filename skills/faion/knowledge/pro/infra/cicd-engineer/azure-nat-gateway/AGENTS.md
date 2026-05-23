@@ -3,71 +3,97 @@ slug: azure-nat-gateway
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: NAT Gateway provides managed, zone-redundant outbound internet connectivity for private subnets.
-content_id: "3d81a3dd8d6992e3"
-tags: [azure, nat-gateway, outbound-connectivity, snat, terraform]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Spec for managed zone-redundant outbound: IP count sized to concurrent connections, idle-timeout tuned to app shape, SNAT-port monitoring + alerting, predictable static egress IPs."
+content_id: "4047c59678b26315"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [azure, nat-gateway, snat, outbound-connectivity, terraform, infra]
 ---
 # Azure NAT Gateway for Outbound Connectivity
 
 ## Summary
 
-**One-sentence:** NAT Gateway provides managed, zone-redundant outbound internet connectivity for private subnets.
+**One-sentence:** Spec for managed zone-redundant outbound: IP count sized to concurrent connections, idle-timeout tuned to app shape, SNAT-port monitoring + alerting, predictable static egress IPs.
 
-**One-paragraph:** NAT Gateway provides managed, zone-redundant outbound internet connectivity for private subnets. It replaces the implicit Load Balancer outbound rules with a predictable static public IP, consistent SNAT behavior, and configurable idle timeout. Every public IP on a NAT Gateway provides ~64,000 SNAT ports — size the IP count against expected concurrent outbound connections.
+**One-paragraph:** Spec for managed zone-redundant outbound: IP count sized to concurrent connections, idle-timeout tuned to app shape, SNAT-port monitoring + alerting, predictable static egress IPs. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Any private subnet that requires outbound internet access (container registries, OS updates, external APIs).
-- Workloads that must present a consistent egress IP for third-party IP allowlisting (payment gateways, SaaS APIs).
-- High-availability setups requiring zone-redundant outbound — NAT Gateway supports zone-redundant public IPs.
-- AKS node pools in private subnets — nodes need outbound access for node bootstrap and image pull.
+- Workload sits in a private Azure subnet that needs outbound internet.
+- Outbound concurrent connections can be estimated.
+- Predictable egress IP is needed (partner allow-list, SaaS IP-restricted).
 
 ## Skip If (ANY kills it)
 
-- Subnets that have no outbound internet requirement — NAT Gateway costs even when idle; skip it for data-tier or internal-only subnets.
-- Virtual WAN spoke VNets — Virtual WAN has its own managed egress; adding a NAT Gateway causes routing conflicts.
-- Subnets with Azure Firewall as the egress path — do not attach NAT Gateway and Firewall UDR to the same subnet; only one egress path should control outbound routing.
+- Workload has only ingress traffic.
+- Outbound concurrency < 1000 (default LB outbound rules suffice).
+- Egress already managed by Azure Firewall.
+
+**Ефективно для:**
+
+- Workloads з outbound HTTP / API calls > 10k concurrent.
+- Команди де SNAT exhaustion проявляється як random timeouts.
+- Static egress IPs для allow-listing у партнерів.
+- Audit-ready monitoring SNATConnectionCount + DroppedPackets.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-azure-nat-gateway.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
