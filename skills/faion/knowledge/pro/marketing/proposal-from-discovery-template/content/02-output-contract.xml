@@ -1,45 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Proposal From Discovery Template — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A filled `proposal-from-discovery-template.md` (or equivalent artefact) committed to the repository / knowledge space, following the fixed section list and carrying header metadata (version, owner, last_reviewed).</summary>
+<text id="02-output-contract" title="Proposal From Discovery Template — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the proposal artefact. Validator enforces required header keys, three offer options, evidence anchors, and the closing action block.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>header.version (semver)</item>
-      <item>header.owner (named role + person)</item>
-      <item>header.last_reviewed (ISO date, ≤ 6 months stale)</item>
-      <item>section list matches the Proposal From Discovery Template canonical schema</item>
-      <item>each section either filled or explicitly marked `not_applicable: &lt;reason&gt;`</item>
-      <item>evidence links populated for any claim or recommendation</item>
-      <item>decisions / actions block at the end (≥ 1 next-action)</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/proposal-from-discovery-template.json",
+  "type": "object",
+  "required": ["header", "discovery_inputs", "options", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "header": {
+      "type": "object",
+      "required": ["version", "owner", "last_reviewed", "client", "title"],
+      "properties": {
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "owner": {"type": "string", "minLength": 3},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "client": {"type": "string", "minLength": 2},
+        "title": {"type": "string", "minLength": 8, "maxLength": 120}
+      }
+    },
+    "discovery_inputs": {
+      "type": "object",
+      "required": ["pain", "budget_signal", "evidence_links"],
+      "properties": {
+        "pain": {"type": "string", "minLength": 30},
+        "budget_signal": {"type": "string"},
+        "evidence_links": {
+          "type": "array",
+          "items": {"type": "string", "format": "uri"},
+          "minItems": 1
+        }
+      }
+    },
+    "options": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "scope", "price", "duration_weeks"],
+        "properties": {
+          "name": {"enum": ["light", "standard", "outcome-based"]},
+          "scope": {"type": "string", "minLength": 20},
+          "price": {"type": "number", "minimum": 0},
+          "duration_weeks": {"type": "integer", "minimum": 1, "maximum": 52}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["owner", "due_date", "action"],
+        "properties": {
+          "owner": {"type": "string"},
+          "due_date": {"type": "string", "format": "date"},
+          "action": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>free-form sections invented at fill-time</description>
-      <reason>Breaks comparability and audit.</reason>
-    </antipattern>
-    <antipattern>
-      <description>claims without evidence links</description>
-      <reason>Templates without anchors decay into opinion.</reason>
-    </antipattern>
-    <antipattern>
-      <description>missing owner or expired last_reviewed</description>
-      <reason>Anonymous / stale templates lose authority.</reason>
-    </antipattern>
-    <antipattern>
-      <description>sections silently skipped without `not_applicable`</description>
-      <reason>Reviewers cannot tell skipped from forgotten.</reason>
-    </antipattern>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "header": {
+    "version": "1.0.0",
+    "owner": "Anna Schmidt",
+    "last_reviewed": "2026-05-23",
+    "client": "Acme Corp",
+    "title": "Acme — payment-funnel rebuild proposal"
+  },
+  "discovery_inputs": {
+    "pain": "Checkout p95 latency 1.4s; 18% Stripe retry rate; weekly revenue leak ~$8k.",
+    "budget_signal": "Confirmed $25-50k range for Q3 spend.",
+    "evidence_links": [
+      "https://drive.acme.com/calls/2026-05-21-discovery.md",
+      "https://stripe.com/dashboard/payments?period=last30"
+    ]
+  },
+  "options": [
+    {"name": "light", "scope": "Stripe retry tuning + checkout-path latency budget", "price": 6500, "duration_weeks": 2},
+    {"name": "standard", "scope": "Light + p95 latency rebuild + new retry policy roll-out", "price": 18000, "duration_weeks": 6},
+    {"name": "outcome-based", "scope": "Standard with success fee tied to retry-rate reduction below 6%", "price": 12000, "duration_weeks": 6}
+  ],
+  "actions": [
+    {"owner": "Anna Schmidt", "due_date": "2026-05-26", "action": "Send proposal PDF to procurement contact"},
+    {"owner": "Acme PM", "due_date": "2026-06-02", "action": "Confirm chosen option in writing"}
+  ]
+}
+]]></code>
+  </example>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Header carries version, owner, last_reviewed.</item>
-      <item>All canonical sections present (filled or marked not_applicable).</item>
-      <item>Each claim has an evidence link.</item>
-      <item>Final block lists explicit next-actions with owners.</item>
-      <item>Artefact is committed to the agreed path.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "header": {"version": "1", "owner": "team", "last_reviewed": "yesterday"},
+  "options": [{"name": "standard"}]
+}
+]]></code>
+    <note>version not semver; owner is a team not a person; last_reviewed not ISO date; only one option (not three); option missing scope/price/duration; no discovery_inputs; no actions.</note>
+  </example>
+
+  <reference path="scripts/validate-proposal-from-discovery-template.py">Validator script — see Scripts table in AGENTS.md.</reference>
 </text>

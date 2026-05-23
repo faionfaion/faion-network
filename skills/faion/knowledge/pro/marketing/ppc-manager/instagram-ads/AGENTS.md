@@ -3,73 +3,101 @@ slug: instagram-ads
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Instagram ads via Meta API: Feed, Stories, Reels, Explore placements with per-placement creative specs, ad set targeting, shopping creatives, and placement breakdowns for budget allocation.
-content_id: "f3af05f507db6a0e"
-tags: [instagram-ads, meta-marketing-api, placement-specs, creative-optimization, reels-ads]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an Instagram campaign spec: Reels + Stories + Feed placement mix, UGC + creator content gate, 9:16-first creative, Shopping tags for ecom, IG-specific frequency caps.
+content_id: "8e23223d728ee837"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [instagram-ads, reels, stories, ugc, shopping-tags]
 ---
-# Instagram Ads: Placement Specs, API Configuration, and Performance Reporting
+# Instagram Ads Playbook
 
 ## Summary
 
-**One-sentence:** Instagram ads via Meta API: Feed, Stories, Reels, Explore placements with per-placement creative specs, ad set targeting, shopping creatives, and placement breakdowns for budget allocation.
+**One-sentence:** Produces an Instagram campaign spec: Reels + Stories + Feed placement mix, UGC + creator content gate, 9:16-first creative, Shopping tags for ecom, IG-specific frequency caps.
 
-**One-paragraph:** Instagram ads via Meta API: Feed, Stories, Reels, Explore placements with per-placement creative specs, ad set targeting, shopping creatives, and placement breakdowns for budget allocation.
+**One-paragraph:** Instagram is the visual-first Meta surface. Methodology forces 9:16 / Reels-first creative, mandates UGC or creator content for cold acquisition, gates placement on creative format (Reels must be vertical video; Stories must be 9:16; Feed accepts 1:1 / 4:5), wires Shopping tags for ecom, and applies IG-specific frequency caps (lower than FB).
+
+**Ефективно для:**
+
+- B2C / lifestyle / DTC з main audience на IG.
+- Reels-first 9:16 video budget доступний.
+- UGC або creator content для cold prospecting.
+- Ecom з Instagram Shopping tags + product feed.
 
 ## Applies If (ALL must hold)
 
-- Creating or auditing Instagram ad sets via the Meta Marketing API
-- Uploading creative assets and need spec validation before submission
-- Running Instagram-only vs. cross-platform (Facebook + Instagram) campaigns
-- Setting up Instagram Shopping or Collection ads with product catalogs
-- Reporting on placement-level performance with `publisher_platform` + `platform_position` breakdown
+- B2C / lifestyle / DTC product with main audience on IG.
+- Reels-first creative strategy (9:16 video budget).
+- Ecom with Instagram Shopping tags + product feed.
+- Creator / UGC partnership for cold acquisition.
 
 ## Skip If (ANY kills it)
 
-- Facebook-only campaigns — use `ads-meta-campaign-setup` for full campaign structure
-- Audience construction — use `meta-audience-targeting` for custom/lookalike audience setup
-- Cross-platform budget allocation decisions — use `ads-budget-optimization`
-- Creative strategy ideation (not API configuration) — this covers specs and API calls, not copywriting
+- B2B with Director+ ICP — LinkedIn / Search beat IG.
+- Audience primarily on Facebook feed — facebook-ads methodology.
+- No 9:16 video budget — Reels won't perform.
+- No UGC / creator inventory for cold — only retargeting will work.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Instagram Business + linked FB Page | dashboard | platform owner |
+| Pixel + CAPI + Shopping tags (ecom) | config | ads-conversion-tracking |
+| Creator / UGC pipeline | library | creative |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/ppc-manager/ads-meta-campaign-setup` | Generic Meta rules apply on top. |
+| `pro/marketing/ppc-manager/ads-meta-creative` | Per-format creative brief. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for instagram-ads | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `placement-allocation` | haiku | Apply Reels-first rule. |
+| `creative-strategy` | sonnet | UGC / creator vs brand-polished mapping. |
+| `shopping-tag-setup` | haiku | Feed-linkage check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/instagram-spec.md` | Instagram campaign spec Markdown skeleton. |
+| `templates/ugc-brief.md` | UGC / creator content brief Markdown skeleton. |
+| `templates/instagram-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-instagram-ads.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ads-meta-campaign-setup]]
+- [[ads-meta-creative]]
+- [[ads-meta-targeting]]
+- [[facebook-ads]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

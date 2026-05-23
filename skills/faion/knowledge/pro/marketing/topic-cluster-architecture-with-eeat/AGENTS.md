@@ -3,12 +3,15 @@ slug: topic-cluster-architecture-with-eeat
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "95f096965a9aac1a"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Topic Cluster Architecture With Eeat: produces a versioned, owner-signed artefact that closes the gap 'role-growth-marketing/Synthesis: Build a topical-authority cluster end-to-end with E-E-A-T evidence'."
+content_id: "95f096965a9aac1a"
+complexity: deep
+produces: spec
+est_tokens: 4400
 tags: [topic-cluster-architecture-with-eeat, marketing, pro]
 ---
 # Topic Cluster Architecture With Eeat
@@ -18,6 +21,13 @@ tags: [topic-cluster-architecture-with-eeat, marketing, pro]
 **One-sentence:** Topic Cluster Architecture With Eeat: produces a versioned, owner-signed artefact that closes the gap 'role-growth-marketing/Synthesis: Build a topical-authority cluster end-to-end with E-E-A-T evidence'.
 
 **One-paragraph:** Addresses the gap surfaced by 'role-growth-marketing/Synthesis: Build a topical-authority cluster end-to-end with E-E-A-T evidence': `topical-authority` exists but treats topical authority as a goal, not a construction process. No methodology covers pillar/spoke architecture decisions, author/expert assignment for E-E-A-T signals, first-hand-experience capture, or the link-graph topology that makes a cluster legible to ranking algorithms. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a topic cluster architecture with eeat artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Pillar+spoke architecture з типографованими E-E-A-T сигналами.
+- Named author/expert assignment для першоособового досвіду.
+- Link-graph topology зрозуміла ranking algorithms.
+- Cluster ownership + version + outcome review.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +58,10 @@ tags: [topic-cluster-architecture-with-eeat, marketing, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
 
 ## Task Routing
 
@@ -64,17 +75,22 @@ tags: [topic-cluster-architecture-with-eeat, marketing, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/topic-cluster-architecture-with-eeat.json` | JSON schema for the Topic Cluster Architecture With Eeat output contract |
-| `templates/topic-cluster-architecture-with-eeat.md` | Markdown skeleton with the required fields |
+| `templates/topic-cluster-architecture-with-eeat.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/topic-cluster-architecture-with-eeat.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-topic-cluster-architecture-with-eeat.py` | Enforce Topic Cluster Architecture With Eeat output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-topic-cluster-architecture-with-eeat.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/`
 - upstream playbook: `role-growth-marketing/Synthesis: Build a topical-authority cluster end-to-end with E-E-A-T evidence`
 - pro/marketing/role-growth-marketing
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+

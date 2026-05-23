@@ -3,12 +3,16 @@ slug: solo-freelancer-contract-clauses
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-content_id: "72775de410d042f8"
 summary: Lean contract clause pack for solo freelancers — IP-on-payment, late-fee with auto-stop-work, kill fee, mutual NDA, freelancer-jurisdiction default — no MSA pre-requirement.
+content_id: "72775de410d042f8"
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: [marketing, pro, contract, freelance, legal]
 ---
 # Solo Freelancer Contract Clauses
 
@@ -17,6 +21,13 @@ summary: Lean contract clause pack for solo freelancers — IP-on-payment, late-
 **One-sentence:** Clause pack designed for a single technical freelancer signing direct contracts with mid-sized clients, replacing the standard $40k web-build SOW boilerplate with five lean, defensible provisions.
 
 **One-paragraph:** `statement-of-work` covers a heavy SOW between two LLCs. SaaS-side ops-legal-basics covers ToS / Privacy. Solo freelancers landing $5–30k projects need neither — they need a small, opinionated clause pack: (1) IP assignment-on-PAID, not on-signed (the single most important inversion); (2) late-fee with automatic stop-work after N days unpaid; (3) kill fee for client-initiated termination (typically 30% of remaining); (4) mutual NDA scoped to the engagement; (5) jurisdiction defaulted to the freelancer's country with arbitration carve-out. The pack is meant to slot into an otherwise-simple email-signed agreement, with no MSA prereq. Anchored to "Inbound-to-signed-retainer in one client cycle" for the technical freelancer.
+
+**Ефективно для:**
+
+- Solo фрілансера, що підписує сам, без $2k legal review.
+- Lean pack для B2B-сервісів $5-30k.
+- IP-on-PAID, late-fee + auto-stop-work, mutual NDA, home-jurisdiction.
+- Не enterprise MSA — звичайний email-signed agreement.
 
 ## Applies If (ALL must hold)
 
@@ -48,10 +59,39 @@ summary: Lean contract clause pack for solo freelancers — IP-on-payment, late-
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules every clause-pack instance enforces | ~950 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour at the next iteration? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/solo-freelancer-contract-clauses.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/solo-freelancer-contract-clauses.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-freelancer-contract-clauses.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/`
 - triggering activity: `p3-technical-freelancer/Inbound-to-signed-retainer in one client cycle`
 - adjacent: `pro/pm/solo-change-order-mini-contract`, `pro/marketing/late-invoice-dunning-sequence`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+

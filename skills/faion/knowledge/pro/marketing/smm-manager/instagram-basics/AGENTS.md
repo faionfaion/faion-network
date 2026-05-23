@@ -3,21 +3,32 @@ slug: instagram-basics
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Instagram strategy prioritizing Reels (80%) for discovery, Stories (15%) for engagement, Feed (5%).
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Instagram setup + content strategy prioritising Reels (80%) for discovery, Stories (15%) for engagement, Feed (5%); pillar discipline + hashtag minimalism + DM-automation guardrails.
 content_id: "c47db397f3e408d7"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [instagram, reels, social-media, content-strategy, organic-growth]
 ---
 # Instagram Basics
 
 ## Summary
 
-**One-sentence:** Instagram strategy prioritizing Reels (80%) for discovery, Stories (15%) for engagement, Feed (5%).
+**One-sentence:** Instagram setup + content strategy that allocates ≥80% of effort to Reels, mandates on-screen text, enforces hashtag minimalism, and restricts DM automation to approved partners.
 
-**One-paragraph:** Instagram strategy prioritizing Reels (80%) for discovery, Stories (15%) for engagement, Feed (5%). Without Reels, accounts plateau. Profile optimization, pillar discipline, and hashtag minimalism foundational.
+**One-paragraph:** Reels deliver ~2× the reach of photos by pushing to non-followers; accounts that ignore Reels get ~1/4 the reach. The first 1.5 seconds decide reach, 80% of viewers watch muted, and hashtag density no longer correlates with topical understanding. This methodology pins those mechanics into testable rules: 80/15/5 effort split, three-line bio formula, pillar tags on every draft, banned TikTok-watermark cross-posts, ManyChat-only DM automation. Output: a weekly content pack of 5-12 Reels + Stories + carousels validated against the contract.
+
+**Ефективно для:**
+
+- Reels-first контент стратегії (80% effort на Reels).
+- Mandatory on-screen text — 80% дивиться без звуку.
+- Hashtag minimalism 3-5 mixed tiers, не 30.
+- DM automation тільки через ManyChat / approved partners.
+- Pillar discipline + bigram rotation у тижневому контент-паку.
 
 ## Applies If (ALL must hold)
 
@@ -36,40 +47,62 @@ tags: [instagram, reels, social-media, content-strategy, organic-growth]
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Content pillars (5 pillars + ratios) | YAML / sheet | operator's strategy doc |
+| Brand voice guide | Markdown | operator's brand book |
+| Recent Instagram insights export | CSV | Instagram Business account |
+| Top-5 winners library | Markdown | operator's archive of past hits |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/smm-manager/threads-basics` | Sibling — Threads pack often piggy-backs on the Instagram Reels brief. |
+| `pro/marketing/growth-social-media-strategy` | Upstream strategy: which platforms to invest in. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules (Reels 80%, on-screen text, hashtag minimalism, bio formula, no TikTok watermark, DM automation, pillar) + self-routing anchors | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for a weekly content pack + valid / invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns (emoji-heavy captions, stale trending hashtags, listicle overuse, voiceover-only, TikTok watermark, broad DM automation) | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-reel-script` | sonnet | Per-script judgment: hook scoring, on-screen text composition. |
+| `score-hook` | haiku | Mechanical 1-5 rating against the rubric. |
+| `weekly-pack-synthesis` | opus | Cross-pillar synthesis across 7-10 drafts; pillar-balance check. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/instagram-basics.md` | Markdown skeleton (5-line header) for the weekly content pack artefact. |
+| `templates/instagram-basics.json` | JSON Schema (draft-07) for the output contract. |
+| `templates/bio-template.txt` | Three-line bio formula (what / credibility / CTA). |
+| `templates/reel-script.txt` | Hook + body + CTA Reel script template. |
+| `templates/carousel-template.txt` | 10-slide carousel narrative structure. |
+| `templates/prompt-reels.txt` | Prompt for generating 5 Reels scripts with pillar tags and hook scores. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-instagram-basics.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/smm-manager/`
+- sibling: [[threads-basics]]
+- sibling: [[growth-twitter-x-growth]]
+- sibling: [[growth-linkedin-strategy]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (audience-on-Instagram, video capacity, brand voice compatibility, regulatory load) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the SMM operator opens a fresh weekly brief and must decide whether to invest the Reels-first pack this week or route to a text-first channel.
+

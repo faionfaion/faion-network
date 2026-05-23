@@ -1,46 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Rate-Raise Conversation Script Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Rate-Raise Conversation Script output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Rate Raise Conversation Script — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact produced by `rate-raise-conversation-script`. Validator enforces required keys, owner discipline, semver, ISO date, and minimum-evidence rules.</summary>
 
-  <output-contract>
-    <required>
-      <field name="client_id" type="string" required="true">stable reference</field>
-      <field name="current_rate" type="object" required="true">{value, currency, unit: hourly|monthly|project}</field>
-      <field name="market_rate_evidence" type="list" required="true">≥2 sources for market rate</field>
-      <field name="new_rate" type="object" required="true">10-25% higher</field>
-      <field name="script" type="string" required="true">verbatim conversation script with anchor + transition</field>
-      <field name="counter_responses" type="object" required="true">{cant_pay, half_raise, leaving}</field>
-      <field name="walk_away_threshold" type="number" required="true">minimum acceptable raise pct</field>
-      <field name="owner" type="string" required="true">the freelancer</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">raise &gt; 25% in single year (churn risk)</pattern>
-      <pattern id="f2">raise &lt; 10% (ineffective)</pattern>
-      <pattern id="f3">no walk-away threshold set</pattern>
-      <pattern id="f4">no counter-response playbook</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/rate-raise-conversation-script.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>client_id populated with a typed value</item>
-      <item>current_rate populated with a typed value</item>
-      <item>market_rate_evidence populated with a typed value</item>
-      <item>new_rate populated with a typed value</item>
-      <item>script populated with a typed value</item>
-      <item>counter_responses populated with a typed value</item>
-      <item>walk_away_threshold populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rate-raise-conversation-script.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 3
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "rate-raise-conversation-script-2026-05-23-01",
+  "owner": "Anna Schmidt",
+  "decision": "ship the canonical artefact this client cycle",
+  "rationale": "Anchored to discovery notes (2026-05-21) and rate card; precondition checklist passed.",
+  "inputs_used": [
+    "discovery-notes-2026-05-21.md",
+    "rate-card-2026-Q2.yaml"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "owner": "team",
+  "decision": "tbd",
+  "rationale": "obviously",
+  "inputs_used": [],
+  "version": "1",
+  "last_reviewed": "yesterday"
+}
+]]></code>
+    <note>artefact_id too short; owner is a team not a person; decision empty; rationale defensive without citations; inputs_used empty; version not semver; last_reviewed not ISO date.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>owner = "team" / "we" / "us" / empty</description>
+      <reason>Plural ownership = no ownership; future readers need a named human to chase.</reason>
+    </antipattern>
+    <antipattern>
+      <description>rationale that does not reference any input by name</description>
+      <reason>Post-hoc justification masquerading as evidence-based decision.</reason>
+    </antipattern>
+    <antipattern>
+      <description>inputs_used empty AND decision != "no-op"</description>
+      <reason>Output is ungrounded; the artefact cannot be falsified.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-rate-raise-conversation-script.py">Validator script</reference>
+  <reference path="templates/rate-raise-conversation-script.json">JSON Schema template</reference>
 </text>

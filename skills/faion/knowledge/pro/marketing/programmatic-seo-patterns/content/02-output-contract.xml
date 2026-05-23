@@ -1,42 +1,154 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Programmatic SEO Patterns Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Programmatic SEO Patterns output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="data_source" type="object" required="true">{provider, refresh_cadence, quality_metrics}</field>
-      <field name="intent_template_map" type="list" required="true">[{intent, template_id}]</field>
-      <field name="thin_content_threshold" type="object" required="true">{min_words, min_data_points, min_unique_pct}</field>
-      <field name="indexability_tiers" type="object" required="true">{tier_1, tier_2, tier_3}</field>
-      <field name="internal_link_graph" type="object" required="true">{sibling_pattern, parent_pattern}</field>
-      <field name="owner" type="string" required="true">named SEO + dev partner</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">data_source quality unmeasured</pattern>
-      <pattern id="f2">thin pages indexed (below threshold)</pattern>
-      <pattern id="f3">no canonical/internal-link strategy</pattern>
-      <pattern id="f4">no intent → template mapping</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/programmatic-seo-patterns.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>data_source populated with a typed value</item>
-      <item>intent_template_map populated with a typed value</item>
-      <item>thin_content_threshold populated with a typed value</item>
-      <item>indexability_tiers populated with a typed value</item>
-      <item>internal_link_graph populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+<text id="02-output-contract" title="Programmatic SEO Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema draft-07 for the artefact produced by programmatic-seo-patterns. Validator enforces required keys and per-field constraints; downstream automation refuses to consume outputs that fail the schema.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/programmatic-seo-patterns.json",
+  "type": "object",
+  "required": [
+    "data_source",
+    "intent_template_map",
+    "thin_content_threshold",
+    "indexability_tiers",
+    "internal_link_graph",
+    "owner"
+  ],
+  "properties": {
+    "data_source": {
+      "type": "object",
+      "required": [
+        "provider",
+        "refresh_cadence_days",
+        "quality_pct"
+      ],
+      "properties": {
+        "quality_pct": {
+          "type": "number",
+          "minimum": 80
+        }
+      }
+    },
+    "intent_template_map": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "intent",
+          "template_id"
+        ]
+      }
+    },
+    "thin_content_threshold": {
+      "type": "object",
+      "required": [
+        "min_words",
+        "min_data_points",
+        "schema_required"
+      ],
+      "properties": {
+        "min_words": {
+          "type": "integer",
+          "minimum": 300
+        },
+        "min_data_points": {
+          "type": "integer",
+          "minimum": 2
+        }
+      }
+    },
+    "indexability_tiers": {
+      "type": "object",
+      "required": [
+        "tier_1",
+        "tier_2",
+        "tier_3"
+      ]
+    },
+    "internal_link_graph": {
+      "type": "object",
+      "required": [
+        "sibling_pattern",
+        "parent_pattern"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+    ]]></code>
   </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "data_source": {
+    "provider": "internal_db",
+    "refresh_cadence_days": 30,
+    "quality_pct": 95
+  },
+  "intent_template_map": [
+    {
+      "intent": "comparison",
+      "template_id": "tpl-vs"
+    },
+    {
+      "intent": "listing",
+      "template_id": "tpl-list"
+    }
+  ],
+  "thin_content_threshold": {
+    "min_words": 300,
+    "min_data_points": 2,
+    "schema_required": true
+  },
+  "indexability_tiers": {
+    "tier_1": "indexed+sitemap",
+    "tier_2": "indexed",
+    "tier_3": "noindex"
+  },
+  "internal_link_graph": {
+    "sibling_pattern": "category-siblings-5",
+    "parent_pattern": "category-parent-1"
+  },
+  "owner": "seo-lead@faion.net"
+}
+    ]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "data_source": {
+    "provider": "csv",
+    "quality_pct": 40
+  },
+  "intent_template_map": [],
+  "thin_content_threshold": {
+    "min_words": 100,
+    "min_data_points": 1
+  },
+  "indexability_tiers": {},
+  "internal_link_graph": {},
+  "owner": ""
+}
+    ]]></code>
+    <note>Data quality below 80; intent-template map empty; thin-content threshold below floor; missing indexability_tiers + link graph; owner empty.</note>
+  </example>
+  <section title="Forbidden patterns">
+    <antipattern id="f-low-quality" severity="medium">
+      <description>data_source.quality_pct &lt; 80.</description>
+      <reason>Violates r1-data-source-quality rule.</reason>
+    </antipattern>
+    <antipattern id="f-no-intent-map" severity="medium">
+      <description>intent_template_map array empty.</description>
+      <reason>Violates r2-template-with-intent-fit rule.</reason>
+    </antipattern>
+    <antipattern id="f-thin-indexed" severity="medium">
+      <description>thin_content_threshold.min_words &lt; 300.</description>
+      <reason>Violates r3-thin-content-guard rule.</reason>
+    </antipattern>
+  </section>
+  <reference path="scripts/validate-programmatic-seo-patterns.py">Validator script enforcing this schema</reference>
 </text>

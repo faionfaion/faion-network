@@ -3,12 +3,15 @@ slug: testimonial-capture-microsurvey
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "ccd5fac359978b1d"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
 summary: "Testimonial Capture Microsurvey: produces a versioned, owner-signed artefact that closes the gap 'p5-micro-agency-founder/Bi-weekly case-study / testimonial capture'."
+content_id: "ccd5fac359978b1d"
+complexity: light
+produces: spec
+est_tokens: 3800
 tags: [testimonial-capture-microsurvey, marketing, pro]
 ---
 # Testimonial Capture Microsurvey
@@ -18,6 +21,13 @@ tags: [testimonial-capture-microsurvey, marketing, pro]
 **One-sentence:** Testimonial Capture Microsurvey: produces a versioned, owner-signed artefact that closes the gap 'p5-micro-agency-founder/Bi-weekly case-study / testimonial capture'.
 
 **One-paragraph:** Addresses the gap surfaced by 'p5-micro-agency-founder/Bi-weekly case-study / testimonial capture': growth-customer-testimonials is high-level; a 3-question microsurvey template + permission flow is the actual atomic task. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a testimonial capture microsurvey artefact (decision record, checklist, score sheet, or report).
+
+**Ефективно для:**
+
+- Bi-weekly testimonial capture для мікроагентства.
+- Three-question microsurvey + explicit publish permission flow.
+- Versioned + named-owner артефакт замість ad-hoc email.
+- Замикання петлі від delivery → testimonial → sales asset.
 
 ## Applies If (ALL must hold)
 
@@ -48,9 +58,10 @@ tags: [testimonial-capture-microsurvey, marketing, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
 
 ## Task Routing
 
@@ -64,17 +75,22 @@ tags: [testimonial-capture-microsurvey, marketing, pro]
 
 | File | Purpose |
 |------|---------|
-| `templates/testimonial-capture-microsurvey.json` | JSON schema for the Testimonial Capture Microsurvey output contract |
-| `templates/testimonial-capture-microsurvey.md` | Markdown skeleton with the required fields |
+| `templates/testimonial-capture-microsurvey.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/testimonial-capture-microsurvey.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-testimonial-capture-microsurvey.py` | Enforce Testimonial Capture Microsurvey output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-testimonial-capture-microsurvey.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/`
 - upstream playbook: `p5-micro-agency-founder/Bi-weekly case-study / testimonial capture`
 - pro/marketing/p5-micro-agency-founder
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+

@@ -3,65 +3,80 @@ slug: proposal-from-discovery-template
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: One-page three-option proposal template fed from discovery-call notes; fixed sections, evidence anchors, named owner, outcome review.
 content_id: "62381dda128bf8ca"
-summary: Proposal From Discovery Template — pinned template for the technical freelancer: fixed shape + named owner + evidence anchors + outcome review, so inbound-to-signed-retainer in one client cycle stops being folklore and starts being a reviewable operating tool.
-tags: [marketing, pro, template, proposal, from, discovery]
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [marketing, pro, template, proposal, discovery, retainer]
 ---
 # Proposal From Discovery Template
 
 ## Summary
 
-**One-sentence:** Proposal From Discovery Template — pinned template for the technical freelancer: fixed shape + named owner + evidence anchors + outcome review, so inbound-to-signed-retainer in one client cycle stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** A one-page three-option proposal template fed directly from discovery-call notes, with fixed sections, evidence anchors, a named owner, and a published outcome-review cadence.
 
-**One-paragraph:** In growth and marketing, the technical freelancer runs inbound-to-signed-retainer in one client cycle on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. discovery-call-structure produces verbatim pain notes but there's no template that converts them into a one-page three-option proposal with anchoring. Solo freelancers re-invent this every time, lose deals on slow turnaround. `proposal-from-discovery-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the technical freelancer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Solo technical freelancers lose inbound deals on slow proposal turnaround. The upstream `discovery-call-structure` methodology produces verbatim pain notes but stops there; this methodology converts those notes into a committed one-page artefact with three offers (light / standard / outcome-based), each anchored to an evidence link, owned by a named person, and reviewed against close-rate at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored proposal document the freelancer can send within the same client-cycle as the discovery call.
+
+**Ефективно для:**
+
+- Одного фрілансера, що закриває inbound-ліди в межах одного циклу спілкування.
+- Конвертації нотаток discovery-call у три ціновані опції на одну сторінку.
+- Регулярного outcome-review: чи проп з шаблону справді закриває угоди частіше.
+- Командного контролю якості — фіксована форма + іменований власник + версія.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `p3-technical-freelancer/Inbound-to-signed-retainer in one client cycle`
-- the technical freelancer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- The freelancer runs the inbound-to-signed-retainer loop on a recurring cadence (≥1/month).
+- Upstream `discovery-call-structure` notes (verbatim pain + budget signal) are available.
+- The freelancer owns the artefact (or escalates ownership to a named person).
+- The team has a version-controlled or wiki-style space where the artefact lives.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- One-off deal with no recurrence — write a single doc, not a versioned artefact.
+- Fewer than 3 inbound proposals per year — review cadence costs more than it returns.
+- Procurement-led RFP that mandates a different shape — fill the RFP's template instead.
+- No named owner is available — defer until ownership is resolved.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the technical freelancer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Discovery-call notes | Markdown / transcript | upstream `discovery-call-structure` |
+| Rate card | JSON / sheet | freelancer's pricing doc |
+| Three offer scaffolds | YAML | this methodology's `templates/skeleton.md` |
+| Repository / wiki path | URL | team knowledge space |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `pro/marketing/rate-raise-conversation-script` | Anchors pricing language for the outcome-based option. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in SDD space. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: fixed shape, evidence anchors, named owner, version+last_reviewed, outcome review | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: notes → scaffold → fill → review → commit | ~800 |
+| `content/05-examples.xml` | essential | One worked proposal end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `scaffold-artefact` | haiku | Mechanical fill from header + section list. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: pick the right evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change close-rate? |
 
 ## Templates
 
@@ -69,16 +84,21 @@ tags: [marketing, pro, template, proposal, from, discovery]
 |------|---------|
 | `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/proposal-from-discovery-template.json` | JSON schema for the output contract. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-proposal-from-discovery-template.py` | Validate a filled artefact against the schema in `02-output-contract.xml`. | Pre-commit; before sending to client. |
 
 ## Related
 
-- parent skill: `pro/marketing/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[rate-raise-conversation-script]]
+- [[single-page-case-study-generation]]
+- [[retainer-pricing-methodology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (inbound count, has_discovery_notes, named_owner_present, recurrence_per_year) to a rule from `01-core-rules.xml`. Use it whenever an inbound lead lands and you have to decide between filling the proposal template, deferring (no owner), or writing a one-off email.
+

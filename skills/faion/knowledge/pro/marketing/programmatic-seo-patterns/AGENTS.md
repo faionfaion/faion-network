@@ -3,69 +3,99 @@ slug: programmatic-seo-patterns
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Template-driven pages backed by structured data: comparison pages, tool listings, location pages — the dominant SaaS growth lever Faion has zero coverage of.
-content_id: "369698d7b2d9665d"
-tags: [programmatic-seo-patterns, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a programmatic-SEO program plan: data source + template + intent-to-template map + indexability tiers + internal-link graph + thin-content guards.
+content_id: "678791259aec26b2"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [programmatic-seo, seo, templates, indexability, internal-linking]
 ---
-
 # Programmatic SEO Patterns
 
 ## Summary
 
-**One-sentence:** Template-driven pages backed by structured data: comparison pages, tool listings, location pages — the dominant SaaS growth lever Faion has zero coverage of.
+**One-sentence:** Produces a programmatic-SEO program plan: data source + template + intent-to-template map + indexability tiers + internal-link graph + thin-content guards.
 
-**One-paragraph:** Programmatic SEO is the dominant growth lever for SaaS in 2026 (Webflow, Tinybird, Levels.fyi, Clay, Apollo). Faion has zero coverage. Output: data source plan + template + indexability rules + thin-content guards + intent-coverage matrix.
+**One-paragraph:** Programmatic SEO is the dominant SaaS growth lever (Webflow, Tinybird, Levels.fyi, Clay, Apollo). Template-driven pages backed by structured data: comparison pages, tool listings, location pages. Methodology gates the program on data quality, mandates intent-template fit (no comparison template for listing intent), enforces thin-content thresholds (≥300 unique words + ≥2 unique data points + schema markup or noindex), tiers indexability by data depth, and requires an internal-link graph (orphans waste crawl budget).
+
+**Ефективно для:**
+
+- SaaS / product з broad audience + structured data domain.
+- Marketing capacity для templates + data pipeline maintenance.
+- Competitive SEO landscape, де long-tail wins.
+- Internal-link graph + thin-content guards + indexability tiers.
 
 ## Applies If (ALL must hold)
 
-- SaaS / product with broad audience + structured data domain
-- marketing capacity to build templates + maintain data pipeline
-- competitive SEO landscape where long-tail wins
+- SaaS / product with broad audience + structured data domain.
+- Marketing capacity to build templates + maintain data pipeline.
+- Competitive SEO landscape where long-tail wins.
+- Internal-linking discipline + thin-content guards.
 
 ## Skip If (ANY kills it)
 
-- narrow B2B with no template-able pages
-- regulated content (medical, financial) where each page needs review
-- no structured data source (cannot template)
+- Narrow B2B with no template-able pages.
+- Regulated content (medical, financial) requiring per-page review.
+- No structured data source — cannot template.
+- Site authority too low to absorb new template inventory (DR <30).
 
 ## Prerequisites
 
-- data source (DB, API, third-party feed) for the corpus
-- CMS or static-site builder capable of templated generation
-- Google Search Console + analytics access
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Data source | DB / API / feed | data team |
+| CMS / SSG capable of templated generation | stack doc | engineering |
+| GSC + analytics access | dashboard | platform owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent skill — provides operating context for this methodology |
-| `pro/marketing/topic-cluster-architecture-with-eeat` | peer methodology — produces inputs or consumes outputs |
-| `solo/marketing/seo-manager` | peer methodology — produces inputs or consumes outputs |
+| `solo/marketing/seo-manager` | SEO baseline (technical + content) must be in place. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules for programmatic-seo-patterns | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 1300 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
+| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `intent-template-map` | sonnet | Per-intent template assignment. |
+| `tier-classification` | haiku | Apply data-depth thresholds. |
+| `link-graph-design` | sonnet | Sibling + parent pattern choice. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/program-plan.md` | Programmatic-SEO program plan Markdown skeleton. |
+| `templates/comparison-template.html` | Comparison-intent HTML template skeleton with schema.org markup. |
+| `templates/program-plan.json` | Schema-conformant sample artefact used by validator self-test. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-programmatic-seo-patterns.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `pro/marketing/topic-cluster-architecture-with-eeat`
-- peer methodology: `solo/marketing/seo-manager`
-- peer methodology: `pro/marketing/growth-marketer`
-- external: https://www.searchengineland.com/programmatic-seo-guide-411111; https://www.tinybird.co/blog/programmatic-seo (Tinybird case study)
+- [[seo-manager]]
+- [[growth-paid-acquisition]]
+- [[topic-cluster-architecture-with-eeat]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.

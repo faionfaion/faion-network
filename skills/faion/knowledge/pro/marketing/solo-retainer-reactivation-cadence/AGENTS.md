@@ -3,12 +3,15 @@ slug: solo-retainer-reactivation-cadence
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: 30/60/90-day post-project check-in scripts engineered to re-open a retainer without feeling salesy — no CS team required.
 content_id: "fa29a21683184e14"
+complexity: medium
+produces: playbook-step
+est_tokens: 4200
 tags: [solo-retainer-reactivation-cadence, marketing, pro]
 ---
 # Solo Retainer Reactivation Cadence
@@ -18,6 +21,13 @@ tags: [solo-retainer-reactivation-cadence, marketing, pro]
 **One-sentence:** A 30/60/90-day post-project check-in cadence with copy-pasteable scripts that re-opens a retainer conversation without sounding like a CS chase.
 
 **One-paragraph:** `ops-upselling-cross-selling` assumes a CS team running playbooks against a CRM. A solo freelancer who just closed a project has 60 days before the relationship goes cold — and no CS team to manage that window. This methodology supplies three timed touchpoints (30d "is it sticking", 60d "next quarter shape", 90d "want me back for X") with the actual message text, the exact trigger conditions, and a hard stop after touch 3.
+
+**Ефективно для:**
+
+- Post-project window 30/60/90: solo operator без CS team.
+- Value-first touches з named client-specific триггером.
+- Hard stop після touch 3 — не псувати relationship.
+- Конвертація фіксованих проектів у retainer без CS-language.
 
 ## Applies If (ALL must hold)
 
@@ -50,10 +60,39 @@ tags: [solo-retainer-reactivation-cadence, marketing, pro]
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: three-touches-max, value-not-pitch, named-trigger, no-cs-language, hard-stop-after-90 | ~1000 |
+| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
+| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
+| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour at the next iteration? |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/solo-retainer-reactivation-cadence.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/solo-retainer-reactivation-cadence.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-retainer-reactivation-cadence.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
 
 - parent skill: `pro/marketing/agency-niche-positioning`
 - upstream playbook: `p3-technical-freelancer/Project closure debrief + retrospective`
 - sibling: `pro/pm/retainer-vs-project-rubric`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
+
