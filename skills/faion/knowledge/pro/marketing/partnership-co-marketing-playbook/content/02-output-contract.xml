@@ -1,42 +1,160 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Partnership Co-Marketing Playbook Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Partnership Co-Marketing Playbook output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Partnership Co-Marketing Playbook Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, plus one valid example, one invalid example, and a forbidden-patterns block. Validator: `scripts/validate-partnership-co-marketing-playbook.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="candidate_partners" type="list" required="true">[{partner, icp_overlap_pct, fit_score}]</field>
-      <field name="asset_format" type="string" required="true">webinar|research|bundle|podcast|joint-blog</field>
-      <field name="attribution_plan" type="object" required="true">{utm, landing_url, survey_url}</field>
-      <field name="contribution_balance" type="object" required="true">{partner_a, partner_b, reach, effort_hours}</field>
-      <field name="review_cadence" type="string" required="true">quarterly</field>
-      <field name="owner" type="string" required="true">named marketing owner</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">partner with ICP overlap &gt; 80% (competitor)</pattern>
-      <pattern id="f2">asset_format decided after kickoff (committee drift)</pattern>
-      <pattern id="f3">attribution_plan missing</pattern>
-      <pattern id="f4">quarterly review skipped &gt; 6 months</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/partnership-co-marketing-playbook.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>candidate_partners populated with a typed value</item>
-      <item>asset_format populated with a typed value</item>
-      <item>attribution_plan populated with a typed value</item>
-      <item>contribution_balance populated with a typed value</item>
-      <item>review_cadence populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/partnership-co-marketing-playbook.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "template_version",
+    "owner",
+    "summary",
+    "fields",
+    "evidence",
+    "status"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "template_version": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 400
+    },
+    "fields": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "citation"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "citation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready_for_review",
+        "approved",
+        "archived"
+      ]
+    },
+    "next_action": {
+      "type": "object",
+      "required": [
+        "label",
+        "owner",
+        "due_cycle"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "due_cycle": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "partnership-co-marketing-playbook-2026-Q2",
+  "template_version": "1.1.0",
+  "owner": "marketing-lead@faion.net",
+  "summary": "Spec for Partnership Co-Marketing Playbook applied to faion.net solo-consultancy lane.",
+  "fields": {
+    "primary_decision": "format=opinionated-benchmark-report",
+    "scope": "Shopify Plus stores, Stripe integration, sub-200 stores"
+  },
+  "evidence": [
+    {
+      "source": "lost-deal transcript 2026-04-12",
+      "citation": "Buyer cited 'no benchmark for our size of store' as reason for declining."
+    },
+    {
+      "source": "customer interview 2026-04-19",
+      "citation": "Three customers requested 'one-page comparison vs. ShopifyAudits.io'."
+    }
+  ],
+  "status": "ready_for_review",
+  "next_action": {
+    "label": "Draft benchmark report v0",
+    "owner": "marketing-lead@faion.net",
+    "due_cycle": "2026-W22"
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "partnership-co-marketing-playbook-2026-Q2",
+  "owner": "tbd",
+  "fields": {},
+  "evidence": []
+}
+]]></code>
+      <note>Missing required fields and / or schema-violating values. The validator rejects on the first error and lists all violations.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern id="missing-required">
+      <description>Artefact missing any required field listed in the JSON Schema.</description>
+      <reason>downstream consumers cannot parse.</reason>
+    </antipattern>
+    <antipattern id="owner-blank-or-team">
+      <description>owner field set to 'team', 'us', 'tbd', or empty string.</description>
+      <reason>un-owned artefacts are not actionable.</reason>
+    </antipattern>
+    <antipattern id="evidence-empty-where-required">
+      <description>evidence array empty for fields the methodology marks non-trivial.</description>
+      <reason>fabrication risk; auditability lost.</reason>
+    </antipattern>
+    <antipattern id="status-auto-approved">
+      <description>agent self-promotes status to 'approved' without named human reviewer.</description>
+      <reason>self-approval defeats the audit checkpoint.</reason>
+    </antipattern>
+    <antipattern id="schema-violation">
+      <description>Output does not validate against the embedded JSON Schema draft-07.</description>
+      <reason>downstream type-checked consumers break silently.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-partnership-co-marketing-playbook.py">Stdlib-only validator for this contract.</reference>
 </text>

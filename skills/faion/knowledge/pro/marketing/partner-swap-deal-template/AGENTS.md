@@ -3,77 +3,99 @@ slug: partner-swap-deal-template
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Partner Swap Deal Template: codified marketing practice that turns the recurring 'p3-technical-freelancer/Reputation + referral pipeline ramp (90-day flywheel)' decision into a repeatable, auditable artefact.
-content_id: "f45967f2d5d95f32"
-tags: [partner-swap-deal-template, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Drafts a peer-to-peer referral swap deal spec between specialists (scope, fee-split, conflict-of-interest, audit cadence) for the freelance reputation flywheel.
+content_id: "fae7fa7005ab9f31"
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: ["marketing", "partnerships", "freelance", "referral-swap", "pro"]
 ---
 # Partner Swap Deal Template
 
 ## Summary
 
-**One-sentence:** Partner Swap Deal Template: codified marketing practice that turns the recurring 'p3-technical-freelancer/Reputation + referral pipeline ramp (90-day flywheel)' decision into a repeatable, auditable artefact.
+**One-sentence:** Drafts a peer-to-peer referral swap deal spec between specialists (scope, fee-split, conflict-of-interest, audit cadence) for the freelance reputation flywheel.
 
-**One-paragraph:** Partner Swap Deal Template addresses the gap identified by the p3-technical-freelancer/Reputation + referral pipeline ramp (90-day flywheel) playbook: Peer-to-peer referral swap deals between specialists — partnership-strategy is too generic and assumes B2B SaaS dynamics. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Peer-to-peer referral swap deals between specialists (e.g., 'I send overflow API design work to X; X sends overflow Stripe-integration work to me') are the highest-trust source of leads for solo freelancers, but generic partnership-strategy methodologies assume B2B SaaS dynamics. This methodology specs a specialist-to-specialist swap deal: scope of referrals (vertical + stack), fee-split policy (referral fee, finders fee, none), conflict-of-interest rules (when both want the same client), audit cadence.
+
+**Ефективно для:**
+
+- Solo freelancer з overflow і trust-based partner в adjacent specialty.
+- Заміна generic 'referral fee' rule на explicit swap deal spec.
+- Conflict-of-interest framework: 'хто веде клієнта, якщо обоє хочуть'.
+- Yearly audit з renew/exit decision на основі реальних swap-events.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p3-technical-freelancer/Reputation + referral pipeline ramp (90-day flywheel) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Solo freelancer or specialist with >=1 partner candidate in adjacent specialty.
+- Both parties have client overflow (>=1 turn-down/month each).
+- Adjacent specialties with low direct competition (e.g., 'API design' + 'Stripe integration').
+- Both parties have >=12 months in business (trust takes time to verify).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Same specialty (direct competition) — swap deals collapse under conflict-of-interest.
+- Partner < 6 months in business — reputation not verified.
+- No overflow on either side — swap value is zero.
 
 ## Prerequisites
 
-- recent context for the p3-technical-freelancer/Reputation + referral pipeline ramp (90-day flywheel) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-partner-swap-deal-template` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/partner-swap-deal-template.json` | JSON schema for the Partner Swap Deal Template output contract |
-| `templates/partner-swap-deal-template.md` | Markdown skeleton with the required fields |
+| `templates/spec.md` | Markdown spec skeleton |
+| `templates/output.json` | JSON spec sidecar with __faion_header__ |
+| `templates/_smoke-test.md` | Minimum viable filled spec |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-partner-swap-deal-template.py` | Enforce Partner Swap Deal Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-partner-swap-deal-template.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- upstream playbook: `p3-technical-freelancer/Reputation + referral pipeline ramp (90-day flywheel)`
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

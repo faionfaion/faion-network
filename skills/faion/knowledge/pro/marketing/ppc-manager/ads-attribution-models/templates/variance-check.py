@@ -1,3 +1,9 @@
+# purpose: legacy template for ads-attribution-models — variance-check
+# consumes: per AGENTS.md Prerequisites
+# produces: artefact per content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml, content/06-decision-tree.xml
+# token-budget-impact: ~400-1200 tokens when loaded as context
+
 """
 variance_check.py — flag platform vs. warehouse attribution drift per channel
 

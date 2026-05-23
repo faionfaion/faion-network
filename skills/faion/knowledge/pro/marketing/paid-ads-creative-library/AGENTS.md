@@ -3,69 +3,99 @@ slug: paid-ads-creative-library
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Versioned + tagged creative library that survives campaign rotations and powers AI-assisted creative iteration — the meta-asset PPC manuals miss.
-content_id: "b159fa1793a2b399"
-tags: [paid-ads-creative-library, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Specifies a versioned + tagged creative library (asset, tag-taxonomy, performance, lineage) that survives campaign rotations and powers AI-assisted creative iteration.
+content_id: "f04c1a3b090a7812"
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: ["marketing", "paid-ads", "creative", "library", "versioning", "pro"]
 ---
-
 # Paid Ads Creative Library
 
 ## Summary
 
-**One-sentence:** Versioned + tagged creative library that survives campaign rotations and powers AI-assisted creative iteration — the meta-asset PPC manuals miss.
+**One-sentence:** Specifies a versioned + tagged creative library (asset, tag-taxonomy, performance, lineage) that survives campaign rotations and powers AI-assisted creative iteration.
 
-**One-paragraph:** PPC corpus is heavy on platform-specific basics (google-ads-basics, meta-ads-creative) but has no methodology for the versioned tagged creative library — the moat in 2026 paid ads. Output: library structure + tagging taxonomy + performance feedback loop.
+**One-paragraph:** PPC manuals cover platform basics but not the meta-asset — the versioned tagged creative library — which is the 2026 paid-ads moat. This methodology specs library structure (asset_id, version, lineage_parent, tags, performance_metrics), tagging taxonomy (hook-type / offer / format / persona / funnel-stage), and the performance feedback loop (auto-tag winners; deprecate fatigued assets). Output: library spec + tag taxonomy + feedback-loop runbook.
+
+**Ефективно для:**
+
+- PPC manager з >= $2k/mo spend і > 3 campaigns шукає creative moat.
+- AI-assisted creative iteration: треба versioned lineage для prompt-feed.
+- Cross-platform reuse: Meta winner → LinkedIn variant без перебудови.
+- Onboarding нового creative-vendor зі стандартизованим tagging.
 
 ## Applies If (ALL must hold)
 
-- ≥$2k/month paid-ads spend
-- ≥3 active campaigns OR ≥6 creative variants
-- marketing owner with authority to standardize creative pipeline
+- Paid-ads spend >= $2k/month.
+- >= 3 active campaigns OR >= 6 creative variants in rotation.
+- Marketing owner with authority to standardize creative pipeline.
+- Storage substrate available (Notion / Airtable / Frame.io / Drive)
 
 ## Skip If (ANY kills it)
 
-- <$500/month ad spend — overhead not justified
-- single static creative (e.g., one image, never changed)
-- agency-managed where library lives in agency tooling — defer
+- Spend < $2k/month — overhead exceeds value.
+- Single creative variant — no lineage, no library needed yet.
+- Owner unwilling to enforce tagging on upload — library decays without it.
 
 ## Prerequisites
 
-- current creative inventory in one place (Drive, Notion, Frame.io, dedicated tool)
-- ad-platform reporting access for performance data
-- tagging taxonomy draft
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent skill — provides operating context for this methodology |
-| `pro/marketing/ppc-manager` | peer methodology — produces inputs or consumes outputs |
-| `pro/marketing/creative-brief-template` | peer methodology — produces inputs or consumes outputs |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-paid-ads-creative-library` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/spec.md` | Markdown spec skeleton |
+| `templates/output.json` | JSON spec sidecar with __faion_header__ |
+| `templates/_smoke-test.md` | Minimum viable filled spec |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-paid-ads-creative-library.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `pro/marketing/ppc-manager`
-- peer methodology: `pro/marketing/creative-brief-template`
-- peer methodology: `pro/marketing/lookalike-and-retargeting-audience-design`
-- external: https://www.facebook.com/business/ads/creative; https://www.marketingbrew.com/stories/2023/04/05/creative-library-future-of-advertising
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

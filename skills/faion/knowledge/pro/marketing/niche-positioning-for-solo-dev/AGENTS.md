@@ -3,77 +3,97 @@ slug: niche-positioning-for-solo-dev
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Niche Positioning For Solo Dev: codified marketing practice that turns the recurring 'p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer' decision into a repeatable, auditable artefact.
-content_id: "4444030f191271ae"
-tags: [niche-positioning-for-solo-dev, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Picks a (vertical x stack x outcome) positioning lane for a solo dev so marketing copy, lead magnets, and pricing collapse to one sharp story.
+content_id: "742cdcbf1639dc98"
+complexity: medium
+produces: decision-record
+est_tokens: 5300
+tags: ["marketing", "positioning", "solo-dev", "niche", "pro"]
 ---
-# Niche Positioning For Solo Dev
+# Niche Positioning for Solo Dev
 
 ## Summary
 
-**One-sentence:** Niche Positioning For Solo Dev: codified marketing practice that turns the recurring 'p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer' decision into a repeatable, auditable artefact.
+**One-sentence:** Picks a (vertical x stack x outcome) positioning lane for a solo dev so marketing copy, lead magnets, and pricing collapse to one sharp story.
 
-**One-paragraph:** Niche Positioning For Solo Dev addresses the gap identified by the p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer playbook: growth-brand-positioning exists but is brand-level, not 'I am the Stripe-integration person for Shopify Plus stores'. Solo specialization (vertical x stack x outcome) is the highest-leverage marketing move and has no dedicated methodology. Compare: faion has 10 pages on PMBOK certification changes but nothing on positioning a one-person shop. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Solo devs lose 6-18 months trying to market 'full-stack web development' before realizing generic positioning attracts low-fit leads. This methodology forces a three-axis decision: vertical (which industry), stack (which tools), outcome (which result the buyer cares about). Output: positioning decision record with named lane, headline copy, three test prospects, and exit criteria (when to repivot).
+
+**Ефективно для:**
+
+- Solo dev або 1-2 person consultancy шукає sharper market fit.
+- Перехід з 'full-stack dev' на 'Stripe integration для Shopify Plus stores'.
+- Збір data з останніх 10 проектів для пошуку (vertical x stack x outcome) паттерну.
+- 6-month positioning trial з clear exit criteria.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Solo dev or 1-2 person consultancy seeking sharper market fit.
+- >= 3 months of prior project history to mine for vertical / stack / outcome patterns.
+- Operator willing to say 'no' to non-fit projects for 6 months.
+- Buyer ICP can be named at company-size + role + decision-trigger level.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Operator < 3 months in business — too early; mine more data first.
+- Operator already has named lane and 80%+ projects fit — skip to next iteration.
+- Operator unwilling to refuse non-fit work — positioning will fail under economic pressure.
 
 ## Prerequisites
 
-- recent context for the p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent role skill — provides the operating context for this methodology |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-niche-positioning-for-solo-dev` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/niche-positioning-for-solo-dev.json` | JSON schema for the Niche Positioning For Solo Dev output contract |
-| `templates/niche-positioning-for-solo-dev.md` | Markdown skeleton with the required fields |
+| `templates/decision-record.md` | Markdown decision record skeleton |
+| `templates/_smoke-test.md` | Minimum viable filled decision record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-niche-positioning-for-solo-dev.py` | Enforce Niche Positioning For Solo Dev output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-niche-positioning-for-solo-dev.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- upstream playbook: `p3-technical-freelancer/Productize a recurring engagement into a fixed-scope offer`
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

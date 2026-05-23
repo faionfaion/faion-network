@@ -1,59 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ads-conversion-tracking Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ads-conversion-tracking. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ads Conversion Tracking Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of Ads Conversion Tracking MUST enforce. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always track both macro conversions (primary business goal) and micro conversions (funnel steps) — micro conversions provide optimization signal when macro volume is too low for smart bidding.</statement>
-      <rationale source="v1-source">Smart bidding requires 30-50 conversions per week to function; new campaigns rarely achieve this on macro events alone. Micro conversions (add-to-cart, pricing page view) fill the signal gap during ramp-up.</rationale>
+    <rule id="server-side-mandatory" testable="true" depth="essential">
+      <statement>Server-side conversion API (CAPI / enhanced / LinkedIn API) MUST be implemented alongside browser pixel. Browser-only is rejected.</statement>
+      <rationale source="Meta / Google server-side docs">Browser-only loses 20-40% of events; smart bidding optimizes on incomplete data; CPA misleads.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Pass dynamic purchase values whenever possible — static values prevent Target ROAS bidding from optimizing for high-value orders over low-value ones.</statement>
-      <rationale source="v1-source">Static values make all conversions look equal to the algorithm; with dynamic values, bidding can allocate more spend toward user segments that produce larger orders.</rationale>
+    <rule id="dedup-key-required" testable="true" depth="essential">
+      <statement>Every conversion event MUST carry a dedup_key (event_id) so server + browser events don't double-count.</statement>
+      <rationale source="Meta CAPI docs">Without dedup key, server + browser events double-count; CPA misreports + bidding misfires.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Install the Meta Pixel base code on every page of the site, not just conversion pages.</statement>
-      <rationale source="v1-source">The base code enables audience building from all page visitors, not just converters — required for website custom audiences and retargeting.</rationale>
+    <rule id="attribution-window-match" testable="true" depth="essential">
+      <statement>Attribution window MUST match sales-cycle median. Default 7-day click windows misfit long-cycle B2B.</statement>
+      <rationale source="GA4 / platform docs">Window mismatch under-credits real conversions; smart bidding optimizes on wrong signal.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Always implement server-side tracking alongside browser pixels — never rely on browser pixels alone.</statement>
-      <rationale source="v1-source">Ad blockers, iOS App Tracking Transparency, and browser privacy features block 20-40% of browser pixel events. Server-side events pass directly from your server, bypassing all browser restrictions, and can include richer user data for better match rates.</rationale>
+    <rule id="dollar-value-per-event" testable="true" depth="essential">
+      <statement>Every conversion event MUST carry $ value (predicted or actual). Value-less events are rejected.</statement>
+      <rationale source="Smart bidding documentation">Without $ value, smart bidding cannot target ROAS; falls back to volume optimization which destroys margin.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Set matching event_id values in both the browser fbq() call and the CAPI server event — mismatched IDs cause double-counting, inflating reported conversions by up to 2x.</statement>
-      <rationale source="v1-source">Meta deduplicates events within a 48-hour window when event_id matches; without this, the algorithm sees twice the conversions and bids accordingly, wasting budget.</rationale>
+    <rule id="verification-before-spend" testable="true" depth="essential">
+      <statement>Every event MUST pass DebugView + CRM-cross-check before campaigns go live. Un-verified events run silent.</statement>
+      <rationale source="GA4 / Meta debug docs">Silent broken events cost full-month budget before discovery.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Test every conversion type manually before launch — never rely on code review alone to confirm events fire in production.</statement>
-      <rationale source="v1-source">CSP headers, async loading conflicts, and SPA routing all cause pixel silencing in production that is invisible in staging environments.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Set attribution windows to match your product's typical sales cycle — a B2B SaaS with a 30-day trial should use a 30-day click window, not 7 days.</statement>
-      <rationale source="v1-source">Shorter windows than the sales cycle under-attribute conversions to ads, making campaigns appear less efficient and causing premature budget cuts on campaigns that are actually working.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Always send a unique event_id (order ID, lead ID) on both pixel and CAPI for the same event — Meta dedupes within a 48-hour window. No event_id = double-count.</statement>
-      <rationale source="v1-source">Event ID is the primary deduplication key. Without it, the same business event gets counted twice, inflating conversion reports and burning budget.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Hash PII (email, phone, first/last name, city, zip) with lowercase-trim then SHA-256 before sending — and verify in Events Manager that match-quality score is &gt; 5.0.</statement>
-      <rationale source="v1-source">PII hashing enables Meta to match server events to users without transmitting PII in plaintext. Match quality score measures success; scores below 5.0 indicate data quality issues.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Fire one and only one Purchase per order. If your thank-you page can be reloaded, gate the pixel on sessionStorage or send only from server.</statement>
-      <rationale source="v1-source">Multiple Purchase events per order inflate reported conversions and make optimization signal noisy. Server-side de-duplication is the most reliable approach.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Keep event names canonical across platforms via a single mapping table; never sprinkle platform-specific names through the codebase.</statement>
-      <rationale source="v1-source">Event name standardization prevents drift where the same business action gets different names on different platforms. A mapping table makes audits and migrations easier.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Set CAPI as the source of truth in the ad platform once both are stable — pixel becomes a redundant backup, not the primary signal.</statement>
-      <rationale source="v1-source">CAPI provides server-side data that is more accurate and less subject to browser restrictions. Once CAPI is working, make it primary so algorithms optimize on the most reliable signal.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Test on an iOS Safari device with Private Relay on — that's where 30% of the data loss hides.</statement>
-      <rationale source="v1-source">iOS Private Relay removes IP addresses from server-side requests for some users. Testing with Private Relay reveals fingerprinting gaps and match-rate drops that staging environments miss.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If applicability preconditions are unmet (see AGENTS.md Skip If), the methodology MUST be skipped and a one-line skip-reason logged.</statement>
+      <rationale source="F-066 decision-tree convention">A named skip terminal keeps decision-tree leaves resolvable and prevents silent misuse on misfit inputs.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

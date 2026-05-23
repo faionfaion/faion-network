@@ -3,72 +3,98 @@ slug: ads-google-campaign-setup
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured process for creating Google Ads Search campaigns via the API: conversion tracking first, then campaign with PAUSED status, ad groups by theme, Responsive Search Ads (RSA), and extensions.
-content_id: "eade5f4484c75a19"
-tags: [campaign-setup, google-ads-api, search-campaigns, responsive-search-ads, api-automation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Provisions a Google Search campaign via API with conversion-tracking-first, PAUSED status, ad groups by theme, RSAs, extensions, and pre-launch verification — never ENABLED without checklist pass.
+content_id: "ee4a33380bb7eead"
+complexity: deep
+produces: config
+est_tokens: 6500
+tags: ["marketing", "google-ads", "campaign-setup", "api", "rsa", "ppc", "pro"]
 ---
 # Google Ads Campaign Setup
 
 ## Summary
 
-**One-sentence:** Structured process for creating Google Ads Search campaigns via the API: conversion tracking first, then campaign with PAUSED status, ad groups by theme, Responsive Search Ads (RSA), and extensions.
+**One-sentence:** Provisions a Google Search campaign via API with conversion-tracking-first, PAUSED status, ad groups by theme, RSAs, extensions, and pre-launch verification — never ENABLED without checklist pass.
 
-**One-paragraph:** Structured process for creating Google Ads Search campaigns via the API: conversion tracking first, then campaign with PAUSED status, ad groups by theme, Responsive Search Ads (RSA), and extensions. Default network settings must explicitly disable Display and Search Partners — the API does not match the UI defaults. Never flip status to ENABLED without verified conversion tracking firing in the last 24 hours and at least one RSA per ad group.
+**One-paragraph:** API-provisioned Google Search campaigns silently inherit risky defaults (Display + Search Partners enabled, broad keywords, single-headline ads). This methodology specs the safe order: conversion tracking first → campaign PAUSED → ad groups by theme → RSAs (Responsive Search Ads) with required 15 headlines + 4 descriptions → extensions → pre-launch checklist → ENABLED. Output: campaign config + ad-group structure + RSA spec + extension list + verification checklist.
+
+**Ефективно для:**
+
+- Agency що template-їть new client account з repeatable skeleton.
+- Onboarding multi-tenant accounts: same campaign structure per client.
+- Pre-launch QA: блокує ENABLED поки checklist не пройдено.
+- Migration manual → Smart Bidding через fresh templated campaign.
 
 ## Applies If (ALL must hold)
 
-- Templating new Google Ads accounts: agent provisions a Search campaign with conversion tracking, RSAs, extensions, and naming convention enforced
-- Onboarding agency or multi-tenant clients where the same campaign skeleton repeats across many accounts
-- Pre-launch QA: agent walks the launch checklist and refuses to enable until every item passes
-- Migrating manual campaigns to Smart Bidding by templating fresh campaigns with historical conversions
+- Templating new Google Ads accounts (agency or in-house).
+- Onboarding multi-tenant clients with repeated campaign skeleton.
+- Pre-launch QA where launch must be blocked until checklist passes.
+- Migrating manual campaigns to Smart Bidding via templated rebuild.
 
 ## Skip If (ANY kills it)
 
-- One-off campaigns launched in the UI in under 20 minutes — API setup overhead does not pay back
-- Campaigns using UI-only features (some recommendations, brand-suitability tweaks, certain PMax settings)
-- Heavily creative-led campaigns where asset variation is the primary work
-- Already-running accounts with established Smart Bidding — re-templating restarts learning
+- Single-keyword test campaign — full structure overhead exceeds value.
+- Display / YouTube / Discovery campaign — different methodology.
+- Conversion tracking unavailable — methodology cannot complete required first step.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-ads-google-campaign-setup` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton with 5-line header |
+| `templates/output.json` | JSON sidecar with __faion_header__ |
+| `templates/_smoke-test.yaml` | Minimum viable filled config |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ads-google-campaign-setup.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/ppc-manager/`
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

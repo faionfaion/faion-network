@@ -3,69 +3,99 @@ slug: partnership-co-marketing-playbook
 tier: pro
 group: marketing
 domain: marketing
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Find co-marketing partners with overlapping ICPs, propose a swap, structure a joint asset (webinar/research report/bundle), measure attribution — the highest-leverage zero-CAC channel.
-content_id: "04504c790da2ade8"
-tags: [partnership-co-marketing-playbook, marketing, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identifies co-marketing partners with overlapping ICPs, structures a joint asset (webinar / research / bundle), and wires UTM-based attribution — the highest-leverage zero-CAC channel.
+content_id: "408af952c3bb4abb"
+complexity: medium
+produces: spec
+est_tokens: 5300
+tags: ["marketing", "partnerships", "co-marketing", "joint-asset", "pro"]
 ---
-
 # Partnership Co-Marketing Playbook
 
 ## Summary
 
-**One-sentence:** Find co-marketing partners with overlapping ICPs, propose a swap, structure a joint asset (webinar/research report/bundle), measure attribution — the highest-leverage zero-CAC channel.
+**One-sentence:** Identifies co-marketing partners with overlapping ICPs, structures a joint asset (webinar / research / bundle), and wires UTM-based attribution — the highest-leverage zero-CAC channel.
 
-**One-paragraph:** ops-partnership-strategy is operations-flavored (contracts, structure). No methodology covers the marketing motion. Output: partner shortlist + asset template + attribution plan.
+**One-paragraph:** Co-marketing is the highest-leverage zero-CAC channel for solos and mid-stage teams, but existing partnership content is operations-flavored (contracts, terms). This methodology covers partner shortlist (ICP-overlap > 60%, audience-density match, brand-fit), asset structure (webinar / research report / bundle), attribution plan (shared UTM + post-event survey), and the exit criteria (when to stop or scale). Output: partnership spec + asset template + attribution plan.
+
+**Ефективно для:**
+
+- Solo або small team з ICP overlap >=60% з потенційним партнером.
+- Zero-CAC growth move: joint webinar з partner's audience access.
+- Joint research report з cross-promo для thought-leadership.
+- Bundle deal для cross-promote on email + social.
 
 ## Applies If (ALL must hold)
 
-- marketing owner with authority to commit joint resources
-- ICP is identifiable and matches another product's ICP partially
-- ≥1 candidate partner with overlapping audience
+- Marketing owner with authority to commit joint resources (asset time, audience access).
+- ICP defined and overlapping (>=60% audience-ICP match) with >=1 candidate partner.
+- Both parties have audiences >= 500 active subscribers / followers / community members.
+- Asset format (webinar / report / bundle) achievable in <=4 weeks.
 
 ## Skip If (ANY kills it)
 
-- no clear ICP — partnership leverage requires fit
-- team unable to commit 20-40 hours per partner asset
-- regulated industry forbids co-marketing without compliance review
+- No ICP overlap candidate — partnership wastes both audiences.
+- Audience < 500 on one side — asymmetric value, deal collapses.
+- Authority to commit joint resources missing — committee partnerships fail.
 
 ## Prerequisites
 
-- list of 10-20 candidate partners with overlapping ICP
-- joint-asset budget (time + tooling)
-- attribution capability (UTM, dedicated landing, post-event survey)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inputs source-of-truth | system / dashboard / transcript | operator-managed |
+| Prior artefact (if any) | Markdown / JSON / YAML | prior cycle |
+| Named consumer for output | team contact / agent task | operator-managed |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/marketing/growth-marketer` | parent skill — provides operating context for this methodology |
-| `pro/marketing/ops-partnership-strategy` | peer methodology — produces inputs or consumes outputs |
-| `pro/marketing/growth-marketer` | peer methodology — produces inputs or consumes outputs |
+| `pro/marketing/AGENTS.md` | parent group context (vocabulary, neighbours) |
+| [[learnings-database-schema]] | shared cumulative-knowledge substrate (if available) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-applicability` | sonnet | Decision-tree application; bounded judgement. |
+| `draft-partnership-co-marketing-playbook` | opus | Synthesis under output contract; final write-up. |
+| `validate-output` | haiku | Mechanical schema check via scripts/validate-<slug>.py. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/spec.md` | Markdown spec skeleton |
+| `templates/output.json` | JSON spec sidecar with __faion_header__ |
+| `templates/_smoke-test.md` | Minimum viable filled spec |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-partnership-co-marketing-playbook.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns, before publish; pre-commit if artefact is git-tracked |
 
 ## Related
 
-- parent skill: `pro/marketing/growth-marketer/`
-- peer methodology: `pro/marketing/ops-partnership-strategy`
-- peer methodology: `pro/marketing/growth-marketer`
-- peer methodology: `pro/marketing/agency-to-agency-referral`
-- external: https://www.hubspot.com/co-marketing-101; https://www.crossbeam.com/blog/co-marketing-playbook
+- [[ad-account-hygiene-checklist]]
+- [[ads-attribution-models]]
+- [[learnings-database-schema]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.

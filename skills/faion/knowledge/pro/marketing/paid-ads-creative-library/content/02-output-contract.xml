@@ -1,42 +1,160 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Paid Ads Creative Library Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Paid Ads Creative Library output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Paid Ads Creative Library Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema draft-07 for the spec artefact this methodology produces, plus one valid example, one invalid example, and a forbidden-patterns block. Validator: `scripts/validate-paid-ads-creative-library.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="tagging_taxonomy" type="object" required="true">{format, hook, value_prop, audience, platform}</field>
-      <field name="version_policy" type="object" required="true">{semver, changelog_per_version, lineage_tracked}</field>
-      <field name="performance_row" type="object" required="true">{cpm, ctr, cvr, spend, lifetime_days}</field>
-      <field name="ai_iteration_policy" type="object" required="true">{tagged_ai, human_review, brand_check}</field>
-      <field name="pruning_cadence" type="string" required="true">quarterly</field>
-      <field name="owner" type="string" required="true">named creative manager / PPC lead</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">creatives without tags</pattern>
-      <pattern id="f2">version_policy missing</pattern>
-      <pattern id="f3">ai-generated creatives launched without human review</pattern>
-      <pattern id="f4">performance_row missing on active assets</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/paid-ads-creative-library.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>tagging_taxonomy populated with a typed value</item>
-      <item>version_policy populated with a typed value</item>
-      <item>performance_row populated with a typed value</item>
-      <item>ai_iteration_policy populated with a typed value</item>
-      <item>pruning_cadence populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/paid-ads-creative-library.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "template_version",
+    "owner",
+    "summary",
+    "fields",
+    "evidence",
+    "status"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "template_version": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 400
+    },
+    "fields": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "citation"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "citation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready_for_review",
+        "approved",
+        "archived"
+      ]
+    },
+    "next_action": {
+      "type": "object",
+      "required": [
+        "label",
+        "owner",
+        "due_cycle"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "due_cycle": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "paid-ads-creative-library-2026-Q2",
+  "template_version": "1.1.0",
+  "owner": "marketing-lead@faion.net",
+  "summary": "Spec for Paid Ads Creative Library applied to faion.net solo-consultancy lane.",
+  "fields": {
+    "primary_decision": "format=opinionated-benchmark-report",
+    "scope": "Shopify Plus stores, Stripe integration, sub-200 stores"
+  },
+  "evidence": [
+    {
+      "source": "lost-deal transcript 2026-04-12",
+      "citation": "Buyer cited 'no benchmark for our size of store' as reason for declining."
+    },
+    {
+      "source": "customer interview 2026-04-19",
+      "citation": "Three customers requested 'one-page comparison vs. ShopifyAudits.io'."
+    }
+  ],
+  "status": "ready_for_review",
+  "next_action": {
+    "label": "Draft benchmark report v0",
+    "owner": "marketing-lead@faion.net",
+    "due_cycle": "2026-W22"
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "paid-ads-creative-library-2026-Q2",
+  "owner": "tbd",
+  "fields": {},
+  "evidence": []
+}
+]]></code>
+      <note>Missing required fields and / or schema-violating values. The validator rejects on the first error and lists all violations.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern id="missing-required">
+      <description>Artefact missing any required field listed in the JSON Schema.</description>
+      <reason>downstream consumers cannot parse.</reason>
+    </antipattern>
+    <antipattern id="owner-blank-or-team">
+      <description>owner field set to 'team', 'us', 'tbd', or empty string.</description>
+      <reason>un-owned artefacts are not actionable.</reason>
+    </antipattern>
+    <antipattern id="evidence-empty-where-required">
+      <description>evidence array empty for fields the methodology marks non-trivial.</description>
+      <reason>fabrication risk; auditability lost.</reason>
+    </antipattern>
+    <antipattern id="status-auto-approved">
+      <description>agent self-promotes status to 'approved' without named human reviewer.</description>
+      <reason>self-approval defeats the audit checkpoint.</reason>
+    </antipattern>
+    <antipattern id="schema-violation">
+      <description>Output does not validate against the embedded JSON Schema draft-07.</description>
+      <reason>downstream type-checked consumers break silently.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-paid-ads-creative-library.py">Stdlib-only validator for this contract.</reference>
 </text>

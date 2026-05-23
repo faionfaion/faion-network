@@ -1,37 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ads-conversion-tracking Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ads-conversion-tracking as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Ads Conversion Tracking Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real deployments of Ads Conversion Tracking. Each pairs symptom + sourced root-cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>iOS 14.5+ ATT, Safari ITP, and EU consent banners cut browser-only pixel coverage by 30-60% — server-side is mandatory for accurate numbers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Browser privacy features are beyond an advertiser's control. Browser-only tracking is inherently incomplete in 2026; CAPI is the only path to ground truth.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Meta CAPI events without event_id get deduped against the pixel by event_name + timestamp window — easy to double-count if you skip event IDs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Meta's fallback deduplication is imprecise. Events with the same name fired within seconds can appear different. Event IDs prevent this false-positive dedup.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>predicted_ltv on Meta is a custom param Meta doesn't actually use for bidding (yet) — don't optimize on it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Meta's documentation promises LTV-aware bidding but has not shipped it. Agents that instrument predicted_ltv are building for a future that may not arrive; focus on actual conversion signals instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>LinkedIn Insight Tag has 90-day attribution but only fires on direct site visits — single-page apps need explicit _linkedin_partner_id push on route change.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LinkedIn's tag is not universal; SPAs must hook route changes manually. Agents deploying LinkedIn without SPA-specific handling will get zero conversions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>gtag/GTM server containers don't replicate Meta's automatic advanced matching — you must hash and send PII fields explicitly.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Advanced matching requires PII; GTM's server container defaults to anonymous tracking. Agents must explicitly include PII hashing to enable matching.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Apple's Private Relay strips IP from server-side requests for some users — fingerprinting fallbacks degrade silently.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When IP is unavailable, match rates drop sharply. Agents are blind to the failure because no error is raised — the event lands but with zero match rate.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+    <antipattern id="browser-only-tracking" severity="high">
+      <symptom>Browser-only pixel; iOS users lost; smart bidding optimizes on 60% of true signal; CPA understated 30%.</symptom>
+      <root-cause source="Meta CAPI docs">server-side-mandatory rule violated.</root-cause>
+      <fix>Implement CAPI alongside Pixel; configure event_id dedup; verify match-rate &gt;= 70%.</fix>
+    </antipattern>
+    <antipattern id="double-count-no-dedup" severity="high">
+      <symptom>Server + browser both fire; conversions inflated 40%; ROAS inflated; budget over-scaled.</symptom>
+      <root-cause source="Meta CAPI docs">dedup-key-required rule violated.</root-cause>
+      <fix>Add event_id (UUID per conversion) on both sides; verify dedup rate in dashboard.</fix>
+    </antipattern>
+    <antipattern id="window-mismatch" severity="medium">
+      <symptom>7-day click window on 45-day B2B sales-cycle; CPA appears infinite; campaigns paused incorrectly.</symptom>
+      <root-cause source="GA4 / platform docs">attribution-window-match rule violated.</root-cause>
+      <fix>Match window to sales-cycle median; consider 60-day + offline upload for long cycles.</fix>
+    </antipattern>
+    <antipattern id="valueless-events" severity="medium">
+      <symptom>Conversion events fire but $ value missing; tROAS bidding falls back to tCPA; margin erodes.</symptom>
+      <root-cause source="Smart bidding documentation">dollar-value-per-event rule violated.</root-cause>
+      <fix>Add predicted LTV or transaction value per event; back-fill via offline upload where needed.</fix>
+    </antipattern>
   </section>
 </text>

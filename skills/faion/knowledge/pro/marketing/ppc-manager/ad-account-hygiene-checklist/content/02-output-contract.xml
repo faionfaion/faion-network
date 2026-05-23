@@ -1,32 +1,189 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ad Account Hygiene Checklist Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a Ad Account Hygiene Checklist deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="cycle_id" format="iso_date_or_sprint_id" />
-      <field name="items" type="list" min="3" schema="{id,status,evidence,carryover}" />
-      <field name="pass_rate" format="float_0_to_1" />
-      <field name="carryover_items" type="list_of_ids" />
-      <field name="escalations" type="list" />
-    </required>
-    <forbidden>
-      <pattern id="f1">items marked done without evidence link</pattern>
-      <pattern id="f2">skipped items without one-line reason</pattern>
-      <pattern id="f3">carryover items aged &gt;3 cycles without escalation entry</pattern>
-      <pattern id="f4">items added mid-cycle without owner field</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Group similar items only if they share owner + source-of-truth.</transformation>
-      <transformation>Promote a carryover item to escalation when aging &gt;3.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
-    <list>
-      <item>Every item has source link</item>
-      <item>Every skipped item has reason</item>
-      <item>Carryover and escalation lists are non-overlapping</item>
-      <item>Pass rate matches counted items</item>
-    </list>
+<text id="02-output-contract" title="Ad Account Hygiene Checklist Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>JSON Schema draft-07 for the checklist artefact this methodology produces, plus one valid example, one invalid example, and a forbidden-patterns block. Validator: `scripts/validate-ad-account-hygiene-checklist.py`.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ad-account-hygiene-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "template_version",
+    "owner",
+    "items",
+    "cycle"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "template_version": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cycle": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly",
+        "annual"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "platform",
+          "status",
+          "evidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "google",
+              "meta",
+              "linkedin",
+              "other"
+            ]
+          },
+          "status": {
+            "enum": [
+              "done",
+              "skipped",
+              "blocked"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "skip_reason": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "ad-account-hygiene-checklist-2026-Q2",
+  "template_version": "1.1.0",
+  "owner": "ppc-manager@faion.net",
+  "cycle": "weekly",
+  "items": [
+    {
+      "id": "naming-convention",
+      "label": "Verify naming convention applied to new campaigns",
+      "platform": "google",
+      "status": "done",
+      "evidence": "2026-05-19T10:00Z; reviewed 3 new campaigns; all pass.",
+      "owner": "ppc-manager@faion.net"
+    },
+    {
+      "id": "exclusion-list",
+      "label": "Standing exclusion list attached",
+      "platform": "meta",
+      "status": "done",
+      "evidence": "Audit log entry 2026-05-19",
+      "owner": "ppc-manager@faion.net"
+    },
+    {
+      "id": "frequency-cap",
+      "label": "Frequency cap <= 8/wk",
+      "platform": "meta",
+      "status": "done",
+      "evidence": "Cap configured at adset 2026-05-19",
+      "owner": "ppc-manager@faion.net"
+    },
+    {
+      "id": "learning-phase",
+      "label": "Learning phase respected",
+      "platform": "google",
+      "status": "done",
+      "evidence": "No campaigns paused inside learning window",
+      "owner": "ppc-manager@faion.net"
+    },
+    {
+      "id": "search-terms-mining",
+      "label": "STR mined; negatives added",
+      "platform": "google",
+      "status": "skipped",
+      "skip_reason": "STR < 50 queries this week; insufficient signal",
+      "owner": "ppc-manager@faion.net",
+      "evidence": "STR exported; row-count 38."
+    }
+  ]
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "artefact_id": "ad-account-hygiene-checklist-2026-Q2",
+  "owner": "",
+  "cycle": "weekly",
+  "items": [
+    {
+      "id": "naming-convention",
+      "label": "Verify naming",
+      "status": "done"
+    }
+  ]
+}
+]]></code>
+      <note>Missing required fields and / or schema-violating values. The validator rejects on the first error and lists all violations.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden patterns">
+    <antipattern id="missing-required">
+      <description>Artefact missing any required field listed in the JSON Schema.</description>
+      <reason>downstream consumers cannot parse.</reason>
+    </antipattern>
+    <antipattern id="owner-blank-or-team">
+      <description>owner field set to 'team', 'us', 'tbd', or empty string.</description>
+      <reason>un-owned artefacts are not actionable.</reason>
+    </antipattern>
+    <antipattern id="evidence-empty-where-required">
+      <description>evidence array empty for fields the methodology marks non-trivial.</description>
+      <reason>fabrication risk; auditability lost.</reason>
+    </antipattern>
+    <antipattern id="status-auto-approved">
+      <description>agent self-promotes status to 'approved' without named human reviewer.</description>
+      <reason>self-approval defeats the audit checkpoint.</reason>
+    </antipattern>
+    <antipattern id="schema-violation">
+      <description>Output does not validate against the embedded JSON Schema draft-07.</description>
+      <reason>downstream type-checked consumers break silently.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="scripts/validate-ad-account-hygiene-checklist.py">Stdlib-only validator for this contract.</reference>
 </text>
