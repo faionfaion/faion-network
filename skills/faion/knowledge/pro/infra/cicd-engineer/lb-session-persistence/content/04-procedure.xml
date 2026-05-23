@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LB Session Persistence Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to apply the lb-session-persistence methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="check-externalize">
+      <input>Application session-storage location.</input>
+      <action>If session lives in Redis / DB already, set `method=externalized-no-sticky` and STOP — remove any existing sticky config.</action>
+      <output>Decision: externalize or proceed.</output>
+      <decision-gate>If externalizable in ≤ 1 sprint, schedule the work + use temporary stickiness only.</decision-gate>
+    </step>
+
+    <step n="2" name="check-client-environment">
+      <input>Client mix (direct / NAT / VPN) + autoscaling policy.</input>
+      <action>If autoscaling = true OR NAT-behind-LB = true → ip-hash forbidden. Pick cookie-based.</action>
+      <output>Method shortlist.</output>
+    </step>
+
+    <step n="3" name="pick-cookie-vs-iphash">
+      <input>Method shortlist.</input>
+      <action>Cookie-based default (LB-inserted for OSS HAProxy / Nginx Plus; app-managed for OSS Nginx). IP-hash only on a fixed pool with direct clients.</action>
+      <output>Final method.</output>
+    </step>
+
+    <step n="4" name="bound-stickiness">
+      <input>Final method.</input>
+      <action>Set `maxidle 3600 maxlife 86400` (or zone `expire 1h`). Configure `invalidate_on_removal = true` so backend draining clears stickies.</action>
+      <output>Time-bounded stickiness.</output>
+    </step>
+
+    <step n="5" name="emit-and-validate">
+      <input>Method + LB technology.</input>
+      <action>Render `templates/sticky-haproxy.cfg` or `templates/sticky-nginx.conf`. Run `validate-lb-session-persistence.py --file artefact.json`. Smoke test: 10 requests from one client land on the same backend; after restart of that backend, the next request lands on a peer.</action>
+      <output>Live config + validator green.</output>
+    </step>
+
+  </section>
+</text>

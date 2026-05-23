@@ -3,80 +3,98 @@ slug: cost-pr-gate-recipe
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Cost Pr Gate Recipe: codified infra practice that turns the recurring 'role-devops-engineer/Cost optimization sweep (4 weeks)' decision into a repeatable, auditable artefact.
-content_id: "a426023907bc3eda"
-tags: [cost-pr-gate-recipe, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a CI gate config that blocks merge when an IaC PR exceeds the team's monthly cost-delta budget.
+content_id: "6c440b2895746edc"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [finops, ci-gate, pr-gate, cost-control]
 ---
-# Cost Pr Gate Recipe
+# Cost PR Gate Recipe
 
 ## Summary
 
-**One-sentence:** Cost Pr Gate Recipe: codified infra practice that turns the recurring 'role-devops-engineer/Cost optimization sweep (4 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a CI gate config that blocks merge when an IaC PR exceeds the team's monthly cost-delta budget.
 
-**One-paragraph:** Cost Pr Gate Recipe addresses the gap surfaced by 'role-devops-engineer/Cost optimization sweep (4 weeks)'. FinOps content covers visibility + rightsizing but not 'fail the PR if infrastructure cost delta > X' — a critical loop for keeping spend down at P6 product teams. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** FinOps content covers visibility and rightsizing but not the 'fail the PR if infrastructure cost delta > X' loop. P6 product teams ship cost regressions because the cost dashboard updates after merge, not before. This methodology pins a CI gate config that computes the projected cost delta from the IaC diff, compares against the service's monthly cost-delta budget, and blocks merge on breach unless a named approver signs off.
+
+**Ефективно для:**
+
+- P6 product-команда, де infra cost росте на кожен sprint без видимості у PR-flow.
+- коли потрібен CI-gate що блокує merge при cost-delta вище порогу.
+- FinOps visibility є, а enforcement loop — відсутній.
+- tier=pro команд із Infrastructure-as-Code (Terraform / Pulumi / CloudFormation).
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-devops-engineer/Cost optimization sweep (4 weeks)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Team owns IaC (Terraform / Pulumi / CloudFormation) that lands through pull requests.
+- Monthly cost-delta budget per service is defined (even as a rough starting number).
+- CI system can run a cost-estimate step (Infracost, native pricing API, or equivalent).
+- Team agrees that a breached gate blocks merge until an approver signs off.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Team does not own IaC — manual console changes mean there is no PR to gate.
+- No monthly cost-delta budget agreed — gate has no threshold to compare against.
+- Greenfield prototype where every PR is expected to add cost.
+- CI system cannot run cost-estimate step in the time budget (gate would block all merges).
 
 ## Prerequisites
 
-- recent context for the 'role-devops-engineer/Cost optimization sweep (4 weeks)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| IaC repository | Terraform / Pulumi / CFN repo | dev team |
+| Per-service monthly cost-delta budget | numbers | finance + dev |
+| CI workflow file | YAML | platform team |
+| Approver matrix | role or named handle | engineering lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/devops-engineer` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with statement + rationale + source (5+ rules, includes r1-bound-scope) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | ~1000 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `parse-iac-diff` | haiku | Mechanical diff extraction |
+| `estimate-cost-delta` | sonnet | Bounded computation with sourced unit rates |
+| `decide-merge-or-block` | sonnet | Apply threshold + flag approver |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-pr-gate-recipe.json` | JSON schema for the Cost Pr Gate Recipe output contract |
-| `templates/cost-pr-gate-recipe.md` | Markdown skeleton with the required fields |
+| `templates/cost-pr-gate.yaml` | CI workflow snippet for the cost gate |
+| `templates/skeleton.json` | JSON schema for the gate decision record |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-cost-pr-gate-recipe.py` | Enforce Cost Pr Gate Recipe output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-cost-pr-gate-recipe.py` | Validate produced artefact against the 02-output-contract.xml schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `role-devops-engineer/Cost optimization sweep (4 weeks)`
-- methodology family: `pro/infra/` (gap-p2 batch, F-059-063)
+- [[cost-anomaly-runbook]]
+- [[cost-model-spreadsheet-template]]
+- [[finops-baseline]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the Cost PR Gate Recipe methodology when in doubt about scope or fit.

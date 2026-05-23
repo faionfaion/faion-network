@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-monitoring Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-monitoring as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="LB Monitoring Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in LB monitoring deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="alert-storm-short-for" severity="medium">
+      <symptom>Pager fires every minute during a transient 1-pod GC pause; SRE muts alerts; a real outage rings 4 hours later, ignored.</symptom>
+      <root-cause source="SRE workbook — alerting on SLO">Alert rules use `for: 30s` or omit `for:` entirely; transient blips immediately page.</root-cause>
+      <fix>Set `for:` per alert (BackendDown 1 m, HighErrorRate 5 m, HighLatency 5 m, PoolExhausted 2 m). Re-tune only if SLO needs faster reaction; never go below 1 m.</fix>
+    </antipattern>
+
+    <antipattern id="no-backend-label" severity="medium">
+      <symptom>Alert says "5xx rate high" with no `backend` label. SRE spends 20 minutes hunting which backend pool is failing.</symptom>
+      <root-cause source="Prometheus best practices">Recording rule aggregated away the `backend` dimension to "simplify" the metric.</root-cause>
+      <fix>Preserve the `backend` label in every metric + alert. Re-aggregate inside the dashboard, never at metric ingest.</fix>
+    </antipattern>
+
+    <antipattern id="local-only-logs" severity="high">
+      <symptom>Investigating last night's incident requires SSH into the LB box; the host had crashed and was reprovisioned, logs are gone forever.</symptom>
+      <root-cause source="Loki / ELK reference">No log shipping configured; logs lived on local disk only.</root-cause>
+      <fix>Ship access logs via Promtail / Filebeat to Loki / ELK with 30-day retention. Tail the LB stdout / syslog; parse access-log format into structured fields.</fix>
+    </antipattern>
+
   </section>
 </text>

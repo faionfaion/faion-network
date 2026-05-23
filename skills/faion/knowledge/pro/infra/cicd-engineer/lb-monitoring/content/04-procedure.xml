@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LB Monitoring Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to apply the lb-monitoring methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="deploy-exporter">
+      <input>LB kind + stats endpoint URL.</input>
+      <action>HAProxy: deploy `haproxy-exporter` sidecar reading `/run/haproxy/admin.sock`. Nginx: enable `stub_status` + deploy `nginx-prometheus-exporter`. Kubernetes Ingress: enable controller `/metrics` + create `ServiceMonitor`.</action>
+      <output>Exporter reachable + Prometheus scraping it.</output>
+    </step>
+
+    <step n="2" name="render-alerts">
+      <input>Promql exporter labels + SLO targets.</input>
+      <action>Render `templates/prometheus-rules.yaml` with the four alerts (BackendDown, HighErrorRate, HighLatency, ConnectionPoolExhausted), each carrying `backend` label and a `for:` ≥ 60 s.</action>
+      <output>Alert ruleset committed.</output>
+      <decision-gate>If SLO requires sub-minute alerting, document tradeoff (storm risk) before going below 60 s.</decision-gate>
+    </step>
+
+    <step n="3" name="import-dashboard">
+      <input>Grafana instance + dashboard JSON.</input>
+      <action>Import `templates/grafana-dashboard.json`. Confirm `instance` + `backend` template variables drop down; rows: traffic + error rate + latency + connections + backend health.</action>
+      <output>Dashboard live.</output>
+    </step>
+
+    <step n="4" name="ship-logs">
+      <input>Log destination + access-log format.</input>
+      <action>For HAProxy: Promtail config (`templates/promtail-haproxy.yaml`) tailing `/var/log/haproxy.log` with regex pipeline extracting status / upstream_response_time / request_id; push to Loki. For Nginx: similar with the `combined` log format.</action>
+      <output>Logs flowing; retention ≥ 30 d.</output>
+    </step>
+
+    <step n="5" name="validate-and-chaos">
+      <input>Monitoring artefact JSON + chaos test.</input>
+      <action>Run `validate-lb-monitoring.py --file artefact.json`. Chaos: kill one backend; confirm BackendDown alert fires within 90 s; confirm Grafana panel reflects the change.</action>
+      <output>Validator + chaos drill green.</output>
+    </step>
+
+  </section>
+</text>

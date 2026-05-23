@@ -3,21 +3,32 @@ slug: lb-session-persistence
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Session persistence ensures requests from the same client always reach the same backend server.
-content_id: "bd38c678b036cc2e"
-tags: [load-balancing, session-persistence, sticky-sessions, stateful, infrastructure]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a session-persistence decision (externalize → cookie-sticky → IP-hash) + LB config snippet picking the right method for the client + scaling constraints.
+content_id: "906dd8e53a477e22"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [load-balancing, sticky-sessions, cookies, session, infrastructure]
 ---
 # Load Balancer Session Persistence (Sticky Sessions)
 
 ## Summary
 
-**One-sentence:** Session persistence ensures requests from the same client always reach the same backend server.
+**One-sentence:** Generates a session-persistence decision (externalize → cookie-sticky → IP-hash) + LB config snippet picking the right method for the client + scaling constraints.
 
 **One-paragraph:** Session persistence ensures requests from the same client always reach the same backend server. Methods include source-IP hashing, load-balancer-inserted cookies, application-managed cookies, and SSL session ID tracking. Sticky sessions are a last resort — externalized session storage (Redis, Memcached) eliminates the need for stickiness while enabling true stateless scaling. When sticky sessions are unavoidable, cookie-based persistence is the most accurate and flexible method.
+
+**Ефективно для:**
+
+- Legacy app з in-process session — sticky тільки на час міграції на Redis.
+- WebSocket / long-poll: prefer cookie-based для NAT / autoscale-safety.
+- ASG environment: НІКОЛИ ip-hash; always cookie-sticky.
+- Configuration review: знайти прихований ip-hash + порадити Redis-based externalization.
+- Shopping cart, wizard state — cookie-sticky тільки до того часу, як state переїде у Redis.
 
 ## Applies If (ALL must hold)
 
@@ -36,40 +47,55 @@ tags: [load-balancing, session-persistence, sticky-sessions, stateful, infrastru
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Application session storage | inproc / Redis / DB | architecture |
+| Client environment | direct / NAT / VPN | network |
+| Autoscaling policy | yes/no | infra |
+| Connection lifetime | short / long / WebSocket | architecture |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lb-algorithms]] | Affinity choice constrains which algorithm can be used. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: externalize-first, cookie-over-iphash, no-iphash-asg-nat, ssl-session-id-fragile, sticky-time-bounded | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-method` | sonnet | Decision tree on client + scaling. |
+| `emit-snippet` | haiku | Mechanical template fill (HAProxy / Nginx / cloud LB). |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/sticky-haproxy.cfg` | HAProxy cookie-based sticky session snippet |
+| `templates/sticky-nginx.conf` | Nginx Plus / OSS cookie-hash sticky snippet |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-lb-session-persistence.py` | Validate the session-persistence artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[lb-algorithms]]
+- [[lb-layer-selection]]
+- [[lb-health-checks]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (session-storage location, NAT/autoscale, conn lifetime) to a method choice, each leaf referencing a rule from `01-core-rules.xml`.

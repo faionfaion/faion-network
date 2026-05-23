@@ -1,0 +1,32 @@
+# purpose: Promtail config — ship HAProxy access logs to Loki with structured labels
+# consumes: see content/02-output-contract.xml inputs (log_destination, log_retention_days)
+# produces: artefact conforming to content/02-output-contract.xml (log_destination=loki)
+# depends-on: content/01-core-rules.xml (log-shipping)
+# token-budget-impact: ~250 tokens when loaded as context
+
+server:
+  http_listen_port: 9080
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+scrape_configs:
+  - job_name: haproxy
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: haproxy
+          host: ${HOSTNAME}
+          __path__: /var/log/haproxy.log
+    pipeline_stages:
+      - regex:
+          expression: '(?P<remote_addr>\S+) (?P<frontend>\S+) (?P<backend>\S+)/(?P<server>\S+) (?P<tq>\d+)/(?P<tw>\d+)/(?P<tc>\d+)/(?P<tr>\d+)/(?P<tt>\d+) (?P<status>\d+) (?P<bytes>\d+).+ \"(?P<request>[^\"]+)\"'
+      - labels:
+          backend:
+          status:
+      - timestamp:
+          source: time
+          format: RFC3339

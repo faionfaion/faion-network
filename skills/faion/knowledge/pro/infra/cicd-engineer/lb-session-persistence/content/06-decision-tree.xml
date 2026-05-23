@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="LB Session Persistence Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (session storage, autoscale, NAT) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-storage">Where does the app store session state?</root-question>
+
+    <branch when="session_storage in (redis, memcached, database)">
+      <conclusion ref="externalize-first" verdict="no sticky; remove any stickiness from the LB"/>
+    </branch>
+
+    <branch when="session_storage == in_process">
+      <question id="q-client">Autoscaling OR NAT/VPN clients?</question>
+      <branch when="asg_or_nat == true">
+        <conclusion ref="no-iphash-asg-nat" verdict="cookie-based persistence (LB-inserted or app-managed); IP-hash forbidden"/>
+      </branch>
+      <branch when="asg_or_nat == false">
+        <question id="q-protocol">HTTP/HTTPS?</question>
+        <branch when="protocol == http">
+          <conclusion ref="cookie-over-iphash" verdict="cookie-based default; ip-hash only if cookies impossible"/>
+        </branch>
+        <branch when="protocol == raw_tls_tcp">
+          <conclusion ref="ssl-session-id-fragile" verdict="SSL session ID only as last resort"/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="sticky_ttl == unbounded">
+      <conclusion ref="sticky-time-bounded" verdict="add maxidle/maxlife or expire to the stickiness; invalidate on backend removal"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="legacy-app-asg-nat">
+    session_storage=in_process → asg_or_nat=true → cookie-based persistence → bound TTL 1 h → satisfies cookie-over-iphash + sticky-time-bounded.
+  </example>
+</text>

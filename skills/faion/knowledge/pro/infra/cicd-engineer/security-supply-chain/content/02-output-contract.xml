@@ -1,22 +1,116 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="security-supply-chain Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Supply Chain Security Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the supply-chain config bundle artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/security-supply-chain.json",
+  "type": "object",
+  "required": [
+    "repo_id",
+    "scanners_wired",
+    "pre_commit_present",
+    "ci_full_history_scan",
+    "license_allowlist",
+    "sbom_format",
+    "auto_merge_policy",
+    "owner"
+  ],
+  "properties": {
+    "repo_id": {
+      "type": "string",
+      "description": "stable repo identifier (org/name)"
+    },
+    "scanners_wired": {
+      "type": "array",
+      "description": "non-empty subset of [gitleaks, detect-secrets, trivy, snyk, syft, dependabot]"
+    },
+    "pre_commit_present": {
+      "type": "boolean",
+      "description": "true if .pre-commit-config.yaml at repo root"
+    },
+    "ci_full_history_scan": {
+      "type": "boolean",
+      "description": "true if CI runs git fetch --unshallow before scan"
+    },
+    "license_allowlist": {
+      "type": "array",
+      "description": "non-empty subset of [MIT, Apache-2.0, BSD-3-Clause, MPL-2.0]"
+    },
+    "sbom_format": {
+      "type": "string",
+      "description": "enum: SPDX | CycloneDX"
+    },
+    "auto_merge_policy": {
+      "type": "object",
+      "description": "{patch:boolean, minor:boolean, major:boolean=false}"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle (no team / we)"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">scanners_wired contains 'manual-review-only' or is empty</pattern>
+    <pattern id="forbidden-2">auto_merge_policy.major == true (major bumps require human review)</pattern>
+    <pattern id="forbidden-3">license_allowlist contains GPL-3.0 or AGPL-3.0 without legal_signoff_ref</pattern>
+    <pattern id="forbidden-4">sbom_format outside {SPDX, CycloneDX}</pattern>
+  </section>
+
+  <example valid="true" title="Supply-chain bundle for repo `faion-net-be`">
+    <code lang="json"><![CDATA[
+{
+  "repo_id": "faionfaion/faion-net-be",
+  "scanners_wired": [
+    "gitleaks",
+    "trivy",
+    "syft",
+    "dependabot"
+  ],
+  "pre_commit_present": true,
+  "ci_full_history_scan": true,
+  "license_allowlist": [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "MPL-2.0"
+  ],
+  "sbom_format": "SPDX",
+  "auto_merge_policy": {
+    "patch": true,
+    "minor": true,
+    "major": false
+  },
+  "owner": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="Empty scanner list + GPL allowed">
+    <code lang="json"><![CDATA[
+{
+  "repo_id": "x",
+  "scanners_wired": [],
+  "pre_commit_present": false,
+  "ci_full_history_scan": false,
+  "license_allowlist": [
+    "GPL-3.0"
+  ],
+  "sbom_format": "plain-text",
+  "auto_merge_policy": {
+    "major": true
+  },
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-security-supply-chain.py">Validator script that enforces this contract.</reference>
 </text>

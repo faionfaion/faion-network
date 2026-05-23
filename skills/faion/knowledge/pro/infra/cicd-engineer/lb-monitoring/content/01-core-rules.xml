@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-monitoring Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-monitoring. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LB Monitoring Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for LB monitoring + observability. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="exporter-required" testable="true" depth="essential">
+      <statement>Every HAProxy / Nginx LB MUST expose Prometheus metrics via a dedicated exporter sidecar (`haproxy-exporter:9101` against the stats socket, `nginx-prometheus-exporter:9113` against `stub_status`). Plain log-based monitoring is forbidden as the sole source.</statement>
+      <rationale source="Prometheus exporter docs">Logs lack the cardinality and aggregation needed for SLO math. Exporters give pull-based, dimensional metrics that scale to thousands of backends.</rationale>
     </rule>
+
+    <rule id="4-core-alerts" testable="true" depth="essential">
+      <statement>The alert ruleset MUST include all four: BackendDown (`==0` for 1 m), HighErrorRate (`5xx rate / total &gt; 0.05` for 5 m), HighLatency (p99 &gt; 2 s for 5 m), ConnectionPoolExhausted (`current_conns / maxconn &gt; 0.9` for 2 m). Sub-1-minute `for:` durations are forbidden.</statement>
+      <rationale source="SRE workbook — alerting on SLO">These four cover the primary user-visible failure modes. Sub-minute durations cause storms on transient blips.</rationale>
+    </rule>
+
+    <rule id="per-backend-dimension" testable="true" depth="essential">
+      <statement>All metrics and alerts MUST carry a `backend` label so dashboards and alerts can attribute failure to a specific backend pool. Aggregate-only metrics (no backend dimension) are forbidden.</statement>
+      <rationale source="Prometheus best practices">Without the dimension, an alert "5xx rate high" cannot tell SRE which backend to look at; MTTR doubles.</rationale>
+    </rule>
+
+    <rule id="log-shipping" testable="true" depth="essential">
+      <statement>LB access logs MUST be shipped to a centralised store (Loki / Elasticsearch / S3) with ≥ 30-day retention. The shipping config MUST parse access-log fields (status, upstream_response_time, request_id) into structured labels.</statement>
+      <rationale source="ELK + Loki LB integration docs">Audit + post-incident correlation requires structured access logs. Disk-only logs are wiped on host failure and unsearchable.</rationale>
+    </rule>
+
+    <rule id="dashboard-templated" testable="true" depth="essential">
+      <statement>Grafana dashboards MUST be templated by `instance` + `backend` Prometheus labels so the same dashboard works across all LBs. Hard-coded backend / instance names are forbidden.</statement>
+      <rationale source="Grafana dashboard best practices">Templated dashboards scale; bespoke dashboards per LB stop being maintained within a quarter.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -3,21 +3,32 @@ slug: lb-monitoring
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: LB monitoring requires Prometheus exporters (haproxy-exporter:9101, nginx-exporter:9113), four core alert rules (BackendDown, HighErrorRate >5%, HighLatency p99 >2s, ConnectionPoolExhausted >90%), Grafana dashboards with per-backend breakdown, and centralized log aggregation (ELK/Loki) of LB access logs for audit trail and debugging.
-content_id: "8de24fa3f1a4c474"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Prometheus scrape + 4-alert rule set + Grafana dashboard + log shipping config for HAProxy / Nginx LBs with per-backend dimensions.
+content_id: "f5018cf66ec2679e"
+complexity: medium
+produces: config
+est_tokens: 4600
 tags: [monitoring, prometheus, grafana, load-balancing, observability]
 ---
 # Load Balancer Monitoring and Observability
 
 ## Summary
 
-**One-sentence:** LB monitoring requires Prometheus exporters (haproxy-exporter:9101, nginx-exporter:9113), four core alert rules (BackendDown, HighErrorRate >5%, HighLatency p99 >2s, ConnectionPoolExhausted >90%), Grafana dashboards with per-backend breakdown, and centralized log aggregation (ELK/Loki) of LB access logs for audit trail and debugging.
+**One-sentence:** Generates a Prometheus scrape + 4-alert rule set + Grafana dashboard + log shipping config for HAProxy / Nginx LBs with per-backend dimensions.
 
-**One-paragraph:** LB monitoring requires Prometheus exporters (haproxy-exporter:9101, nginx-exporter:9113), four core alert rules (BackendDown, HighErrorRate >5%, HighLatency p99 >2s, ConnectionPoolExhausted >90%), Grafana dashboards with per-backend breakdown, and centralized log aggregation (ELK/Loki) of LB access logs for audit trail and debugging.
+**One-paragraph:** LB monitoring requires Prometheus exporters (`haproxy-exporter:9101`, `nginx-prometheus-exporter:9113`), four core alert rules (BackendDown for 1 m, HighErrorRate &gt; 5% for 5 m, HighLatency p99 &gt; 2 s for 5 m, ConnectionPoolExhausted &gt; 90% for 2 m), Grafana dashboards with per-backend breakdown, and centralized log aggregation (ELK / Loki) of LB access logs for audit trail and debugging.
+
+**Ефективно для:**
+
+- New HAProxy / Nginx deploy: одночасно з config — Prometheus exporter + 4 alerts.
+- Existing LB без monitoring — додати scrape + alerts, не змінюючи самого LB.
+- Define SLI / SLO для load-balanced service (5xx rate, p99 latency).
+- Flapping backend → log correlation через Loki / ELK + Grafana annotations.
+- К8s Ingress: ServiceMonitor + Grafana panel замість окремого exporter.
 
 ## Applies If (ALL must hold)
 
@@ -28,45 +39,64 @@ tags: [monitoring, prometheus, grafana, load-balancing, observability]
 
 ## Skip If (ANY kills it)
 
-- Cloud managed LBs (AWS ALB/NLB) — use CloudWatch metrics and AWS-native alerting instead; Prometheus exporters are not applicable.
-- Kubernetes Ingress controller metrics — use the controller's built-in /metrics endpoint with a ServiceMonitor; no separate exporter needed.
+- Cloud-managed LBs (AWS ALB / NLB) — use CloudWatch metrics + alerting.
+- Kubernetes Ingress controllers — use the controller's `/metrics` via ServiceMonitor; no separate exporter.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| LB technology | haproxy / nginx | infra |
+| Prometheus instance | URL | platform team |
+| Grafana instance | URL | platform team |
+| Log sink | ELK / Loki / S3 | logging |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[lb-haproxy-production]] | HAProxy stats socket / endpoint required by exporter. |
+| [[lb-nginx-production]] | Nginx `stub_status` required by exporter. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: exporter-required, 4-core-alerts, per-backend-dimension, log-shipping, dashboard-templated | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `wire-exporter` | sonnet | Per-LB exporter selection. |
+| `write-alerts` | sonnet | Promql tuning for thresholds. |
+| `import-dashboard` | haiku | Mechanical import of dashboard JSON. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/prometheus-rules.yaml` | Four-alert PromQL ruleset |
+| `templates/grafana-dashboard.json` | LB dashboard with per-backend panels |
+| `templates/promtail-haproxy.yaml` | Promtail config shipping HAProxy logs to Loki |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-lb-monitoring.py` | Validate the monitoring artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[lb-haproxy-production]]
+- [[lb-nginx-production]]
+- [[lb-kubernetes-ingress]]
+- [[prometheus-monitoring]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (LB tech, alert sensitivity, log destination) to a concrete monitoring stack, each leaf referencing a rule from `01-core-rules.xml`.

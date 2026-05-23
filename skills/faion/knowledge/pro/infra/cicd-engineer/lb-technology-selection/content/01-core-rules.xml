@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-technology-selection Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-technology-selection. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LB Technology Selection Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for LB technology selection. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="managed-default-on-cloud" testable="true" depth="essential">
+      <statement>On AWS / GCP / Azure, the managed LB (ALB / NLB / Global LB / Cloud LB / App Gateway / Front Door) MUST be the default choice. Self-hosted HAProxy / Nginx on cloud VMs is allowed only with a documented reason (compliance, plugin requirement, cost).</statement>
+      <rationale source="AWS Well-Architected + GCP reliability docs">Managed LBs deliver HA, cert rotation, anycast, and DDoS protection out of the box. Self-hosting reinvents the wheel and adds 1+ FTE of ops burden.</rationale>
     </rule>
+
+    <rule id="kubernetes-uses-ingress" testable="true" depth="essential">
+      <statement>For Kubernetes workloads, the LB MUST be a Kubernetes Ingress controller (or Gateway API), not a raw HAProxy / Nginx outside the cluster targeting node IPs.</statement>
+      <rationale source="Kubernetes Ingress production checklist">An Ingress controller registers backend pods automatically via Endpoints; an external LB hard-coded to node IPs breaks every time the cluster scales.</rationale>
+    </rule>
+
+    <rule id="bare-metal-uses-haproxy-or-nginx" testable="true" depth="essential">
+      <statement>For bare-metal deployments (no managed cloud LB and no Kubernetes), the LB MUST be HAProxy (TCP-heavy + rate limiting) or Nginx (HTTP-only + static caching). MetalLB + ingress-nginx is allowed for bare-metal K8s.</statement>
+      <rationale source="HAProxy + Nginx + MetalLB reference">These two cover 95 % of bare-metal use cases; using bespoke C/Go LBs on bare-metal adds maintenance debt with no upside.</rationale>
+    </rule>
+
+    <rule id="layer-matches-tech" testable="true" depth="essential">
+      <statement>The chosen technology MUST be capable of the layer chosen in lb-layer-selection. Pure L4: NLB / HAProxy mode tcp. L7: ALB / Nginx / HAProxy mode http / Envoy. Hybrid: L4 in front of L7.</statement>
+      <rationale source="A10 L4-vs-L7 reference">Layer + tech inconsistency (e.g., "ALB for raw TCP") is a top architecture-review failure; tie the decision back to lb-layer-selection explicitly.</rationale>
+    </rule>
+
+    <rule id="operational-capacity-gates-self-hosted" testable="true" depth="essential">
+      <statement>Self-hosted HAProxy / Nginx LBs require ≥ 2 engineers with on-call coverage trained on the tool. Teams below that capacity MUST default to managed LBs even at higher cost.</statement>
+      <rationale source="SRE workbook + LB ops anecdotes">A single owner = SPOF on the operations side; 2 a.m. cert rotation failures need backup. Managed LBs let small teams ship without staffing for LB ops.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

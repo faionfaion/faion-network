@@ -3,21 +3,31 @@ slug: cost-model-spreadsheet-template
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "1ee506a6eea311eb"
-summary: Canonical cloud cost-model spreadsheet template (compute, storage, egress, NAT, observability, backup) with per-cloud variants — replaces re-building the same sheet from scratch for every architecture proposal.
-tags: [cost-modelling, architecture, finops, software-architect, capacity-planning]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a defensible multi-cloud cost-model spreadsheet covering compute / storage / network / operations / buffer with sourced unit rates and 0.5x/1x/2x scenarios.
+content_id: "6a229e0ef11f16f9"
+complexity: deep
+produces: spec
+est_tokens: 4500
+tags: [cost-model, finops, architecture, capacity-planning]
 ---
 # Cost-Model Spreadsheet Template
 
 ## Summary
 
-**One-sentence:** A canonical multi-cloud cost-model template (AWS / GCP / Azure / Hetzner / DO) covering compute, storage, egress, NAT, observability, backup, and the line items architects routinely forget — so a Greenfield architecture proposal lands with a defensible cost sheet instead of an under-estimated bill.
+**One-sentence:** Produces a defensible multi-cloud cost-model spreadsheet covering compute / storage / network / operations / buffer with sourced unit rates and 0.5x/1x/2x scenarios.
 
-**One-paragraph:** Software architects re-invent the same cost spreadsheet on every Greenfield or scale-event project. The result: a) line items missed (NAT gateway, observability log storage, S3 egress, KMS request fees, NAT data-processing fees, etc.), b) different teams use different unit assumptions for the same architecture, c) "we'll just add 20% buffer" hides large structural mismatches. This methodology pins a template with five top-level categories (Compute / Storage / Network / Operations / Buffer) decomposed into ~30 named line items, plus a per-cloud unit-rate reference, plus the four assumption fields every line must populate (unit, monthly volume, monthly cost, source link). Output: a sheet (Excel/Sheets/CSV) the architect submits alongside the architecture decision record.
+**One-paragraph:** Software architects re-invent the same cost spreadsheet on every Greenfield or scale-event project, and the same line items get missed every time (NAT gateway data-processing, S3 egress, observability log storage, KMS request fees). This methodology pins a template with five top-level categories (Compute / Storage / Network / Operations / Buffer) decomposed into ~30 named line items, plus a per-cloud unit-rate reference, plus the four assumption fields every line populates (unit, monthly volume, monthly cost, source link). Output: a sheet that lands with the architecture decision record.
+
+**Ефективно для:**
+
+- Greenfield архітектурного proposal — потрібен defensible cost sheet для budget owner.
+- коли архітектор постійно перебудовує ту саму spreadsheet з нуля на кожному проєкті.
+- multi-cloud sizing (AWS / GCP / Azure / Hetzner) із NAT, egress, observability вартостями.
+- Capacity expansion або migration estimate, де потрібен 0.5x / 1x / 2x scenario bracket.
 
 ## Applies If (ALL must hold)
 
@@ -35,49 +45,58 @@ tags: [cost-modelling, architecture, finops, software-architect, capacity-planni
 
 ## Prerequisites
 
-- Architecture decision record (ADR) draft with the components named.
-- Estimated traffic shape (req/sec peak, average), data growth rate (GB/month).
-- Target SLA + RTO/RPO (drives backup + multi-AZ cost).
-- Cloud provider(s) confirmed.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Architecture decision record (ADR) draft | Markdown | architect |
+| Traffic shape | req/sec peak + average | product / load tests |
+| Data growth rate | GB/month | analytics |
+| Cloud provider + region | string | architect |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-architect/architecture-decision-records` | The cost-model is attached to an ADR. |
-| `pro/dev/software-architect/capacity-planning-pre-launch` | Traffic estimates flow from there. |
+| `pro/dev/software-architect/architecture-decision-records` | the cost model is attached to an ADR |
+| `pro/dev/software-architect/capacity-planning-pre-launch` | traffic estimates flow from there |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: complete line items, assumptions explicit, cloud unit-rate sourced, scenarios, buffer policy | ~1000 |
-| `content/02-output-contract.xml` | essential | Sheet structure, required tabs, sign-off block | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: missing egress, ignored NAT, observability storage, buffer-as-cover | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with statement + rationale + source (5+ rules, includes r1-complete-line-items) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | ~1000 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~900 |
+| `content/05-examples.xml` | medium | One full worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `decompose-architecture-to-line-items` | sonnet | Map ADR components to the standard category line items |
-| `populate-unit-rates` | haiku | Look up provider pricing per line |
-| `scenario-stress-test` | opus | Compute low/expected/high cases with cross-line dependencies |
+| `decompose-architecture-to-line-items` | sonnet | Map ADR components to standard category line items |
+| `populate-unit-rates` | haiku | Lookup provider pricing per line |
+| `scenario-stress-test` | opus | Compute 0.5x/1x/2x cases with cross-line dependencies |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-model.xlsx` | The master template with tabs: assumptions, lines, summary, scenarios |
-| `templates/per-cloud-rates/` | Unit-rate reference per provider |
+| `templates/skeleton.md` | Cost model markdown skeleton with 5 categories |
+| `templates/skeleton.json` | JSON schema for the cost model artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/lines-vs-architecture-check.py` | Compares ADR component list vs filled line items; flags missing | Pre-submit |
+| `scripts/validate-cost-model-spreadsheet-template.py` | Validate produced artefact against the 02-output-contract.xml schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer methodology: `architecture-decision-records`, `capacity-planning-pre-launch`, `finops-baseline`
-- external: [Vantage cloud pricing](https://www.vantage.sh/) · [AWS Pricing Calculator](https://calculator.aws/) · [GCP Pricing Calculator](https://cloud.google.com/products/calculator)
+- [[architecture-decision-records]]
+- [[capacity-planning-pre-launch]]
+- [[finops-baseline]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the Cost-Model Spreadsheet Template methodology when in doubt about scope or fit.

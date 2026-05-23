@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Nginx Production LB Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-nginx-production methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="tune-workers">
+      <input>Host CPU count + RAM + expected concurrent connections.</input>
+      <action>Set `worker_processes auto;`, `worker_rlimit_nofile 65535;`, `events { worker_connections 8192; multi_accept on; use epoll; }`.</action>
+      <output>Tuned `main` + `events` blocks.</output>
+    </step>
+
+    <step n="2" name="define-upstreams">
+      <input>Upstream pool list per route.</input>
+      <action>For each upstream: declare with `zone <name> 64k;` + `keepalive 32;` + `least_conn;` (or default RR). List backends with `max_fails=3 fail_timeout=30s` passive health.</action>
+      <output>Upstream blocks.</output>
+    </step>
+
+    <step n="3" name="write-server-tls">
+      <input>Cert + key path, TLS profile, host names.</input>
+      <action>Write `server { listen 443 ssl http2; ssl_protocols TLSv1.2 TLSv1.3; ssl_ciphers '...'; ssl_stapling on; ssl_stapling_verify on; ssl_session_cache shared:SSL:10m; }`. Add 80-listener returning 301 to https.</action>
+      <output>TLS-terminated server block + redirect.</output>
+    </step>
+
+    <step n="4" name="add-limit-and-headers">
+      <input>Rate-limit policy + security-header baseline.</input>
+      <action>In `http`: declare `limit_req_zone` + `limit_conn_zone`. In `server`: apply `limit_req zone=req_per_ip burst=20 nodelay;` and the five security headers (HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy). Set `add_header` with `always` to apply on error responses too.</action>
+      <output>Server block with rate-limit + headers.</output>
+    </step>
+
+    <step n="5" name="validate-and-reload">
+      <input>nginx.conf + validator.</input>
+      <action>Run `nginx -t`. Run `validate-lb-nginx-production.py --file artefact.json`. Reload with `nginx -s reload`. Smoke-test with `curl -I https://host/`; confirm TLS 1.2+ via `nmap --script ssl-enum-ciphers` and the five headers via the curl output.</action>
+      <output>Live LB serving traffic with rate-limit + headers + TLS hardened.</output>
+      <decision-gate>If `nginx -t` fails, fix syntax before reload.</decision-gate>
+    </step>
+
+  </section>
+</text>

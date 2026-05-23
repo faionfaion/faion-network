@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="security-supply-chain Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for security-supply-chain. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Supply Chain Security Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5+ testable rules grounding the methodology. Each rule pairs a binary check + sourced rationale. Includes the skip-this-methodology rule that the decision-tree maps to.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Secret scanning MUST run on every commit via a pre-commit hook (Gitleaks or detect-secrets) AND in CI on the full history (`git fetch --unshallow`). When a secret lands on main, rewrite history with `git filter-repo` and rotate the credential immediately.</statement>
-      <rationale source="v1-source">Pre-commit catches secrets before they reach the remote. CI with full history catches secrets introduced by force-pushes, merge commits, or squash merges that bypass the hook. Rotation without history rewrite leaves the secret in the public git object store indefinitely.</rationale>
+
+    <rule id="r1-secret-scanning" testable="true" depth="essential">
+      <statement>Secret scanning MUST run on every commit via pre-commit hook (Gitleaks or detect-secrets) AND in CI on the full history (`git fetch --unshallow`). When a secret lands on main, rewrite history with `git filter-repo` and rotate the credential immediately.</statement>
+      <rationale source="v1-source: Gitleaks docs; faion-network security audit Q1 2026">Pre-commit catches secrets before they reach the remote. CI with full history catches secrets introduced by force-pushes, merge commits, or squash merges that bypass the hook. Rotation without history rewrite leaves the secret in the public git object store indefinitely.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
+    <rule id="r2-lock-files" testable="true" depth="essential">
       <statement>Use lock files (package-lock.json, poetry.lock, go.sum, Cargo.lock) for all dependency manifests. Commit lock files. Never add lock files to .gitignore.</statement>
-      <rationale source="v1-source">Lock files pin the exact resolved dependency tree including transitive dependencies, preventing silent upgrades to vulnerable versions during CI installs. Without lock files, `npm install` today and tomorrow may resolve different packages.</rationale>
+      <rationale source="v1-source: npm / pip / cargo docs">Lock files pin the exact resolved dependency tree including transitive dependencies, preventing silent upgrades to vulnerable versions during CI installs. Without lock files, `npm install` today and tomorrow may resolve different packages.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>License policy: deny by default; maintain an allowlist of approved licenses (MIT, Apache-2.0, BSD-3-Clause, MPL-2.0). Review and reject GPL-3.0 and AGPL-3.0 for commercial projects unless legal sign-off is explicit.</statement>
-      <rationale source="v1-source">SCA tools struggle with vendored or unknown-license code; an explicit allowlist forces review rather than silent acceptance of copyleft licenses that can create legal obligations.</rationale>
+    <rule id="r3-license-policy" testable="true" depth="essential">
+      <statement>License policy: deny by default; maintain an allowlist of approved licenses (MIT, Apache-2.0, BSD-3-Clause, MPL-2.0). Reject GPL-3.0 and AGPL-3.0 for commercial projects unless legal sign-off is explicit.</statement>
+      <rationale source="v1-source: open-source licensing primer; SPDX">SCA tools struggle with vendored or unknown-license code; an explicit allowlist forces review rather than silent acceptance of copyleft licenses that can create legal obligations.</rationale>
     </rule>
+    <rule id="r4-sbom-per-build" testable="true" depth="essential">
+      <statement>Generate an SBOM (Syft or Trivy, SPDX or CycloneDX format) per build and store it as a release artefact. SBOM component-count regression vs prior build fails CI.</statement>
+      <rationale source="v1-source: CISA Software Bill of Materials guidance">Without per-build SBOMs there is no audit trail for what shipped. Regression detection catches accidental dependency loss as well as malicious tree changes.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply Supply Chain Security to one repository per pass. Cross-repo passes MUST be split. Methodology MUST be skipped when there is no incident response path — adding more findings without a triage workflow makes the team blind, not safer.</statement>
+      <rationale source="F-066 content-completion; faion-network failure-mode audit">Anti-conflation: batched passes lose per-repo context. Findings without triage create noise that erodes trust in the scanner.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,22 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-nginx-production Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Nginx Production LB Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the Nginx LB config artefact. Validator enforces worker tuning, upstream zone, keepalive, TLS, rate limit, security headers.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-nginx-production.json",
+  "type": "object",
+  "required": ["worker_processes", "worker_rlimit_nofile", "upstream_zone", "upstream_keepalive", "tls_min", "limit_req_zone", "security_headers"],
+  "properties": {
+    "worker_processes": {"enum": ["auto", "1"]},
+    "worker_rlimit_nofile": {"type": "integer", "minimum": 65535},
+    "upstream_zone": {"type": "boolean", "const": true},
+    "upstream_keepalive": {"type": "integer", "minimum": 16},
+    "tls_min": {"enum": ["TLSv1.2", "TLSv1.3"]},
+    "ssl_stapling": {"type": "boolean", "const": true},
+    "limit_req_zone": {"type": "object", "required": ["rate_per_sec"], "properties": {"rate_per_sec": {"type": "integer", "minimum": 1}}},
+    "security_headers": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 5
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "worker_processes": "auto",
+  "worker_rlimit_nofile": 65535,
+  "upstream_zone": true,
+  "upstream_keepalive": 32,
+  "tls_min": "TLSv1.2",
+  "ssl_stapling": true,
+  "limit_req_zone": {"rate_per_sec": 10},
+  "security_headers": ["HSTS", "X-Frame-Options", "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy"]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "worker_processes": "1",
+  "worker_rlimit_nofile": 1024,
+  "upstream_zone": false,
+  "upstream_keepalive": 0,
+  "tls_min": "TLSv1.0",
+  "ssl_stapling": false,
+  "limit_req_zone": {"rate_per_sec": 0},
+  "security_headers": []
+}
+]]></code>
+    <note>Single worker; low ulimit; per-worker upstream; no keepalive; old TLS; no rate limit; no security headers.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-worker-1">worker_processes == "1"</pattern>
+    <pattern id="f-tls-low">tls_min == TLSv1.0 OR TLSv1.1</pattern>
+    <pattern id="f-no-zone">upstream_zone != true</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-nginx-production.py">Validator script</reference>
 </text>

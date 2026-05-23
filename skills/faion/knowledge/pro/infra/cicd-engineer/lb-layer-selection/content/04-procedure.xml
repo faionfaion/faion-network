@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LB Layer Selection Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to apply the lb-layer-selection methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="capture-traffic-profile">
+      <input>Protocol mix, content-routing rules, TLS requirements, anycast need.</input>
+      <action>List traffic types (HTTP / gRPC / TCP / UDP) + content-routing rules + TLS strategy. Record performance target (rps, conns/s).</action>
+      <output>Traffic profile table.</output>
+    </step>
+
+    <step n="2" name="check-feature-vs-layer-consistency">
+      <input>Traffic profile.</input>
+      <action>For each feature, mark required layer: path-routing → L7, raw-TCP → L4, anycast → L4 (BGP), waf → L7, header-rewrite → L7. Inconsistency triggers `no-l4-with-l7-features` rule.</action>
+      <output>Per-feature layer map.</output>
+      <decision-gate>If any feature contradicts the proposed layer, STOP and redesign.</decision-gate>
+    </step>
+
+    <step n="3" name="pick-layer">
+      <input>Per-feature layer map.</input>
+      <action>If all features fit one layer, use it. If features span L4 + L7, use hybrid L4-front-of-L7. Set `tls_strategy` consistent with the layer.</action>
+      <output>Layer + TLS strategy.</output>
+    </step>
+
+    <step n="4" name="emit-decision-record">
+      <input>Layer + TLS + rationale.</input>
+      <action>Render `templates/layer-decision-record.md` capturing the choice + per-feature mapping + rationale. Commit as ADR.</action>
+      <output>ADR file.</output>
+    </step>
+
+    <step n="5" name="validate">
+      <input>Decision JSON.</input>
+      <action>Run `validate-lb-layer-selection.py --file decision.json`. Reject contradictions; pass clean decisions on.</action>
+      <output>Validator green; feeds lb-technology-selection next.</output>
+    </step>
+
+  </section>
+</text>

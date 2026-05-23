@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-session-persistence Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-session-persistence as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="LB Session Persistence Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed when sticky sessions are configured. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="ip-hash-corporate-nat" severity="high">
+      <symptom>One backend in the pool always shows 4× the load of peers. Investigation: a single corporate customer's 5000 employees all share one NAT egress IP.</symptom>
+      <root-cause source="HAProxy + Nginx sticky-session docs">`ip_hash` (or `balance source`) used for sticky sessions; collapses NAT users onto one backend.</root-cause>
+      <fix>Switch to cookie-based persistence (`cookie SRVID insert indirect nocache` in HAProxy; app-managed cookie or Nginx Plus sticky cookie). Verify load evens out within a check interval.</fix>
+    </antipattern>
+
+    <antipattern id="sticky-after-redis-migration" severity="medium">
+      <symptom>App was migrated to Redis-backed sessions a year ago, but the LB config still has `cookie SRVID ... maxconn 100`. Deploys are slow because operators "must drain stickies".</symptom>
+      <root-cause source="HAProxy + ASG migration patterns">Stickiness config was never removed after externalising session storage.</root-cause>
+      <fix>Remove sticky directives. Pool returns to even distribution + deploys become straightforward rolling restarts. Confirm app sessions still work via end-to-end test.</fix>
+    </antipattern>
+
+    <antipattern id="unbounded-sticky" severity="medium">
+      <symptom>A backend was rolled out of the pool 3 days ago but is still receiving stray traffic from a small set of clients; rolling deploys never seem to "finish".</symptom>
+      <root-cause source="HAProxy stick-table docs">Sticky cookie has no TTL; entries persist until the LB process restarts.</root-cause>
+      <fix>Add `expire 1h` to stick-table or `cookie SRVID insert indirect nocache maxidle 3600 maxlife 86400`. Confirm stickiness expires on schedule by replaying logs.</fix>
+    </antipattern>
+
   </section>
 </text>

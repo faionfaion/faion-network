@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="LB Monitoring Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (LB kind, log destination) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-lb-kind">LB kind?</root-question>
+
+    <branch when="lb_kind == haproxy">
+      <conclusion ref="exporter-required" verdict="haproxy-exporter sidecar against /run/haproxy/admin.sock"/>
+    </branch>
+
+    <branch when="lb_kind == nginx">
+      <conclusion ref="exporter-required" verdict="nginx-prometheus-exporter against /stub_status"/>
+    </branch>
+
+    <branch when="lb_kind == kubernetes_ingress">
+      <conclusion ref="exporter-required" verdict="use controller built-in /metrics + ServiceMonitor; no sidecar exporter"/>
+    </branch>
+
+    <branch when="alerts_missing_one_of_4 == true">
+      <conclusion ref="4-core-alerts" verdict="add the missing alert (BackendDown / HighErrorRate / HighLatency / ConnectionPoolExhausted)"/>
+    </branch>
+
+    <branch when="per_backend_label == false">
+      <conclusion ref="per-backend-dimension" verdict="restore backend label in metric + alert; re-aggregate at dashboard, not ingest"/>
+    </branch>
+
+    <branch when="log_destination == none">
+      <conclusion ref="log-shipping" verdict="ship to Loki / ELK / S3 with ≥ 30 d retention"/>
+    </branch>
+
+    <branch when="dashboard_templated == false">
+      <conclusion ref="dashboard-templated" verdict="template by instance + backend variables"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="haproxy-greenfield">
+    lb_kind=haproxy → haproxy-exporter → render 4 alerts → ship logs to Loki → templated dashboard → satisfies all 5 rules.
+  </example>
+</text>

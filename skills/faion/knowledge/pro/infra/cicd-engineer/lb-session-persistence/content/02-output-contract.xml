@@ -1,22 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-session-persistence Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="LB Session Persistence Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the session-persistence artefact. Validator enforces externalize-first, no-iphash-asg-nat, time-bounded stickiness.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-session-persistence.json",
+  "type": "object",
+  "required": ["method", "session_storage", "autoscaling", "nat_behind_lb"],
+  "properties": {
+    "method": {"enum": ["externalized-no-sticky", "lb-inserted-cookie", "app-managed-cookie", "ip-hash", "ssl-session-id"]},
+    "session_storage": {"enum": ["in-process", "redis", "memcached", "database"]},
+    "autoscaling": {"type": "boolean"},
+    "nat_behind_lb": {"type": "boolean"},
+    "sticky_ttl_seconds": {"type": "integer", "minimum": 60, "maximum": 86400},
+    "invalidate_on_removal": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "method": "lb-inserted-cookie",
+  "session_storage": "in-process",
+  "autoscaling": true,
+  "nat_behind_lb": true,
+  "sticky_ttl_seconds": 3600,
+  "invalidate_on_removal": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "method": "ip-hash",
+  "session_storage": "in-process",
+  "autoscaling": true,
+  "nat_behind_lb": true,
+  "sticky_ttl_seconds": 0,
+  "invalidate_on_removal": false
+}
+]]></code>
+    <note>ip-hash with ASG + NAT; no TTL; no invalidation — every rule violated.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-iphash-asg-or-nat">method == ip-hash AND (autoscaling == true OR nat_behind_lb == true)</pattern>
+    <pattern id="f-unbounded">sticky_ttl_seconds &lt; 60 AND method != externalized-no-sticky</pattern>
+    <pattern id="f-no-invalidate">invalidate_on_removal != true AND method != externalized-no-sticky</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-session-persistence.py">Validator script</reference>
 </text>

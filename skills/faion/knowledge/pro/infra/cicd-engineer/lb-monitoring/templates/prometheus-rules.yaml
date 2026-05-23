@@ -1,0 +1,54 @@
+# purpose: Prometheus alert ruleset (4 core LB alerts) with per-backend label and for: durations
+# consumes: see content/02-output-contract.xml inputs (alerts, per_backend_label)
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml (4-core-alerts, per-backend-dimension)
+# token-budget-impact: ~400 tokens when loaded as context
+
+groups:
+  - name: load_balancer_alerts
+    rules:
+      - alert: BackendDown
+        expr: haproxy_backend_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend {{ $labels.backend }} on {{ $labels.instance }} is down"
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (backend, instance) (
+            rate(haproxy_backend_http_responses_total{code="5xx"}[5m])
+          )
+          /
+          sum by (backend, instance) (
+            rate(haproxy_backend_http_responses_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "5xx rate > 5% on {{ $labels.backend }}"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (backend, instance, le) (
+              rate(haproxy_backend_http_response_time_seconds_bucket[5m])
+            )
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 latency > 2 s on {{ $labels.backend }}"
+
+      - alert: ConnectionPoolExhausted
+        expr: |
+          haproxy_backend_current_sessions
+          / haproxy_backend_limit_sessions > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Connection pool > 90% on {{ $labels.backend }}"

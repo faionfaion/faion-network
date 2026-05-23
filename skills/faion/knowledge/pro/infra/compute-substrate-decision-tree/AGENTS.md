@@ -3,80 +3,98 @@ slug: compute-substrate-decision-tree
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Compute Substrate Decision Tree: codified infra practice that turns the recurring 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time' decision into a repeatable, auditable artefact.
-content_id: "4d438947df6a8424"
-tags: [compute-substrate-decision-tree, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a decision record selecting VM vs container vs serverless for a Greenfield component with explicit trade-offs and named owner.
+content_id: "0963a00bbeaf37d0"
+complexity: medium
+produces: decision-record
+est_tokens: 4500
+tags: [compute-substrate, decision-tree, infra, architecture]
 ---
 # Compute Substrate Decision Tree
 
 ## Summary
 
-**One-sentence:** Compute Substrate Decision Tree: codified infra practice that turns the recurring 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a decision record selecting VM vs container vs serverless for a Greenfield component with explicit trade-offs and named owner.
 
-**One-paragraph:** Compute Substrate Decision Tree addresses the gap surfaced by 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time'. Serverless, containers, and VMs are each well-covered in isolation; nothing helps a DevOps engineer pick between them at design time with explicit trade-offs. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** DevOps engineers re-derive the VM-vs-container-vs-serverless decision at every Greenfield component without a shared artefact. This methodology pins a typed input form (workload shape, latency target, request profile, ops constraints), runs them through a bounded scoring rubric, and emits a decision record naming a single owner. The record is versioned and traceable so a future operator can re-open the decision without re-running the conversation.
+
+**Ефективно для:**
+
+- одноразового вибору між VM / контейнером / serverless при greenfield-архітектурі.
+- коли потрібен auditable artefact, а не chat-обговорення для downstream consumer.
+- DevOps-інженер має 30-90 хв на структуроване рішення з trade-offs.
+- tier=pro команд, де rollback стоїть дорожче за upfront-аналіз.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Greenfield architecture proposal with at least one compute component still un-decided.
+- Workload shape (latency target, request profile, state, ops constraints) is documented.
+- A named owner is accountable for the decision record downstream.
+- Output will be consumed by a downstream agent or human reviewer (not discarded).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- The team already maintains a working compute-decision artefact — extend it, do not duplicate.
+- Greenfield prototype with no production users — overhead exceeds the win.
+- Regulatory / compliance context overrides the trade-off (e.g., GovCloud-only) — defer to that mandate.
+- Single-use throwaway task — the contract overhead is not justified.
 
 ## Prerequisites
 
-- recent context for the 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload spec | Markdown / ADR draft | architect |
+| Latency + request profile | numbers / SLO doc | product / ops |
+| Trade-off rubric | this methodology's template | faion-network |
+| Named owner | string | engagement lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/devops-engineer` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with statement + rationale + source (5+ rules, includes r1-bound-scope) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | ~1000 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `gather-workload-spec` | haiku | Structured extraction from ADR draft + SLO doc |
+| `score-rubric` | sonnet | Per-axis trade-off scoring with bounded inputs |
+| `synthesize-decision-record` | sonnet | Compose final artefact with named owner + rationale |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/compute-substrate-decision-tree.json` | JSON schema for the Compute Substrate Decision Tree output contract |
-| `templates/compute-substrate-decision-tree.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.md` | Decision-record skeleton with trade-off table |
+| `templates/skeleton.json` | JSON shape for the decision artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-compute-substrate-decision-tree.py` | Enforce Compute Substrate Decision Tree output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-compute-substrate-decision-tree.py` | Validate produced artefact against the 02-output-contract.xml schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `role-devops-engineer/Container vs serverless vs VM decision tree at architecture time`
-- methodology family: `pro/infra/` (gap-p2 batch, F-059-063)
+- [[compute-substrate-decision-tree]] parent skill: `pro/infra/devops-engineer/`
+- [[architecture-decision-records]]
+- [[capacity-planning-pre-launch]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the Compute Substrate Decision Tree methodology when in doubt about scope or fit.

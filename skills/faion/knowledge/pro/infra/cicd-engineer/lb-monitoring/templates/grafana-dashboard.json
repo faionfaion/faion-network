@@ -1,0 +1,24 @@
+{
+  "__faion_header__": {
+    "purpose": "Grafana dashboard skeleton templated by instance + backend",
+    "consumes": "Prometheus metrics from haproxy-exporter / nginx-prometheus-exporter",
+    "produces": "dashboard_templated=true segment of content/02-output-contract.xml artefact",
+    "depends-on": "content/01-core-rules.xml (per-backend-dimension, dashboard-templated)",
+    "token-budget-impact": "~300 tokens when loaded as context"
+  },
+  "title": "Load Balancer",
+  "schemaVersion": 38,
+  "templating": {
+    "list": [
+      {"name": "instance", "type": "query", "query": "label_values(haproxy_backend_up, instance)", "refresh": 1},
+      {"name": "backend",  "type": "query", "query": "label_values(haproxy_backend_up{instance=~\"$instance\"}, backend)", "refresh": 1}
+    ]
+  },
+  "panels": [
+    {"title": "Backend up",       "type": "stat",     "targets": [{"expr": "haproxy_backend_up{instance=~\"$instance\",backend=~\"$backend\"}"}]},
+    {"title": "Request rate",     "type": "timeseries", "targets": [{"expr": "sum by (backend) (rate(haproxy_backend_http_responses_total{instance=~\"$instance\",backend=~\"$backend\"}[1m]))"}]},
+    {"title": "5xx rate",         "type": "timeseries", "targets": [{"expr": "sum by (backend) (rate(haproxy_backend_http_responses_total{code=\"5xx\",instance=~\"$instance\",backend=~\"$backend\"}[5m]))"}]},
+    {"title": "p99 latency",      "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.99, sum by (backend, le) (rate(haproxy_backend_http_response_time_seconds_bucket{instance=~\"$instance\",backend=~\"$backend\"}[5m])))"}]},
+    {"title": "Connection pool",  "type": "timeseries", "targets": [{"expr": "haproxy_backend_current_sessions{instance=~\"$instance\",backend=~\"$backend\"} / haproxy_backend_limit_sessions"}]}
+  ]
+}

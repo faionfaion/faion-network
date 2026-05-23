@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-nginx-production Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-nginx-production. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Nginx Production LB Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules for production Nginx LB. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="worker-auto" testable="true" depth="essential">
+      <statement>`worker_processes auto;` and `worker_rlimit_nofile 65535;` MUST appear in `nginx.conf`. `worker_connections` ≥ 4096. Hard-coded `worker_processes 1;` in production is forbidden.</statement>
+      <rationale source="Nginx tuning guide">`auto` matches one worker per CPU core; `worker_rlimit_nofile` allows the high FD count modern LBs need. A single worker wastes cores and serializes all I/O.</rationale>
     </rule>
+
+    <rule id="upstream-zone" testable="true" depth="essential">
+      <statement>Each `upstream` block MUST include `zone <name> 64k;` (or larger) when multiple workers share state (sticky cookies, keepalive). Per-worker upstream state is forbidden in production.</statement>
+      <rationale source="Nginx upstream module docs">Without a shared zone, every worker maintains its own view of backend health; recoveries and bans propagate slowly and inconsistently.</rationale>
+    </rule>
+
+    <rule id="keepalive-upstream" testable="true" depth="essential">
+      <statement>HTTP/1.1 `upstream` blocks MUST set `keepalive 32;` (or higher) AND in the `location` block: `proxy_http_version 1.1; proxy_set_header Connection "";`. Without these, every request opens a fresh TCP connection.</statement>
+      <rationale source="Nginx keepalive reference">Per-request connection setup adds TCP + TLS handshake latency (10s of ms) and saturates ephemeral ports on busy LBs. Keepalive cuts that.</rationale>
+    </rule>
+
+    <rule id="tls-1-2-min" testable="true" depth="essential">
+      <statement>TLS listeners MUST configure `ssl_protocols TLSv1.2 TLSv1.3;` and `ssl_ciphers` from a modern Mozilla profile. `ssl_stapling on;` + `ssl_stapling_verify on;` MUST be set. TLS 1.0 / 1.1 are forbidden.</statement>
+      <rationale source="Mozilla TLS guidelines + Nginx ssl docs">TLS 1.0 / 1.1 fail PCI-DSS scans. OCSP stapling removes the runtime CRL lookup latency on every TLS handshake.</rationale>
+    </rule>
+
+    <rule id="limit-req-zone" testable="true" depth="essential">
+      <statement>Public-facing servers MUST declare `limit_req_zone $binary_remote_addr zone=req_per_ip:10m rate=10r/s;` AND `limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;`. Each `server` MUST use `limit_req` + `limit_conn` directives.</statement>
+      <rationale source="Nginx limit_req docs">Without rate limiting at the LB, a single misbehaving client can saturate the upstream pool; cookie-based abuse defeats per-app limits.</rationale>
+    </rule>
+
+    <rule id="security-headers" testable="true" depth="essential">
+      <statement>Every HTTPS server block MUST add: `Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"`, `X-Frame-Options DENY`, `X-Content-Type-Options nosniff`, `Referrer-Policy strict-origin-when-cross-origin`, `Permissions-Policy "geolocation=(), microphone=(), camera=()"`.</statement>
+      <rationale source="OWASP Secure Headers project + Mozilla observatory">These headers are the cheap-to-add baseline that blocks the bulk of low-effort attacks (clickjacking, MIME-sniff, leaked Referer).</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

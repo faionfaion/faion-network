@@ -1,23 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-session-persistence Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-session-persistence. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LB Session Persistence Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for session-persistence design. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Before implementing sticky sessions, evaluate whether session state can be moved to a shared store (Redis, Memcached, database). If the answer is yes, implement the shared store and configure the load balancer with NO persistence. Only implement sticky sessions when shared session storage is not feasible within the current delivery scope.</statement>
-      <rationale source="v1-source">Stateless backends scale horizontally without coordination, survive backend failures transparently, and distribute load evenly. Sticky backends tie session health to instance health, create uneven load when session distributions drift, and complicate autoscaling. The operational complexity cost of sticky sessions exceeds the implementation cost of shared session storage for most applications.</rationale>
+
+    <rule id="externalize-first" testable="true" depth="essential">
+      <statement>If the application can be modified, session state MUST be externalized to Redis / Memcached / DB before any sticky-session config is added. Sticky sessions are a last resort, not a first choice.</statement>
+      <rationale source="Cloudflare LB design guide + Cache-aside / session-store patterns">Stickiness pins capacity, complicates scaling, and breaks during deploys. External session storage solves the underlying problem with O(1) lookups and lets the LB stay stateless.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Prefer cookie-based persistence (LB-inserted cookie) over source-IP persistence. Cookie-based stickiness survives IP changes (mobile clients switching between Wi-Fi and cellular), NAT/VPN clients (multiple users sharing one IP), and autoscaling events where the targeted backend is replaced — the LB can redirect the cookie to an available backend on failure. Source-IP persistence fails on all three of these common scenarios.</statement>
-      <rationale source="v1-source">Source-IP persistence maps one IP to one backend. Corporate NAT and mobile carriers collapse thousands of users to a handful of IPs, creating massive load imbalance. Autoscaling events add/remove backends, causing all source-IP-hashed clients to redistribute. Cookies embed the specific backend identity and can be remapped gracefully when the targeted backend is unavailable.</rationale>
+
+    <rule id="cookie-over-iphash" testable="true" depth="essential">
+      <statement>When stickiness is required, cookie-based persistence (LB-inserted or app-managed) MUST be the first choice. IP-hash is allowed ONLY when the fleet is static (no autoscaling) AND clients are NOT behind NAT or VPN.</statement>
+      <rationale source="HAProxy + Nginx sticky-session docs">Cookies identify the real user regardless of NAT or scale events. IP-hash collapses thousands of NAT users to one backend and breaks every time the fleet scales.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>LB-inserted session persistence cookies MUST be configured with: Secure flag (HTTPS only), HttpOnly flag (prevent JavaScript access), and SameSite=Strict or SameSite=Lax (prevent cross-site request forgery via the sticky cookie). Cookie TTL should match the expected session duration — not shorter (causes premature redistribution) and not indefinite (prevents load balancing after session end).</statement>
-      <rationale source="v1-source">Without Secure, the persistence cookie is sent over HTTP and can be intercepted, hijacked, or used to force a client to a specific backend (session fixation via cookie injection). Without HttpOnly, XSS attacks can read the cookie and force targeted backend selection. SameSite prevents CSRF attacks that exploit the stickiness property.</rationale>
+
+    <rule id="no-iphash-asg-nat" testable="true" depth="essential">
+      <statement>IP-hash MUST NOT be configured in environments with autoscaling enabled OR with clients behind NAT / VPN.</statement>
+      <rationale source="HAProxy + Nginx + ASG docs">Adding/removing backends recomputes the hash and re-routes all sessions; corporate NAT collapses many users to one IP, overloading one backend.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>For WebSocket backends, use source-IP or cookie-based persistence at the upgrade request level, and configure tunnel timeouts (HAProxy: timeout tunnel 1h) rather than standard HTTP timeouts. WebSocket connections are long-lived; standard HTTP read/write timeouts (30s-60s) will terminate active WebSocket sessions.</statement>
-      <rationale source="v1-source">WebSocket connections persist for hours or days. Standard load balancer HTTP timeouts are designed for short-lived request/response cycles. A 30-second server timeout terminates an idle-but-active WebSocket connection, causing client disconnection and reconnection storms.</rationale>
+
+    <rule id="ssl-session-id-fragile" testable="true" depth="essential">
+      <statement>SSL-session-ID-based persistence MAY be considered ONLY when cookies and IP-hash are unsuitable (e.g., pure TCP/TLS, no HTTP). It MUST NOT be the default — TLS 1.3 + session resumption tickets weaken its stickiness.</statement>
+      <rationale source="TLS 1.3 RFC 8446 + LB SSL ID references">TLS 1.3 prefers tickets over session IDs; modern clients may rotate IDs per resumption. Cookie persistence is more reliable for HTTP.</rationale>
     </rule>
+
+    <rule id="sticky-time-bounded" testable="true" depth="essential">
+      <statement>Sticky-cookie / sticky-table entries MUST have a bounded TTL (e.g., 1 h) and MUST be invalidated on backend removal (`cookie SRVID insert indirect nocache` in HAProxy, or `sticky cookie ... expires=1h` in Nginx Plus).</statement>
+      <rationale source="HAProxy stick-table docs">Unbounded stickiness pins users to a backend forever — even after rolling deploys remove that backend. TTL + invalidate-on-removal restores predictable distribution.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

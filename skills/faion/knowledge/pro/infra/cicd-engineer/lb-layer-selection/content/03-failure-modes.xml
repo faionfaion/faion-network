@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-layer-selection Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-layer-selection as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="LB Layer Selection Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in LB layer decisions. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Treating L4 vs L7 as mutually exclusive on a single stack.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Modern architectures use L4 (NLB/HAProxy TCP) in front of L7 (Ingress/Envoy) to get anycast distribution and cross-zone load balancing at L4 while retaining content routing at L7. Collapsing this to a single binary choice misses the hybrid pattern.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Quoting sub-second GSLB failover SLOs when using DNS-based routing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DNS TTLs are honored unevenly by clients and intermediary resolvers. Failover after a backend failure takes 30 seconds to 5 minutes in practice. Use anycast or set realistic SLOs that match measured DNS propagation times.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="l4-with-l7-features" severity="high">
+      <symptom>Architecture doc says "L4 for performance" then mentions URL-path routing + header rewrite. Implementation team builds a port-per-path NLB hack that nobody can maintain.</symptom>
+      <root-cause source="A10 L4-vs-L7 reference">Author equated "L4" with "fast" without checking whether the proposed features actually exist at L4.</root-cause>
+      <fix>Replace L4 with L7 (accept the CPU cost) OR split into hybrid L4-front-of-L7. Reject inconsistency at review.</fix>
+    </antipattern>
+
+    <antipattern id="l7-on-pure-tcp" severity="medium">
+      <symptom>Database proxy fronted by ALB; throughput tops out at 30 % of expected; HTTP parsing CPU dominates while the actual traffic is raw Postgres.</symptom>
+      <root-cause source="HAProxy L4-vs-L7 reference">Author defaulted to "L7 for everything" without checking the protocol.</root-cause>
+      <fix>Switch to L4 (NLB / HAProxy `mode tcp`). Throughput jumps; CPU drops by an order of magnitude.</fix>
+    </antipattern>
+
+    <antipattern id="dns-gslb-claim" severity="high">
+      <symptom>Architecture promises "sub-second failover" via Route 53 with TTL = 30 s; SLO measurement shows 5-minute failover for some users.</symptom>
+      <root-cause source="AWS Global Accelerator FAQ">L3/DNS-based GSLB selected at the layer-decision step even though SLO requires anycast (a Layer-3 BGP construct).</root-cause>
+      <fix>Move global LB to anycast (AWS Global Accelerator / GCP Global LB / Cloudflare LB) and treat the regional ALB / Ingress as the L7 tier behind it.</fix>
+    </antipattern>
+
   </section>
 </text>

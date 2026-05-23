@@ -1,22 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-layer-selection Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="LB Layer Selection Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the layer-decision-record this methodology produces. Validator enforces consistency between layer and feature list.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-layer-selection.json",
+  "type": "object",
+  "required": ["protocol", "layer", "tls_strategy", "features"],
+  "properties": {
+    "protocol": {"enum": ["tcp", "udp", "http", "https", "grpc", "mixed"]},
+    "layer": {"enum": ["L4", "L7", "hybrid-L4-front-of-L7"]},
+    "tls_strategy": {"enum": ["terminate-at-lb", "pass-through", "re-encrypt", "no-tls"]},
+    "features": {
+      "type": "array",
+      "items": {"enum": ["path-routing", "header-routing", "cookie-sticky", "waf", "api-gateway", "anycast", "raw-tcp", "raw-udp"]}
+    },
+    "rationale": {"type": "string", "minLength": 30}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "protocol": "https",
+  "layer": "L7",
+  "tls_strategy": "terminate-at-lb",
+  "features": ["path-routing", "header-routing", "waf"],
+  "rationale": "HTTPS with path-based routing + WAF integration → L7 required. TLS terminates at the LB to enable WAF and inline header rewrites."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "protocol": "tcp",
+  "layer": "L4",
+  "tls_strategy": "terminate-at-lb",
+  "features": ["path-routing", "header-routing"],
+  "rationale": "use L4 for performance and then route by /api path"
+}
+]]></code>
+    <note>L4 + path-routing + terminate-at-lb is contradictory.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-l4-with-l7-features">layer == L4 AND (features contains path-routing OR header-routing OR cookie-sticky OR waf OR api-gateway)</pattern>
+    <pattern id="f-l4-tls-terminate">layer == L4 AND tls_strategy == terminate-at-lb</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-layer-selection.py">Validator script</reference>
 </text>

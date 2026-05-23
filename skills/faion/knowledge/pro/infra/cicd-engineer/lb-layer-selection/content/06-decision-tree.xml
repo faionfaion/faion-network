@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="LB Layer Selection Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (protocol, content routing, TLS strategy, anycast) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-features">Does the design need content-based routing OR TLS termination at the LB OR WAF OR API-gateway features?</root-question>
+
+    <branch when="needs_l7_features == true">
+      <question id="q-anycast">Anycast or cross-zone L3 distribution required?</question>
+      <branch when="anycast == true">
+        <conclusion ref="hybrid-l4-front-of-l7-for-anycast" verdict="hybrid: L4 anycast front (NLB / Global Accelerator) + L7 (ALB / Ingress) behind"/>
+      </branch>
+      <branch when="anycast == false">
+        <conclusion ref="l7-required-for-content-routing" verdict="pure L7 (ALB / Ingress / HAProxy mode http)"/>
+      </branch>
+    </branch>
+
+    <branch when="needs_l7_features == false">
+      <question id="q-protocol">Protocol pure TCP / UDP?</question>
+      <branch when="pure_l4 == true">
+        <conclusion ref="l4-only-uniform-tcp-udp" verdict="L4 (NLB / HAProxy mode tcp)"/>
+      </branch>
+      <branch when="pure_l4 == false">
+        <conclusion ref="no-l4-with-l7-features" verdict="reject design; clarify whether L7 features are actually needed"/>
+      </branch>
+    </branch>
+
+    <branch when="tls_strategy == terminate-at-lb AND layer == L4">
+      <conclusion ref="ssl-terminates-at-l7" verdict="upgrade to L7 OR switch to L4 pass-through"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="public-https-with-path-routing">
+    needs_l7_features=true (path-routing + WAF) → anycast=false → pure L7 → satisfies l7-required-for-content-routing.
+  </example>
+</text>
