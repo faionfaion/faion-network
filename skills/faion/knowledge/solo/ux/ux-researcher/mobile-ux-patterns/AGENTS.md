@@ -4,71 +4,99 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Mobile-specific UI patterns for navigation (tab bars, hamburger menus), forms (progressive disclosure, inline validation), interactions (pull-to-refresh, swipe actions, long-press), loading states (skeleton screens), empty states, error recovery, and onboarding.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Apply touch-target, gesture, navigation, and feedback patterns proven on mobile so flows respect thumb reach, network variance, and platform conventions.
 content_id: "eea1c2809014e13c"
-tags: [mobile, patterns, ios, android, design]
+complexity: medium
+produces: checklist
+est_tokens: 3400
+tags: ["mobile", "touch-targets", "gestures", "ios", "android"]
 ---
-# Mobile UX Patterns & Templates
+# Mobile UX Patterns
 
 ## Summary
 
-**One-sentence:** Mobile-specific UI patterns for navigation (tab bars, hamburger menus), forms (progressive disclosure, inline validation), interactions (pull-to-refresh, swipe actions, long-press), loading states (skeleton screens), empty states, error recovery, and onboarding.
+**One-sentence:** Apply touch-target, gesture, navigation, and feedback patterns proven on mobile so flows respect thumb reach, network variance, and platform conventions.
 
-**One-paragraph:** Mobile-specific UI patterns for navigation (tab bars, hamburger menus), forms (progressive disclosure, inline validation), interactions (pull-to-refresh, swipe actions, long-press), loading states (skeleton screens), empty states, error recovery, and onboarding. Each pattern includes specifications for iOS and Android with touch targets, animations, and accessibility guidelines.
+**One-paragraph:** Apply touch-target, gesture, navigation, and feedback patterns proven on mobile so flows respect thumb reach, network variance, and platform conventions.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Designing mobile features for iOS or Android that need proven interaction models.
-- Auditing an existing mobile app against platform guidelines (Apple HIG, Material Design) before launch.
-- Documenting a new mobile pattern for a design system so it is reproducible across teams.
-- Evaluating mobile UX debt—mapping deviations from established patterns to prioritize fixes.
-- Training engineers on mobile conventions when building native components.
+- Designing or auditing a mobile-first or mobile-primary interface.
+- Touch targets, gestures, or transitions are inconsistent across screens.
+- Bug reports include mis-taps, lost state on rotation, or unreachable controls.
+- Native iOS and Android conventions need to be honoured by the same design system.
+- Performance budget requires sub-2s screen transitions on a mid-range device.
 
 ## Skip If (ANY kills it)
 
-- When the product's core differentiator is a custom interaction model (e.g., gesture-first apps)—force-fitting standard patterns may reduce the differentiator.
-- Designing for novel form factors (foldables, wearables, AR) where established mobile patterns do not apply.
-- As a substitute for testing on real devices with real users—pattern compliance does not equal usability for your specific context.
+- Desktop-only or kiosk product — apply web/desktop heuristics instead.
+- Pure WebView wrapper with no native gestures — patterns will be inert.
+- Pre-MVP wireframes — patterns assume a real interaction model exists.
+- Single accessibility audit pass — use accessibility heuristics directly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current screen inventory | figma / json | Design system export |
+| Analytics on mis-tap and rage-tap events | csv | Product analytics |
+| Platform style guides (Apple HIG, Material) | url list | Vendor docs |
+| Device matrix for QA | csv | QA team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/recognition-over-recall` | Recognition patterns ground icon and gesture choices. |
+| `solo/ux/ux-researcher/usability-testing` | Real session footage exposes mobile-only issues. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mobile-ux-patterns.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/mobile-ux-patterns.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mobile-ux-patterns.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[usability-testing]]
+- [[recognition-over-recall]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

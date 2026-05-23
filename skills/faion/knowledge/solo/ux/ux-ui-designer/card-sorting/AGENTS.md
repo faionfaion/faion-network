@@ -2,73 +2,101 @@
 slug: card-sorting
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Ask users to organize content topics into groups and label those groups, revealing how users mentally categorize information.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run open, closed, or hybrid card-sorting sessions with target users to discover how they group content, then synthesise into an evidence-based taxonomy.
 content_id: "4316c6eea444ca09"
-tags: [card-sorting, information-architecture, user-research, user-testing, usability]
+complexity: medium
+produces: report
+est_tokens: 3600
+tags: ["card-sorting", "taxonomy", "ia", "ux-research", "synthesis"]
 ---
 # Card Sorting
 
 ## Summary
 
-**One-sentence:** Ask users to organize content topics into groups and label those groups, revealing how users mentally categorize information.
+**One-sentence:** Run open, closed, or hybrid card-sorting sessions with target users to discover how they group content, then synthesise into an evidence-based taxonomy.
 
-**One-paragraph:** Ask users to organize content topics into groups and label those groups, revealing how users mentally categorize information. Use open sort to discover natural categories, closed sort to validate a proposed structure, or hybrid to refine an existing IA. Requires 15-20 participants for open sort, 30+ for statistically meaningful closed sort results.
+**One-paragraph:** Run open, closed, or hybrid card-sorting sessions with target users to discover how they group content, then synthesise into an evidence-based taxonomy.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- You do not know how users think about your content or what labels they expect
-- Users cannot find content in the current navigation (high search usage, low direct nav success)
-- Designing or redesigning a site/app information architecture from scratch or major overhaul
-- Analyzing open-sort exports to compute similarity matrices and candidate IA structure
+- New IA needed and the team lacks data on how users group concepts.
+- Existing taxonomy is being challenged by analytics or qualitative reports.
+- At least 15 representative participants can be recruited.
+- Content set is between 30 and 80 items — sorting fatigue stays manageable.
+- Team will act on results by adjusting categories before tree-testing.
 
 ## Skip If (ANY kills it)
 
-- Fewer than 10 content items — overhead not justified; use interviews or usability tests instead
-- IA already validated through tree testing and live search analytics — re-sorting adds noise
-- UI layout or visual hierarchy questions — card sorting answers content organization, not placement
-- As a substitute for running the actual study — agents cannot observe real-time hesitation or card-splitting
+- Below 30 items — first-click testing answers the question more cheaply.
+- Above 100 items — split into themed mini-sorts first.
+- Single-user internal tool with no shared taxonomy.
+- Strong analytics already point to a clear winning taxonomy.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Card list with definitions | csv | Content inventory |
+| Recruitment screener | form | Research ops |
+| Sorting platform setup | url | Optimal Workshop / similar |
+| Analysis spreadsheet template | xlsx | Researcher toolbox |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/user-interviews` | Quotes inform card labels and wording. |
+| `solo/ux/ux-researcher/ia-framework` | Existing IA hypotheses define candidate categories. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/card-sorting.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/card-sorting.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-card-sorting.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[ia-framework]]
+- [[ia-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

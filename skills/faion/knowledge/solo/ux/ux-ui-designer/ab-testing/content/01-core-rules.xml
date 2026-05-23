@@ -1,47 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ab-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ab-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="A/B Testing Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Testable rules grounding A/B Testing. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Pre-register the hypothesis, primary metric, and minimum sample size before launching. Hypothesis format: "If we [change], then [metric] will [improve/decrease] by [amount] because [reason]."</statement>
-      <rationale source="v1-source">Pre-registration prevents peeking and moving goalposts; post-hoc hypothesis adjustment inflates false-positive risk. Registered hypotheses also create a historical record of which bets paid off.</rationale>
+
+    <rule id="r1-preregistered-hypothesis" testable="true" depth="essential">
+      <statement>Hypothesis, primary metric, guardrail metrics, and minimum detectable effect are pre-registered before launch; post-hoc adjustment invalidates the experiment.</statement>
+      <rationale source="Kohavi, Tang, Xu — Trustworthy Online Controlled Experiments">Pre-registration is the only defence against peeking and goal-post moves.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Define three metric types: Primary metric (main outcome being measured), Secondary metrics (related outcomes to monitor), Guardrail metrics (metrics that must not worsen). Check guardrail metrics before declaring a winner, even when the primary metric improves.</statement>
-      <rationale source="v1-source">A variant can win on click-through but lose on revenue or error rate; guardrails prevent shipping a net-negative change.</rationale>
+    <rule id="r2-sample-size-locked" testable="true" depth="essential">
+      <statement>Sample size is calculated from baseline conversion, MDE, 80 percent power, and 95 percent significance before launch and is not reduced once running.</statement>
+      <rationale source="A/B testing statistics literature">Stopping early on a positive trend inflates false positives.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Calculate required sample size before launch using baseline conversion rate, desired minimum detectable effect (MDE), statistical power (80% standard), and significance level (95% standard). Do not end the test early because results look favorable.</statement>
-      <rationale source="v1-source">Stopping early on a positive trend inflates false-positive rate (peeking); the full pre-calculated sample is required for valid inference. Sample size depends on baseline; low baselines require larger samples.</rationale>
+    <rule id="r3-full-business-cycle" testable="true" depth="essential">
+      <statement>Experiments run for at least one full business cycle (minimum two weeks) to capture weekday-weekend variation.</statement>
+      <rationale source="Practitioner experience">Shorter windows produce biased samples that misrepresent typical behaviour.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Run tests for at least one full business cycle (minimum two weeks) to capture weekday/weekend variation in traffic and conversion patterns.</statement>
-      <rationale source="v1-source">Traffic and conversion patterns vary by day of week; a shorter window produces biased samples that do not represent typical user behavior.</rationale>
+    <rule id="r4-guardrails-checked" testable="true" depth="essential">
+      <statement>Guardrail metrics (revenue, error rate, retention) are checked alongside the primary metric; a winner on the primary metric that violates a guardrail does not ship.</statement>
+      <rationale source="Kohavi et al.">Local wins that hurt overall metrics are net-negative.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Require assessment of both statistical significance (p &lt; 0.05) and practical significance (effect size in business terms). A statistically significant result with tiny effect size (e.g., +0.01% conversion) may not justify implementation cost.</statement>
-      <rationale source="v1-source">Practical significance filters out results that are mathematically significant but business-irrelevant. Both tests must pass before shipping.</rationale>
+    <rule id="r5-segments-prespec" testable="true" depth="essential">
+      <statement>Segment analyses are pre-specified; post-hoc segment slicing requires multiple-comparison correction.</statement>
+      <rationale source="Multiple-comparisons statistics">Post-hoc fishing finds false-positive segments in any dataset.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Compute segment results only for pre-specified segments, not post-hoc exploration. Post-hoc segment analysis inflates false-positive risk via multiple comparisons.</statement>
-      <rationale source="v1-source">Pre-specification of segments prevents "fishing" — selectively reporting segments where the variant wins while ignoring segments where it loses.</rationale>
+    <rule id="r6-practical-significance" testable="true" depth="essential">
+      <statement>Statistically significant results must also clear a practical-significance threshold (e.g., +0.5 percent absolute) before shipping.</statement>
+      <rationale source="Practitioner experience">Tiny statistically-significant effects rarely justify implementation cost.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Apply decision matrix: Clear winner (statistically and practically significant) → implement variant. No difference (not significant) → keep control. Inconclusive → extend test or re-test. Negative impact on guardrail → stop, investigate root cause.</statement>
-      <rationale source="v1-source">Structured decision rules prevent motivated reasoning. When there is no clear winner, default to keeping the control — it is already tested in production; the variant adds complexity without demonstrated benefit.</rationale>
+    <rule id="r7-ship-needs-human" testable="true" depth="essential">
+      <statement>Agent recommendations to ship are advisory; a named human (PM or analyst) signs off after reviewing context and risk.</statement>
+      <rationale source="F-066 methodology DoD">Agents cannot weigh organisation-specific risk tolerance.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Agent "ship" recommendations must be confirmed by a PM or analyst before implementation. Agent analysis is advisory; ship decisions require human judgment on business context, timing, and risk appetite.</statement>
-      <rationale source="v1-source">Agents can analyze data but cannot assess organization-specific trade-offs or risk tolerance.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md "Applies If" do not all hold, OR any "Skip If" disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent context budget.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Agent cannot detect test contamination (users switching between devices, variants persisting across sessions) in the data; flag this risk in the test plan for engineering to address at tracking layer.</statement>
-      <rationale source="v1-source">Cross-device users who see both control and variant pollute assignment integrity; contamination is a data quality issue agents cannot spot from results tables alone.</rationale>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ab-testing.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Agent may misinterpret segment uplift as a universal win. Always check whether the primary metric is significant across the full population before shipping.</statement>
-      <rationale source="v1-source">One segment winning while the full population is flat is not a ship signal.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

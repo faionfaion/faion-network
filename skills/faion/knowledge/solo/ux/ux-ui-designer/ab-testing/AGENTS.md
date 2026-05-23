@@ -2,74 +2,102 @@
 slug: ab-testing
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A/B testing is a controlled experiment that compares two versions of a UI element (control A vs.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run a pre-registered controlled experiment (control vs variant) on a live population with a primary metric, guardrails, and pre-calculated sample size to decide ship/hold on evidence.
 content_id: "b7f4b22564934e1d"
-tags: [ab-testing, experimentation, ux-testing, cro, statistics]
+complexity: deep
+produces: report
+est_tokens: 4400
+tags: ["ab-testing", "experimentation", "ux-testing", "cro", "statistics"]
 ---
 # A/B Testing
 
 ## Summary
 
-**One-sentence:** A/B testing is a controlled experiment that compares two versions of a UI element (control A vs.
+**One-sentence:** Run a pre-registered controlled experiment (control vs variant) on a live population with a primary metric, guardrails, and pre-calculated sample size to decide ship/hold on evidence.
 
-**One-paragraph:** A/B testing is a controlled experiment that compares two versions of a UI element (control A vs. variant B) on a live user population to determine which produces a better outcome on a defined metric. Design decisions based on opinions create unresolvable debates. A/B testing replaces opinion with behavioral evidence from real users at scale. The hypothesis, primary metric, and minimum sample size must be pre-registered before launch to prevent peeking and moving goalposts.
+**One-paragraph:** Run a pre-registered controlled experiment (control vs variant) on a live population with a primary metric, guardrails, and pre-calculated sample size to decide ship/hold on evidence.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- A design change has a clear, measurable primary metric (conversion rate, click-through, completion).
-- Traffic is sufficient for the required sample size (typically 1,000+ conversions/month).
-- The change is isolated — one variable at a time to enable attribution.
-- Iterative optimization of an existing flow, not early-stage discovery.
+- Change has one clear primary metric (conversion, click-through, retention).
+- Traffic supports at least 1,000 conversions per month per variant.
+- Exactly one variable changes between control and variant.
+- Engineering can route traffic and tag events at session granularity.
+- Stakeholders agree to stop or extend strictly per pre-registered rule.
 
 ## Skip If (ANY kills it)
 
-- Traffic under ~1,000 conversions/month — sample size makes results meaningless.
-- Major redesigns with multiple simultaneous changes — too many confounds to attribute results.
-- When you need to understand why users behave differently — use user interviews instead.
-- Early-stage product where the primary metric itself is unclear.
-- Regulatory or safety-critical features where split exposure carries risk.
+- Traffic below ~1,000 conversions per month — results will be inconclusive.
+- Major redesign with multiple simultaneous changes — confounds prevent attribution.
+- Question is 'why' users behave a certain way — run user interviews instead.
+- Regulatory or safety-critical change — split exposure carries risk.
+- Early-stage product where the primary metric is itself unclear.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Hypothesis with metric and MDE | markdown | PM + analyst pair |
+| Sample-size calculation | spreadsheet | Statistician tool |
+| Experimentation platform config | yaml / dashboard | Growth platform |
+| Tracking spec | markdown | Analytics team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/usability-testing` | Qualitative session footage explains quantitative deltas. |
+| `solo/ux/ux-ui-designer/competitive-analysis` | External benchmarks inform realistic MDE values. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ab-testing.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ab-testing.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ab-testing.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[usability-testing]]
+- [[heuristic-evaluation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

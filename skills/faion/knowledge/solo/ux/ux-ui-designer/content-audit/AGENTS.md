@@ -2,74 +2,101 @@
 slug: content-audit
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A content audit is a systematic review of all content on a website or application — cataloging what exists, evaluating quality (accuracy, relevance, quality on a 1-5 scale), and deciding Keep / Update / Rewrite / Remove per item.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Inventory every page or asset against quality, ownership, freshness, and performance criteria to produce a remove / update / keep action list per item.
 content_id: "1d856a6ef6da43a8"
-tags: [content-strategy, audit, inventory, seo, governance]
+complexity: deep
+produces: report
+est_tokens: 4200
+tags: ["content-audit", "inventory", "seo", "rubric", "content-strategy"]
 ---
 # Content Audit
 
 ## Summary
 
-**One-sentence:** A content audit is a systematic review of all content on a website or application — cataloging what exists, evaluating quality (accuracy, relevance, quality on a 1-5 scale), and deciding Keep / Update / Rewrite / Remove per item.
+**One-sentence:** Inventory every page or asset against quality, ownership, freshness, and performance criteria to produce a remove / update / keep action list per item.
 
-**One-paragraph:** A content audit is a systematic review of all content on a website or application — cataloging what exists, evaluating quality (accuracy, relevance, quality on a 1-5 scale), and deciding Keep / Update / Rewrite / Remove per item. Average score >= 4.0 → Keep; 3.0-3.9 → Update; 2.0-2.9 → Rewrite; < 2.0 → Remove.
+**One-paragraph:** Inventory every page or asset against quality, ownership, freshness, and performance criteria to produce a remove / update / keep action list per item.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Before a website redesign — establish full inventory before structural changes
-- Before a CMS migration — map old URLs to keep/redirect/remove decisions
-- SEO improvement sprints — combine crawl data with analytics to prune low-value pages
-- Rolling content governance — quarterly review of core pages, bi-annual for blog
-- Scoring content quality at scale when 50+ pages need evaluation
+- Site or product has accumulated more than 50 pages or assets.
+- Content freshness, ownership, or duplication is unknown.
+- Migration, redesign, or SEO programme requires a baseline.
+- Stakeholders need data on what to deprecate vs reinvest in.
+- Owners can be identified and held accountable per page.
 
 ## Skip If (ANY kills it)
 
-- New sites with under 50 pages — a spreadsheet and manual review is faster
-- When the primary goal is IA redesign — audit catalogs content, not structure (use card sorting)
-- Highly regulated content (medical, legal) where agent quality judgments must not replace subject-matter expert review
-- When analytics access is unavailable — remove/keep decisions without traffic data produce low-value output
+- Site under 20 pages — review manually without a rubric.
+- Content already governed by an active editorial calendar with audit trail.
+- No authority to deprecate or update content after the audit.
+- Single landing page — use a heuristic review instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Full URL list | csv | Crawler / CMS export |
+| Analytics 12-month export | csv | GA / Plausible |
+| SEO and accessibility scan | csv | Lighthouse / Ahrefs |
+| Rubric and decision matrix | spreadsheet | Content lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/competitive-analysis` | Competitor coverage frames the keep/update calls. |
+| `solo/ux/ux-researcher/ia-framework` | Audit feeds back into the IA taxonomy. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/content-audit.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/content-audit.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-content-audit.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[ia-framework]]
+- [[competitive-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

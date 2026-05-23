@@ -4,72 +4,99 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Information architecture (IA) is the structural design of shared information environments.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structure shared information environments by designing organization schemes, taxonomies, navigation, and search so users find content without learning internal org charts.
 content_id: "31838a185658da75"
-tags: [information-architecture, navigation, content-organization, findability, taxonomy]
+complexity: deep
+produces: spec
+est_tokens: 4400
+tags: ["information-architecture", "navigation", "taxonomy", "findability", "ux-research"]
 ---
-# Information Architecture - Framework
+# Information Architecture — Framework
 
 ## Summary
 
-**One-sentence:** Information architecture (IA) is the structural design of shared information environments.
+**One-sentence:** Structure shared information environments by designing organization schemes, taxonomies, navigation, and search so users find content without learning internal org charts.
 
-**One-paragraph:** Information architecture (IA) is the structural design of shared information environments. It involves organizing, labeling, and creating navigation systems that help users find and understand information. A robust IA framework prevents low findability, user frustration, increased support costs, and poor scalability as content grows.
+**One-paragraph:** Structure shared information environments by designing organization schemes, taxonomies, navigation, and search so users find content without learning internal org charts.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- At the start of a product or site build, before any navigation or page structure is committed to code.
-- When users consistently report they cannot find things and analytics confirm high search usage and low direct navigation.
-- During a content migration or redesign where the existing structure needs to be evaluated and reorganized.
-- When adding a new content type or feature to an existing product — to validate it fits the current IA before creating a one-off page.
-- When onboarding stakeholders who need to understand the product's structural logic before contributing content.
+- Building a multi-section product or content site before navigation is committed to code.
+- Users report low findability and analytics show high reliance on search instead of browsing.
+- Performing a content migration or redesign where the existing taxonomy is being evaluated.
+- Adding a new content type and validating that it fits the current IA before creating a one-off page.
+- Onboarding contributors who need to understand the product structural logic before publishing.
 
 ## Skip If (ANY kills it)
 
-- For single-purpose tools with fewer than 10 distinct screens — a simple user flow diagram suffices.
-- When the product's navigation is already well-validated by tree testing and usability data — redo IA only when evidence warrants it.
-- As the first step in a research process; IA should follow user research (card sorting, interviews), not precede it.
-- When the team has no authority over navigation or content organization (e.g., working inside a locked CMS template).
+- Single-purpose tool with fewer than 10 distinct screens — a user-flow diagram is enough.
+- Navigation already validated by recent tree testing with no findability gaps.
+- IA proposed before any user research — run card sorting and interviews first.
+- Team has no authority over navigation or works inside a locked CMS template.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Content inventory | csv / sheet | Discovery pass on existing pages |
+| User research notes | markdown | User-interviews methodology output |
+| Card-sort raw data | csv | Card-sorting methodology output |
+| Tree-test report | markdown | Optimal Workshop or first-click test export |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/user-interviews` | User vocabulary and tasks ground category naming. |
+| `solo/ux/ux-ui-designer/card-sorting` | Card-sort groupings seed the organization scheme. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ia-framework.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/ia-framework.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ia-framework.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[ia-templates]]
+- [[card-sorting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

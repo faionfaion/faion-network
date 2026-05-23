@@ -4,72 +4,99 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A customer journey map is a visualization of the complete end-to-end experience a specific persona has with a product or service across all stages, actions, touchpoints, thoughts, emotions, pain points, and opportunities.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Map the end-to-end customer journey across stages, touchpoints, actions, emotions, and pain points so cross-functional teams can spot friction no single team owns.
 content_id: "99fdb72061ea1207"
-tags: [customer-journey, experience-mapping, user-research, pain-points, prioritization]
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: ["journey-map", "customer-experience", "touchpoints", "ux-research", "service-design"]
 ---
 # Customer Journey Mapping
 
 ## Summary
 
-**One-sentence:** A customer journey map is a visualization of the complete end-to-end experience a specific persona has with a product or service across all stages, actions, touchpoints, thoughts, emotions, pain points, and opportunities.
+**One-sentence:** Map the end-to-end customer journey across stages, touchpoints, actions, emotions, and pain points so cross-functional teams can spot friction no single team owns.
 
-**One-paragraph:** A customer journey map is a visualization of the complete end-to-end experience a specific persona has with a product or service across all stages, actions, touchpoints, thoughts, emotions, pain points, and opportunities. Current-state maps diagnose problems; future-state maps set a design target. Maps must be grounded in research (interviews, analytics, support data) — not assumption.
+**One-paragraph:** Map the end-to-end customer journey across stages, touchpoints, actions, emotions, and pain points so cross-functional teams can spot friction no single team owns.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Before a major product redesign to document the baseline experience and identify the biggest pain points.
-- When multiple teams own different parts of the experience and no one sees the full picture.
-- When support data or NPS verbatims indicate friction but the location within the journey is unclear.
-- When entering a new market segment and the team needs to understand how a different persona experiences the product.
-- When preparing a cross-functional workshop to align stakeholders on experience priorities.
+- Designing or auditing a multi-channel customer experience that spans more than one team.
+- Onboarding flows show high drop-off and the team needs to attribute friction to a stage.
+- Aligning marketing, product, and support around a single picture of the user lifecycle.
+- Validating that a new feature improves a real user goal end-to-end, not just a single screen.
+- Producing a baseline for measuring before/after improvements over multiple sprints.
 
 ## Skip If (ANY kills it)
 
-- As the first UX activity on a new product — there is no journey to map without research; build the research foundation first.
-- When the goal is to fix a specific UI element — journey mapping is for systemic problems across stages, not individual screens.
-- When the team cannot access real user research (interviews, analytics, support data) — a map built from assumptions is a fiction document, not a research artifact.
-- When no stakeholder has authority to act on the findings — maps without committed owners produce posters, not change.
+- Single-screen change with no upstream/downstream touchpoints — use a wireframe review.
+- No qualitative or quantitative data on real users — map will be opinion-driven.
+- Team will not commit to follow-up work on identified pain points.
+- Stakeholders refuse to attend co-creation sessions — solo journey maps drift quickly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Persona document | markdown | User-research output |
+| Behavioural analytics export | csv | Product analytics tool |
+| Support ticket sample | csv | Support tool export |
+| Stakeholder interview notes | markdown | Cross-functional research |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/user-interviews` | Quotes and pain points populate the emotion lane. |
+| `solo/ux/ux-ui-designer/competitive-analysis` | Benchmarks anchor the opportunity column. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/journey-mapping.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/journey-mapping.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-journey-mapping.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[user-interviews]]
+- [[usability-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

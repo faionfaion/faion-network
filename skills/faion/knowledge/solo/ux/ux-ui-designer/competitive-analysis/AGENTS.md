@@ -2,74 +2,101 @@
 slug: competitive-analysis
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured method for examining 3-5 direct competitors, 2-3 indirect, and 1-2 aspirational examples against consistent evaluation criteria (features, user flows, UI patterns, IA, error handling, mobile experience).
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Benchmark direct and adjacent competitors on selected UX dimensions using a repeatable rubric so positioning decisions and design choices reference comparable evidence.
 content_id: "4fb6bb2338696437"
-tags: [competitive-analysis, market-research, ux-design, user-research, product-strategy]
+complexity: medium
+produces: report
+est_tokens: 3600
+tags: ["competitive-analysis", "benchmark", "rubric", "positioning", "ux-research"]
 ---
-# Competitive Analysis
+# Competitive UX Analysis
 
 ## Summary
 
-**One-sentence:** A structured method for examining 3-5 direct competitors, 2-3 indirect, and 1-2 aspirational examples against consistent evaluation criteria (features, user flows, UI patterns, IA, error handling, mobile experience).
+**One-sentence:** Benchmark direct and adjacent competitors on selected UX dimensions using a repeatable rubric so positioning decisions and design choices reference comparable evidence.
 
-**One-paragraph:** A structured method for examining 3-5 direct competitors, 2-3 indirect, and 1-2 aspirational examples against consistent evaluation criteria (features, user flows, UI patterns, IA, error handling, mobile experience). Output is a feature comparison matrix, per-competitor profiles, and recommendations bucketed into: must-have (table stakes), parity (match), and differentiation (opportunity). Analysis requires actually using the products through key user flows, not just looking at screenshots.
+**One-paragraph:** Benchmark direct and adjacent competitors on selected UX dimensions using a repeatable rubric so positioning decisions and design choices reference comparable evidence.
+
+**Ефективно для:**
+
+- Solo founders or small teams shipping under time pressure.
+- Cross-functional reviewers needing a shared, evidence-grounded artefact.
+- Methodology owners maintaining quality gates over time.
+- Subagent pipelines that need a deterministic output shape.
 
 ## Applies If (ALL must hold)
 
-- Before a new feature spec is written — understand what exists before designing something that already exists
-- Quarterly product reviews — market and competitor UI patterns shift faster than annual reviews capture
-- When a stakeholder asks "what do others do?" — answer with evidence, not opinion
-- Before a positioning or pricing decision — competitor UX quality is part of the market landscape
-- When user research reveals users compare your product to specific competitors — study those products
+- Entering a market or repositioning and need a defensible baseline.
+- Three to seven direct competitors exist and are publicly accessible.
+- Stakeholders disagree on what 'industry standard' looks like.
+- Feature parity vs differentiation is being decided.
+- A rubric can be agreed before evaluation to avoid cherry-picking.
 
 ## Skip If (ANY kills it)
 
-- As a substitute for user research — tells you what others built, not what users actually need
-- When all target competitors are behind closed paywalls inaccessible for legal analysis
-- For internal tooling with no external market — no competitors means no competitive analysis
-- When the product intentionally defies conventions — conventional analysis anchors you to patterns you're breaking
+- Novel category with no real competitors — switch to discovery research.
+- Closed-platform competitors that cannot be tested without paid access.
+- Team will use the report only to justify a pre-made decision.
+- Single feature change — heuristic evaluation is cheaper.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Competitor short-list | markdown | Product manager |
+| Rubric with weighted criteria | spreadsheet | Research lead |
+| Account/test access | credentials | Procurement |
+| Screen-capture toolchain | tool list | Researcher |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-ui-designer/heuristic-evaluation` | Heuristic checklist seeds the rubric. |
+| `solo/ux/ux-researcher/user-interviews` | User vocabulary informs the criteria. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules + run/skip rules | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-artefact` | sonnet | Section-by-section judgement against the rubric. |
+| `lint-and-validate` | haiku | Deterministic schema validation + forbidden-pattern check. |
+| `final-review` | opus | Cross-section coherence and stakeholder readiness. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/competitive-analysis.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/competitive-analysis.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-competitive-analysis.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ux-ui-designer/`
+- [[heuristic-evaluation]]
+- [[content-audit]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
