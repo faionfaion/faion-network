@@ -3,78 +3,99 @@ slug: tiny-bets-quarterly-cadence
 tier: solo
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Quarterly tiny-bets operating rhythm for indie portfolio operators: select \u22644 bets, commit, cull losers within 90 days \u2014 produces a versioned bet-record artefact per quarter."
 content_id: "06b6aba45a349993"
-summary: "Tiny Bets Quarterly Cadence: produces a versioned, owner-signed artefact that closes the gap 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year'."
-tags: [tiny-bets-quarterly-cadence, pm, solo]
+complexity: medium
+produces: checklist
+est_tokens: 4000
+tags: [tiny-bets-quarterly-cadence, pm, solo, indie-hacker, portfolio]
 ---
 # Tiny Bets Quarterly Cadence
 
 ## Summary
 
-**One-sentence:** Tiny Bets Quarterly Cadence: produces a versioned, owner-signed artefact that closes the gap 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year'.
+**One-sentence:** Quarterly tiny-bets operating rhythm for indie portfolio operators: select ≤4 bets, commit, cull losers within 90 days — produces a versioned bet-record artefact per quarter.
 
-**One-paragraph:** Addresses the gap surfaced by 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year': The 'tiny bets' / Tiny Seed cadence (quarterly bet selection + commit + cull) is the operating rhythm of the persona. faion lacks an explicit cadence methodology (vs. corporate sprint/quarter cadences). Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a tiny bets quarterly cadence artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Indie / tiny-seed operators run their portfolio on a quarter-by-quarter bet cadence: pick ≤4 bets, commit at quarter start, cull the worst by mid-quarter, keep only winners into next quarter. Existing pm methodologies in faion target enterprise sprint/quarter cadences; the tiny-bets pattern is missing. This methodology produces a versioned bet-record (one row per bet: name, hypothesis, kill-criterion, time-box, owner, status) and an end-of-quarter rollup. ≤4 bets is the hard ceiling; ≥5 means the operator is hedging instead of betting.
+
+**Ефективно для:**
+
+- Indie hacker running ≥2 small SaaS products in a portfolio.
+- Tiny-seed founder past Year-1 with predictable but stagnant revenue.
+- Solo consultant productising 1-2 offers per quarter.
+- Maker running newsletter + course + tool combinations.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Operator has 1-3 live revenue streams plus capacity for new bets.
+- Operator owns the calendar and can hard-cut a losing bet without team friction.
+- A quarterly review window (≥30 min) is on the calendar.
+- Operator can write a kill-criterion before starting a bet.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working tiny bets quarterly cadence artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Operator has only one product and no extra capacity — focus, do not bet.
+- Revenue is below ramen profitability — survival, not bets.
+- Operator's last 2 quarters had ≥5 bets and zero kills — discipline gap, not methodology gap.
+- Bets are contractually committed (paid retainer) and cannot be killed mid-quarter.
 
 ## Prerequisites
 
-- recent context for the 'p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Previous quarter bet record | yaml / md | last quarter file |
+| Capacity estimate (hours/week) | int | operator self-report |
+| Revenue baseline by product | csv / dashboard | billing system |
+| Named owner for each candidate bet | handle | operator notes |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/pm` | parent domain group — provides operating context for Tiny Bets Quarterly Cadence |
+| `solo/pm/project-manager` | parent solo-PM operating rhythm |
+| `solo/product/multi-product-portfolio-management` | portfolio scoring inputs |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-tiny-bets-quarterly-cadence` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/tiny-bets-quarterly-cadence.json` | JSON schema for the Tiny Bets Quarterly Cadence output contract |
-| `templates/tiny-bets-quarterly-cadence.md` | Markdown skeleton with the required fields |
+| `templates/tiny-bets-quarterly-cadence.md` | Markdown skeleton for the checklist artefact, matching content/02-output-contract.xml |
+| `templates/tiny-bets-quarterly-cadence.schema.json` | JSON Schema seed + filled fixture for the checklist artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-tiny-bets-quarterly-cadence.py` | Enforce Tiny Bets Quarterly Cadence output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-tiny-bets-quarterly-cadence.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/pm/`
-- upstream playbook: `p2-indie-hacker/Multi-product portfolio rotation: ship N small bets per year`
-- solo/pm/p2-indie-hacker
+- `[[anti-roadmap-template]]`
+- `[[indie-portfolio-scorecard]]`
+- `[[kill-or-keep-criteria]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

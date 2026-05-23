@@ -3,77 +3,99 @@ slug: build-or-waitlist-decision-tree
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Build or Waitlist Decision Tree: codified product-management practice that turns the recurring 'p1-solo-saas-builder/New feature scoping session (per-feature, on demand)' decision into a repeatable, auditable artefact.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-feature decision: build immediately, waitlist (validate via smoke page first), or decline \u2014 gated by stated demand, capacity, strategic fit, kill-criterion presence."
 content_id: "d4f0bdce059d5aa8"
-tags: [build-or-waitlist-decision-tree, product, solo]
+complexity: medium
+produces: decision-record
+est_tokens: 4000
+tags: [build-or-waitlist-decision-tree, product, solo, feature-scoping, decision-record]
 ---
-# Build or Waitlist Decision Tree
+# Build Or Waitlist Decision Tree
 
 ## Summary
 
-**One-sentence:** Build or Waitlist Decision Tree: codified product-management practice that turns the recurring 'p1-solo-saas-builder/New feature scoping session (per-feature, on demand)' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-feature decision: build immediately, waitlist (validate via smoke page first), or decline — gated by stated demand, capacity, strategic fit, kill-criterion presence.
 
-**One-paragraph:** Build or Waitlist Decision Tree addresses the gap identified by the p1-solo-saas-builder/New feature scoping session (per-feature, on demand) playbook: Solo builders chronically over-build; need a hard gate that demands waitlist signal before code; nothing chains mom-test → micro-MVP today. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Solo SaaS founders need a fast rule to handle 'can you add X?' asks. This methodology pins a decision tree: (1) does the ask have ≥3 distinct customer requests? if no → decline. (2) does the founder have capacity in the current sprint? if no → waitlist with smoke page. (3) does the feature align with the published roadmap? if no → decline (or escalate to roadmap review). (4) is there a kill-criterion drafted? if no → waitlist until drafted. Output: a single decision-record per ask with rationale + revisit date.
+
+**Ефективно для:**
+
+- Solo SaaS founder fielding 10+ feature requests per week.
+- Indie maker balancing core product + audience asks.
+- Tech-lead acting as PM with no dedicated triage process.
+- Operator overwhelmed by sales-driven ad-hoc requests.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p1-solo-saas-builder/New feature scoping session (per-feature, on demand) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Product has live paying users or active beta cohort.
+- Feature request inflow ≥3/week.
+- Founder owns the roadmap + backlog tracker.
+- Founder can write a kill-criterion in under 5 minutes.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Product is pre-launch — feature requests are noise.
+- Roadmap is contractually frozen — all asks default to waitlist.
+- Founder does not have capacity for any new builds — default to waitlist universally.
+- Ask is a bug fix, not a feature — route to bug-fix flow.
 
 ## Prerequisites
 
-- recent context for the p1-solo-saas-builder/New feature scoping session (per-feature, on demand) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature request log (≥30 days) | csv / ticket dump | support tool |
+| Current sprint capacity (hours) | int | founder calendar |
+| Roadmap reference | url / doc | roadmap tool |
+| Smoke-page template | url / Notion | operator templates |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product-manager` | parent role skill — provides the operating context for this methodology |
+| `solo/product/anti-roadmap-template` | decline rationale + revisit triggers |
+| `solo/product/distribution-first-ideation` | smoke-page validation |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-build-or-waitlist-decision-tree` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/build-or-waitlist-decision-tree.json` | JSON schema for the Build or Waitlist Decision Tree output contract |
-| `templates/build-or-waitlist-decision-tree.md` | Markdown skeleton with the required fields |
+| `templates/build-or-waitlist-decision-tree.md` | Markdown skeleton for the decision-record artefact, matching content/02-output-contract.xml |
+| `templates/build-or-waitlist-decision-tree.schema.json` | JSON Schema seed + filled fixture for the decision-record artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-build-or-waitlist-decision-tree.py` | Enforce Build or Waitlist Decision Tree output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-build-or-waitlist-decision-tree.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/`
-- upstream playbook: `p1-solo-saas-builder/New feature scoping session (per-feature, on demand)`
+- `[[anti-roadmap-template]]`
+- `[[demo-hypothesis-template]]`
+- `[[friction-to-backlog]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

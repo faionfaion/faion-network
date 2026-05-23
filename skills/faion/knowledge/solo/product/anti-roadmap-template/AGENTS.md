@@ -3,77 +3,100 @@ slug: anti-roadmap-template
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Anti Roadmap Template: codified product-management practice that turns the recurring 'role-product-manager/Quarter planning + OKR cascade' decision into a repeatable, auditable artefact.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Quarterly 'what we will NOT ship' list \u2014 explicit deferred / declined / killed items with rationale and revisit triggers, paired with the roadmap to absorb stakeholder pressure."
 content_id: "06795c229e5a4444"
-tags: [anti-roadmap-template, product, solo]
+complexity: medium
+produces: report
+est_tokens: 4700
+tags: [anti-roadmap-template, product, solo, roadmap, no-list]
 ---
 # Anti Roadmap Template
 
 ## Summary
 
-**One-sentence:** Anti Roadmap Template: codified product-management practice that turns the recurring 'role-product-manager/Quarter planning + OKR cascade' decision into a repeatable, auditable artefact.
+**One-sentence:** Quarterly 'what we will NOT ship' list — explicit deferred / declined / killed items with rationale and revisit triggers, paired with the roadmap to absorb stakeholder pressure.
 
-**One-paragraph:** Anti Roadmap Template addresses the gap identified by the role-product-manager/Quarter planning + OKR cascade playbook: Roadmap methodologies focus on what we WILL ship; the costly skill is publishing what we explicitly will NOT ship. PMs ask for this every quarter. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Roadmap methodologies focus on what we WILL ship; the costly skill is publishing what we explicitly will NOT ship. This methodology produces a one-page anti-roadmap per quarter listing every deferred / declined / killed item with: why-not rationale (single sentence), revisit trigger (metric or event), owner, expiration date. The anti-roadmap is signed by the PM and the top sponsoring stakeholder; future asks pointing at killed items are first checked against the anti-roadmap entry, not re-litigated.
+
+**Ефективно для:**
+
+- Solo PM facing constant 'what about X?' from stakeholders.
+- Founder who repeatedly revisits the same killed ideas.
+- Product team with no documented 'no' policy.
+- Indie operator running portfolio decisions under inbox pressure.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-product-manager/Quarter planning + OKR cascade OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Roadmap exists or is being authored this quarter.
+- There are ≥3 declined / deferred items the team needs to communicate.
+- PM (or operator) can require a sponsor sign-off on the no-list.
+- Stakeholders are surfacing repeat 'why not X' questions.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Roadmap is empty (pre-planning) — author roadmap first.
+- Team has ≤2 stakeholders and informal alignment suffices.
+- All declines are confidential (M&A, security) — handle out of band.
+- Anti-roadmap from last quarter is still current — refresh, do not redo.
 
 ## Prerequisites
 
-- recent context for the role-product-manager/Quarter planning + OKR cascade task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current roadmap | md / Productboard / Linear | roadmap tool |
+| Last-quarter requests log | csv / spreadsheet | support + sales tickets |
+| Sponsor stakeholder name + handle | string | engagement charter |
+| Quarter calendar window | ISO dates | release calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product-manager` | parent role skill — provides the operating context for this methodology |
+| `solo/product/product-manager` | parent solo-PM product operating context |
+| `solo/product/kill-criteria-template` | format for revisit triggers |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-anti-roadmap-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-roadmap-template.json` | JSON schema for the Anti Roadmap Template output contract |
-| `templates/anti-roadmap-template.md` | Markdown skeleton with the required fields |
+| `templates/anti-roadmap-template.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/anti-roadmap-template.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-anti-roadmap-template.py` | Enforce Anti Roadmap Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-anti-roadmap-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/`
-- upstream playbook: `role-product-manager/Quarter planning + OKR cascade`
+- `[[kill-criteria-template]]`
+- `[[backlog-hygiene-cron-checklist]]`
+- `[[friction-to-backlog]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

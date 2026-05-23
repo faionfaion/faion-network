@@ -3,78 +3,100 @@ slug: demo-hypothesis-template
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "One-page demo-hypothesis spec: forces every customer demo to declare what hypothesis it tests, success metric, falsification signal, follow-up gate \u2014 so demos stop being feature parades."
 content_id: "4dc9262f8c884ca2"
-summary: Single-page template that forces every customer demo to declare what hypothesis the demo tests, so demos stop being feature parades.
-tags: [product, demo, discovery, hypothesis, template]
+complexity: medium
+produces: spec
+est_tokens: 4700
+tags: [demo-hypothesis-template, product, solo, demo, discovery]
 ---
 # Demo Hypothesis Template
 
 ## Summary
 
-**One-sentence:** Single-page template that forces every customer demo to declare what hypothesis the demo tests, so demos stop being feature parades.
+**One-sentence:** One-page demo-hypothesis spec: forces every customer demo to declare what hypothesis it tests, success metric, falsification signal, follow-up gate — so demos stop being feature parades.
 
-**One-paragraph:** Demos drift into feature parades when there is no hypothesis-led structure; missing template forces every PM to reinvent it. Demo Hypothesis Template closes this gap with a small set of hard rules, a strict output contract, and a failure-mode catalogue tuned for LLM-assisted execution. The methodology is anchored to the triggering work 'Customer demo / sneak-peek session' (role-product-manager, solo tier). It produces a structured artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Customer demos drift into feature tours when nobody declares the hypothesis being tested. This methodology forces a one-page artefact filled BEFORE every demo: which hypothesis (segment + job + price-sensitivity), how the demo tests it (the specific moment / question / interaction), success metric (the observable behaviour that confirms), kill signal (the response that falsifies), follow-up gate (must complete before booking the next demo). The artefact is the demo agenda.
+
+**Ефективно для:**
+
+- Solo founder running sales demos that turn into feature walkthroughs.
+- Product person doing customer discovery interviews labelled 'demos'.
+- Indie operator with low close rate and no demo-to-learning loop.
+- Tech-lead doing pre-sale demos with no PM partner.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Customer demo / sneak-peek session' (role: role-product-manager) is in your current workload at least once per cycle.
-- You have authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the artefact — human reviewer OR downstream agent.
-- An auditable source-of-truth is available for the inputs the methodology needs.
+- Founder runs ≥2 demos per week.
+- Demos currently produce no captured learning artefact.
+- Founder owns the demo calendar.
+- There is an explicit segment / persona hypothesis open.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Demos are post-sale onboarding sessions — not discovery.
+- Founder has a dedicated demo specialist who already follows a playbook.
+- All demos are stable enterprise procurement gates — methodology adds friction.
+- Demo cadence <1/month — too few for a habit.
 
 ## Prerequisites
 
-- Read access to the systems / dashboards / docs that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Hypothesis register | md / Notion | discovery doc |
+| Prospect snippet (name + segment) | string | CRM |
+| Demo calendar | url | calendar tool |
+| Past demo notes (≥3) | md | research repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/product/discovery-research-handoff-template` | research evidence shape |
+| `solo/product/product-manager` | parent operating context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `demo_hypothesis_template_template_fill` | haiku | Template fill, no judgment |
-| `demo_hypothesis_template_evidence_check` | sonnet | Bounded comparison + judgment |
-| `demo_hypothesis_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-demo-hypothesis-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/demo-hypothesis-template.md` | Markdown skeleton for the spec artefact, matching content/02-output-contract.xml |
+| `templates/demo-hypothesis-template.schema.json` | JSON Schema seed + filled fixture for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-demo-hypothesis-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/` (see neighbouring methodologies)
-- triggering activity: `role-product-manager/Customer demo / sneak-peek session`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[discovery-research-handoff-template]]`
+- `[[friction-to-backlog]]`
+- `[[audience-driven-pivot-decision]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
