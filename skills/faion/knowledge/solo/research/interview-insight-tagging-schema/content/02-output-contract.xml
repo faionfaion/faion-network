@@ -1,57 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Interview Insight Tagging Schema Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Interview Insight Tagging Schema artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Interview Insight Tagging Schema Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) + valid and invalid examples + forbidden patterns pinning the shape of a valid spec artefact emitted by Interview Insight Tagging Schema.</summary>
+  <section title="Schema (JSON Schema draft-07)">
+    <schema format="json-schema-draft-07">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/interview-insight-tagging-schema.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "trigger",
+    "rules_applied",
+    "evidence",
+    "output_payload",
+    "consumer",
+    "owner",
+    "last_touched"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules_applied": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "citation",
+          "source_type"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "citation": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "url",
+              "ticket",
+              "doc",
+              "transcript",
+              "contract"
+            ]
+          }
+        }
+      }
+    },
+    "output_payload": {
+      "type": "object"
+    },
+    "consumer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_touched": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+      ]]></code>
+    </schema>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
-  </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "01HXT3KQ7P9B2YJZG4N3R5VWFM",
+  "trigger": "Interview Insight Tagging Schema engagement",
+  "rules_applied": [
+    "six-category-axes"
+  ],
+  "evidence": [
+    {
+      "rule_id": "six-category-axes",
+      "citation": "https://example.com/source",
+      "source_type": "url"
+    }
+  ],
+  "output_payload": {
+    "status": "complete"
+  },
+  "consumer": "Mariia Ivanova (delivery PM)",
+  "owner": "Oleh Petrov (operator)",
+  "last_touched": "2026-05-23T10:00:00Z"
+}
+    ]]></code>
+    <note>All required fields populated; rule reference resolves into 01-core-rules.xml; owner is a named individual.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "x",
+  "trigger": "vague",
+  "rules_applied": [],
+  "output_payload": {}
+}
+    ]]></code>
+    <note>Required fields missing (evidence, consumer, owner, last_touched); rules_applied empty; artefact_id form invalid.</note>
+  </example>
+  <forbidden>
+    <pattern id="evidence-empty">artefact produced without any evidence entry referencing a rule_id</pattern>
+    <pattern id="owner-plural">consumer or owner empty or set to generic 'team' / 'we' / 'everyone'</pattern>
+    <pattern id="rule-id-unknown">rules_applied references rule ids not present in content/01-core-rules.xml</pattern>
+    <pattern id="citation-vague">evidence cites 'industry standard' / 'common practice' with no named source</pattern>
+    <pattern id="applies-if-failed-still-produced">applies_if guard failed AND artefact still produced (must be a skip-record with reason)</pattern>
+  </forbidden>
+  <reference path="scripts/validate-interview-insight-tagging-schema.py">Stdlib-only validator implementing this schema.</reference>
 </text>

@@ -3,82 +3,99 @@ slug: beta-cohort-recruitment
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4f5cdbd9d0e4dcd1"
-summary: Recruits a private-beta or design-partner cohort with NDA, expectations contract, feedback cadence, and exit ramp — distinct from open user-interview recruiting.
-tags: [private-beta, design-partner, recruitment, nda, gtm]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Recruits a private-beta / design-partner cohort with NDA, expectations contract, feedback cadence, and exit ramp — distinct from open user-interview recruiting."
+content_id: "605e84f9021438d9"
+complexity: medium
+produces: playbook-step
+est_tokens: 4000
+tags: [private-beta, design-partner, recruitment, nda, research]
 ---
 # Private-Beta / Design-Partner Cohort Recruitment
 
 ## Summary
 
-**One-sentence:** Sources, screens, and signs up a small invited cohort (typically 5-15) for a private beta or paid design partnership, with the contracts, cadence, and exit criteria written before the first invite goes out.
+**One-sentence:** Recruits a private-beta / design-partner cohort with NDA, expectations contract, feedback cadence, and exit ramp — distinct from open user-interview recruiting.
 
-**One-paragraph:** Open user-interview recruiting (`user-interviews`) talks to anyone willing to share 30 minutes — useful for exploration. A private beta is different: a small set of named accounts who commit to multi-week usage, share confidential feedback, accept NDA terms, and in exchange get unusually deep access and influence on the roadmap. The cost of recruiting them wrong is high: a bad cohort either drowns the founder in feature requests they cannot serve, or churns silently leaving no signal. This methodology pins five things — ICP-first sourcing, a screener that filters for fit and time, an NDA + expectations one-pager, a defined feedback cadence, and an explicit graduation/exit ramp. Output: a signed cohort with a tracked engagement log.
+**One-paragraph:** Open user-interview recruiting collects opinions; design-partner cohorts collect committed feedback. This methodology pins the difference: an NDA and expectations contract gate entry, a fixed cadence (weekly write-up + monthly call) governs engagement, and a named exit ramp prevents dead-weight members from inflating the cohort. Output: a recruitment playbook step with cohort target, vetting checklist, signed contract template, and a kill-criterion for members who miss two cadence cycles.
+
+**Ефективно для:**
+
+- Solo SaaS founder pre-launch building a paying-beta cohort.
+- PM seeking design partners for a vertical pivot.
+- Indie operator who wants signed commitment beyond newsletter sign-ups.
+- Researcher recruiting ongoing-feedback partners, not one-off interviewees.
 
 ## Applies If (ALL must hold)
 
-- Product is past prototype but pre-GA — there is real software to use, not just mockups.
-- Founder needs depth feedback (workflow integration, retention signal) not breadth feedback.
-- Target ICP is reachable in some channel (network, niche community, outbound, list).
-- Founder has at least 4 hours/week to dedicate to cohort touchpoints.
+- Recruiting a private-beta or design-partner cohort (not open interviews).
+- Cohort target size 5–25 named partners.
+- Partners will give recurring feedback (≥4 contact points).
+- Operator can offer something in return (early access, pricing lock, naming credit).
 
 ## Skip If (ANY kills it)
 
-- Product is still mockup-only — run `user-interviews` instead.
-- Founder cannot personally support each beta (>= 30 partners) — switch to public/open beta playbook.
-- No ICP defined yet — back up to `niche-evaluation` first.
-- Sales cycle is &lt; 30 days from now — paid pilots beat beta cohorts when revenue is the goal.
+- Recruiting >25 members — design-partner discipline breaks; switch to closed beta.
+- Need is a one-off interview — use a research interview methodology.
+- Operator cannot honour partner commitments (busy quarter).
+- Product is too early to give partners meaningful access (alpha-only build).
 
 ## Prerequisites
 
-- A written ICP statement (1-2 sentences, named segment with sizing signal).
-- A landing-page or one-pager describing the beta proposition.
-- A working onboarding path (signup, first-value-step) — beta partners do not debug your auth flow for free.
-- Legal: a one-page mutual NDA template ready (see templates/).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Partner profile criteria | list (segment + role + signals) | research brief |
+| NDA template | doc / pdf | legal repo |
+| Expectations contract template | md | this methodology |
+| Cadence calendar | ICS / Linear | operator scheduler |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/research/researcher/user-interviews` | Cadence touchpoints reuse interview-craft basics. |
-| `solo/research/researcher/jobs-to-be-done` | Optional: pair JTBD with beta feedback for switching evidence. |
+| `solo/research/researcher/problem-validation` | validation discipline upstream of design-partner ask |
+| `solo/product/beta-charter-template` | charter shape consumed at cohort opening |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: ICP-first, screener filter, signed expectations, cadence, exit ramp | ~900 |
-| `content/02-output-contract.xml` | essential | Cohort log shape; required signed docs; engagement KPI thresholds | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: friend-of-founder cohort, NDA-as-contract-only, etc. | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `screener-question-draft` | haiku | Template fill from ICP + capacity |
-| `candidate-fit-score` | sonnet | Apply screener rubric to a candidate's responses |
-| `engagement-trend-summary` | opus | Synthesis across multiple touchpoints to detect retention vs decay |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-beta-cohort-recruitment` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/beta-screener.md` | 8 screener questions with scoring rubric |
-| `templates/expectations-one-pager.md` | What the partner gets, what the founder gets, NDA terms, exit conditions |
-| `templates/cohort-log.csv` | Per-partner row: name, signup, last touchpoint, engagement score, status |
+| `templates/beta-cohort-recruitment.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/beta-cohort-recruitment.schema.json` | JSON Schema seed + filled fixture for the playbook-step artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/cohort-health.py` | Compute weekly engagement metrics from cohort-log.csv | Weekly |
+| `scripts/validate-beta-cohort-recruitment.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/researcher/`
-- peer methodology: `user-interviews`, `problem-validation`, `pricing-research`
-- external: [First Round Review on design partners](https://review.firstround.com/) · [Y Combinator on early customers](https://www.ycombinator.com/library)
+- `[[beta-charter-template]]`
+- `[[problem-validation]]`
+- `[[discovery-research-handoff-template]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

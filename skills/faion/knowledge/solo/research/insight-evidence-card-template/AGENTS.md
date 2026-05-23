@@ -3,78 +3,100 @@ slug: insight-evidence-card-template
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "6cca9baff3075d64"
-summary: "Insight Evidence Card Template — testable methodology for interviews, evidence, synthesis. Synthesis without an evidence-card format yields opinion-shaped insights that stakeholders can dismiss; a card (claim + evidence count + quote + segment) lifts credibility."
-tags: [research, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pins a single interview insight to a fixed card (claim + evidence count + quote + segment) so synthesis decays into reviewable evidence, not opinion."
+content_id: "3fed8c8dbeb1e21c"
+complexity: medium
+produces: spec
+est_tokens: 4700
+tags: [insight-card, evidence, research, synthesis, interview]
 ---
 # Insight Evidence Card Template
 
 ## Summary
 
-**One-sentence:** Insight Evidence Card Template — testable methodology for interviews, evidence, synthesis. Synthesis without an evidence-card format yields opinion-shaped insights that stakeholders can dismiss; a card (claim + evidence count + quote + segment) lifts credibility.
+**One-sentence:** Pins a single interview insight to a fixed card (claim + evidence count + quote + segment) so synthesis decays into reviewable evidence, not opinion.
 
-**One-paragraph:** Insight Evidence Card Template closes a known gap in research practice: Synthesis without an evidence-card format yields opinion-shaped insights that stakeholders can dismiss; a card (claim + evidence count + quote + segment) lifts credibility. The methodology is anchored to the recurring activity 'Research insight synthesis (2hr/week) (role: role-ux-ui-designer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Synthesis without an evidence-card format yields opinion-shaped insights stakeholders dismiss. This methodology pins one insight per card: a claim sentence, the count of distinct evidence sources, the strongest verbatim quote, the segment the claim applies to, the confidence band, and the next-action link. Cards live in a flat list, get tagged by tagging-schema, and get aggregated upward into opportunity-tree nodes only when ≥3 evidence sources back the claim.
+
+**Ефективно для:**
+
+- Researcher synthesising 5+ interviews into themes.
+- PM whose 'insights' get rejected as 'just opinion' by sales.
+- Solo founder running their own discovery research without a research lead.
+- Team that wants insight-to-opportunity-tree traceability.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Research insight synthesis (2hr/week) (role: role-ux-ui-designer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- ≥3 interviews completed and transcribed (text or notes).
+- Synthesis output will feed an opportunity tree, roadmap, or report.
+- Operator can tag each card to a segment.
+- Insights need to survive a stakeholder pushback ('show me the evidence').
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- <3 interviews — defer synthesis until cohort matures.
+- Single-stakeholder review only — inline notes suffice.
+- Research is internal (process improvement, not product) — use a different shape.
+- Insights destined for a one-shot decision, not a tree.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Interview transcripts or coded notes | md / Dovetail / Notion | research repo |
+| Tagging schema for atomic-insight tags | controlled vocabulary | interview-insight-tagging-schema |
+| Segment map | list of named segments | research plan |
+| Opportunity-tree path | md / Miro / Productboard | research deliverable |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/research/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/research/interview-insight-tagging-schema` | controlled tags feed the card |
+| `solo/research/researcher/affinity-diagramming` | upstream synthesis grouping |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `insight_evidence_card_template_template_fill` | haiku | Template fill, no judgement |
-| `insight_evidence_card_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `insight_evidence_card_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-insight-evidence-card-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/insight-evidence-card-template.md` | Markdown skeleton for the spec artefact, matching content/02-output-contract.xml |
+| `templates/insight-evidence-card-template.schema.json` | JSON Schema seed + filled fixture for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-insight-evidence-card-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/` (see neighbouring methodologies)
-- triggering activity: `Research insight synthesis (2hr/week) (role: role-ux-ui-designer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[interview-insight-tagging-schema]]`
+- `[[affinity-diagramming]]`
+- `[[interview-hot-take-template]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

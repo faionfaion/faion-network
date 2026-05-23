@@ -3,78 +3,99 @@ slug: interview-hot-take-template
 tier: solo
 group: research
 domain: research
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "a58b13f7b28533e2"
-summary: "Interview Hot Take Template — testable methodology for interviews, evidence, synthesis. 5-bullet capture within 30min preserves the freshness that gets lost by synthesis time. No current methodology forces this discipline."
-tags: [research, solo, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "5-bullet hot-take capture within 30 minutes of an interview — pins the freshness signal before formal synthesis flattens it."
+content_id: "12e40054eb9ff394"
+complexity: light
+produces: spec
+est_tokens: 3900
+tags: [interview, hot-take, research, capture, freshness]
 ---
-# Interview Hot Take Template
+# Interview Hot-Take Template
 
 ## Summary
 
-**One-sentence:** Interview Hot Take Template — testable methodology for interviews, evidence, synthesis. 5-bullet capture within 30min preserves the freshness that gets lost by synthesis time. No current methodology forces this discipline.
+**One-sentence:** 5-bullet hot-take capture within 30 minutes of an interview — pins the freshness signal before formal synthesis flattens it.
 
-**One-paragraph:** Interview Hot Take Template closes a known gap in research practice: 5-bullet capture within 30min preserves the freshness that gets lost by synthesis time. No current methodology forces this discipline. The methodology is anchored to the recurring activity 'User interview prep + run (1 session) (role: role-ux-ui-designer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** By the time formal synthesis runs (a week later), the interviewer has lost the freshness signal: which moment surprised them, which answer cracked, which quote should not be paraphrased. This methodology pins a 5-bullet hot-take per interview, captured within 30 minutes of session end: the surprise, the contradiction, the strongest quote, the open question that emerged, the next-step the interviewer commits to. Lives in the research repo next to the transcript and feeds the insight-card layer downstream.
+
+**Ефективно для:**
+
+- Solo researcher running back-to-back interviews.
+- PM doing their first round of discovery interviews.
+- Founder logging customer conversations on the move.
+- Researcher whose synthesis arrives a week late and loses the 'aha' moments.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'User interview prep + run (1 session) (role: role-ux-ui-designer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Interviewer can capture within 30 minutes of session end.
+- Interview was at least 20 minutes long.
+- Transcript or notes exist for the session.
+- Hot-takes will feed downstream synthesis (insight cards, opportunity tree).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Interview was under 10 minutes — capture only the next-step.
+- Capture window passed by >24 hours — write a delayed-capture flagged note.
+- Session is internal (not user research) — use meeting notes template.
+- Researcher already has an established freshness-capture habit that works.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Interview transcript or audio | md / mp3 | research repo |
+| Session metadata | interviewee handle + timestamp + duration | research log |
+| Hot-take capture path | md | research repo |
+| 30-minute capture timer | timer / alarm | operator setup |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/research/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `solo/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `solo/research/insight-evidence-card-template` | downstream insight card shape |
+| `solo/research/researcher/affinity-diagramming` | downstream synthesis grouping |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `interview_hot_take_template_template_fill` | haiku | Template fill, no judgement |
-| `interview_hot_take_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `interview_hot_take_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-interview-hot-take-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/interview-hot-take-template.md` | Markdown skeleton for the spec artefact, matching content/02-output-contract.xml |
+| `templates/interview-hot-take-template.schema.json` | JSON Schema seed + filled fixture for the spec artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-interview-hot-take-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/research/` (see neighbouring methodologies)
-- triggering activity: `User interview prep + run (1 session) (role: role-ux-ui-designer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- `[[insight-evidence-card-template]]`
+- `[[interview-insight-tagging-schema]]`
+- `[[affinity-diagramming]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

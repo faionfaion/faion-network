@@ -3,78 +3,100 @@ slug: weekly-pm-async-broadcast-template
 tier: solo
 group: product
 domain: product
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "c7f6063ad3d8efe9"
-summary: "Weekly Pm Async Broadcast Template: produces a versioned, owner-signed artefact that closes the gap 'role-product-manager/Monday roadmap pulse review'."
-tags: [weekly-pm-async-broadcast-template, product, solo]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Pins a Monday async PM update format (problem/decision/next-step + named owner) so weekly broadcasts decay into a reviewable artefact, not a Slack scroll."
+content_id: "b2c41538158b4a4a"
+complexity: medium
+produces: report
+est_tokens: 4700
+tags: [weekly-pm-async-broadcast-template, product, solo, pm-cadence, broadcast]
 ---
-# Weekly Pm Async Broadcast Template
+# Weekly PM Async Broadcast Template
 
 ## Summary
 
-**One-sentence:** Weekly Pm Async Broadcast Template: produces a versioned, owner-signed artefact that closes the gap 'role-product-manager/Monday roadmap pulse review'.
+**One-sentence:** Pins a Monday async PM update format (problem/decision/next-step + named owner) so weekly broadcasts decay into a reviewable artefact, not a Slack scroll.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-product-manager/Monday roadmap pulse review': Solo + small-team PMs need a repeatable async-update format (problem/decision/next-step) — current product-planning playbooks stop at roadmap-design and don't cover the broadcast ritual. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a weekly pm async broadcast template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Solo and small-team PMs need a repeatable async-update format that survives the week without re-deriving rationale. The methodology fixes a one-page weekly broadcast: pinned context, decisions made this week (each with one named input), open questions, next-step block, and an explicit owner. The artefact is versioned, sponsor-signed, and reviewed alongside the roadmap. Stops broadcasts from becoming opinion-streams and gives downstream consumers a stable shape to diff week-over-week.
+
+**Ефективно для:**
+
+- Solo PM losing Monday on roadmap restatement.
+- Founder running async-only product team.
+- PM whose stakeholders re-litigate the same questions every week.
+- Indie operator coordinating contractors via Slack.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-product-manager/Monday roadmap pulse review' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Team runs an async-first product cadence (no daily standup).
+- PM (or operator) signs off on weekly written broadcasts.
+- Downstream consumers (eng, sales, support) read the broadcast.
+- ≥3 decisions surface per week worth pinning.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working weekly pm async broadcast template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Team is fully sync (daily standup) and broadcast is redundant.
+- Operator has <3 decisions per week to report — write inline notes.
+- Regulated channel that mandates a different broadcast template.
+- Last week's broadcast still represents the current state — link, do not redo.
 
 ## Prerequisites
 
-- recent context for the 'role-product-manager/Monday roadmap pulse review' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Last-week broadcast | md / Notion / wiki | broadcast log |
+| Decisions made this week | list with named input per item | decision log |
+| Open questions surface | list | stakeholder threads |
+| Named owner handle | string | team roster |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product` | parent domain group — provides operating context for Weekly Pm Async Broadcast Template |
+| `solo/product/product-manager` | parent operating context |
+| `solo/pm/solo-weekly-cadence-template` | cadence shape feeding this broadcast |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom / root-cause / fix | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-weekly-pm-async-broadcast-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-pm-async-broadcast-template.json` | JSON schema for the Weekly Pm Async Broadcast Template output contract |
-| `templates/weekly-pm-async-broadcast-template.md` | Markdown skeleton with the required fields |
+| `templates/weekly-pm-async-broadcast-template.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/weekly-pm-async-broadcast-template.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-weekly-pm-async-broadcast-template.py` | Enforce Weekly Pm Async Broadcast Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-weekly-pm-async-broadcast-template.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `solo/product/`
-- upstream playbook: `role-product-manager/Monday roadmap pulse review`
-- solo/product/role-product-manager
+- `[[solo-weekly-cadence-template]]`
+- `[[anti-roadmap-template]]`
+- `[[discovery-research-handoff-template]]`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

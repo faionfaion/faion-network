@@ -4,77 +4,98 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Wires the 8 subscription edge cases (trial-to-paid, upgrade, downgrade, proration, failed renewal, cancel-then-resubscribe, EU VAT, refunds) into a single tested runbook with Stripe webhook coverage and dunning policy.
 content_id: "652ce8e6672ab567"
-summary: "Subscription Lifecycle Edge Cases: produces a versioned, owner-signed artefact that closes the gap 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production'."
-tags: [subscription-lifecycle-edge-cases, product, solo]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [subscription-lifecycle-edge-cases, stripe, billing, solo-saas]
 ---
 # Subscription Lifecycle Edge Cases
 
 ## Summary
 
-**One-sentence:** Subscription Lifecycle Edge Cases: produces a versioned, owner-signed artefact that closes the gap 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production'.
+**One-sentence:** Wires the 8 subscription edge cases (trial-to-paid, upgrade, downgrade, proration, failed renewal, cancel-then-resubscribe, EU VAT, refunds) into a single tested runbook with Stripe webhook coverage and dunning policy.
 
-**One-paragraph:** Addresses the gap surfaced by 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production': Trial-to-paid, upgrade/downgrade proration, failed renewal dunning, cancel-then-resubscribe, EU VAT, refund pro-rations. churn-intervention playbook covers retention but not the wiring. Critical for a $19 SaaS to not bleed silently. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a subscription lifecycle edge cases artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Wires the 8 subscription edge cases (trial-to-paid, upgrade, downgrade, proration, failed renewal, cancel-then-resubscribe, EU VAT, refunds) into a single tested runbook with Stripe webhook coverage and dunning policy. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Subscription Lifecycle Edge Cases on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Solo SaaS with active subscription billing.
+- Stripe (or equivalent) wired for webhooks.
+- EU customers in revenue mix → VAT applies.
+- Owner has ≥1 paying customer in trial-to-paid transition.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working subscription lifecycle edge cases artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Pre-billing prototype.
+- One-time payment product — no lifecycle.
+- Enterprise invoicing only — no self-service flow.
+- Stripe Tax not configured — fix that first.
 
 ## Prerequisites
 
-- recent context for the 'p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stripe webhooks live | endpoint URL | Stripe dashboard |
+| Subscription product + price config | JSON | Stripe |
+| Email transactional pipeline | Postmark / Resend | Self |
+| Customer DB + sub-id mapping | schema | Backend |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product` | parent domain group — provides operating context for Subscription Lifecycle Edge Cases |
+| `solo/product/solo-saas-legal-docs-pack` | Legal preconditions for billing. |
+| `pro/dev/api-developer/webhook-handling` | Webhook robustness. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `draft-subscription-lifecycle-edge-cases` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-subscription-lifecycle-edge-cases` | haiku | Schema check + threshold checks; deterministic. |
+| `review-subscription-lifecycle-edge-cases` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/subscription-lifecycle-edge-cases.json` | JSON schema for the Subscription Lifecycle Edge Cases output contract |
-| `templates/subscription-lifecycle-edge-cases.md` | Markdown skeleton with the required fields |
+| `templates/subscription-lifecycle-edge-cases.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/subscription-lifecycle-edge-cases.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-subscription-lifecycle-edge-cases.py` | Enforce Subscription Lifecycle Edge Cases output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-subscription-lifecycle-edge-cases.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/`
-- upstream playbook: `p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production`
-- solo/product/p1-solo-saas-builder
+- [[solo-saas-legal-docs-pack]]
+- [[product-launch]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

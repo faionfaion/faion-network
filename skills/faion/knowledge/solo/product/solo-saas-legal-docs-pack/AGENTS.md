@@ -4,57 +4,95 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Minimum viable legal-doc pack — ToS, Privacy, refund policy, cookie banner, DPA — a solo SaaS needs in place before charging the first customer.
+summary: Minimum five legal documents (ToS, Privacy, Cookie, Refund, DPA) sourced from Stripe / Iubenda / Termly / Vanta with billing-activation gates that block ship until live.
 content_id: "c3de9d8937b69245"
-tags: [solo-saas-legal-docs-pack, product, solo]
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [legal, solo-saas, pre-launch, tos-privacy]
 ---
-# Solo SaaS Legal Docs Pack
+# Solo Saas Legal Docs Pack
 
 ## Summary
 
-**One-sentence:** The five legal documents every solo SaaS needs before processing the first paid charge — ToS, Privacy Policy, Refund Policy, Cookie Banner, basic DPA — with explicit "do not ship without" gates.
+**One-sentence:** Minimum five legal documents (ToS, Privacy, Cookie, Refund, DPA) sourced from Stripe / Iubenda / Termly / Vanta with billing-activation gates that block ship until live.
 
-**One-paragraph:** Most solo founders improvise legal copy from a Notion template found on Twitter, then run into a Stripe risk-review email or a GDPR complaint within the first 6 months. This methodology fixes the minimum five documents, the canonical sources to base them on (Stripe / Iubenda / Termly / Vanta starter kit), and the gates that block billing activation until they are live. It does not replace a lawyer — it defines what "good enough to bill" looks like for the bootstrap phase.
+**One-paragraph:** Minimum five legal documents (ToS, Privacy, Cookie, Refund, DPA) sourced from Stripe / Iubenda / Termly / Vanta with billing-activation gates that block ship until live. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Solo Saas Legal Docs Pack on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- product is about to start charging real money
-- product collects any PII (email at minimum)
-- the founder is selling internationally (≥1 EU / UK / California customer expected)
-- billing platform (Stripe / Paddle / Lemon Squeezy) requires a public ToS + privacy URL
+- Solo SaaS preparing to activate billing.
+- Operates in EU / US (GDPR / CCPA scope).
+- Owner accepts 'good enough to bill' standard (not enterprise legal).
+- Budget for a lawyer review later, not now.
 
 ## Skip If (ANY kills it)
 
-- product is free with no PII and no signups — overhead exceeds risk
-- a corporate legal team owns the docs already
-- product is sold exclusively B2B with a master agreement per customer
-- jurisdiction requires bespoke legal review beyond this pack (medical, financial-services, child-safety)
+- Enterprise tier — bespoke MSA required.
+- Regulated industry (health / finance) — defer to specialist counsel.
+- Pre-billing prototype with no payments.
+- Single-customer paid pilot — direct contract suffices.
 
 ## Prerequisites
 
-- a public website at a stable URL (legal docs need a permalink)
-- a chosen billing platform (the ToS will reference it)
-- the founder's legal entity name + jurisdiction of incorporation
-- a `legal@` or `support@` contact email that is monitored
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product positioning + business model | doc | Self |
+| Payment processor chosen | config | Stripe |
+| Hosting region + data location | config | Hetzner / AWS |
+| Cookie + analytics inventory | list | Self |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product-planning` | parent skill |
-| `solo/product/gdpr-for-solo-saas` | sibling — Privacy Policy must align with the GDPR posture set there |
+| `solo/product/product-planning/product-launch` | Sequenced with launch; legal must precede billing. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: five-docs-minimum, no-template-without-edit, billing-gate, jurisdiction-named, monitored-contact | ~1000 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-solo-saas-legal-docs-pack` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-solo-saas-legal-docs-pack` | haiku | Schema check + threshold checks; deterministic. |
+| `review-solo-saas-legal-docs-pack` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/solo-saas-legal-docs-pack.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/solo-saas-legal-docs-pack.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-saas-legal-docs-pack.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning`
-- upstream playbook: `p1-solo-saas-builder/Pre-launch hardening: vibe-coded MVP → safe-to-bill production`
-- sibling: `solo/product/gdpr-for-solo-saas`
+- [[product-launch]]
+- [[subscription-lifecycle-edge-cases]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
