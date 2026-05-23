@@ -1,33 +1,25 @@
-# Change Impact Analysis: [CR-ID]
+<!-- purpose: Change impact analysis template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Change Request:** [CR-ID]
-**Description:** [What is being changed and why]
-**Requested by:** [Name / Role]
-**Date:** [Date]
+# Change impact analysis template.
 
-## Impact Assessment
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| Area | Affected Items | Effort |
-|------|---------------|--------|
-| Requirements | [Count and IDs] | [H/M/L] |
-| Design documents | [Count and IDs] | [H/M/L] |
-| Code modules | [Count and IDs] | [H/M/L] |
-| Test cases | [Count and IDs] | [H/M/L] |
+## Context
 
-## Risk Assessment
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| [Risk] | H/M/L | H/M/L | [Action] |
+## Content
 
-## Stakeholder Impact
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Stakeholder | Impact | Communication Needed |
-|-------------|--------|---------------------|
-| [Group] | [Impact] | [Yes/No — what message] |
+## Sign-off
 
-## Recommendation
-
-**Decision:** Accept / Reject / Defer
-**Rationale:** [Why this decision]
-**Conditions:** [Any conditions on acceptance]
+- reviewer: <name>
+- approved: <yes / no>

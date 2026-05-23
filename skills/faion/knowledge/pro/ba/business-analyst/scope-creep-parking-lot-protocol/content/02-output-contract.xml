@@ -1,40 +1,135 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Parking Lot Protocol — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Schema for the parking-lot canvas, the triage hand-off, and the per-item response log.</summary>
+<text id="02-output-contract" title="Scope Creep Parking Lot Protocol Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the config artefact produced by this methodology, paired with a valid + invalid example.</summary>
 
-  <output-contract>
-    <required>
-      <field name="parking_lot" required_keys="meeting_id,meeting_date,facilitator,items"/>
-      <field name="items" type="list"
-             item_required_keys="item_id,quote_verbatim,requester_name,requester_role,context_in_meeting,timestamp_in_meeting"/>
-      <field name="triage_handoff" required_keys="item_id,passed_to_classifier_at,baseline_version"/>
-      <field name="response_log" required_keys="item_id,sent_to,sent_at,verdict_cited,next_step,channel"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">item.quote_verbatim is empty OR is a paraphrase ("user wants...")</pattern>
-      <pattern id="f2">item missing requester_name and requester_role</pattern>
-      <pattern id="f3">triage_handoff.passed_to_classifier_at &gt; meeting_date + 24h</pattern>
-      <pattern id="f4">response_log.sent_at &gt; meeting_date + 48h</pattern>
-      <pattern id="f5">multiple items share a response_log entry (bulk response anti-pattern)</pattern>
-      <pattern id="f6">parking-lot canvas not visible during the meeting (private notes only)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Merge two items that are obvious duplicates from the same requester at the same moment — but only with the requester's confirmation.</transformation>
-      <transformation>Split an item into two if the verbatim quote contains two distinct asks.</transformation>
-      <transformation>Extend response SLA to 72h if explicit holiday or out-of-office is in effect; communicate the extended SLA to the requester at the meeting.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every item has a verbatim quote and named requester</item>
-      <item>Canvas was visible during the meeting (recording / screenshot confirms)</item>
-      <item>Triage performed within 24h</item>
-      <item>Each item received a per-item response within 48h</item>
-      <item>No bulk responses</item>
-      <item>Parking-lot ageing report shows zero items overdue at end of day</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/scope-creep-parking-lot-protocol.json",
+  "title": "parking-lot-record",
+  "type": "object",
+  "required": [
+    "parking_lot",
+    "items",
+    "triage_handoff",
+    "response_log"
+  ],
+  "properties": {
+    "parking_lot": {
+      "type": "object",
+      "required": [
+        "meeting_id",
+        "meeting_date",
+        "facilitator"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "quote_verbatim",
+          "requester_name",
+          "requester_role",
+          "context_in_meeting",
+          "timestamp_in_meeting"
+        ]
+      }
+    },
+    "triage_handoff": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "passed_to_classifier_at",
+          "baseline_version"
+        ]
+      }
+    },
+    "response_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "sent_to",
+          "sent_at",
+          "verdict_cited",
+          "next_step",
+          "channel"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}
+    ]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "parking_lot": {
+    "meeting_id": "M-2026-05-21-demo",
+    "meeting_date": "2026-05-21",
+    "facilitator": "BA"
+  },
+  "items": [
+    {
+      "item_id": "PL-1",
+      "quote_verbatim": "Can we add a custom approval step for SMB?",
+      "requester_name": "Client PM",
+      "requester_role": "client",
+      "context_in_meeting": "during checkout flow demo",
+      "timestamp_in_meeting": "00:24:18"
+    }
+  ],
+  "triage_handoff": [
+    {
+      "item_id": "PL-1",
+      "passed_to_classifier_at": "2026-05-22T09:00:00Z",
+      "baseline_version": "v2026Q2-baseline"
+    }
+  ],
+  "response_log": [
+    {
+      "item_id": "PL-1",
+      "sent_to": "Client PM",
+      "sent_at": "2026-05-23T10:00:00Z",
+      "verdict_cited": "scope_change",
+      "next_step": "CR-0042 opened",
+      "channel": "email"
+    }
+  ]
+}
+    ]]></code>
+    <note>Conforms to the schema; required fields present, enums respected.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "parking_lot": {
+    "meeting_id": "x"
+  },
+  "items": [
+    {
+      "item_id": "PL-1"
+    }
+  ]
+}
+    ]]></code>
+    <note>Missing required fields and / or violates pattern constraints.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f1">Top-level object missing any of the required fields.</pattern>
+    <pattern id="f2">Free-form additional properties not listed in the schema.</pattern>
+    <pattern id="f3">Enum field value outside the declared set.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-scope-creep-parking-lot-protocol.py">Validates an artefact against this schema.</reference>
 </text>

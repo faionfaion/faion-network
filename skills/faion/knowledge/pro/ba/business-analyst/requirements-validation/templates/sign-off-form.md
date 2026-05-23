@@ -1,44 +1,25 @@
-# Requirements Sign-off: [Document Name]
+<!-- purpose: Sign-off form with dissent block. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Document Version:** [X.X]
-**Date:** [Date]
-**Baseline Target:** [Next phase — Design / Development / UAT]
+# Sign-off form with dissent block.
 
-## Scope of Sign-off
+> Skeleton for `requirements-validation`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-This sign-off confirms that:
-- [ ] Requirements accurately represent the business needs as elicited.
-- [ ] Requirements are complete for [scope statement].
-- [ ] Requirements are understood and agreed by all signatories.
-- [ ] Requirements can proceed to [next phase].
+## Context
 
-## Per-AC Verdict
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-Each acceptance criterion must receive an explicit verdict before the form is signed.
+## Content
 
-| AC ID | Description | Verdict (approve/defer/reject) | Condition (if deferred) |
-|-------|-------------|-------------------------------|------------------------|
-| AC-01 | [Description] | approve | — |
-| AC-02 | [Description] | defer | Pending legal review by [date] |
-
-## Conditions and Assumptions
-
-[Conditions under which this sign-off applies. "Approved subject to X" without X tracked here is equivalent to not approved.]
-
-## Outstanding Items (tracked separately)
-
-Items not covered by this sign-off, with owner and resolution status:
-
-| Item | Owner | Target Date | Resolution Status |
-|------|-------|-------------|------------------|
-| [Item] | [Name] | [Date] | open/deferred/resolved |
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
 ## Sign-off
 
-| Role | Name | Verdict (approve/reject) | Date | Evidence Anchor |
-|------|------|--------------------------|------|----------------|
-| Business Owner | | approve | | [chat permalink/ticket URL] |
-| Product Owner | | approve | | [chat permalink/ticket URL] |
-| Technical Lead | | approve | | [chat permalink/ticket URL] |
-
-**Note:** Agent-generated "Approved by: [Role]" without a verified evidence anchor is invalid. Every row requires a human signature and a verifiable evidence anchor before the baseline is established.
+- reviewer: <name>
+- approved: <yes / no>

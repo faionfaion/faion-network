@@ -1,32 +1,25 @@
-# Solution Limitation Assessment: [System or Feature]
+<!-- purpose: Solution limitation assessment template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
-**Assessment period:** [Start] to [End]
+# Solution limitation assessment template.
 
-## Identified Limitations
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| ID | Limitation | Category | Severity |
-|----|------------|----------|----------|
-| L-001 | [Description] | Functional / Performance / Usability / Security | High/Med/Low |
-| L-002 | [Description] | [Category] | [Severity] |
+## Context
 
-## Root Cause Analysis
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Limitation | Root Cause | Evidence |
-|------------|------------|----------|
-| L-001 | [Technical / Process / Organizational cause] | [Evidence source] |
+## Content
 
-## Impact Assessment
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Limitation | Business Impact | User Impact | Frequency |
-|------------|-----------------|-------------|-----------|
-| L-001 | [Impact] | [Impact] | Daily/Weekly/Rare |
+## Sign-off
 
-## Remediation Options
-
-| Limitation | Option | Effort | Recommendation |
-|------------|--------|--------|----------------|
-| L-001 | A: Fix in next release | [H/M/L] | [Recommended/Not recommended] |
-| L-001 | B: Workaround | [H/M/L] | [Recommended/Not recommended] |
-| L-001 | C: Accept | none | [Recommended/Not recommended] |
+- reviewer: <name>
+- approved: <yes / no>

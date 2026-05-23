@@ -3,73 +3,107 @@ slug: requirements-traceability
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Requirements traceability links every artifact (business requirement, stakeholder requirement, solution requirement, design, code, test) to its origin and its downstream dependents, enabling forward coverage analysis (need → test) and backward justification (test → need).
-content_id: "5c8b6df0fd700d15"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Bidirectional RTM pipeline (forward coverage need→test, backward justification test→need) producing per-requirement trace records over consistent role vocabulary suitable for automated coverage analysis.
+content_id: "bf1a519357282dbb"
+complexity: medium
+produces: report
+est_tokens: 4800
 tags: [traceability, requirements, rtm, coverage, impact-analysis]
 ---
 # Requirements Traceability Matrix (RTM) Generation and Maintenance
 
 ## Summary
 
-**One-sentence:** Requirements traceability links every artifact (business requirement, stakeholder requirement, solution requirement, design, code, test) to its origin and its downstream dependents, enabling forward coverage analysis (need → test) and backward justification (test → need).
+**One-sentence:** Bidirectional RTM pipeline (forward coverage need→test, backward justification test→need) producing per-requirement trace records over consistent role vocabulary suitable for automated coverage analysis.
 
-**One-paragraph:** Requirements traceability links every artifact (business requirement, stakeholder requirement, solution requirement, design, code, test) to its origin and its downstream dependents, enabling forward coverage analysis (need → test) and backward justification (test → need). The RTM is a generated artifact, not a hand-edited file: typed links in source artifact frontmatter (`traces: [BR-05, SR-12]`) feed a generator script that builds the matrix and computes coverage metrics. Agents propose links, detect orphans, and walk the graph for impact analysis — they never write the matrix directly.
+**One-paragraph:** Requirements traceability links every artifact (business requirement, stakeholder requirement, solution requirement, design, code, test) to its origin and downstream dependents, enabling forward coverage analysis (need → test) and backward justification (test → need). RTM uses a consistent role vocabulary so automated tools can query coverage reliably. Output: per-requirement trace record + project-level RTM with coverage + orphan reports.
+
+**Ефективно для:**
+
+- Регульований domain з auditor evidence.
+- Long програма, де impact analysis обов'язковий.
+- Multi-team програма з cross-team trace.
+- Migration: legacy behaviour → new requirement → test.
 
 ## Applies If (ALL must hold)
 
-- Regulated builds (ISO 13485, IEC 62304, ISO 26262, DO-178C, SOX) where auditors demand a complete chain
-- Multi-team programs where a single change request hits four or more artifact types
-- Pairing with requirements-lifecycle and requirements-validation to close the Specify → Verify loop with coverage numbers
-- Migrations where every legacy capability must be provably preserved or explicitly retired
-- Vendor/outsourced delivery where the RTM is the contractual acceptance deliverable
+- Regulated domain requiring auditor-grade trace evidence.
+- Long programme where impact analysis on change is mandatory.
+- Multi-team programme needing cross-team trace.
+- Migration: every legacy behaviour must trace to a new requirement.
+- Compliance: regulation → BR → SR → test trace.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF/discovery work — opportunity-solution-trees and lightweight user stories suffice; an RTM ossifies premature decisions
-- Solo developer or 2-person team — git log --grep plus issue links already provide enough trace
-- Pure infrastructure/SRE work where requirements are SLOs, not features
-- When the team will not enforce maintenance discipline — an outdated RTM gives false assurance to auditors
+- Small agile team where story → PR → test is enough.
+- Hot fixes.
+- Spike phase without committed requirements.
+- Pre-existing RTM authoritative and freshly maintained.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Requirements pack | Markdown / YAML | requirements-documentation |
+| Test plan / test cases | Markdown / Cucumber | QA |
+| Design artifacts | Markdown / diagrams | architecture |
+| Code repository | Git | engineering |
+| Role vocabulary policy | YAML | this methodology |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `pro/ba/business-analyst/requirements-documentation` | Source records. |
+| `pro/ba/business-analyst/requirements-validation` | Verifies forward coverage. |
+| `pro/ba/business-analyst/requirements-lifecycle` | Status changes propagate via RTM. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `forward-coverage` | sonnet | From need to test; identify gaps. |
+| `backward-justification` | sonnet | From test to need; identify orphans. |
+| `impact-analysis` | sonnet | On change, surface affected nodes. |
+| `rtm-render` | haiku | Render matrix + coverage report. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/rtm.md` | RTM skeleton with role vocabulary. |
+| `templates/per-req-trace.md` | Per-requirement trace block. |
+| `templates/rtm.py` | Render RTM + coverage report from YAML store. |
+| `templates/_smoke-test.md` | Minimum filled-in RTM. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-requirements-traceability.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[requirements-documentation]]
+- [[requirements-validation]]
+- [[requirements-lifecycle]]
+- [[data-driven-requirements]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.

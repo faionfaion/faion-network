@@ -1,91 +1,112 @@
 ---
 slug: remote-workshop-toolkit
 tier: pro
-group: business-analyst
+group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "d0532d73b2c7e25e"
-summary: Operating manual for remote and hybrid BA workshops — pre-reads, Miro/FigJam patterns, breakout protocol, time-zone splitting, on-camera ground rules, async pulses — so requirements work survives the lack of a shared room.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run-book for remote/hybrid BA workshops (pre-read floor, four-role breakouts, camera policy, time-zone split, async pulses) producing the workshop run-book + canvas templates + ground rules block.
+content_id: "3220f6daae9d5ab1"
+complexity: medium
+produces: config
+est_tokens: 4700
 tags: [remote-workshop, business-analyst, facilitation, miro, figjam, hybrid]
 ---
-
 # Remote Workshop Toolkit
 
 ## Summary
 
-**One-sentence:** Concrete remote/hybrid workshop toolkit — pre-reads, Miro/FigJam canvases, breakout protocol, time-zone splitting, async pulses — that replaces the implicit social affordances of a shared room.
+**One-sentence:** Run-book for remote/hybrid BA workshops (pre-read floor, four-role breakouts, camera policy, time-zone split, async pulses) producing the workshop run-book + canvas templates + ground rules block.
 
-**One-paragraph:** Most P4 BA engagements in 2024-2026 are remote or hybrid, yet generic facilitation methodology assumes an in-person room. This methodology pins the specific mechanics that compensate for what is missing online: structured async pre-reads (so live time is not spent on context), template Miro/FigJam canvases per workshop type (process-mapping, story-mapping, impact-mapping, event-storming), explicit breakout-room protocol with named timekeeper and read-out format, two-camera and one-camera ground rules to surface the silent participants, time-zone splitting for global stakeholder groups, and async pulse-checks between sessions. Mechanism: a workshop is treated as a series of async + sync touchpoints, not a single live event. Primary output: a facilitation run-book per workshop and a Miro/FigJam canvas instance, both reusable across engagements.
+**One-paragraph:** Operating manual for remote and hybrid BA workshops — pre-reads, Miro/FigJam patterns, breakout protocol, time-zone splitting, on-camera ground rules, async pulses — so requirements work survives the lack of a shared room. Each workshop produces a typed run-book object satisfying the output contract.
+
+**Ефективно для:**
+
+- Remote / hybrid workshops з лезом проти lurker problem.
+- Cross-time-zone cohort з ≥3 zones — split або async relay.
+- Canvas-collaboration workshops (process map, story map, event storming).
+- Series workshops, де треба переносити pre-read floor + ground rules.
 
 ## Applies If (ALL must hold)
 
-- workshop_format ∈ {fully_remote, hybrid (≥1 remote participant)}
-- ≥5 stakeholders required for the workshop deliverable
-- BA has authority to define the agenda and ground rules
-- video/whiteboard tooling available (Zoom/Teams/Meet + Miro/FigJam/Mural)
+- Remote-only or hybrid BA workshop with ≥4 attendees.
+- Distributed team across ≥3 time zones (need split or async relay).
+- Process / requirements work where canvas collaboration is the deliverable.
+- Workshop with mixed stakeholder groups (sponsor + operator + engineering).
+- Series of workshops sharing pre-read floor and ground rules.
 
 ## Skip If (ANY kills it)
 
-- single-stakeholder requirements interview — use 1:1 interview methodology
-- workshop is fully in-person with no remote tail — use in-person facilitation methodology
-- the team has refused to use cameras AND refused to use a digital whiteboard — pre-condition fails; renegotiate before scheduling
+- Single-room workshop where everyone is co-located.
+- 1:1 interview — use elicitation-techniques instead.
+- Decision meeting — use decision-analysis.
+- Ad-hoc 30-min sync — overhead unjustified.
 
 ## Prerequisites
 
-- workshop objective stated as a deliverable (e.g. "agreed process map for order-to-cash"), not a topic
-- stakeholder list with named roles, time zones, and language preferences
-- pre-read draft (1-2 pages, NOT slides) circulated ≥48h before the live session
-- whiteboard tool licence active for every attendee (not "viewer" only)
+| Input artifact | Format | Source |
+|---|---|---|
+| Workshop objective | Markdown | BA / facilitator |
+| Stakeholder grid | JSON | stakeholder-analysis |
+| Canvas tool credentials | env | infra |
+| Pre-read draft | Markdown | BA |
+| Calendar slots | ics | scheduling |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `pro/ba/business-analyst/stakeholder-analysis` | Stakeholder list shape and influence/interest grid feed the breakout grouping |
-| `pro/ba/business-analyst/workshop-facilitation` | In-person facilitation primitives that this methodology adapts for remote |
-| `pro/comms/hr-recruiter/inclusive-meeting-practices` | Quiet-participant patterns and language inclusivity |
+|---|---|
+| `pro/ba/business-analyst/elicitation-techniques` | Workshop technique uses this toolkit. |
+| `pro/ba/business-analyst/scope-creep-parking-lot-protocol` | Parking-lot canvas integrated for ad-hoc asks. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: pre-read floor, breakout protocol, camera policy, time-zone splitting, async pulse cadence | ~1000 |
-| `content/02-output-contract.xml` | essential | Run-book schema, canvas template taxonomy, ground-rules block | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 failure modes: lurker problem, hybrid asymmetry, canvas collapse, breakout disappearance, etc. | ~1100 |
+| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pre_read_draft_from_brief` | sonnet | Bounded summarisation + framing |
-| `breakout_grouping_proposal` | sonnet | Apply stakeholder grid; produce groups of 4-6 |
-| `canvas_layout_for_workshop_type` | haiku | Template selection based on workshop type |
-| `async_pulse_question_set` | haiku | 3-5 quick questions per pulse |
-| `read_out_summary_synthesis` | sonnet | Combine breakout outputs into a single coherent read-out |
+| `pre_read_draft_from_brief` | sonnet | Bounded summarisation + framing. |
+| `breakout_grouping_proposal` | sonnet | Apply stakeholder grid; produce groups of 4–6. |
+| `canvas_layout_for_workshop_type` | haiku | Template selection by workshop type. |
+| `async_pulse_question_set` | haiku | 3–5 quick questions per pulse. |
+| `read_out_summary_synthesis` | sonnet | Combine breakout outputs into a coherent read-out. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pre-read.md` | 1-2 page pre-read structure (context, objective, decisions needed, questions to noodle on) |
-| `templates/miro-canvas-process-map.json` | Importable canvas for as-is/to-be process mapping |
-| `templates/miro-canvas-story-map.json` | Story-map canvas (backbone + walking skeleton) |
-| `templates/miro-canvas-event-storming.json` | Big-picture event-storming canvas |
-| `templates/ground-rules.md` | Camera, mic, chat, hand-raise, breakout conventions |
-| `templates/async-pulse.md` | 5-min Loom or written pulse questionnaire |
+| `templates/pre-read.md` | 1–2 page pre-read structure. |
+| `templates/miro-canvas-process-map.json` | Importable canvas for as-is/to-be process mapping. |
+| `templates/miro-canvas-story-map.json` | Story-map canvas (backbone + walking skeleton). |
+| `templates/miro-canvas-event-storming.json` | Big-picture event-storming canvas. |
+| `templates/ground-rules.md` | Camera, mic, chat, hand-raise, breakout conventions. |
+| `templates/async-pulse.md` | 5-min Loom or written pulse questionnaire. |
+| `templates/_smoke-test.md` | Minimum filled-in run-book. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/breakout-allocator.py` | Reads stakeholder list + influence/interest grid, outputs 4-6 person breakouts with named facilitator | After agenda finalised, before invite sent |
-| `scripts/time-zone-splitter.py` | Splits global cohort into 2 sessions covering ≥80% of participants in working hours | When stakeholder list spans ≥3 time zones |
+| `scripts/validate-remote-workshop-toolkit.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodologies: `workshop-facilitation`, `stakeholder-analysis`, `requirements-elicitation`, `process-mapping`
-- external: [Hyper Island toolkit](https://toolbox.hyperisland.com/) · [Liberating Structures](https://www.liberatingstructures.com/) · [Atlassian Team Playbook — Workshops](https://www.atlassian.com/team-playbook/plays)
+- [[elicitation-techniques]]
+- [[scope-creep-parking-lot-protocol]]
+- [[decision-analysis]]
+- [[modern-ba-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.

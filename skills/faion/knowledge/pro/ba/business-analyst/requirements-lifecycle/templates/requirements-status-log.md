@@ -1,26 +1,25 @@
-# Requirements Status Log: [Project Name]
+<!-- purpose: Per-requirement status log. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Version:** 1.0
-**BA:** [Name]
-**Last Updated:** [Date]
+# Per-requirement status log.
 
-## Status Summary
+> Skeleton for `requirements-lifecycle`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| Status      | Count | % of Total |
-|-------------|-------|------------|
-| Draft       | [X]   | [X%]       |
-| Proposed    | [X]   | [X%]       |
-| Approved    | [X]   | [X%]       |
-| Implemented | [X]   | [X%]       |
-| Verified    | [X]   | [X%]       |
-| Deferred    | [X]   | [X%]       |
-| Rejected    | [X]   | [X%]       |
-| **Total**   | **[X]** | **100%** |
+## Context
 
-## Detailed Status
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Req ID  | Name   | Priority | Status      | Version | Last Updated | Notes       |
-|---------|--------|----------|-------------|---------|--------------|-------------|
-| REQ-001 | [Name] | Must     | Approved    | 1.2     | [Date]       | -           |
-| REQ-002 | [Name] | Should   | Implemented | 2.0     | [Date]       | CR-005 applied |
-| REQ-003 | [Name] | Could    | Deferred    | 1.0     | [Date]       | Phase 2     |
+## Content
+
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
+
+## Sign-off
+
+- reviewer: <name>
+- approved: <yes / no>

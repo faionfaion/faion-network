@@ -1,21 +1,25 @@
-# Communication Plan: [Project Name]
+<!-- purpose: Communication plan template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-## Audience Matrix
+# Communication plan template.
 
-| Audience | Information Needed | Format | Frequency | Channel |
-|----------|-------------------|--------|-----------|---------|
-| Sponsor | Status, risks, decisions | Executive summary | Weekly | Email |
-| Dev team | Detailed requirements | Full spec | Per sprint | Jira / Confluence |
-| QA team | Acceptance criteria | Test plan | Per sprint | TestRail |
-| End users | Change impact | User guide delta | Per release | Intranet |
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-## Key Messages
+## Context
 
-1. [Core message stakeholders must understand]
-2. [Second key message]
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-## Feedback Mechanism
+## Content
 
-- How stakeholders confirm understanding: [method]
-- Issue resolution path: [escalation path]
-- Review cadence: [frequency]
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
+
+## Sign-off
+
+- reviewer: <name>
+- approved: <yes / no>

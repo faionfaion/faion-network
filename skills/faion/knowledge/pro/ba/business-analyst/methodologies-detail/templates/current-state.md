@@ -1,38 +1,25 @@
-# Current State Assessment: [Domain or System]
+<!-- purpose: Current state analysis template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
-**Sources:** [Documents and sessions used — agent must not fabricate without real sources]
+# Current state analysis template.
 
-## Business Context
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-- Organization: [Description]
-- Core processes: [List]
-- Strategic alignment: [Current strategic goals this area serves]
+## Context
 
-## Capability Assessment
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Capability | Current Level (1-5) | Target Level | Gap |
-|------------|---------------------|--------------|-----|
-| [Capability] | [1-5] | [1-5] | [Delta] |
+## Content
 
-## Technology Landscape
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| System | Purpose | Integration Points | Technical Debt |
-|--------|---------|-------------------|----------------|
-| [System] | [Purpose] | [What it connects to] | [Known issues] |
+## Sign-off
 
-## Pain Points
-
-1. [Pain point — sourced from interview or observation session ID]
-2. [Pain point]
-
-## SWOT Analysis
-
-| Strengths | Weaknesses |
-|-----------|------------|
-| [S1] | [W1] |
-
-| Opportunities | Threats |
-|---------------|---------|
-| [O1] | [T1] |
+- reviewer: <name>
+- approved: <yes / no>

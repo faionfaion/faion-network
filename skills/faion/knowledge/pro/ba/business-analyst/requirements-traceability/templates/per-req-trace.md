@@ -1,26 +1,25 @@
-# Requirement Trace: [REQ-XXX]
+<!-- purpose: Per-requirement trace block. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Requirement:** [REQ-XXX]
-**Description:** [One sentence]
-**Status:** [Draft | Approved | Implemented | Deprecated]
+# Per-requirement trace block.
 
-## Upstream Trace (where it came from)
+> Skeleton for `requirements-traceability`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| Type | ID | Description | Link role |
-|------|----|-------------|-----------|
-| Business Requirement | BR-[N] | [Description] | satisfies |
-| Stakeholder Requirement | SR-[N] | [Description] | derives |
+## Context
 
-## Downstream Trace (what it affects)
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Type | ID | Description | Link role | Status |
-|------|-----|-------------|-----------|--------|
-| Design | D-[N] | [Description] | implements | [Status] |
-| Code Module | M-[N] | [Description] | implements | [Status] |
-| Test Case | TC-[N] | [Description] | verifies | [Status] |
+## Content
 
-## Change History
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Date | Change | Affected artifacts | Approved by |
-|------|--------|--------------------|-------------|
-| [Date] | [Change description] | [IDs] | [Name] |
+## Sign-off
+
+- reviewer: <name>
+- approved: <yes / no>

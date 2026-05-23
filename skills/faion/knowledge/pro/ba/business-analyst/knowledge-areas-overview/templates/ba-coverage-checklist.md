@@ -1,3 +1,8 @@
+<!-- purpose: BA knowledge-area coverage checklist for a project -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-800 tokens when loaded as context -->
 # BA Coverage Checklist: [Project Name]
 
 **Date:** [Date]

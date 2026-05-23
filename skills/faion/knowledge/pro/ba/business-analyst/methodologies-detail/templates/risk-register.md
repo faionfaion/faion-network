@@ -1,25 +1,25 @@
-# Risk Register: [Project Name]
+<!-- purpose: Risk register template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Owner:** [Name]
+# Risk register template.
 
-## Risks
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| ID | Risk | Category | P (1-5) | I (1-5) | Score | Response | Owner | Evidence |
-|----|------|----------|---------|---------|-------|----------|-------|----------|
-| R-001 | [Description] | Technical | [P] | [I] | [PxI] | Mitigate | [Name] | [Source] |
-| R-002 | [Description] | Business | [P] | [I] | [PxI] | Accept | [Name] | [Source] |
+## Context
 
-## Response Strategies
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-- **Avoid** — eliminate the risk by changing the plan.
-- **Mitigate** — reduce probability or impact.
-- **Transfer** — shift risk to third party (insurance, contract).
-- **Accept** — acknowledge and monitor; no action.
+## Content
 
-## Monitoring
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Risk ID | Trigger | Monitoring Frequency | Status |
-|---------|---------|---------------------|--------|
-| R-001 | [Trigger condition] | [Weekly/Sprint] | Open |
+## Sign-off
+
+- reviewer: <name>
+- approved: <yes / no>

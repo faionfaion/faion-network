@@ -1,87 +1,108 @@
 ---
 slug: scope-creep-parking-lot-protocol
 tier: pro
-group: business-analyst
+group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "d4a6826adc4f86af"
-summary: Live-meeting protocol for absorbing client asks during demos and requirements reviews without litigating scope on the spot — capture in a structured parking lot, classify after the session, route per pre-agreed triage rules.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Live-meeting protocol absorbing client asks (verbatim capture, visible canvas, no-live-judgement) with 24h triage SLA + 48h response SLA producing a triaged parking-lot artefact and response log.
+content_id: "8e6bee9a28f9052f"
+complexity: medium
+produces: config
+est_tokens: 4500
 tags: [scope-creep, business-analyst, demo, parking-lot, facilitation, requirements-review]
 ---
-
 # Scope Creep Parking Lot Protocol
 
 ## Summary
 
-**One-sentence:** Live-meeting protocol that absorbs client asks during demos and requirements reviews — capture in a visible parking lot, classify and route after the meeting, never debate scope in front of stakeholders.
+**One-sentence:** Live-meeting protocol absorbing client asks (verbatim capture, visible canvas, no-live-judgement) with 24h triage SLA + 48h response SLA producing a triaged parking-lot artefact and response log.
 
-**One-paragraph:** Demos and requirements reviews are high-trust moments where clients raise new asks ("oh, while we are here, could it also do X?"). Litigating scope live damages the demo. Accepting silently invites creep. This protocol pins a live capture move (the BA writes the ask verbatim on a visible parking-lot canvas in front of the client), a post-meeting triage (within 24h, classify each item using the four-outcome routing from `scope-change-vs-scope-creep-detection`), and a closed-loop response (the requester receives a written reply per item within 48h). Mechanism: capture-not-judge in the moment; triage on schedule; respond explicitly. Primary output: a parking-lot artefact per session + a per-item response log. The protocol works in BA-led contexts (demos, requirements walks, sprint reviews) where the BA is the front-of-house but does not unilaterally accept scope.
+**One-paragraph:** Live-meeting protocol for absorbing client asks during demos and requirements reviews without litigating scope on the spot — capture in a structured parking lot, classify after the session, route per pre-agreed triage rules. Mechanism: verbatim quotes, visible canvas, the BA never judges in the room, 24h triage SLA via scope-change-vs-scope-creep-detection, 48h response SLA per item.
+
+**Ефективно для:**
+
+- Client demo з невпинним потоком ad-hoc asks.
+- Distributed / hybrid sessions з visible canvas.
+- Outsourced delivery — кожне ask може стати change.
+- Регульований domain з conversation logs у change control.
 
 ## Applies If (ALL must hold)
 
-- BA leads or co-facilitates live client sessions (demos, requirements reviews, sprint reviews, workshops)
-- a signed scope baseline exists
-- the team has authority to defer scope decisions to a triage process (not commit in the room)
-- clients are typically engaged enough to raise asks during sessions
+- Client demo or requirements review where ad-hoc asks regularly fly.
+- Distributed / hybrid sessions where capture must be visible.
+- Programme with frequent client steering meetings.
+- Outsourced delivery where every ask is a potential contract change.
+- Regulated domain where conversation logs feed change control.
 
 ## Skip If (ANY kills it)
 
-- meetings are async-only — use ticket-based intake instead
-- BA has full authority to accept scope changes on the spot and the team accepts that — direct change-control is faster
-- client culture is fully transactional (T&M, fixed-bid with frequent change-orders) — every ask becomes a change-order anyway
+- Internal-only retros / planning where formal protocol overhead is unjustified.
+- Tactical bug-triage standups.
+- 1:1 conversations.
+- Pre-existing parking-lot venue authoritative and integrated.
 
 ## Prerequisites
 
-- signed scope baseline accessible during the meeting
-- parking-lot canvas (physical flipchart, Miro frame, Notion page, or shared doc) prepared per session
-- triage process exists (`pro/pm/project-manager/scope-change-vs-scope-creep-detection`)
-- 24h SLA on triage and 48h SLA on requester response
+| Input artifact | Format | Source |
+|---|---|---|
+| Meeting recording / transcript | MP3 / VTT | facilitator |
+| Parking-lot canvas template | Markdown | templates/ |
+| Triage rules | YAML | scope-change-vs-scope-creep-detection |
+| Response template | Markdown | templates/ |
+| Daily age-report scheduler | cron | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `pro/pm/project-manager/scope-change-vs-scope-creep-detection` | Triage logic the parking lot feeds into |
-| `pro/ba/business-analyst/client-demo-prep-and-run` | Demo facilitation context |
-| `pro/ba/business-analyst/requirements-review-meeting-facilitation` | Review-meeting context |
+|---|---|
+| `pro/ba/business-analyst/requirements-lifecycle` | Triage outcomes flow into change-control. |
+| `pro/ba/business-analyst/remote-workshop-toolkit` | Workshop integration with parking-lot canvas. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: verbatim capture, visible canvas, no-live-judgement, 24h triage SLA, 48h response SLA | ~1000 |
-| `content/02-output-contract.xml` | essential | Parking-lot artefact schema, per-item response log, hand-off to triage | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: silent acceptance, BA-judges-in-room, parking-lot orphans, response drift, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `live_capture_transcription` | sonnet | Transcribe meeting audio into the parking-lot canvas in real time |
-| `post_meeting_triage_handoff` | sonnet | Package parking-lot items for the classifier |
-| `requester_response_draft` | sonnet | Draft the 48h response per item from the triage verdict |
-| `weekly_parking_lot_rollup` | haiku | Aggregate counts and ageing |
+| `live_capture_transcription` | sonnet | Transcribe meeting audio into canvas in real time. |
+| `post_meeting_triage_handoff` | sonnet | Package parking-lot items for the classifier. |
+| `requester_response_draft` | sonnet | Draft the 48h response from triage verdict. |
+| `weekly_parking_lot_rollup` | haiku | Aggregate counts and ageing. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/parking-lot-canvas.md` | Markdown canvas with verbatim quote + requester + meeting context columns |
-| `templates/requester-response.md` | 48h response template (acknowledge, classify, route, next step) |
-| `templates/triage-handoff.yaml` | Schema bridge between parking lot and the classifier |
+| `templates/parking-lot-canvas.md` | Markdown canvas with verbatim quote + requester + meeting context columns. |
+| `templates/requester-response.md` | 48h response template. |
+| `templates/triage-handoff.yaml` | Schema bridge between parking lot and the classifier. |
+| `templates/_smoke-test.md` | Minimum filled-in parking lot. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/parking-lot-to-triage.py` | Convert parking-lot canvas into triage-ready records | After meeting closes |
-| `scripts/age-report.py` | Surface parking-lot items that exceed SLA | Daily |
+| `scripts/validate-scope-creep-parking-lot-protocol.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodologies: `scope-change-vs-scope-creep-detection`, `client-demo-prep-and-run`, `requirements-review-meeting-facilitation`, `scope-drift-early-warning-metrics`
-- external: [Atlassian Team Playbook — Parking Lot](https://www.atlassian.com/team-playbook/plays) · [BABOK v3 — requirements elicitation](https://www.iiba.org/standards-and-resources/babok/)
+- [[remote-workshop-toolkit]]
+- [[requirements-lifecycle]]
+- [[decision-analysis]]
+- [[modern-ba-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.

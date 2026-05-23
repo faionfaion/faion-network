@@ -1,42 +1,25 @@
-# Solution Options Analysis: [Decision]
+<!-- purpose: Solution options analysis template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
-**Decision owner:** [Name — must approve before recommendation is final]
+# Solution options analysis template.
 
-## Options
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| # | Option | Description |
-|---|--------|-------------|
-| A | [Name] | [Description] |
-| B | [Name] | [Description] |
-| C | Do nothing | Baseline — gaps remain |
+## Context
 
-## Evaluation Criteria
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-Weights must be confirmed by sponsor before scoring.
+## Content
 
-| Criterion | Weight | Rationale |
-|-----------|--------|-----------|
-| Strategic fit | [X%] | [Why this weight] |
-| Technical feasibility | [X%] | [Why] |
-| Cost | [X%] | [Why] |
-| Time to value | [X%] | [Why] |
-| Risk | [X%] | [Why] |
-| **Total** | **100%** | |
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-## Scoring Matrix (1-5, must use full range)
+## Sign-off
 
-| Criterion | Weight | Opt A score | Opt A weighted | Opt B score | Opt B weighted | Opt C score | Opt C weighted |
-|-----------|--------|-------------|----------------|-------------|----------------|-------------|----------------|
-| Strategic fit | [W] | [1-5] | [WxS] | [1-5] | [WxS] | [1-5] | [WxS] |
-| Technical | [W] | [1-5] | [WxS] | [1-5] | [WxS] | [1-5] | [WxS] |
-| **Total** | | | **[Sum]** | | **[Sum]** | | **[Sum]** |
-
-## Recommendation
-
-**Status:** PENDING_HUMAN_REVIEW
-
-**Preferred option:** [X — fill after human review of scores]
-**Rationale:** [Why]
-**Conditions:** [What must be true]
+- reviewer: <name>
+- approved: <yes / no>

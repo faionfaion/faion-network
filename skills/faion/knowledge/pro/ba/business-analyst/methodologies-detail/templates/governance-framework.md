@@ -1,30 +1,25 @@
-# Governance Framework: [Project Name]
+<!-- purpose: Governance framework template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-## Decision Authority Matrix
+# Governance framework template.
 
-| Decision Type | Authority Level | Escalation |
-|---------------|-----------------|------------|
-| New requirement | BA Lead | PM |
-| Scope change | Steering Committee | Sponsor |
-| Priority change | Product Owner | PM |
-| Requirement deletion | PM + BA Lead | Sponsor |
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-## Change Control Process
+## Context
 
-1. Submit change request with description, rationale, and submitter.
-2. Impact assessment — scope, effort, and risk (T-shirt sizing).
-3. Review by [authority per matrix].
-4. Decision: Approve / Reject / Defer — recorded with rationale.
-5. Update requirements baseline if approved.
-6. Notify affected teams.
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-## Approval Process
+## Content
 
-| Artifact Type | Approvers | Sign-off Method |
-|---------------|-----------|-----------------|
-| Requirements baseline | [Roles] | [Email / signature / Jira] |
-| Change request | [Roles] | [Method] |
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-## Audit Trail
+## Sign-off
 
-All change decisions logged in [location] with date, decision, and approver.
+- reviewer: <name>
+- approved: <yes / no>

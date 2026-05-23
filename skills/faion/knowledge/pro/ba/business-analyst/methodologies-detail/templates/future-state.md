@@ -1,34 +1,25 @@
-# Future State Vision: [Domain or System]
+<!-- purpose: Future state definition template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
-**Approved by:** [Name — required before executor runs]
+# Future state definition template.
 
-## Vision Statement
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-[Compelling description of the future state — one paragraph, stakeholder-aligned]
+## Context
 
-## Goals and Objectives
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-| Goal | Objective | Metric | Baseline | Target |
-|------|-----------|--------|----------|--------|
-| [G1] | [O1] | [KPI] | [Current value — source required] | [Target value] |
+## Content
 
-## Capability Roadmap
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Capability | Current Level | Future Level | Phase |
-|------------|--------------|--------------|-------|
-| [Capability] | [Level] | [Level] | [Phase 1/2/3] |
+## Sign-off
 
-## Constraints
-
-- Budget: [Amount or range]
-- Timeline: [Deadline or milestone reference]
-- Technology: [Constraints]
-- Regulatory: [Constraints]
-
-## Assumptions
-
-| Assumption | Validated (Y/N) | Owner | Validation Date |
-|------------|-----------------|-------|-----------------|
-| [Assumption] | N | [Owner] | [Date] |
+- reviewer: <name>
+- approved: <yes / no>

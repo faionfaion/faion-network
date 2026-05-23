@@ -3,77 +3,107 @@ slug: requirements-prioritization
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: BABOK-aligned methodology for BA-as-facilitator of multi-stakeholder prioritization.
-content_id: "f45b9ffe6a9978ae"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Method-locked prioritization pipeline (MoSCoW / RICE / Kano / WSJF) with stakeholder weights, cost-coupled scoring, and decision-record output blocking method-shopping and HiPPO bias.
+content_id: "da36fba223abc6e7"
+complexity: medium
+produces: decision-record
+est_tokens: 4600
 tags: [requirements-prioritization, moscow, rice, kano, babok, business-analysis]
 ---
 # Requirements Prioritization
 
 ## Summary
 
-**One-sentence:** BABOK-aligned methodology for BA-as-facilitator of multi-stakeholder prioritization.
+**One-sentence:** Method-locked prioritization pipeline (MoSCoW / RICE / Kano / WSJF) with stakeholder weights, cost-coupled scoring, and decision-record output blocking method-shopping and HiPPO bias.
 
-**One-paragraph:** BABOK-aligned methodology for BA-as-facilitator of multi-stakeholder prioritization. Picks the right method (MoSCoW / RICE / Kano / Value-Effort / WSJF / weighted-sum), runs elicitation and reconciliation, and ties the output back to the requirements catalog and delivery (backlog rank or release scope). Includes templates for release scope decisions where the BA must shrink a 200-item requirement set to a 30-item MVP/MMR with defensible rationale.
+**One-paragraph:** BABOK-aligned methodology for BA-as-facilitator of multi-stakeholder prioritization. Lock the method (MoSCoW, RICE, Kano, WSJF) before scoring; couple business value with effort estimate; reject flat-priority distributions; produce a decision record with traced rationale. Output: prioritized requirement list with per-item rationale + method-version stamp.
+
+**Ефективно для:**
+
+- Multi-stakeholder backlog з обмеженою capacity.
+- Steerco з auditable rationale.
+- Cross-functional програма (FR + NFR + compliance).
+- Portfolio prioritization з шаблоном матриці на N ініціатив.
 
 ## Applies If (ALL must hold)
 
-- Release scope decisions where the BA must shrink a 200-item requirement set to a 30-item MVP/MMR with a defensible rationale (regulated industries especially: auditors will ask "why this scope?").
-- Cross-team backlog where Sales, Support, Engineering and Compliance each lobby for "their" items and the Product Owner needs an explicit method to break ties without drama.
-- Vendor-RFP / RFI scoring where requirements are scored against multiple proposals — same matrix machinery, requirement IDs become rows.
-- Pre-PI / pre-quarter prioritization in scaled agile (SAFe ART, LeSS) — WSJF over a 50–150 feature backlog where sequencing matters more than hard categories.
-- After every elicitation wave when fresh requirements need to be slotted into the existing rank without reshuffling everything.
-- When the team already produced a "everything is Must" MoSCoW and the BA needs a forcing function (RICE or weighted scoring) to break the tie.
-- Whenever a stakeholder asks "why isn't my requirement in this release?" — the priority record is the answer.
+- Multi-stakeholder backlog with limited capacity.
+- Steerco needs auditable prioritization rationale.
+- Cross-functional programme balancing FR + NFR + compliance.
+- Portfolio prioritization with reused matrix template.
+- Post-elicitation phase converging on a baseline set.
 
 ## Skip If (ANY kills it)
 
-- Discovery phase before product-market fit — locking priorities on speculative requirements creates false rigor; use opportunity-solution-trees and continuous-discovery instead.
-- Single-team, single-PO, < 10 stories — a 1-D stack rank by the PO is faster than RICE.
-- Pure cost optimization with quantified cash flows — go to NPV / payback, not 1-5 scoring which discards precision.
-- Engineering-internal items (refactors, infra) — those need technical-debt-management criteria, not business-value scoring; BA does not own these.
-- Hard regulatory deadlines — those are constraints, not priorities; route to the Won't/Must boundary mechanically and stop debating.
-- When "the answer is already chosen" — a retrofitted prioritization to justify a decided scope damages BA credibility.
+- Solo dev backlog where conversation suffices.
+- Compliance-only programme where mandate ordering applies.
+- Pure financial decisions (use NPV).
+- Pre-elicitation phase — too early.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Requirements pack | Markdown / YAML | requirements-documentation |
+| Stakeholder weight inputs | JSON | stakeholder-analysis |
+| Effort estimates | story-points / hours | engineering |
+| Method policy | Markdown | this methodology |
+| Decision record template | Markdown | templates/ |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `pro/ba/business-analyst/requirements-documentation` | Pack to prioritize. |
+| `pro/ba/business-analyst/decision-analysis` | Cross-method tie-breaks. |
+| `pro/ba/business-analyst/data-driven-requirements` | Provides baselines for RICE scoring. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `method-lock` | haiku | Pick + lock the prioritization method. |
+| `stakeholder-weight-elicitation` | sonnet | Per-stakeholder weight vectors. |
+| `rice-or-moscow-scoring` | sonnet | Apply method scoring. |
+| `tie-break` | opus | Cross-method tie-break with sensitivity. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/prioritization-record.md` | Decision record with method + scores + rationale. |
+| `templates/moscow-matrix.md` | MoSCoW matrix skeleton. |
+| `templates/rice-sheet.md` | RICE scoring sheet. |
+| `templates/_smoke-test.md` | Minimum filled-in record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-requirements-prioritization.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[requirements-documentation]]
+- [[decision-analysis]]
+- [[data-driven-requirements]]
+- [[requirements-traceability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.

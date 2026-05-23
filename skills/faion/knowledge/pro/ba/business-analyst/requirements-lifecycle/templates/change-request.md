@@ -1,43 +1,25 @@
-# Requirement Change Request: CR-[XXX]
+<!-- purpose: Change request template with impact analysis. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Requestor:** [Name and role]
-**Affected Requirement:** [REQ-XXX] [Name]
-**Current Version:** [X.X]
+# Change request template with impact analysis.
 
-## Change Details
+> Skeleton for `requirements-lifecycle`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-**Current Requirement:**
-[Current requirement text — copy exact text from requirements register]
+## Context
 
-**Proposed Change:**
-[New text or description of modification]
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-**Reason for Change:**
-[Why this change is needed — business context, user feedback, compliance]
+## Content
 
-## Impact Analysis
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Area | Impact |
-|------|--------|
-| Requirements | [Related requirements affected, version increments needed] |
-| Design | [Design documents requiring update] |
-| Development | [Code changes, scope of effort] |
-| Testing | [Test cases requiring update] |
-| Schedule | [Timeline impact] |
-| Cost | [Budget impact] |
+## Sign-off
 
-## BA Recommendation
-
-[Approve / Reject / Defer — with rationale]
-
-## Approval
-
-| Role            | Name | Decision | Date |
-|-----------------|------|----------|------|
-| BA              |      |          |      |
-| Project Manager |      |          |      |
-| Sponsor         |      |          |      |
-
-**Final Decision:** [Approved / Rejected / Deferred]
-**Effective Date:** [When change takes effect]
+- reviewer: <name>
+- approved: <yes / no>

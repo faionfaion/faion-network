@@ -1,22 +1,25 @@
-# Requirement Version History: [REQ-XXX]
+<!-- purpose: Immutable version history block. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Requirement:** [Name]
-**Current Version:** [X.X]
-**Status:** [Current state]
+# Immutable version history block.
 
-## Version History
+> Skeleton for `requirements-lifecycle`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| Version | Date   | Author | Change Description              | Status   | Change Request |
-|---------|--------|--------|---------------------------------|----------|----------------|
-| 1.0     | [Date] | [Name] | Initial creation                | Draft    | -              |
-| 1.1     | [Date] | [Name] | Added acceptance criteria       | Proposed | -              |
-| 1.2     | [Date] | [Name] | Stakeholder feedback applied    | Approved | -              |
-| 2.0     | [Date] | [Name] | Scope change per CR-[XXX]       | Approved | CR-[XXX]       |
+## Context
 
-## Current Version Content
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-[Full text of requirement at current version]
+## Content
 
-## Previous Version (1.2)
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-[Previous requirement text — retained for comparison and audit]
+## Sign-off
+
+- reviewer: <name>
+- approved: <yes / no>

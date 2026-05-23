@@ -3,75 +3,109 @@ slug: requirements-documentation
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured methodology for documenting requirements across the hierarchy: business requirements (why), stakeholder requirements (user needs), and solution requirements (functional and non-functional).
-content_id: "0b8ba53b7d51c38b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Hierarchical requirements documentation pipeline (BR → SH → SR with FR/NFR split) producing typed BR/SH/SR records with acceptance criteria, source citations, and version-controlled artifacts.
+content_id: "86e3e0418a3be483"
+complexity: medium
+produces: spec
+est_tokens: 4800
 tags: [requirements, documentation, babok, acceptance-criteria, specification]
 ---
 # Requirements Documentation
 
 ## Summary
 
-**One-sentence:** A structured methodology for documenting requirements across the hierarchy: business requirements (why), stakeholder requirements (user needs), and solution requirements (functional and non-functional).
+**One-sentence:** Hierarchical requirements documentation pipeline (BR → SH → SR with FR/NFR split) producing typed BR/SH/SR records with acceptance criteria, source citations, and version-controlled artifacts.
 
-**One-paragraph:** A structured methodology for documenting requirements across the hierarchy: business requirements (why), stakeholder requirements (user needs), and solution requirements (functional and non-functional). Uses SMART criteria, acceptance criteria in Given/When/Then form, and a requirements baseline to enable traceability, testing, and change control. Without documentation: requirements exist only in people's heads, different team members have different understanding, developers build the wrong thing, testing cannot verify, and changes cannot be tracked.
+**One-paragraph:** A structured methodology for documenting requirements across the hierarchy: business requirements (why), stakeholder requirements (user needs), and solution requirements (functional and non-functional). Each requirement carries an ID (BR/SH/SR/NFR), source citation (≥2 elicitation sessions), acceptance criteria, status, owner. Output is a version-controlled requirements pack ready for prioritization and traceability.
+
+**Ефективно для:**
+
+- Kickoff нової ініціативи з BR → SH → SR hierarchy.
+- Регульований domain — auditor-grade specifications.
+- Outsourced delivery: контрактні specs.
+- Migration: документувати кожну поведінку до rewrite.
 
 ## Applies If (ALL must hold)
 
-- Producing the canonical spec.md for an SDD feature: business requirements (BR), stakeholder requirements, functional requirements (FR), non-functional requirements (NFR), and acceptance criteria — all in one machine-readable document.
-- Migrating loose Notion / Confluence / Google Doc requirement notes into a Markdown + YAML-frontmatter requirements/REQ-XXX.md repository that diff/grep/Git can manage.
-- Generating a Business Requirements Document (BRD) for stakeholder sign-off when an SDD spec is too dense for non-technical readers — a parallel artefact, not a replacement.
-- Translating user-story backlogs (Jira, Linear, GitHub Issues) into the standard REQ-XXX format for regulated review (audits, SOC2, ISO).
-- Pairing with requirements-traceability, requirements-lifecycle, and requirements-validation to close the Document → Trace → Validate loop.
-- Pre-development: enforcing structure before code. Acceptance criteria in Given/When/Then form become Playwright/pytest scaffolds via codegen.
+- New initiative kickoff requiring documented BR → SH → SR hierarchy.
+- Regulated domain requiring auditor-grade requirement specifications.
+- Outsourced delivery requiring contractual specifications.
+- Migration / replatform where every behaviour must be documented before rewrite.
+- Compliance evidence requiring trace from regulation → BR → SR.
 
 ## Skip If (ANY kills it)
 
-- Solo founder pre-PMF: a BRD is theatre when the spec changes weekly. Use opportunity-solution-trees plus living user stories.
-- Pure ops tasks (cron edits, nginx vhost tweaks, infra rotations) — runbooks, not requirement docs.
-- Discovery spikes whose deliverable is a learning, not a baseline — use research notes and a stop condition.
-- When stakeholders refuse written sign-off — without an Approved gate, the document degrades to a status spreadsheet.
-- One-off scripts where the cost of writing REQ-XXX exceeds the cost of just rewriting the script.
+- Pure agile shop with user-story-as-contract — use story format instead.
+- Internal tooling where specifications are overhead.
+- Hot fixes / single tickets.
+- Pre-existing requirements pack already authoritative.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Elicitation session artifacts | JSON / Markdown | elicitation-techniques |
+| Glossary registry | JSON | glossary-management-living-doc |
+| Acceptance-criteria template | Markdown | acceptance-criteria methodology |
+| Version-control venue | Git | engineering |
+| Traceability seed | RTM JSON | requirements-traceability |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| `pro/ba/business-analyst/elicitation-techniques` | Source citations come from typed session artifacts. |
+| `pro/ba/business-analyst/glossary-management-living-doc` | Every term in requirements links to glossary. |
+| `pro/ba/business-analyst/requirements-traceability` | Documentation feeds the RTM. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `br-drafting` | sonnet | Compose BR from elicitation evidence. |
+| `sr-decomposition` | sonnet | Decompose BR into SR (FR + NFR). |
+| `ac-extraction` | sonnet | Extract acceptance criteria per SR. |
+| `spec-lint` | haiku | Lint frontmatter + glossary links + acceptance criteria. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/br-record.md` | Business requirement record. |
+| `templates/sh-record.md` | Stakeholder requirement record. |
+| `templates/sr-record.md` | Solution requirement record (FR/NFR). |
+| `templates/spec-frontmatter.yaml` | Frontmatter schema for all requirement records. |
+| `templates/_smoke-test.md` | Minimum filled-in BR/SH/SR triple. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-requirements-documentation.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[elicitation-techniques]]
+- [[requirements-traceability]]
+- [[requirements-validation]]
+- [[requirements-prioritization]]
+- [[acceptance-criteria]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.

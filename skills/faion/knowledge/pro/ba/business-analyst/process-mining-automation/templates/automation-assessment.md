@@ -1,49 +1,25 @@
-# Process Automation Assessment: [Process Name]
+<!-- purpose: Per-candidate automation assessment template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (report) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-## Process Overview
+# Per-candidate automation assessment template.
 
-- **Current Volume:** [transactions/day or /month]
-- **Current FTE:** [number of full-time equivalents performing this process]
-- **Error Rate:** [% of transactions with errors requiring rework]
-- **Cycle Time:** [average end-to-end time per transaction]
-- **Process Age:** [months since last significant process change]
+> Skeleton for `process-mining-automation`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-## Automation Readiness Scoring
+## Context
 
-| Criterion       | Score (1-5) | Evidence / Notes |
-|-----------------|-------------|------------------|
-| Volume          |             | [>100/day = high score] |
-| Standardization |             | [% rule-based, exception rate] |
-| Stability       |             | [months unchanged] |
-| Digital Input   |             | [% structured vs. unstructured] |
-| Error Rate      |             | [current manual error frequency] |
-| ROI Potential   |             | [labor cost, payback estimate] |
-| **Total**       | **/30**     |                  |
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-## Recommendation
+## Content
 
-- [ ] Full automation (Score > 24)
-- [ ] Partial automation (Score 18-24)
-- [ ] Process improvement first, then reassess (Score 12-18)
-- [ ] Not suitable for automation (Score < 12)
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-**Rationale:** [One paragraph explaining the recommendation based on scores]
+## Sign-off
 
-## ROI Estimate
-
-- **Current labor cost:** [$/year]
-- **Estimated savings:** [$/year after automation]
-- **Implementation cost:** [$]
-- **Payback period:** [months]
-
-## Automation Type Recommendation
-
-- [ ] RPA only (> 90% structured input, fully rule-based)
-- [ ] Intelligent Automation (unstructured input or judgment required)
-- [ ] Hybrid (RPA for structured cases, IDP for unstructured cases)
-
-## Next Steps
-
-1. [Process mining: extract event log from [system] to validate volume and variant data]
-2. [Conformance check: compare discovered model to documented process]
-3. [Vendor evaluation: shortlist based on automation type recommendation above]
+- reviewer: <name>
+- approved: <yes / no>

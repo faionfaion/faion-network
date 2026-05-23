@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# purpose: Classify a BA request into BABOK knowledge areas, list candidate methodologies
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml (decision-record)
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-800 tokens when loaded as context
+
 # ba-route.sh — classify a BA request into BABOK knowledge areas, list candidate methodologies.
 # Usage: echo "we need to figure out why churn is up" | ba-route.sh
 #        ba-route.sh "user request text"

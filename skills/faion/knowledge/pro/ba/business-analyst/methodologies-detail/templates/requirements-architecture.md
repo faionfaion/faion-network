@@ -1,39 +1,25 @@
-# Requirements Architecture: [Feature or System]
+<!-- purpose: Requirements architecture template. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
+# Requirements architecture template.
 
-## Viewpoints
+> Skeleton for `methodologies-detail`. Replace placeholders with real engagement data; commit alongside the parent record.
 
-| Viewpoint | Stakeholders | Key Concerns |
-|-----------|--------------|--------------|
-| Business | Sponsor, Executives | ROI, Strategy alignment |
-| User | End users | Usability, Features |
-| Technical | Developers, Architects | Feasibility, Architecture |
-| Operational | Operations, Support | Maintainability, SLAs |
+## Context
 
-## Requirement Hierarchy
+- engagement: <name>
+- owner: <name>
+- date: 2026-05-23
 
-```
-BR-001: [Business Requirement]
-  SR-001: [Stakeholder Requirement]
-    FR-001: [Functional Requirement]
-    FR-002: [Functional Requirement]
-  SR-002: [Stakeholder Requirement]
-    FR-003: [Functional Requirement]
-```
+## Content
 
-## Dependencies
+1. <fill per the schema in `content/02-output-contract.xml`>
+2. <fill per `04-procedure.xml` step outputs>
 
-| Requirement | Depends On | Enables | Conflicts With |
-|-------------|------------|---------|----------------|
-| FR-001 | — | FR-003, FR-004 | — |
-| FR-002 | FR-001 | FR-005 | — |
+## Sign-off
 
-## Completeness Check
-
-| Layer | Total | Covered | Gaps |
-|-------|-------|---------|------|
-| Business requirements | [N] | [N] | [List gap IDs] |
-| Stakeholder requirements | [N] | [N] | [List gap IDs] |
-| Functional requirements | [N] | [N] | [List gap IDs] |
+- reviewer: <name>
+- approved: <yes / no>

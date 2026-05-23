@@ -1,76 +1,104 @@
 ---
 slug: stakeholder-analysis
 tier: pro
-group: ba
+group: business-analyst
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A six-step methodology that identifies all parties affected by or influencing a change initiative, maps them on a 2x2 influence-vs-impact matrix (Manage Closely / Keep Satisfied / Keep Informed / Monitor), documents individual needs, concerns, and communication preferences, plans engagement cadence per quadrant, and stores the register as a YAML file in git so diffs become the relationship history.
-content_id: "42ba2d9d896f76bf"
-tags: [stakeholder-management, engagement, requirements, change-management, risk-mitigation]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identifies and classifies stakeholders by power × interest, defines engagement strategy per quadrant, and produces a named RACI + communications plan that owners actually follow.
+content_id: "eda0fba34696f138"
+complexity: medium
+produces: report
+est_tokens: 2900
+tags: [stakeholder-analysis, raci, power-interest, engagement-plan, communications]
 ---
 # Stakeholder Analysis
 
 ## Summary
 
-**One-sentence:** A six-step methodology that identifies all parties affected by or influencing a change initiative, maps them on a 2x2 influence-vs-impact matrix (Manage Closely / Keep Satisfied / Keep Informed / Monitor), documents individual needs, concerns, and communication preferences, plans engagement cadence per quadrant, and stores the register as a YAML file in git so diffs become the relationship history.
+**One-sentence:** A power-interest classification of named stakeholders that produces an engagement strategy, RACI matrix, and communications plan owned by a named BA.
 
-**One-paragraph:** A six-step methodology that identifies all parties affected by or influencing a change initiative, maps them on a 2x2 influence-vs-impact matrix (Manage Closely / Keep Satisfied / Keep Informed / Monitor), documents individual needs, concerns, and communication preferences, plans engagement cadence per quadrant, and stores the register as a YAML file in git so diffs become the relationship history. The register is a living artifact refreshed at minimum quarterly.
+**One-paragraph:** Projects fail when the wrong stakeholder is consulted too late or the right stakeholder is over-consulted into fatigue. Stakeholder analysis maps every named individual (no 'team X') onto a 2×2 (power × interest), defines a per-quadrant engagement strategy (manage closely / keep satisfied / keep informed / monitor), produces a RACI per major decision, and a communications plan with cadence + channel + owner. Output: a stakeholder register + RACI + comms plan reviewed at every milestone gate.
+
+**Ефективно для:**
+
+- Cross-functional programs with ≥3 departments + external vendors.
+- Regulated initiatives with named legal / compliance reviewers.
+- Pre-kickoff phase of any engagement ≥6 weeks.
+- Re-engagement on a stalled project where ownership is unclear.
 
 ## Applies If (ALL must hold)
 
-- Kickoff of any cross-functional initiative with more than five named parties (sponsor, SMEs, end users, regulator, vendor)
-- Migration/replacement projects where end-user resistance is the dominant risk
-- Regulated programs (HIPAA, GDPR, SOX, MDR) — the regulator is a mandatory stakeholder
-- M&A and reorg work where the political map is unstable; rerun the matrix every 2-4 weeks
-- Pre-RFP/vendor-selection work where the buying committee has hidden influencers (security, procurement, legal)
-- Triggered automatically when CHANGELOG or `stakeholders/register.yaml` has not been touched for 90 days on an active initiative
+- the engagement has ≥3 distinct stakeholder organisations
+- decisions require named approvers (not 'the team agrees')
+- a BA or PM owns the artefact going forward
+- the project has a known sponsor
 
 ## Skip If (ANY kills it)
 
-- Solo founder pre-PMF with fewer than three people involved — go directly to customer interviews
-- Strictly internal engineering refactors with no business stakeholder change — RACI alone is sufficient
-- Public open-source projects with anonymous community contributors — influence/impact axis is meaningless; use governance patterns
-- One-off bug fixes or hotfixes — the stakeholder map will be stale before the deploy completes
+- single-team internal tool with ≤5 users
+- stakeholders refuse to be named individually — fix sponsorship first
+- the engagement is fully open-scope T&M with no decision gates
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| org chart / contact list | PDF / CSV | sponsor / HR |
+| project charter or business case | wiki / PDF | sponsor |
+| prior project lessons (if rerun) | retrospective notes | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[strategy-analysis-business-need]] | Defines why the project exists, which informs stakeholder relevance. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: named individuals only, power × interest grid, per-quadrant strategy, RACI per major decision, owned comms cadence | 1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for stakeholder register + RACI + comms plan | 800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: anonymous teams, stale grid, RACI bloat, channel drift, sponsor invisible | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure: identify → classify → strategize → RACI → comms plan | 700 |
+| `content/05-examples.xml` | essential | Worked example: 6-stakeholder ERP rollout register + RACI excerpt | 600 |
+| `content/06-decision-tree.xml` | essential | Tree on stakeholder count + decision gates + power skew | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `identify_individuals` | haiku | Mechanical extraction from org chart. |
+| `classify_power_interest` | sonnet | Light judgment with rationale per row. |
+| `draft_engagement_strategy` | sonnet | Bounded synthesis per quadrant. |
+| `draft_raci` | sonnet | Mechanical mapping with reviewer cross-check. |
+| `comms_plan_narrative` | sonnet | Cadence + channel + owner per stakeholder. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/stakeholder-register.md` | Markdown skeleton with rows for each stakeholder + power/interest + strategy. |
+| `templates/raci.csv` | RACI matrix header: Decision, Responsible, Accountable, Consulted, Informed. |
+| `templates/comms-plan.md` | Communications plan with cadence + channel + owner. |
+| `templates/_smoke-test.md` | Minimum viable 3-stakeholder register. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-stakeholder-analysis.py` | Validates stakeholder register + RACI + comms plan against JSON Schema. | After register update; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
+- [[strategy-analysis-business-need]]
+- [[use-case-modeling]]
+- [[scope-drift-early-warning-metrics]]
+- [[decision-rationale-capture]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.
