@@ -1,27 +1,11 @@
-# Stakeholder Register: [Initiative Name]
+<!-- purpose: Master register: name, role, category, contact, influence, interest. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**BA:** [Name]
-**Responsibility Model:** [RACI | RASCI | DACI | RAPID]
-**Salience Model:** [Mendelow | Mitchell-Agle-Wood | both]
-**Stakeholder Definition Source:** [BABOK 3 §3.2 | ISO 21502 §4.4]
+# Stakeholder Register
 
-## Register
-
-| ID   | Stakeholder | Role | Category | Influence | Impact | Attitude | Salience Type | Engagement |
-|------|-------------|------|----------|-----------|--------|----------|---------------|------------|
-| S-01 | [Name]      | [Role] | [Cat]  | H/M/L     | H/M/L  | +/0/-    | [8-type]      | [Approach] |
-| S-02 | [Name]      | [Role] | [Cat]  | H/M/L     | H/M/L  | +/0/-    | [8-type]      | [Approach] |
-
-## Non-Stakeholders (Explicit Exclusions)
-
-| Name/Group | Reason Excluded |
-|------------|-----------------|
-| [Name]     | [Reason]        |
-
-## Baseline Approval
-
-| Role | Name | Date | Git Tag |
-|------|------|------|---------|
-| Sponsor | | | |
+| name | role | category | power | interest | contact |
+|---|---|---|---|---|---|
+| Amaia Ruiz | VP Product | sponsor | high | high | amaia@acme.com |

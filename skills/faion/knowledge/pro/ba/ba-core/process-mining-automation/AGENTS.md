@@ -3,75 +3,97 @@ slug: process-mining-automation
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Covers the fundamentals of process mining: discovery algorithms, event-log prerequisites, adoption gate criteria, and automation candidate assessment.
-content_id: "63c361296bd7dd91"
-tags: [process-mining, automation, rpa, discovery, analysis]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an automation-assessment report ranking discovered process variants by frequency × variance × cost and naming candidate automations with feasibility scores.
+content_id: "59b4220324dc8b5c"
+complexity: deep
+produces: report
+est_tokens: 4300
+tags: [ba, process-mining, automation, celonis, rpa]
 ---
-# Process Mining and Intelligent Automation Analysis
+# Process Mining & Automation
 
 ## Summary
 
-**One-sentence:** Covers the fundamentals of process mining: discovery algorithms, event-log prerequisites, adoption gate criteria, and automation candidate assessment.
+**One-sentence:** Produces an automation-assessment report ranking discovered process variants by frequency × variance × cost and naming candidate automations with feasibility scores.
 
-**One-paragraph:** Covers the fundamentals of process mining: discovery algorithms, event-log prerequisites, adoption gate criteria, and automation candidate assessment. Use before selecting a tool or vendor. Distinct from the operational four-stage pipeline in the business-analyst variant — this layer handles the go/no-go scoping decision and algorithm selection.
+**One-paragraph:** Produces an automation-assessment report ranking discovered process variants by frequency × variance × cost and naming candidate automations with feasibility scores. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Транзакційна система (ERP/CRM/ticketing) ≥6 місяців даних — є що mine'ити.
+- Automation programme з обмеженим бюджетом — треба ranked candidate list з feasibility.
+- Compliance audit, де треба показати actual-vs-documented process flow.
+- Discovery про прихований process variance, який stakeholder'и заперечують.
 
 ## Applies If (ALL must hold)
 
-- Scoping a process-mining initiative for the first time and briefing a steering committee before tool selection
-- Pre-RFP phase comparing Celonis / UiPath Process Mining / Apromore / pm4py (vendors hide algorithm details behind UX)
-- Validating that a candidate event log meets three minimum columns (case ID, activity, timestamp) before procurement
-- Choosing a discovery algorithm: Alpha/Heuristic/Inductive Miner each have different failure modes on real logs
-- Distinguishing conformance vs discovery vs enhancement — naming the mining question type before the artefact is produced
-- Diagnosing why an existing deployment produced a spaghetti Directly-Follows Graph
+- Existing transactional system with event logs (ERP, CRM, ticketing) ≥ 6 months of data.
+- Stakeholder believes process is standard but data may reveal high variance.
+- Automation programme needs prioritised candidate list with feasibility evidence.
+- Compliance audit requires actual-vs-documented process comparison.
 
 ## Skip If (ANY kills it)
 
-- The team already has process-mining tooling and a working event log — go to the business-analyst variant for the full pipeline
-- The question is "what should the process be?" (to-be design) — that is BPMN modelling, not mining
-- Single-system audit log with fewer than 200 cases — use SQL and a pivot table instead
-- Task-level desktop work (clicks, copy-paste between apps) — this is task mining, a different discipline
-- Knowledge work without a discrete activity vocabulary (writing, negotiation, R&D)
+- No event log exists or logs lack case-id / activity / timestamp triple.
+- Process is genuinely new and lacks operational history.
+- Stakeholders refuse to act on findings — analysis becomes shelfware.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Event log export (case_id, activity, timestamp, resource) | CSV / XES | data engineering |
+| Process mining tool access (Celonis / Disco / pm4py) | license / pip | BA / data team |
+| Cost data per activity | CSV | finance |
+| Stakeholder hypothesis log | Markdown | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[data-driven-requirements]] | process-mining evidence feeds requirement derivation |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `ingest-and-clean` | haiku | Mechanical CSV cleanup + case-id normalisation. |
+| `discover-variants` | sonnet | Apply pm4py / Disco discovery; rank variants by frequency × cost. |
+| `score-automation` | opus | Synthesise feasibility scores with rationale per candidate. |
+| `write-report` | sonnet | Assemble final report with rankings + evidence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/automation-assessment.md` | Report skeleton: variants ranked, candidate automations, feasibility. |
+| `templates/pm-feasibility-audit.py` | Stdlib audit checking event-log integrity before mining. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-process-mining-automation.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[data-driven-requirements]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -3,77 +3,98 @@ slug: requirements-prioritization
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: All-Must MoSCoW, Confidence=100% RICE, and conference-room Kano produce false confidence in priority decisions.
-content_id: "f45b9ffe6a9978ae"
-tags: [prioritization, moscow, rice, kano, wsjf, requirements, backlog-management]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a ranked requirements table using MoSCoW / RICE / WSJF with explicit per-requirement scores, weights, and rationale.
+content_id: "da36fba223abc6e7"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, prioritization, moscow, rice, wsjf]
 ---
 # Requirements Prioritization
 
 ## Summary
 
-**One-sentence:** All-Must MoSCoW, Confidence=100% RICE, and conference-room Kano produce false confidence in priority decisions.
+**One-sentence:** Produces a ranked requirements table using MoSCoW / RICE / WSJF with explicit per-requirement scores, weights, and rationale.
 
-**One-paragraph:** All-Must MoSCoW, Confidence=100% RICE, and conference-room Kano produce false confidence in priority decisions. A selector that refuses to recommend a method when prerequisites are missing — and that flags data-quality problems per scored row — forces the team to surface gaps before committing resources. Six methods available: MoSCoW (release scope with 60/20/20 effort budget), RICE (reach * impact * confidence / effort, default Confidence to 0.8), Kano (survey-driven, ≥30 respondents required), WSJF (SAFe Cost-of-Delay / Job Size with floor at 1), weighted-sum (regulated contexts, cap at 7 criteria), and Value-Effort (quick triage for small backlogs). Always require a REQ-XXX ID and effort estimate before scoring; include a status-quo "do nothing" baseline row; run sensitivity analysis (±20% perturbation on most-leverage factor) to identify fragile rankings.
+**One-paragraph:** Produces a ranked requirements table using MoSCoW / RICE / WSJF with explicit per-requirement scores, weights, and rationale. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Backlog > capacity на найближчий cycle — потрібен ranked drop-set.
+- Stakeholder disagreement — empirical scoring як arbiter.
+- Multi-cycle release planning, де dependencies між requirement'ами важать.
+- Compliance audit — треба показати rationale за пріоритетами.
 
 ## Applies If (ALL must hold)
 
-- New release scope decision with ≥30 candidate items and only ~30-40% can ship in the window — explicit method beats stack-rank-by-vibe
-- An "everything is Must" MoSCoW already exists and you need a forcing function (RICE, weighted-sum, or WSJF) to break the tie with numbers
-- Mid-sized backlog (50-200 items) where ordinal stack-rank no longer survives one round of input from a new stakeholder — switch to a scored method that re-ranks deterministically
-- SAFe or PI planning context with a 100+ feature pool where Cost-of-Delay matters more than feature count — WSJF is the explicit fit
-- Customer-satisfaction-driven products (consumer apps, hospitality) where survey data is available and the question is "which features delight vs which are baseline expectations" — Kano with real survey input
-- Quick triage of a <30-item set where the BA needs a 1-hour Value-Effort matrix to separate quick wins from thankless work before more rigorous scoring
-- Regulated or audited contexts where the priority decision must cite criteria and weights — weighted-sum with documented weights is the only defensible answer
+- Backlog exceeds team capacity for the upcoming cycle.
+- Stakeholders disagree on priority — empirical scoring is needed to arbitrate.
+- Multi-cycle release planning where sequencing affects dependencies.
+- Compliance audit requires documented prioritisation rationale.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF discovery — locking priorities on speculative requirements creates false rigor; use opportunity-solution-trees instead
-- Internal engineering work (refactors, tech debt, infra upgrades) — RICE and Kano measure user-facing value; technical-debt scoring (SQALE, DORA-aligned) is the right toolset
-- Hard regulatory deadlines — those are constraints, not priorities; mechanically force them into Must/top-N, do not score against business value
-- Items with no effort estimate from delivery — every method here divides or trades against effort; without it, the score is "value vs imagination"
-- Fewer than 10 items, single decision-maker — a stack rank by the PO is faster than any of these methods and just as defensible
-- Cash-flow or capex decisions with a real model — go to NPV, payback, or option value; do not collapse to a 0.25-3 impact scale that throws away precision
+- Backlog fits in one sprint — prioritisation overhead exceeds value.
+- Stakeholders have already converged informally.
+- Roadmap is fixed by external constraint (contract, regulation).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Requirements list | Output of requirements-documentation | BA |
+| Effort estimates per requirement | T-shirt / story points | engineering |
+| Value drivers (business value, risk reduction) | Markdown | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[requirements-documentation]] | input requirements |
+| [[requirements-lifecycle]] | priority feeds the workflow state |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-requirements` | haiku | Mechanical computation of RICE / WSJF. |
+| `rank-and-bucket` | sonnet | Apply MoSCoW partition on top of scores. |
+| `write-rationale` | sonnet | Light judgement on phrasing per bucket. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/moscow-template.md` | MoSCoW prioritisation table with criteria. |
+| `templates/rice-template.md` | RICE scoring matrix. |
+| `templates/prio_method_and_wsjf.py` | Stdlib calculator for RICE + WSJF + MoSCoW. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-requirements-prioritization.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[requirements-documentation]]
+- [[requirements-lifecycle]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

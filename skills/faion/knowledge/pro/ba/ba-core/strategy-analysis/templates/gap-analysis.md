@@ -1,40 +1,10 @@
-# Gap Analysis: [Initiative Name]
+<!-- purpose: Current-vs-future gap table with closure plan. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Date:** [Date]
-**Analyst:** [Name]
-**Initiative ID:** [ID]
-**Traces to:** GOAL-[XX]
+# Gap Analysis
 
-## Current State Summary
-
-[Brief description of current state — 2-3 sentences, cites current-state.json]
-
-## Future State Summary
-
-[Brief description of desired future state — 2-3 sentences, cites future-state.json]
-
-## Gap Analysis
-
-| Area | Current State | Future State | Gap | Priority | Approach |
-|------|---------------|--------------|-----|----------|----------|
-| Process | [Description] | [Description] | [Gap] | H/M/L | [Build/Buy/Modify] |
-| Technology | [Description] | [Description] | [Gap] | H/M/L | [Approach] |
-| People | [Description] | [Description] | [Gap] | H/M/L | [Approach] |
-| Data | [Description] | [Description] | [Gap] | H/M/L | [Approach] |
-| Org structure | [Description] | [Description] | [Gap] | H/M/L | [Approach] |
-
-## Key Gaps (Top 3)
-
-1. [Most critical gap — measurable impact]
-2. [Second critical gap]
-3. [Third critical gap]
-
-## Dependencies Between Gaps
-
-- [Gap 1] must close before [Gap 2] can begin: [reason]
-
-## Risks of Not Closing
-
-| Gap | Consequence | Likelihood | Impact |
-|-----|-------------|------------|--------|
-| [Gap] | [Outcome] | H/M/L | H/M/L |
+| axis | current | future | delta | closure_plan |
+|---|---|---|---|---|

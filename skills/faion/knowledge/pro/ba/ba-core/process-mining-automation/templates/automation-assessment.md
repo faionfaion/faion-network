@@ -1,44 +1,19 @@
-# Process Automation Assessment: <Process Name>
+<!-- purpose: Report skeleton: variants ranked, candidate automations, feasibility. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-## Process Overview
+# Automation Assessment
 
-- **Current Volume:** [transactions/period]
-- **Current FTE:** [number]
-- **Error Rate:** [%]
-- **Cycle Time:** [average time]
+**data_window:** <from> → <to>
 
-## Automation Readiness Scoring
+## Variants Ranked
+| variant_id | frequency | cost | variance_score |
+|---|---|---|---|
+| V001 | 12450 | 89000 | 0.72 |
 
-| Criterion | Weight | Score (1-5) | Weighted | Notes |
-|-----------|--------|-------------|----------|-------|
-| Volume | High | | | Target: >= 100 tx/day |
-| Standardization | High | | | Rule-based, low exceptions |
-| Stability | Medium | | | Process unchanged >= 6 months |
-| Digital Input | Medium | | | Structured data available |
-| Error Rate | Medium | | | High manual errors = higher score |
-| ROI Potential | High | | | High labor cost, quick payback |
-| **Total** | | | /30 | |
-
-## Recommendation
-
-- [ ] Full automation (Score > 24)
-- [ ] Partial automation (Score 18-24)
-- [ ] Process improvement first (Score 12-18)
-- [ ] Not suitable for automation (Score < 12)
-
-## Technology Fit
-
-- [ ] RPA (rule-based, structured data only)
-- [ ] Intelligent Automation (AI-driven decisions, mixed data)
-
-## ROI Estimate
-
-- **Estimated annual savings:** [$/year]
-- **Implementation cost:** [$]
-- **Payback period:** [months]
-
-## Next Steps
-
-- [ ] Log feasibility audit (run pm-feasibility-audit.py on process logs)
-- [ ] Adoption gate assessment (6 criteria)
-- [ ] Vendor/tool selection
+## Candidates
+| candidate_id | variant_id | feasibility | expected_savings |
+|---|---|---|---|
+| AUT-001 | V001 | high | 65000 |

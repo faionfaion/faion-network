@@ -3,74 +3,100 @@ slug: requirements-documentation
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Produce sign-off-ready requirements sets (BRD + URS + SRS/FRD) aligned to a single locked standard (IEEE 830-1998 or ISO/IEC/IEEE 29148:2018).
-content_id: "0b8ba53b7d51c38b"
-tags: [requirements, documentation, brd, srs, ears]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces SRS / BRD / user-story documents conforming to a checked schema, with traceability IDs, acceptance criteria, and review state per requirement.
+content_id: "86e3e0418a3be483"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, srs, brd, user-story, documentation]
 ---
 # Requirements Documentation
 
 ## Summary
 
-**One-sentence:** Produce sign-off-ready requirements sets (BRD + URS + SRS/FRD) aligned to a single locked standard (IEEE 830-1998 or ISO/IEC/IEEE 29148:2018).
+**One-sentence:** Produces SRS / BRD / user-story documents conforming to a checked schema, with traceability IDs, acceptance criteria, and review state per requirement.
 
-**One-paragraph:** Produce sign-off-ready requirements sets (BRD + URS + SRS/FRD) aligned to a single locked standard (IEEE 830-1998 or ISO/IEC/IEEE 29148:2018). Write functional requirements in EARS patterns (Ubiquitous, Event-driven, State-driven, Optional, Unwanted-behaviour, Complex). Validate structure via a YAML conformance schema before any document is rendered to PDF. Source is Markdown with frontmatter; the PDF is a generated artifact via pandoc.
+**One-paragraph:** Produces SRS / BRD / user-story documents conforming to a checked schema, with traceability IDs, acceptance criteria, and review state per requirement. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Regulated industry (fintech, health, gov), де треба SRS під аудит.
+- Cross-team handoff: design → dev → QA → ops, де verbal context втрачається.
+- Onboarding нових BA/QA — треба стабільний документ замість Slack-археології.
+- Contractual SOW, де requirement-набір — частина юридичного зобов'язання.
 
 ## Applies If (ALL must hold)
 
-- Producing a classical, sign-off-ready requirements set for regulated work (IEC 62304, ISO 26262, DO-178C, BCBS 239, SOC2 audits)
-- A vendor or client contract names a specific standard (IEEE 830, ISO 29148, IREB CPRE) and the deliverable list is fixed
-- Hand-off across organizations where the document is the contract artifact
-- Re-baselining: a previously approved pack must be re-issued at v2.0 with a redline, changelog, and fresh sign-off
-- Auditors will physically read a PDF expecting: cover page, version table, approval block, glossary, traceability matrix, requirement IDs
+- Engagement requires formal documentation (audit, regulated industry, contractual SOW).
+- Multiple downstream consumers (design, dev, QA, ops) need a single source of truth.
+- Cross-team handoff where verbal context will be lost.
+- Onboarding new team members who need a stable requirements artefact.
 
 ## Skip If (ANY kills it)
 
-- Solo or agile project where spec.md + acceptance tests already cover the audit surface
-- Team has no document custodian — without a named owner the formal apparatus rots within two sprints
-- Discovery work where requirements are still volatile — formal docs imply a baseline; baselining in flux is theatre
-- Internal tooling for one team — lightweight user stories are sufficient
-- The reviewer pool will not actually sign — unsigned formal docs are worse than informal ones
+- Single-developer prototype where the developer is also the BA.
+- Pure backlog-driven Scrum where user stories live in Jira and never become an SRS.
+- Throwaway experiment with no audit need.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Requirements list | Output of elicitation / data-driven-requirements | BA |
+| Traceability schema | Markdown / template | BA team |
+| Acceptance criteria template | From acceptance-criteria methodology | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[acceptance-criteria]] | every requirement carries AC |
+| [[requirements-traceability]] | requirement IDs feed RTM |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `structure-srs` | haiku | Mechanical sectioning per IEEE 830 template. |
+| `write-requirement-bodies` | sonnet | Light judgement on phrasing + completeness. |
+| `validate-schema` | haiku | Run validator script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/brd-template.md` | Business Requirements Document skeleton. |
+| `templates/srs-template.md` | IEEE 830-aligned SRS skeleton. |
+| `templates/user-story-template.md` | INVEST-compliant user story template with AC slot. |
+| `templates/srs-conformance.yaml` | YAML schema enforced by validator. |
+| `templates/srs_conform.py` | Conformance checker that fails CI when SRS source violates the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-requirements-documentation.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[acceptance-criteria]]
+- [[requirements-traceability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

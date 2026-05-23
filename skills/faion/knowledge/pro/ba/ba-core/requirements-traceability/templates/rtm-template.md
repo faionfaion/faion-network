@@ -1,29 +1,11 @@
-# Requirements Traceability Matrix: [Project Name]
+<!-- purpose: RTM matrix template with columns: req_id, design_ref, code_ref, test_ref, release_ref. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Version:** [X.X]
-**Date:** [Date]
-**Author:** [Name]
-**Generated from:** `scripts/rtm_min.py docs/`
+# Requirements Traceability Matrix
 
-## Traceability Links
-
-| Bus Req ID | Bus Req Name | Stkhldr Req | Func Req | Design | Test Case | Status |
-|------------|--------------|-------------|----------|--------|-----------|--------|
-| BR-01 | [Name] | SR-01 | FR-01, FR-02 | D-01 | TC-01 | Complete |
-| BR-02 | [Name] | SR-02 | FR-03 | D-02 | TC-02, TC-03 | In Progress |
-
-## Coverage Summary (generated)
-
-| Direction | Gate | Total | Linked | Coverage | Pass? |
-|-----------|------|-------|--------|----------|-------|
-| Forward (BR→TC) | ≥ 95% | [N] | [N] | [%] | [Y/N] |
-| Backward (TC→BR) | = 100% | [N] | [N] | [%] | [Y/N] |
-| Horizontal conflicts | = 0 unresolved | [N] | — | [N] | [Y/N] |
-
-## Orphan Requirements (no parent link)
-
-- [FR-XX]: [Description] — needs linking to stakeholder requirement
-
-## Gaps (no downstream link)
-
-- [BR-XX]: Missing test cases
+| req_id | source_ref | design_ref | code_ref | test_ref | release_ref |
+|---|---|---|---|---|---|
+| REQ-001 | elicit/2026-04-12.md | design.md#auth | src/auth/oauth.ts | tests/auth.spec.ts | v1.2.0 |

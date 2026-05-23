@@ -1,50 +1,14 @@
-# Workshop Agenda: [Topic]
+<!-- purpose: Multi-stakeholder workshop agenda with facilitation cues. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Date:** [Date]
-**Time:** [Start] - [End] (max 90 min)
-**Location:** [Room/Virtual]
-**Facilitator:** [Name]
-**Note-taker:** [Name]
+# Workshop Agenda — <Topic>
 
-## Objectives
+**Duration:** 120 min  |  **Participants:** 4-15  |  **Facilitator:** <name>
 
-1. [Objective 1]
-2. [Objective 2]
-
-## Participants
-
-- [Name, Role]
-- [Name, Role]
-
-## Agenda
-
-| Time | Duration | Topic | Activity Type | Owner |
-|------|----------|-------|---------------|-------|
-| 9:00 | 10 min | Welcome, objectives | Presentation | Facilitator |
-| 9:10 | 20 min | [Topic 1] | Hands-on: sticky notes | [Name] |
-| 9:30 | 25 min | [Topic 2] | Hands-on: dot-voting | [Name] |
-| 9:55 | 5 min  | Break | | |
-| 10:00 | 20 min | [Topic 3] | Discussion / mapping | [Name] |
-| 10:20 | 10 min | Summary, next steps | Facilitator confirms | Facilitator |
-
-Note: ≥ 40% of agenda time must be hands-on (sticky notes, dot-voting, mapping).
-
-## Materials
-
-- [ ] [Material 1]
-- [ ] [Material 2]
-
-## Pre-work for Participants
-
-- [What to prepare / read before the session]
-
-## Expected Outputs
-
-- [Deliverable 1]
-- [Deliverable 2]
-
-## Ground Rules
-
-- One conversation at a time
-- Park off-topic items on the parking lot
-- All voices heard before deciding
+## Phase 1: Frame (15m)
+## Phase 2: Diverge (45m)
+## Phase 3: Converge (45m)
+## Phase 4: Decide (15m)

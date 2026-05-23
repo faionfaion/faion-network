@@ -3,74 +3,92 @@ slug: strategy-basics
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Framework for understanding the existing environment, defining desired future state, assessing risks, and planning change strategy.
-content_id: "e5a27308a5b32788"
-tags: [strategy, current-state, future-state, risk-analysis, change-management]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a glossary + decision-tree primer that grounds BA team vocabulary (mission, vision, OKR, SMART, strategy vs tactics) before any strategic artefact is authored.
+content_id: "eca24eb72b84c812"
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [ba, strategy, basics, vocabulary, onboarding]
 ---
-# BA Strategy Basics: Current/Future State and Risk
+# Strategy Basics
 
 ## Summary
 
-**One-sentence:** Framework for understanding the existing environment, defining desired future state, assessing risks, and planning change strategy.
+**One-sentence:** Produces a glossary + decision-tree primer that grounds BA team vocabulary (mission, vision, OKR, SMART, strategy vs tactics) before any strategic artefact is authored.
 
-**One-paragraph:** Framework for understanding the existing environment, defining desired future state, assessing risks, and planning change strategy. Covers current state analysis across business context, capability assessment, technology landscape, stakeholder landscape, and SWOT analysis. Future state definition includes vision statements, SMART goals, new capabilities, success metrics, and constraints. Risk analysis covers identification, assessment, response strategy, and monitoring. Change strategy planning includes gap analysis, solution options, transition planning, readiness assessment, and business case development.
+**One-paragraph:** Produces a glossary + decision-tree primer that grounds BA team vocabulary (mission, vision, OKR, SMART, strategy vs tactics) before any strategic artefact is authored. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Onboarding нових BA'ів — потрібен shared vocabulary перед strategy-analysis.
+- BA-sponsor disagreement про що таке 'strategy' — треба joint primer.
+- Pre-strategy-analysis warm-up — щоб не плутати mission/vision/OKR/SMART.
+- Внутрішня CoP — щоквартальне оновлення термінології.
 
 ## Applies If (ALL must hold)
 
-- Baseline capability and maturity assessment across an organization before planning a transformation initiative
-- Business process improvement engagement where the current state is poorly understood and stakeholders disagree on priorities
-- Technology modernization decision where cost, risk, and capability trade-offs must be explicit before implementation begins
-- Org restructuring or change management engagement where stakeholder landscape and readiness assessment drive the transition strategy
-- Post-assessment of a failed or delayed initiative to understand what assumptions proved wrong and why
+- BA team has new members lacking shared strategy vocabulary.
+- Sponsor / BA disagree on what 'strategy' means.
+- Engagement is about to use strategy-analysis or strategy-methods and needs grounded terms.
+- Internal CoP wants a shared primer.
 
 ## Skip If (ANY kills it)
 
-- Single-team backlog refinement — strategy basics is heavy-weight; a one-page problem statement is sufficient
-- Purely experimental product discovery before any commitment — use lean-canvas or opportunity-solution-trees first
-- Well-understood engineering refactors with no business state change — strategy basics framing produces noise
-- Crisis response or incident remediation — use root-cause analysis and post-mortem instead
-- Decisions dominated by a single hard constraint (regulatory deadline, cost ceiling) — filter on that constraint alone first
+- Team is mature and vocabulary alignment is solved.
+- Mid-execution sprint — no time for primer.
+- Engagement is purely tactical with no strategic framing.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source materials (Porter, Mintzberg, Christensen) | URL list / library | BA team |
+| Internal glossary draft (if any) | Markdown | BA team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[strategy-analysis]] | primer is its prerequisite warm-up |
+| [[strategy-methods]] | method selection assumes shared vocabulary |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `collect-terms` | haiku | Mechanical extraction from source materials. |
+| `write-glossary` | sonnet | Light judgement on phrasing + canonical definitions. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/strategy-glossary.md` | Glossary template with term + canonical-def + example + anti-example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-strategy-basics.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[strategy-analysis]]
+- [[strategy-methods]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

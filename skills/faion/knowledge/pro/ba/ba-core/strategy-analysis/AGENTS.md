@@ -3,73 +3,98 @@ slug: strategy-analysis
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Four sequential KA-6 tasks — analyze current state, define future state, assess risks, define change strategy — each with a strict input/output contract.
-content_id: "15de4933d244b3ac"
-tags: [babok, strategy, ka6, business-analysis, change-strategy]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a business-need statement + gap analysis + change strategy tying current state to future state with measurable closure plan.
+content_id: "333aef8d6833304c"
+complexity: deep
+produces: spec
+est_tokens: 4300
+tags: [ba, strategy, gap-analysis, business-need, babok-ka6]
 ---
-# Strategy Analysis — BABOK Knowledge Area 6
+# Strategy Analysis
 
 ## Summary
 
-**One-sentence:** Four sequential KA-6 tasks — analyze current state, define future state, assess risks, define change strategy — each with a strict input/output contract.
+**One-sentence:** Produces a business-need statement + gap analysis + change strategy tying current state to future state with measurable closure plan.
 
-**One-paragraph:** Four sequential KA-6 tasks — analyze current state, define future state, assess risks, define change strategy — each with a strict input/output contract. Initiatives that start without a validated current-state analysis and a measurable future state produce change strategies disconnected from real gaps. A KA-6 router that checks artifact presence and freshness (no artifact older than 90 days) prevents silently stale strategy work from driving budget decisions.
+**One-paragraph:** Produces a business-need statement + gap analysis + change strategy tying current state to future state with measurable closure plan. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Pre-discovery: business need ще розмитий — потрібно його записати.
+- Investment-justification — explicit current vs future state із вимірюваною різницею.
+- Multi-year roadmap — baselined gap analysis для пріоритетів.
+- Compliance/regulatory shift — change strategy документована.
 
 ## Applies If (ALL must hold)
 
-- Onboarding a BA agent to BABOK KA-6 layout — canonical map a routing agent uses to pick a sub-task
-- Audit or gap-check of strategy artifacts: cross-checking that all four KA-6 tasks were performed
-- Generating BABOK-aligned task scaffolding before deeper requirements work begins
-- Mapping legacy strategy documents into BABOK terminology for Jama, Polarion, or Modern Requirements ingestion
-- Training prompt grounding when a custom agent must reason in BABOK terms
+- Strategic initiative entering pre-discovery — business need is fuzzy.
+- Investment justification requires explicit current-vs-future state.
+- Multi-year roadmap requires baselined gap analysis.
+- Compliance / regulatory shift requires documented change strategy.
 
 ## Skip If (ANY kills it)
 
-- A non-BABOK strategy framework is already in force (Wardley mapping, OKR-only, JTBD-driven) — do not retrofit KA-6 on top
-- Single-team backlog refinement — KA-6 is heavyweight; a one-page problem statement is enough
-- Pure product-discovery experiments before any commitment — use lean-canvas / opportunity-solution-trees first
-- Engineering-only refactors with no business-state change — KA-6 business-need framing produces noise
+- Tactical scope where strategy analysis is overkill.
+- Business need is already documented and current.
+- Initiative is execution-phase, not framing-phase.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Executive context (strategic objectives, OKRs) | Markdown | exec sponsor |
+| Current-state artefacts (process maps, KPIs) | Markdown / data | operations |
+| Future-state aspiration | Markdown / brief | exec sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[strategy-basics]] | vocabulary + OKR/SMART framing |
+| [[strategy-methods]] | tactical methods slot below this artefact |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `frame-business-need` | opus | Synthesise need under political pressure. |
+| `compute-gap` | sonnet | Compare current vs future state across measurable axes. |
+| `draft-change-strategy` | opus | Synthesise narrative with milestones + risks. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/business-need-statement.md` | BABOK KA6 business need statement skeleton. |
+| `templates/gap-analysis.md` | Current-vs-future gap table with closure plan. |
+| `templates/validate-ka6.sh` | Shell validator for BABOK KA6 artefacts. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-strategy-analysis.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[strategy-basics]]
+- [[strategy-methods]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

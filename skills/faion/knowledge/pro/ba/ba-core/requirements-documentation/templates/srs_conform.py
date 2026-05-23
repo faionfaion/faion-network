@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: fail CI if SRS source violates the conformance schema
+# consumes: path/to/srs.md, srs-conformance.yaml schema definition
+# produces: violation list on stderr; exit 0 pass, exit 1 fail
+# depends-on: content/02-output-contract.xml (schema reference), srs-conformance.yaml
+# token-budget-impact: ~200 tokens of header + script body
 """srs_conform.py — fail CI if SRS source violates the conformance schema.
 Usage: python srs_conform.py path/to/srs.md [schema.yaml]
 Exit 0 = pass. Exit 1 = violations found.

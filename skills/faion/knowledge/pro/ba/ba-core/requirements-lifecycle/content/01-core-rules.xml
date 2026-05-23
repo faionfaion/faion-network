@@ -1,39 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="requirements-lifecycle Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for requirements-lifecycle. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Requirements Lifecycle Core Rules" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6 testable rules grounding this methodology. Each rule pairs a binary check + sourced rationale; the skip-this-methodology rule is the authoritative stop signal.</summary>
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Requirements MUST flow through these stages in order (with allowed backward loops): Identify → Analyze → Specify → Validate → Verify → Manage. A requirement cannot reach Implemented until it is Approved; it cannot reach Verified until Implemented. Deferred requirements may return to Proposed in a later iteration.</statement>
-      <rationale source="v1-source">The stage order enforces that requirements are understood before they are built; skipping Analyze or Validate leads to building the wrong thing or discovering defects too late to fix.</rationale>
+      <statement>Produce the spec artefact required by this methodology with every required field of the JSON Schema in 02-output-contract.xml populated and non-null.</statement>
+      <rationale source="Output Contract / JSON Schema 2020-12">Missing required fields propagate to downstream consumers as silent gaps; the validator script enforces this rule at CI time.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Pin a canonical state set in a single file (e.g. `requirements/_states.yaml`) and reference it from every prompt and pre-commit hook. Do not rely on LLMs or humans retaining the state list; embed it in validation code.</statement>
-      <rationale source="v1-source">State drift is silent; an agent assumes a state that is not in the canonical set and proposes an impossible transition. Making the list a data file eliminates the assumption.</rationale>
+      <statement>Apply the decision tree in 06-decision-tree.xml before authoring; record the leaf reached so reviewers can replay the routing.</statement>
+      <rationale source="Internal — methodology authoring discipline">Skipping the decision tree leads to misapplied methodologies (e.g. running deep procedure on light scope); recording the leaf makes the application auditable.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Every requirement MUST have these attributes: ID (REQ-XXX format), Name (short title), Description (full text), Status (one of the canonical states), Priority (MoSCoW or numeric), Source (stakeholder/document/discovery method), Owner (person responsible), Version (semver or X.Y), Created (date), Modified (date), Author (who wrote it). Missing attributes block the transition, not warn.</statement>
-      <rationale source="v1-source">Incomplete metadata destroys traceability. A requirement with no Owner means nobody answers when QA asks "is this still true?"; one with no Source means audit cannot trace it back to a stakeholder decision.</rationale>
+      <statement>Detect and prevent the antipattern 'happy-path-only': Require ≥1 backward / terminal transition (reject, retire, supersede).</statement>
+      <rationale source="Internal — failure-modes audit (severity=medium)">Root cause: Author thinks requirements only move forward.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
-      <statement>Use semantic versioning (X.Y.Z): Z for wording-only edits (no behavioral change), Y for AC/NFR changes (test cases must be updated), X for scope changes (may trigger re-approval). A requirement at 2.0 is materially different from 1.x — treat it as a new requirement at approval boundaries.</statement>
-      <rationale source="v1-source">Wording-only bumps pollute version history with noise; scope bumps trigger retesting and re-approval. Conflating the two means developers implement the wrong version and QA skips retesting because "only grammar changed".</rationale>
+      <statement>Detect and prevent the antipattern 'ownerless-transitions': Force owner field on every transition; reject when null.</statement>
+      <rationale source="Internal — failure-modes audit (severity=high)">Root cause: Author treats transitions as automatic.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Every change to an Approved requirement MUST originate as a Change Request (CR-XXX), not as a direct edit. The CR MUST include: current requirement text, proposed text, reason for change, and an impact analysis identifying all downstream artifacts (design, code, test cases) that must change. A CR is approved, rejected, or deferred by the same stakeholders who approved the original requirement; the approval gates a version bump.</statement>
-      <rationale source="v1-source">Without a CR, changes are invisible to QA and design; developers implement the new requirement but testing is against the old version. A CR makes the cost and scope visible; approvers are forced to decide if the change is worth the rework.</rationale>
+      <statement>Detect and prevent the antipattern 'ignored-slas': Tie SLAs to a monitoring trigger; surface overdue items in T5 performance.</statement>
+      <rationale source="Internal — failure-modes audit (severity=medium)">Root cause: No alerting on overdue transitions.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Validation occurs during the Specify and Validate stages, before code starts. Activities: stakeholder walkthrough (do the written requirements make sense?), prototype review (does the visual match the requirement?), acceptance-criteria testability review (can QA write a test?). Verification occurs during Implemented → Verified, after code is ready. Activities: design review (does the design satisfy the requirement?), code inspection (does the code do what the design says?), testing (does the test pass the AC?). Do not mix the activities; validation questions asked after code is live are rework.</statement>
-      <rationale source="v1-source">Validation-at-build-time (asking QA to validate) means you are asking QA to reject code that is already built. Validation must happen before Approved is reached.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Generate a Requirements Status Log at least once per sprint (or on audit request). The log MUST include: requirement ID, name, current status, priority, owner, version, last modified date. Separately track the counts of each status as a burndown check. Include a detailed section listing orphans (no parent or no child) and a changelog of status transitions since the last log.</statement>
-      <rationale source="v1-source">A status log is proof that requirements are being managed; without it, an auditor cannot verify progress or see which requirements have stalled in Proposed.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Every requirement attribute MUST be machine-readable (YAML frontmatter, JSON, or database fields, never free text). Use consistent key names across the organization. Version must be semver. Priority must be one of a closed set (MoSCoW, 1-5 scale, etc.). Status must be one of the canonical states. Tooling (git, pre-commit, CI) must validate frontmatter schema; reject non-compliant requirements at commit time.</statement>
-      <rationale source="v1-source">Free-text attributes lead to silent errors: "priority: high" vs "priority: HIGH" vs "priority: P1" are all assumed equivalent but tooling cannot parse them. Machine-readable attributes catch these silently.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When the decision tree resolves to skip-this-methodology, halt authoring; do NOT emit a partial artefact and do NOT proceed downstream with this methodology's outputs.</statement>
+      <rationale source="Internal — Skip-If discipline">Partial artefacts produced after a skip signal pollute downstream consumers and waste reviewer cycles; the skip leaf is an authoritative stop signal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

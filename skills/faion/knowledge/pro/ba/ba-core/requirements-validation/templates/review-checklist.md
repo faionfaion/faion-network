@@ -1,55 +1,14 @@
-# Requirements Review Checklist: <Document/Feature>
+<!-- purpose: Per-requirement validation checklist. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Reviewer:** [Name]
-**Date:** [Date]
-**Document Version:** [X.X]
+# Requirements Review Checklist
 
-## General Quality
-
-| Criterion | Pass | Fail | N/A | Comments |
-|-----------|------|------|-----|----------|
-| Requirements are numbered/identified | | | | |
-| Language is clear and unambiguous | | | | |
-| No TBD or placeholder text | | | | |
-| Consistent terminology used | | | | |
-| No duplicate requirements | | | | |
-
-## Individual Requirement Check
-
-For each requirement, check all eight quality attributes:
-
-| Check | Pass | Fail |
-|-------|------|------|
-| Necessary (not gold-plating) | | |
-| Correct (accurately represents need) | | |
-| Complete (all info present) | | |
-| Unambiguous (single interpretation only) | | |
-| Testable (can verify completion) | | |
-| Feasible (can be built within constraints) | | |
-| Traceable (links to business need or goal) | | |
-| Consistent (no conflicts with other requirements) | | |
-
-## Completeness Check
-
-| Check | Yes | No | Comments |
-|-------|-----|-----|----------|
-| All user types covered | | | |
-| All core functions covered | | | |
-| Error handling defined | | | |
-| Performance requirements stated | | | |
-| Security requirements stated | | | |
-| Integration requirements stated | | | |
-
-## Issues Found
-
-| ID | Requirement | Issue | Severity (H/M/L) | Recommendation |
-|----|-------------|-------|-----------------|----------------|
-| 1 | [REQ-XX] | [Issue description] | | [Fix] |
-
-Severity: H = blocks design, M = clarification before implementation, L = wording only.
-
-## Summary
-
-- **Requirements reviewed:** [X]
-- **Issues found:** [X]
-- **Recommendation:** [Approve | Approve with changes | Revise and re-review]
+Per requirement, mark Y/N:
+- [ ] testable (has measurable observable)
+- [ ] unambiguous
+- [ ] traced to source
+- [ ] feasible (engineering sign-off)
+- [ ] value-aligned

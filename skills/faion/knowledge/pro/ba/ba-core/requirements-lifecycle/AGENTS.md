@@ -3,74 +3,97 @@ slug: requirements-lifecycle
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Requirements exist in multiple versions with unclear ownership, approved requirements change without process, and implementations diverge from documentation.
-content_id: "f7993c25c1bff05e"
-tags: [requirements, lifecycle, babok, business-analysis, change-control]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a lifecycle policy declaring states (draft / reviewed / approved / implemented / verified / retired), transitions, owners, and SLAs per requirement.
+content_id: "9152c6c20988be18"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, lifecycle, requirements, workflow, governance]
 ---
-# Requirements Lifecycle Management
+# Requirements Lifecycle
 
 ## Summary
 
-**One-sentence:** Requirements exist in multiple versions with unclear ownership, approved requirements change without process, and implementations diverge from documentation.
+**One-sentence:** Produces a lifecycle policy declaring states (draft / reviewed / approved / implemented / verified / retired), transitions, owners, and SLAs per requirement.
 
-**One-paragraph:** Requirements exist in multiple versions with unclear ownership, approved requirements change without process, and implementations diverge from documentation. The Requirements Lifecycle Management framework provides six deterministic stages (Identify, Analyze, Specify, Validate, Verify, Manage) with explicit state transitions, version history tracking, change control via impact analysis, and audit trails. Each requirement has a frozen baseline, versioning rules (material scope/AC/NFR changes bump version; wording-only edits do not), and a state machine that tracks Draft → Proposed → Approved → Implemented → Verified with deferred and rejected branches.
+**One-paragraph:** Produces a lifecycle policy declaring states (draft / reviewed / approved / implemented / verified / retired), transitions, owners, and SLAs per requirement. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Large requirement-set (>20), де ad-hoc tracking занепадає.
+- Multiple-owner context: BA пише, dev імплементує, QA verify'ить — потрібна явна state-машина.
+- Compliance (ISO/SOC2/HIPAA), де треба timestamped transitions.
+- Cross-team initiative, де 'чи це done?' постійно дискутується.
 
 ## Applies If (ALL must hold)
 
-- The team adopts BABOK Knowledge Area 5 as a working contract and needs formal definitions of stages, states, attributes, and transitions.
-- Onboarding junior BAs or agents who must understand state semantics before touching tools.
-- Any regulated or audited work where the team must prove that requirements followed a formal process.
-- Projects with ≥30 requirements where multiple people are editing; version confusion becomes a bottleneck.
-- Establishing the canonical state model that downstream tools (Jira, StrictDoc, Polarion) must conform to.
+- Requirements set is large enough (>20) that ad-hoc state tracking decays.
+- Multiple owners touch the same requirement across release cycles.
+- Compliance requires explicit state transitions with timestamps.
+- Cross-team initiative where 'is this requirement done?' is contested.
 
 ## Skip If (ANY kills it)
 
-- The team rejects BABOK and runs pure Scrum without formal requirements; use agile-ba-frameworks instead.
-- Pre-PMF discovery where the thing under change is the problem statement, not a requirement; use continuous-discovery instead.
-- Single-author throwaway work where git log is sufficient version history; lifecycle formality is overhead.
-- High-churn research or experimental environments where a 200-change-per-sprint workflow makes formal baselining fiction.
-- Small squads (1-2 people) where Proposed → Approved adds ceremony with no value.
+- Backlog is small (≤10 requirements) where status field is sufficient.
+- Continuous-discovery product where requirements churn faster than transitions can be tracked.
+- Pure agile context where requirements live as user stories with Jira workflow.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Requirements register | Output of requirements-documentation | BA |
+| Tooling decision (Jira / Confluence / GitHub) | ADR | PMO |
+| Approver roster | Output of ba-planning T3 | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-requirements-mgmt]] | lifecycle is the workflow inside the management framework |
+| [[requirements-traceability]] | lifecycle state feeds traceability columns |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-states` | haiku | Mechanical listing of states + transitions. |
+| `assign-owners-slas` | sonnet | Match states to owners + SLAs against approver roster. |
+| `write-policy` | sonnet | Synthesise policy document. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/lifecycle-policy.md` | Lifecycle policy document skeleton. |
+| `templates/state-transition-matrix.md` | Matrix of allowed transitions per state. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-requirements-lifecycle.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[ba-requirements-mgmt]]
+- [[requirements-traceability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -3,74 +3,98 @@ slug: elicitation-techniques
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A deterministic technique-selector for the 10 BABOK v3 elicitation techniques (interview, workshop, focus group, observation, survey, document analysis, prototyping, brainstorming, interface analysis, collaborative game).
-content_id: "d86f3492ffac9a26"
-tags: [elicitation, babok, requirements, techniques, stakeholder-engagement]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a technique-to-session mapping selecting interview / workshop / survey / observation / document-analysis per information type and stakeholder count.
+content_id: "12b5c60e5614f7c4"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, elicitation, interview, workshop, techniques]
 ---
 # Elicitation Techniques
 
 ## Summary
 
-**One-sentence:** A deterministic technique-selector for the 10 BABOK v3 elicitation techniques (interview, workshop, focus group, observation, survey, document analysis, prototyping, brainstorming, interface analysis, collaborative game).
+**One-sentence:** Produces a technique-to-session mapping selecting interview / workshop / survey / observation / document-analysis per information type and stakeholder count.
 
-**One-paragraph:** A deterministic technique-selector for the 10 BABOK v3 elicitation techniques (interview, workshop, focus group, observation, survey, document analysis, prototyping, brainstorming, interface analysis, collaborative game). Select a ranked mix of 1-3 techniques based on concrete situation inputs — never a single technique in isolation. Always triangulate: pair at least two techniques where the second challenges the first.
+**One-paragraph:** Produces a technique-to-session mapping selecting interview / workshop / survey / observation / document-analysis per information type and stakeholder count. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Discovery-sprint з mix-stakeholder'ів (SME + user + ops), де треба differentiate technique per group.
+- Compliance/audit context, де треба evidence trail як requirement'и зібрані.
+- BA-onboarding на новий продукт — мапінг who-to-talk-to + what-to-extract.
+- Conflict-heavy initiative, де треба workshop facilitation, а не серії 1:1 interview'ів.
 
 ## Applies If (ALL must hold)
 
-- Early-discovery phase: choosing a technique mix from BABOK's 10 and justifying each pick
-- Training or onboarding a junior BA or LLM agent needing a deterministic decision tree
-- Mixed-method project where triangulation (interview + observation + document analysis) is needed on the same workflow
-- Mid-project scope renegotiation: re-elicit only the changed area with the cheapest adequate technique
-- Budget/time pressure: structured selector beats ad-hoc choice when sessions must be minimized
+- New scope or feature requires structured stakeholder input — not just standup chatter.
+- Stakeholder population is mixed (SMEs + users + ops + regulators) and needs technique differentiation.
+- Time-boxed discovery sprint with explicit deliverables per session.
+- Compliance or audit requires evidence trail of how requirements were sourced.
 
 ## Skip If (ANY kills it)
 
-- The technique is already locked by org policy (e.g., regulated industry mandates signed workshops)
-- Continuous-discovery shop on a stable product (Teresa Torres cadence) — that is its own pattern
-- One-stakeholder, one-sitting situation — just run the interview; selector adds overhead
-- Pure UX research with users (not stakeholders) — use ux-researcher/ techniques instead
-- Hackathon or spike — prototype and time-box; no BABOK ceremony needed
+- Solo dev with no external stakeholders.
+- Reactive bug-fix work — no requirements elicitation needed.
+- Trust gap is so wide that any elicitation will surface theatre, not truth.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stakeholder list | Output of stakeholder-analysis | BA |
+| Information-need list | Markdown | BA / PM |
+| Time-box and budget for discovery | calendar | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[stakeholder-analysis]] | stakeholder list drives technique selection |
+| [[ba-planning]] | elicitation plan plugs into T1 approach |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-info-types` | haiku | Mechanical classification per information-need into deep/group/broad. |
+| `map-techniques` | sonnet | Pick technique per info-need + stakeholder cluster. |
+| `draft-session-plan` | sonnet | Sequence sessions with logistics + facilitator. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/interview-guide.md` | 1:1 interview guide skeleton with open + probing questions. |
+| `templates/workshop-agenda.md` | Multi-stakeholder workshop agenda with facilitation cues. |
+| `templates/technique-selector.py` | CLI selector mapping (info_type, stakeholder_count) → technique. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-elicitation-techniques.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[stakeholder-analysis]]
+- [[ba-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

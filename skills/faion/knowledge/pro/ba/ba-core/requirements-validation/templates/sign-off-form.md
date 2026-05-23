@@ -1,39 +1,15 @@
-# Requirements Sign-off: <Document Name>
+<!-- purpose: Sign-off form with reviewer + date + verdict. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Document Version:** [X.X]
-**Date:** [Date]
+# Sign-Off Form
 
-## Scope of Sign-off
+**approver:** <email>  |  **approved_at:** <YYYY-MM-DD>  |  **artefact:** <ref>
 
-This sign-off confirms that:
-
-- [ ] Requirements accurately represent business needs
-- [ ] Requirements are complete for [scope]
-- [ ] Requirements are understood and agreed upon
-- [ ] Requirements can proceed to [next phase]
-
-## Conditions
-
-[Any conditions or assumptions attached to this sign-off. "Approved subject to X" requires X to be tracked below.]
-
-## Outstanding Items
-
-Items not covered by this sign-off but tracked separately:
-
-| Item | Owner | Status |
-|------|-------|--------|
-| [Item] | [Name with authority] | [Status] |
-
-## Sign-off
-
-Named approver must have decision authority (verified against RACI / stakeholder-analysis).
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Business Owner | | | |
-| Product Owner | | | |
-| Technical Lead | | | |
+## Verdict
+pass | fail | conditional
 
 ## Notes
-
-[Any additional context or constraints.]
+<≥30 chars rationale>

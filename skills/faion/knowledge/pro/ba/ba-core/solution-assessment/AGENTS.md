@@ -3,75 +3,98 @@ slug: solution-assessment
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Evaluates a solution's ability to meet the business need and deliver expected value across four assessment types: design, implementation, deployment, and post-implementation.
-content_id: "5f84aa75055f6434"
-tags: [solution, assessment, evaluation, bakok, value]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a post-implementation review comparing delivered solution against baselined requirements, value drivers, and KPIs with explicit gap callouts.
+content_id: "d41944e3752727f6"
+complexity: medium
+produces: report
+est_tokens: 4300
+tags: [ba, solution-assessment, post-implementation, kpi, value]
 ---
 # Solution Assessment
 
 ## Summary
 
-**One-sentence:** Evaluates a solution's ability to meet the business need and deliver expected value across four assessment types: design, implementation, deployment, and post-implementation.
+**One-sentence:** Produces a post-implementation review comparing delivered solution against baselined requirements, value drivers, and KPIs with explicit gap callouts.
 
-**One-paragraph:** Evaluates a solution's ability to meet the business need and deliver expected value across four assessment types: design, implementation, deployment, and post-implementation. Structured five-step framework: define criteria → assess vs requirements → evaluate business value → identify limitations → recommend action.
+**One-paragraph:** Produces a post-implementation review comparing delivered solution against baselined requirements, value drivers, and KPIs with explicit gap callouts. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Post-launch (≥1 cycle live) — sponsor хоче evidence що delivery дала обіцяну value.
+- Engagement closure/renewal — assessment як вхід у наступний контракт.
+- Defect/incident pattern свідчить про scope misalignment — треба ретроспектива.
+- KPI fall-short — треба корінь причини і roadmap fix'ів.
 
 ## Applies If (ALL must hold)
 
-- Stage-gate of the BAKOK Solution Evaluation knowledge area: "does the solution deliver enterprise value?" against the original business need.
-- Design and implementation assessments inside the build phase ("are we still on the right path?").
-- Pre go-live deployment readiness review where multiple workstreams must produce one accept/reject row.
-- 30/90/365-day post-implementation reviews scoring requirements compliance and benefit realization.
-- Solution limitations capture for compliance, audit, or vendor-renewal files.
-- Lessons-learned input to the next iteration's strategy analysis (current state → future state).
+- Solution has been live for ≥1 cycle of usage data.
+- Sponsor needs evidence that the delivery achieved promised value.
+- Engagement closure or renewal — assessment input is mandatory.
+- Defect / incident pattern suggests scope was misaligned.
 
 ## Skip If (ANY kills it)
 
-- Continuous-discovery pre-PMF work where requirements are still being invented every sprint — "REQ-001 met" is meaningless when REQ-001 was wrong.
-- Throwaway prototypes, spikes, internal tools used by a handful of people — a 15-minute retro replaces the whole template.
-- Pure SRE/platform tuning (latency, cost, capacity) — use SLOs and error budgets.
-- When no baseline exists — without a measured "before," the variance column is vibes; back-fill the baseline first.
-- When the assessor reports to the project sponsor whose bonus depends on the result — route to an independent reviewer.
+- Solution is too new (< 4 weeks live) for assessment data.
+- No baseline was captured pre-launch — assessment has no comparison anchor.
+- Solution is being retired — assessment is replaced by sunset-decision artefact.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Baselined requirements + KPIs | Output of requirements-documentation + roadmap | BA / PM |
+| Post-launch usage data | Analytics / telemetry | data team |
+| Support / incident data | Ticketing system | ops |
+| Stakeholder feedback | Surveys / interviews | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[data-driven-requirements]] | post-launch metrics replay original evidence |
+| [[requirements-validation]] | validation report is the assessment baseline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `collect-post-launch-data` | haiku | Mechanical extraction from configured sources. |
+| `compute-deltas` | sonnet | Match actual KPI vs baseline; compute gap. |
+| `write-report` | opus | Synthesise narrative under political pressure. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/post-implementation-review.md` | PIR document skeleton. |
+| `templates/solution-assessment-report.md` | Detailed assessment report with KPI table + gap callouts. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-solution-assessment.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[data-driven-requirements]]
+- [[requirements-validation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -1,43 +1,20 @@
-# Interview Guide: [Topic]
+<!-- purpose: 1:1 interview guide skeleton with open + probing questions. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-**Interviewee:** [Name]
-**Role:** [Role]
-**Date:** [Date]
-**Duration:** [≤60 min]
-**Interviewer:** [Name]
+# Interview Guide — <Topic>
 
-## Objectives
+**Duration:** 60 min  |  **Participants:** <≤3>
 
-1. [Objective 1]
-2. [Objective 2]
+## Opening (5 min)
+Introductions; consent for note-taking.
 
-## Background Questions
+## Core (45 min)
+- Open: <question>
+- Probe: <follow-up>
+- Anti-leading variant: <reformulation>
 
-1. [Question about role and experience] — objective: 1
-2. [Question about current process] — objective: 1
-
-## Main Questions (max 6)
-
-1. [Open question about topic] — objective: 1
-   - Follow-up (probing): [Why is that important?]
-2. [Question about challenges] — objective: 2
-3. [Question about desired outcomes] — objective: 2
-4. [Probing question on pain points] — objective: 1
-
-## Closing Questions
-
-1. What else should I know about [topic]?
-2. Who else should I speak with?
-3. What documents should I review?
-
-## Notes
-
-[Interview notes]
-
-## Action Items
-
-- [Follow-up item with owner]
-
-## Evidence Tag
-
-Tag each insight as: stated | observed | inferred
+## Close (10 min)
+Recap + next steps + thanks.

@@ -3,75 +3,98 @@ slug: data-driven-requirements
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Apply data analytics to requirements engineering.
-content_id: "b45eb25f7aa0f50e"
-tags: [data-driven, analytics, requirements, evidence-based, metrics]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a requirements set derived from observed data signals (analytics, telemetry, support tickets) with explicit evidence trails per requirement.
+content_id: "7836018d677994a4"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, data, analytics, requirements, evidence]
 ---
-# Data-Driven Requirements Engineering
+# Data-Driven Requirements
 
 ## Summary
 
-**One-sentence:** Apply data analytics to requirements engineering.
+**One-sentence:** Produces a requirements set derived from observed data signals (analytics, telemetry, support tickets) with explicit evidence trails per requirement.
 
-**One-paragraph:** Apply data analytics to requirements engineering. Use evidence-based approaches to prioritization and validation. This is the BA-core variant covering fundamentals; deeper metric-layer and A/B-power material lives in the business-analyst sibling.
+**One-paragraph:** Produces a requirements set derived from observed data signals (analytics, telemetry, support tickets) with explicit evidence trails per requirement. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Existing product з аналітикою/телеметрією, де sponsor хоче data-evidence перед написанням requirement'ів.
+- Conversion/retention initiative, де треба викинути guess-driven scope і триматись funnel-метрик.
+- Conflict-arbitration: два stakeholder'и протиставлені, потрібен emprical arbiter.
+- Compliance/a11y програма з instrumentation gap'ами, що драйвлять scope.
 
 ## Applies If (ALL must hold)
 
-- The team has at least one production system emitting structured events for 90+ days, and someone can already pull a baseline number from it.
-- Stakeholders disagree on priority and the disagreement is resolvable by a metric (usage, revenue, error rate).
-- A requirement under discussion has a measurable current state and a plausibly measurable target.
-- Recurring rework or post-launch "we shipped the wrong thing" is attributed to opinion-based prioritization.
-- BA is being asked for evidence by a finance/risk/steerco audience.
+- Existing product with analytics, telemetry, or support data signals to mine.
+- Stakeholders contradict each other and need empirical arbitration.
+- Conversion / funnel / retention improvement initiative where guessing scope wastes cycles.
+- Compliance or accessibility programme where instrumented gaps drive scope.
 
 ## Skip If (ANY kills it)
 
-- Pre-product or pre-launch with no users — any "data" will be a vanity sample; use qualitative discovery instead.
-- The org has zero data infrastructure: no event tracking, no warehouse, no BI — build the minimum infra first before claiming the practice.
-- One-off compliance/legal/contractual requirements where the answer is "must, by date X."
-- Pure UX/brand/accessibility floor work where the metric is downstream perception.
-- Two-day decisions where running a baseline query costs more than shipping and reverting.
-- Teams that won't agree on a single metric definition.
+- Pre-launch / pre-data product — no signal exists yet.
+- Decision is irreversibly political — evidence will not move it.
+- Data quality is too low (noise > signal) to trust derived requirements.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Analytics access (GA4, PostHog, Amplitude, internal) | API / dashboard | data team |
+| Telemetry stream (errors, performance) | Sentry / Datadog / internal | engineering |
+| Support ticket export | CSV / API | CX team |
+| Hypothesis log | Markdown | BA / PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[requirements-documentation]] | downstream consumer of evidence-trailed requirements |
+| [[requirements-prioritization]] | evidence trail feeds RICE / WSJF scoring |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pull-data-signals` | haiku | Mechanical extraction from configured sources. |
+| `correlate-and-cluster` | sonnet | Group signals into themes; tag with evidence weight. |
+| `draft-requirements` | opus | Convert clusters into requirement statements with rationale. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/evidence-trail.md` | Per-requirement evidence trail: signal → metric → requirement. |
+| `templates/data-driven-spec.md` | Full spec.md skeleton with evidence column per requirement. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-data-driven-requirements.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[requirements-documentation]]
+- [[requirements-prioritization]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

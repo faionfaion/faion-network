@@ -1,55 +1,23 @@
+# purpose: Stdlib audit checking event-log integrity before mining.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 #!/usr/bin/env python3
-# pm-feasibility-audit.py — audit a CSV event log for process mining readiness.
-# Usage: python pm-feasibility-audit.py log.csv
-# Output: JSON with ready flag, stats, and recommended algorithm.
-import sys
-import json
-import pandas as pd
+"""pm-feasibility-audit.py — verify event-log integrity (case_id, activity, timestamp)."""
+from __future__ import annotations
+import csv, sys
 
-df = pd.read_csv(sys.argv[1])
-required = {"case_id", "activity", "timestamp"}
-missing = required - set(df.columns)
-if missing:
-    print(json.dumps({"ready": False, "missing_columns": sorted(missing)}))
-    sys.exit(1)
+REQUIRED = {'case_id', 'activity', 'timestamp'}
 
-df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-ts_bad = int(df["timestamp"].isna().sum())
-case_n = int(df["case_id"].nunique())
-act_n = int(df["activity"].nunique())
-events_per_case = df.groupby("case_id").size()
-median_events = float(events_per_case.median())
-trace = df.sort_values(["case_id", "timestamp"]).groupby("case_id")["activity"].apply(tuple)
-variants = trace.value_counts()
-variant_n = int(variants.size)
-top10_share = float(variants.head(10).sum() / variants.sum())
+def main(path: str) -> int:
+    with open(path) as f:
+        r = csv.DictReader(f)
+        missing = REQUIRED - set(r.fieldnames or [])
+        if missing:
+            sys.stderr.write(f'missing columns: {sorted(missing)}\n'); return 1
+    return 0
 
-verdict = (
-    case_n >= 200
-    and act_n >= 3
-    and act_n <= 200
-    and median_events >= 3
-    and ts_bad / len(df) < 0.02
-)
-
-recommended = (
-    "alpha" if act_n < 15 and variant_n < 30
-    else "inductive-infrequent" if variant_n > 100
-    else "heuristic"
-)
-
-print(json.dumps({
-    "ready": verdict,
-    "cases": case_n,
-    "activities": act_n,
-    "variants": variant_n,
-    "median_events_per_case": median_events,
-    "top10_variant_coverage": round(top10_share, 3),
-    "bad_timestamps": ts_bad,
-    "recommended_algorithm": recommended,
-    "notes": {
-        "alpha": "Suitable for clean logs with few activities and variants. Cannot handle loops or noise.",
-        "heuristic": "Handles noise and loops but loses formal soundness guarantees.",
-        "inductive-infrequent": "Guarantees soundness; trades fitness for precision on high-variant logs.",
-    }.get(recommended, ""),
-}, indent=2))
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1]))

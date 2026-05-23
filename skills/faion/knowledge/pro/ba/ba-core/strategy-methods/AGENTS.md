@@ -3,75 +3,97 @@ slug: strategy-methods
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Toolkit for weighted multi-criteria scoring of solution options, limitation/defect assessment, and BABOK 50-technique lookup.
-content_id: "907e05d8c540b473"
-tags: [strategy, options-scoring, decision-analysis, babok-techniques, limitation-assessment]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a method-selection record (Porter Five Forces / SWOT / Wardley / OST / Blue Ocean) with explicit fit criteria, scoring, and limitation register.
+content_id: "220e37cbffb6bd8f"
+complexity: medium
+produces: decision-record
+est_tokens: 3600
+tags: [ba, strategy, method, porter, wardley]
 ---
-# Strategy Methods: Solution Options and Limitation Assessment
+# Strategy Methods
 
 ## Summary
 
-**One-sentence:** Toolkit for weighted multi-criteria scoring of solution options, limitation/defect assessment, and BABOK 50-technique lookup.
+**One-sentence:** Produces a method-selection record (Porter Five Forces / SWOT / Wardley / OST / Blue Ocean) with explicit fit criteria, scoring, and limitation register.
 
-**One-paragraph:** Toolkit for weighted multi-criteria scoring of solution options, limitation/defect assessment, and BABOK 50-technique lookup. Without a structured scoring method, solution recommendations are driven by advocacy rather than evidence. Weighted criteria scoring forces explicit trade-offs; sensitivity analysis reveals whether the recommendation is robust or brittle. Limitation registers with 5-whys root causes prevent remediation from landing on symptoms.
+**One-paragraph:** Produces a method-selection record (Porter Five Forces / SWOT / Wardley / OST / Blue Ocean) with explicit fit criteria, scoring, and limitation register. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Strategy analysis у процесі — треба свідомо вибрати method, а не за замовчуванням SWOT.
+- Stakeholder disagreement — competing methods (Porter vs Wardley) треба порівняти.
+- Multi-unit program — різні методи для різних BU.
+- Audit застарілого strategy artefact — треба зрозуміти яким методом він зроблений.
 
 ## Applies If (ALL must hold)
 
-- Two or more solution options exist (build/buy/partner/SaaS/status-quo) and a sponsor needs a defensible recommendation with a numeric weighted score
-- Vendor/RFP shortlists where 3-5 finalists must be reduced to a single recommendation
-- Architecture decisions where competing patterns need comparison beyond gut feel
-- Post-deployment when users surface defects and someone must decide fix/workaround/accept/defer
-- Steering-committee decision packs requiring alternatives, criteria, weights, and sensitivity analysis
-- Quick BA technique lookup: matching a sub-task to the right BABOK technique from the 50-technique reference
+- Strategy analysis is underway and a method must be chosen.
+- Stakeholder disagreement on framing — methods compete.
+- Multi-context program needing different methods per business unit.
+- Reviewing a stale strategy artefact for which the method is unclear.
 
 ## Skip If (ANY kills it)
 
-- One option with an obvious winner — do not invent strawman alternatives to fill a matrix
-- Reversible/two-way-door decisions (feature flag, copy change, small refactor) — use a one-line ADR
-- Decisions dominated by a single hard constraint (regulatory deadline, cost ceiling) — filter on that constraint alone
-- Pure quantitative cash-flow comparisons — use NPV/IRR/payback instead
-- Limitation assessment for incidents with a known cause and an in-flight patch — use post-mortem/5-whys
+- Strategy method is already mandated.
+- Tactical scope where method selection adds no value.
+- All candidate methods are equally weak — bigger problem exists upstream.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Strategic context (industry, maturity, competition) | Markdown | BA / PM |
+| Available data (financials, market intel) | CSV / dashboard | data team |
+| Stakeholder availability for the chosen method | calendar | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[strategy-basics]] | shared vocabulary prereq |
+| [[strategy-analysis]] | downstream consumer of the chosen method |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `score-context` | haiku | Mechanical fit-scoring per method axis. |
+| `recommend-method` | opus | Synthesise method recommendation under contradicting signals. |
+| `draft-limitation-register` | sonnet | List known weaknesses + mitigations. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/scoring-matrix.md` | Method scoring matrix with fit axes. |
+| `templates/limitation-register.md` | Per-method limitation register. |
+| `templates/sensitivity.py` | Stdlib sensitivity analysis for method-selection scores. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-strategy-methods.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[strategy-basics]]
+- [[strategy-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

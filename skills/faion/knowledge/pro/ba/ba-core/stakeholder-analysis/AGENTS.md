@@ -3,73 +3,96 @@ slug: stakeholder-analysis
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Identify parties affected by change initiatives, classify by influence and impact, document needs, and plan engagement.
-content_id: "42ba2d9d896f76bf"
-tags: [stakeholder, analysis, engagement, bakok, salience]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a stakeholder register + power/interest map + RACI matrix mapping who decides, contributes, signs off, and must be informed across the engagement.
+content_id: "eda0fba34696f138"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [ba, stakeholder, raci, power-interest, engagement]
 ---
 # Stakeholder Analysis
 
 ## Summary
 
-**One-sentence:** Identify parties affected by change initiatives, classify by influence and impact, document needs, and plan engagement.
+**One-sentence:** Produces a stakeholder register + power/interest map + RACI matrix mapping who decides, contributes, signs off, and must be informed across the engagement.
 
-**One-paragraph:** Identify parties affected by change initiatives, classify by influence and impact, document needs, and plan engagement. Uses Mendelow grid for cadence and Mitchell-Agle-Wood salience model for prioritization. Definitions must be frozen before any classification begins.
+**One-paragraph:** Produces a stakeholder register + power/interest map + RACI matrix mapping who decides, contributes, signs off, and must be informed across the engagement. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- New engagement з >5 stakeholder'ів — треба чіткий RACI + power/interest map.
+- Cross-functional/multi-vendor програма, де accountability розпливчатий.
+- Conflict-heavy initiative — escalation paths мають бути названі заздалегідь.
+- Compliance/audit context — sign-off chain документований.
 
 ## Applies If (ALL must hold)
 
-- Starting any initiative: identify stakeholders before the first interview or workshop
-- Regulated / audited programs (SOX, MDR, ISO 13485, GDPR Art. 35 DPIA) needing BAKOK-aligned artifacts
-- Onboarding a new BA or agent to an existing program to ensure reproducible classification
-- Choosing a responsibility model (RACI vs RASCI vs DACI vs RAPID) for a specific decision class
-- Disambiguating "stakeholder" from "user", "persona", "actor", "customer" across Confluence/Notion pages
+- New engagement or initiative with >5 stakeholders.
+- Cross-functional / multi-vendor program where accountability is unclear.
+- Conflict-heavy context where escalation paths must be named.
+- Compliance audit demanding documented sign-off chain.
 
 ## Skip If (ANY kills it)
 
-- Solo / pre-PMF work where ceremony exceeds value — use direct customer discovery
-- Pure code refactor with zero business-stakeholder change
-- One-shot decisions with a single accountable owner — a one-line ADR is enough
-- Open-source community projects with pseudonymous identities (salience axes cannot be measured)
+- Solo / pair-team work with no external stakeholders.
+- Stakeholder list is already maintained and current elsewhere.
+- Initiative is too short (< 2 weeks) to justify register maintenance.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Org chart | CSV / HRIS export | people-ops |
+| Engagement scope | Markdown / SOW | PM |
+| Decision rights mandate | Output of ba-planning T3 | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ba-planning]] | T2 stakeholders feed into ba-planning bundle |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `extract-stakeholders` | haiku | Mechanical extraction from org chart + scope. |
+| `score-power-interest` | sonnet | Map each stakeholder onto power/interest grid. |
+| `build-raci` | sonnet | Assign R/A/C/I per artefact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/stakeholder-register.md` | Master register: name, role, category, contact, influence, interest. |
+| `templates/stakeholder-profile.md` | Per-key-stakeholder profile with engagement strategy. |
+| `templates/raci-lint.sh` | Shell helper checking RACI has exactly one A per row. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-stakeholder-analysis.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-core/`
+- [[ba-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
