@@ -2,75 +2,93 @@
 slug: adobe-firefly-integration
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Workflow for integrating Adobe Firefly generative AI into Creative Cloud pipelines — structured image brief generation (positive prompt, negative prompt, style preset, aspect ratio), batch generation via Firefly Services API (enterprise), and brand-compliance auditing of generated assets.
-content_id: "8ae553d58f3928d8"
-tags: [adobe-firefly, generative-ai, image-generation, brand-compliance, creative-workflow]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an Adobe Firefly + Creative Cloud integration with structured prompt rules and brand-compliance auditing, scoped to the UX/UI designer's CC pipeline.
+content_id: "17ccea04f994a691"
+complexity: medium
+produces: code
+est_tokens: 4200
+tags: [adobe, firefly, creative-cloud, generative-ai, brand-audit]
 ---
-# Adobe Firefly Integration in Creative Cloud Workflows
+# Adobe Firefly Creative Cloud Integration
 
 ## Summary
 
-**One-sentence:** Workflow for integrating Adobe Firefly generative AI into Creative Cloud pipelines — structured image brief generation (positive prompt, negative prompt, style preset, aspect ratio), batch generation via Firefly Services API (enterprise), and brand-compliance auditing of generated assets.
+**One-sentence:** Produces an Adobe Firefly + Creative Cloud integration with structured prompt rules and brand-compliance auditing, scoped to the UX/UI designer's CC pipeline.
 
-**One-paragraph:** Workflow for integrating Adobe Firefly generative AI into Creative Cloud pipelines — structured image brief generation (positive prompt, negative prompt, style preset, aspect ratio), batch generation via Firefly Services API (enterprise), and brand-compliance auditing of generated assets. Agents operate in brief-generation and post-processing layers; direct API automation requires enterprise Firefly Services access.
+**One-paragraph:** UX/UI designers running Firefly inside Creative Cloud need a structured prompt taxonomy and brand-compliance audit layer so generated assets stay on-system. This methodology produces a Firefly Services client wired into the CC pipeline, a prompt-rule YAML (brand voice + forbidden + required), and a CI audit job that scans Firefly outputs for brand violations before they enter the asset library. Distinct from the UI-designer methodology by its CC pipeline integration + designer-driven workflow.
+
+**Ефективно для:** UX/UI designer на CC pipeline, що потребує structured prompts + brand audit перед публікацією asset library.
 
 ## Applies If (ALL must hold)
 
-- Generating commercial-safe imagery for marketing, product pages, or editorial content
-- Creating on-brand variations of existing images at scale (background removal, generative fill for product shots)
-- Producing vector assets from text descriptions for icon sets or illustration libraries
-- Text effects and typography treatments for campaign assets
-- Batch asset generation within an established Creative Cloud workflow
+- Designer-driven workflow inside Adobe Creative Cloud (Photoshop, Illustrator, InDesign).
+- Assets entering a shared library must pass brand audit.
+- Firefly Services credentials available.
 
 ## Skip If (ANY kills it)
 
-- UI/UX prototyping — use Figma; Firefly does not produce interactive components
-- Developer handoff assets — Firefly generates raster/vector art, not production-ready SVG component assets
-- When generative credits are exhausted and content deadline is imminent — have a stock fallback
-- Brand-critical assets requiring exact color accuracy — AI introduces color variation; validate against brand palette
-- When style guide strictly requires human-created imagery (certain editorial, legal, or medical contexts)
+- Workflow is non-designer (engineering batch) — use ui-designer/adobe-firefly-integration.
+- Single ad-hoc image — desktop UI is faster.
+- Brand audit not required.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Firefly Services API creds | secret | secrets manager |
+| Brand voice spec | YAML | brand team |
+| Asset library destination | URI | ops |
+| CC pipeline config | JSON | design ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-design-assistant-patterns]] | Pattern catalogue for designer-facing AI surfaces. |
+| [[ai-enhanced-design-systems]] | DS automation context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-code` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/cc_firefly_client.py` | Creative Cloud + Firefly Python client with prompt taxonomy + audit hooks. |
+| `templates/brand-audit-rules.yaml` | Brand audit rules skeleton (logo / forbidden / colour adherence). |
+| `templates/_smoke-test.yaml` | Filled editorial-portrait prompt example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-adobe-firefly-integration.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[ai-design-assistant-patterns]]
+- [[ai-enhanced-design-systems]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the code; mis-routing leads to producing the wrong artefact shape.

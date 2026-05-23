@@ -3,73 +3,94 @@ slug: ai-assisted-persona-building
 tier: geek
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Synthesize data-backed user personas from multi-source inputs (analytics CSVs, interview transcripts, survey exports) using a two-pass agent pipeline: a Sonnet subagent clusters behavioral patterns and produces draft persona JSON, then a validation agent checks each persona for JTBD consistency and flags fabricated fields.
-content_id: "73260ac58e8f8236"
-tags: [personas, ux-research, jtbd, data-driven, clustering]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a validated persona report from analytics + interviews + surveys via two-pass clustering (Sonnet broad cluster → Haiku detail refine) with quote grounding + human validation gate.
+content_id: "8a4004be71a432bd"
+complexity: deep
+produces: report
+est_tokens: 4900
+tags: [personas, user-research, clustering, ai-assisted, validation]
 ---
-# AI-Assisted Persona Building
+# AI-Assisted Persona Building (Two-Pass)
 
 ## Summary
 
-**One-sentence:** Synthesize data-backed user personas from multi-source inputs (analytics CSVs, interview transcripts, survey exports) using a two-pass agent pipeline: a Sonnet subagent clusters behavioral patterns and produces draft persona JSON, then a validation agent checks each persona for JTBD consistency and flags fabricated fields.
+**One-sentence:** Produces a validated persona report from analytics + interviews + surveys via two-pass clustering (Sonnet broad cluster → Haiku detail refine) with quote grounding + human validation gate.
 
-**One-paragraph:** Synthesize data-backed user personas from multi-source inputs (analytics CSVs, interview transcripts, survey exports) using a two-pass agent pipeline: a Sonnet subagent clusters behavioral patterns and produces draft persona JSON, then a validation agent checks each persona for JTBD consistency and flags fabricated fields. Human researchers approve before personas enter any design system.
+**One-paragraph:** Persona building from raw research data is high-effort and human-biased. Two-pass agent clustering reduces effort while preserving rigour: pass 1 (Sonnet) clusters analytics + interview snippets into broad segments; pass 2 (Haiku) refines each cluster with quote grounding + goal extraction. Every persona claim is anchored to a quote citation. A human validation gate blocks publishing until ≥3 stakeholders sign off. Output: persona report with N personas, each with quote evidence + confidence + open questions.
+
+**Ефективно для:** user researcher / PM, що синтезує persons із 50–500 source items (interviews + surveys + analytics) — і потребує quote-grounded + validated report.
 
 ## Applies If (ALL must hold)
 
-- You have real user data (analytics events, interview transcripts, survey CSVs) to cluster
-- You need to synthesize personas from multi-source data faster than manual affinity mapping
-- A product team wants data-backed personas replacing assumption archetypes
-- Updating stale personas after a major product pivot or new market entry
-- Running a JTBD framing exercise alongside persona creation
+- Source dataset ≥50 items mixing analytics + interviews + surveys.
+- Stakeholder buy-in needed for persona credibility (≥3 reviewers signing off).
+- Each persona claim must be anchored to a quote / data point.
 
 ## Skip If (ANY kills it)
 
-- Zero real user data exists — AI will hallucinate plausible-sounding but false personas
-- Product is in pre-discovery with no interviews or analytics yet
-- Regulatory context prohibits feeding user data to third-party LLMs (HIPAA, GDPR special categories)
-- Only 1–2 archetypes needed from a single homogeneous segment — manual synthesis is faster
+- Source dataset is <30 items — manual synthesis is faster.
+- Personas are speculative (no source data) — see [[ai-persona-building]] for single-pass cheap path.
+- Stakeholder validation not feasible — outputs will be ignored.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Interview transcripts | txt/json | research ops |
+| Survey results | CSV | research ops |
+| Analytics segments | JSON | data team |
+| Stakeholder reviewer list | list | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-interview-analysis]] | Quote extraction from transcripts. |
+| [[ai-persona-building]] | Single-pass alternative for cheaper scenarios. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-report` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/persona-report.json` | JSON skeleton: personas + source_count + passes + stakeholder_reviews + open_questions. |
+| `templates/prompt-broad-cluster.txt` | Sonnet prompt for broad clustering. |
+| `templates/prompt-refine-cluster.txt` | Haiku prompt for per-cluster refinement. |
+| `templates/_smoke-test.json` | Filled time-poor-parent persona example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-assisted-persona-building.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/user-researcher/`
+- [[ai-interview-analysis]]
+- [[ai-persona-building]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.

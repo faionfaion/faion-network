@@ -2,73 +2,93 @@
 slug: ai-design-assistant-patterns
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for selecting and specifying AI assistant interaction patterns within design tools: sidebar (persistent, long tasks), modal (single-shot high-stakes generation), and inline (micro-suggestions on selection).
-content_id: "8ca2a4fd707493f8"
-tags: [ai-ux, interaction-patterns, design-tools, human-ai-collaboration, assistant-ui]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a decision record for AI assistants embedded in UX/UI design tools — sidebar (long tasks) vs modal (single-shot) vs inline (micro-suggestions) — with trigger rules and fallback states.
+content_id: "49ab440eccfa6bcf"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
+tags: [ai-assistant, design-tools, ux-patterns, fallback, human-in-loop]
 ---
-# AI Design Assistant Patterns
+# AI Design Assistant Patterns (UX/UI)
 
 ## Summary
 
-**One-sentence:** Methodology for selecting and specifying AI assistant interaction patterns within design tools: sidebar (persistent, long tasks), modal (single-shot high-stakes generation), and inline (micro-suggestions on selection).
+**One-sentence:** Produces a decision record for AI assistants embedded in UX/UI design tools — sidebar (long tasks) vs modal (single-shot) vs inline (micro-suggestions) — with trigger rules and fallback states.
 
-**One-paragraph:** Methodology for selecting and specifying AI assistant interaction patterns within design tools: sidebar (persistent, long tasks), modal (single-shot high-stakes generation), and inline (micro-suggestions on selection). Covers trigger conditions, response formats, fallback states, human confirmation requirements, and anti-patterns that erode trust.
+**One-paragraph:** Distinct from the ui-designer counterpart by emphasis on UX research integration (where the assistant lives in the broader workflow, not just the canvas). This methodology produces a decision record selecting ONE pattern per assistant with explicit trigger rules (when the assistant invokes itself), context-disclosure spec (what data it reads), fallback states (offline / rate-limited / low-confidence), and human-in-loop checkpoints.
+
+**Ефективно для:** UX/UI lead, що додає AI assistant у research + design workflow і потребує human-in-loop checkpoints + fallback states.
 
 ## Applies If (ALL must hold)
 
-- Defining how an AI assistant should surface inside a design tool for a product feature
-- Auditing an existing AI assistant UX for interaction pattern anti-patterns
-- Generating design specifications for contextual, generative, or review-type AI assistants
-- Selecting which assistant pattern (sidebar / modal / inline) fits a given task complexity
+- Embedding AI assistance in a UX/UI workflow (research + design + handoff).
+- Decision frozen BEFORE implementation; ≥2 patterns considered.
+- Human-in-loop checkpoints required (auditable, replayable).
 
 ## Skip If (ANY kills it)
 
-- When the AI capability itself is undefined — choose capability first, then interaction pattern
-- Fully automated pipelines where no human interaction is expected during the AI task
-- Mobile-first interfaces with minimal screen real estate where persistent sidebar degrades UX
-- Purely mechanical tasks needing no conversational affordance (batch export, resize)
+- Pattern already in production >6 months.
+- Single-shot prompt UX with no follow-up.
+- Workflow is engineering-only — see ui-designer counterpart.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Workflow description (research → design → handoff stages) | markdown | PM |
+| Trigger sources (designer click / agent poll / scheduled) | JSON | engineering |
+| Context-disclosure inventory (data the assistant reads) | JSON | privacy |
+| Fallback policy | YAML | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-enhanced-design-systems]] | DS instrumentation context. |
+| [[ai-design-assistant-patterns]] (ui-designer) | Sibling under ui-designer; mainly canvas-focused. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-decision-record` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/decision-record.json` | JSON skeleton: assistant + pattern + triggers + disclosure + fallbacks + checkpoints. |
+| `templates/trigger-rules.yaml` | Trigger rule library template. |
+| `templates/_smoke-test.json` | Filled design-review-bot decision record. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-design-assistant-patterns.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[ai-enhanced-design-systems]]
+- [[ai-assisted-accessibility]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.

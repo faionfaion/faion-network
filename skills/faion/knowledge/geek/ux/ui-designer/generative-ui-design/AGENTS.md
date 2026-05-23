@@ -2,75 +2,94 @@
 slug: generative-ui-design
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use AI tools (Galileo, Uizard, v0, Claude Artifacts, Relume) to generate multiple UI layout variants from a feature brief, then have a human select and refine.
-content_id: "2bed50277e88ba86"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an ideation-phase UI spec from a feature brief by generating 5–10 layout variants (v0, Claude Artifacts, Galileo, Uizard, Relume) and selecting one for hand-off, with explicit not-production-ready labelling.
+content_id: "505f4defdb6eaa58"
+complexity: medium
+produces: spec
+est_tokens: 4900
 tags: [generative, ui, design, ai, prototyping]
 ---
 # Generative UI Design
 
 ## Summary
 
-**One-sentence:** Use AI tools (Galileo, Uizard, v0, Claude Artifacts, Relume) to generate multiple UI layout variants from a feature brief, then have a human select and refine.
+**One-sentence:** Produces an ideation-phase UI spec from a feature brief by generating 5–10 layout variants (v0, Claude Artifacts, Galileo, Uizard, Relume) and selecting one for hand-off, with explicit not-production-ready labelling.
 
-**One-paragraph:** Use AI tools (Galileo, Uizard, v0, Claude Artifacts, Relume) to generate multiple UI layout variants from a feature brief, then have a human select and refine. Generative UI accelerates ideation and rapid prototyping; it does not produce production-ready output. Claude Artifacts is the only agent-native path — the agent generates the artifact inline, the human reviews it, and the agent iterates based on feedback.
+**One-paragraph:** Generative UI tools accelerate ideation and rapid prototyping but do not produce production-ready output. Claude Artifacts is the only agent-native path (agent generates inline, human reviews, agent iterates on feedback). This methodology produces an ideation spec with 5–10 generated variants, a selected layout, a refinement-required list, and a hand-off package marked not-production-ready so engineering does not consume it directly.
+
+**Ефективно для:** PM / designer на ideation phase, що потребує 5–10 variants за день і refinement шлях до production.
 
 ## Applies If (ALL must hold)
 
-- Rapid ideation: generating 5–10 UI layout variants from a feature brief before any human design work starts
-- Converting a written product spec into interactive prototypes for early stakeholder feedback
-- Producing low-fidelity wireframe candidates that a designer then refines
-- Generating alternative component implementations (card, list, grid) when the team is undecided
-- Bootstrapping a new screen when design system tokens are already defined
+- Pre-design ideation: generating 5–10 variants from a feature brief before any human design work.
+- Stakeholder feedback needed on layout direction before committing design hours.
+- Output is explicitly an ideation artefact, not a production handoff.
 
 ## Skip If (ANY kills it)
 
-- Final, production-ready UI is expected — generative output requires significant designer refinement
-- Strict brand compliance is mandatory from the first iteration — AI tools ignore brand guidelines unless explicitly constrained
-- Component must integrate with an existing codebase — generated code often uses different component libraries
-- WCAG AA/AAA accessibility is non-negotiable from day one — generated UIs consistently miss aria attributes and focus management
-- The client or legal team cannot review IP of AI-generated design artifacts
+- Need production-ready output — generative UI is ideation-only.
+- Brand-system constraint is rigid and generators do not honour tokens.
+- Stakeholders expect generated output to ship as-is.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Feature brief | markdown | PM |
+| Constraints (brand tokens, must-not-have) | JSON | design |
+| Selected generators | list (v0 / artifacts / galileo / uizard / relume) | design |
+| Stakeholder review channel | URL | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-design-assistant-patterns]] | Assistant pattern boundary. |
+| [[ai-enhanced-design-systems]] | Token / DS constraint context. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-spec` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/ideation-spec.json` | JSON skeleton: brief_id + variants + selection + rationale + refinement list. |
+| `templates/generator-prompt.md` | Prompt skeleton with brand-token + must-not-have injection slots. |
+| `templates/_smoke-test.json` | Filled checkout-redesign ideation spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-generative-ui-design.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[ai-design-assistant-patterns]]
+- [[ai-enhanced-design-systems]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.

@@ -2,74 +2,94 @@
 slug: multimodal-vui-design
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design voice + visual interfaces for smart displays by specifying four interaction patterns (voice-initiated screen-completed, screen-initiated voice-completed, voice + visual feedback, voice navigation + visual content) and enforcing a three-tier fallback hierarchy (voice → touch → keyboard).
-content_id: "50c32b1c6dd76625"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a voice + visual interaction spec for smart displays with four interaction patterns and a three-tier fallback hierarchy (voice → touch → keyboard) plus state-sync verification.
+content_id: "586d55b2e1eeecaf"
+complexity: deep
+produces: spec
+est_tokens: 4900
 tags: [multimodal, voice-ui, smart-display, apl, fallback]
 ---
 # Multimodal VUI Design
 
 ## Summary
 
-**One-sentence:** Design voice + visual interfaces for smart displays by specifying four interaction patterns (voice-initiated screen-completed, screen-initiated voice-completed, voice + visual feedback, voice navigation + visual content) and enforcing a three-tier fallback hierarchy (voice → touch → keyboard).
+**One-sentence:** Produces a voice + visual interaction spec for smart displays with four interaction patterns and a three-tier fallback hierarchy (voice → touch → keyboard) plus state-sync verification.
 
-**One-paragraph:** Design voice + visual interfaces for smart displays by specifying four interaction patterns (voice-initiated screen-completed, screen-initiated voice-completed, voice + visual feedback, voice navigation + visual content) and enforcing a three-tier fallback hierarchy (voice → touch → keyboard). Every feature requires explicit timeout behavior, error state handling, and state-sync verification.
+**One-paragraph:** Smart displays (Echo Show, Nest Hub, Alexa TV) combine voice input + screen output. Four interaction patterns cover the design space: voice-initiated screen-completed, screen-initiated voice-completed, voice + visual feedback, voice navigation + visual content. Every feature requires a three-tier fallback (voice → touch → keyboard), explicit timeout behaviour, error-state handling, and state-sync verification between voice intent and on-screen UI. This methodology produces a feature-level spec encoding all four.
+
+**Ефективно для:** voice-UX engineer, що проектує Alexa / Google smart-display experience і потребує fallback + state-sync verification.
 
 ## Applies If (ALL must hold)
 
-- Designing a voice interface for a smart display (Amazon Echo Show, Google Nest Hub, Alexa TV)
-- Building a product combining voice input with screen output
-- Auditing an existing VUI for missing visual fallbacks
-- Generating APL or equivalent smart display template markup from a design brief
-- Prototyping a multimodal conversation flow where visual selection resolves voice ambiguity
+- Designing a voice interface for a smart display (Echo Show, Nest Hub, Alexa TV).
+- Product combines voice input with screen output.
+- Fallback hierarchy + state-sync verification are mandatory deliverables.
 
 ## Skip If (ANY kills it)
 
-- Building a voice-only screenless speaker interface — pure VUI methodology is more appropriate
-- Building a screen-only UI with optional voice layer — voice-initiated patterns add no value
-- Target device has no reliable microphone (high-noise kiosk without directional mic)
-- User research shows the target audience strongly opposes voice interaction
+- Pure voice (no display) — use voice-only methodology.
+- Pure screen (no voice) — use standard UI methodology.
+- Smart display is the secondary surface — design primary first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Feature brief | markdown | PM |
+| Target devices + APL version | list + version | engineering |
+| Accessibility constraints | JSON | a11y team |
+| Localization scope | list (locales) | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[llm-powered-conversational-ai]] | ASR/LLM/TTS pipeline context. |
+| [[ai-design-assistant-patterns]] | Pattern catalogue. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-spec` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/feature-spec.json` | JSON skeleton with feature_id + pattern + fallback + timeout + error + statesync + locales. |
+| `templates/statesync-test.template.ts` | Smoke test template for voice→screen state verification. |
+| `templates/_smoke-test.json` | Filled play-recipe-cards spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-multimodal-vui-design.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[llm-powered-conversational-ai]]
+- [[ai-design-assistant-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.

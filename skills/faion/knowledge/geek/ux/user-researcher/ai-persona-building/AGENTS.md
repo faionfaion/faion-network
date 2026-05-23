@@ -3,73 +3,93 @@ slug: ai-persona-building
 tier: geek
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Lightweight single-pass persona generation: a Sonnet subagent receives a structured description of a user type with known data points and a JTBD statement, and produces a persona card.
-content_id: "2550b232685227d3"
-tags: [persona-building, ux-research, ai-agents, lightweight-process]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a lightweight single-pass persona report (Sonnet + Haiku) for early exploration when full clustering is overkill, with explicit not-validated labelling.
+content_id: "17ce350f88c4c6be"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [personas, single-pass, ai-assisted, ideation, lightweight]
 ---
-# AI Persona Building (Lightweight)
+# AI Persona Building (Single-Pass)
 
 ## Summary
 
-**One-sentence:** Lightweight single-pass persona generation: a Sonnet subagent receives a structured description of a user type with known data points and a JTBD statement, and produces a persona card.
+**One-sentence:** Produces a lightweight single-pass persona report (Sonnet + Haiku) for early exploration when full clustering is overkill, with explicit not-validated labelling.
 
-**One-paragraph:** Lightweight single-pass persona generation: a Sonnet subagent receives a structured description of a user type with known data points and a JTBD statement, and produces a persona card. A Haiku subagent formats the card into the team's documentation template. No clustering step — suitable for early exploration or updating a single field, not for full segmentation.
+**One-paragraph:** Early ideation often needs directional personas before the budget exists for full research. Single-pass agent generation (Sonnet for structure + Haiku for detail) is cheap and fast but produces unvalidated output. This methodology produces a persona report explicitly labelled not-validated, with each persona showing source-data references (analytics segments, secondary research) and a 'validation required before product decision' flag — so downstream consumers do not mistake it for the two-pass validated report.
+
+**Ефективно для:** founder / PM на pre-research phase, що потребує 3–5 directional personas за годину для discovery, не для рішень.
 
 ## Applies If (ALL must hold)
 
-- Lightweight persona creation needed quickly without a dedicated researcher
-- Prototyping phase where placeholder personas unblock design decisions
-- Updating a single persona field across an existing library
-- Generating documentation from an already-agreed behavioral cluster description
-- Supplementing thin data with AI-expanded hypotheses for rapid validation planning
+- Pre-research ideation phase: directional personas needed before research budget exists.
+- Source data is secondary (analytics segments, market reports) — not primary interviews.
+- Output is explicitly not used for product decisions without validation.
 
 ## Skip If (ANY kills it)
 
-- No real user data exists and the team plans to treat AI output as ground truth
-- Regulated domains (healthcare, finance) where persona inaccuracy causes downstream harm
-- Personas will drive hiring, pricing, or go-to-market budget without human review
-- Full clustering from multi-source data is needed — use ai-assisted-persona-building instead
+- Personas will drive product decisions — use [[ai-assisted-persona-building]] two-pass instead.
+- Primary research data exists — two-pass methodology has higher ROI.
+- Stakeholders may treat single-pass output as final — process not strong enough to prevent misuse.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Analytics segments / secondary research | JSON / CSV | data team |
+| Industry context brief | markdown | PM |
+| Persona count target (3–5) | integer | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-assisted-persona-building]] | Upgrade path for validated personas. |
+| [[synthetic-users]] | Companion ideation tool. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-report` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/persona-report.json` | JSON skeleton: personas + validated + use_for + next_step. |
+| `templates/prompt-sonnet-scaffold.txt` | Sonnet prompt for persona scaffold pass. |
+| `templates/prompt-haiku-detail.txt` | Haiku prompt for detail pass. |
+| `templates/_smoke-test.json` | Filled discovery-phase persona report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-persona-building.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/user-researcher/`
+- [[ai-assisted-persona-building]]
+- [[synthetic-users]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.

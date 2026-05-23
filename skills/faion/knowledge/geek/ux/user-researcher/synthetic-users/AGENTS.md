@@ -3,74 +3,93 @@ slug: synthetic-users
 tier: geek
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Methodology for using AI-generated research participants to produce directional feedback during early ideation — covering persona simulation, interview analysis, and the mandatory gate of validating key findings with at least 3 real users before any product decision.
-content_id: "d6f934fd273d52f5"
-tags: [synthetic-research, ai-agents, user-simulation, rapid-testing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a directional feedback report from AI-generated research participants during ideation, with a mandatory human-validation gate before any product decision.
+content_id: "8774b54c69030c96"
+complexity: medium
+produces: report
+est_tokens: 4900
+tags: [synthetic-users, ai-generated-participants, ideation, validation-gate, directional]
 ---
 # Synthetic Users
 
 ## Summary
 
-**One-sentence:** Methodology for using AI-generated research participants to produce directional feedback during early ideation — covering persona simulation, interview analysis, and the mandatory gate of validating key findings with at least 3 real users before any product decision.
+**One-sentence:** Produces a directional feedback report from AI-generated research participants during ideation, with a mandatory human-validation gate before any product decision.
 
-**One-paragraph:** Methodology for using AI-generated research participants to produce directional feedback during early ideation — covering persona simulation, interview analysis, and the mandatory gate of validating key findings with at least 3 real users before any product decision. Synthetic users are directional tools, never confirmatory evidence.
+**One-paragraph:** Synthetic users (AI-generated research participants) provide zero-cost directional feedback at ideation speed. They are NOT a substitute for real users — they reflect LLM priors, not your customer base. This methodology produces a directional report (concepts + simulated reactions + open questions) explicitly labelled requires-real-user-validation before any product decision. Used correctly, synthetic users compress idea-to-feedback from weeks to hours.
+
+**Ефективно для:** founder / PM, що тестує 5–10 concept variants за день перед real-user research.
 
 ## Applies If (ALL must hold)
 
-- Early ideation: generating directional feedback on concepts before recruiting real participants
-- Hypothesis generation: stress-testing assumptions with AI-simulated user archetypes
-- Rapid concept testing at zero research budget when timeline is days, not weeks
-- Producing illustrative failure scenarios for edge-case personas (low-literacy, non-native speakers)
-- Supplementing thin real-user datasets when recruitment would delay a critical decision
+- Ideation: ≥5 concept variants need directional feedback before research budget.
+- Output explicitly labelled not-decision-grade.
+- Plan exists to validate top synthetic findings with real users within 30 days.
 
 ## Skip If (ANY kills it)
 
-- Go/no-go product decisions — synthetic feedback is directional only, never confirmatory
-- Demand forecasting or willingness-to-pay studies — AI is trained on text, not economic behavior
-- Sensitive population research (healthcare, legal, financial) — bias and hallucination risk is unacceptable
-- Any study output presented to investors or regulators as real user evidence
-- When you already have access to real users — synthetic users do not improve on real data
+- Decision is high-stakes (medical / financial / safety) — synthetic users are unsafe here.
+- Real-user research is available and affordable — use it.
+- Validation plan does not exist — output will be misused.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Concept variants | markdown × N | PM |
+| Target persona seed (synthetic basis) | JSON | PM |
+| Validation plan (real users, 30 days) | markdown | research |
+| Open questions list | list | PM |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-persona-building]] | Persona seed source for synthetic basis. |
+| [[ai-interview-analysis]] | Real-user validation companion. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-report` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/synthetic-report.json` | JSON skeleton: concepts + reactions + decision_grade + validation + high_stakes flag. |
+| `templates/prompt-synthetic-reaction.txt` | Agent prompt for synthetic user reactions. |
+| `templates/_smoke-test.json` | Filled 5-concept ideation report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-synthetic-users.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/user-researcher/`
+- [[ai-persona-building]]
+- [[ai-interview-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.

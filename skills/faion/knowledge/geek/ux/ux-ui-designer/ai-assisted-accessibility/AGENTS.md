@@ -2,74 +2,94 @@
 slug: ai-assisted-accessibility
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Pipeline for WCAG 2.
-content_id: "a0f551d07b2edb06"
-tags: [accessibility, wcag, a11y-testing, compliance, automation]
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a WCAG 2.2 AA conformance report combining AI-enhanced automated scanning (axe-core, Lighthouse) for 60–70 % coverage with structured AT + human testing plan for the remainder.
+content_id: "89e9d4563f78de30"
+complexity: deep
+produces: report
+est_tokens: 4900
+tags: [accessibility, wcag-2.2, ai-assisted, axe-core, lighthouse, at-testing]
 ---
-# AI-Assisted Accessibility
+# AI-Assisted Accessibility (WCAG 2.2 AA)
 
 ## Summary
 
-**One-sentence:** Pipeline for WCAG 2.
+**One-sentence:** Produces a WCAG 2.2 AA conformance report combining AI-enhanced automated scanning (axe-core, Lighthouse) for 60–70 % coverage with structured AT + human testing plan for the remainder.
 
-**One-paragraph:** Pipeline for WCAG 2.2 AA compliance using AI-enhanced automated scanning (axe-core, Lighthouse, pa11y) as the first pass, followed by manual assistive technology testing for interactive components and cognitive accessibility. Automated tools catch 60-70% of auditable issues; the remaining 30-40% require human + AT verification.
+**One-paragraph:** WCAG 2.2 AA conformance cannot be proved by automation alone — automated tools catch ~60–70 % of issues, the remaining 30–40 % (cognitive, screen reader, voice navigation) require human + assistive-technology testing. This methodology produces a conformance report combining automated scan output (axe-core + Lighthouse + AI triage) with a human-AT test plan for the gap. Output is a single signed report that legal / procurement can rely on, not a screenshot of a dashboard.
+
+**Ефективно для:** a11y engineer, що готує WCAG 2.2 AA conformance report для legal / procurement + знає що automation покриває 60–70%.
 
 ## Applies If (ALL must hold)
 
-- Sprint includes new UI components that must meet WCAG 2.2 AA before merge
-- Accessibility audit needed for an existing product with no prior testing baseline
-- Small team without a dedicated accessibility specialist (AI augments coverage)
-- Preparing a VPAT for enterprise procurement
-- Video/audio content being published (ADA Title II 2026 captions/audio descriptions required)
+- Product is going to procurement or legal review requiring a conformance statement.
+- Both automated scanning AND human + AT testing are available.
+- Stakeholders need a signed report (PDF / signed JSON), not a dashboard link.
 
 ## Skip If (ANY kills it)
 
-- Treating AI overlay widgets as a substitute for fixing underlying code — overlays are not compliant solutions
-- As the only testing method — automated tools miss 30-40% of issues
-- Complex interactive patterns (drag-and-drop, data grids, custom widgets) — AI scoring is unreliable; manual AT testing required
-- When user testing with people with disabilities is scheduled — do automated pass first, fix, then test with real users
+- Automation only available, no AT testing — report would be incomplete.
+- Conformance target is below AA — methodology overshoots; use legacy methodology.
+- Single-page prototype — automation overhead exceeds benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Site URL inventory | JSON array | ops |
+| Automated scan output | JSON | [[ai-accessibility-automation-2026]] |
+| AT tester roster | list | a11y team |
+| Conformance target | enum (AA / AAA) | legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-accessibility-automation-2026]] | Automation pipeline that produces the input scans. |
+| [[ai-design-assistant-patterns]] | AI surface patterns boundary. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-report` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/conformance-report.json` | JSON skeleton: site + target + automated + AT + verdict + signature + next audit. |
+| `templates/conformance-report.md` | Markdown narrative skeleton accompanying JSON. |
+| `templates/_smoke-test.json` | Filled faion.net partial-conformance example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-assisted-accessibility.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ux-ui-designer/`
+- [[ai-accessibility-automation-2026]]
+- [[ai-design-assistant-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.

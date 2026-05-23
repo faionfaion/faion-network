@@ -2,75 +2,95 @@
 slug: llm-powered-conversational-ai
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design and implement voice/text conversational interfaces backed by an LLM core (ASR → LLM → TTS pipeline) rather than rule-based NLU.
-content_id: "cfe94ee1911fd184"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a conversational-AI design spec for an LLM-core voice/text interface (ASR → LLM → TTS) replacing rule-based intent-slot NLU, with latency budget, safety filters, fallback escalation.
+content_id: "41a3d8ba41910cbb"
+complexity: deep
+produces: spec
+est_tokens: 4900
 tags: [conversational-ai, voice-ui, llm, asr, tts]
 ---
 # LLM-Powered Conversational AI
 
 ## Summary
 
-**One-sentence:** Design and implement voice/text conversational interfaces backed by an LLM core (ASR → LLM → TTS pipeline) rather than rule-based NLU.
+**One-sentence:** Produces a conversational-AI design spec for an LLM-core voice/text interface (ASR → LLM → TTS) replacing rule-based intent-slot NLU, with latency budget, safety filters, fallback escalation.
 
-**One-paragraph:** Design and implement voice/text conversational interfaces backed by an LLM core (ASR → LLM → TTS pipeline) rather than rule-based NLU. The LLM handles complex, multi-part queries, maintains conversation history, resolves ambiguity, and generates natural continuations — capabilities that traditional intent-slot systems cannot match.
+**One-paragraph:** LLM-core conversational interfaces handle multi-part queries and ambiguity that rule-based NLU cannot, but introduce latency (ASR + LLM + TTS) and hallucination risk. This methodology produces a design spec covering the three-stage pipeline (ASR provider + LLM model + TTS voice), latency budget per stage (cumulative <2.5 s for voice, <4 s for text), safety filters (jailbreak detection + factual grounding), and a fallback escalation to human + rule-based when confidence drops below threshold.
+
+**Ефективно для:** voice-UX engineer, що замінює rule-based чат-бота на LLM-core pipeline і потребує latency + safety + fallback specs.
 
 ## Applies If (ALL must hold)
 
-- Replacing a rule-based chatbot that fails on complex or multi-part queries
-- Building a voice agent where users phrase the same intent in many different ways
-- Implementing natural follow-up handling across multi-turn conversations
-- Prototyping an ASR → LLM → TTS pipeline for a product voice feature
-- Adding ambiguity clarification to a conversational flow
+- Replacing a rule-based chatbot whose intent-slot model fails on multi-part queries.
+- Building a voice agent where users phrase the same intent many different ways.
+- Latency budget allows ASR + LLM + TTS round-trip (voice <2.5 s, text <4 s).
 
 ## Skip If (ANY kills it)
 
-- Narrow command set (3–10 intents) — rule-based NLU is simpler, faster, cheaper, and more reliable
-- Response must be deterministic and auditable (medical dosage, legal status) — LLM variability is a liability
-- Latency budget is under 300ms end-to-end — the ASR → LLM → TTS stack has irreducible latency
-- Product needs autonomous action execution without human confirmation — guardrail architecture must come first
-- High background noise or non-standard accents at scale — ASR accuracy is the bottleneck, not LLM quality
+- Domain is high-stakes (medical / legal advice) without expert validation pipeline.
+- Conversation is single-turn and deterministic — rule-based is cheaper.
+- No safety / grounding pipeline available — hallucination risk too high to ship.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| ASR provider creds | secret | secrets manager |
+| LLM model + endpoint | config | engineering |
+| TTS voice config | config | engineering |
+| Safety policy (jailbreak + grounding sources) | YAML | trust + safety |
+| Fallback escalation target | config | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[multimodal-vui-design]] | Voice + visual sync rules. |
+| [[ai-design-assistant-patterns]] | Assistant pattern catalogue. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end. | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end. | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-spec` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/convo-spec.json` | JSON skeleton: modality + providers + latency + safety + fallback + audit. |
+| `templates/safety-policy.yaml` | Jailbreak detector + grounding source list + refusal templates. |
+| `templates/_smoke-test.json` | Filled voice-tier1 conversational AI spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-llm-powered-conversational-ai.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[multimodal-vui-design]]
+- [[ai-design-assistant-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.

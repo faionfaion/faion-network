@@ -2,74 +2,93 @@
 slug: ai-enhanced-design-systems
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: AI scales a mature design system by automating component documentation, detecting hardcoded token violations, and generating variant permutations — but only when the system already has well-defined tokens, systematic component structure, and clear naming conventions.
-content_id: "bd294b563bb9fdc2"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a design-system automation config (component-doc generator + token-violation scanner + variant generator) that amplifies a mature DS — only when tokens and naming are already systematic.
+content_id: "fe2c6e35f8afc56b"
+complexity: medium
+produces: config
+est_tokens: 4200
 tags: [design-systems, design-tokens, component-documentation, automation, ai-amplification]
 ---
 # AI-Enhanced Design Systems
 
 ## Summary
 
-**One-sentence:** AI scales a mature design system by automating component documentation, detecting hardcoded token violations, and generating variant permutations — but only when the system already has well-defined tokens, systematic component structure, and clear naming conventions.
+**One-sentence:** Produces a design-system automation config (component-doc generator + token-violation scanner + variant generator) that amplifies a mature DS — only when tokens and naming are already systematic.
 
-**One-paragraph:** AI scales a mature design system by automating component documentation, detecting hardcoded token violations, and generating variant permutations — but only when the system already has well-defined tokens, systematic component structure, and clear naming conventions. AI amplifies the existing foundation; it does not create one.
+**One-paragraph:** AI scales a mature design system by automating docs, detecting hardcoded-token violations, and generating variant permutations. AI amplifies the foundation; it does not create one. This methodology produces a YAML config that wires three pipelines: (1) doc generation from component source + Storybook; (2) token-violation scanner running in CI; (3) variant-permutation generator gated by visual regression. Misuse — pointing AI at an immature, inconsistent system — accelerates entropy.
+
+**Ефективно для:** DS engineer, що автоматизує doc + token-audit + variant-gen на топі вже зрілої системи.
 
 ## Applies If (ALL must hold)
 
-- A mature design system exists with defined tokens and component structure; you want AI to scale it
-- Automating component documentation generation from existing component code and stories
-- Detecting token usage inconsistencies across a large codebase where manual audit is impractical
-- Generating component variant permutations (size, state, density) from a seed component
-- Producing design token suggestions when the system is evolving (new brand palette, dark mode)
+- Mature DS exists with codified tokens + consistent naming + component source structure.
+- Storybook stories cover ≥80 % of components.
+- Visual-regression tooling (Chromatic, Percy) already integrated in CI.
 
 ## Skip If (ANY kills it)
 
-- The design system has no defined tokens, naming conventions, or systematic component structure — AI amplifies deficiencies
-- You need AI to create the foundational design system from scratch — requires human-led design first
-- The component library has fewer than 10 components — manual documentation is faster
-- The primary problem is design-engineering alignment, not documentation scale — that is a process problem
+- Tokens not codified — fix tokens first.
+- Naming inconsistent across components — AI will produce worse docs than human.
+- No visual regression — variant generation will land broken UI.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Token map | JSON / Style Dictionary | DS team |
+| Component source root | filesystem path | engineering |
+| Storybook stories | filesystem path | engineering |
+| Visual-regression provider creds | secret | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[ai-design-assistant-patterns]] | Pattern choice for any user-facing AI. |
+| [[design-system-drift-dashboard]] | Companion drift instrumentation. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-config` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/ds-automation.config.yaml` | YAML config: ds_root + token_map + doc_generator + token_scanner + variant_generator. |
+| `templates/token-scanner.config.json` | Token scanner glob list + violation severity mapping. |
+| `templates/_smoke-test.yaml` | Filled minimum-viable config for one ds package. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-enhanced-design-systems.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[ai-design-assistant-patterns]]
+- [[design-system-drift-dashboard]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the config; mis-routing leads to producing the wrong artefact shape.

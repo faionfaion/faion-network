@@ -2,73 +2,93 @@
 slug: figma-vs-adobe-strategy-2026
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured decision methodology for choosing between Figma and Adobe Creative Cloud as the primary design platform for a team.
-content_id: "ebe8291dbdc9bf4f"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a scored toolchain decision record selecting Figma, Adobe CC, or the Figma+Firefly hybrid for a product team, revisited every 6 months.
+content_id: "f63e807af31b79c0"
+complexity: medium
+produces: decision-record
+est_tokens: 4200
 tags: [figma, adobe, strategy, toolchain, decision]
 ---
 # Figma vs Adobe Strategy 2026
 
 ## Summary
 
-**One-sentence:** A structured decision methodology for choosing between Figma and Adobe Creative Cloud as the primary design platform for a team.
+**One-sentence:** Produces a scored toolchain decision record selecting Figma, Adobe CC, or the Figma+Firefly hybrid for a product team, revisited every 6 months.
 
-**One-paragraph:** A structured decision methodology for choosing between Figma and Adobe Creative Cloud as the primary design platform for a team. The methodology produces a scored recommendation document based on team size, task types, budget, and agent-automation requirements. The optimal 2026 stack for most product teams is Figma (design, collaboration, handoff) + Firefly API (asset generation) — they are not mutually exclusive. Revisit the decision every 6 months; both platforms ship major capability changes at their annual conferences.
+**One-paragraph:** Standardising on a single design platform is a multi-year cost commitment. Most 2026 product teams benefit from Figma (design + collaboration + handoff) + Firefly API (commercial-safe asset generation) — they are not mutually exclusive. This methodology produces a scored recommendation document based on team size, task types, budget, agent automation needs, and migration cost. Decision MUST be revisited every 6 months because both vendors ship major capability changes annually.
+
+**Ефективно для:** head of design / VP product, що замикає toolchain рішення для команди ≥10 designers на 12–24 місяці.
 
 ## Applies If (ALL must hold)
 
-- Conducting a toolchain audit for a product team deciding which design platform to standardize on
-- Evaluating whether to migrate an existing Adobe XD or Photoshop workflow to Figma
-- Advising a solopreneur or small team on which subscription gives the best agent-automation surface
-- Documenting a multi-tool design stack decision for a project AGENTS.md
+- Toolchain audit for a product team deciding which design platform to standardise on.
+- Annual or biennial procurement review with budget impact ≥$10k.
+- Agent automation requirements are explicit (REST APIs, webhooks, batch generation).
 
 ## Skip If (ANY kills it)
 
-- The team is already fully committed to one platform — comparison adds friction, not value
-- The decision is driven purely by individual tool features rather than workflow fit
-- The client dictates tooling — tool choice is not up for internal deliberation in that context
-- Budget or expertise constraints make the comparison moot
+- Team of one — pick by personal preference.
+- Decision was made <6 months ago and nothing material changed.
+- Lock-in cost (existing component libraries) is so high migration is impossible.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Team size + roles | JSON | ops |
+| Task-type distribution (design / asset gen / handoff / prototyping) | JSON % | PM |
+| Annual budget | USD | finance |
+| Agent automation requirements | list | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[figma-ai-ecosystem]] | Figma agent boundary. |
+| [[adobe-firefly-integration]] | Firefly API + commercial-safe imagery. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-decision-record` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/decision-record.json` | JSON skeleton: recommendation + scores + migration_cost + agent_endpoints + revisit + rationale. |
+| `templates/score-rubric.md` | Five-axis scoring rubric definition. |
+| `templates/_smoke-test.json` | Filled figma+firefly recommendation example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-figma-vs-adobe-strategy-2026.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[figma-ai-ecosystem]]
+- [[adobe-firefly-integration]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.

@@ -2,74 +2,93 @@
 slug: ai-plugin-ecosystem
 tier: geek
 group: ux
-domain: frontend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Figma AI plugins (Magician, Automator, Content Reel, Stark, Similayer, Diagram) automate repetitive design tasks within the Figma canvas.
-content_id: "94feebfd638a43bc"
+domain: ux
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a Figma REST API client that performs the work usually attempted via UI plugins — contrast audits, style extraction, bulk renames — without a designer at the keyboard.
+content_id: "4006ce2d0c98ada2"
+complexity: medium
+produces: code
+est_tokens: 4200
 tags: [figma-plugins, figma-automation, accessibility-audit, design-automation, rest-api]
 ---
-# AI Plugin Ecosystem
+# AI Plugin Ecosystem (Figma REST)
 
 ## Summary
 
-**One-sentence:** Figma AI plugins (Magician, Automator, Content Reel, Stark, Similayer, Diagram) automate repetitive design tasks within the Figma canvas.
+**One-sentence:** Produces a Figma REST API client that performs the work usually attempted via UI plugins — contrast audits, style extraction, bulk renames — without a designer at the keyboard.
 
-**One-paragraph:** Figma AI plugins (Magician, Automator, Content Reel, Stark, Similayer, Diagram) automate repetitive design tasks within the Figma canvas. Critically, agents cannot trigger plugin runs programmatically — the Figma REST API is the actual agent integration surface. Use plugins for human-driven workflows; use the REST API for automated pipelines.
+**One-paragraph:** Figma AI plugins (Magician, Automator, Content Reel, Stark, Similayer, Diagram) live inside the Figma desktop/browser UI. Agents cannot trigger them. The REST API is the actual integration surface for repeatable pipelines — contrast ratio computation from node fills, style extraction for handoff, bulk rename operations. This methodology produces a Python client that performs the most common plugin tasks via REST so the work runs unattended in CI.
+
+**Ефективно для:** automation engineer, що замінює designer-driven plugin runs на CI-driven REST jobs (a11y audit / asset export / rename).
 
 ## Applies If (ALL must hold)
 
-- Automating repetitive Figma operations (renaming layers, bulk style changes, exporting assets) via Figma REST API
-- Running accessibility audits across a design file before handoff (contrast ratio computation from REST API data)
-- Generating placeholder content at scale and pushing it via Figma REST `PATCH /v1/files/{key}/nodes`
-- Evaluating which plugin combination covers a team's workflow gaps before investing in custom UXP development
-- Running WCAG contrast checks externally without requiring the Stark plugin
+- Repeatable Figma operation needed (a11y audit, bulk rename, asset export, style extraction).
+- Operation must run unattended (CI, schedule, webhook).
+- Figma Personal Access Token or OAuth app available.
 
 ## Skip If (ANY kills it)
 
-- Plugin output must be reproducible without human intervention — most AI plugins are not deterministic
-- Design decisions require brand or strategic judgment — plugins are automation tools, not decision-makers
-- A plugin relies on a third-party AI API that could expose proprietary design data to external servers
-- The design system is unstable — plugins that reference tokens/styles break when foundations change
+- Operation is one-off — use the plugin in the desktop UI.
+- Operation requires writes that REST API cannot perform — Figma REST is read-only for most node mutations.
+- Operation is interactive (designer needs to confirm each step) — keep the plugin path.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Figma file key | string | design team |
+| Figma PAT or OAuth token | secret | secrets manager |
+| Operation spec (a11y / rename / export) | YAML | ops |
+| Output destination (S3, GitHub artefact) | URI | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+|---|---|
+| [[figma-ai-ecosystem]] | Companion: agent boundaries with AI suite. |
+| [[adobe-firefly-integration]] | Companion: commercial-safe asset generation surface. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
-|------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+|---|---|---|---|
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source. | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid / forbidden examples. | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix). | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end. | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id). | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
-|----------|-------|-----------|
-| TBD | sonnet | TBD |
+|---|---|---|
+| `decide-applies` | sonnet | Decision tree application. |
+| `produce-code` | sonnet | Structured output composition. |
+| `validate-output` | haiku | Schema check. |
 
 ## Templates
 
 | File | Purpose |
-|------|---------|
-| TBD | TBD |
+|---|---|
+| `templates/figma_client.py` | Python Figma REST client with rate-limiter + audit log + per-operation handlers. |
+| `templates/operation-spec.yaml` | YAML schema for operation + file_key + auth + output_uri. |
+| `templates/_smoke-test.yaml` | Filled minimum-viable a11y-audit operation spec. |
 
 ## Scripts
 
 | File | Purpose | When to call |
-|------|---------|--------------|
-| TBD | TBD | TBD |
+|---|---|---|
+| `scripts/validate-ai-plugin-ecosystem.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
 
-- parent skill: `geek/ux/ui-designer/`
+- [[figma-ai-ecosystem]]
+- [[adobe-firefly-integration]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the code; mis-routing leads to producing the wrong artefact shape.
