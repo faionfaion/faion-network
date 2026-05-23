@@ -4,79 +4,99 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Client Conventions Intake: codified dev practice that turns the recurring 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)' decision into a repeatable, auditable artefact.
-content_id: "77ed0ff220efa280"
-tags: [client-conventions-intake, dev, solo]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a per-client conventions report captured at engagement start — branching, commit style, review SLA, naming, CI gates, security rules — so all downstream PRs comply from day one.
+content_id: "ccintake1.0.0"
+complexity: medium
+produces: report
+est_tokens: 3800
+tags: [client-engagement, conventions, intake, freelance, outsource]
 ---
 # Client Conventions Intake
 
 ## Summary
 
-**One-sentence:** Client Conventions Intake: codified dev practice that turns the recurring 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)' decision into a repeatable, auditable artefact.
+**One-sentence:** Captures the new client's conventions on day 1 — branching, commit style, review SLA, naming, CI gates, security rules, languages of communication — into a structured report committed to the repo so every subsequent PR complies.
 
-**One-paragraph:** Client Conventions Intake addresses the gap surfaced by 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)'. Outsource devs (P4) lose hours guessing each client's style, branch model, PR template, and review etiquette. A repeatable intake produces a per-engagement CONVENTIONS.md and makes AI-assisted coding stay in-style. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** A solo dev or outsource lead joining a new client repo loses 1–3 weeks re-learning per-client conventions the hard way: PRs rejected for naming, branches refused for length, commits squashed because "we use squash-merge". This methodology turns intake into a deterministic interview + report: 8 dimensions, 3–5 questions each, answers captured as a versioned JSON artefact plus a Markdown summary the client signs off on. The artefact serves as the single source of truth for downstream automation (PR template generation, CI gate selection, AI-agent prompt context). It also surfaces gaps — clients who have never written conventions down do so collaboratively in the intake.
+
+**Ефективно для:**
+
+- Solo dev / outsource lead taking on a new client repo.
+- Onboarding new AI agents (Claude Code, Cursor) onto a client repo — the report becomes their context.
+- Multi-client agency / freelancer juggling 3+ codebases with different conventions.
+- Client-side audit: surface that conventions are unwritten and propose codifying them.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- A new client engagement is starting OR an existing engagement lacks a captured conventions record.
+- The client has at least one accessible repo / codebase.
+- A contact-person on the client side can answer the intake questions.
+- The engagement length warrants the intake overhead (typically ≥4 weeks).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Single PR fix engagement (overhead exceeds benefit).
+- Client repo has a complete CONVENTIONS.md / CONTRIBUTING.md already up-to-date — just read it.
+- Client refuses to engage — escalate, don't proceed.
+- Existing intake record &lt; 90 days old.
 
 ## Prerequisites
 
-- recent context for the 'role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo access | URL + grant | client |
+| Contact person | name + email | client |
+| Existing CONVENTIONS.md / CONTRIBUTING.md (if any) | Markdown | repo |
+| Sample PR template / CI config | YAML / Markdown | repo |
+| Recent merged PR set | URL list | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| `solo/dev/client-handover-package` | Sibling: the handover record produced at engagement end. |
+| `solo/dev/ci-quality-gate-design` | The CI gate set is one of the intake dimensions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ rules: 8-dimension coverage, sourced answers, named owner, signed sign-off, versioned record, run + skip | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the intake-report + valid/invalid + forbidden | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: assumed-conventions, unsigned report, missing dimensions, contact-handoff drift | 700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: interview → capture → cross-check repo → sign-off → commit | 700 |
+| `content/06-decision-tree.xml` | essential | Tree: existing CONV doc? → dimensions covered? → sign-off? → verdict | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `extract-from-repo` | haiku | Mechanical: parse `.github/`, `CONTRIBUTING.md`, recent merged PRs for signals. |
+| `interview-script` | sonnet | Phrasing intake questions for non-engineer contact persons. |
+| `gap-analysis` | sonnet | Cross-check stated conventions vs. observed-in-repo signals. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/client-conventions-intake.json` | JSON schema for the Client Conventions Intake output contract |
-| `templates/client-conventions-intake.md` | Markdown skeleton with the required fields |
+| `templates/client-conventions-intake.json` | JSON Schema for the intake-report artefact. |
+| `templates/conventions-interview.md` | 8-dimension interview script. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-client-conventions-intake.py` | Enforce Client Conventions Intake output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-client-conventions-intake.py` | Validate intake-report JSON against schema + sign-off rule. | End of intake; before first PR. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- upstream playbook: `role-software-developer/Feature from spec to production (3 weeks, P4 client-rules edition)`
-- methodology family: `solo/dev/` (gap-p2 batch, F-059-063)
+- [[client-handover-package]] — sibling at engagement end.
+- [[ci-quality-gate-design]] — CI gate dimension's input.
+- [[changelog-automation-conventional-commits]] — commit-style dimension's downstream.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree first checks whether an up-to-date CONVENTIONS doc exists (if yes &lt; 90 days, skip). Otherwise: are all 8 dimensions answered? is the contact signed off? are the stated conventions consistent with the observed-in-repo signals? Leaves emit `commit-record`, `block-missing-dimensions`, `block-no-signoff`, or `block-stated-observed-mismatch`. Each leaf references a rule in `01-core-rules.xml`.

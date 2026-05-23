@@ -1,44 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Behavior Parity Verification Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Six failure modes seen when solo developers run shadow parity tests, especially with AI-written normalizers. Each has a detector and a repair.</summary>
+  <summary>Six antipatterns seen when solo developers run shadow parity tests, especially with AI-generated normalizers. Each has symptom (what the input looks like), root-cause (why it happens), and fix.</summary>
 
-  <section title="Failure modes">
+  <section title="Antipatterns">
 
-    <failure-mode id="fm-01" severity="high">
-      <description>PII (emails, names, tokens) lands in the diff store unredacted.</description>
-      <detector>Sample 100 rows from parity_diffs; grep for "@", common name patterns, or token prefixes ("sk_", "tok_"). If any match without hashing, contract violated.</detector>
-      <repair>Add a redaction pass in the diff sampler BEFORE persistence. Wipe the existing store. Document the redaction list in the parity report.</repair>
-    </failure-mode>
+    <antipattern id="pii-leak" severity="high">
+      <symptom>Sampled rows from parity_diffs contain raw emails, names, or token prefixes ("sk_", "tok_") without hashing.</symptom>
+      <root-cause source="GDPR / SOC2 audit findings">Diff sampler persists full request/response bodies for debuggability without redacting PII first.</root-cause>
+      <fix>Add a redaction pass in the sampler BEFORE persistence. Wipe the existing store. Document the redaction list in the parity report. Use hashes for fields whose equality matters but whose plaintext does not.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-02" severity="high">
-      <description>Timestamp false-positives dominate diff rate. The normalizer leaves request-time or server-rendered times in observable fields.</description>
-      <detector>diff_rate &gt; 5% AND top cluster shows only timestamp-shaped values diverging</detector>
-      <repair>Move the timestamp fields out of observables OR canonicalize them (round to second, replace with placeholder). Re-run from current ramp stage with the fix.</repair>
-    </failure-mode>
+    <antipattern id="timestamp-false-positives" severity="high">
+      <symptom>diff_rate &gt; 5% AND the top cluster shows only timestamp-shaped values diverging.</symptom>
+      <root-cause source="Diffy paper, Twitter 2015">Normalizer leaves request-time or server-rendered times in observable fields; raw equality between independently-generated timestamps fails almost always.</root-cause>
+      <fix>Move timestamp fields out of observables OR canonicalize them (round to second, replace with placeholder). Re-run from current ramp stage with the fix.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-03" severity="high">
-      <description>Ramp jumped from 1% to 100% without intermediate stages because "diff rate was zero."</description>
-      <detector>parity-report stage sequence does not include 10% AND 50% records OR sample count at 1% &lt; 1000</detector>
-      <repair>Re-do staged ramp. Zero diffs at 1% with 100 requests is uninformative — many real bugs only fire on input shapes that occur once per 10k requests.</repair>
-    </failure-mode>
+    <antipattern id="ramp-jump" severity="high">
+      <symptom>parity-report stage sequence does not include 10% AND 50% records, OR sample count at 1% &lt; 1000.</symptom>
+      <root-cause source="LaunchDarkly progressive-delivery practice">Engineer sees zero diffs at 1% with 100 requests and concludes "we're good"; long-tail traffic shapes are missed.</root-cause>
+      <fix>Re-do staged ramp. Each stage must accumulate at least 1000 samples before promotion. Zero diffs at low sample count is uninformative — many real bugs only fire on input shapes that occur once per 10k requests.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-04" severity="medium">
-      <description>Async side-effects (queued jobs, emitted events) are not on the observable list, so the new path silently fires duplicate or missing emails / webhooks.</description>
-      <detector>Service emits events to a queue OR DB triggers, AND observable list contains only synchronous response fields</detector>
-      <repair>Add event/job observables: compare queue-message bodies between legacy and new with the same normalization rules. Use a no-op consumer in shadow to capture without acting.</repair>
-    </failure-mode>
+    <antipattern id="async-observables-missed" severity="medium">
+      <symptom>Service emits events to a queue OR DB triggers, AND observable list contains only synchronous response fields.</symptom>
+      <root-cause source="Internal post-mortem, NERO 2026">Observable list was authored from the HTTP-response shape; side-channel effects (queued emails, webhooks, audit-log writes) were forgotten.</root-cause>
+      <fix>Add event/job observables: compare queue-message bodies between legacy and new with the same normalization rules. Use a no-op consumer in shadow to capture without acting on real side-effects.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-05" severity="medium">
-      <description>Normalizer is permissive enough to mask real diffs (e.g., tolerance set to "any int within 100" of legacy total).</description>
-      <detector>tolerance &gt; 0.1% of value, OR normalizer rewrites entire field to a constant</detector>
-      <repair>Tighten tolerance to the business-meaningful threshold (cents for money, milliseconds for SLAs). If tolerance must be wide, document why and treat the field as untested.</repair>
-    </failure-mode>
+    <antipattern id="permissive-normalizer" severity="medium">
+      <symptom>Tolerance &gt; 0.1% of value, OR normalizer rewrites entire field to a constant ("normalize x to 0").</symptom>
+      <root-cause source="AI-generated normalizers, observation 2026">LLM autoregressively chooses the easiest transform to silence the diff rather than the correct one.</root-cause>
+      <fix>Tighten tolerance to the business-meaningful threshold (cents for money, milliseconds for SLAs). If tolerance must be wide, document why and treat the field as untested. Reject any "normalize to constant" rule.</fix>
+    </antipattern>
 
-    <failure-mode id="fm-06" severity="medium">
-      <description>Cluster analysis is skipped — diff samples are stored but never grouped, so the team ramps past stage 2 with hundreds of unread diff rows.</description>
-      <detector>parity_diffs count at stage_end &gt; 10 AND no cluster table in parity-report</detector>
-      <repair>Run `scripts/parity-summarize.py`. For each cluster: produce root cause OR write an accepted-divergence justification. No silent acceptance.</repair>
-    </failure-mode>
+    <antipattern id="skipped-cluster-analysis" severity="medium">
+      <symptom>parity_diffs row-count at stage_end &gt; 10 AND no clusters block in parity-report.</symptom>
+      <root-cause source="Internal observation">Engineer ramps past stage 2 looking only at diff_rate aggregate; the per-sample rows are stored but never grouped.</root-cause>
+      <fix>Run cluster analysis (group by normalized-diff hash). For each cluster: produce root cause OR write an accepted-with-justification entry. No silent acceptance allowed.</fix>
+    </antipattern>
 
   </section>
 

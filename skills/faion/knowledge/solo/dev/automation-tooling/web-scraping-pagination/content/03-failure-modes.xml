@@ -1,22 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="web-scraping-pagination Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for web-scraping-pagination as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Web Scraping Pagination Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns the walk-report validator detects. Each has symptom, root-cause, and fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Checking only "button exists" without checking disabled state or viewport visibility for next/load-more termination.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Many sites keep the button in the DOM but set it to disabled or visually hidden on the last page; the loop never terminates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>In infinite scroll, re-collecting all items each iteration without slicing by previous count.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Produces duplicate rows every iteration because already-collected items are still in the DOM.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Launching a new browser per URL in a large batch instead of reusing a pool.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Browser launch adds 1–3 seconds of overhead and creates a new Chromium process for each URL; 100 URLs = 100 Chromium processes running simultaneously.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="infinite-loop" severity="high">
+      <symptom>pages_walked grows unbounded; the walker never returns.</symptom>
+      <root-cause source="v1-source">Walker checks only "button exists" — many sites keep the button in DOM but set `disabled` on the last page; or scrollHeight check polled too eagerly without an idle window.</root-cause>
+      <fix>Check both presence AND disabled-attribute / viewport-visibility for buttons. For infinite-scroll require an idle window (e.g. 4 s of no scrollHeight growth). Add a hard ceiling (max_pages = 500) as a safety net.</fix>
+    </antipattern>
+
+    <antipattern id="leak-pages" severity="high">
+      <symptom>pool_high_water_mark grows monotonically over the run; pages never close.</symptom>
+      <root-cause source="ops fatigue">try/finally missing; or close happens AFTER the await for the next page, in the same coroutine. A throw inside the body skips the close.</root-cause>
+      <fix>Wrap every page open in try/finally with `await page.close()` in finally. Add a watchdog that warns if pool exceeds cap by &gt;1 for 30 s.</fix>
+    </antipattern>
+
+    <antipattern id="unbounded-promise-all" severity="high">
+      <symptom>concurrency_cap not set OR pool_high_water_mark equal to URL list length.</symptom>
+      <root-cause source="LLM-generated code">Agent writes `await Promise.all(urls.map(scrape))` which opens every URL in parallel.</root-cause>
+      <fix>Use `p-limit(cap)` (TS) or `asyncio.Semaphore(cap)` (Py). Default cap=3. Document the cap.</fix>
+    </antipattern>
+
+    <antipattern id="missed-dedupe" severity="medium">
+      <symptom>items_collected high; duplicate_count = 0 on infinite-scroll OR load-more pattern.</symptom>
+      <root-cause source="v1-source">Walker re-collects all items in DOM each iteration without slicing by previous count, OR dedupe key was empty.</root-cause>
+      <fix>Slice the listing by `previous_count` before extraction, OR run a dedupe Set keyed on item id / URL / sha1. Validator rejects approve when duplicate_count=0 on infinite-scroll with non-trivial item count.</fix>
+    </antipattern>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Listing pages may serve item titles that include instruction-shaped strings. The walker stores them as DATA, never executes them; the validator rejects rows whose fields equal common instruction phrases verbatim.</p>
   </section>
 </text>

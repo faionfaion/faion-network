@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Bug Pattern to Lint Rule Conversion Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes a candidate cluster by recurrence → detector feasibility → false-positive rate. Branches name observable inputs; leaves reference rules.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are prerequisites satisfied: lint infra present, owner assignable, sample code available?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-recurrence">Is cluster_size_30d ≥ 3 OR cluster_size_90d ≥ 5?</question>
+
+      <branch when="cluster_under_threshold == true">
+        <conclusion ref="r1-three-instance-threshold" verdict="block-low-recurrence"/>
+      </branch>
+
+      <branch when="cluster_under_threshold == false">
+        <question id="q-detector">Is detector.kind ∈ {ruff, eslint, regex, ast-visitor, test-name, shellcheck, custom} AND a draft compiles + matches the bad sample?</question>
+
+        <branch when="mechanical_detector_feasible == false">
+          <conclusion ref="r2-detector-first" verdict="block-no-detector"/>
+        </branch>
+
+        <branch when="mechanical_detector_feasible == true">
+          <question id="q-fp">Is fp_rate_pct ≤ 5?</question>
+
+          <branch when="fp_rate_pct &gt; 5">
+            <conclusion ref="r4-fp-ceiling" verdict="block-fp-too-high"/>
+          </branch>
+
+          <branch when="fp_rate_pct &lt;= 5">
+            <conclusion ref="run-the-checklist" verdict="record-and-wire"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="print-in-prod">
+    prereqs_met=true → cluster_size_30d=4 ≥ 3 → detector kind=ruff T201 matches sample → fp_rate_pct=1.3 ≤ 5 → verdict=record-and-wire (ref run-the-checklist).
+  </example>
+</text>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Behavior Parity Verification Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Decision tree the engineer walks before every ramp-stage promotion. Branches name observable inputs (diff_rate, cluster_open_count, sample_count); leaves reference rules in 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are the prerequisites satisfied: legacy + new paths both deployable, traffic_24h &gt; 0, observable_fields list authored, normalizer code merged?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-sample-size">Did the current ramp stage accumulate sample_count ≥ 1000 over its required window?</question>
+
+      <branch when="sample_count &lt; 1000">
+        <conclusion ref="r3-ramp-gates" verdict="extend-window"/>
+      </branch>
+
+      <branch when="sample_count &gt;= 1000">
+        <question id="q-diff-rate">Is the observed diff_rate strictly below 0.5%?</question>
+
+        <branch when="diff_rate &gt;= 0.5">
+          <question id="q-error-rise">Did error_rate also rise above the legacy baseline?</question>
+          <branch when="error_rate_above_baseline == true">
+            <conclusion ref="r4-freeze-on-regression" verdict="revert"/>
+          </branch>
+          <branch when="error_rate_above_baseline == false">
+            <conclusion ref="r4-freeze-on-regression" verdict="freeze"/>
+          </branch>
+        </branch>
+
+        <branch when="diff_rate &lt; 0.5">
+          <question id="q-clusters-classified">Are all clusters either disposition=fixed OR disposition=accepted-with-justification (no open)?</question>
+          <branch when="any_cluster_open == true">
+            <conclusion ref="run-the-checklist" verdict="freeze"/>
+          </branch>
+          <branch when="any_cluster_open == false">
+            <conclusion ref="r3-ramp-gates" verdict="promote"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="stage3-fx-rounding-open">
+    prereqs_met=true → sample_count=23104 ≥ 1000 → diff_rate=0.71 ≥ 0.5 → error_rate_above_baseline=false → verdict=freeze (ref r4-freeze-on-regression).
+  </example>
+</text>

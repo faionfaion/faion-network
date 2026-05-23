@@ -2,73 +2,100 @@
 slug: testing-js-ts-frontend
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Frontend component tests MUST use @testing-library/react (or -vue, -svelte) for DOM-centric assertions.
-content_id: "a7a5263e18c5baac"
-tags: [testing, vitest, jest, testing-library, typescript]
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces frontend component tests using @testing-library + Vitest (or Jest), querying by accessible role/label/text, explicit imports from 'vitest' (or globals:true), no snapshot-by-default, and runner-pinned mock APIs.
+content_id: "04fbb72dc57566bf"
+complexity: medium
+produces: code
+est_tokens: 4400
+tags: [testing, vitest, jest, testing-library, frontend]
 ---
-# Frontend JS/TS Testing with Vitest and Testing Library
+# JS/TS Frontend Testing
 
 ## Summary
 
-**One-sentence:** Frontend component tests MUST use @testing-library/react (or -vue, -svelte) for DOM-centric assertions.
+**One-sentence:** Produces frontend component tests using @testing-library + Vitest (or Jest), querying by accessible role/label/text, explicit imports from 'vitest' (or globals:true), no snapshot-by-default, and runner-pinned mock APIs.
 
-**One-paragraph:** Frontend component tests MUST use @testing-library/react (or -vue, -svelte) for DOM-centric assertions. New projects default to vitest; legacy projects may remain on jest. Agents must be told the runner explicitly or they default to jest globals in vitest projects.
+**One-paragraph:** Frontend testing under Vitest or Jest: queries by getByRole/getByLabelText/getByText (CSS class queries are last resort), explicit `import { describe, it, expect, vi } from 'vitest'` (or globals: true configured), no `jest.fn()` in vitest projects (and vice versa), no snapshot tests for components by default (reviewable diffs only), and userEvent for interactions. The artefact is the test file metadata; the validator enforces the canonical fields.
+
+**Ефективно для:**
+
+- Component test in a React/Vue/Svelte project on Vitest or Jest.
+- Refactoring container.querySelector('.btn') style tests to getByRole.
+- Auditing snapshot-heavy suites and replacing them with explicit assertions.
+- Aligning mock API (vi.* vs jest.*) with the project's actual runner.
 
 ## Applies If (ALL must hold)
 
-- Adding tests to a React/Vue/Svelte component that has no test coverage.
-- Standardising test style across a frontend codebase where engineers reinvent patterns per component.
-- Producing first-cut component tests during SDD in-progress/ so review focuses on behaviour, not boilerplate.
-- Any Vite-based frontend project — vitest is the canonical choice.
+- Frontend framework component test (React / Vue / Svelte / Angular).
+- Vitest or Jest is the configured runner.
+- @testing-library/* + user-event installed.
+- Project has TypeScript or PropTypes for typed components.
 
 ## Skip If (ANY kills it)
 
-- Browser E2E (multi-page flows, auth, navigation) — see playwright-automation.
-- Performance testing — see perf-test-basics.
-- Node.js backend JS/TS — Testing Library is DOM-only; use plain vitest/jest without render helpers.
-- When the project already has a strong jest configuration with custom matchers — migrating to vitest mid-project creates churn without value.
+- Browser E2E tests — use playwright-automation.
+- Pure utility / non-component logic — plain Vitest unit test is fine without testing-library.
+- Backend unit tests — use testing-backend-languages / testing-django-pytest.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Component under test | file path | task brief |
+| Test runner | vitest | jest | package.json |
+| Accessible attributes | role/label/text available on the component | design or component code |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[practices-frontend-components]] | the component being tested follows the practices methodology |
+| [[practices-js-ts-stack]] | TS strict + ESLint flat config + Vitest configured |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-runner-imports` | haiku | decide vitest / jest imports based on project |
+| `emit-component-test` | sonnet | render Testing Library test querying by role/label/text |
+| `audit-snapshot-creep` | haiku | scan existing tests for default snapshot creation |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Component.test.tsx` | Vitest + Testing Library + userEvent + jest-axe |
+| `templates/vitest-config.ts` | Sample vitest.config.ts toggling globals + jsdom env |
+| `templates/vitest-setup.ts` | Vitest setup file adding jest-axe matcher |
+| `templates/artefact.json` | Sample artefact metadata for validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-testing-js-ts-frontend.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[practices-frontend-components]]
+- [[practices-js-ts-stack]]
+- [[playwright-automation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

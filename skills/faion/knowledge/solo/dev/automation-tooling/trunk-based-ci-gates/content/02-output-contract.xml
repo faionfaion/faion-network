@@ -1,22 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trunk-based-ci-gates Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trunk-Based CI Gates Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the config artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trunk-based-ci-gates.json",
+  "type": "object",
+  "required": [
+    "pre_commit_lt_1s",
+    "ci_lt_10min",
+    "branch_protection_complete",
+    "auto_revert_configured",
+    "secret_scan_present"
+  ],
+  "properties": {
+    "pre_commit_lt_1s": {
+      "type": "boolean",
+      "const": true
+    },
+    "ci_lt_10min": {
+      "type": "boolean",
+      "const": true
+    },
+    "branch_protection_complete": {
+      "type": "boolean",
+      "const": true
+    },
+    "required_status_jobs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "auto_revert_configured": {
+      "type": "boolean",
+      "const": true
+    },
+    "secret_scan_present": {
+      "type": "boolean",
+      "const": true
+    },
+    "linear_history_required": {
+      "type": "boolean"
+    },
+    "min_reviewers": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "pre_commit_lt_1s": true,
+  "ci_lt_10min": true,
+  "branch_protection_complete": true,
+  "required_status_jobs": [
+    "lint",
+    "typecheck",
+    "test",
+    "build"
+  ],
+  "auto_revert_configured": true,
+  "secret_scan_present": true,
+  "linear_history_required": true,
+  "min_reviewers": 1
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "pre_commit_lt_1s": false,
+  "ci_lt_10min": false
+}
+]]></code>
+    <note>Pre-commit runs pytest; CI &gt; 10 min; branch protection missing; no auto-revert; no secret scan.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-pytest-in-pre-commit">
+      <description>pre-commit hook entry: pytest</description>
+      <why>Violates pre-commit-under-1s; trains --no-verify habit.</why>
+    </pattern>
+    <pattern id="f-direct-push-allowed">
+      <description>Branch protection does not restrict direct pushes to main</description>
+      <why>Violates branch-protection-required-status-complete.</why>
+    </pattern>
+    <pattern id="f-manual-revert">
+      <description>Documented process: 'engineer manually reverts and pushes hot-fix'</description>
+      <why>Violates auto-revert-on-red-trunk.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-trunk-based-ci-gates.py">Validator script</reference>
 </text>

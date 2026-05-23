@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Web Scraping Agentic Workflow Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Six-step procedure from "we want to scrape source X" to "today's raw/ is ready for the curated stage". Each step has a decision-gate that blocks progression.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="robots-and-probe">
+      <input>target URL pattern, contact UA.</input>
+      <action>Fetch robots.txt; cache for the run. Run `curl -I` + small GET on the canonical URL. Classify render_mode ∈ {ssr, js, managed}.</action>
+      <output>robots_check {fetched_at, allowed}, render_mode value.</output>
+      <decision-gate>If allowed=false — ABORT with verdict block-robots-disallow.</decision-gate>
+    </step>
+
+    <step n="2" name="tool-selection">
+      <input>render_mode.</input>
+      <action>Pick tool per r2 mapping: ssr → httpx-selectolax; js → playwright; managed → firecrawl or jina-reader.</action>
+      <output>tool name in run report.</output>
+      <decision-gate>Mismatch is rejected by the validator.</decision-gate>
+    </step>
+
+    <step n="3" name="extract">
+      <input>tool, page source.</input>
+      <action>Extract rows with role/text/structural locators only. NO class-name guessing. Use pagination per the source layout (next-button OR infinite-scroll OR load-more); see `web-scraping-pagination`.</action>
+      <output>raw row stream.</output>
+      <decision-gate>If rows_seen=0 after extraction AND raw HTML has listing items — STOP, fix locators.</decision-gate>
+    </step>
+
+    <step n="4" name="validate">
+      <input>row stream, Pydantic/Zod schema.</input>
+      <action>Validate each row; valid → main JSONL; invalid → `invalid/&lt;source&gt;.jsonl` with validation error.</action>
+      <output>rows_valid count.</output>
+      <decision-gate>If rows_valid / rows_seen &lt; 0.9 — verdict block-validation-low; do not promote.</decision-gate>
+    </step>
+
+    <step n="5" name="store">
+      <input>validated rows.</input>
+      <action>Write to `raw/YYYY-MM-DD/&lt;source&gt;.jsonl`. Compress and store raw HTML snapshot at `raw/YYYY-MM-DD/&lt;source&gt;.html.gz`.</action>
+      <output>raw_path populated in report.</output>
+      <decision-gate>If write fails — retry with backoff; if 3 retries fail, abort the run.</decision-gate>
+    </step>
+
+    <step n="6" name="drift-check">
+      <input>today's JSONL, yesterday's JSONL.</input>
+      <action>Compute drift_score = % of fields with ≥80% prior-run presence that fell below 80% today. If drift_score &gt; 5 — file human-review issue and set verdict block-drift-high.</action>
+      <output>drift_score, run-report finalised.</output>
+      <decision-gate>verdict=promote only when drift_score ≤ 5 AND rows_valid ratio ≥ 0.9.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/agent-prompt.md">Prompt skeleton that forces this order on the agent.</reference>
+  <reference path="templates/scrape-run-report.md">Report skeleton authors emit at end-of-run.</reference>
+</text>

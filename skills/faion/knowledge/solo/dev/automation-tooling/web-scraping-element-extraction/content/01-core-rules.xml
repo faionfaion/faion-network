@@ -1,15 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="web-scraping-element-extraction Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for web-scraping-element-extraction. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Web Scraping Element Extraction Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every extraction module must satisfy plus run-the-checklist + skip-this-methodology. Validator runs against the produced row JSON.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use $eval for single-value extraction and $$eval for multi-element extraction. Prefer Playwright locator API (locator().allTextContents(), locator().count()) over raw $$eval in new Playwright code.</statement>
-      <rationale source="v1-source">$eval / $$eval execute in page context and return serializable values. The Playwright locator API is retrying and auto-waits, making it more robust than $$eval for dynamic pages.</rationale>
+
+    <rule id="r1-single-vs-multi" testable="true" depth="essential">
+      <statement>Use $eval for single-value extraction; $$eval for multi-element extraction. Mismatching the API to cardinality (e.g. $eval against a list) silently returns only the first match or throws.</statement>
+      <rationale source="Puppeteer docs">$eval invokes the function with a single element; $$eval invokes it with the array of matched elements.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Normalize extracted strings immediately: strip whitespace, collapse runs, remove non-printable chars. Parse prices to float and dates to ISO 8601 before storing. Return null on parse failure rather than crashing.</statement>
-      <rationale source="v1-source">Downstream code should never have to guess whether a field is "  $1,234.56 \n" or 1234.56. Normalizing at extraction time is cheaper than a later data-repair pass.</rationale>
+
+    <rule id="r2-prefer-locator" testable="true" depth="essential">
+      <statement>In new Playwright code prefer the locator API (`locator().textContent()`, `locator().allTextContents()`, `locator().count()`) over raw `$$eval`. The locator API retries and auto-waits.</statement>
+      <rationale source="Playwright docs / v1-source">Auto-wait reduces flaky-extraction by an order of magnitude on dynamic pages.</rationale>
     </rule>
+
+    <rule id="r3-normalize-immediately" testable="true" depth="essential">
+      <statement>Every extracted string passes through the normalizer at extraction time: trim, collapse whitespace runs, strip non-printable chars. Prices parse to float (handle currency symbol + thousands separator). Dates parse to ISO 8601.</statement>
+      <rationale source="v1-source">Downstream code must never guess whether a field is "  $1,234.56 \n" or 1234.56.</rationale>
+    </rule>
+
+    <rule id="r4-null-on-parse-failure" testable="true" depth="essential">
+      <statement>Parse failure (unparseable price, unparseable date, empty after trim) returns NULL with reason logged to a side-stream. Never throw from the extraction function for parse-shape issues.</statement>
+      <rationale source="resilience principle">A single malformed row should not crash a 10k-row scrape. Surface to side-stream; downstream stage decides.</rationale>
+    </rule>
+
+    <rule id="r5-tables-shape-known" testable="true" depth="essential">
+      <statement>Table extraction MUST declare row + column expected counts. If counts mismatch, extraction returns null + records the mismatch; it does not silently truncate.</statement>
+      <rationale source="post-mortem corpus">Truncated tables become "the data is missing the last column" bugs weeks later.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>For each row to extract, walk: shape (single / many / table) → API (Playwright locator preferred, Puppeteer $eval/$$eval) → normalize → null-coerce on parse failure → persist. Skip none.</statement>
+      <rationale source="methodology design">Skipping the normalizer is the principal cause of downstream rework.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) source has an SSR JSON endpoint — hit it directly, (b) output is full-page LLM-targeted Markdown — use Firecrawl/r.jina.ai, (c) one-off scrape — manual is cheaper, (d) DOM is randomized per request — load resilience first.</statement>
+      <rationale source="preconditions">DOM extraction overhead is wasted when a JSON endpoint or Markdown adapter exists.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Behavior Parity Verification Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Six-step procedure walking from "we want to rewrite this path" to "legacy removed". Each step has input artefacts, action, output artefact, and a decision-gate that blocks progression on unmet criteria.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="define-observables">
+      <input>scope (endpoint or function), legacy implementation source.</input>
+      <action>Enumerate fields that count as behavior. List them in `templates/parity-report.md` under "Observable fields". Mark any field that is incidental (request_id, computed_at_ms) as ignored.</action>
+      <output>parity-report.md draft with observable_fields populated; ignored-list documented.</output>
+      <decision-gate>If observable_fields is empty OR ignored-list is missing — STOP. The diff layer cannot start.</decision-gate>
+    </step>
+
+    <step n="2" name="write-normalizer">
+      <input>observable_fields list from step 1.</input>
+      <action>Implement `normalize(observable) → canonical` in code (Python/TS/Go). Rules: quantize timestamps to second precision, canonicalize UUIDs, sort unordered lists, apply business-meaningful tolerance to floats. Unit-test each rule. Reject any rule that rewrites to a constant.</action>
+      <output>normalizer.{py,ts,go} merged with unit tests covering each canonicalization rule.</output>
+      <decision-gate>If any rule rewrites a field to a constant OR tolerance &gt; 0.1% of value without written justification — STOP and revise.</decision-gate>
+    </step>
+
+    <step n="3" name="deploy-diff-sampler">
+      <input>normalizer code, parity_diffs schema.</input>
+      <action>Deploy the shadow router behind a feature flag at 0% traffic. Run a smoke test: synthetic request → legacy + new → normalize → diff → write to parity_diffs (or no-op if zero diff). Verify PII redaction in the sampler is in place BEFORE flipping flag &gt; 0%.</action>
+      <output>parity_diffs table populated by smoke runs; redaction verified.</output>
+      <decision-gate>If any sampled row contains unredacted PII — STOP, wipe store, fix sampler.</decision-gate>
+    </step>
+
+    <step n="4" name="staged-ramp">
+      <input>diff sampler live, flag plumbing ready.</input>
+      <action>Ramp 1% → 10% → 50% → 100%. At each stage, run for ≥24h prod-traffic AND ≥1000 compared requests. At end-of-stage: run cluster analysis, produce a stage parity-report, evaluate gate (diff_rate &lt; 0.5% AND all clusters classified). Promote only if gate is green; freeze if not; revert if regression.</action>
+      <output>One parity-report.json per stage; cluster table per stage.</output>
+      <decision-gate>If diff_rate ≥ 0.5% OR any cluster is "open" — do NOT promote. Either fix the root cause or revert.</decision-gate>
+    </step>
+
+    <step n="5" name="cluster-analysis">
+      <input>parity_diffs rows for the current stage.</input>
+      <action>Group rows by normalized-diff hash (or equivalent shape key). Top-10 clusters by sample_count. For each cluster: identify root cause OR write a justification why the divergence is acceptable. No silent acceptance.</action>
+      <output>clusters[] array populated in stage parity-report.</output>
+      <decision-gate>If any cluster lacks both a root-cause-fix AND a written justification — STOP.</decision-gate>
+    </step>
+
+    <step n="6" name="sign-off-and-cutover">
+      <input>stage-4 (100%) parity-report.json.</input>
+      <action>Peer or self review confirms: total_compared meets threshold, diff_rate within gate, all clusters resolved, error rate at parity. Record signed_off_by + signed_off_at. Schedule legacy removal in a subsequent release (not the same release as 100% cutover).</action>
+      <output>signed parity-report.json; legacy-removal ticket linked.</output>
+      <decision-gate>If sign-off is missing OR legacy-removal is scheduled for the same release — STOP. Decouple cutover and removal.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/parity-report.md">Report skeleton authors fill per stage.</reference>
+  <reference path="templates/normalizer-skeleton.py">Starting point for the normalizer code.</reference>
+</text>

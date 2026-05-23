@@ -1,27 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="testing-js-ts-frontend Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for testing-js-ts-frontend as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="JS/TS Frontend Testing Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Agent forgets to import describe/it/expect from 'vitest' when the project is on vitest without globals:true.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Leads to silent global pollution or TypeScript errors. Explicitly include the import requirement in every vitest prompt.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Agent queries by CSS class (container.querySelector('.btn')) instead of accessible role.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CSS class tests break on style refactors without catching real regressions. Always specify the query priority in the prompt.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Agent uses jest.fn() in a vitest project or vi.fn() in a jest project.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The mock API name must match the test runner. Pin the runner name in every prompt.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agent writes snapshot tests for every component as the default strategy.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Snapshots are useful for serialisers but brittle for UI components; reviewable diffs only — never approve a 500-line snapshot blindly. Require explicit justification for any snapshot test.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="css-class-queries" severity="high">
+      <symptom>Visual style refactor renamed .btn to .button; 80 tests fail with no behaviour change.</symptom>
+      <root-cause source="field experience">Tests queried by CSS class instead of role.</root-cause>
+      <fix>Replace container.querySelector('.btn') with screen.getByRole('button', { name: /label/i }). If no semantic option exists, use data-testid with a comment.</fix>
+    </antipattern>
+    <antipattern id="cross-runner-mock" severity="high">
+      <symptom>Vitest project has jest.fn(); CI errors with 'jest is not defined' or TypeScript error.</symptom>
+      <root-cause source="field experience">Author copied a Jest example into a Vitest project.</root-cause>
+      <fix>Use vi.fn(), vi.mock(), vi.spyOn() in Vitest. For Jest, the inverse. Pin the runner in the agent prompt.</fix>
+    </antipattern>
+    <antipattern id="default-snapshots" severity="medium">
+      <symptom>Snapshot files balloon to 500+ lines; PR reviews 'just update the snapshot' without inspecting the diff.</symptom>
+      <root-cause source="field experience">Default test generation emits toMatchSnapshot on the whole component.</root-cause>
+      <fix>Remove default snapshots; replace with targeted assertions (role/label/text). Reserve snapshots for serialisable data structures only.</fix>
+    </antipattern>
+    <antipattern id="fire-event-only" severity="medium">
+      <symptom>Manual QA finds that pressing Enter on the focused button does nothing in production; tests show 'click' works fine.</symptom>
+      <root-cause source="field experience">Tests use fireEvent.click; never simulate keyboard activation.</root-cause>
+      <fix>Switch to userEvent.click and userEvent.keyboard('{Enter}'); userEvent fires the realistic sequence.</fix>
+    </antipattern>
+    <antipattern id="no-a11y-check" severity="medium">
+      <symptom>Accessibility audit finds 14 components with missing labels; tests passed for months.</symptom>
+      <root-cause source="field experience">No axe-core assertion in component tests; a11y caught only in manual audit.</root-cause>
+      <fix>Add one jest-axe / axe-core assertion per component test: const results = await axe(container); expect(results).toHaveNoViolations().</fix>
+    </antipattern>
+
   </section>
 </text>

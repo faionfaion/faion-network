@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Web Scraping Pagination Procedure" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>Five-step procedure from "we need to walk a paginated source" to "walk-report emitted with high-water mark". Decision-gates block on common failure modes.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="detect-pattern">
+      <input>source URL, sample of DOM.</input>
+      <action>Inspect the listing page. If a `[rel=next]` or pagination-button is present → next-button. If `IntersectionObserver` or `scrollHeight` polling drives loading → infinite-scroll. If a visible "Load more" button toggles items → load-more.</action>
+      <output>pattern ∈ {next-button, infinite-scroll, load-more}.</output>
+      <decision-gate>If pattern is ambiguous — STOP, fetch two sample pages and re-classify.</decision-gate>
+    </step>
+
+    <step n="2" name="cap-pool">
+      <input>concurrency cap (default 3), browser handle.</input>
+      <action>Initialise `p-limit(cap)` (TS) or `asyncio.Semaphore(cap)` (Py). Wrap every page open in try/finally with close in finally.</action>
+      <output>limiter bound; close hooks armed.</output>
+      <decision-gate>If cap &gt; 10 without infra justification — STOP, the rate-limit risk exceeds the speed-up.</decision-gate>
+    </step>
+
+    <step n="3" name="walk">
+      <input>pattern, walker function, max_pages ceiling.</input>
+      <action>Run the walker. Per-pattern stop condition: next-button → !exists OR disabled; infinite-scroll → scrollHeight stable for 4 s; load-more → button absent OR out-of-viewport. Hard ceiling max_pages=500.</action>
+      <output>raw item stream.</output>
+      <decision-gate>If pages_walked reaches max_pages — STOP, walker likely buggy.</decision-gate>
+    </step>
+
+    <step n="4" name="dedupe">
+      <input>raw item stream, dedupe key (id / URL / sha1 of normalized fields).</input>
+      <action>Pass each item through a `seen: Set&lt;key&gt;`. If seen, increment duplicate_count and drop. Else append to results.</action>
+      <output>deduped result list + duplicate_count.</output>
+      <decision-gate>If duplicate_count=0 on infinite-scroll with &gt;50 items — STOP, dedupe is mis-keyed.</decision-gate>
+    </step>
+
+    <step n="5" name="emit-report">
+      <input>walk telemetry.</input>
+      <action>Compose walk-report: pattern, pages_walked, items_collected, duplicate_count, concurrency_cap, pool_high_water_mark, stop_condition_observed.</action>
+      <output>walk-report JSON validated against schema.</output>
+      <decision-gate>pool_high_water_mark &gt; concurrency_cap → STOP, leak detected.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/walker.ts">Three walker implementations.</reference>
+  <reference path="templates/browser-pool.ts">Bounded pool helper.</reference>
+</text>

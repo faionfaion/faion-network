@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="web-scraping-pagination Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Web Scraping Pagination Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the per-walk report. Captures pagination pattern, pages walked, items collected, duplicate count, and pool high-water mark.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/web-scraping-pagination.json",
+  "type": "object",
+  "required": ["artefact_id", "source", "pattern", "pages_walked", "items_collected", "duplicate_count", "concurrency_cap", "pool_high_water_mark", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":          {"type": "string", "pattern": "^wsp-[a-z0-9-]{6,}$"},
+    "source":               {"type": "string", "minLength": 1},
+    "pattern":              {"enum": ["next-button", "infinite-scroll", "load-more"]},
+    "pages_walked":         {"type": "integer", "minimum": 1},
+    "items_collected":      {"type": "integer", "minimum": 0},
+    "duplicate_count":      {"type": "integer", "minimum": 0},
+    "concurrency_cap":      {"type": "integer", "minimum": 1, "maximum": 50},
+    "pool_high_water_mark": {"type": "integer", "minimum": 0},
+    "stop_condition_observed": {"type": "string"},
+    "verdict":              {"enum": ["approve", "block-wrong-pattern", "block-no-dedupe", "block-unbounded-concurrency"]},
+    "version":              {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":        {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "wsp-news-walk-2026-05-23",
+  "source": "example.com/news",
+  "pattern": "infinite-scroll",
+  "pages_walked": 12,
+  "items_collected": 240,
+  "duplicate_count": 18,
+  "concurrency_cap": 3,
+  "pool_high_water_mark": 3,
+  "stop_condition_observed": "scrollHeight stable for 4s",
+  "verdict": "approve",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "walk",
+  "source": "example.com/news",
+  "pattern": "next-button",
+  "pages_walked": 1000,
+  "items_collected": 20000,
+  "duplicate_count": 0,
+  "concurrency_cap": 100,
+  "pool_high_water_mark": 87,
+  "verdict": "approve",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing wsp- prefix; pages_walked=1000 unreasonable for next-button (likely infinite loop); duplicate_count=0 with 20k items suggests dedupe was skipped (r3 violation); concurrency_cap=100 exceeds maximum 50; pool_high_water_mark=87 is consistent with cap=100 — symptom of unbounded concurrency; version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=approve with concurrency_cap &gt; 10 unless explicitly justified.</description>
+      <reason>Aggressive concurrency raises ban risk and OOM risk; default cap is 3.</reason>
+    </antipattern>
+    <antipattern>
+      <description>verdict=approve with pool_high_water_mark &gt; concurrency_cap.</description>
+      <reason>Indicates leaked pages — finally-close is not effective.</reason>
+    </antipattern>
+    <antipattern>
+      <description>duplicate_count=0 when pattern=infinite-scroll AND items_collected &gt; 50.</description>
+      <reason>Infinite-scroll overlaps by design; zero duplicates means dedupe was skipped (r3 violation).</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/web-scraping-pagination.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-web-scraping-pagination.py">Validator that enforces this contract.</reference>
 </text>

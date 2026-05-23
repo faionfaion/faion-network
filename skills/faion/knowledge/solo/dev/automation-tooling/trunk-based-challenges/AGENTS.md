@@ -2,71 +2,99 @@
 slug: trunk-based-challenges
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: TBD adoption fails at three predictable points: "trunk is always broken" (insufficient gates), "we need long-lived branches" (large features with no flag infrastructure), and "code review is the bottleneck" (large PRs and few reviewers).
-content_id: "091912f0d83fb182"
-tags: [trunk-based-development, troubleshooting, code-review, sdd, adoption]
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a diagnostic report when trunk breaks repeatedly, applying an ordered checklist (gates → CI speed → flags → PR size → review SLA) and recommending the first failing fix before touching downstream symptoms.
+content_id: "385e9d7171ccc6fc"
+complexity: medium
+produces: report
+est_tokens: 5300
+tags: [trunk-based, diagnostics, incident-response, ci]
 ---
-# Trunk-Based Development: Challenges and Solutions
+# Trunk-Based Challenges & Diagnostics
 
 ## Summary
 
-**One-sentence:** TBD adoption fails at three predictable points: "trunk is always broken" (insufficient gates), "we need long-lived branches" (large features with no flag infrastructure), and "code review is the bottleneck" (large PRs and few reviewers).
+**One-sentence:** Produces a diagnostic report when trunk breaks repeatedly, applying an ordered checklist (gates → CI speed → flags → PR size → review SLA) and recommending the first failing fix before touching downstream symptoms.
 
-**One-paragraph:** TBD adoption fails at three predictable points: "trunk is always broken" (insufficient gates), "we need long-lived branches" (large features with no flag infrastructure), and "code review is the bottleneck" (large PRs and few reviewers). Each has a concrete fix. The SDD task lifecycle maps cleanly onto TBD: one task = one trunk-merged increment.
+**One-paragraph:** Broken trunk is never caused by trunk-based development itself — it is caused by missing gates. This methodology produces a structured report given a frequency of trunk breaks. It applies an ordered checklist: (1) Are all merges gated by passing CI? (2) Is CI under 10 minutes? (3) Are incomplete features behind flags? (4) Are PRs under 200 lines? (5) Is review SLA under 4 hours? The first failing check is the fix priority; downstream symptoms are not addressed until the upstream gate is in place. The report names the broken practice, not the practice of trunk-based itself.
+
+**Ефективно для:**
+
+- Trunk breaks more than once per week and the team is considering abandoning trunk-based development.
+- Code review is the bottleneck; PRs sit for days.
+- CI takes longer than 10 minutes and developers are batching pushes.
+- Long-lived branches are creeping back in with 'this feature is too big' justifications.
 
 ## Applies If (ALL must hold)
 
-- Trunk is red more than once per week and developers have lost trust in main — apply the "broken trunk" fixes first.
-- Team keeps creating week-long feature branches despite wanting to do TBD — apply the long-lived branch solutions.
-- PRs sit unreviewed for more than four hours — apply the review bottleneck solutions.
-- Adopting SDD task lifecycle alongside TBD and need a mapping between the two.
+- Team has adopted trunk-based development and is now experiencing pain.
+- Trunk has broken more than once per week for the last month OR PRs queue > 8 hours.
+- Leadership is asking 'should we drop trunk-based development?'
+- Data available: CI logs, PR sizes, review times, flag inventory.
 
 ## Skip If (ANY kills it)
 
-- Greenfield projects that have not yet experienced these failure modes — apply good practices up front rather than fixing problems after they appear.
-- Teams not using TBD — some of these solutions (e.g. feature flags for branch elimination) only make sense in a TBD context.
+- Teams that have not yet adopted trunk-based development (different methodology).
+- Mobile/desktop release-branch projects where trunk-based development is not appropriate.
+- Compliance projects with mandated release-cut points (different mode).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| CI logs covering last 2-4 weeks | build status export | CI provider |
+| PR metadata (size, time-to-merge, time-to-first-review) | JSON / CSV | git host API |
+| Feature flag inventory | table of flag → status → owner | flag provider |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[trunk-based-dev-patterns]] | patterns being audited |
+| [[trunk-based-ci-gates]] | the gates that should already exist |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gather-data` | haiku | pull CI + PR + flag data from APIs |
+| `apply-ordered-checklist` | sonnet | walk the five checks; identify first failure |
+| `write-report` | sonnet | emit structured report with recommendation |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/report.md` | Diagnostic report skeleton |
+| `templates/artefact.json` | Sample artefact metadata for validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trunk-based-challenges.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[trunk-based-ci-gates]]
+- [[trunk-based-dev-patterns]]
+- [[trunk-based-branch-by-abstraction]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Web Scraping Element Extraction Procedure" version="1.0.0" est_tokens="600" depth="medium">
+  <summary>Five-step procedure from "we want field X" to "row JSON written to raw/". Decision-gates block on misapplied API or skipped normalization.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="pick-shape">
+      <input>field name, expected cardinality.</input>
+      <action>Classify: single | many | table. Pick API: Playwright → `locator()`. Puppeteer → $eval for single, $$eval for many.</action>
+      <output>locator/eval call in extractor.</output>
+      <decision-gate>$eval against a multi-element selector → STOP, switch to $$eval/locator().</decision-gate>
+    </step>
+
+    <step n="2" name="extract">
+      <input>page handle, locator.</input>
+      <action>Read textContent / attribute / table cells. Wrap in try/except — never throw to the row loop.</action>
+      <output>raw extracted value (string).</output>
+      <decision-gate>If extraction returns undefined when element matches but property absent (e.g. img without src) — STOP, add a null guard.</decision-gate>
+    </step>
+
+    <step n="3" name="normalize">
+      <input>raw value, field kind (text / price / date).</input>
+      <action>Apply: text → trim + collapse-ws + strip-nonprintable. Price → locale-aware parse to float. Date → ISO 8601. Append used normalizers to normalizers_applied[].</action>
+      <output>normalized value.</output>
+      <decision-gate>If field kind unspecified — STOP, the schema must declare each field's kind.</decision-gate>
+    </step>
+
+    <step n="4" name="null-coerce">
+      <input>normalized value (may be NaN / "" / Invalid Date).</input>
+      <action>If invalid: set field=null, append {field, reason} to parse_failures[]. Do not throw.</action>
+      <output>row JSON with normalised fields + parse_failures.</output>
+      <decision-gate>If row has more than half its fields null AND no parse_failures — extractor is silently mis-normalizing; STOP and inspect.</decision-gate>
+    </step>
+
+    <step n="5" name="persist">
+      <input>row JSON.</input>
+      <action>Validate against schema. Valid → main JSONL. Invalid → invalid/&lt;source&gt;.jsonl with validation error.</action>
+      <output>row in storage.</output>
+      <decision-gate>Validation must run; never persist unvalidated rows.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/extractors.ts">Playwright extractors + normalizers.</reference>
+  <reference path="templates/extractors.py">Python equivalents.</reference>
+</text>

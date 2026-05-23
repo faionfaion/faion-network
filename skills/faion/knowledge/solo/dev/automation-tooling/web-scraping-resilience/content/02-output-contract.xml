@@ -1,22 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="web-scraping-resilience Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Web Scraping Resilience Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the resilience config artefact. The scrape consumes one config per source; missing fields are rejected at start-up.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/web-scraping-resilience.json",
+  "type": "object",
+  "required": ["artefact_id", "source", "delay_ms_min", "delay_ms_max", "max_retries", "base_delay_ms", "safe_extract_timeout_ms", "anti_detect_enabled", "crash_recover_enabled", "concurrency_cap", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":             {"type": "string", "pattern": "^wsrr-[a-z0-9-]{6,}$"},
+    "source":                  {"type": "string", "minLength": 1},
+    "delay_ms_min":            {"type": "integer", "minimum": 100, "maximum": 60000},
+    "delay_ms_max":            {"type": "integer", "minimum": 100, "maximum": 60000},
+    "max_retries":             {"type": "integer", "minimum": 0, "maximum": 5},
+    "base_delay_ms":           {"type": "integer", "minimum": 100, "maximum": 10000},
+    "safe_extract_timeout_ms": {"type": "integer", "minimum": 100, "maximum": 5000},
+    "anti_detect_enabled":     {"type": "boolean"},
+    "crash_recover_enabled":   {"type": "boolean"},
+    "concurrency_cap":         {"type": "integer", "minimum": 1, "maximum": 50},
+    "stealth_lib":             {"type": ["string", "null"]},
+    "version":                 {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":           {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "wsrr-news-2026-05",
+  "source": "example.com/news",
+  "delay_ms_min": 1000,
+  "delay_ms_max": 3000,
+  "max_retries": 5,
+  "base_delay_ms": 500,
+  "safe_extract_timeout_ms": 5000,
+  "anti_detect_enabled": true,
+  "crash_recover_enabled": true,
+  "concurrency_cap": 3,
+  "stealth_lib": "playwright-stealth",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "news",
+  "source": "example.com/news",
+  "delay_ms_min": 0,
+  "delay_ms_max": 0,
+  "max_retries": 100,
+  "base_delay_ms": 50,
+  "safe_extract_timeout_ms": 30000,
+  "anti_detect_enabled": false,
+  "crash_recover_enabled": false,
+  "concurrency_cap": 100,
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing wsrr- prefix; delay_ms_min/max both 0 (tight loop violates r1); max_retries=100 exceeds cap 5 (r2 violation); safe_extract_timeout_ms=30000 exceeds 5000 (r3 violation); anti_detect_enabled + crash_recover_enabled both false (r4+r5 violation); concurrency_cap=100 above max 50; version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>delay_ms_min == delay_ms_max (no jitter).</description>
+      <reason>Fixed-interval requests fingerprint; r1 demands a jitter range.</reason>
+    </antipattern>
+    <antipattern>
+      <description>max_retries &gt; 5.</description>
+      <reason>r2 caps at 5; longer retries delay the run unboundedly without raising success rate.</reason>
+    </antipattern>
+    <antipattern>
+      <description>safe_extract_timeout_ms &gt; 5000.</description>
+      <reason>r3 caps at 5 s; longer timeouts compound across a slow page into minute-long row latency.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/web-scraping-resilience.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-web-scraping-resilience.py">Validator that enforces this contract.</reference>
 </text>

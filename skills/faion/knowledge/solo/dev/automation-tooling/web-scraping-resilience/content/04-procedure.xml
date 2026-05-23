@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Web Scraping Resilience Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from "we need to harden this scraper" to "config artefact in repo + wrappers in code". Decision-gates block on missing layers.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="probe-rate-limit">
+      <input>source URL pattern, contact UA.</input>
+      <action>Run 30 requests at progressive rates (1, 2, 5, 10 RPS). Note the rate at which 429s start. Halve that to derive target delay_ms range.</action>
+      <output>delay_ms_min, delay_ms_max in config.</output>
+      <decision-gate>If 429 fires at &lt;1 RPS — STOP; source is rate-limited beyond this methodology, escalate to human.</decision-gate>
+    </step>
+
+    <step n="2" name="wire-jitter">
+      <input>delay range.</input>
+      <action>Insert `await sleep(rand(delay_ms_min, delay_ms_max))` per request to the same domain. Per-domain limiter; cap concurrency at 3.</action>
+      <output>jittered request layer.</output>
+      <decision-gate>If delay_min == delay_max — STOP, fixed-interval is r1 violation.</decision-gate>
+    </step>
+
+    <step n="3" name="wire-retry">
+      <input>base_delay_ms, max_retries=5.</input>
+      <action>Wrap each request: try → on transient error (timeout, 5xx, ECONNRESET) → backoff = base * 2^attempt + rand(0,1000) → retry up to 5 times → re-throw.</action>
+      <output>retry wrapper.</output>
+      <decision-gate>If max_retries &gt; 5 — STOP, r2 violation.</decision-gate>
+    </step>
+
+    <step n="4" name="wrap-safe-extract">
+      <input>extraction call sites.</input>
+      <action>Replace `page.$eval(sel, fn)` with `safeExtract(() =&gt; page.$eval(sel, fn), defaultValue, timeout=5000)`. Return default on timeout or missing selector. Log to side-stream.</action>
+      <output>safeExtract calls everywhere.</output>
+      <decision-gate>If any raw $eval remains — STOP, r3 not complete.</decision-gate>
+    </step>
+
+    <step n="5" name="arm-crash-recover">
+      <input>browser handle.</input>
+      <action>Wrap the page loop in a try that catches "Target closed", "Session closed", "Browser has been disconnected" — relaunch the browser, requeue the failing URL. Enable anti-detect: navigator.webdriver=undefined; UA randomisation; stealth lib.</action>
+      <output>crash-recover + anti-detect wired; resilience-config artefact committed.</output>
+      <decision-gate>If both anti_detect_enabled and crash_recover_enabled are false — STOP, the scrape will not last the night.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/safe-extract.ts">safeExtract + retryWithBackoff helpers.</reference>
+  <reference path="templates/anti-detect.ts">Anti-detect headers + stealth wiring.</reference>
+</text>

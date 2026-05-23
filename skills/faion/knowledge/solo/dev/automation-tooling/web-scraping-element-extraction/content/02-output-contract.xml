@@ -1,22 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="web-scraping-element-extraction Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Web Scraping Element Extraction Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the per-row extraction artefact emitted by the extractor module. A row that doesn't validate is written to the invalid side-stream, not the main JSONL.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/web-scraping-element-extraction.json",
+  "type": "object",
+  "required": ["artefact_id", "source", "row_index", "fields", "normalizers_applied", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^wsx-[a-z0-9-]{6,}$"},
+    "source":      {"type": "string", "minLength": 1},
+    "row_index":   {"type": "integer", "minimum": 0},
+    "fields":      {"type": "object", "additionalProperties": {"type": ["string", "number", "integer", "boolean", "null"]}},
+    "normalizers_applied": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"enum": ["text-trim", "text-collapse-ws", "text-strip-nonprintable", "price-to-float", "date-to-iso", "table-shape-check"]}
+    },
+    "parse_failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "reason"],
+        "properties": {"field": {"type": "string"}, "reason": {"type": "string"}}
+      }
+    },
+    "verdict":      {"enum": ["approve", "block-no-normalizer", "block-wrong-api"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "wsx-news-row-0042",
+  "source": "example.com/news",
+  "row_index": 42,
+  "fields": {"title": "Migration to Go shadow router", "price": null, "published_at": "2026-05-20"},
+  "normalizers_applied": ["text-trim", "text-collapse-ws", "date-to-iso"],
+  "parse_failures": [],
+  "verdict": "approve",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "row0042",
+  "source": "example.com/news",
+  "row_index": 42,
+  "fields": {"title": "  Migration to Go shadow router\n\n ", "price": "$1,234.56"},
+  "normalizers_applied": [],
+  "verdict": "approve",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing wsx- prefix; title has un-normalized whitespace; price kept as raw string (no price-to-float); normalizers_applied empty (violates r3); verdict=approve impossible without normalizers; version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=approve with normalizers_applied empty.</description>
+      <reason>Violates r3 — normalization is mandatory at extraction time.</reason>
+    </antipattern>
+    <antipattern>
+      <description>fields contain raw price strings ("$1,234.56") with no parse_failures entry.</description>
+      <reason>Either price-to-float succeeded (return float) or it failed (entry in parse_failures + null in field). Raw string surviving is silent corruption.</reason>
+    </antipattern>
+    <antipattern>
+      <description>$eval used against a multi-element selector returning an array.</description>
+      <reason>$eval is single-element only; silently drops all but the first match.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/web-scraping-element-extraction.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-web-scraping-element-extraction.py">Validator that enforces this contract.</reference>
 </text>

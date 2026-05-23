@@ -1,0 +1,52 @@
+# purpose: GitHub Actions workflow with required-status jobs
+# consumes: input artefacts described in AGENTS.md ## Prerequisites
+# produces: artefact conforming to content/02-output-contract.xml for trunk-based-ci-gates
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1200 tokens when loaded as context
+
+name: CI
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install ruff
+      - run: ruff check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install mypy
+      - run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt pytest-xdist
+      - run: pytest -n auto --shard-id=${{ matrix.shard }} --num-shards=4
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "build artifact"
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2

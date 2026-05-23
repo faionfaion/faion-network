@@ -1,22 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="tech-debt-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Tech Debt Management Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the debt-management plan artefact. Each item paired with a strategy + exit + gate + owner.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/tech-debt-management.json",
+  "type": "object",
+  "required": ["artefact_id", "register_ref", "items", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":  {"type": "string", "pattern": "^tdm-[a-z0-9-]{6,}$"},
+    "register_ref": {"type": "string", "minLength": 1, "description": "id of upstream debt-register"},
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["debt_item_id", "strategy", "exit_criterion", "gate", "owner_email"],
+        "properties": {
+          "debt_item_id":   {"type": "string", "pattern": "^debt-[a-z0-9-]{4,}$"},
+          "strategy":       {"enum": ["boy-scout", "feature-attached", "dedicated-sprint", "strangler-fig"]},
+          "exit_criterion": {"type": "string", "minLength": 10},
+          "gate": {
+            "type": "object",
+            "required": ["kind", "definition"],
+            "properties": {
+              "kind":       {"enum": ["ruff", "eslint", "regex", "ast-visitor", "test-name", "loc-cap", "complexity-cap", "custom"]},
+              "definition": {"type": "string", "minLength": 1}
+            }
+          },
+          "owner_email":    {"type": "string", "format": "email"},
+          "target_sprint":  {"type": ["string", "null"]}
+        }
+      }
+    },
+    "verdict":      {"enum": ["adopt-plan", "block-no-gate", "block-no-exit-criteria", "block-low-score-skip"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "tdm-q2-2026",
+  "register_ref": "dsr-q2-2026",
+  "items": [
+    {"debt_item_id": "debt-order-mono", "strategy": "strangler-fig", "exit_criterion": "100% traffic switched to new order service for 2 weeks", "gate": {"kind": "loc-cap", "definition": "src/orders/views.py <= 200 LoC"}, "owner_email": "ruslan@faion.net", "target_sprint": "26"}
+  ],
+  "verdict": "adopt-plan",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "tdm",
+  "register_ref": "",
+  "items": [{"debt_item_id": "x", "strategy": "best-practices", "exit_criterion": "later", "gate": {"kind": "checklist", "definition": "be careful"}, "owner_email": "team@"}],
+  "verdict": "adopt-plan",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing tdm- prefix; register_ref empty; debt_item_id wrong prefix; strategy not in enum; exit_criterion too short; gate.kind=checklist (r3 — not mechanical); owner team alias (r5); version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>gate.kind in {checklist, review, documentation}.</description>
+      <reason>r3 — gates must be mechanical, not human review.</reason>
+    </antipattern>
+    <antipattern>
+      <description>strategy=dedicated-sprint with target_sprint missing.</description>
+      <reason>Dedicated sprint without a target sprint is wishful thinking.</reason>
+    </antipattern>
+    <antipattern>
+      <description>exit_criterion is "ongoing", "continuous", "as needed".</description>
+      <reason>r2 — exit criterion must be observable, not perpetual.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/tech-debt-management.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-tech-debt-management.py">Validator that enforces this contract.</reference>
 </text>

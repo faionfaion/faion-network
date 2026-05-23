@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Bug Pattern to Lint Rule Conversion Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from "we keep seeing this bug" to "rule wired in pre-commit + decision-record committed". Decision-gates block on threshold and FP failures.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="cluster-tickets">
+      <input>recent bug tickets (last 30/90 days), tag / error-class / file-path metadata.</input>
+      <action>Group tickets by symptom + file glob. Identify clusters of ≥3 instances in 30 days OR ≥5 in 90 days.</action>
+      <output>candidate cluster with pattern_id + ticket_refs.</output>
+      <decision-gate>If cluster size &lt; threshold — STOP, verdict block-low-recurrence.</decision-gate>
+    </step>
+
+    <step n="2" name="draft-detector">
+      <input>cluster sample code (bad + good).</input>
+      <action>Pick detector kind: ruff (Python), ESLint (JS/TS), regex (cross-language), AST visitor (deep checks), test-name (post-condition). Draft and unit-test against the cluster samples.</action>
+      <output>detector.kind + detector.definition + rule_id.</output>
+      <decision-gate>If no mechanical detector is feasible — STOP, verdict block-no-detector.</decision-gate>
+    </step>
+
+    <step n="3" name="false-positive-scan">
+      <input>detector, last-90-days code in repo.</input>
+      <action>Run the detector across the historical codebase. Count fires; classify each as TP (real bug-shape) or FP (benign). Compute fp_rate_pct = FP / total_fires × 100.</action>
+      <output>fp_rate_pct, list of FP locations.</output>
+      <decision-gate>If fp_rate_pct &gt; 5 — refine pattern OR STOP with verdict block-fp-too-high.</decision-gate>
+    </step>
+
+    <step n="4" name="wire-into-pre-commit">
+      <input>detector, `.pre-commit-config.yaml`.</input>
+      <action>Add the detector to the pre-commit hook configuration. Update CI to fail on detector hits. Document the rule's purpose in CHANGELOG.md / decisions/.</action>
+      <output>updated pre-commit + CI + CHANGELOG entry.</output>
+      <decision-gate>If hook does not block a known-bad sample — STOP, wiring is broken.</decision-gate>
+    </step>
+
+    <step n="5" name="emit-record">
+      <input>artefact assembled.</input>
+      <action>Commit decision-record JSON to `decisions/`. Schedule quarterly review (calendar / cron). Send notice to owner_email.</action>
+      <output>decision-record JSON + scheduled review.</output>
+      <decision-gate>last_reviewed must equal today; owner_email must be reachable.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/bug-pattern-to-lint-rule-conversion.md">Markdown skeleton authors fill.</reference>
+  <reference path="templates/bug-pattern-to-lint-rule-conversion.json">Schema for the artefact.</reference>
+</text>

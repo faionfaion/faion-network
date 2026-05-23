@@ -1,22 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="trunk-based-dev-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for trunk-based-dev-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Trunk-Based Development Patterns Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Pattern code is illustrative — is_enabled("name") assumes a real provider; agent will leave a stub and forget to wire it.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hard-coded True makes the flag always-on in CI and production. Use env vars (FLAGS_DEFAULT=off in CI) to enforce safety and grep for literal is_enabled(...True).</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Branch-by-Abstraction snippet skips the cleanup phase ("delete LegacyPaymentProcessor"); agents drop the abstraction and never collapse it back, leaving permanent indirection.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Permanent indirection wastes compute and confuses future agents. Always file a cleanup task before merging the new implementation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Dark-launch comparison code re-raises exceptions into production paths.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The dark path should never crash the current path. Wrap in try/except at all costs; the README example does, agents often skip it.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="permanent-feature-branch" severity="high">
+      <symptom>5-day branch with 1200-line diff; conflicts pile up; merge takes a full day.</symptom>
+      <root-cause source="field experience">Feature was not chunked; flag infra not used.</root-cause>
+      <fix>Apply trunk-based-branch-by-abstraction. Chunk into &lt; 24h PRs behind a flag. Squash on merge.</fix>
+    </antipattern>
+    <antipattern id="negative-flag-rename" severity="high">
+      <symptom>Flag 'billing.disable_legacy' is renamed to 'billing.use_new' mid-rollout; engineers ship two changes that interpret it opposite ways.</symptom>
+      <root-cause source="field experience">Boolean-negative naming inverts logic on rename.</root-cause>
+      <fix>Start with positive naming (use_, enable_, show_). Never start a new flag with disable_ / no_ / not_.</fix>
+    </antipattern>
+    <antipattern id="flag-rot" severity="high">
+      <symptom>Audit finds 47 active flags; no one knows what 12 of them gate.</symptom>
+      <root-cause source="field experience">Cleanup tickets never filed; no inventory.</root-cause>
+      <fix>Require .aidocs/feature-flags.md entry per flag with task id + cleanup ticket. Weekly stale-flag review until &lt; 10 stale.</fix>
+    </antipattern>
+    <antipattern id="instant-100-percent-flip" severity="high">
+      <symptom>Flag flipped to 100% on Friday; Monday morning the data team finds silent decimal corruption.</symptom>
+      <root-cause source="field experience">Direct flip; no dark-launch period.</root-cause>
+      <fix>Always ramp 0% -&gt; &lt; 1% (diurnal cycle) -&gt; 5% -&gt; 25% -&gt; 100%, with metric comparison at each step. Hold or rollback on diverging metrics.</fix>
+    </antipattern>
+    <antipattern id="no-auto-revert" severity="high">
+      <symptom>Trunk red at 2pm; revert happens at 5pm because original author is in another timezone.</symptom>
+      <root-cause source="field experience">Manual revert process; no bot.</root-cause>
+      <fix>Install auto-revert action: red CI on main = bot revert PR within 15 min; original author re-opens with the real fix.</fix>
+    </antipattern>
+
   </section>
 </text>

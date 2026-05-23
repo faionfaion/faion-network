@@ -1,27 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Behavior Parity Verification Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the parity report and the diff store. A migration that has not produced these artifacts has not done parity verification — regardless of how much shadow traffic flowed.</summary>
+<text id="02-output-contract" title="Behavior Parity Verification Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>JSON Schema for the per-stage parity report. The artefact is the contract: a migration that has not produced a schema-valid report has not done parity verification, regardless of how much shadow traffic flowed.</summary>
 
-  <section title="Required artifacts">
-    <list>
-      <item><code>parity-report.md</code> per ramp stage: scope, observable list, ramp window, total compared, diff count, top-5 clusters, sign-off.</item>
-      <item><code>parity_diffs</code> table or equivalent store: one row per non-trivial diff with input fingerprint, legacy output hash, new output hash, normalized diff JSON, sampled-at timestamp.</item>
-      <item><code>normalizer.{py,ts,go}</code> committed and tested — the function MUST exist as code, not only as a doc.</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/behavior-parity-verification.json",
+  "type": "object",
+  "required": ["artefact_id", "scope", "observable_fields", "ramp_stage", "window_start", "window_end", "total_compared", "diff_rate", "clusters", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":    {"type": "string", "pattern": "^bpv-[a-z0-9-]{6,}$"},
+    "scope":          {"type": "string", "minLength": 1, "description": "endpoint or function path under test"},
+    "observable_fields": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "ramp_stage":     {"type": "integer", "enum": [1, 2, 3, 4], "description": "1=1%, 2=10%, 3=50%, 4=100%"},
+    "window_start":   {"type": "string", "format": "date-time"},
+    "window_end":     {"type": "string", "format": "date-time"},
+    "total_compared": {"type": "integer", "minimum": 1000},
+    "diff_rate":      {"type": "number", "minimum": 0, "maximum": 100},
+    "clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cluster_id", "sample_count", "disposition"],
+        "properties": {
+          "cluster_id":   {"type": "string"},
+          "sample_count": {"type": "integer", "minimum": 1},
+          "disposition":  {"enum": ["fixed", "accepted-with-justification", "open"]},
+          "justification": {"type": "string"}
+        }
+      }
+    },
+    "verdict":        {"enum": ["promote", "freeze", "revert"]},
+    "signed_off_by":  {"type": "string"},
+    "signed_off_at":  {"type": "string", "format": "date"},
+    "version":        {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":  {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Required fields per parity-report">
-    <list>
-      <item><code>scope</code>: endpoint or function path under test.</item>
-      <item><code>observable_fields</code>: array, copied verbatim from r1 list.</item>
-      <item><code>ramp_stage</code>: integer 1..4 (1%, 10%, 50%, 100%).</item>
-      <item><code>window_start</code> / <code>window_end</code>: ISO timestamps.</item>
-      <item><code>total_compared</code>: integer; gate is &gt;= 1000 per stage typical.</item>
-      <item><code>diff_rate</code>: float, percent; gate is &lt; 0.5.</item>
-      <item><code>clusters</code>: list of cluster_id, sample_count, root_cause_or_accepted.</item>
-      <item><code>signed_off_by</code> + ISO date — required to close stage.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bpv-quote-stage3",
+  "scope": "/api/v2/quote",
+  "observable_fields": ["response.total_cents", "response.line_items[].sku", "response.currency", "response.tax_breakdown"],
+  "ramp_stage": 3,
+  "window_start": "2026-05-20T00:00:00Z",
+  "window_end": "2026-05-21T00:00:00Z",
+  "total_compared": 47812,
+  "diff_rate": 0.21,
+  "clusters": [
+    {"cluster_id": "tax-rounding-pt", "sample_count": 12, "disposition": "fixed"},
+    {"cluster_id": "currency-fx-tolerance", "sample_count": 88, "disposition": "accepted-with-justification", "justification": "Legacy used 4-dp FX; new uses 6-dp. Difference within ±0.01 cents per line, acceptable per finance review."}
+  ],
+  "verdict": "promote",
+  "signed_off_by": "ruslan@faion.net",
+  "signed_off_at": "2026-05-21",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-21"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bpv-quote",
+  "scope": "/api/v2/quote",
+  "observable_fields": [],
+  "ramp_stage": 5,
+  "window_start": "2026-05-20",
+  "window_end": "2026-05-21",
+  "total_compared": 12,
+  "diff_rate": 0.0,
+  "clusters": [],
+  "verdict": "promote"
+}
+]]></code>
+    <note>observable_fields empty (violates r1); ramp_stage=5 outside enum (1..4); total_compared=12 &lt; 1000 minimum; window timestamps not date-time format; missing version, last_reviewed, signed_off_*; verdict=promote with zero clusters analysed is meaningless at this sample size.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
@@ -29,8 +89,8 @@
       <reason>Parity infra becomes a PII honeypot. Normalize PII fields to hashes or redact before persisting; observable comparison uses the hash.</reason>
     </antipattern>
     <antipattern>
-      <description>Skipping the diff store and relying on a single "diff_rate" gauge.</description>
-      <reason>A gauge tells you something diverged; without per-sample storage you cannot find the cluster or the input that triggered it.</reason>
+      <description>Skipping the diff store and relying on a single diff_rate gauge.</description>
+      <reason>A gauge says something diverged; without per-sample storage you cannot find the cluster or the input that triggered it.</reason>
     </antipattern>
     <antipattern>
       <description>Auto-promoting between ramp stages by timer alone.</description>
@@ -38,13 +98,7 @@
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Observable list written before any shadow traffic.</item>
-      <item>Normalizer code merged and unit-tested.</item>
-      <item>Diff store schema deployed; PII redaction confirmed.</item>
-      <item>Each ramp stage has its own report with sign-off.</item>
-      <item>Cluster analysis present for every non-zero diff stage.</item>
-    </list>
-  </section>
+  <reference path="templates/parity-report.json">JSON Schema canonical location</reference>
+  <reference path="templates/parity-report.md">Markdown skeleton authors fill</reference>
+  <reference path="scripts/validate-behavior-parity-verification.py">Validator that enforces this contract</reference>
 </text>

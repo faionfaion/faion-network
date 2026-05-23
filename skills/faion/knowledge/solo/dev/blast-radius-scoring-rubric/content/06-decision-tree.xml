@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Blast Radius Scoring Rubric Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes a PR by override → total → rollback-plan check. Branches name observable input fields; leaves reference rules in 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are the prerequisites satisfied: PR has diff + description, surface inventory exists, score field present in template?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-override">Does any file path in the diff match an override category (auth, payments, rbac, secrets, migrations, deletions, money, pii, cron)?</question>
+
+      <branch when="override_fired == true">
+        <question id="q-irreversible-override">Is the PR also Reversibility=5 (irreversible)?</question>
+        <branch when="reversibility == 5 AND rollback_plan_present == false">
+          <conclusion ref="rollback-plan-required" verdict="block-missing-rollback"/>
+        </branch>
+        <branch when="reversibility != 5 OR rollback_plan_present == true">
+          <conclusion ref="category-override" verdict="deep-read"/>
+        </branch>
+      </branch>
+
+      <branch when="override_fired == false">
+        <question id="q-total">What is the axes total (services + users + reversibility)?</question>
+        <branch when="total &lt;= 5">
+          <conclusion ref="route-by-total" verdict="light-skim"/>
+        </branch>
+        <branch when="total &gt;= 6 AND total &lt;= 10">
+          <question id="q-irreversible-no-override">Is reversibility=5 AND rollback_plan absent?</question>
+          <branch when="reversibility == 5 AND rollback_plan_present == false">
+            <conclusion ref="rollback-plan-required" verdict="block-missing-rollback"/>
+          </branch>
+          <branch when="reversibility != 5 OR rollback_plan_present == true">
+            <conclusion ref="route-by-total" verdict="standard"/>
+          </branch>
+        </branch>
+        <branch when="total &gt;= 11">
+          <question id="q-rollback-deep">Is reversibility=5 AND rollback_plan absent?</question>
+          <branch when="reversibility == 5 AND rollback_plan_present == false">
+            <conclusion ref="rollback-plan-required" verdict="block-missing-rollback"/>
+          </branch>
+          <branch when="reversibility != 5 OR rollback_plan_present == true">
+            <conclusion ref="route-by-total" verdict="deep-read"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="auth-touch-low-axes">
+    prereqs_met=true → override_fired=true (path matches `apps/auth/**`) → reversibility=3 → verdict=deep-read (ref category-override).
+  </example>
+</text>

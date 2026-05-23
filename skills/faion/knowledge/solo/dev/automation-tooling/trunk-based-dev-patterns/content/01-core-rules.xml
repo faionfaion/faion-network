@@ -1,87 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="trunk-based-dev-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for trunk-based-dev-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Trunk-Based Development Patterns Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>7 testable rules grounding the trunk-based-dev-patterns methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Branch lifetime cap is under 24 hours. Rebase onto main before opening the PR; squash on merge so trunk history stays linear.</statement>
-      <rationale source="v1-source">Long-lived branches accumulate conflicts and diverge from the trunk, defeating the purpose of TBD. Squash merge keeps trunk history linear and searchable.</rationale>
+
+    <rule id="branch-lifetime-lt-24h" testable="true" depth="essential">
+      <statement>Branches MUST live less than 24 hours. Rebase onto main before opening the PR; squash on merge so trunk history stays linear.</statement>
+      <rationale source="Trunk-Based Development at Scale">Long-lived branches accumulate conflicts and diverge from trunk, defeating the trunk-based model. Squash merge keeps history searchable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>One flag = one task = one cleanup ticket. File the cleanup ticket the moment the flag is born; otherwise flags accumulate to dozens and rot.</statement>
-      <rationale source="v1-source">Flags with no removal deadline become permanent technical debt. Cleaning up immediately after rollout prevents flag sprawl.</rationale>
+    <rule id="one-flag-one-task-one-cleanup" testable="true" depth="essential">
+      <statement>Each flag MUST map to exactly one task and a cleanup ticket filed at flag birth. Reusing a flag for unrelated work is forbidden.</statement>
+      <rationale source="Internal — flag-rot audit">Flag reuse blurs ownership; cleanup tickets filed later are filed never. Tracking at birth keeps inventory bounded.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Flag naming follows &lt;area&gt;.&lt;verb&gt;_&lt;thing&gt; (e.g., billing.use_stripe_v2); ban boolean negatives (disable_x) because they invert mid-rollout and confuse agents.</statement>
-      <rationale source="v1-source">Positive naming is unambiguous. A flag named "billing.disable_legacy" inverts logic when renamed to "billing.use_new" during rollout, causing off-by-one errors in agent-generated code.</rationale>
+    <rule id="positive-flag-naming" testable="true" depth="essential">
+      <statement>Flag names MUST follow &lt;area&gt;.&lt;verb&gt;_&lt;thing&gt; with positive verbs (use_, enable_, show_). Boolean-negative names (disable_, no_, hide_) are forbidden.</statement>
+      <rationale source="Internal — flag-naming convention">Negative naming inverts logic when renamed mid-rollout, producing off-by-one bugs in agent-generated code.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>CI must be under 10 minutes wall time. If slower, parallelize tests, cache dependencies, and move slow integration suites to nightly jobs. Slow CI kills TBD adoption.</statement>
-      <rationale source="v1-source">Developers and agents disable hooks or skip CI on slow feedback loops. Sub-10-minute CI sustains the daily-merge cadence.</rationale>
+    <rule id="dark-launch-lt-1pct-diurnal" testable="true" depth="essential">
+      <statement>Dark launches MUST run at &lt; 1% traffic for at least one full diurnal cycle (24h) before scaling. Direct flip to 100% is forbidden.</statement>
+      <rationale source="Dark-launch best-practices">Low-traffic canary catches bugs safely; scaling too fast masks bugs that only appear at scale.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Auto-revert on red trunk: a PR that broke main is reverted by bot (git revert -m 1), not by humans. Fix forward in a fresh PR.</statement>
-      <rationale source="v1-source">Manual reverts are slow and error-prone. Bot-driven reverts keep trunk green and force authors to fix in a follow-up, maintaining the discipline.</rationale>
+    <rule id="auto-revert-on-red-trunk" testable="true" depth="essential">
+      <statement>A PR that broke main MUST be reverted by bot, not by humans. Fix-forward in a fresh PR.</statement>
+      <rationale source="Internal — incident response">Manual reverts are slow and partial; bot reverts are deterministic. Fix-forward keeps blame clean.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Forbid direct push to main from anyone except automation; require linear history and signed commits.</statement>
-      <rationale source="v1-source">Direct pushes bypass CI and introduce merge commits. Requiring PRs ensures every change passes gates and is reviewable.</rationale>
+    <rule id="ci-under-10-min" testable="true" depth="essential">
+      <statement>CI MUST complete in under 10 minutes. Slow CI breaks the daily-merge cadence.</statement>
+      <rationale source="DORA">Developers batch pushes when feedback is slow; rapid feedback is what makes trunk-based safe.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Run dark launches at less than 1% traffic for at least one diurnal cycle before scaling. Bug surfaces look identical at 0.01% and 1% but error budgets diverge.</statement>
-      <rationale source="v1-source">Low-traffic canary windows catch bugs safely. Scaling to 1% too quickly masks bugs that only appear at scale.</rationale>
+    <rule id="no-direct-push-to-main" testable="true" depth="essential">
+      <statement>Direct pushes to main MUST be forbidden for humans; only automation may push. Linear history + signed commits MUST be required.</statement>
+      <rationale source="GitHub branch-protection docs">Direct pushes bypass CI gates and introduce merge commits; requiring PRs ensures every change passes review + gates.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Trunk is Always Broken: Fix by gating merges on passing tests, adding pre-commit checks, speeding up CI to under 10 minutes, using feature flags for incomplete work, and keeping commits small.</statement>
-      <rationale source="v1-source">Fast feedback + safety gates + smaller changes = trust in trunk. Without these, developers work around TBD.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Need Long-Lived Branches: Fix by breaking features into smaller parts, implementing feature flags, using Branch by Abstraction, and reserving long-lived branches only for release branches or compliance gating.</statement>
-      <rationale source="v1-source">Long-lived branches are an anti-pattern in TBD. Chunking and flags eliminate the need for most branch lifetimes over 24 hours.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Code Review Bottleneck: Fix by keeping PRs under 200 lines, pairing instead of async review, enforcing a fast SLA (under 4 hours), and rotating reviewers to spread load.</statement>
-      <rationale source="v1-source">Small PRs are faster to review and merge. Async review is slow; live review (pair or sync check-in) unblocks faster.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>TBD + SDD Workflow: create task in .aidocs/backlog, move to .aidocs/todo, create short-lived branch (less than 1 day), implement with feature flags, open PR, fast review, merge to trunk, move task to .aidocs/done.</statement>
-      <rationale source="v1-source">Each SDD task = one trunk-merged increment. Feature flags control visibility; cleanup tasks surface flag removal.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Feature Flags for SDD: flag name matches task ID when possible, enable after thorough testing, remove after stability confirmed.</statement>
-      <rationale source="v1-source">Traceability: grep the codebase and find which task introduced each flag.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Continuous Delivery from Trunk: trunk push triggers CI, CI triggers staging deploy. Manual or approval-gated production deploy. Feature flags control visibility, not deployment. Task done = merged to trunk. Task deployed = feature flag enabled. Task complete = flag removed.</statement>
-      <rationale source="v1-source">Deployment and release are decoupled. Code deploys to production frequently; flags determine what end-users see.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>LLMs forget to remove the abstraction layer after rollout; always file the "collapse abstraction" follow-up before merging the introduction.</statement>
-      <rationale source="v1-source">Without explicit cleanup, the temporary abstraction becomes permanent indirection.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Agent generates flag checks with hard-coded True defaults during local dev and forgets to revert — gate via env (FLAGS_DEFAULT=off in CI) and grep for literal is_enabled(... True).</statement>
-      <rationale source="v1-source">Hard-coded True makes the flag always-on in CI and production, defeating the purpose.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Dark-launch comparison code re-raises in production paths — wrap in try/except at all costs; the README example does, the agent often skips it.</statement>
-      <rationale source="v1-source">The dark path should never crash the current path.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Squash-merge loses commit-level granularity; agents writing 200-line PRs as one commit are fine, agents writing 2000-line PRs need a stacked-PR workflow instead.</statement>
-      <rationale source="v1-source">Squash commit enables size enforcement.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Agent will "fix" pre-commit failures by adding # type: ignore / # noqa instead of fixing the issue; require diff review before any new pragma.</statement>
-      <rationale source="v1-source">Pragmas suppress the tool; they do not fix the underlying issue.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Human-in-loop checkpoint: any flag flip from less than 50% to 100% on a billing/auth-critical path. Agent can stage the rollout but a human approves the final percent.</statement>
-      <rationale source="v1-source">Critical systems warrant extra caution.</rationale>
-    </rule>
-    <rule id="r20" testable="true" depth="essential">
-      <statement>Branch protection state drift: agent adding a job to CI may leave main not requiring it — verify via gh api repos/:owner/:repo/branches/main/protection after CI changes.</statement>
-      <rationale source="v1-source">Without branch protection verification, new CI checks become advisory, not mandatory.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

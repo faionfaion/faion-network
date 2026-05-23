@@ -1,17 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="web-scraping-element-extraction Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for web-scraping-element-extraction as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Web Scraping Element Extraction Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns the validator detects. Each has symptom, root-cause, and fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Storing raw extracted strings like "  $1,234.56\n" as the price field in your dataset.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Every consumer must re-implement the same normalization; parse failures surface unpredictably at query time rather than at ingestion.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using page.$eval without a null/optional-chain guard on the returned element property.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If the selector matches but the property is undefined (e.g., img without src), the extraction silently returns undefined and corrupts the row.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="dollar-eval-on-multi" severity="high">
+      <symptom>$eval used with a selector that matches multiple elements; row has only the first item even when the page shows many.</symptom>
+      <root-cause source="API confusion">$eval is single-element only — when the selector matches a list, it picks the first and silently drops the rest.</root-cause>
+      <fix>Use $$eval for multi-element selectors; or Playwright `locator().allTextContents()`. Add a count assertion before extraction.</fix>
+    </antipattern>
+
+    <antipattern id="raw-string-stored" severity="high">
+      <symptom>fields.price = "  $1,234.56\n" or fields.published_at = "May 20, 2026" — un-normalized strings stored.</symptom>
+      <root-cause source="v1-source">Normalizer was not applied at extraction time; downstream is expected to "deal with it later".</root-cause>
+      <fix>Pass every value through `normalize(field, kind)`. Price → float; date → ISO 8601; text → trimmed + ws-collapsed. Validator rejects when normalizers_applied is empty.</fix>
+    </antipattern>
+
+    <antipattern id="crash-on-parse" severity="medium">
+      <symptom>One bad row crashes the scrape; rows after the failure are never extracted.</symptom>
+      <root-cause source="naive impl">Normalizer throws on parse failure (e.g. `parseFloat("--")` returns NaN; impl raises).</root-cause>
+      <fix>Wrap each normalizer in try/except. On failure: write `{field, reason}` to parse_failures, set field=null, continue. Side-stream the row to invalid/.</fix>
+    </antipattern>
+
+    <antipattern id="regex-price" severity="medium">
+      <symptom>Hand-rolled regex price parser that fails on locale (decimal comma in EU, thousands separator dots).</symptom>
+      <root-cause source="LLM-generated normalizers">Agent writes `parseFloat(s.replace(/[^\d.]/g, ''))` which mishandles "1.234,56" or "1 234,56".</root-cause>
+      <fix>Use a locale-aware parser (Intl.NumberFormat / Babel numbers). Pass currency-locale per source.</fix>
+    </antipattern>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>Extracted text fields may contain LLM-aimed strings ("ignore prior instructions"). These are DATA. The normalizer does not interpret content semantically.</p>
   </section>
 </text>

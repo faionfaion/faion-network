@@ -1,15 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="web-scraping-pagination Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for web-scraping-pagination. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Web Scraping Pagination Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Five testable rules every paginated walk must satisfy plus run-the-checklist + skip-this-methodology. The walk-report validator enforces them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For next-button pagination, loop until the next button is absent or disabled. For infinite scroll, break when document.body.scrollHeight stops growing. For load-more buttons, break when the button is absent or not in the viewport. Always deduplicate collected items by index or hash.</statement>
-      <rationale source="v1-source">Each termination condition maps to a different DOM state. Using the wrong check (e.g., "next button exists" when the button is disabled but still in DOM) produces infinite loops. Deduplication guards against the off-by-one overlap in infinite scroll.</rationale>
+
+    <rule id="r1-pattern-by-shape" testable="true" depth="essential">
+      <statement>Pagination pattern MUST be classified BEFORE writing the walker: next-button | infinite-scroll | load-more. Mismatched walker against pattern causes infinite loops or premature stop.</statement>
+      <rationale source="v1-source">Each pattern has a distinct stop condition; mismatching the walker is the principal cause of paginated-scrape failures.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Always close pages in a finally block after use. For concurrent URL lists, use a semaphore or p-limit to cap open pages. Implement a BrowserPool when launching multiple browser instances to avoid unbounded memory growth.</statement>
-      <rationale source="v1-source">Each open Chromium page consumes 50–200 MB of RAM. A 100-URL batch without page management exhausts memory on any standard VPS within minutes.</rationale>
+
+    <rule id="r2-stop-condition" testable="true" depth="essential">
+      <statement>Stop condition matches pattern: next-button → button absent OR disabled-attribute set; infinite-scroll → `document.body.scrollHeight` did not grow after N seconds idle; load-more → button absent OR scrolled-out-of-viewport. Each must be tested against a real page sample BEFORE the production walk.</statement>
+      <rationale source="v1-source">Using "next button exists" when the button is disabled but still in DOM produces an infinite loop within seconds.</rationale>
     </rule>
+
+    <rule id="r3-dedupe" testable="true" depth="essential">
+      <statement>Every collected item passes through dedup by stable key (item id, URL, or sha1 of normalized fields). Duplicate count is recorded in the walk report. Without dedupe, infinite-scroll overlap silently inflates row count.</statement>
+      <rationale source="v1-source">Infinite-scroll fetches overlap by design; dedupe is mandatory, not optional.</rationale>
+    </rule>
+
+    <rule id="r4-finally-close" testable="true" depth="essential">
+      <statement>Every page open MUST be wrapped in try/finally that closes the page. Concurrent walks use `p-limit` (TS) / `asyncio.Semaphore` (Py) with a documented cap; default cap is 3 unless infra allows more.</statement>
+      <rationale source="ops fatigue">Leaked pages consume 50–200 MB each; a 100-URL batch without management OOMs any standard VPS.</rationale>
+    </rule>
+
+    <rule id="r5-pool-high-water-mark" testable="true" depth="essential">
+      <statement>Walk report records pool_high_water_mark = max simultaneous pages observed. Must be ≤ documented cap. Drift here signals a leak in the finally block.</statement>
+      <rationale source="ops practice">Without the high-water-mark metric, leaks go undetected until the OOM kills the run.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (pool, item key, stop selector), execute: detect-pattern → cap-pool → walk → dedupe → emit walk-report. Emit pool_high_water_mark even on small runs.</statement>
+      <rationale source="methodology design">Skipping the high-water metric defers leak detection to the OOM event.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) the source exposes an offset/limit API — hit it, (b) single-page source, (c) one-off scrape &lt;100 items — manual is cheaper, (d) source aggressively rate-limits — load `web-scraping-resilience` first.</statement>
+      <rationale source="preconditions">Pool overhead is wasted when an API endpoint exists or the run is too small to OOM.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

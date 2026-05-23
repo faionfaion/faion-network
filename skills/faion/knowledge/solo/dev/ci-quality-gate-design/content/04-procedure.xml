@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="CI Quality Gate Design Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from "we have a CI we don't trust" to "ci-design.json committed + gates enforce the design".</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="inventory">
+      <input>current CI config, 30-day runtime data.</input>
+      <action>List every check with its name, runtime_p50_min, current pass/fail rate, current block/warn semantics.</action>
+      <output>check inventory table.</output>
+      <decision-gate>If a check is undocumented (no name in YAML or hidden behind a script) — STOP, document first.</decision-gate>
+    </step>
+
+    <step n="2" name="classify">
+      <input>inventory, signal-noise judgement.</input>
+      <action>Assign tier per rubric: high-signal fast → BLOCK; medium-signal infra/style → WARN; slow / exploratory → NIGHTLY. Owner per check.</action>
+      <output>checks[] with tier + owner.</output>
+      <decision-gate>If a high-signal slow check (e.g. e2e) lands in BLOCK and blows the budget — STOP, parallelize or demote.</decision-gate>
+    </step>
+
+    <step n="3" name="budget">
+      <input>tier assignments + parallelism map.</input>
+      <action>Compute block_critical_path_min = longest chain through BLOCK with parallel groups collapsed. Compare to target_min.</action>
+      <output>budget block with headroom or deficit.</output>
+      <decision-gate>If headroom &lt; 0 AND no remediation — STOP, verdict block-budget-exceeded.</decision-gate>
+    </step>
+
+    <step n="4" name="rationale">
+      <input>each BLOCK check.</input>
+      <action>Write one paragraph: what this check catches, why it BLOCK and not WARN, what the workaround is.</action>
+      <output>rationale field populated per BLOCK check.</output>
+      <decision-gate>If any BLOCK check lacks rationale — STOP, verdict block-missing-rationale.</decision-gate>
+    </step>
+
+    <step n="5" name="commit">
+      <input>artefact + schema.</input>
+      <action>Validate against schema. Commit ci-design.json next to CI config. Open PR; gate refuses CI changes without an updated artefact.</action>
+      <output>committed artefact + active enforcement.</output>
+      <decision-gate>If CI YAML drifts from artefact (tier mismatch, owner change) — STOP, fix one or the other.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/ci-design.md">Skeleton authors fill.</reference>
+  <reference path="templates/ci-quality-gate-design.json">Schema for the artefact.</reference>
+</text>

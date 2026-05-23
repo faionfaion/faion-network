@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Changelog Automation Conventional Commits Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from "we need a CHANGELOG for the next release" to "CHANGELOG.md committed + validator green". Decision-gates block on common failures.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="pick-range">
+      <input>last release tag (range_from), HEAD or proposed tag (range_to).</input>
+      <action>Run `git log --no-merges range_from..range_to --pretty=format:'%H%x09%s'`. Confirm linear history (no foreign merge graph).</action>
+      <output>commit list.</output>
+      <decision-gate>If history is not linear AND merge strategy is "merge" (not squash) — STOP, verdict block-merge-noise.</decision-gate>
+    </step>
+
+    <step n="2" name="parse">
+      <input>commit list.</input>
+      <action>Apply conventional-commits regex: `^(?P&lt;type&gt;feat|fix|chore|refactor|docs|perf|test|build|ci|style)(?:\((?P&lt;scope&gt;[^)]+)\))?(?P&lt;bang&gt;!)?:\s+(?P&lt;subject&gt;.+)$`. Capture breaking via `!:` OR `BREAKING CHANGE:` footer in body.</action>
+      <output>parsed list + deviations list.</output>
+      <decision-gate>If deviations non-empty — STOP, verdict block-non-conventional (rewrite offending commits OR open exception).</decision-gate>
+    </step>
+
+    <step n="3" name="group">
+      <input>parsed commits.</input>
+      <action>Assign each to a section by type. Breaking commits also appear in the breaking section regardless of base type. Compute semver_bump per r5.</action>
+      <output>grouped sections + semver_bump.</output>
+      <decision-gate>If declared release_version mismatches computed bump — STOP, verdict block-missing-version-bump.</decision-gate>
+    </step>
+
+    <step n="4" name="emit-md">
+      <input>grouped sections, release_version, release_date.</input>
+      <action>Render Markdown block: `## [release_version] - release_date`, then `### BREAKING CHANGES` (if any), then per-type sections in canonical order (Features → Fixes → Performance → Refactors → Tests → Docs → Build → CI → Style → Chores). Insert above existing entries in CHANGELOG.md.</action>
+      <output>updated CHANGELOG.md + changelog-update JSON artefact.</output>
+      <decision-gate>If artefact does not validate — STOP, fix the section assignment.</decision-gate>
+    </step>
+
+    <step n="5" name="validate">
+      <input>changelog-update JSON.</input>
+      <action>Run `scripts/validate-changelog-automation-conventional-commits.py --file path.json`. Block release if non-zero exit.</action>
+      <output>green validator + ready release.</output>
+      <decision-gate>Non-zero exit blocks the release script.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/CHANGELOG.md">CHANGELOG skeleton.</reference>
+  <reference path="templates/changelog-automation-conventional-commits.json">Schema for the artefact.</reference>
+</text>

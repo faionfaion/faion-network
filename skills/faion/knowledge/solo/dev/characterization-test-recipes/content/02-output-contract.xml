@@ -1,24 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Characterization Test Suite Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the shape of a passing characterization-test suite — folder layout, fixture taxonomy, snapshot review record. A suite without this shape is not refactor-ready.</summary>
+<text id="02-output-contract" title="Characterization Test Suite Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the characterization-suite manifest artefact. A suite-manifest that does not validate is not refactor-ready; the CI gate blocks the refactor branch.</summary>
 
-  <section title="Required suite layout">
-    <list>
-      <item><code>tests/characterization/</code> — characterization tests separate from regular unit-test directory.</item>
-      <item><code>tests/characterization/fixtures/</code> — input fixtures, one file per representative scenario, named with origin (production-sample-NNN.json) or scenario (edge-empty-list.json).</item>
-      <item><code>tests/characterization/snapshots/</code> — committed expected outputs; one file per fixture.</item>
-      <item><code>tests/characterization/normalize.{py,ts,go}</code> — single normalization module imported by every test.</item>
-      <item><code>tests/characterization/README.md</code> — sweep termination criteria; how to update snapshots; reviewer.</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/characterization-test-recipes.json",
+  "type": "object",
+  "required": ["artefact_id", "module_under_test", "capture_branch_sha", "fixtures", "normalizer_path", "branch_coverage_pct", "baseline_signoff", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":      {"type": "string", "pattern": "^ctr-[a-z0-9-]{6,}$"},
+    "module_under_test":{"type": "string", "minLength": 1},
+    "capture_branch_sha":{"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "origin", "capture_date", "redacted"],
+        "properties": {
+          "id":          {"type": "string", "minLength": 1},
+          "origin":      {"enum": ["production-sample", "spec-edge", "regression-test", "synthetic"]},
+          "capture_date":{"type": "string", "format": "date"},
+          "redacted":    {"type": "boolean"}
+        }
+      }
+    },
+    "normalizer_path":     {"type": "string", "minLength": 1},
+    "branch_coverage_pct": {"type": "number", "minimum": 0, "maximum": 100},
+    "baseline_signoff": {
+      "type": "object",
+      "required": ["reviewer", "signed_off_at", "snapshot_commit_sha"],
+      "properties": {
+        "reviewer":            {"type": "string", "minLength": 1},
+        "signed_off_at":       {"type": "string", "format": "date"},
+        "snapshot_commit_sha": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"}
+      }
+    },
+    "ci_auto_update_disabled": {"type": "boolean"},
+    "verdict":      {"enum": ["wrap-refactor", "block-insufficient-coverage", "block-no-signoff", "block-bug-on-purpose", "skip-deleting-code"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Required metadata">
-    <list>
-      <item><code>fixture-manifest.json</code>: per-fixture origin (production-sample / spec-edge / regression-test), capture date, redaction status.</item>
-      <item><code>baseline-signoff.md</code>: reviewer name + ISO date + commit SHA of baseline snapshots.</item>
-      <item><code>coverage-report.json</code>: branch coverage at baseline; suite is gated on &gt;= configured threshold.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ctr-billing-engine",
+  "module_under_test": "src/billing/engine.py",
+  "capture_branch_sha": "a1b2c3d",
+  "fixtures": [
+    {"id": "prod-001", "origin": "production-sample", "capture_date": "2026-05-20", "redacted": true},
+    {"id": "edge-empty-cart", "origin": "spec-edge", "capture_date": "2026-05-21", "redacted": true}
+  ],
+  "normalizer_path": "tests/characterization/normalize.py",
+  "branch_coverage_pct": 87.4,
+  "baseline_signoff": {"reviewer": "ruslan@faion.net", "signed_off_at": "2026-05-22", "snapshot_commit_sha": "c3d4e5f"},
+  "ci_auto_update_disabled": true,
+  "verdict": "wrap-refactor",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ctr",
+  "module_under_test": "billing",
+  "capture_branch_sha": "main",
+  "fixtures": [],
+  "normalizer_path": "",
+  "branch_coverage_pct": 42,
+  "baseline_signoff": {"reviewer": "team@", "signed_off_at": "today", "snapshot_commit_sha": "xx"},
+  "ci_auto_update_disabled": false,
+  "verdict": "wrap-refactor",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing ctr- prefix; capture_branch_sha not a real sha; fixtures empty; normalizer_path empty; coverage 42% &lt; threshold; signoff missing real reviewer + dates; ci_auto_update_disabled=false (r5 violation); version + last_reviewed malformed.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
@@ -26,26 +93,15 @@
       <reason>Violates r2 — unreviewed snapshots silently pin bugs as expected behavior.</reason>
     </antipattern>
     <antipattern>
-      <description>Fixtures contain raw PII (emails, names, tokens).</description>
+      <description>Fixtures contain raw PII (emails, names, tokens) — redacted=false on any row.</description>
       <reason>Test fixtures live in git forever. Redact at capture-time; record redaction status in manifest.</reason>
     </antipattern>
     <antipattern>
-      <description>CI step auto-updates snapshots on failure (`--update-snapshots` in CI script).</description>
+      <description>ci_auto_update_disabled=false.</description>
       <reason>Violates r5. Suite becomes a no-op. Update flag must be developer-only, never in CI default.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Mixing characterization tests with regular unit tests in the same folder.</description>
-      <reason>Different semantics. Regular tests test should-behavior; characterization tests test current-behavior. Mixing causes future maintainers to "fix" characterization tests instead of investigating diffs.</reason>
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Fixtures captured on pre-refactor branch (verified via git log).</item>
-      <item>Every snapshot has a corresponding fixture-manifest row.</item>
-      <item>Normalization module exists and is imported by every snapshot test.</item>
-      <item>Branch coverage at baseline meets or exceeds the documented threshold.</item>
-      <item>Baseline-signoff signed by a human; refactor commits start after this date.</item>
-    </list>
-  </section>
+  <reference path="templates/characterization-test-recipes.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-characterization-test-recipes.py">Validator that enforces this contract.</reference>
 </text>

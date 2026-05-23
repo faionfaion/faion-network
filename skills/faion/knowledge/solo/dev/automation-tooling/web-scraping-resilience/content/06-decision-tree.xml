@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Web Scraping Resilience Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes an observed error class to the matching resilience layer. Branches name observable error/config features; leaves reference rules.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are prerequisites satisfied: browser handle, target rate, anti-detect lib installed, logger present?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-error">What is the observed error class?</question>
+
+      <branch when="error_class == 'rate-limit-429'">
+        <question id="q-jitter">Is delay range &gt; 0 AND min &lt; max (jitter present)?</question>
+        <branch when="jitter_present == false">
+          <conclusion ref="r1-jittered-delay" verdict="apply"/>
+        </branch>
+        <branch when="jitter_present == true">
+          <conclusion ref="r2-exp-backoff-cap-5" verdict="apply"/>
+        </branch>
+      </branch>
+
+      <branch when="error_class == 'transient-5xx-or-timeout'">
+        <question id="q-retries">Is max_retries ≤ 5 AND exponential backoff with jitter wired?</question>
+        <branch when="retry_correct == false">
+          <conclusion ref="r2-exp-backoff-cap-5" verdict="apply"/>
+        </branch>
+        <branch when="retry_correct == true">
+          <conclusion ref="run-the-checklist" verdict="apply"/>
+        </branch>
+      </branch>
+
+      <branch when="error_class == 'browser-crash'">
+        <question id="q-recover">Is crash_recover_enabled == true?</question>
+        <branch when="crash_recover_enabled == false">
+          <conclusion ref="r4-crash-recover" verdict="apply"/>
+        </branch>
+        <branch when="crash_recover_enabled == true">
+          <conclusion ref="run-the-checklist" verdict="apply"/>
+        </branch>
+      </branch>
+
+      <branch when="error_class == 'captcha-or-403-anti-bot'">
+        <question id="q-anti-detect">Is anti_detect_enabled == true AND stealth_lib non-null?</question>
+        <branch when="anti_detect_enabled == false">
+          <conclusion ref="r5-anti-detect-headers" verdict="apply"/>
+        </branch>
+        <branch when="anti_detect_enabled == true">
+          <conclusion ref="skip-this-methodology" verdict="escalate-human"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="429-with-no-jitter">
+    prereqs_met=true → error_class=rate-limit-429 → jitter_present=false → verdict=apply (ref r1-jittered-delay).
+  </example>
+</text>

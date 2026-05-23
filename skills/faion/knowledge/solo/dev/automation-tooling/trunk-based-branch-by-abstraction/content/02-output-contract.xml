@@ -1,22 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trunk-based-branch-by-abstraction Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trunk-Based Branch by Abstraction Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the playbook-step artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trunk-based-branch-by-abstraction.json",
+  "type": "object",
+  "required": [
+    "plan_id",
+    "flag_name",
+    "cleanup_ticket_id",
+    "steps_in_order",
+    "dark_launch_planned"
+  ],
+  "properties": {
+    "plan_id": {
+      "type": "string"
+    },
+    "flag_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "cleanup_ticket_id": {
+      "type": "string"
+    },
+    "steps_in_order": {
+      "type": "boolean",
+      "const": true
+    },
+    "current_step": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "dark_launch_planned": {
+      "type": "boolean",
+      "const": true
+    },
+    "one_step_per_pr": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "plan_id": "billing-stripe-v2",
+  "flag_name": "billing.use_stripe_v2",
+  "cleanup_ticket_id": "OPS-148",
+  "steps_in_order": true,
+  "current_step": 4,
+  "dark_launch_planned": true,
+  "one_step_per_pr": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "plan_id": "billing-refactor",
+  "flag_name": "disable_legacy"
+}
+]]></code>
+    <note>Flag named via boolean-negative (disable_legacy); cleanup ticket missing; steps out of order; no dark-launch plan.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-skip-step-5">
+      <description>Plan ends at step 4 with no cleanup task</description>
+      <why>Violates five-steps-in-order; leaves permanent abstraction debt.</why>
+    </pattern>
+    <pattern id="f-late-ticket">
+      <description>Cleanup ticket filed after step 3 or later</description>
+      <why>Violates step-5-ticket-at-step-1; tickets filed later are filed never.</why>
+    </pattern>
+    <pattern id="f-mixed-step-pr">
+      <description>One PR contains step-2 wrap + step-3 new implementation</description>
+      <why>Violates no-mixed-step-prs; impossible to bisect.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-trunk-based-branch-by-abstraction.py">Validator script</reference>
 </text>

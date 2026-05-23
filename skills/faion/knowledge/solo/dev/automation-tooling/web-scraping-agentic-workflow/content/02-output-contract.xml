@@ -1,22 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="web-scraping-agentic-workflow Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Web Scraping Agentic Workflow Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the per-run scrape report. A scrape run that has not produced a schema-valid report has not happened — downstream stages refuse to consume its raw output.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/web-scraping-agentic-workflow.json",
+  "type": "object",
+  "required": ["artefact_id", "source", "run_id", "render_mode", "tool", "rows_seen", "rows_valid", "drift_score", "robots_check", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":  {"type": "string", "pattern": "^wsr-[a-z0-9-]{6,}$"},
+    "source":       {"type": "string", "minLength": 1},
+    "run_id":       {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}\\d{2}Z-[a-z0-9]+$"},
+    "render_mode":  {"enum": ["ssr", "js", "managed"]},
+    "tool":         {"enum": ["httpx-selectolax", "playwright", "firecrawl", "jina-reader"]},
+    "rows_seen":    {"type": "integer", "minimum": 0},
+    "rows_valid":   {"type": "integer", "minimum": 0},
+    "drift_score":  {"type": "number", "minimum": 0, "maximum": 100},
+    "robots_check": {
+      "type": "object",
+      "required": ["fetched_at", "allowed"],
+      "properties": {
+        "fetched_at": {"type": "string", "format": "date-time"},
+        "allowed":    {"type": "boolean"}
+      }
+    },
+    "raw_path":     {"type": "string"},
+    "user_agent":   {"type": "string"},
+    "verdict":      {"enum": ["promote", "block-validation-low", "block-drift-high", "block-tool-mismatch", "block-robots-disallow"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "wsr-news-2026-05-23",
+  "source": "example.com/news",
+  "run_id": "2026-05-23T0900Z-a1b2c3",
+  "render_mode": "ssr",
+  "tool": "httpx-selectolax",
+  "rows_seen": 124,
+  "rows_valid": 122,
+  "drift_score": 0.0,
+  "robots_check": {"fetched_at": "2026-05-23T08:59:50Z", "allowed": true},
+  "raw_path": "raw/2026-05-23/example-news.jsonl",
+  "user_agent": "faion-network/1.0 (+mailto:ruslan@faion.net)",
+  "verdict": "promote",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "news",
+  "source": "example.com/news",
+  "run_id": "now",
+  "render_mode": "ssr",
+  "tool": "playwright",
+  "rows_seen": 10,
+  "rows_valid": 4,
+  "drift_score": 12,
+  "robots_check": {"allowed": false},
+  "verdict": "promote",
+  "version": "1.0",
+  "last_reviewed": "soon"
+}
+]]></code>
+    <note>artefact_id missing wsr- prefix; run_id violates pattern; render_mode=ssr with tool=playwright is a tool-mismatch (r2 violation); rows_valid/rows_seen=0.4 fails &gt;=0.9 gate; drift_score=12 &gt; 5 (r6 violation); robots_check.allowed=false should abort the run; verdict=promote contradicts all of the above; version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=promote with rows_valid / rows_seen &lt; 0.9.</description>
+      <reason>Validation gate r4 not met; downstream stages would consume corrupt data.</reason>
+    </antipattern>
+    <antipattern>
+      <description>verdict=promote with drift_score &gt; 5.</description>
+      <reason>r6 violation — source-side template change unresolved.</reason>
+    </antipattern>
+    <antipattern>
+      <description>render_mode != tool category (e.g. ssr + playwright).</description>
+      <reason>r2 violation — wrong tool wastes 50x resource.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/web-scraping-agentic-workflow.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-web-scraping-agentic-workflow.py">Validator that enforces this contract.</reference>
 </text>

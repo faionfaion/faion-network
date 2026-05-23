@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Blast Radius Scoring Rubric Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the per-PR rubric artefact. A PR without a schema-valid rubric cannot pass the bot's merge gate.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/blast-radius-scoring-rubric.json",
+  "type": "object",
+  "required": ["artefact_id", "pr_ref", "axes", "total", "verdict", "override_fired", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":  {"type": "string", "pattern": "^brsr-[a-z0-9-]{6,}$"},
+    "pr_ref":       {"type": "string", "minLength": 1},
+    "axes": {
+      "type": "object",
+      "required": ["services", "users", "reversibility"],
+      "properties": {
+        "services":      {"type": "integer", "enum": [1, 3, 5]},
+        "users":         {"type": "integer", "enum": [1, 3, 5]},
+        "reversibility": {"type": "integer", "enum": [1, 3, 5]}
+      }
+    },
+    "total":          {"type": "integer", "minimum": 3, "maximum": 15},
+    "override_fired": {"type": "boolean"},
+    "override_category": {
+      "type": ["string", "null"],
+      "enum": [null, "auth", "payments", "rbac", "secrets", "migrations", "deletions", "money", "pii", "cron"]
+    },
+    "verdict":        {"enum": ["light-skim", "standard", "deep-read", "block-missing-rollback"]},
+    "rollback_plan":  {"type": ["string", "null"], "description": "required when reversibility==5"},
+    "scored_by":      {"type": "string"},
+    "version":        {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":  {"type": "string", "format": "date"}
+  }
+}
+]]></code>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "brsr-pr-483",
+  "pr_ref": "https://github.com/org/repo/pull/483",
+  "axes": {"services": 1, "users": 5, "reversibility": 3},
+  "total": 11,
+  "override_fired": true,
+  "override_category": "auth",
+  "verdict": "deep-read",
+  "rollback_plan": null,
+  "scored_by": "ruslan@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>Raw axis total is 9, but override_fired=true (touches auth) bumps verdict to deep-read. Reversibility=3 so rollback_plan is allowed null.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "pr-999",
+  "pr_ref": "config change",
+  "axes": {"services": 1, "users": 1, "reversibility": 5},
+  "total": 7,
+  "override_fired": false,
+  "verdict": "light-skim",
+  "version": "1.0",
+  "last_reviewed": "yesterday"
+}
+]]></code>
+    <note>artefact_id missing brsr- prefix; total=7 contradicts axes sum=7 but verdict says light-skim despite reversibility=5 (requires rollback_plan); override_fired=false but cron/secrets path was touched (should be true); version not semver; last_reviewed not ISO date.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=light-skim or standard while reversibility=5 and rollback_plan is null/missing.</description>
+      <reason>Violates rollback-plan-required (r4). Irreversible PRs require a written plan; a missing plan blocks merge.</reason>
+    </antipattern>
+    <antipattern>
+      <description>override_fired=false while override_category is non-null, or vice versa.</description>
+      <reason>State inconsistency — the bot cannot trust subsequent routing logic.</reason>
+    </antipattern>
+    <antipattern>
+      <description>axes values outside {1, 3, 5}.</description>
+      <reason>The matrix is intentionally 3-banded for sub-60s scoring. Continuous scores defeat the speed-of-routing goal.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/blast-radius-scoring-rubric.json">JSON Schema canonical location.</reference>
+  <reference path="scripts/validate-blast-radius-scoring-rubric.py">Validator that enforces this contract.</reference>
+</text>

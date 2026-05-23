@@ -1,19 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="web-scraping-agentic-workflow Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for web-scraping-agentic-workflow. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Web Scraping Agentic Workflow Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Seven testable rules every agent-driven scrape pipeline must satisfy. The scrape-run report validator enforces them at end-of-run.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>A scrape agent MUST execute in this order: (1) curl -I to confirm SSR vs JS-render; (2) choose httpx+selectolax for SSR, Playwright for JS; (3) extract with role/text locators; (4) validate every row with Pydantic/Zod and log invalid count; (5) write to raw/YYYY-MM-DD/source.jsonl; (6) on schema drift (&gt;5% field disappearance), stop and raise a human review issue.</statement>
-      <rationale source="v1-source">Each step is a quality gate. Skipping the SSR probe wastes browser resources. Skipping validation lets corrupt rows contaminate the dataset silently. Skipping drift detection makes pipeline failures invisible for days.</rationale>
+
+    <rule id="r1-probe-first" testable="true" depth="essential">
+      <statement>Before tool selection the agent MUST run a curl -I + small GET probe on the canonical URL and classify render mode ∈ {ssr, js, managed}. SSR = listing items present in initial HTML; JS = listing items absent until after JS execution.</statement>
+      <rationale source="v1-source / browser-cost study">Skipping the probe routinely picks Playwright for SSR pages, multiplying CPU + memory cost by 50x and slowing each page load by 8s.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Always check robots.txt before scraping and cache the result for the run. Identify your bot with a descriptive User-Agent including a contact email. Snapshot raw HTML alongside parsed JSON. Validate rows with Pydantic/Zod and log validation errors to a separate stream. For LLM consumption, prefer Firecrawl or r.jina.ai markdown output — it saves 70% or more tokens versus raw HTML.</statement>
-      <rationale source="v1-source">robots.txt compliance reduces ban risk and is a legal shield in many jurisdictions. Raw HTML snapshots let you re-parse without re-scraping when the parser changes. Pydantic validation surfaces schema drift at ingestion rather than at query time.</rationale>
+
+    <rule id="r2-tool-by-render-mode" testable="true" depth="essential">
+      <statement>Tool selection MUST match render mode: ssr → httpx + selectolax; js → Playwright (Chromium); managed → Firecrawl / r.jina.ai. Mismatches are rejected by the validator.</statement>
+      <rationale source="empirical benchmark 2026">A 6 KB JSON response with httpx costs ~1 ms; the same page through Playwright costs ~3 s. Managed services save 70% LLM tokens by returning cleaned Markdown.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>In agent prompts, robots.txt check MUST be the first step — agents skip it unless explicitly instructed. Provide the actual DOM selector from inspection, not a guessed class name. Specify pagination layout explicitly (next-button or infinite-scroll) since agents default to the wrong one.</statement>
-      <rationale source="v1-source">LLMs hallucinate selectors that "feel right" (.product-card) when the actual class is .css-1abc23. "Just retry on failure" loops without backoff get IPs banned in minutes. Login flows produce cookies/tokens that agents commit unless explicitly gitignored.</rationale>
+
+    <rule id="r3-locator-roles" testable="true" depth="essential">
+      <statement>Extraction MUST use role/text/structural locators (e.g. role="listitem", text="Add to cart", "article &gt; h2") — NOT class-name selectors fabricated by the agent.</statement>
+      <rationale source="LLM-hallucination corpus">Agents invent class names that "look right" (.product-card) when the actual class is .css-1abc23. Locators by role/text survive class-name churn.</rationale>
     </rule>
+
+    <rule id="r4-validate-rows" testable="true" depth="essential">
+      <statement>Every extracted row passes Pydantic/Zod validation BEFORE persistence. Invalid rows are written to a separate `invalid/&lt;source&gt;.jsonl` stream with the validation error; rows_valid / rows_seen ratio appears in the run report.</statement>
+      <rationale source="v1-source">Silent ingestion of malformed rows contaminates the dataset for weeks. Eager validation surfaces drift at the boundary.</rationale>
+    </rule>
+
+    <rule id="r5-versioned-jsonl" testable="true" depth="essential">
+      <statement>Output writes to `raw/YYYY-MM-DD/&lt;source&gt;.jsonl` (one row per line). The raw HTML snapshot is stored alongside the parsed JSON under `raw/YYYY-MM-DD/&lt;source&gt;.html.gz`.</statement>
+      <rationale source="v1-source">Date-partitioned JSONL is the cheapest format that supports re-parse without re-scrape. The HTML snapshot lets the parser be improved without paying the scrape cost again.</rationale>
+    </rule>
+
+    <rule id="r6-drift-alarm" testable="true" depth="essential">
+      <statement>Drift score = % of declared schema fields that appeared in ≥80% of yesterday's rows but appeared in &lt;80% of today's rows. If drift &gt; 5%, the run STOPS, a human-review issue is filed, and no downstream stage may consume today's `raw/`.</statement>
+      <rationale source="v1-source">Source-side template changes cause silent data loss. A 5% threshold catches structural shifts without false-positives on noisy fields.</rationale>
+    </rule>
+
+    <rule id="r7-robots-and-ua" testable="true" depth="essential">
+      <statement>robots.txt is fetched and cached PER RUN as the first action. User-Agent identifies the bot with a contact email (e.g. `faion-network/1.0 (+mailto:ruslan@faion.net)`). If robots.txt disallows the URL pattern, the run aborts.</statement>
+      <rationale source="legal practice + ban mitigation">robots.txt compliance is a legal shield in many jurisdictions; identifying contact UA cuts ban rate dramatically when site owners reach out instead of blocking.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (target URL, schema, storage path, contact UA), execute steps r7 → r1 → r2 → r3 → r4 → r5 → r6 in that order. Emit the scrape-run report at end; do not skip drift even on clean runs.</statement>
+      <rationale source="agent-design">Skipping a step under "looks fine" pressure is the principal failure mode for LLM-driven scrapes.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) the source provides an official API — use it, (b) robots.txt disallows AND no legal exception, (c) a one-off scrape with no recurrence — quick-and-dirty is fine, (d) the source returns persistent 429 even at low rates — load `web-scraping-resilience` first.</statement>
+      <rationale source="methodology preconditions">Agentic-workflow overhead assumes recurrence + permitted access; below those, the artefact burden is wasted.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

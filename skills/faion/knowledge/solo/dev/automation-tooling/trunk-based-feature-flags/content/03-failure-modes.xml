@@ -1,17 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="trunk-based-feature-flags Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for trunk-based-feature-flags as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Trunk-Based Feature Flags Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Four antipatterns the spec validator detects. Each has symptom (observable in spec or code), root-cause, and fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Hard-coding is_enabled(..., default=True) during local development and shipping it to CI without reverting.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The flag is effectively dead — gate via env (FLAGS_DEFAULT=off in CI) and grep for literal is_enabled(... True) in code review. Agents forget to revert defaults frequently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Skipping the try/except around the dark-launch call because "the new implementation should not throw".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Any unhandled exception in the shadow path propagates to the caller, breaking the current result. Dark launch must be hermetically isolated from the production path at all costs.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="zombie-flag" severity="high">
+      <symptom>flag exists in service AND last toggle &gt; 90 days ago AND cleanup_ticket_id is closed or missing.</symptom>
+      <root-cause source="post-mortem corpus">Cleanup ticket was never filed at creation, or owner left the team and no one inherited.</root-cause>
+      <fix>Nightly aging scan emits a list; quarterly cleanup batch closes them in pairs (author + reviewer). Block new flag creation by owners with active zombies above quota (typical: 3).</fix>
+    </antipattern>
+
+    <antipattern id="team-alias-owner" severity="medium">
+      <symptom>owner_email matches a team alias pattern (engineering@, dev@, ops@) or is missing.</symptom>
+      <root-cause source="diffusion of responsibility">"It's a team flag" sounds collaborative; in practice no one owns cleanup.</root-cause>
+      <fix>Reject team aliases in the validator. Pick a primary owner explicitly; that owner can delegate but the spec retains a named human.</fix>
+    </antipattern>
+
+    <antipattern id="hardcoded-default-true" severity="high">
+      <symptom>Code contains `is_enabled(..., default=True)` checked into trunk; CI does not override.</symptom>
+      <root-cause source="local-dev pattern leak">Developer flips default during local-dev and forgets to revert. The flag becomes effectively dead — always-on.</root-cause>
+      <fix>CI env sets `FLAGS_DEFAULT=off` so any hardcoded default=True surfaces as a failing test. Lint rule greps for the literal pattern.</fix>
+    </antipattern>
+
+    <antipattern id="kill-switch-untested" severity="high">
+      <symptom>kill_switch_tested=true in spec but no runbook artefact (recorded action, test run id) backs it.</symptom>
+      <root-cause source="checklist fatigue">Author checks the box without performing the test.</root-cause>
+      <fix>Validator requires kill_switch_test_run_id; bot looks it up in CI runs. Quarterly drill: re-test every active flag's kill switch.</fix>
+    </antipattern>
+
+  </section>
+
+  <section title="Prompt-injection markers">
+    <p>AI-generated flag specs may "complete" missing fields with plausible-but-fake values (synthesized owner emails, fictional ticket ids). The validator MUST verify each external reference (cleanup_ticket_id resolves, owner_email is a real account) before accepting.</p>
   </section>
 </text>

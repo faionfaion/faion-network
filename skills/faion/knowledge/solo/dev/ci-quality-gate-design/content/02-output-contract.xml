@@ -1,55 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="CI Quality Gate Design Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>The methodology's output is a single ci-design.md file living next to the CI config. PRs that change CI must also update this file.</summary>
+<text id="02-output-contract" title="CI Quality Gate Design Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the ci-design artefact. Pre-merge gate rejects CI changes that don't update this artefact.</summary>
 
-  <section title="Required document structure">
-    <list>
-      <item><code>ci-design.md</code> sections: Tier Table (block/warn/nightly), Per-Check Rationale, Time Budget Arithmetic, Escalation Directory, Review Log.</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ci-quality-gate-design.json",
+  "type": "object",
+  "required": ["artefact_id", "checks", "budget", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^cgd-[a-z0-9-]{6,}$"},
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "tier", "runtime_p50_min", "owner_email", "last_reviewed"],
+        "properties": {
+          "name":              {"type": "string", "minLength": 1},
+          "tier":              {"enum": ["BLOCK", "WARN", "NIGHTLY"]},
+          "runtime_p50_min":   {"type": "number", "minimum": 0, "maximum": 120},
+          "rationale":         {"type": "string"},
+          "owner_email":       {"type": "string", "format": "email"},
+          "escalation":        {"type": "string"},
+          "last_reviewed":     {"type": "string", "format": "date"}
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["target_min", "block_critical_path_min", "headroom_min"],
+      "properties": {
+        "target_min":              {"type": "number", "minimum": 1, "maximum": 60},
+        "block_critical_path_min": {"type": "number", "minimum": 0, "maximum": 120},
+        "headroom_min":            {"type": "number"},
+        "remediation":             {"type": "string"}
+      }
+    },
+    "verdict":      {"enum": ["commit-design", "block-budget-exceeded", "block-missing-rationale", "block-config-drift"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
 
-  <section title="Required per-check fields">
-    <list>
-      <item><code>name</code> — check name as it appears in CI.</item>
-      <item><code>tier</code> — BLOCK / WARN / NIGHTLY.</item>
-      <item><code>runtime_p50</code> — median runtime in minutes over last 30 days.</item>
-      <item><code>rationale</code> — 1 paragraph per r2 (BLOCK only).</item>
-      <item><code>owner</code> — named individual or team.</item>
-      <item><code>escalation</code> — 1 line per r5 (BLOCK only).</item>
-      <item><code>last_reviewed</code> — ISO date.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "cgd-faion-net-be",
+  "checks": [
+    {"name": "lint", "tier": "BLOCK", "runtime_p50_min": 1.2, "rationale": "blocks merge on code style + obvious bugs", "owner_email": "ruslan@faion.net", "escalation": "3 days flapping -> #ci", "last_reviewed": "2026-05-23"},
+    {"name": "unit-tests", "tier": "BLOCK", "runtime_p50_min": 3.4, "rationale": "core business-logic regression net", "owner_email": "ruslan@faion.net", "escalation": "3 days flapping -> #ci", "last_reviewed": "2026-05-23"},
+    {"name": "mutation-tests", "tier": "NIGHTLY", "runtime_p50_min": 25, "owner_email": "ruslan@faion.net", "last_reviewed": "2026-05-23"}
+  ],
+  "budget": {"target_min": 10, "block_critical_path_min": 6.8, "headroom_min": 3.2},
+  "verdict": "commit-design",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
 
-  <section title="Required budget block">
-    <list>
-      <item>Total BLOCK runtime under parallelism: sum of critical path.</item>
-      <item>Budget target (line: "Budget: 10min, current p50: 8min").</item>
-      <item>Slack: minutes of headroom OR over-budget alert.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ci",
+  "checks": [{"name": "lint", "tier": "BLOCK", "runtime_p50_min": 1, "owner_email": "team@", "last_reviewed": "today"}],
+  "budget": {"target_min": 10, "block_critical_path_min": 28, "headroom_min": -18},
+  "verdict": "commit-design",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing cgd- prefix; owner_email=team@ (r5 violation); BLOCK lint without rationale (r2); block_critical_path_min=28 &gt; target=10, headroom negative (r3 budget violation); verdict=commit-design impossible; version + last_reviewed malformed.</note>
+  </example>
 
   <section title="Forbidden patterns">
     <antipattern>
-      <description>CI config introduces a new BLOCK check without a matching ci-design.md entry.</description>
-      <reason>Violates r1 + r2. PR must be rejected until ci-design.md is updated.</reason>
+      <description>BLOCK check with empty rationale.</description>
+      <reason>r2 violation; future debates restart.</reason>
     </antipattern>
     <antipattern>
-      <description>Tier table marks a check as BLOCK while the CI runs it `continue-on-error: true`.</description>
-      <reason>Configuration drift. Either fix the config to enforce, or move the check to WARN. Lying tables are worse than no tables.</reason>
+      <description>block_critical_path_min &gt; target_min with no remediation listed.</description>
+      <reason>r3 violation; documented denial is worse than no budget.</reason>
     </antipattern>
     <antipattern>
-      <description>Budget block shows total &gt; target but no action listed (no demotion, no parallelization plan).</description>
-      <reason>The budget arithmetic is only useful if violations trigger an action — otherwise it's documented denial.</reason>
+      <description>owner_email is a team alias.</description>
+      <reason>r5 violation; unowned BLOCK checks get bypassed.</reason>
     </antipattern>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Every CI check appears exactly once in the tier table.</item>
-      <item>BLOCK checks have rationale + owner + escalation populated.</item>
-      <item>Runtime numbers updated within last 30 days.</item>
-      <item>Total BLOCK critical-path runtime &lt;= budget target OR remediation action listed.</item>
-      <item>Last_reviewed dates within 90 days; older entries flagged.</item>
-    </list>
-  </section>
+  <reference path="templates/ci-quality-gate-design.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-ci-quality-gate-design.py">Validator that enforces this contract.</reference>
 </text>

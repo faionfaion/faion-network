@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Web Scraping Pagination Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes a walk by pattern detection and cap check. Branches name observable DOM/report features; leaves reference rules.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are prerequisites satisfied: pool/limiter ready, stop selector present, dedupe key defined?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-pattern">Which pagination pattern does the DOM exhibit (next-button, infinite-scroll, load-more)?</question>
+
+      <branch when="pattern_matches_walker == false">
+        <conclusion ref="r1-pattern-by-shape" verdict="block-wrong-pattern"/>
+      </branch>
+
+      <branch when="pattern_matches_walker == true">
+        <question id="q-cap">Is concurrency_cap set AND ≤ 10 AND pool_high_water_mark ≤ concurrency_cap?</question>
+
+        <branch when="cap_violation == true">
+          <conclusion ref="r4-finally-close" verdict="block-unbounded-concurrency"/>
+        </branch>
+
+        <branch when="cap_violation == false">
+          <question id="q-dedupe">Is duplicate_count meaningful (any value for next-button; &gt;0 for infinite-scroll / load-more with &gt;50 items)?</question>
+
+          <branch when="dedupe_likely_skipped == true">
+            <conclusion ref="r3-dedupe" verdict="block-no-dedupe"/>
+          </branch>
+
+          <branch when="dedupe_likely_skipped == false">
+            <conclusion ref="run-the-checklist" verdict="approve"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="infinite-scroll-clean">
+    prereqs_met=true → pattern=infinite-scroll matches walker → cap=3, hwm=3 → duplicate_count=18 on 240 items → verdict=approve (ref run-the-checklist).
+  </example>
+</text>

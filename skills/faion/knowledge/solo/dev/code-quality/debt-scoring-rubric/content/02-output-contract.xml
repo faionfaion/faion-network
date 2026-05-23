@@ -1,59 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Debt Scoring Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Schema for a scored-debt-item object and the debt register. Must be satisfied before a scored list is published or fed into sprint planning.</summary>
+<text id="02-output-contract" title="Debt Scoring Rubric Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the debt-register artefact (per-item score + aggregate). The register is the contract for sprint planning.</summary>
 
-  <output-contract>
-    <required>
-      <field name="item_id" type="string"/>
-      <field name="title" type="string" max_words="12"/>
-      <field name="description" type="paragraph" max_words="80"/>
-      <field name="code_or_design_pointer" type="uri_or_path"
-             notes="file path, design-system component id, or RFC link"/>
-      <field name="category" enum="architecture,code,test,design,infra,dependency,documentation"/>
-      <field name="factors.user_impact" type="integer" range="1..5"/>
-      <field name="factors.change_frequency" type="integer" range="1..5"/>
-      <field name="factors.fragility" type="integer" range="1..5"/>
-      <field name="factors.blast_radius" type="integer" range="1..5"/>
-      <field name="factors.fix_cost" type="integer" range="1..5"/>
-      <field name="score"
-             format="(UI*CF*FR*BR)/FC rounded to 1 decimal"/>
-      <field name="confidence" enum="HIGH,MEDIUM,LOW"/>
-      <field name="confidence_evidence" type="object"
-             notes="per-factor data_backed: true|false"/>
-      <field name="what_changes_if_paid" type="paragraph" max_words="60"
-             notes="audience-language outcome; must reference user-impact concretely"/>
-      <field name="scored_by" type="string"/>
-      <field name="scored_at" format="ISO-8601"/>
-      <field name="anchor_doc_ref" type="uri"
-             notes="link to the committed anchor descriptions used for this scoring round"/>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">factor values outside 1..5 OR non-integer</pattern>
-      <pattern id="f2">score computed by different formula than (UI*CF*FR*BR)/FC</pattern>
-      <pattern id="f3">confidence = HIGH with confidence_evidence showing &lt;5 factors data_backed</pattern>
-      <pattern id="f4">what_changes_if_paid contains only banned phrases ("improves quality", "reduces debt", "improves maintainability") without user/business outcome</pattern>
-      <pattern id="f5">anchor_doc_ref missing or points to an ad-hoc just-now-invented anchor</pattern>
-      <pattern id="f6">item ranked in top-3 of debt sprint with confidence = LOW</pattern>
-      <pattern id="f7">all five factors set to 3 (signal of unanchored scoring fatigue)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Recompute score automatically from factor values; reject hand-set scores that don't match the formula.</transformation>
-      <transformation>Auto-populate confidence_evidence.change_frequency.data_backed = true when git-log query returns ≥1 result for the item path.</transformation>
-      <transformation>Round score to 1 decimal place at presentation time; store full precision.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>All five factor integers present in range 1..5</item>
-      <item>Score matches formula exactly</item>
-      <item>Confidence band assigned and matches evidence count</item>
-      <item>what_changes_if_paid is audience-language and references user-impact</item>
-      <item>anchor_doc_ref resolves to committed anchors</item>
-      <item>No top-3 items with LOW confidence (or escalated for more data)</item>
-      <item>No 3-3-3-3-3 items (re-score these)</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/debt-scoring-rubric.json",
+  "type": "object",
+  "required": ["artefact_id", "anchors_signed_off_by", "items", "threshold", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":            {"type": "string", "pattern": "^dsr-[a-z0-9-]{6,}$"},
+    "anchors_signed_off_by":  {"type": "string", "format": "email"},
+    "anchors_signed_off_at":  {"type": "string", "format": "date"},
+    "items": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["item_id", "title", "category", "factors", "score", "confidence", "evidence", "what_changes_if_paid"],
+        "properties": {
+          "item_id":     {"type": "string", "pattern": "^debt-[a-z0-9-]{4,}$"},
+          "title":       {"type": "string", "minLength": 5},
+          "category":    {"enum": ["architecture", "code", "test", "design", "infra", "dependency", "documentation"]},
+          "factors": {
+            "type": "object",
+            "required": ["user_impact", "change_frequency", "fragility", "blast_radius", "fix_cost"],
+            "properties": {
+              "user_impact":      {"type": "integer", "minimum": 1, "maximum": 5},
+              "change_frequency": {"type": "integer", "minimum": 1, "maximum": 5},
+              "fragility":        {"type": "integer", "minimum": 1, "maximum": 5},
+              "blast_radius":     {"type": "integer", "minimum": 1, "maximum": 5},
+              "fix_cost":         {"type": "integer", "minimum": 1, "maximum": 5}
+            }
+          },
+          "score":       {"type": "number"},
+          "confidence":  {"enum": ["high", "medium", "low"]},
+          "evidence": {
+            "type": "object",
+            "required": ["change_freq_source", "fragility_source", "blast_source"],
+            "properties": {
+              "change_freq_source":{"type": "string"},
+              "fragility_source":  {"type": "string"},
+              "blast_source":      {"type": "string"}
+            }
+          },
+          "what_changes_if_paid": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "threshold":     {"type": "number", "minimum": 0},
+    "verdict":       {"enum": ["publish-register", "block-missing-anchors", "block-formula-mismatch", "block-no-evidence"]},
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "dsr-q2-2026",
+  "anchors_signed_off_by": "pm@acme.com",
+  "anchors_signed_off_at": "2026-05-20",
+  "items": [
+    {"item_id": "debt-order-mono", "title": "Monolithic order service hard to test", "category": "architecture",
+     "factors": {"user_impact":4, "change_frequency":5, "fragility":4, "blast_radius":3, "fix_cost":3},
+     "score": 80.0, "confidence": "medium",
+     "evidence": {"change_freq_source": "git log --since=90d src/order/", "fragility_source": "Linear: 12 bugs in 90d", "blast_source": "service map: order touches 5 downstream services"},
+     "what_changes_if_paid": "Reduce order-service bug rate by ~50%; enable per-domain CD."}
+  ],
+  "threshold": 30,
+  "verdict": "publish-register",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>items[0] minimum so the schema is shown; in practice MUST have ≥5 items.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "debt",
+  "items": [{"item_id": "x", "title": "fix things", "category": "stuff", "factors": {"user_impact": 9}, "score": 999, "confidence": "very-high"}],
+  "threshold": -5,
+  "verdict": "publish-register",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing dsr- prefix; anchors_signed_off_by missing (run-the-checklist violation); category not in enum; user_impact=9 above max 5; confidence not in enum; threshold negative; only 1 item (&lt;5); evidence + what_changes_if_paid missing; version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>score does not match (user_impact * change_frequency * fragility * blast_radius) / fix_cost.</description>
+      <reason>Formula mismatch; the score is no longer defensible.</reason>
+    </antipattern>
+    <antipattern>
+      <description>items[i].evidence missing any source field.</description>
+      <reason>Unsourced scoring becomes opinion; stakeholders reject.</reason>
+    </antipattern>
+    <antipattern>
+      <description>anchors_signed_off_by missing.</description>
+      <reason>Without stakeholder calibration, "User-Impact 5" means different things to different reviewers.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/debt-scoring-rubric.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-debt-scoring-rubric.py">Validator that enforces this contract.</reference>
 </text>

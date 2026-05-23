@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Web Scraping Element Extraction Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes a row extraction by shape → API → normalizer. Branches name observable code/row features; leaves reference rules.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are prerequisites satisfied: browser page handle, row schema, normalizer helpers present?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-shape">Is the target shape single, many, or table?</question>
+
+      <branch when="shape == 'single' AND api == '$eval'">
+        <question id="q-norm-single">Were normalizers applied (normalizers_applied non-empty)?</question>
+        <branch when="normalizers_applied_empty == true">
+          <conclusion ref="r3-normalize-immediately" verdict="block-no-normalizer"/>
+        </branch>
+        <branch when="normalizers_applied_empty == false">
+          <conclusion ref="run-the-checklist" verdict="approve"/>
+        </branch>
+      </branch>
+
+      <branch when="shape == 'many' AND api == '$eval'">
+        <conclusion ref="r1-single-vs-multi" verdict="block-wrong-api"/>
+      </branch>
+
+      <branch when="shape == 'many' AND api in {'$$eval', 'locator()'}">
+        <question id="q-norm-many">Were normalizers applied to each row?</question>
+        <branch when="normalizers_applied_empty == true">
+          <conclusion ref="r3-normalize-immediately" verdict="block-no-normalizer"/>
+        </branch>
+        <branch when="normalizers_applied_empty == false">
+          <conclusion ref="run-the-checklist" verdict="approve"/>
+        </branch>
+      </branch>
+
+      <branch when="shape == 'table'">
+        <question id="q-table-shape">Were row + column counts declared and matched?</question>
+        <branch when="table_shape_matched == false">
+          <conclusion ref="r5-tables-shape-known" verdict="block-no-normalizer"/>
+        </branch>
+        <branch when="table_shape_matched == true">
+          <conclusion ref="run-the-checklist" verdict="approve"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="multi-with-locator">
+    prereqs_met=true → shape=many → api=locator() → normalizers_applied=['text-trim','date-to-iso'] → verdict=approve (ref run-the-checklist).
+  </example>
+</text>

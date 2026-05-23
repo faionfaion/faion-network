@@ -1,11 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="trunk-based-ci-gates Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for trunk-based-ci-gates. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Trunk-Based CI Gates Core Rules" version="2.0.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules grounding the trunk-based-ci-gates methodology. Each pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="pre-commit-under-1s" testable="true" depth="essential">
+      <statement>Pre-commit hooks MUST run on staged files only and complete in under 1 second. Running the full test suite in pre-commit is forbidden.</statement>
+      <rationale source="pre-commit best-practices">Slow hooks train developers to use --no-verify and the gate dies. Pre-commit is for the cheap obvious stuff (lint, format, secret scan); deep correctness is CI's job.</rationale>
     </rule>
+    <rule id="ci-under-10-min" testable="true" depth="essential">
+      <statement>CI MUST complete in under 10 minutes wall time. If it exceeds, parallelise + cache + move slow integration suites to nightly.</statement>
+      <rationale source="DORA research">CI slower than 10 minutes makes developers batch pushes; the rapid feedback loop that makes trunk-based development safe disappears.</rationale>
+    </rule>
+    <rule id="branch-protection-required-status-complete" testable="true" depth="essential">
+      <statement>Branch protection MUST require ALL CI jobs in the required-status list, at least 1 review, linear history, and restrict direct pushes to automation. After any CI change adding/renaming jobs, the required-status list MUST be re-verified via gh api.</statement>
+      <rationale source="GitHub branch-protection docs">A new CI job that runs but is not in required-status list does not gate merges; PRs merge with a failing job and trunk breaks silently.</rationale>
+    </rule>
+    <rule id="auto-revert-on-red-trunk" testable="true" depth="essential">
+      <statement>A PR that breaks main MUST be reverted by bot (git revert -m 1) within 15 minutes. Manual reverts and 'one more fix on top' are forbidden.</statement>
+      <rationale source="Internal — incident response">Human reverts are slow and incomplete; bot reverts are instantaneous and deterministic. Fix-forward in a new PR keeps trunk green and produces a clean blame trail.</rationale>
+    </rule>
+    <rule id="no-no-verify-allowed" testable="true" depth="essential">
+      <statement>Pre-commit hooks MUST be configured strictly enough that --no-verify is never required. CI MUST fail commits that lack the hook signature where applicable.</statement>
+      <rationale source="Internal — hook-skip audit">Routine --no-verify usage means the hook is too slow or too aggressive; tighten or relax until it stays out of the developer's way.</rationale>
+    </rule>
+    <rule id="secret-scan-mandatory" testable="true" depth="essential">
+      <statement>Pre-commit MUST include a secret-scan hook (detect-secrets, gitleaks). CI MUST include a second secret scan as defence-in-depth.</statement>
+      <rationale source="Internal — secret-leak postmortem">Secrets committed once and pushed are leaked forever; pre-commit catches most cases, CI catches what slipped through.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

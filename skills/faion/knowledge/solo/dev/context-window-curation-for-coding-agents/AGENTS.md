@@ -4,79 +4,99 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Context Window Curation For Coding Agents: codified dev practice that turns the recurring 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' decision into a repeatable, auditable artefact.
-content_id: "b761936789f1944b"
-tags: [context-window-curation-for-coding-agents, dev, solo]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a per-task context-bundle artefact (≤6K tokens) curating the minimum files + glossary the coding agent needs, with a budget check and trim plan.
+content_id: "cwcca1.0.0context"
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: [llm-context, claude-code, cursor, context-window, coding-agents, ai-pair]
 ---
-# Context Window Curation For Coding Agents
+# Context Window Curation for Coding Agents
 
 ## Summary
 
-**One-sentence:** Context Window Curation For Coding Agents: codified dev practice that turns the recurring 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' decision into a repeatable, auditable artefact.
+**One-sentence:** Curates a per-task context bundle for a coding agent (Claude Code / Cursor) — ≤6K tokens of relevant code + glossary — replacing 50K-token blind dumps with deterministic, minimal context.
 
-**One-paragraph:** Context Window Curation For Coding Agents addresses the gap surfaced by 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)'. Vibe-coded breakage usually starts when the agent has the wrong files in context. Need an explicit method: how to pick files, when to summarize history, when to wipe context. Nothing in faion teaches this. Mechanism: typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** AI-pair coding fails when the agent loads 50K tokens of irrelevant code: latency rises, the model anchors on noise, edits drift. The fix is per-task context curation: identify the change area, pick the minimum files needed (target + 1-2 callers + relevant types + AGENTS.md), add a 200-token glossary of project-specific terms, and budget the total to ≤6K tokens. This methodology emits a bundle artefact: list of files + tokens-per-file, glossary excerpt, and the "what's deliberately excluded" record so the reviewer can spot missing context. Output: a curated bundle the agent loads instead of letting it crawl.
+
+**Ефективно для:**
+
+- Solo dev pair-coding with Claude Code / Cursor on a multi-file change.
+- Outsource lead bounding an AI agent's context to keep edits focused.
+- AI-context cost optimisation: ~2K tokens of relevant context, not 50K-token context dumps.
+- Onboarding a new LLM model — the curated bundle is the model's first read.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Task is bounded (one feature, one bug, one refactor) — not "improve the codebase".
+- Coding agent (Claude Code, Cursor, Copilot Chat) is the executor.
+- Repo has AGENTS.md / CONVENTIONS.md OR they will be authored in the same session.
+- Token budget is constrained (cost or context-window pressure).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is a greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
-- single-use throwaway task — overhead of the contract is not justified
+- Task is exploratory ("understand this codebase") — full crawl is the goal, not curation.
+- Repo is &lt; 5K total lines — load it all.
+- Coding agent has no token concern (unlimited model + cost-neutral).
+- Task is purely codemod / deterministic transform — the agent doesn't need context, the codemod does.
 
 ## Prerequisites
 
-- recent context for the 'p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)' task (last 30 days of activity)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
-- baseline conventions documented (CLAUDE.md / AGENTS.md / CONVENTIONS.md)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Task description | text | tracker |
+| Repo file map | tree | `find . -name '*.py'` |
+| AGENTS.md / CONVENTIONS.md | Markdown | repo |
+| Project glossary | Markdown | repo or to-be-authored |
+| Token budget | number | team handbook |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| `solo/dev/code-quality/framework-decomposition-patterns` | Bounded files = bounded context; sibling. |
+| `solo/dev/code-quality/ai-code-review-checklist` | Downstream review of the agent's output. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5+ rules: minimum-files, glossary, budget cap, exclusion-record, AGENTS.md first, run + skip | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the bundle artefact + valid/invalid + forbidden | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: bulk-dump, no-glossary, missing-exclusions, AGENTS.md-skipped | 700 |
+| `content/04-procedure.xml` | medium | 5-step procedure: scope → pick-files → glossary → budget-check → emit-bundle | 700 |
+| `content/06-decision-tree.xml` | essential | Tree: scope clear? files identified? budget met? → verdict | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment with bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `identify-change-area` | sonnet | Parse task + repo layout → target file(s). |
+| `pick-callers` | sonnet | Walk imports / refs; pick 1-2 highest-coupling callers. |
+| `budget-check` | haiku | Mechanical: token-count each file, sum, compare to cap. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/context-window-curation-for-coding-agents.json` | JSON schema for the Context Window Curation For Coding Agents output contract |
-| `templates/context-window-curation-for-coding-agents.md` | Markdown skeleton with the required fields |
+| `templates/context-window-curation-for-coding-agents.json` | JSON Schema for the bundle artefact. |
+| `templates/glossary-snippet.md` | 200-token project-glossary template. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-context-window-curation-for-coding-agents.py` | Enforce Context Window Curation For Coding Agents output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-context-window-curation-for-coding-agents.py` | Validate bundle JSON against schema + budget rule. | Before handing bundle to the agent. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- upstream playbook: `p1-solo-saas-builder/AI-pair coding loop for solo SaaS (Claude/Cursor + Spec)`
-- methodology family: `solo/dev/` (gap-p2 batch, F-059-063)
+- [[code-quality/framework-decomposition-patterns]] — bounded files → bounded context.
+- [[changelog-automation-conventional-commits]] — small commits keep change area small.
+- [[code-quality/ai-code-review-checklist]] — review output of an agent given this context.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree first checks scope clarity (one feature / bug / refactor — not "improve everything"). It then verifies AGENTS.md is in the bundle, target file is included, ≤2 callers picked, glossary present, total ≤ budget. Leaves emit `commit-bundle`, `block-no-scope`, `block-over-budget`, or `block-no-agents-md`. Each leaf references a rule in `01-core-rules.xml`.

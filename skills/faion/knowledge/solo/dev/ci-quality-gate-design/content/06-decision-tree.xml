@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="CI Quality Gate Design Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes each check to BLOCK/WARN/NIGHTLY and validates the budget at the design level. Branches name observable check + budget features.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are prerequisites satisfied: CI config, check inventory, 30-day data, budget target?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-per-check-signal">For each check: is signal-strength HIGH (failures are real bugs, low FP) AND runtime ≤ 10 min?</question>
+
+      <branch when="signal_high AND fast">
+        <conclusion ref="r1-three-tiers" verdict="tier-BLOCK"/>
+      </branch>
+
+      <branch when="signal_medium OR slow_but_useful">
+        <question id="q-slow">Is runtime &gt; 10 min OR exploratory check (mutation / fuzz / perf)?</question>
+        <branch when="slow_or_exploratory == true">
+          <conclusion ref="r1-three-tiers" verdict="tier-NIGHTLY"/>
+        </branch>
+        <branch when="slow_or_exploratory == false">
+          <conclusion ref="r1-three-tiers" verdict="tier-WARN"/>
+        </branch>
+      </branch>
+
+      <branch when="all_checks_classified">
+        <question id="q-budget">Is block_critical_path_min ≤ target_min?</question>
+
+        <branch when="budget_exceeded == true">
+          <conclusion ref="r3-time-budget" verdict="block-budget-exceeded"/>
+        </branch>
+
+        <branch when="budget_exceeded == false">
+          <question id="q-rationale">Does every BLOCK check have rationale + owner_email + escalation?</question>
+          <branch when="rationale_complete == false">
+            <conclusion ref="r2-written-rationale" verdict="block-missing-rationale"/>
+          </branch>
+          <branch when="rationale_complete == true">
+            <conclusion ref="run-the-checklist" verdict="commit-design"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="happy-path">
+    prereqs_met=true → all checks classified → block_critical_path=6.8 ≤ 10 → all BLOCK rationale present → verdict=commit-design (ref run-the-checklist).
+  </example>
+</text>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Characterization Test Recipes Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from "we want to refactor this legacy code" to "suite-manifest signed off + refactor branch unblocked".</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="capture-inputs">
+      <input>access to production logs / staging traffic, target module.</input>
+      <action>Sample inputs at production rate. Redact PII at capture time. Save as `tests/characterization/fixtures/&lt;origin&gt;-NNN.json`. Manifest each fixture with origin, capture_date, redaction status.</action>
+      <output>fixture set + fixture-manifest.json.</output>
+      <decision-gate>If redaction status=false for any fixture — STOP, redact before commit.</decision-gate>
+    </step>
+
+    <step n="2" name="build-normalizer">
+      <input>fixtures, observed non-deterministic fields.</input>
+      <action>Centralise normalisation in `tests/characterization/normalize.{py,ts,go}`. Replace timestamps with `&lt;TS&gt;`, UUIDs with `&lt;UUID&gt;`, sort unordered lists. Every snapshot test imports this module.</action>
+      <output>normalize module + unit tests for the normalizer itself.</output>
+      <decision-gate>If any test does ad-hoc normalisation — STOP, move it into normalize.</decision-gate>
+    </step>
+
+    <step n="3" name="snapshot-baseline">
+      <input>fixtures, legacy code on the capture branch.</input>
+      <action>Run each fixture through the legacy code. Normalize. Write to `tests/characterization/snapshots/&lt;fixture_id&gt;.snap`. Human review every snapshot line-by-line. Commit signoff with reviewer + date + commit sha.</action>
+      <output>committed snapshots + baseline-signoff record.</output>
+      <decision-gate>If signoff missing — STOP, suite is not refactor-ready.</decision-gate>
+    </step>
+
+    <step n="4" name="sweep-to-coverage">
+      <input>snapshots, branch-coverage tool.</input>
+      <action>Run coverage. If branch_coverage_pct &lt; 70%, add fixtures targeting uncovered branches. Iterate.</action>
+      <output>coverage-report.json ≥ threshold.</output>
+      <decision-gate>If coverage &lt; threshold after 3 iterations — STOP, verdict block-insufficient-coverage.</decision-gate>
+    </step>
+
+    <step n="5" name="wrap-refactor">
+      <input>suite-manifest, refactor branch.</input>
+      <action>Refactor proceeds. On any snapshot diff, classify as (a) intentional fix (log + retest), (b) accidental regression (revert), (c) new non-determinism (extend normalizer). Disable CI auto-update.</action>
+      <output>refactor branch with green characterization suite.</output>
+      <decision-gate>If CI auto-update fires — STOP and reconfigure.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/snapshot-stabilize-rules.md">Normalization rules reference.</reference>
+  <reference path="templates/characterization-test-recipes.json">Manifest schema.</reference>
+</text>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Trunk-Based Feature Flags Procedure" version="1.0.0" est_tokens="700" depth="medium">
+  <summary>Five-step procedure from "we want a flag" to "flag retired". Each step has a decision-gate that blocks progression on unmet criteria.</summary>
+
+  <section title="Steps">
+
+    <step n="1" name="draft-spec">
+      <input>task / ticket id, intent description.</input>
+      <action>Fill `templates/flag-spec.md`: flag_id (== ticket slug), owner_email (named human), type ∈ {release, experiment, ops, permission}, ramp_plan, cleanup_ticket_id (filed in same session), cleanup_sla_date.</action>
+      <output>flag-spec.md draft + filed cleanup_ticket.</output>
+      <decision-gate>If owner is a team alias OR cleanup ticket missing — STOP, the spec is incomplete.</decision-gate>
+    </step>
+
+    <step n="2" name="wrap-code">
+      <input>spec.md, code path to wrap.</input>
+      <action>Wrap the new code path with `is_enabled("&lt;flag_id&gt;")` checks. CI defaults the flag OFF; lint rejects `default=True` literals in checked-in code.</action>
+      <output>PR with the wrapper merged behind a closed flag.</output>
+      <decision-gate>If lint fires on default=True — STOP and fix.</decision-gate>
+    </step>
+
+    <step n="3" name="test-kill-switch">
+      <input>flag service handle, wrapped code in trunk.</input>
+      <action>Flip flag ON to 0.1% in a controlled environment. Verify new code path is hit. Flip OFF. Verify legacy path is restored. Record the CI run id as kill_switch_test_run_id.</action>
+      <output>kill_switch_test_run_id populated in spec.</output>
+      <decision-gate>If kill-switch flip fails — STOP, fix routing before any ramp.</decision-gate>
+    </step>
+
+    <step n="4" name="staged-ramp">
+      <input>flag spec with kill-switch armed.</input>
+      <action>Ramp per ramp_plan. At each stage: observe gate metric for the required window. Promote only if gate green; freeze or revert otherwise. Type=ops kill-switches may skip stages.</action>
+      <output>per-stage promotion log linked to the spec.</output>
+      <decision-gate>If any gate fails — kill-switch off, do not promote.</decision-gate>
+    </step>
+
+    <step n="5" name="cleanup">
+      <input>flag at 100% for ≥ SLA window (30 days typical).</input>
+      <action>Open the cleanup ticket. Remove flag wrapper from code. Delete flag from service. Close ticket with link to commit.</action>
+      <output>cleanup commit + closed ticket.</output>
+      <decision-gate>If owner has &gt;= 3 active flags past SLA, block new flag creation by that owner until backlog is paid down.</decision-gate>
+    </step>
+
+  </section>
+
+  <reference path="templates/flag-spec.md">Spec skeleton authors fill.</reference>
+  <reference path="templates/trunk-based-feature-flags.json">Schema for the artefact.</reference>
+</text>

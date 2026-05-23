@@ -1,42 +1,141 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Client Handover Package Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Client Handover Package output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Client Handover Package Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the handover-package artefact. Pre-final-invoice gate rejects a close without a valid package.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-      <pattern id="f5">version regressed (lower than previous record)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/client-handover-package.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/client-handover-package.json</item>
-      <item>owner is a named individual or rotating named role — never a plural pronoun</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/client-handover-package.json",
+  "type": "object",
+  "required": ["artefact_id", "client", "engagement_end", "sections", "credentials", "open_items", "successor_email", "support_window", "signoff", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":   {"type": "string", "pattern": "^chp-[a-z0-9-]{6,}$"},
+    "client":        {"type": "string", "minLength": 1},
+    "engagement_end":{"type": "string", "format": "date"},
+    "sections": {
+      "type": "object",
+      "required": ["scope_summary", "runbook", "architecture", "ops_surface"],
+      "properties": {
+        "scope_summary": {"type": "string", "minLength": 50},
+        "runbook":       {"type": "string", "minLength": 100},
+        "architecture":  {"type": "string", "minLength": 100},
+        "ops_surface":   {"type": "string", "minLength": 50}
+      }
+    },
+    "credentials": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["name", "vault_path", "rotation_date", "acknowledged_by", "acknowledged_at"],
+        "properties": {
+          "name":            {"type": "string", "minLength": 1},
+          "vault_path":      {"type": "string", "minLength": 1},
+          "rotation_date":   {"type": "string", "format": "date"},
+          "acknowledged_by": {"type": "string", "format": "email"},
+          "acknowledged_at": {"type": "string", "format": "date"}
+        }
+      }
+    },
+    "open_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "severity", "effort", "blast_radius", "next_step"],
+        "properties": {
+          "title":        {"type": "string", "minLength": 5},
+          "severity":     {"enum": ["high", "medium", "low"]},
+          "effort":       {"enum": ["S", "M", "L"]},
+          "blast_radius": {"enum": [1, 3, 5]},
+          "next_step":    {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "successor_email": {"type": "string", "format": "email"},
+    "support_window": {
+      "type": "object",
+      "required": ["days", "scope", "sla_hours", "channel", "after_window"],
+      "properties": {
+        "days":         {"type": "integer", "minimum": 7, "maximum": 90},
+        "scope":        {"type": "string"},
+        "sla_hours":    {"type": "number", "minimum": 0, "maximum": 168},
+        "channel":      {"type": "string"},
+        "after_window": {"type": "string"}
+      }
+    },
+    "signoff": {
+      "type": "object",
+      "required": ["consultant_signed_by", "consultant_signed_at", "client_signed_by", "client_signed_at"],
+      "properties": {
+        "consultant_signed_by":{"type": "string", "format": "email"},
+        "consultant_signed_at":{"type": "string", "format": "date"},
+        "client_signed_by":    {"type": "string", "format": "email"},
+        "client_signed_at":    {"type": "string", "format": "date"}
+      }
+    },
+    "verdict":      {"enum": ["archive-and-close", "block-missing-sections", "block-secrets-not-transferred", "block-no-successor", "block-no-signoff"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "chp-acme-2026-05",
+  "client": "ACME",
+  "engagement_end": "2026-05-23",
+  "sections": {"scope_summary": "Built and shipped /v2/quote endpoint with Go shadow router; migrated from Python service over 8 weeks.", "runbook": "Start: docker compose up; Stop: docker compose down; Debug: tail logs at /var/log/quote.log; rotate flags via LaunchDarkly UI.", "architecture": "Diagram in docs/architecture.png; Go service exposes :8080, Python remains on :8081 until cutover complete.", "ops_surface": "Datadog dashboard ACME-quote; alerts to #ops"},
+  "credentials": [{"name": "datadog_api_key", "vault_path": "op://faion.net/ACME/datadog", "rotation_date": "2026-05-22", "acknowledged_by": "successor@acme.com", "acknowledged_at": "2026-05-23"}],
+  "open_items": [{"title": "Remove Python service", "severity": "medium", "effort": "M", "blast_radius": 3, "next_step": "Schedule for sprint 27"}],
+  "successor_email": "successor@acme.com",
+  "support_window": {"days": 30, "scope": "bug-fixes only", "sla_hours": 24, "channel": "slack #consultant-handover", "after_window": "hourly billing at $200/h"},
+  "signoff": {"consultant_signed_by": "ruslan@faion.net", "consultant_signed_at": "2026-05-23", "client_signed_by": "successor@acme.com", "client_signed_at": "2026-05-23"},
+  "verdict": "archive-and-close",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "handover",
+  "client": "ACME",
+  "engagement_end": "today",
+  "sections": {"scope_summary": "did the thing"},
+  "credentials": [],
+  "open_items": [{"title": "stuff", "severity": "med"}],
+  "successor_email": "team@acme.com",
+  "support_window": {"days": 365, "scope": "everything", "sla_hours": 0, "channel": "", "after_window": ""},
+  "signoff": {},
+  "verdict": "archive-and-close",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing chp- prefix; engagement_end not ISO; sections missing 3 of 4 required + too short; credentials empty (likely r2 violation); open_item missing fields + severity not in enum (r3); successor team-alias (r4); support_window malformed (r6); signoff empty (r5); verdict impossible; version/date malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>credentials[] entries missing rotation_date OR acknowledged_by.</description>
+      <reason>r2 violation; credential not actually transferred.</reason>
+    </antipattern>
+    <antipattern>
+      <description>signoff missing one of the two parties (consultant or client).</description>
+      <reason>r5 violation; dual sign-off required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>support_window.days &gt; 90 OR sla_hours == 0.</description>
+      <reason>r6 violation; unbounded window is scope-creep.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/client-handover-package.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-client-handover-package.py">Validator that enforces this contract.</reference>
 </text>

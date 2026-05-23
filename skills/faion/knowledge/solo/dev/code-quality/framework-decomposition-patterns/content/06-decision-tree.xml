@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Framework Decomposition Patterns Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routes a fat-file candidate by framework → file-type → recommended pattern → coverage check.</summary>
+
+  <decision-tree>
+    <root-question id="q-prereqs">Are prerequisites satisfied: framework identified, target file ≥ 100 LoC?</root-question>
+
+    <branch when="prereqs_met == false">
+      <conclusion ref="skip-this-methodology" verdict="abort"/>
+    </branch>
+
+    <branch when="prereqs_met == true">
+      <question id="q-framework">Which framework is the target file in (django/rails/laravel/react/nextjs/generic)?</question>
+
+      <branch when="framework == 'react' OR framework == 'nextjs'">
+        <question id="q-react-pattern">Is file_type == component AND component is fat (LoC ≥ 150)?</question>
+        <branch when="component_fat == false">
+          <conclusion ref="r8" verdict="skip-already-small"/>
+        </branch>
+        <branch when="component_fat == true">
+          <conclusion ref="r9" verdict="propose-extraction"/>
+        </branch>
+      </branch>
+
+      <branch when="framework == 'django' OR framework == 'rails' OR framework == 'laravel'">
+        <question id="q-backend-pattern">file_type in {view, controller, model}?</question>
+        <branch when="backend_fat_type == true">
+          <question id="q-coverage">coverage_or_plan present?</question>
+          <branch when="coverage_or_plan_empty == true">
+            <conclusion ref="run-the-checklist" verdict="block-no-coverage"/>
+          </branch>
+          <branch when="coverage_or_plan_empty == false">
+            <conclusion ref="r1" verdict="propose-extraction"/>
+          </branch>
+        </branch>
+        <branch when="backend_fat_type == false">
+          <conclusion ref="skip-this-methodology" verdict="block-pattern-not-applicable"/>
+        </branch>
+      </branch>
+
+      <branch when="framework == 'generic'">
+        <conclusion ref="run-the-checklist" verdict="propose-extraction"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="django-view">
+    prereqs_met=true → framework=django → file_type=view fat → coverage_or_plan present → verdict=propose-extraction (ref r1).
+  </example>
+</text>

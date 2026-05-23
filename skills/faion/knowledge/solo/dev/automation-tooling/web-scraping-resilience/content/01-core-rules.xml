@@ -1,23 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="web-scraping-resilience Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for web-scraping-resilience. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Web Scraping Resilience Core Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules every production scraper must satisfy plus run-the-checklist + skip-this-methodology. The resilience-config validator enforces them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Add a random delay of 1–3 seconds between requests to the same domain. Never fire requests in a tight loop. Use p-limit to cap concurrent requests at 3 or fewer for unknown targets.</statement>
-      <rationale source="v1-source">1–3 RPS is below the threshold that triggers most commercial rate-limiters. Jitter prevents synchronized bursts from multiple worker threads that fixed delays can produce.</rationale>
+
+    <rule id="r1-jittered-delay" testable="true" depth="essential">
+      <statement>Inter-request delay per domain is a random value drawn from [1000ms, 3000ms] — not a fixed interval. Concurrent caps via p-limit / Semaphore (default 3 for unknown targets).</statement>
+      <rationale source="v1-source">Fixed intervals fingerprint the bot; commercial WAFs cluster on equal-spaced traffic.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use exponential backoff with jitter for retry delays: delay = baseDelay * 2^attempt + random(0, 1000ms). Cap at 5 retries. Re-throw on the final attempt so the caller can log and skip rather than silently continue.</statement>
-      <rationale source="v1-source">Exponential backoff gives the target server time to recover from transient overload. The random jitter prevents multiple concurrent workers from retrying in synchronized waves (thundering herd).</rationale>
+
+    <rule id="r2-exp-backoff-cap-5" testable="true" depth="essential">
+      <statement>Retry uses exponential backoff with jitter: `delay = base * 2^attempt + rand(0, 1000ms)`. Cap retries at 5; on the final attempt re-throw so the caller can log and skip.</statement>
+      <rationale source="v1-source">Exponential backoff gives the target recovery time; jitter prevents thundering-herd retries from concurrent workers.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Wrap every page.$eval call in a safeExtract helper that catches timeout errors and returns a default value. Set waitForSelector timeout to 5000ms maximum. Implement browser crash recovery that detects "Target closed" / "Session closed" errors and relaunches the browser.</statement>
-      <rationale source="v1-source">Unguarded $eval calls on absent selectors throw and abort the entire batch. Browser crashes (OOM, renderer crash) are not exceptional on long runs — they must be recoverable automatically.</rationale>
+
+    <rule id="r3-safe-extract" testable="true" depth="essential">
+      <statement>Every page.$eval / locator() call is wrapped in safeExtract(fn, default) — catches timeout + missing-selector errors and returns the default. `waitForSelector` timeout MUST be ≤ 5000 ms.</statement>
+      <rationale source="v1-source">Unguarded extraction aborts the batch on the first absent element; the rest of the row would have been recoverable.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Set a realistic randomized User-Agent per session. Override navigator.webdriver to undefined. Add Accept-Language, Accept-Encoding, Accept, and Referer headers. For Playwright, prefer playwright-stealth; for Puppeteer, use puppeteer-extra-plugin-stealth.</statement>
-      <rationale source="v1-source">Headless Chrome ships with navigator.webdriver=true and missing system fonts that bot-detection libraries check as first-pass signals. These overrides defeat naive detection; deeper fingerprinting requires a dedicated stealth library.</rationale>
+
+    <rule id="r4-crash-recover" testable="true" depth="essential">
+      <statement>The scrape detects browser-crash errors ("Target closed", "Session closed", "Browser has been disconnected") and relaunches the browser, requeuing the failing URL. Crash count is recorded in the resilience config artefact.</statement>
+      <rationale source="long-run experience">Browser crashes (renderer OOM, GPU reset) are routine in multi-hour scrapes; absent recovery, the run dies at the first crash.</rationale>
     </rule>
+
+    <rule id="r5-anti-detect-headers" testable="true" depth="essential">
+      <statement>Each session sets: realistic randomized User-Agent, `navigator.webdriver=undefined`, Accept-Language, Accept-Encoding, Accept, plausible Referer. Use playwright-stealth (Playwright) / puppeteer-extra-plugin-stealth (Puppeteer) for deeper fingerprint defence.</statement>
+      <rationale source="v1-source">Headless Chrome ships with navigator.webdriver=true as the first-pass detector signal; minimal overrides defeat naive detection.</rationale>
+    </rule>
+
+    <rule id="r6-config-artefact" testable="true" depth="essential">
+      <statement>Resilience settings live in a single config artefact (JSON) consumed by the scrape, not copy-pasted across runners. The artefact lists: delay range, max_retries, base_delay_ms, safe_extract_timeout, anti_detect_enabled, crash_recover_enabled, concurrency_cap.</statement>
+      <rationale source="ops practice">Settings drift across copy-pasted code is the dominant source of "we had jitter but the new runner didn't".</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When prerequisites hold (browser handle, target rate, anti-detect lib installed), execute: probe rate-limit → wire jitter → wire retry → wrap extracts → arm crash-recover → emit config artefact.</statement>
+      <rationale source="methodology design">Partial resilience (jitter but no retry; retry but no safeExtract) leaves a different failure mode dominant; all five layers compose.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Do NOT use when (a) source has an SLA-backed public API — use it, (b) source has hardline anti-bot (Turnstile, frequent CAPTCHA) — a fundamental rethink is needed, not just resilience, (c) one-off scrape — manual retry is cheaper, (d) source explicitly forbids scraping and no legal exception.</statement>
+      <rationale source="preconditions">Resilience overhead is wasted where APIs exist or where the source actively rejects automation.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

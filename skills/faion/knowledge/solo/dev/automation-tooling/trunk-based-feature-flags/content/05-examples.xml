@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Trunk-Based Feature Flags Worked Example" version="1.0.0" est_tokens="500" depth="reference">
+  <summary>One end-to-end example: a dark-launch release flag for the Go shadow router that ramps over four stages and is cleaned up after sign-off.</summary>
+
+  <section title="Context">
+    <p>Task: F-066-shadow-router migrates `/api/v2/quote` from Python to Go. Author wraps the router behind flag `quote_shadow_go_pct`, type=release, dark_launch=true.</p>
+  </section>
+
+  <section title="Spec at creation">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ff-f066-shadow-router",
+  "flag_id": "quote_shadow_go_pct",
+  "owner_email": "ruslan@faion.net",
+  "type": "release",
+  "ramp_plan": [
+    {"pct": 1,   "gate": "diff_rate < 0.5 over 24h"},
+    {"pct": 10,  "gate": "diff_rate < 0.5 AND error_rate at baseline"},
+    {"pct": 50,  "gate": "all clusters classified, sample >= 10000"},
+    {"pct": 100, "gate": "sign-off recorded"}
+  ],
+  "kill_switch_tested": true,
+  "cleanup_ticket_id": "TICKET-4421",
+  "cleanup_sla_date": "2026-07-23",
+  "dark_launch": true,
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </section>
+
+  <section title="Stage promotion log (excerpt)">
+    <code lang="text"><![CDATA[
+2026-05-23  promote 0 → 1%   gate green (diff_rate 0.08, 1247 samples)
+2026-05-25  promote 1 → 10%  gate green (diff_rate 0.12, error_rate +0.0)
+2026-05-27  freeze at 50%    diff_rate 0.71 — fx-rounding cluster open
+2026-05-30  resume 50%       fix shipped (rounding-mode set to half-up)
+2026-06-02  promote → 100%   sign-off ruslan@faion.net
+2026-07-23  cleanup          flag removed, ticket TICKET-4421 closed
+    ]]></code>
+  </section>
+</text>

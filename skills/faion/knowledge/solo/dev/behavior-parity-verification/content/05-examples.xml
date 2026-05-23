@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Behavior Parity Verification Worked Example" version="1.0.0" est_tokens="600" depth="reference">
+  <summary>One end-to-end example: a Python pricing service is being rewritten in Go. The team runs shadow parity across four ramp stages, catches an FX-rounding cluster at stage 3, fixes it, and signs off at stage 4.</summary>
+
+  <section title="Context">
+    <p>Scope: `/api/v2/quote` returns `{total_cents, line_items[], currency, tax_breakdown}`. Legacy: Python service `quote-py`. New: Go service `quote-go`. Both deployed; router controlled by feature flag `quote.shadow.go_pct`. Traffic: ~50k requests/day.</p>
+  </section>
+
+  <section title="Step 1 — observable list (committed)">
+    <code lang="text"><![CDATA[
+Observable fields for /api/v2/quote:
+- response.total_cents          (exact equality)
+- response.line_items[]         (sorted by sku, then exact equality)
+- response.currency              (exact equality)
+- response.tax_breakdown.country (exact equality)
+- response.tax_breakdown.amount  (tolerance: ±1 cent)
+
+Ignored:
+- response.request_id
+- response.computed_at_ms
+- response.server_version
+    ]]></code>
+  </section>
+
+  <section title="Stage 1 (1%) report">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bpv-quote-stage1",
+  "scope": "/api/v2/quote",
+  "observable_fields": ["response.total_cents","response.line_items[].sku","response.currency","response.tax_breakdown.country","response.tax_breakdown.amount"],
+  "ramp_stage": 1,
+  "window_start": "2026-05-16T00:00:00Z",
+  "window_end":   "2026-05-17T00:00:00Z",
+  "total_compared": 1247,
+  "diff_rate": 0.08,
+  "clusters": [{"cluster_id":"line-item-order","sample_count":1,"disposition":"fixed"}],
+  "verdict": "promote",
+  "signed_off_by": "ruslan@faion.net", "signed_off_at": "2026-05-17",
+  "version": "1.0.0", "last_reviewed": "2026-05-17"
+}
+]]></code>
+  </section>
+
+  <section title="Stage 3 (50%) report — freeze">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bpv-quote-stage3",
+  "scope": "/api/v2/quote",
+  "observable_fields": ["response.total_cents","response.line_items[].sku","response.currency","response.tax_breakdown.country","response.tax_breakdown.amount"],
+  "ramp_stage": 3,
+  "window_start": "2026-05-20T00:00:00Z",
+  "window_end":   "2026-05-21T00:00:00Z",
+  "total_compared": 23104,
+  "diff_rate": 0.71,
+  "clusters": [
+    {"cluster_id":"fx-rounding-eur-pt","sample_count":164,"disposition":"open"}
+  ],
+  "verdict": "freeze",
+  "version": "1.0.0", "last_reviewed": "2026-05-21"
+}
+]]></code>
+    <note>diff_rate above 0.5% threshold, fx-rounding-eur-pt cluster open. Freeze the ramp; do not promote. Engineer investigates: Go code uses banker's rounding, Python used half-up. Fix lands in `quote-go`, re-run stage 3.</note>
+  </section>
+
+  <section title="Stage 4 (100%) report — sign-off">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bpv-quote-stage4",
+  "scope": "/api/v2/quote",
+  "observable_fields": ["response.total_cents","response.line_items[].sku","response.currency","response.tax_breakdown.country","response.tax_breakdown.amount"],
+  "ramp_stage": 4,
+  "window_start": "2026-05-23T00:00:00Z",
+  "window_end":   "2026-05-24T00:00:00Z",
+  "total_compared": 49216,
+  "diff_rate": 0.04,
+  "clusters": [
+    {"cluster_id":"fx-rounding-eur-pt","sample_count":18,"disposition":"fixed"}
+  ],
+  "verdict": "promote",
+  "signed_off_by": "ruslan@faion.net", "signed_off_at": "2026-05-24",
+  "version": "1.0.0", "last_reviewed": "2026-05-24"
+}
+]]></code>
+    <note>Stage 4 closes with diff_rate well under threshold, FX cluster resolved. Legacy `quote-py` removal is scheduled for the next release window, not this one.</note>
+  </section>
+</text>

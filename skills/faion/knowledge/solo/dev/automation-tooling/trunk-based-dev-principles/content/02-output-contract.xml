@@ -1,22 +1,126 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trunk-based-dev-principles Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trunk-Based Dev Principles Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the TBD-readiness checklist artefact. Scores each of the four principles with per-check evidence and emits an aggregate verdict.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trunk-based-dev-principles.json",
+  "type": "object",
+  "required": ["artefact_id", "repo_ref", "principles", "total", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^tbd-[a-z0-9-]{6,}$"},
+    "repo_ref":    {"type": "string", "minLength": 1},
+    "principles": {
+      "type": "object",
+      "required": ["single_trunk", "small_commits", "releasable_trunk", "fast_ci"],
+      "properties": {
+        "single_trunk": {
+          "type": "object",
+          "required": ["score", "evidence"],
+          "properties": {
+            "score":    {"type": "integer", "minimum": 0, "maximum": 25},
+            "evidence": {"type": "string", "description": "count of branches > 2 days old, branch policy reference"}
+          }
+        },
+        "small_commits": {
+          "type": "object",
+          "required": ["score", "evidence"],
+          "properties": {
+            "score":    {"type": "integer", "minimum": 0, "maximum": 25},
+            "evidence": {"type": "string", "description": "median PR LoC, median branch age"}
+          }
+        },
+        "releasable_trunk": {
+          "type": "object",
+          "required": ["score", "evidence"],
+          "properties": {
+            "score":    {"type": "integer", "minimum": 0, "maximum": 25},
+            "evidence": {"type": "string", "description": "auto-revert presence, flag inventory non-empty, gate composition"}
+          }
+        },
+        "fast_ci": {
+          "type": "object",
+          "required": ["score", "evidence"],
+          "properties": {
+            "score":    {"type": "integer", "minimum": 0, "maximum": 25},
+            "evidence": {"type": "string", "description": "p50 CI duration, p95 CI duration"}
+          }
+        }
+      }
+    },
+    "total":    {"type": "integer", "minimum": 0, "maximum": 100},
+    "verdict":  {"enum": ["adopt", "partial-adopt", "not-ready"]},
+    "fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["principle", "issue", "suggested_fix"],
+        "properties": {
+          "principle":     {"type": "string"},
+          "issue":         {"type": "string"},
+          "suggested_fix": {"type": "string"}
+        }
+      }
+    },
+    "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "tbd-myrepo-2026-05",
+  "repo_ref": "github.com/org/myrepo",
+  "principles": {
+    "single_trunk":      {"score": 24, "evidence": "0 branches > 2 days, BRANCHING.md present"},
+    "small_commits":     {"score": 22, "evidence": "median PR 142 LoC, median branch age 11h"},
+    "releasable_trunk":  {"score": 20, "evidence": "auto-revert on, 14 active flags, lint+typecheck+test+coverage gates"},
+    "fast_ci":           {"score": 18, "evidence": "p50 6m12s, p95 9m48s"}
+  },
+  "total": 84,
+  "verdict": "adopt",
+  "fixes": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "myrepo",
+  "repo_ref": "myrepo",
+  "principles": {"single_trunk": {"score": 30}},
+  "total": 30,
+  "verdict": "adopt",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing tbd- prefix; principles.single_trunk.score=30 exceeds max 25; missing 3 of 4 principles; verdict=adopt with total=30 is impossible (threshold &gt;= 70); version not semver; last_reviewed not ISO date.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=adopt while any principle score &lt; 15 / 25.</description>
+      <reason>Aggregate-pass on one weak pillar will collapse in production.</reason>
+    </antipattern>
+    <antipattern>
+      <description>fast_ci.evidence omits p50 or p95 numbers.</description>
+      <reason>Single-point CI duration claims hide tail latency; r4 requires sub-10-min feedback for the bulk of runs.</reason>
+    </antipattern>
+    <antipattern>
+      <description>verdict=adopt with empty flag inventory.</description>
+      <reason>"Releasable trunk" without flag plumbing means broken work blocks every release; r3 violation.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/trunk-based-dev-principles.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-trunk-based-dev-principles.py">Validator that enforces this contract.</reference>
 </text>

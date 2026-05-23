@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="trunk-based-ci-gates Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for trunk-based-ci-gates as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Trunk-Based CI Gates Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Adding a new CI job without updating branch protection required-status list.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The new job runs but does not gate merges. A red job is invisible to reviewers. PRs merge with failing checks and trunk breaks silently.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="pytest-in-pre-commit" severity="high">
+      <symptom>Pre-commit takes 90 seconds; engineers commit with --no-verify; broken code reaches CI without local check.</symptom>
+      <root-cause source="field experience">Hook runs full pytest suite.</root-cause>
+      <fix>Remove pytest from pre-commit. Keep ruff + secret scan + format. Run pytest in CI.</fix>
+    </antipattern>
+    <antipattern id="ci-over-10-min" severity="high">
+      <symptom>Engineers push 5 commits then go to lunch; review queue grows; integration failures emerge on Monday.</symptom>
+      <root-cause source="field experience">CI wall time &gt; 10 min; rapid feedback is broken.</root-cause>
+      <fix>Parallelise pytest into N workers (pytest-xdist); cache dependencies; move slow integration suite to nightly via @pytest.mark.slow + scheduled workflow.</fix>
+    </antipattern>
+    <antipattern id="stale-required-status-list" severity="high">
+      <symptom>A renamed CI job runs but does not gate merges; PRs with a failing renamed job merge into trunk.</symptom>
+      <root-cause source="field experience">Required-status list still references the old job name.</root-cause>
+      <fix>After any CI rename/add, run gh api repos/&lt;o&gt;/&lt;r&gt;/branches/main/protection and compare list to actual job names. Automate the check in a weekly workflow.</fix>
+    </antipattern>
+    <antipattern id="manual-revert-spiral" severity="high">
+      <symptom>Trunk breaks at 2pm; revert in flight at 4pm because the original author is in another timezone; main blocked for hours.</symptom>
+      <root-cause source="field experience">Reverts done by humans; fix-forward + 'one more fix' on top further destabilises trunk.</root-cause>
+      <fix>Wire auto-revert bot (e.g., probot, custom GH action) that reverts on CI red within 15 minutes; author opens fresh PR with the real fix.</fix>
+    </antipattern>
+    <antipattern id="no-secret-scan" severity="high">
+      <symptom>API key committed in PR; nobody noticed; key leaked in public repo for 11 days before rotation.</symptom>
+      <root-cause source="field experience">No secret-scan hook in pre-commit, no scan in CI.</root-cause>
+      <fix>Add detect-secrets + gitleaks to pre-commit; add a CI secret-scan job in required-status list.</fix>
+    </antipattern>
+
   </section>
 </text>

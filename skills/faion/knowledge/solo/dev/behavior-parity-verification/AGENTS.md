@@ -4,11 +4,14 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a per-stage parity report comparing legacy vs new code-path outputs over shadow traffic, gating ramp progression on diff rate and cluster review.
 content_id: "581d8e59ff07ba59"
-summary: Shadow-run new code paths against the legacy system in production traffic and diff observable behavior — without a full golden-master setup or test harness rewrite.
+complexity: medium
+produces: report
+est_tokens: 4200
 tags: [migration, parity, shadow-traffic, dark-launch, refactor]
 ---
 # Behavior Parity Verification (Solo Tier)
@@ -17,12 +20,19 @@ tags: [migration, parity, shadow-traffic, dark-launch, refactor]
 
 **One-sentence:** Validates that a rewritten code path produces the same observable behavior as the legacy path by shadowing real traffic and diffing outputs, with a lightweight setup a solo developer can stand up in a day.
 
-**One-paragraph:** Major rewrites or framework migrations face a single hard question: did we break anything? Golden-master testing (see `geek/sdlc-ai/test-golden-master-legacy-rewrite`) answers it via captured fixtures, but a solo developer often cannot afford the harness. Behavior parity verification offers the lighter alternative: route a small percentage of production traffic to both the old and new implementation, compare results in real time, and surface diffs. The methodology pins three things — what counts as "observable," how to compare without leaking PII, and how to ramp safely from 1% to 100%. Output: a parity report per release that closes only when diff rate drops below a defined threshold for a defined window.
+**One-paragraph:** Major rewrites or framework migrations face a single hard question: did we break anything? Golden-master testing answers it via captured fixtures, but a solo developer often cannot afford the harness. Behavior parity verification offers the lighter alternative: route a small percentage of production traffic to both the old and new implementation, compare results in real time, and surface diffs. The methodology pins three things — what counts as observable, how to compare without leaking PII, and how to ramp safely from 1% to 100%. Output: a parity report per ramp stage that closes only when diff rate drops below a defined threshold for a defined window.
+
+**Ефективно для:**
+
+- Соло-розробник переписує сервіс на новий фреймворк/мові і боїться upgrade-regressions.
+- Команда хоче безпечно вирізати legacy-шар без повного golden-master harness.
+- AI-агент згенерував новий код-шлях і потрібен empirical gate перед видаленням старого.
+- Міграція з monolith → service-extract, де хочеться dark-launch перед cutover.
 
 ## Applies If (ALL must hold)
 
 - An existing code path is being replaced (new language, new framework, new algorithm) — not greenfield.
-- The path is observable: it has a defined input contract and a comparable output (HTTP response, file write, database row, returned object).
+- The path is observable: defined input contract and a comparable output (HTTP response, file write, DB row, returned object).
 - Production traffic is non-zero and reproducible (deterministic given inputs OR diffs can be tolerated probabilistically).
 - The developer can deploy the new path behind a feature flag or routing layer.
 
@@ -35,48 +45,62 @@ tags: [migration, parity, shadow-traffic, dark-launch, refactor]
 
 ## Prerequisites
 
-- Both implementations runnable side-by-side (feature flag, dual deployment, or shadow worker).
-- A diff comparator: structural-equal for JSON, tolerance-aware for floats, normalization rules for IDs/timestamps.
-- Storage for at least 24h of diff samples (Postgres table, S3 bucket, or log aggregator).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Legacy implementation handle | code path / endpoint | repo |
+| New implementation handle | code path / endpoint | repo |
+| Feature flag / router | code | flag service or proxy layer |
+| Diff store schema | SQL / KV definition | DBA / infra |
+| Observable field list | Markdown | author of the rewrite |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/automation-tooling/feature-flags` | Routing traffic between implementations is flag-gated; this methodology assumes the flag plumbing is in place. |
-| `solo/dev/code-quality/observability-basics` | The diff sampler is an observability sink; the basics of structured logs / metrics are assumed. |
+| `solo/dev/automation-tooling/trunk-based-feature-flags` | Routing traffic between implementations is flag-gated. |
+| `solo/dev/changelog-automation-conventional-commits` | Each ramp-stage promotion is a release event; the changelog records it. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 rules: define observable, normalize before diff, ramp gates, freeze on regression | ~800 |
-| `content/02-output-contract.xml` | essential | Parity report shape; required fields; required diff sample storage | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: PII leak, timestamp false-positives, ramping too fast, missed async paths, others | ~800 |
+| `content/01-core-rules.xml` | essential | 4 testable rules: observable list, normalize-before-diff, staged ramp gates, freeze-on-regression | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for parity-report artefact + valid/invalid examples + forbidden patterns | 700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: PII leak, timestamp false-positives, ramp-jump, async observables missed, permissive normalizer, skipped cluster analysis | 800 |
+| `content/04-procedure.xml` | medium | 6-step procedure: define observables → write normalizer → deploy diff sampler → ramp 1%→100% with gates → cluster analysis → sign-off | 700 |
+| `content/05-examples.xml` | reference | One worked example: pricing endpoint migration from legacy Python service to new Go service | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree: traffic-non-zero? observables-defined? normalizer-deterministic? gate-met? → ramp/freeze/revert | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `define-observable-fields` | sonnet | Bounded judgment on which fields are observable vs incidental |
-| `write-diff-normalizer` | sonnet | Coding task: deterministic transforms (timestamps, UUIDs, ordering) |
-| `analyze-diff-clusters` | opus | Synthesis: cluster surviving diffs into root causes |
+| `define-observable-fields` | sonnet | Bounded judgment on which response fields are observable vs incidental. |
+| `write-diff-normalizer` | sonnet | Coding task: deterministic transforms (timestamp quantization, UUID canonicalization, list ordering). |
+| `analyze-diff-clusters` | opus | Synthesis: cluster surviving diffs into root causes; cross-input pattern matching. |
+| `score-parity-report` | haiku | Mechanical schema validation; pass/block computation against thresholds. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/parity-report.md` | Report skeleton: scope, ramp schedule, diff metrics, sign-off |
-| `templates/diff-store-schema.sql` | Postgres schema for `parity_diffs` table |
+| `templates/parity-report.md` | Markdown skeleton for the per-stage parity report (scope, observables, ramp window, diff metrics, sign-off). |
+| `templates/parity-report.json` | JSON Schema for the parity-report artefact (canonical contract). |
+| `templates/diff-store-schema.sql` | Postgres DDL for the `parity_diffs` table the sampler writes to. |
+| `templates/normalizer-skeleton.py` | Python skeleton of a deterministic diff normalizer (timestamp/UUID/list rules). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/parity-summarize.py` | Aggregate `parity_diffs` into per-cluster counts and surface top-10 | Daily during ramp |
+| `scripts/validate-behavior-parity-verification.py` | Validate a parity-report JSON against the schema and threshold rules. | After each ramp stage closes; before promoting to next stage. |
 
 ## Related
 
-- parent skill: `solo/dev/software-developer/`
-- peer methodology: `feature-flags`, `dark-launch`, `golden-master-testing` (geek tier)
-- external: [GitHub Scientist](https://github.com/github/scientist) · [Twitter Diffy](https://github.com/opendiffy/diffy)
+- [[trunk-based-feature-flags]] — flag plumbing that gates the shadow router.
+- [[ci-quality-gate-design]] — same artefact-gate pattern at the CI layer.
+- [[characterization-test-recipes]] — orthogonal: pre-rewrite test capture.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree first checks whether production traffic is non-zero and whether the observable list has been written — these are hard prerequisites. It then branches on diff-rate vs threshold at each ramp stage, routing to one of `promote-next-stage`, `freeze-investigate`, or `revert-previous-stage`. Each leaf references a rule id in `01-core-rules.xml`. Use it before every ramp-promotion decision.

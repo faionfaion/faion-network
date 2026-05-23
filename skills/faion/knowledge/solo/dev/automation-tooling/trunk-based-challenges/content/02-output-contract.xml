@@ -1,22 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="trunk-based-challenges Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Trunk-Based Challenges &amp; Diagnostics Output Contract" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the report artefact this methodology produces. Validator enforces required keys + per-field constraints + forbidden patterns.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trunk-based-challenges.json",
+  "type": "object",
+  "required": [
+    "trunk_break_freq",
+    "first_failing_check",
+    "recommended_fix",
+    "report_format"
+  ],
+  "properties": {
+    "trunk_break_freq": {
+      "enum": [
+        "lt_1_per_week",
+        "1_to_3_per_week",
+        "gt_3_per_week"
+      ]
+    },
+    "first_failing_check": {
+      "enum": [
+        "branch_protection",
+        "ci_speed",
+        "feature_flags",
+        "pr_size",
+        "review_sla",
+        "all_green"
+      ]
+    },
+    "recommended_fix": {
+      "type": "string"
+    },
+    "report_format": {
+      "enum": [
+        "markdown",
+        "json"
+      ]
+    },
+    "pr_size_p95": {
+      "type": "integer"
+    },
+    "ci_p95_minutes": {
+      "type": "number"
+    },
+    "review_p95_hours": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "trunk_break_freq": "1_to_3_per_week",
+  "first_failing_check": "ci_speed",
+  "recommended_fix": "CI p95 = 18 minutes; parallelise tests + move integration suite to nightly; target < 10 minutes.",
+  "report_format": "markdown",
+  "pr_size_p95": 280,
+  "ci_p95_minutes": 18.4,
+  "review_p95_hours": 6.2
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "trunk_break_freq": "gt_3_per_week",
+  "first_failing_check": "all_green"
+}
+]]></code>
+    <note>Recommends reverting to long-lived branches; that violates broken-trunk-is-missing-gate.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern id="f-revert-to-gitflow">
+      <description>Recommendation includes returning to feature branches &gt; 24h or GitFlow</description>
+      <why>Violates broken-trunk-is-missing-gate.</why>
+    </pattern>
+    <pattern id="f-fix-everything">
+      <description>Recommends fixing CI + PR size + flags simultaneously</description>
+      <why>Violates fix-first-failing-check; teams finish nothing this way.</why>
+    </pattern>
+    <pattern id="f-untracked-flags">
+      <description>Report mentions active flags but no .aidocs/feature-flags.md entry</description>
+      <why>Violates sdd-task-to-flag-mapping.</why>
+    </pattern>
+  </section>
+
+  <reference path="scripts/validate-trunk-based-challenges.py">Validator script</reference>
 </text>

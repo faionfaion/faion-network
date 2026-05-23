@@ -1,42 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Changelog Automation Conventional Commits Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Changelog Automation Conventional Commits output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Changelog Automation Conventional Commits Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the changelog-update artefact. Pre-merge gate rejects releases without a valid update.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">at least 2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-      <pattern id="f5">version regressed (lower than previous record)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to no more than 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-      <transformation>Group near-duplicate inputs, recording the group with member count.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/changelog-automation-conventional-commits.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/changelog-automation-conventional-commits.json</item>
-      <item>owner is a named individual or rotating named role — never a plural pronoun</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/changelog-automation-conventional-commits.json",
+  "type": "object",
+  "required": ["artefact_id", "range_from", "range_to", "release_version", "release_date", "sections", "semver_bump", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":     {"type": "string", "pattern": "^chg-[a-z0-9-]{6,}$"},
+    "range_from":      {"type": "string", "minLength": 1, "description": "tag or sha"},
+    "range_to":        {"type": "string", "minLength": 1},
+    "release_version": {"type": "string", "pattern": "^v?\\d+\\.\\d+\\.\\d+(-[a-z0-9.-]+)?$"},
+    "release_date":    {"type": "string", "format": "date"},
+    "semver_bump":     {"enum": ["major", "minor", "patch"]},
+    "sections": {
+      "type": "object",
+      "required": ["breaking", "feat", "fix"],
+      "properties": {
+        "breaking":  {"type": "array", "items": {"type": "string"}},
+        "feat":      {"type": "array", "items": {"type": "string"}},
+        "fix":       {"type": "array", "items": {"type": "string"}},
+        "chore":     {"type": "array", "items": {"type": "string"}},
+        "refactor":  {"type": "array", "items": {"type": "string"}},
+        "docs":      {"type": "array", "items": {"type": "string"}},
+        "perf":      {"type": "array", "items": {"type": "string"}},
+        "test":      {"type": "array", "items": {"type": "string"}},
+        "build":     {"type": "array", "items": {"type": "string"}},
+        "ci":        {"type": "array", "items": {"type": "string"}},
+        "style":     {"type": "array", "items": {"type": "string"}},
+        "deviations": {"type": "array", "items": {"type": "string"}, "description": "non-conventional commits encountered"}
+      }
+    },
+    "verdict":      {"enum": ["emit-changelog", "block-non-conventional", "block-missing-version-bump", "block-merge-noise"]},
+    "version":      {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":{"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "chg-v1-4-0",
+  "range_from": "v1.3.0",
+  "range_to": "HEAD",
+  "release_version": "v1.4.0",
+  "release_date": "2026-05-23",
+  "semver_bump": "minor",
+  "sections": {
+    "breaking": [],
+    "feat": ["(api) add /v2/quote endpoint", "add JSON-LD offer schema"],
+    "fix": ["(billing) FX rounding mismatch on EUR-PT"],
+    "chore": ["bump deps"],
+    "refactor": [],
+    "docs": ["update README pricing table"],
+    "perf": [],
+    "test": ["add parity-report fixtures"],
+    "build": [],
+    "ci": ["parallelize lint + typecheck"],
+    "style": [],
+    "deviations": []
+  },
+  "verdict": "emit-changelog",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "log",
+  "range_from": "v1.3.0",
+  "range_to": "HEAD",
+  "release_version": "1.4",
+  "release_date": "today",
+  "semver_bump": "patch",
+  "sections": {"breaking": ["drop /v1 endpoint"], "feat": ["add /v2"], "fix": ["Merge branch foo"]},
+  "verdict": "emit-changelog",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing chg- prefix; release_version not semver; release_date not ISO; semver_bump=patch but breaking section non-empty (should be major); merge commit appeared in fix section (r4 violation); version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=emit-changelog with breaking section non-empty AND semver_bump != major.</description>
+      <reason>r5 semver mapping violation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Merge-shaped strings appearing in any section (e.g. "Merge branch X into Y").</description>
+      <reason>r4 merge-noise violation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>sections.deviations non-empty AND verdict=emit-changelog.</description>
+      <reason>Non-conventional commits must be addressed first; deviations block release.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/changelog-automation-conventional-commits.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-changelog-automation-conventional-commits.py">Validator that enforces this contract.</reference>
 </text>

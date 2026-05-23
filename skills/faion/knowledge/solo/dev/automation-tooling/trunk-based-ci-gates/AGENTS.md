@@ -2,72 +2,100 @@
 slug: trunk-based-ci-gates
 tier: solo
 group: dev
-domain: sdd
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Trunk-Based Development requires two quality gates: a fast local pre-commit hook that completes in under one second (lint + type-check on staged files only) and a CI pipeline under 10 minutes wall time that gates merge to main.
-content_id: "ca2e1889ee897c68"
-tags: [trunk-based-development, ci-cd, pre-commit, github-actions, branch-protection]
+domain: automation-tooling
+version: 2.0.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a CI configuration enforcing trunk-based gates: pre-commit hooks under 1s, CI under 10 minutes, branch protection with full required-status list, auto-revert on red trunk, and a verifier that the required-status list stays in sync with CI job names.
+content_id: "7623e08688ad8525"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [trunk-based, ci, branch-protection, pre-commit, auto-revert]
 ---
-# CI Gates for Trunk-Based Development
+# Trunk-Based CI Gates
 
 ## Summary
 
-**One-sentence:** Trunk-Based Development requires two quality gates: a fast local pre-commit hook that completes in under one second (lint + type-check on staged files only) and a CI pipeline under 10 minutes wall time that gates merge to main.
+**One-sentence:** Produces a CI configuration enforcing trunk-based gates: pre-commit hooks under 1s, CI under 10 minutes, branch protection with full required-status list, auto-revert on red trunk, and a verifier that the required-status list stays in sync with CI job names.
 
-**One-paragraph:** Trunk-Based Development requires two quality gates: a fast local pre-commit hook that completes in under one second (lint + type-check on staged files only) and a CI pipeline under 10 minutes wall time that gates merge to main. Branch protection must require both. A broken trunk is auto-reverted by bot, never by humans.
+**One-paragraph:** CI gates that keep trunk green: pre-commit hooks complete in <1s (lint + format + secret scan only — no pytest); CI is sub-10-minute (cache deps, parallelise tests, move slow integration suites to nightly); branch protection requires PR reviews + all CI status checks + linear history + restricts direct pushes; after any CI change, re-verify the required-status list via gh api so renamed/new jobs gate merges; auto-revert on red trunk via git revert -m 1 instead of human-managed reverts.
+
+**Ефективно для:**
+
+- New repo bootstrap needing the full CI gate set.
+- Existing repo whose trunk breaks more than once per week (apply trunk-based-challenges first).
+- Hardening branch protection after a hot-fix direct push incident.
+- Aligning required-status list after adding/renaming CI jobs.
 
 ## Applies If (ALL must hold)
 
-- Any repository practising trunk-based development that pushes to main at least once per day.
-- Setting up a new Python + GitHub Actions project and need a working quality gate from day one.
-- Existing CI that takes more than 10 minutes — this pattern shows where to cut.
-- Codebases where developers routinely use --no-verify — replace the slow hook causing the habit.
+- Hosting on GitHub / GitLab / Bitbucket with branch protection API.
+- Team has adopted trunk-based development.
+- Tests can run in parallel (or be split into fast/slow tiers).
+- Bot account or app available for auto-revert PRs.
 
 ## Skip If (ANY kills it)
 
-- Mobile/desktop projects where the store review cycle makes daily deploys impossible — CI gating still applies but the deploy stage is different.
-- Pure data science / notebook repos where pre-commit hook overhead is irrelevant and CI is a batch job, not a merge gate.
-- Throwaway prototypes where the overhead of setting up hooks is not justified.
+- Solo project with no CI yet (start with a single check first).
+- Mobile/desktop release-branch projects (different gating model).
+- Repos without admin access to configure branch protection.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo URL + default branch | string | git host |
+| CI provider | github-actions | gitlab-ci | circleci | team decision |
+| Test suite map (fast / slow / integration tiers) | table | test plan |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[trunk-based-dev-patterns]] | patterns these gates enforce |
+| [[practices-python-ecosystem]] | pre-commit hook ecosystem if Python |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 7-step procedure | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `emit-pre-commit` | haiku | render .pre-commit-config.yaml fast hooks |
+| `emit-ci-workflow` | sonnet | ci.yml with parallel test split |
+| `verify-required-status` | haiku | gh api call comparing required-status to job names |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/pre-commit-config.yaml` | Fast pre-commit hooks (lint + format + secret-scan) |
+| `templates/ci.yml` | GitHub Actions workflow with required-status jobs |
+| `templates/verify-protection.sh` | Verify required-status list matches CI job names |
+| `templates/artefact.json` | Sample artefact metadata for validator |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-trunk-based-ci-gates.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
 
-- parent skill: `solo/dev/automation-tooling/`
+- [[trunk-based-dev-patterns]]
+- [[trunk-based-challenges]]
+- [[trunk-based-branch-by-abstraction]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.

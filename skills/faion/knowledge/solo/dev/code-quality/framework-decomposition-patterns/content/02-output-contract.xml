@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="framework-decomposition-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Framework Decomposition Patterns Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the per-file decomposition report. Each fat file targeted for extraction emits a report; the report gates the actual refactor PR.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/framework-decomposition-patterns.json",
+  "type": "object",
+  "required": ["artefact_id", "file_path", "framework", "file_type", "current_loc", "proposed_pattern", "target_loc", "coverage_or_plan", "verdict", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id":     {"type": "string", "pattern": "^fdp-[a-z0-9-]{6,}$"},
+    "file_path":       {"type": "string", "minLength": 1},
+    "framework":       {"enum": ["django", "rails", "laravel", "react", "nextjs", "generic"]},
+    "file_type":       {"enum": ["view", "controller", "model", "component", "route", "service", "form"]},
+    "current_loc":     {"type": "integer", "minimum": 100},
+    "proposed_pattern":{"enum": ["service-layer", "selector", "dto", "query-object", "action", "custom-hook", "extract-helper", "split-by-domain"]},
+    "target_loc":      {"type": "integer", "minimum": 1, "maximum": 200},
+    "coverage_or_plan":{"type": "string", "minLength": 5},
+    "ai_context_savings_tokens": {"type": "integer", "minimum": 0},
+    "verdict":         {"enum": ["propose-extraction", "block-no-coverage", "block-pattern-not-applicable", "skip-already-small"]},
+    "version":         {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed":   {"type": "string", "format": "date"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "fdp-order-views-py",
+  "file_path": "src/orders/views.py",
+  "framework": "django",
+  "file_type": "view",
+  "current_loc": 487,
+  "proposed_pattern": "service-layer",
+  "target_loc": 150,
+  "coverage_or_plan": "tests/test_views.py (89% branch) + characterization plan in PR-4421",
+  "ai_context_savings_tokens": 8500,
+  "verdict": "propose-extraction",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "decomp",
+  "file_path": "src/orders/views.py",
+  "framework": "phoenix",
+  "file_type": "thing",
+  "current_loc": 60,
+  "proposed_pattern": "service-layer",
+  "target_loc": 800,
+  "coverage_or_plan": "",
+  "verdict": "propose-extraction",
+  "version": "1.0",
+  "last_reviewed": "today"
+}
+]]></code>
+    <note>artefact_id missing fdp- prefix; framework not in enum; file_type not in enum; current_loc=60 below minimum (file isn't fat); target_loc=800 above max 200; coverage_or_plan empty; version + last_reviewed malformed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern>
+      <description>verdict=propose-extraction with coverage_or_plan empty.</description>
+      <reason>Refactor without safety net = silent regression.</reason>
+    </antipattern>
+    <antipattern>
+      <description>framework=django + proposed_pattern=custom-hook (React-only pattern).</description>
+      <reason>Pattern-framework mismatch; verdict block-pattern-not-applicable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>target_loc &gt; current_loc.</description>
+      <reason>Decomposition that makes the file bigger is not decomposition.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/framework-decomposition-patterns.json">Schema canonical location.</reference>
+  <reference path="scripts/validate-framework-decomposition-patterns.py">Validator that enforces this contract.</reference>
 </text>
