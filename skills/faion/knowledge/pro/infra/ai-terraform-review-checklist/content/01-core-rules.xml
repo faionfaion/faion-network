@@ -1,32 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Ai Terraform Review Checklist Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Ai Terraform Review Checklist application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="AI Terraform Review Checklist Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules every application of `AI Terraform Review Checklist` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-bound-scope" testable="true" depth="essential">
-      <statement>Apply Ai Terraform Review Checklist only to a single instance of &apos;role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform)&apos;. Never batch multiple unrelated decisions through one pass.</statement>
-      <rationale source="Anti-conflation pattern">Batching turns a 1-decision artefact into a debate club. Each instance gets its own record so the rationale is traceable.</rationale>
+    <rule id="non-root-user" testable="true" depth="essential">
+      <statement>Dockerfile MUST end with `USER &lt;non-zero&gt;`; `USER 0` and missing USER are blocked.</statement>
+      <rationale source="CIS Docker Benchmark + 2026 AI-hallucination postmortems">Containers running as root expand the blast radius of any RCE; AI templates commonly omit the USER directive.</rationale>
     </rule>
 
-    <rule id="r2-typed-input" testable="true" depth="essential">
-      <statement>Every input field has a declared type and source. Free-form prose without a source citation is rejected.</statement>
-      <rationale source="Contract-first artefacts">Untyped inputs let LLMs hallucinate plausible-but-wrong values. Typed + sourced inputs make the output falsifiable.</rationale>
+    <rule id="pinned-image-tag" testable="true" depth="essential">
+      <statement>Every base image MUST be pinned by digest (`@sha256:...`) or immutable tag. `:latest` and unpinned versions are blocked.</statement>
+      <rationale source="Supply-chain attack postmortems">Floating tags allow upstream poisoning to propagate silently on next CI rebuild.</rationale>
     </rule>
 
-    <rule id="r3-named-owner" testable="true" depth="essential">
-      <statement>The output names a single accountable owner (handle, email, or org role). No &apos;team&apos; or &apos;we&apos; as owner.</statement>
-      <rationale source="RACI / single-throat-to-choke">Plural ownership = no ownership. Future readers need a named human to chase when the artefact is stale.</rationale>
+    <rule id="dockerignore-present" testable="true" depth="essential">
+      <statement>`COPY . .` is blocked unless a `.dockerignore` excludes `.git`, `node_modules`, `.env*`, `.venv/`.</statement>
+      <rationale source="Internal — leaked-env-via-Dockerfile incidents 2025">AI-generated COPY . . statements ship secrets + history into the image.</rationale>
     </rule>
 
-    <rule id="r4-versioned" testable="true" depth="essential">
-      <statement>Output carries semver-style version and last_reviewed date. Stale records (&gt;90 days, no review) must be flagged on read.</statement>
-      <rationale source="Anti-decay practice">Methodology outputs decay; treating them as immutable is a defect. Versioning + review-by-date forces refresh cadence.</rationale>
+    <rule id="resource-limits" testable="true" depth="essential">
+      <statement>Helm values + Kubernetes manifests MUST set both `resources.requests` and `resources.limits` for CPU + memory. Missing limits is blocked.</statement>
+      <rationale source="K8s noisy-neighbour postmortems">Unbounded containers OOM their nodes and starve neighbours.</rationale>
     </rule>
 
-    <rule id="r5-llm-grounding" testable="true" depth="essential">
-      <statement>Every LLM-generated claim in the output cites a transcript / document / metric source. No claim survives without provenance.</statement>
-      <rationale source="Anti-hallucination practice (RAGAS, TruLens)">LLMs produce confident prose with no source. Provenance ties each claim to a verifiable artefact (file, line, query result, log).</rationale>
+    <rule id="terraform-state-backend" testable="true" depth="essential">
+      <statement>Terraform `backend` block MUST be remote (S3 + DynamoDB lock OR GCS OR Azure blob); `local` backend on production module is blocked.</statement>
+      <rationale source="Terraform state-corruption postmortems">Local state is unrecoverable on developer-machine loss; remote state with locking is the minimum viable production stance.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
     </rule>
 
   </section>
@@ -34,5 +39,7 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

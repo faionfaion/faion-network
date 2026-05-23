@@ -3,77 +3,97 @@ slug: capacity-planning-at-design-time
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Capacity Planning at Design Time: codified platform / SRE practice that turns the recurring 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time' decision into a repeatable, auditable artefact.
-content_id: "8bab69983be87cf2"
-tags: [capacity-planning-at-design-time, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Forces RPS forecast, headroom floor, autoscaling ceiling, regional reservation choices to be written into the architecture spec before first deploy, not patched in production."
+content_id: "e1a711851d62b877"
+complexity: deep
+produces: spec
+est_tokens: 5000
+tags: [capacity-planning, rps-forecasting, headroom, autoscaling, design-time, infra]
 ---
 # Capacity Planning at Design Time
 
 ## Summary
 
-**One-sentence:** Capacity Planning at Design Time: codified platform / SRE practice that turns the recurring 'role-devops-engineer/Container vs serverless vs VM decision tree at architecture time' decision into a repeatable, auditable artefact.
+**One-sentence:** Forces RPS forecast, headroom floor, autoscaling ceiling, regional reservation choices to be written into the architecture spec before first deploy, not patched in production.
 
-**One-paragraph:** Capacity Planning at Design Time addresses the gap identified by the role-devops-engineer/Container vs serverless vs VM decision tree at architecture time playbook: k8s-resource-requests-limits + AWS rightsizing exist, but no methodology on capacity-modelling at ARCHITECTURE time (RPS forecasting, headroom policy, autoscaling ceiling, regional capacity reservations). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Forces RPS forecast, headroom floor, autoscaling ceiling, regional reservation choices to be written into the architecture spec before first deploy, not patched in production. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/Container vs serverless vs VM decision tree at architecture time OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Service is in design review (not yet shipped).
+- Expected load can be estimated from a known funnel or analogue service.
+- There is a named SRE owner who will commit to the capacity numbers.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Service already in production — use `capacity-safety-floor-policy` for headroom instead.
+- Tiny solo project with bounded users (< 100 daily).
+- Load is fundamentally unpredictable (one-off campaign, viral content).
+
+**Ефективно для:**
+
+- Нові сервіси на стадії design-review (pre-deploy).
+- Стек вибір: container vs serverless vs VM.
+- Команди де capacity-surprise на launch-day = норма.
+- FinOps + capacity owner однією угодою.
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/Container vs serverless vs VM decision tree at architecture time task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-headroom-floor | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/capacity-planning-at-design-time.json` | JSON schema for the Capacity Planning at Design Time output contract |
-| `templates/capacity-planning-at-design-time.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-capacity-planning-at-design-time.py` | Enforce Capacity Planning at Design Time output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-capacity-planning-at-design-time.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/`
-- upstream playbook: `role-devops-engineer/Container vs serverless vs VM decision tree at architecture time`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

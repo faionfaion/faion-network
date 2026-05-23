@@ -4,77 +4,98 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Vendor-evaluation pilot template: scoped 2-4 week pilot with measurable acceptance criteria, named owner, costed exit plan if pilot fails.
 content_id: "d952ab6a201e5bb4"
-summary: "Vendor Eval Pilot Template: produces a versioned, owner-signed artefact that closes the gap 'role-software-architect/Technology evaluation + selection cycle'."
-tags: [vendor-eval-pilot-template, dev, pro]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: [vendor-eval, pilot, template, architect, procurement]
 ---
 # Vendor Eval Pilot Template
 
 ## Summary
 
-**One-sentence:** Vendor Eval Pilot Template: produces a versioned, owner-signed artefact that closes the gap 'role-software-architect/Technology evaluation + selection cycle'.
+**One-sentence:** Vendor-evaluation pilot template: scoped 2-4 week pilot with measurable acceptance criteria, named owner, costed exit plan if pilot fails.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-software-architect/Technology evaluation + selection cycle': build-vs-buy methodologies exist, but a structured pilot template (scope, kill criteria, ops-burden log, security/license check) is missing. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a vendor eval pilot template artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Vendor-evaluation pilot template: scoped 2-4 week pilot with measurable acceptance criteria, named owner, costed exit plan if pilot fails. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-vendor-eval-pilot-template.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Architect runs technology-selection cycle із ≥2 vendor candidates.
+- Pilot budget existing (2-4 week eng-time + vendor's free / trial tier).
+- Acceptance criteria visible (perf SLI, integration depth, ops runbook coverage).
+- Procurement gate потребує artefact'd pilot result для go/no-go.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-architect/Technology evaluation + selection cycle' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Vendor selection cycle in motion with ≥2 candidates
+- 2-4 week pilot budget available
+- Acceptance criteria pre-defined (not invented during pilot)
+- Costed exit plan possible if pilot fails (sunk-cost limit known)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working vendor eval pilot template artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Only one candidate — pilot is just an integration; skip template
+- <1 week budget — pilot too small to produce signal
+- No acceptance criteria — pilot becomes a tour of features
+- Sunk-cost commitment regardless of result — pilot is theatre
 
 ## Prerequisites
 
-- recent context for the 'role-software-architect/Technology evaluation + selection cycle' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/dev` | parent domain group — provides operating context for Vendor Eval Pilot Template |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | medium | One worked example end-to-end (filled artefact) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-vendor-eval-pilot-template` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/vendor-eval-pilot-template.json` | JSON schema for the Vendor Eval Pilot Template output contract |
-| `templates/vendor-eval-pilot-template.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.json` | JSON instance matching the output contract |
+| `templates/skeleton.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-vendor-eval-pilot-template.py` | Enforce Vendor Eval Pilot Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-vendor-eval-pilot-template.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-architect/Technology evaluation + selection cycle`
-- pro/dev/role-software-architect
+- Parent: `pro/dev/INDEX.xml`
+- [[technology-evaluation-rubric]]
+- [[vendor-exit-cost-estimator]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

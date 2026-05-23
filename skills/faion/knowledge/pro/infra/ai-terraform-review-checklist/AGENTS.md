@@ -3,78 +3,96 @@ slug: ai-terraform-review-checklist
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ai Terraform Review Checklist: codified platform / SRE practice that turns the recurring 'role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform)' decision into a repeatable, auditable artefact.
-content_id: "f13fbb846f55560c"
-tags: [ai-terraform-review-checklist, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-PR checklist that catches the 2026 AI-generated Dockerfile / Helm / Terraform failure patterns (USER 0, latest tag, missing resource limits, broken templating) before they reach production."
+content_id: "9c9266e089680bd7"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: [terraform, ai-generated, review, iac, infra]
 ---
-# Ai Terraform Review Checklist
+# AI Terraform Review Checklist
 
 ## Summary
 
-**One-sentence:** Ai Terraform Review Checklist: codified platform / SRE practice that turns the recurring 'role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform)' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-PR checklist that catches the 2026 AI-generated Dockerfile / Helm / Terraform failure patterns (USER 0, latest tag, missing resource limits, broken templating) before they reach production.
 
-**One-paragraph:** Ai Terraform Review Checklist addresses the gap identified by the role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform) playbook: docker-security-hardening exists, but the AI-generation-specific failure pattern catalog (USER 0, latest tag, COPY . without .dockerignore, single-stage with build tools, missing HEALTHCHECK) is the high-leverage 2026 content. / Helm-charts methodology covers authoring; no methodology covers reviewing AI-generated charts (missing resource limits, missing PDB, missing securityContext, broken templating with .Values nil, hardcoded namespaces). Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Per-PR checklist that catches the 2026 AI-generated Dockerfile / Helm / Terraform failure patterns (USER 0, latest tag, missing resource limits, broken templating) before they reach production. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- AI assistant produces ≥ 1 Dockerfile / Helm chart / Terraform PR per week.
+- Named SRE / DevOps reviewer owns each PR.
+- Org policy already lists at least one forbidden pattern (e.g. USER 0, hardcoded namespaces).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- No AI assistant is producing IaC in this repo.
+- Greenfield prototype with no production users.
+- PRs are already gated by a stricter policy-as-code engine (OPA / Conftest) and adding a checklist duplicates effort.
+
+**Ефективно для:**
+
+- PR-гейт для AI-згенерованих Docker/Helm/Terraform змін.
+- Команди де Claude/Cursor пишуть IaC, людина ревʼює.
+- AI-output який потрібно зіставити з org-policy.
+- Аудити після інцидентів через AI hallucinations в IaC.
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-llm-grounding | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `apply-checklist` | haiku | Per-item binary check against artefact. |
+| `classify-decision` | sonnet | Mitigated / accepted / deferred / N-A judgment. |
+| `escalate-stride-conflict` | opus | Cross-category interaction analysis. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-terraform-review-checklist.json` | JSON schema for the Ai Terraform Review Checklist output contract |
-| `templates/ai-terraform-review-checklist.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.md` | Checklist with category headings + decision-per-prompt rows. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ai-terraform-review-checklist.py` | Enforce Ai Terraform Review Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ai-terraform-review-checklist.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/`
-- upstream playbook: `role-devops-engineer/AI-assisted infra review gate (Dockerfile + Helm + Terraform)`
-- external: [RAGAS](https://docs.ragas.io/) · [Anthropic agent design](https://docs.anthropic.com/en/docs/build-with-claude/agents)
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

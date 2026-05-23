@@ -1,39 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Trust Boundary Diff Helper Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Trust Boundary Diff Helper output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Trust Boundary Diff Helper Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">input names with source paths or URLs</field>
-      <field name="version" type="semver" required="true">e.g., 1.0.0</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim long prose fields to fit limits while preserving numeric claims, named tools, and citations.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/trust-boundary-diff-helper.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/trust-boundary-diff-helper.json</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trust-boundary-diff-helper.json",
+  "title": "Trust Boundary Diff Helper",
+  "type": "object",
+  "required": ["artefact_id", "owner", "findings", "rationale", "inputs_used", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1, "not": { "enum": ["team", "we", "us", "TBD", ""] } },
+    "findings": { "type": "array", "minItems": 1 },
+    "rationale": { "type": "string", "minLength": 1 },
+    "inputs_used": { "type": "array", "minItems": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "last_reviewed": { "type": "string", "format": "date" }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "trust-boundary-diff-helper-2026Q2-001",
+  "owner": "ruslan@faion.net",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "high",
+      "description": "Observed gap; cited evidence; owner assigned."
+    }
+  ],
+  "rationale": "Closes the gap surfaced by the parent skill — input artefact 'task-brief.md' explicitly names the constraint set; output ties decisions to rule r1.",
+  "inputs_used": [
+    "task-brief.md",
+    "constitution.md"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "",
+  "owner": "team",
+  "version": "latest"
+}
+]]></code>
+    <note>Missing required fields; owner = 'team' is forbidden; placeholder values 'TBD' / 'TODO' / 'FIXME' rejected. Validator returns explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' / 'us' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>empty arrays for required list-typed fields</pattern>
+    <pattern>version that is not semver (e.g. 'latest', '0', 'rc')</pattern>
+  </section>
+
+  <reference path="scripts/validate-trust-boundary-diff-helper.py">Validator script enforcing this schema</reference>
 </text>
